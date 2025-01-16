@@ -22,10 +22,10 @@ jobs:
       run: pip install pyinstaller
 
     - name: Package with PyInstaller
-      run: pyinstaller --onefile path/to/your_script.py
+      run: pyinstaller --onefile path/to/correct_script.py  # Update this line with the correct path
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3  # Updated to v3
+      uses: actions/upload-artifact@v3
       with:
         name: packaged-exe
         path: dist/
