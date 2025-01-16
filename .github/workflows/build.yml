@@ -1,4 +1,4 @@
-name: Package Python to EXE
+name: 将 Python 打包为 EXE
 
 on:
   push:
@@ -10,22 +10,22 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout code
+    - name: 检出代码
       uses: actions/checkout@v2
 
-    - name: Set up Python
+    - name: 设置 Python
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
 
-    - name: Install dependencies
+    - name: 安装依赖
       run: |
         pip install -r requirements.txt
 
-    - name: Package with PyInstaller
+    - name: 使用 PyInstaller 打包
       run: pyinstaller --onefile main.py
 
-    - name: Upload artifact
+    - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher
