@@ -22,7 +22,7 @@ jobs:
       run: pip install pyinstaller
 
     - name: Package with PyInstaller
-      run: pyinstaller --onefile path/to/your_script.py  # Update this line with the correct path
+      run: pyinstaller --onefile main.py
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
