@@ -233,7 +233,7 @@
           <item>
            <layout class="QVBoxLayout" name="verticalLayout_8">
             <item>
-             <widget class="LineEdit" name="nameEdit_7">
+             <widget class="LineEdit" name="search_name_type">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -267,7 +267,7 @@
              </widget>
             </item>
             <item>
-             <widget class="PushButton" name="pushButton_14">
+             <widget class="PushButton" name="search_name_button">
               <property name="minimumSize">
                <size>
                 <width>450</width>
@@ -288,7 +288,7 @@
             <item>
              <layout class="QHBoxLayout" name="player_uuid_6">
               <item>
-               <widget class="StrongBodyLabel" name="label_10">
+               <widget class="StrongBodyLabel" name="search_name">
                 <property name="maximumSize">
                  <size>
                   <width>300</width>
@@ -301,7 +301,7 @@
                </widget>
               </item>
               <item>
-               <widget class="PushButton" name="pushButton_19">
+               <widget class="PushButton" name="search_name_copy">
                 <property name="minimumSize">
                  <size>
                   <width>150</width>

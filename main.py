@@ -1,13 +1,19 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel
-from qfluentwidgets import NavigationInterface, NavigationItemPosition
+import logging
+import os
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QComboBox
+from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition
 import datetime
 from PyQt5 import uic
-from PyQt5.QtGui import QIcon, QDesktopServices
+from PyQt5.QtGui import QIcon, QDesktopServices, QCursor
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl
 import requests
 import base64
 import json
+import configparser
+
+# 设置日志配置
+logging.basicConfig(filename='app.log', level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -98,27 +104,27 @@ class MainWindow(QMainWindow):
         self.load_ui("ui/home.ui", animate=False)
 
     def on_home_clicked(self):
-        print(f"{datetime.datetime.now()} [INFO] 主页 被点击")
+        logging.info("主页 被点击")
         self.load_ui("ui/home.ui")
 
     def on_download_clicked(self):
-        print(f"{datetime.datetime.now()} [INFO] 下载 被点击")
+        logging.info("下载 被点击")
         self.load_ui("ui/download.ui")
 
     def on_passport_clicked(self):
-        print(f"{datetime.datetime.now()} [INFO] 通行证 被点击")
+        logging.info("通行证 被点击")
         self.load_ui("ui/passport.ui")
 
     def on_settings_clicked(self):
-        print(f"{datetime.datetime.now()} [INFO] 设置 被点击")
+        logging.info("设置 被点击")
         self.load_ui("ui/settings.ui")
 
     def on_info_clicked(self):
-        print(f"{datetime.datetime.now()} [INFO] 关于 被点击")
+        logging.info("关于 被点击")
         self.load_ui("ui/info.ui")
 
     def on_tools_clicked(self):
-        print(f"{datetime.datetime.now()} [INFO] 工具 被点击")
+        logging.info("工具 被点击")
         self.load_ui("ui/tools.ui")
 
     def load_ui(self, ui_path, animate=True):
@@ -166,10 +172,102 @@ class MainWindow(QMainWindow):
             cape_down_button = widget.findChild(QPushButton, "search_cape_down")
             if cape_down_button:
                 cape_down_button.clicked.connect(lambda: self.open_cape_url(widget))
+            name_search_button = widget.findChild(QPushButton, "search_name_button")
+            if name_search_button:
+                name_search_button.clicked.connect(lambda: self.query_player_name(widget))
+            name_copy_button = widget.findChild(QPushButton, "search_name_copy")
+            if name_copy_button:
+                name_copy_button.clicked.connect(lambda: self.copy_name_to_clipboard(widget))
+
+        elif ui_path == "ui/download.ui":
+            minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
+            minecraft_part_choose_button = widget.findChild(QPushButton, "minecraft_part_choose")
+            minecraft_part_set_button = widget.findChild(QPushButton, "minecraft_part_set")
+            download_way_choose = widget.findChild(QComboBox, "download_way_choose")
+            download_way_F5_button = widget.findChild(QPushButton, "download_way_F5")
+            minecraft_choose = widget.findChild(QComboBox, "minecraft_choose")
+
+            if minecraft_part_edit:
+                config = configparser.ConfigParser()
+                config.read('config.ini')
+                if 'DEFAULT' in config and 'minecraft-part' in config['DEFAULT']:
+                    minecraft_part_edit.setText(config['DEFAULT']['minecraft-part'])
+                else:
+                    minecraft_part_edit.setText(os.path.join(os.getcwd(), ".minecraft"))
+
+            if minecraft_part_choose_button:
+                minecraft_part_choose_button.clicked.connect(lambda: self.choose_minecraft_part(widget))
+
+            if minecraft_part_set_button:
+                minecraft_part_set_button.clicked.connect(lambda: self.set_minecraft_part(widget))
+
+            if download_way_choose:
+                download_way_choose.addItems(["官方源", "BMCLAPI"])
+                download_way_choose.currentIndexChanged.connect(lambda index: print(download_way_choose.currentText()))
+
+            if download_way_F5_button:
+                download_way_F5_button.clicked.connect(lambda: self.update_minecraft_versions(widget))
 
         if animate:
             self.animate_sidebar()
             self.animate_fade_in()
+
+    def choose_minecraft_part(self, widget):
+        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
+        minecraft_part_choose_button = widget.findChild(QPushButton, "minecraft_part_choose")
+        if minecraft_part_edit and minecraft_part_choose_button:
+            folder_path = QFileDialog.getExistingDirectory(self, "选择 .minecraft 文件夹", os.getcwd())
+            if folder_path:
+                minecraft_part_edit.setText(folder_path)
+                config = configparser.ConfigParser()
+                config.read('config.ini')
+                if 'DEFAULT' not in config:
+                    config['DEFAULT'] = {}
+                config['DEFAULT']['minecraft-part'] = folder_path
+                with open('config.ini', 'w') as configfile:
+                    config.write(configfile)
+                logging.info(f"选择的 .minecraft 文件夹路径: {folder_path}")
+                self.showTeachingTip(minecraft_part_choose_button, folder_path)
+
+    def set_minecraft_part(self, widget):
+        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
+        minecraft_part_set_button = widget.findChild(QPushButton, "minecraft_part_set")
+        if minecraft_part_edit and minecraft_part_set_button:
+            folder_path = minecraft_part_edit.text()
+            config = configparser.ConfigParser()
+            config.read('config.ini')
+            if 'DEFAULT' not in config:
+                config['DEFAULT'] = {}
+            config['DEFAULT']['minecraft-part'] = folder_path
+            with open('config.ini', 'w') as configfile:
+                config.write(configfile)
+            logging.info(f"设置的 .minecraft 文件夹路径: {folder_path}")
+            self.showTeachingTip(minecraft_part_set_button, folder_path)
+
+    def showTeachingTip(self, target_widget, folder_path):
+        TeachingTip.create(
+            target=target_widget,
+            icon=InfoBarIcon.SUCCESS,
+            title='提示',
+            content=f"已存储 Minecraft 核心文件夹位置为\n{folder_path}",
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=2000,
+            parent=self
+        ).move(target_widget.mapToGlobal(target_widget.rect().topLeft()))
+
+    def update_minecraft_versions(self, widget):
+        minecraft_choose = widget.findChild(QComboBox, "minecraft_choose")
+        if minecraft_choose:
+            response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
+            if response.status_code == 200:
+                version_data = response.json()
+                versions = [version["id"] for version in version_data["versions"]]
+                minecraft_choose.clear()
+                minecraft_choose.addItems(versions)
+                logging.info("Minecraft 版本列表已更新")
+            else:
+                logging.error("无法获取 Minecraft 版本列表")
 
     def query_player_uuid(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "name2uuid_player_uuid")
@@ -183,12 +281,15 @@ class MainWindow(QMainWindow):
                 self.player_uuid = player_data.get("id", "未找到UUID")
                 self.player_name = player_name  # Store player name for later use
                 result_label.setText(self.player_uuid)
+                logging.info(f"查询玩家 {player_name} 的UUID: {self.player_uuid}")
             else:
                 result_label.setText("查询失败")
+                logging.error(f"查询玩家 {player_name} 的UUID失败")
 
     def copy_to_clipboard(self, widget):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_uuid)
+        logging.info(f"UUID {self.player_uuid} 已复制到剪贴板")
 
     def query_player_skin(self, widget):
         player_uuid_edit = widget.findChild(QLineEdit, "skin_uuid")
@@ -210,34 +311,63 @@ class MainWindow(QMainWindow):
                     self.player_cape = textures.get("CAPE", {}).get("url", "未找到披风URL")
                     skin_result_label.setText(self.player_skin[:20] + "..." if len(self.player_skin) > 20 else self.player_skin)
                     cape_result_label.setText(self.player_cape[:20] + "..." if len(self.player_cape) > 20 else self.player_cape)
-                    print(f"{datetime.datetime.now()} [INFO] 皮肤URL: {self.player_skin}")
-                    print(f"{datetime.datetime.now()} [INFO] 披风URL: {self.player_cape}")
+                    logging.info(f"皮肤URL: {self.player_skin}")
+                    logging.info(f"披风URL: {self.player_cape}")
                 else:
                     skin_result_label.setText("未找到皮肤信息")
                     cape_result_label.setText("未找到披风信息")
+                    logging.error("未找到皮肤和披风信息")
             else:
                 skin_result_label.setText("查询失败")
                 cape_result_label.setText("查询失败")
+                logging.error(f"查询玩家 {player_uuid} 的皮肤和披风信息失败")
 
     def copy_skin_to_clipboard(self, widget):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_skin)
+        logging.info(f"皮肤URL {self.player_skin} 已复制到剪贴板")
 
     def copy_cape_to_clipboard(self, widget):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_cape)
+        logging.info(f"披风URL {self.player_cape} 已复制到剪贴板")
 
     def open_skin_url(self, widget):
         QDesktopServices.openUrl(QUrl(self.player_skin))
+        logging.info(f"打开皮肤URL: {self.player_skin}")
 
     def open_cape_url(self, widget):
         QDesktopServices.openUrl(QUrl(self.player_cape))
+        logging.info(f"打开披风URL: {self.player_cape}")
+
+    def query_player_name(self, widget):
+        player_uuid_edit = widget.findChild(QLineEdit, "search_name_type")
+        name_result_label = widget.findChild(QLabel, "search_name")
+        if player_uuid_edit and name_result_label:
+            name_result_label.setText("查询中，请稍等...")
+            player_uuid = player_uuid_edit.text()
+            response = requests.get(f"https://sessionserver.mojang.com/session/minecraft/profile/{player_uuid}")
+            if response.status_code == 200:
+                player_data = response.json()
+                self.player_name = player_data.get("name", "未找到名称")
+                name_result_label.setText(self.player_name)
+                logging.info(f"查询UUID {player_uuid} 的名称: {self.player_name}")
+            else:
+                name_result_label.setText("查询失败")
+                logging.error(f"查询UUID {player_uuid} 的名称失败")
+
+    def copy_name_to_clipboard(self, widget):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.player_name)
+        logging.info(f"名称 {self.player_name} 已复制到剪贴板")
 
     def open_github_bloret(self):
         QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew"))
+        logging.info("打开Bloret Github 组织页面")
 
     def open_github_bloret_Launcher(self):
         QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew/Bloret-Launcher"))
+        logging.info("打开该项目的Github页面")
 
     def animate_sidebar(self):
         start_geometry = self.navigation_interface.geometry()
@@ -250,7 +380,7 @@ class MainWindow(QMainWindow):
         self.fade_in_animation.start()
 
     def on_button_clicked(self):
-        print(f"{datetime.datetime.now()} [INFO] 按钮 被点击")
+        logging.info("按钮 被点击")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -61,7 +61,7 @@
         <x>0</x>
         <y>0</y>
         <width>623</width>
-        <height>556</height>
+        <height>542</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -86,18 +86,6 @@
             </size>
            </property>
            <layout class="QHBoxLayout" name="horizontalLayout_5">
-            <property name="leftMargin">
-             <number>16</number>
-            </property>
-            <property name="topMargin">
-             <number>16</number>
-            </property>
-            <property name="rightMargin">
-             <number>16</number>
-            </property>
-            <property name="bottomMargin">
-             <number>16</number>
-            </property>
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_6">
               <property name="spacing">
@@ -144,7 +132,7 @@
              </layout>
             </item>
             <item>
-             <widget class="LineEdit" name="nameEdit_2">
+             <widget class="LineEdit" name="minecraft_part">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -166,7 +154,14 @@
              </widget>
             </item>
             <item>
-             <widget class="PushButton" name="pushButton">
+             <widget class="PushButton" name="minecraft_part_set">
+              <property name="text">
+               <string>设定</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="PushButton" name="minecraft_part_choose">
               <property name="text">
                <string>选择文件夹</string>
               </property>
@@ -263,7 +258,7 @@
              </spacer>
             </item>
             <item>
-             <widget class="ComboBox" name="comboBox_2">
+             <widget class="ComboBox" name="download_way_choose">
               <property name="minimumSize">
                <size>
                 <width>250</width>
@@ -283,7 +278,7 @@
              </widget>
             </item>
             <item>
-             <widget class="PushButton" name="pushButton_6">
+             <widget class="PushButton" name="download_way_F5">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -369,7 +364,7 @@
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_11">
               <item>
-               <widget class="ComboBox" name="comboBox">
+               <widget class="ComboBox" name="minecraft_choose">
                 <property name="minimumSize">
                  <size>
                   <width>350</width>
@@ -391,7 +386,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="SwitchButton" name="widget_7" native="true">
+                 <widget class="SwitchButton" name="show_all_minecraft" native="true">
                   <property name="minimumSize">
                    <size>
                     <width>100</width>
@@ -508,7 +503,7 @@
              </spacer>
             </item>
             <item>
-             <widget class="SwitchButton" name="widget_5" native="true">
+             <widget class="SwitchButton" name="Notification" native="true">
               <property name="minimumSize">
                <size>
                 <width>100</width>
@@ -544,7 +539,7 @@
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_13">
               <item>
-               <widget class="PushButton" name="pushButton_3">
+               <widget class="PushButton" name="download">
                 <property name="text">
                  <string>开始下载并安装</string>
                 </property>
