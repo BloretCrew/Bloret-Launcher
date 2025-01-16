@@ -25,7 +25,7 @@ jobs:
       run: pyinstaller --onefile path/to/your_script.py
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3  # Updated to v3
       with:
         name: packaged-exe
         path: dist/
