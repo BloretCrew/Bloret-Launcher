@@ -1,0 +1,31 @@
+name: Package Python to EXE
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: pip install pyinstaller
+
+    - name: Package with PyInstaller
+      run: pyinstaller --onefile path/to/your_script.py
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: packaged-exe
+        path: dist/
