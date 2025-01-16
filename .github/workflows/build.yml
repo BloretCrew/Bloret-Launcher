@@ -25,6 +25,9 @@ jobs:
     - name: 安装 PyQt-Fluent-Widgets
       run: pip install PyQt-Fluent-Widgets -i https://pypi.org/simple/
 
+    - name: 安装 PyInstaller
+      run: pip install pyinstaller
+
     - name: 使用 PyInstaller 打包
       run: pyinstaller --onefile main.py
 
