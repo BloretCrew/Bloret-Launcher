@@ -29,7 +29,7 @@ jobs:
       run: pip install pyinstaller
 
     - name: 使用 PyInstaller 打包
-      run: pyinstaller --onefile main.py
+      run: pyinstaller --onefile --noconsole main.py
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
