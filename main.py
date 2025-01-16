@@ -6,7 +6,7 @@ from qfluentwidgets import NavigationInterface, NavigationItemPosition, Teaching
 import datetime
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor
-from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl
+from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings
 import requests
 import base64
 import json
@@ -24,6 +24,10 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon("icons/bloret.png"))  # 设置软件图标
 
         self.player_uuid = ""  # Initialize player_uuid
+
+        # 读取设置
+        self.settings = QSettings("Bloret", "Launcher")
+        self.apply_theme()
 
         # 创建侧边栏
         self.navigation_interface = NavigationInterface(self)
@@ -102,6 +106,13 @@ class MainWindow(QMainWindow):
 
         # 默认加载主页
         self.load_ui("ui/home.ui", animate=False)
+
+    def apply_theme(self):
+        theme = self.settings.value("theme", "light")
+        if theme == "dark":
+            self.setStyleSheet("QWidget { background-color: #2e2e2e; color: #ffffff; }")
+        else:
+            self.setStyleSheet("")
 
     def on_home_clicked(self):
         logging.info("主页 被点击")
@@ -208,9 +219,25 @@ class MainWindow(QMainWindow):
             if download_way_F5_button:
                 download_way_F5_button.clicked.connect(lambda: self.update_minecraft_versions(widget))
 
+        elif ui_path == "ui/settings.ui":
+            light_dark_choose = widget.findChild(QComboBox, "light_dark_choose")
+            if light_dark_choose:
+                light_dark_choose.addItems(["跟随系统", "浅色", "深色"])
+                light_dark_choose.currentIndexChanged.connect(self.change_theme)
+
         if animate:
             self.animate_sidebar()
             self.animate_fade_in()
+
+    def change_theme(self, index):
+        theme = self.sender().itemText(index)
+        if theme == "深色":
+            self.settings.setValue("theme", "dark")
+        elif theme == "浅色":
+            self.settings.setValue("theme", "light")
+        else:
+            self.settings.setValue("theme", "system")
+        self.apply_theme()
 
     def choose_minecraft_part(self, widget):
         minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
