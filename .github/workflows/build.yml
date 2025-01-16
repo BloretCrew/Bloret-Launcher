@@ -19,7 +19,9 @@ jobs:
         python-version: '3.x'
 
     - name: Install dependencies
-      run: pip install pyinstaller
+      run: |
+        pip install pyinstaller
+        pip install pyqt5
 
     - name: Package with PyInstaller
       run: pyinstaller --onefile main.py
