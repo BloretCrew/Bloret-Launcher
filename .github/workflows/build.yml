@@ -1,152 +1,31 @@
-name: 构建
+name: Package Python to EXE
 
 on:
   push:
-  pull_request:
-  workflow_dispatch:
+    branches:
+      - main
 
-concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: true
- 
 jobs:
-  builder_matrix:
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [x86, x64]
-        os: [ubuntu-20.04, windows-latest, macos-13]
-        exclude:
-          - os: ubuntu-20.04
-            arch: x86
-          - os: macos-13
-            arch: x86
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4.2.2
-      - name: Setup Python
-        uses: actions/setup-python@v5.3.0
-        with:
-          python-version: '3.8.10'
-          architecture: ${{ matrix.arch }}
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v4
-      - name: Run Windows build
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          uv venv
-          .venv\Scripts\activate
-          uv pip install -r requirements.txt
-          uv pip install pyinstaller
-          pyinstaller main.py `
-            -w `
-            -i ./img/favicon.ico `
-            -n ClassWidgets `
-            --contents-directory . `
-            --add-data config:config `
-            --add-data audio:audio `
-            --add-data img:img `
-            --add-data ui:ui `
-            --add-data font:font `
-            --add-data view:view `
-            --add-data LICENSE:. `
-            --add-data plugins:plugins `
-            --hidden-import PyQt5.QtWebEngine `
-            --hidden-import plyer.platforms.win.notification
-
-      - name: Run Linux build
-        if: ${{ matrix.os == 'ubuntu-20.04' }}
-        run: |
-          uv venv
-          source .venv/bin/activate
-          uv pip install -r  requirements.linux.txt
-          uv pip install pyinstaller
-          pyinstaller main.py \
-            -w \
-            -i ./img/favicon.ico \
-            -n ClassWidgets \
-            --contents-directory . \
-            --add-data config:config \
-            --add-data audio:audio \
-            --add-data img:img \
-            --add-data ui:ui \
-            --add-data font:font \
-            --add-data view:view \
-            --add-data LICENSE:. \
-            --add-data plugins:plugins \
-            --hidden-import PyQt5.QtWebEngine \
-            --hidden-import plyer.platforms.linux.notification
-
-      - name: Run macOS build
-        if: ${{ matrix.os == 'macos-13' }}
-        run: |
-          uv venv
-          source .venv/bin/activate
-          uv pip install -r  requirements.linux.txt
-          uv pip install pyinstaller
-          pyinstaller main.py \
-            -w \
-            -i ./img/favicon.icns \
-            -n ClassWidgets \
-            --contents-directory . \
-            --add-data config:config \
-            --add-data audio:audio \
-            --add-data img:img \
-            --add-data ui:ui \
-            --add-data font:font \
-            --add-data view:view \
-            --add-data LICENSE:. \
-            --add-data plugins:plugins \
-            --hidden-import PyQt5.QtWebEngine \
-            --hidden-import=plyer.platforms.macosx.notification
-
-      - name: Upload
-        uses: actions/upload-artifact@v4.4.2
-        with:
-          name: ${{ matrix.os }}-${{ matrix.arch }}
-          path: ./dist/ClassWidgets
-      - name: Upload macOS Bundle
-        if: ${{ matrix.os == 'macos-13' }}
-        uses: actions/upload-artifact@v4.4.2
-        with:
-          name: macos-13-bundle
-          path: ./dist/ClassWidgets.app
-
-  self-hosted:
-    runs-on: self-hosted
+  build:
+    runs-on: windows-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Set up python
-        run: |
-          /home/actions/.pyenv/versions/3.8.10/bin/python -m venv venv
-          source ./venv/bin/activate
-          pip install -r requirements.linux.txt
-          pip install pyinstaller
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
 
-      - name: Run Linux (Debian 10) build
-        run: |
-          source ./venv/bin/activate
-          pyinstaller main.py \
-            -w \
-            -n ClassWidgets \
-            --contents-directory . \
-            --add-data config:config \
-            --add-data audio:audio \
-            --add-data img:img \
-            --add-data ui:ui \
-            --add-data font:font \
-            --add-data view:view \
-            --add-data LICENSE:. \
-            --add-data plugins:plugins \
-            --hidden-import PyQt5.QtWebEngine \
-            --hidden-import plyer.platforms.linux.notification
+    - name: Install dependencies
+      run: pip install pyinstaller
 
-      - name: Upload
-        uses: actions/upload-artifact@v4.4.2
-        with:
-          name: debian10-x64
-          path: ./dist/ClassWidgets/
+    - name: Package with PyInstaller
+      run: pyinstaller --onefile path/to/your_script.py
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: packaged-exe
+        path: dist/
