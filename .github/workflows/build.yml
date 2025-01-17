@@ -64,7 +64,7 @@ jobs:
 
     - name: 制作安装器
       run: |
-        Start-Process -FilePath "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" -ArgumentList "/ooutput", "/FBloret-Launcher-Installer", "output/Bloret-Launcher.zip" -Wait
+        powershell -command "Start-Process 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' -ArgumentList '/Q', '/Ooutput', '/FBloret-Launcher-Installer', 'output/Bloret-Launcher.zip' -NoNewWindow -Wait -PassThru"
 
     - name: 上传安装包
       uses: actions/upload-artifact@v3
