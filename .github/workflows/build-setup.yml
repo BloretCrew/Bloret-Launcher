@@ -31,7 +31,7 @@ jobs:
         pyinstaller --onefile main.py
 
     - name: 上传安装程序
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: installer
         path: dist/
