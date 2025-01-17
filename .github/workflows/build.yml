@@ -40,7 +40,6 @@ jobs:
         cp -r cmcl/ output/
         cp -r icons/ output/
         cp -r ui/ output/
-        powershell Compress-Archive -Path output/* -DestinationPath Bloret-Launcher.zip
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
