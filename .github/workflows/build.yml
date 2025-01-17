@@ -31,12 +31,12 @@ jobs:
         pip install pillow
 
     - name: 使用 PyInstaller 打包
-      run: pyinstaller --onefile --noconsole --icon=icons/bloret.png main.py
+      run: pyinstaller --onefile --noconsole --icon=icons/bloret.png --name=Bloret-Launcher main.py
 
     - name: 创建 zip 包含其他文件夹
       run: |
         mkdir -p output
-        cp -r dist/ output/
+        cp dist/Bloret-Launcher.exe output/
         cp -r cmcl/ output/
         cp -r icons/ output/
         cp -r ui/ output/
