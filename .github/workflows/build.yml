@@ -64,7 +64,7 @@ jobs:
 
     - name: 制作安装器
       run: |
-        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /ooutput /F"Bloret-Launcher-Installer" output/Bloret-Launcher.zip
+        "& \"C:\Program Files (x86)\Inno Setup 6\ISCC.exe\" /ooutput /F\"Bloret-Launcher-Installer\" output/Bloret-Launcher.zip"
 
     - name: 上传安装包
       uses: actions/upload-artifact@v3
