@@ -1,4 +1,4 @@
-name: 打包 Python 应用程序
+name: 打包为安装程序
 
 on:
   push:
