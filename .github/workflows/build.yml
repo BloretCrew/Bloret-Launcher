@@ -52,9 +52,3 @@ jobs:
       with:
         name: Bloret-Launcher
         path: output/Bloret-Launcher.zip
-
-    - name: 上传安装包
-      uses: actions/upload-artifact@v3
-      with:
-        name: Bloret-Launcher-Installer
-        path: output/
