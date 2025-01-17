@@ -42,11 +42,11 @@ jobs:
         cp -r ui/ output/
         cp config.ini output/
 
-    - name: 下载构建产物
-      uses: actions/download-artifact@v3
+    - name: 上传构建产物 Bloret-Launcher.zip
+      uses: actions/upload-artifact@v3
       with:
         name: Bloret-Launcher
-        path: output/
+        path: output/Bloret-Launcher.zip
 
     - name: 安装 Inno Setup
       run: choco install innosetup
