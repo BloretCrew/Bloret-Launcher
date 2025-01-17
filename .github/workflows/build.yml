@@ -54,7 +54,7 @@ jobs:
         path: output/Bloret-Launcher.zip
 
     - name: 下载构建产物
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: Bloret-Launcher
         path: output/
