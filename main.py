@@ -1,9 +1,9 @@
 import sys
 import logging
 import os
+from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QComboBox
 from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition
-import datetime
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings
@@ -12,8 +12,13 @@ import base64
 import json
 import configparser
 
+# 创建日志文件夹
+if not os.path.exists('log'):
+    os.makedirs('log')
+
 # 设置日志配置
-logging.basicConfig(filename='app.log', level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+log_filename = os.path.join('log', f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -33,42 +38,42 @@ class MainWindow(QMainWindow):
         self.navigation_interface = NavigationInterface(self)
         self.navigation_interface.addItem(
             routeKey="home",
-            icon="icons/bloret.png",
+            icon=QIcon("icons/bloret.png"),  # 修改为 QIcon
             text="主页",
             onClick=self.on_home_clicked,
             position=NavigationItemPosition.TOP
         )
         self.navigation_interface.addItem(
             routeKey="download",
-            icon="icons/download.png",
+            icon=QIcon("icons/download.png"),  # 修改为 QIcon
             text="下载",
             onClick=self.on_download_clicked,
             position=NavigationItemPosition.TOP
         )
         self.navigation_interface.addItem(
             routeKey="tools",
-            icon="icons/tools.png",
+            icon=QIcon("icons/tools.png"),  # 修改为 QIcon
             text="工具",
             onClick=self.on_tools_clicked,
             position=NavigationItemPosition.TOP
         )
         self.navigation_interface.addItem(
             routeKey="passport",
-            icon="icons/passport.png",
+            icon=QIcon("icons/passport.png"),  # 修改为 QIcon
             text="通行证",
             onClick=self.on_passport_clicked,
             position=NavigationItemPosition.BOTTOM
         )
         self.navigation_interface.addItem(
             routeKey="settings",
-            icon="icons/settings.png",
+            icon=QIcon("icons/settings.png"),  # 修改为 QIcon
             text="设置",
             onClick=self.on_settings_clicked,
             position=NavigationItemPosition.BOTTOM
         )
         self.navigation_interface.addItem(
             routeKey="info",
-            icon="icons/info.png",
+            icon=QIcon("icons/info.png"),  # 修改为 QIcon
             text="关于",
             onClick=self.on_info_clicked,
             position=NavigationItemPosition.BOTTOM
@@ -160,6 +165,9 @@ class MainWindow(QMainWindow):
             github_project_button = widget.findChild(QPushButton, "button_github")
             if github_project_button:
                 github_project_button.clicked.connect(self.open_github_bloret_Launcher)
+            qq_button = widget.findChild(QPushButton, "pushButton")  # 确保按钮名称正确
+            if qq_button:
+                qq_button.clicked.connect(self.open_qq_link)
 
         elif ui_path == "ui/tools.ui":
             query_button = widget.findChild(QPushButton, "name2uuid_player_Button")
@@ -197,6 +205,7 @@ class MainWindow(QMainWindow):
             download_way_choose = widget.findChild(QComboBox, "download_way_choose")
             download_way_F5_button = widget.findChild(QPushButton, "download_way_F5")
             minecraft_choose = widget.findChild(QComboBox, "minecraft_choose")
+            comboBox = widget.findChild(QComboBox, "comboBox")
 
             if minecraft_part_edit:
                 config = configparser.ConfigParser()
@@ -218,6 +227,11 @@ class MainWindow(QMainWindow):
 
             if download_way_F5_button:
                 download_way_F5_button.clicked.connect(lambda: self.update_minecraft_versions(widget))
+
+            if comboBox:
+                items = ['shoko', '西宫硝子', '宝多六花', '小鸟游六花']
+                comboBox.addItems(items)
+                comboBox.currentIndexChanged.connect(lambda index: print(comboBox.currentText()))
 
         elif ui_path == "ui/settings.ui":
             light_dark_choose = widget.findChild(QComboBox, "light_dark_choose")
@@ -395,6 +409,10 @@ class MainWindow(QMainWindow):
     def open_github_bloret_Launcher(self):
         QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew/Bloret-Launcher"))
         logging.info("打开该项目的Github页面")
+
+    def open_qq_link(self):
+        QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
+        logging.info("打开Bloret QQ 群页面")
 
     def animate_sidebar(self):
         start_geometry = self.navigation_interface.geometry()

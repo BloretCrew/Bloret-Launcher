@@ -6,29 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>821</width>
-    <height>651</height>
+    <width>706</width>
+    <height>590</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
-   <property name="spacing">
-    <number>18</number>
-   </property>
-   <property name="leftMargin">
-    <number>24</number>
-   </property>
-   <property name="topMargin">
-    <number>24</number>
-   </property>
-   <property name="rightMargin">
-    <number>24</number>
-   </property>
-   <property name="bottomMargin">
-    <number>24</number>
-   </property>
    <item>
     <widget class="TitleLabel" name="TitleLabel">
      <property name="text">
@@ -49,8 +34,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>773</width>
-        <height>543</height>
+        <width>688</width>
+        <height>536</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
@@ -132,88 +117,204 @@
         </spacer>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_3">
-         <item>
-          <spacer name="horizontalSpacer_3">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="PushButton" name="pushButton_2">
-           <property name="minimumSize">
-            <size>
-             <width>245</width>
-             <height>20</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>Bloret Github 组织页面</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="PushButton" name="button_github">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>245</width>
-             <height>0</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>360</width>
-             <height>16777215</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>此项目的 Github</string>
-           </property>
-           <property name="hasIcon" stdset="0">
-            <bool>false</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_4">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
+        <widget class="CardWidget" name="frame_5">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
+          <item>
+           <widget class="CaptionLabel" name="CaptionLabel_5">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>50</width>
+              <height>50</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>50</width>
+              <height>50</height>
+             </size>
+            </property>
+            <property name="pixmap">
+             <pixmap>icon/favicon.ico</pixmap>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="lightColor" stdset="0">
+             <color alpha="150">
+              <red>0</red>
+              <green>0</green>
+              <blue>0</blue>
+             </color>
+            </property>
+            <property name="darkColor" stdset="0">
+             <color alpha="200">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="StrongBodyLabel" name="StrongBodyLabel_11">
+            <property name="text">
+             <string>QQ 群</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="PushButton" name="pushButton">
+            <property name="minimumSize">
+             <size>
+              <width>245</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Bloret</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="frame_6">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <widget class="QLabel" name="label_2">
+            <property name="minimumSize">
+             <size>
+              <width>50</width>
+              <height>50</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>50</width>
+              <height>50</height>
+             </size>
+            </property>
+            <property name="pixmap">
+             <pixmap>icon/github.png</pixmap>
+            </property>
+            <property name="scaledContents">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="StrongBodyLabel" name="StrongBodyLabel_12">
+            <property name="text">
+             <string>Github</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_5">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="PushButton" name="pushButton_2">
+            <property name="minimumSize">
+             <size>
+              <width>245</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Bloret Github 组织页面</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="PushButton" name="button_github">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>245</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>360</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>此项目的 Github</string>
+            </property>
+            <property name="hasIcon" stdset="0">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3"/>
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_4">
@@ -242,7 +343,7 @@
    <item>
     <widget class="CaptionLabel" name="CaptionLabel_2">
      <property name="text">
-      <string>谢谢</string>
+      <string>Bloret</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -267,13 +368,19 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>CardWidget</class>
+   <extends>QFrame</extends>
+   <header location="global">qfluentwidgets</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
    <class>SmoothScrollArea</class>
    <extends>QScrollArea</extends>
    <header location="global">qfluentwidgets</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>SubtitleLabel</class>
+   <class>StrongBodyLabel</class>
    <extends>QLabel</extends>
    <header location="global">qfluentwidgets</header>
   </customwidget>
@@ -285,6 +392,11 @@
   <customwidget>
    <class>PushButton</class>
    <extends>QPushButton</extends>
+   <header location="global">qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>SubtitleLabel</class>
+   <extends>QLabel</extends>
    <header location="global">qfluentwidgets</header>
   </customwidget>
   <customwidget>
