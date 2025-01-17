@@ -8,6 +8,8 @@
  百络谷 Minecraft 启动器
 </p>
 
+![Show](img/Show.gif)
+
 ## 功能与计划
 - [ ] 下载 Minecraft
 - [ ] 启动 Minecraft
