@@ -2,11 +2,11 @@ import sys
 import logging
 import os
 from datetime import datetime
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QComboBox
-from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox
+from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox
 from PyQt5 import uic
-from PyQt5.QtGui import QIcon, QDesktopServices, QCursor
-from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings
+from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie
+from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal
 import requests
 import base64
 import json
@@ -20,6 +20,15 @@ if not os.path.exists('log'):
 log_filename = os.path.join('log', f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
 logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
+class DownloadWorker(QThread):
+    finished = pyqtSignal()
+
+    def run(self):
+        # 模拟数据处理
+        import time
+        time.sleep(5)  # 模拟数据处理耗时
+        self.finished.emit()
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -29,6 +38,9 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon("icons/bloret.png"))  # 设置软件图标
 
         self.player_uuid = ""  # Initialize player_uuid
+        self.player_skin = ""  # Initialize player_skin
+        self.player_cape = ""  # Initialize player_cape
+        self.player_name = ""  # Initialize player_name
 
         # 读取设置
         self.settings = QSettings("Bloret", "Launcher")
@@ -89,6 +101,7 @@ class MainWindow(QMainWindow):
 
         self.content_layout = QVBoxLayout()
         self.content_layout.addWidget(self.button)
+
         self.main_layout.addLayout(self.content_layout)
 
         self.container = QWidget()
@@ -112,12 +125,36 @@ class MainWindow(QMainWindow):
         # 默认加载主页
         self.load_ui("ui/home.ui", animate=False)
 
+    def toggle_show_all_versions(self, state):
+        widget = self.findChild(QWidget, "downloadWidget")  # 假设你的下载界面的QWidget对象名称为downloadWidget
+        if widget:
+            minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+            show_all_versions = widget.findChild(QCheckBox, "show_all_versions")
+            if minecraft_choose and show_all_versions:
+                self.update_minecraft_versions(widget, show_all=state)
+
     def apply_theme(self):
         theme = self.settings.value("theme", "light")
         if theme == "dark":
             self.setStyleSheet("QWidget { background-color: #2e2e2e; color: #ffffff; }")
+            palette = QPalette()
+            palette.setColor(QPalette.Window, QColor("#2e2e2e"))
+            palette.setColor(QPalette.WindowText, QColor("#ffffff"))
+            palette.setColor(QPalette.Base, QColor("#1e1e1e"))
+            palette.setColor(QPalette.AlternateBase, QColor("#2e2e2e"))
+            palette.setColor(QPalette.ToolTipBase, QColor("#ffffff"))
+            palette.setColor(QPalette.ToolTipText, QColor("#ffffff"))
+            palette.setColor(QPalette.Text, QColor("#ffffff"))
+            palette.setColor(QPalette.Button, QColor("#2e2e2e"))
+            palette.setColor(QPalette.ButtonText, QColor("#ffffff"))
+            palette.setColor(QPalette.BrightText, QColor("#ff0000"))
+            palette.setColor(QPalette.Link, QColor("#2a82da"))
+            palette.setColor(QPalette.Highlight, QColor("#2a82da"))
+            palette.setColor(QPalette.HighlightedText, QColor("#000000"))
+            self.setPalette(palette)
         else:
             self.setStyleSheet("")
+            self.setPalette(self.style().standardPalette())
 
     def on_home_clicked(self):
         logging.info("主页 被点击")
@@ -125,7 +162,13 @@ class MainWindow(QMainWindow):
 
     def on_download_clicked(self):
         logging.info("下载 被点击")
-        self.load_ui("ui/download.ui")
+        self.load_ui("ui/download_load.ui", animate=False)
+        self.download_worker = DownloadWorker()
+        self.download_worker.finished.connect(self.load_download_ui)
+        self.download_worker.start()
+
+    def load_download_ui(self):
+        self.load_ui("ui/download.ui", animate=False)
 
     def on_passport_clicked(self):
         logging.info("通行证 被点击")
@@ -151,97 +194,175 @@ class MainWindow(QMainWindow):
         self.content_layout.addWidget(widget)
 
         if ui_path == "ui/home.ui":
-            github_org_button = widget.findChild(QPushButton, "pushButton_2")
-            if github_org_button:
-                github_org_button.clicked.connect(self.open_github_bloret)
-            github_project_button = widget.findChild(QPushButton, "pushButton")
-            if github_project_button:
-                github_project_button.clicked.connect(self.open_github_bloret_Launcher)
-
+            self.setup_home_ui(widget)
         elif ui_path == "ui/info.ui":
-            github_org_button = widget.findChild(QPushButton, "pushButton_2")
-            if github_org_button:
-                github_org_button.clicked.connect(self.open_github_bloret)
-            github_project_button = widget.findChild(QPushButton, "button_github")
-            if github_project_button:
-                github_project_button.clicked.connect(self.open_github_bloret_Launcher)
-            qq_button = widget.findChild(QPushButton, "pushButton")  # 确保按钮名称正确
-            if qq_button:
-                qq_button.clicked.connect(self.open_qq_link)
-
+            self.setup_info_ui(widget)
         elif ui_path == "ui/tools.ui":
-            query_button = widget.findChild(QPushButton, "name2uuid_player_Button")
-            if query_button:
-                query_button.clicked.connect(lambda: self.query_player_uuid(widget))
-            copy_button = widget.findChild(QPushButton, "pushButton_5")
-            if copy_button:
-                copy_button.clicked.connect(lambda: self.copy_to_clipboard(widget))
-            skin_search_button = widget.findChild(QPushButton, "skin_search_button")
-            if skin_search_button:
-                skin_search_button.clicked.connect(lambda: self.query_player_skin(widget))
-            skin_copy_button = widget.findChild(QPushButton, "search_skin_copy")
-            if skin_copy_button:
-                skin_copy_button.clicked.connect(lambda: self.copy_skin_to_clipboard(widget))
-            skin_down_button = widget.findChild(QPushButton, "search_skin_down")
-            if skin_down_button:
-                skin_down_button.clicked.connect(lambda: self.open_skin_url(widget))
-            cape_copy_button = widget.findChild(QPushButton, "search_cape_copy")
-            if cape_copy_button:
-                cape_copy_button.clicked.connect(lambda: self.copy_cape_to_clipboard(widget))
-            cape_down_button = widget.findChild(QPushButton, "search_cape_down")
-            if cape_down_button:
-                cape_down_button.clicked.connect(lambda: self.open_cape_url(widget))
-            name_search_button = widget.findChild(QPushButton, "search_name_button")
-            if name_search_button:
-                name_search_button.clicked.connect(lambda: self.query_player_name(widget))
-            name_copy_button = widget.findChild(QPushButton, "search_name_copy")
-            if name_copy_button:
-                name_copy_button.clicked.connect(lambda: self.copy_name_to_clipboard(widget))
-
+            self.setup_tools_ui(widget)
         elif ui_path == "ui/download.ui":
-            minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
-            minecraft_part_choose_button = widget.findChild(QPushButton, "minecraft_part_choose")
-            minecraft_part_set_button = widget.findChild(QPushButton, "minecraft_part_set")
-            download_way_choose = widget.findChild(QComboBox, "download_way_choose")
-            download_way_F5_button = widget.findChild(QPushButton, "download_way_F5")
-            minecraft_choose = widget.findChild(QComboBox, "minecraft_choose")
-            comboBox = widget.findChild(QComboBox, "comboBox")
-
-            if minecraft_part_edit:
-                config = configparser.ConfigParser()
-                config.read('config.ini')
-                if 'DEFAULT' in config and 'minecraft-part' in config['DEFAULT']:
-                    minecraft_part_edit.setText(config['DEFAULT']['minecraft-part'])
-                else:
-                    minecraft_part_edit.setText(os.path.join(os.getcwd(), ".minecraft"))
-
-            if minecraft_part_choose_button:
-                minecraft_part_choose_button.clicked.connect(lambda: self.choose_minecraft_part(widget))
-
-            if minecraft_part_set_button:
-                minecraft_part_set_button.clicked.connect(lambda: self.set_minecraft_part(widget))
-
-            if download_way_choose:
-                download_way_choose.addItems(["官方源", "BMCLAPI"])
-                download_way_choose.currentIndexChanged.connect(lambda index: print(download_way_choose.currentText()))
-
-            if download_way_F5_button:
-                download_way_F5_button.clicked.connect(lambda: self.update_minecraft_versions(widget))
-
-            if comboBox:
-                items = ['shoko', '西宫硝子', '宝多六花', '小鸟游六花']
-                comboBox.addItems(items)
-                comboBox.currentIndexChanged.connect(lambda index: print(comboBox.currentText()))
-
+            self.setup_download_ui(widget)
         elif ui_path == "ui/settings.ui":
-            light_dark_choose = widget.findChild(QComboBox, "light_dark_choose")
-            if light_dark_choose:
-                light_dark_choose.addItems(["跟随系统", "浅色", "深色"])
-                light_dark_choose.currentIndexChanged.connect(self.change_theme)
+            self.setup_settings_ui(widget)
+        elif ui_path == "ui/download_load.ui":
+            self.setup_download_load_ui(widget)
 
         if animate:
             self.animate_sidebar()
             self.animate_fade_in()
+
+    def setup_home_ui(self, widget):
+        github_org_button = widget.findChild(QPushButton, "pushButton_2")
+        if github_org_button:
+            github_org_button.clicked.connect(self.open_github_bloret)
+        github_project_button = widget.findChild(QPushButton, "pushButton")
+        if github_project_button:
+            github_project_button.clicked.connect(self.open_github_bloret_Launcher)
+        
+        # 创建 ComboBox 并添加到首页布局中
+        comboBox = ComboBox(widget)
+        items = ['shoko', '西宫硝子', '宝多六花', '小鸟游六花']
+        comboBox.addItems(items)
+        comboBox.currentIndexChanged.connect(lambda index: print(comboBox.currentText()))
+        widget.layout().addWidget(comboBox)
+
+    def setup_info_ui(self, widget):
+        github_org_button = widget.findChild(QPushButton, "pushButton_2")
+        if github_org_button:
+            github_org_button.clicked.connect(self.open_github_bloret)
+        github_project_button = widget.findChild(QPushButton, "button_github")
+        if github_project_button:
+            github_project_button.clicked.connect(self.open_github_bloret_Launcher)
+        qq_button = widget.findChild(QPushButton, "pushButton")  # 确保按钮名称正确
+        if qq_button:
+            qq_button.clicked.connect(self.open_qq_link)
+
+    def setup_tools_ui(self, widget):
+        query_button = widget.findChild(QPushButton, "name2uuid_player_Button")
+        if query_button:
+            query_button.clicked.connect(lambda: self.query_player_uuid(widget))
+        copy_button = widget.findChild(QPushButton, "pushButton_5")
+        if copy_button:
+            copy_button.clicked.connect(lambda: self.copy_to_clipboard(widget))
+        skin_search_button = widget.findChild(QPushButton, "skin_search_button")
+        if skin_search_button:
+            skin_search_button.clicked.connect(lambda: self.query_player_skin(widget))
+        skin_copy_button = widget.findChild(QPushButton, "search_skin_copy")
+        if skin_copy_button:
+            skin_copy_button.clicked.connect(lambda: self.copy_skin_to_clipboard(widget))
+        skin_down_button = widget.findChild(QPushButton, "search_skin_down")
+        if skin_down_button:
+            skin_down_button.clicked.connect(lambda: self.open_skin_url(widget))
+        cape_copy_button = widget.findChild(QPushButton, "search_cape_copy")
+        if cape_copy_button:
+            cape_copy_button.clicked.connect(lambda: self.copy_cape_to_clipboard(widget))
+        cape_down_button = widget.findChild(QPushButton, "search_cape_down")
+        if cape_down_button:
+            cape_down_button.clicked.connect(lambda: self.open_cape_url(widget))
+        name_search_button = widget.findChild(QPushButton, "search_name_button")
+        if name_search_button:
+            name_search_button.clicked.connect(lambda: self.query_player_name(widget))
+        name_copy_button = widget.findChild(QPushButton, "search_name_copy")
+        if name_copy_button:
+            name_copy_button.clicked.connect(lambda: self.copy_name_to_clipboard(widget))
+
+    def setup_download_ui(self, widget):
+        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
+        minecraft_part_choose_button = widget.findChild(QPushButton, "minecraft_part_choose")
+        minecraft_part_set_button = widget.findChild(QPushButton, "minecraft_part_set")
+        download_way_choose = widget.findChild(ComboBox, "download_way_choose")
+        download_way_F5_button = widget.findChild(QPushButton, "download_way_F5")
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+        show_all_versions = widget.findChild(QCheckBox, "show_all_versions")  # 找到QCheckBox
+        download_button = widget.findChild(QPushButton, "download_button")  # 假设下载按钮的objectName为"download_button"
+
+        if minecraft_part_edit:
+            config = configparser.ConfigParser()
+            config.read('config.ini')
+            if 'DEFAULT' in config and 'minecraft-part' in config['DEFAULT']:
+                minecraft_part_edit.setText(config['DEFAULT']['minecraft-part'])
+            else:
+                minecraft_part_edit.setText(os.path.join(os.getcwd(), ".minecraft"))
+
+        if minecraft_part_choose_button:
+            minecraft_part_choose_button.clicked.connect(lambda: self.choose_minecraft_part(widget))
+
+        if minecraft_part_set_button:
+            minecraft_part_set_button.clicked.connect(lambda: self.set_minecraft_part(widget))
+
+        if download_way_choose:
+            download_way_choose.clear()
+            download_way_choose.addItems(["BMCLAPI"])
+            download_way_choose.currentIndexChanged.connect(lambda index: print(download_way_choose.currentText()))
+
+        if download_way_F5_button:
+            download_way_F5_button.clicked.connect(lambda: self.update_minecraft_versions(widget))
+        
+        if minecraft_choose:
+            self.update_minecraft_versions(widget)  # 调用更新版本列表的方法
+
+        show_all_versions = widget.findChild(QCheckBox, "show_all_minecraft")
+        if show_all_versions:
+            show_all_versions.stateChanged.connect(lambda state: self.update_minecraft_versions(widget, show_all=state))
+
+        if download_button:
+            download_button.clicked.connect(lambda: self.start_download(widget))
+
+        # 设置和启动 GIF 动画
+        loading_label = widget.findChild(QLabel, "label_2")
+        if loading_label:
+            self.setup_loading_gif(loading_label)
+
+    def start_download(self, widget):
+        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
+        download_way_choose = widget.findChild(ComboBox, "download_way_choose")
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+
+        if minecraft_part_edit and download_way_choose and minecraft_choose:
+            minecraft_part = minecraft_part_edit.text()
+            ver = download_way_choose.currentText()
+            version = minecraft_choose.currentText()
+
+            # 显示气泡消息提示已经开始下载
+            TeachingTip.create(
+                target=widget.findChild(QPushButton, "download_button"),
+                icon=InfoBarIcon.INFO,
+                title='提示',
+                content="已经开始下载",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
+
+            # 创建versions文件夹
+            versions_folder = os.path.join(minecraft_part, "versions")
+            if not os.path.exists(versions_folder):
+                os.makedirs(versions_folder)
+
+            # 创建版本文件夹
+            download_part = os.path.join(versions_folder, version)
+            if not os.path.exists(download_part):
+                os.makedirs(download_part)
+
+            logging.info(f"下载路径: {download_part}")
+            # 这里可以继续添加下载逻辑
+
+    def setup_settings_ui(self, widget):
+        light_dark_choose = widget.findChild(ComboBox, "light_dark_choose")
+        if light_dark_choose:
+            light_dark_choose.addItems(["跟随系统", "浅色", "深色"])
+            light_dark_choose.currentIndexChanged.connect(self.change_theme)
+    
+    def setup_loading_gif(self, label):
+        movie = QMovie("ui/icon/loading2.gif")
+        label.setMovie(movie)
+        movie.start()
+
+    def setup_download_load_ui(self, widget):
+        # 设置和启动 GIF 动画
+        loading_label = widget.findChild(QLabel, "loading_label")  # 假设 QLabel 的对象名称为 loading_label
+        if loading_label:
+            self.setup_loading_gif(loading_label)
 
     def change_theme(self, index):
         theme = self.sender().itemText(index)
@@ -297,15 +418,37 @@ class MainWindow(QMainWindow):
             parent=self
         ).move(target_widget.mapToGlobal(target_widget.rect().topLeft()))
 
-    def update_minecraft_versions(self, widget):
-        minecraft_choose = widget.findChild(QComboBox, "minecraft_choose")
+    def update_minecraft_versions(self, widget, show_all=False):
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
         if minecraft_choose:
             response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
             if response.status_code == 200:
                 version_data = response.json()
-                versions = [version["id"] for version in version_data["versions"]]
+                latest_release = version_data["latest"]["release"]
+                latest_snapshot = version_data["latest"]["snapshot"]
+                versions = version_data["versions"]
+                
+                ver_id_main = []
+                ver_url_main = {}
+                ver_id = [] 
+                ver_url = {}
+            
+                for version in versions:
+                    ver_id.append(version["id"])  # 直接将版本ID添加到列表中
+                    ver_url[version["id"]] = version["url"]  # 使用版本ID作为键
+
+                    if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
+                        ver_id_main.append(version["id"])
+                        ver_url_main[version["id"]] = version["url"]
+
                 minecraft_choose.clear()
-                minecraft_choose.addItems(versions)
+                if show_all:
+                    minecraft_choose.addItems(ver_id)
+                else:
+                    minecraft_choose.addItems(ver_id_main)
+                
+                logging.info(f"最新发布版本: {latest_release}")
+                logging.info(f"最新快照版本: {latest_snapshot}")
                 logging.info("Minecraft 版本列表已更新")
             else:
                 logging.error("无法获取 Minecraft 版本列表")
@@ -331,6 +474,39 @@ class MainWindow(QMainWindow):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_uuid)
         logging.info(f"UUID {self.player_uuid} 已复制到剪贴板")
+        self.show_copy_success(widget, "pushButton_5")
+
+    def copy_skin_to_clipboard(self, widget):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.player_skin)
+        logging.info(f"皮肤URL {self.player_skin} 已复制到剪贴板")
+        self.show_copy_success(widget, "search_skin_copy")
+
+    def copy_cape_to_clipboard(self, widget):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.player_cape)
+        logging.info(f"披风URL {self.player_cape} 已复制到剪贴板")
+        self.show_copy_success(widget, "search_cape_copy")
+
+    def copy_name_to_clipboard(self, widget):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.player_name)
+        logging.info(f"名称 {self.player_name} 已复制到剪贴板")
+        self.show_copy_success(widget, "search_name_copy")
+
+    def show_copy_success(self, widget, button_name):
+        button = widget.findChild(QPushButton, button_name)
+        if button:
+            TeachingTip.create(
+                target=button,
+                icon=InfoBarIcon.SUCCESS,
+                title='提示',
+                content="已复制到剪贴板",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            ).move(button.mapToGlobal(button.rect().topLeft()))
 
     def query_player_skin(self, widget):
         player_uuid_edit = widget.findChild(QLineEdit, "skin_uuid")

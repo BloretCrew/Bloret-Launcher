@@ -61,7 +61,7 @@
         <x>0</x>
         <y>0</y>
         <width>623</width>
-        <height>664</height>
+        <height>542</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -259,22 +259,18 @@
             </item>
             <item>
              <widget class="ComboBox" name="download_way_choose">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
               <property name="minimumSize">
                <size>
-                <width>250</width>
-                <height>20</height>
+                <width>150</width>
+                <height>0</height>
                </size>
               </property>
-              <item>
-               <property name="text">
-                <string>官方源</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>HMCLAPI</string>
-               </property>
-              </item>
              </widget>
             </item>
             <item>
@@ -551,44 +547,6 @@
           </widget>
          </item>
          <item>
-          <widget class="CardWidget" name="CardWidget_6">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>70</height>
-            </size>
-           </property>
-           <layout class="QHBoxLayout" name="horizontalLayout_8">
-            <property name="leftMargin">
-             <number>16</number>
-            </property>
-            <property name="topMargin">
-             <number>16</number>
-            </property>
-            <property name="rightMargin">
-             <number>16</number>
-            </property>
-            <property name="bottomMargin">
-             <number>16</number>
-            </property>
-            <item>
-             <layout class="QVBoxLayout" name="verticalLayout_14">
-              <item>
-               <widget class="ComboBox" name="comboBox">
-                <property name="minimumSize">
-                 <size>
-                  <width>250</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </widget>
-         </item>
-         <item>
           <spacer name="verticalSpacer">
            <property name="orientation">
             <enum>Qt::Vertical</enum>
@@ -602,19 +560,6 @@
           </spacer>
          </item>
         </layout>
-       </item>
-       <item>
-        <spacer name="verticalSpacer">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
        </item>
       </layout>
      </widget>
@@ -656,11 +601,6 @@
    <header location="global">qfluentwidgets</header>
   </customwidget>
   <customwidget>
-   <class>ComboBox</class>
-   <extends>QComboBox</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
    <class>CaptionLabel</class>
    <extends>QLabel</extends>
    <header>qfluentwidgets</header>
@@ -674,6 +614,11 @@
    <class>SwitchButton</class>
    <extends>QWidget</extends>
    <header location="global">qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>ComboBox</class>
+   <extends>QComboBox</extends>
+   <header>qfluentwidgets</header>
   </customwidget>
  </customwidgets>
  <resources/>
