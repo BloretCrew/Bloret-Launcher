@@ -41,10 +41,6 @@ jobs:
         cp -r icons/ output/
         cp -r ui/ output/
 
-    - name: 使用 Inno Setup 打包为安装程序
-      run: |
-        iscc /Qp /Ooutput installer.iss
-
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
