@@ -33,17 +33,16 @@ jobs:
     - name: 使用 PyInstaller 打包
       run: pyinstaller --onefile --noconsole --icon=icons/bloret.png --name=Bloret-Launcher main.py
 
-    - name: 创建 zip 包含其他文件夹
+    - name: 创建包含其他文件夹的目录
       run: |
         mkdir -p output
         cp dist/Bloret-Launcher.exe output/
         cp -r cmcl/ output/
         cp -r icons/ output/
         cp -r ui/ output/
-        powershell Compress-Archive -Path output/* -DestinationPath Bloret-Launcher.zip
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher
-        path: Bloret-Launcher.zip
+        path: output/
