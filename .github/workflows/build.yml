@@ -42,20 +42,20 @@ jobs:
         cp -r ui/ output/
         cp config.ini output/
 
-    - name: 上传构建产物 Bloret-Launcher.zip
-      uses: actions/upload-artifact@v3
-      with:
-        name: Bloret-Launcher
-        path: output/Bloret-Launcher.zip
-
     - name: 安装 Inno Setup
       run: choco install innosetup
 
     - name: 制作安装器
       run: |
-        $isccPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-        $arguments = "/Q /Ooutput /FBloret-Launcher-Installer output/Bloret-Launcher.zip"
+        $isccPath = "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe"
+        $arguments = "/Q /Ooutput /FBloret-Launcher-Installer output/Bloret-Launcher.exe"
         Start-Process -FilePath $isccPath -ArgumentList $arguments -NoNewWindow -Wait
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v3
+      with:
+        name: Bloret-Launcher
+        path: output/Bloret-Launcher.exe
 
     - name: 上传安装包
       uses: actions/upload-artifact@v3
