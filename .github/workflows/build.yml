@@ -45,7 +45,7 @@ jobs:
     - name: 创建 zip 包含构建产物
       run: |
         cd output
-        zip -r Bloret-Launcher.zip Bloret-Launcher.exe cmcl icons ui config.ini
+        powershell -command "Compress-Archive -Path Bloret-Launcher.exe, cmcl, icons, ui, config.ini -DestinationPath Bloret-Launcher.zip"
 
     - name: 上传构建产物 Bloret-Launcher.zip
       uses: actions/upload-artifact@v3
