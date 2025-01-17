@@ -31,10 +31,21 @@ jobs:
         pip install pillow
 
     - name: 使用 PyInstaller 打包
-      run: pyinstaller --onefile --noconsole --icon=icons/bloret.png main.py --add-data "cmcl;cmcl" --add-data "icons;icons" --add-data "ui;ui"
+      run: pyinstaller --onefile --noconsole --icon=icons/bloret.png main.py
+
+    - name: 创建 zip 包含其他文件夹
+      run: |
+        mkdir -p output
+        cp -r dist/ output/
+        cp -r cmcl/ output/
+        cp -r icons/ output/
+        cp -r ui/ output/
+        cd output
+        zip -r ../Bloret-Launcher.zip ./
+        cd ..
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher
-        path: dist/
+        path: Bloret-Launcher.zip
