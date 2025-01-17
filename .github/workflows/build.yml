@@ -52,3 +52,19 @@ jobs:
       with:
         name: Bloret-Launcher
         path: output/Bloret-Launcher.zip
+
+    - name: 下载构建产物
+      uses: actions/download-artifact@v2
+      with:
+        name: Bloret-Launcher
+        path: output/
+
+    - name: 制作安装器
+      run: |
+        InnoSetupCompiler output/Bloret-Launcher.zip output/Bloret-Launcher-Installer.exe
+
+    - name: 上传安装包
+      uses: actions/upload-artifact@v3
+      with:
+        name: Bloret-Launcher-Installer
+        path: output/Bloret-Launcher-Installer.exe
