@@ -42,7 +42,8 @@
 
 - [PyQt5](https://www.riverbankcomputing.com/static/Docs/PyQt5/)
 - [PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)
-- [SF Symbols](https://developer.apple.com/cn/sf-symbols/) 
+- [SF Symbols](https://developer.apple.com/cn/sf-symbols/)
+- [CMCL](https://github.com/MrShieh-X/console-minecraft-launcher)
 
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
