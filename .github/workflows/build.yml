@@ -40,9 +40,21 @@ jobs:
         cp -r cmcl/ output/
         cp -r icons/ output/
         cp -r ui/ output/
+        cp config.ini output/
 
-    - name: 上传构建产物
-      uses: actions/upload-artifact@v4
+    - name: 创建 zip 包含构建产物
+      run: |
+        cd output
+        zip -r Bloret-Launcher.zip Bloret-Launcher.exe cmcl icons ui config.ini
+
+    - name: 上传构建产物 Bloret-Launcher.zip
+      uses: actions/upload-artifact@v3
       with:
         name: Bloret-Launcher
+        path: output/Bloret-Launcher.zip
+
+    - name: 上传安装包
+      uses: actions/upload-artifact@v3
+      with:
+        name: Bloret-Launcher-Installer
         path: output/
