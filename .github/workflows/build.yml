@@ -41,7 +41,7 @@ jobs:
         cp -r icons/ output/
         cp -r ui/ output/
         cd output
-        zip -r ../Bloret-Launcher.zip ./
+        powershell Compress-Archive -Path * -DestinationPath ../Bloret-Launcher.zip
         cd ..
 
     - name: 上传构建产物
