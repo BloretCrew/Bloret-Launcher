@@ -5,7 +5,7 @@
   Bloret-Launcher
 </h1>
 <p align="center">
- 百洛谷 Minecraft 启动器
+ 百络谷 Minecraft 启动器
 </p>
 
 ## 功能与计划
@@ -14,7 +14,7 @@
 - [x] Minecraft 数据查询
 - [x] 日志
 - [ ] 支持深浅色
-- [ ] 百洛谷通行证登录
+- [ ] 百络谷通行证登录
 - [ ] 微软账户登录
 - [ ] 离线登录
 - [ ] ……
