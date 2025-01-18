@@ -10,6 +10,8 @@
 
 ![Show](img/show.gif)
 
+![](img/if-not-use-jiedi-will.jpg)
+
 ## 功能与计划
 - [ ] 下载 Minecraft
 - [ ] 启动 Minecraft
