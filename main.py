@@ -12,6 +12,11 @@ import base64
 import json
 import configparser
 
+# 全局变量
+ver_id_main = []
+ver_id = [] 
+ver_url = {}
+
 # 创建日志文件夹
 if not os.path.exists('log'):
     os.makedirs('log')
@@ -272,8 +277,8 @@ class MainWindow(QMainWindow):
         download_way_choose = widget.findChild(ComboBox, "download_way_choose")
         download_way_F5_button = widget.findChild(QPushButton, "download_way_F5")
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-        show_all_versions = widget.findChild(QCheckBox, "show_all_versions")  # 找到QCheckBox
-        download_button = widget.findChild(QPushButton, "download_button")  # 假设下载按钮的objectName为"download_button"
+        show_all_versions = widget.findChild(QCheckBox, "show_all_minecraft")
+        download_button = widget.findChild(QPushButton, "download")  # 使用正确的 objectName
 
         if minecraft_part_edit:
             config = configparser.ConfigParser()
@@ -300,52 +305,29 @@ class MainWindow(QMainWindow):
         if minecraft_choose:
             self.update_minecraft_versions(widget)  # 调用更新版本列表的方法
 
-        show_all_versions = widget.findChild(QCheckBox, "show_all_minecraft")
         if show_all_versions:
             show_all_versions.stateChanged.connect(lambda state: self.update_minecraft_versions(widget, show_all=state))
 
         if download_button:
-            download_button.clicked.connect(lambda: self.start_download(widget))
+            def on_download_clicked():
+                self.start_download(widget)
+                TeachingTip.create(
+                    target=download_button,
+                    icon=InfoBarIcon.SUCCESS,  # 使用可用的图标常量
+                    title='提示',
+                    content="已经开始下载",
+                    isClosable=True,
+                    tailPosition=TeachingTipTailPosition.BOTTOM,
+                    duration=2000,
+                    parent=self
+                )
+            download_button.clicked.connect(on_download_clicked)
 
         # 设置和启动 GIF 动画
         loading_label = widget.findChild(QLabel, "label_2")
         if loading_label:
             self.setup_loading_gif(loading_label)
 
-    def start_download(self, widget):
-        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
-        download_way_choose = widget.findChild(ComboBox, "download_way_choose")
-        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-
-        if minecraft_part_edit and download_way_choose and minecraft_choose:
-            minecraft_part = minecraft_part_edit.text()
-            ver = download_way_choose.currentText()
-            version = minecraft_choose.currentText()
-
-            # 显示气泡消息提示已经开始下载
-            TeachingTip.create(
-                target=widget.findChild(QPushButton, "download_button"),
-                icon=InfoBarIcon.INFO,
-                title='提示',
-                content="已经开始下载",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=2000,
-                parent=self
-            )
-
-            # 创建versions文件夹
-            versions_folder = os.path.join(minecraft_part, "versions")
-            if not os.path.exists(versions_folder):
-                os.makedirs(versions_folder)
-
-            # 创建版本文件夹
-            download_part = os.path.join(versions_folder, version)
-            if not os.path.exists(download_part):
-                os.makedirs(download_part)
-
-            logging.info(f"下载路径: {download_part}")
-            # 这里可以继续添加下载逻辑
 
     def setup_settings_ui(self, widget):
         light_dark_choose = widget.findChild(ComboBox, "light_dark_choose")
@@ -427,11 +409,6 @@ class MainWindow(QMainWindow):
                 latest_release = version_data["latest"]["release"]
                 latest_snapshot = version_data["latest"]["snapshot"]
                 versions = version_data["versions"]
-                
-                ver_id_main = []
-                ver_url_main = {}
-                ver_id = [] 
-                ver_url = {}
             
                 for version in versions:
                     ver_id.append(version["id"])  # 直接将版本ID添加到列表中
@@ -439,7 +416,6 @@ class MainWindow(QMainWindow):
 
                     if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
                         ver_id_main.append(version["id"])
-                        ver_url_main[version["id"]] = version["url"]
 
                 minecraft_choose.clear()
                 if show_all:
@@ -452,6 +428,61 @@ class MainWindow(QMainWindow):
                 logging.info("Minecraft 版本列表已更新")
             else:
                 logging.error("无法获取 Minecraft 版本列表")
+
+
+    def start_download(self, widget):
+        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
+        download_way_choose = widget.findChild(ComboBox, "download_way_choose")
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+
+        if minecraft_part_edit and download_way_choose and minecraft_choose:
+            minecraft_part = minecraft_part_edit.text()
+            ver = download_way_choose.currentText()
+            version = minecraft_choose.currentText()
+
+            download_button = widget.findChild(QPushButton, "download")
+            if download_button:
+                # 显示气泡消息提示已经开始下载
+                TeachingTip.create(
+                    target=download_button,
+                    icon=InfoBarIcon.SUCCESS,
+                    title='提示',
+                    content="已经开始下载",
+                    isClosable=True,
+                    tailPosition=TeachingTipTailPosition.BOTTOM,
+                    duration=2000,
+                    parent=self
+                )
+
+            # 创建versions文件夹
+            versions_folder = os.path.join(minecraft_part, "versions")
+            if not os.path.exists(versions_folder):
+                os.makedirs(versions_folder)
+
+            # 创建版本文件夹
+            download_part = os.path.join(versions_folder, version)
+            if not os.path.exists(download_part):
+                os.makedirs(download_part)
+
+            logging.info(f"下载路径: {download_part}")
+
+            # 获取版本信息
+            res_url = ver_url[version]
+            response = requests.get(res_url)
+            if response.status_code == 200:
+                version_data = response.json()
+                client_url = version_data["downloads"]["client"]["url"]
+                client_filename = os.path.join(download_part, f"{version}.jar")
+
+                # 下载文件
+                with requests.get(client_url, stream=True) as r:
+                    r.raise_for_status()
+                    with open(client_filename, 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                logging.info(f"下载完成: {client_filename}")
+            else:
+                logging.error(f"无法获取版本信息: {res_url}")
 
     def query_player_uuid(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "name2uuid_player_uuid")
