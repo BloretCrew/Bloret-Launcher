@@ -61,7 +61,7 @@
         <x>0</x>
         <y>0</y>
         <width>623</width>
-        <height>542</height>
+        <height>562</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -306,7 +306,7 @@
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>70</height>
+             <height>90</height>
             </size>
            </property>
            <property name="frameShape">
@@ -315,7 +315,7 @@
            <property name="frameShadow">
             <enum>QFrame::Raised</enum>
            </property>
-           <layout class="QHBoxLayout" name="horizontalLayout_10">
+           <layout class="QHBoxLayout" name="horizontalLayout_8">
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_3">
               <item>
@@ -334,7 +334,8 @@
                  </sizepolicy>
                 </property>
                 <property name="text">
-                 <string>你想要下载的版本</string>
+                 <string>你想要下载的版本
+默认显示百洛谷支持的版本</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -358,7 +359,7 @@
              </layout>
             </item>
             <item>
-             <layout class="QVBoxLayout" name="verticalLayout_11">
+             <layout class="QVBoxLayout" name="verticalLayout_5">
               <item>
                <widget class="ComboBox" name="minecraft_choose">
                 <property name="minimumSize">
@@ -370,11 +371,11 @@
                </widget>
               </item>
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <layout class="QHBoxLayout" name="horizontalLayout_6">
                 <item>
-                 <widget class="CaptionLabel" name="StrongBodyLabel_7">
+                 <widget class="CaptionLabel" name="StrongBodyLabel_10">
                   <property name="text">
-                   <string>显示全部版本，包括快照版、远古版本等</string>
+                   <string>显示快照版、远古版本等</string>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignCenter</set>
@@ -382,7 +383,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="SwitchButton" name="show_all_minecraft" native="true">
+                 <widget class="SwitchButton" name="show_all_minecraft_2" native="true">
                   <property name="minimumSize">
                    <size>
                     <width>100</width>

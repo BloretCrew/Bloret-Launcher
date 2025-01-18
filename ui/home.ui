@@ -64,7 +64,7 @@
         <height>536</height>
        </rect>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_9">
+      <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
         <widget class="QOpenGLWidget" name="openGLWidget"/>
        </item>
@@ -118,8 +118,8 @@
                  </size>
                 </property>
                 <property name="text">
-                 <string>百洛谷启动器目前处于Beta阶段，当前开发中项目不代表最终成果。
-如发现任何Bug或有建议等，请到Github上提交问题</string>
+                 <string>百洛谷启动器目前处于 Beta 阶段，当前开发中项目不代表最终成果。
+如发现任何 Bug 或有建议等，请到 Github 上提交 Issue</string>
                 </property>
                 <property name="textFormat">
                  <enum>Qt::AutoText</enum>
@@ -155,7 +155,7 @@
                  </size>
                 </property>
                 <property name="text">
-                 <string>该项目的Github页面</string>
+                 <string>该项目的 Github 页面</string>
                 </property>
                </widget>
               </item>
@@ -223,6 +223,27 @@
          </property>
         </spacer>
        </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="ComboBox" name="run_choose">
+           <property name="minimumSize">
+            <size>
+             <width>500</width>
+             <height>0</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="PushButton" name="run">
+           <property name="text">
+            <string>启动</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
       </layout>
      </widget>
     </widget>
@@ -260,6 +281,11 @@
   <customwidget>
    <class>PushButton</class>
    <extends>QPushButton</extends>
+   <header location="global">qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>ComboBox</class>
+   <extends>QComboBox</extends>
    <header location="global">qfluentwidgets</header>
   </customwidget>
  </customwidgets>

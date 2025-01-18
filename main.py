@@ -11,6 +11,7 @@ import requests
 import base64
 import json
 import configparser
+import subprocess
 
 # 全局变量
 ver_id_main = []
@@ -42,10 +43,10 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QIcon("icons/bloret.png"))  # 设置软件图标
 
-        self.player_uuid = ""  # Initialize player_uuid
-        self.player_skin = ""  # Initialize player_skin
-        self.player_cape = ""  # Initialize player_cape
-        self.player_name = ""  # Initialize player_name
+        self.player_uuid = ""  
+        self.player_skin = ""  
+        self.player_cape = ""  
+        self.player_name = ""  
 
         # 读取设置
         self.settings = QSettings("Bloret", "Launcher")
@@ -55,42 +56,42 @@ class MainWindow(QMainWindow):
         self.navigation_interface = NavigationInterface(self)
         self.navigation_interface.addItem(
             routeKey="home",
-            icon=QIcon("icons/bloret.png"),  # 修改为 QIcon
+            icon=QIcon("icons/bloret.png"),  
             text="主页",
             onClick=self.on_home_clicked,
             position=NavigationItemPosition.TOP
         )
         self.navigation_interface.addItem(
             routeKey="download",
-            icon=QIcon("icons/download.png"),  # 修改为 QIcon
+            icon=QIcon("icons/download.png"),  
             text="下载",
             onClick=self.on_download_clicked,
             position=NavigationItemPosition.TOP
         )
         self.navigation_interface.addItem(
             routeKey="tools",
-            icon=QIcon("icons/tools.png"),  # 修改为 QIcon
+            icon=QIcon("icons/tools.png"),  
             text="工具",
             onClick=self.on_tools_clicked,
             position=NavigationItemPosition.TOP
         )
         self.navigation_interface.addItem(
             routeKey="passport",
-            icon=QIcon("icons/passport.png"),  # 修改为 QIcon
+            icon=QIcon("icons/passport.png"),  
             text="通行证",
             onClick=self.on_passport_clicked,
             position=NavigationItemPosition.BOTTOM
         )
         self.navigation_interface.addItem(
             routeKey="settings",
-            icon=QIcon("icons/settings.png"),  # 修改为 QIcon
+            icon=QIcon("icons/settings.png"),  
             text="设置",
             onClick=self.on_settings_clicked,
             position=NavigationItemPosition.BOTTOM
         )
         self.navigation_interface.addItem(
             routeKey="info",
-            icon=QIcon("icons/info.png"),  # 修改为 QIcon
+            icon=QIcon("icons/info.png"),  
             text="关于",
             onClick=self.on_info_clicked,
             position=NavigationItemPosition.BOTTOM
@@ -138,6 +139,67 @@ class MainWindow(QMainWindow):
             if minecraft_choose and show_all_versions:
                 self.update_minecraft_versions(widget, show_all=state)
 
+    def open_github_bloret(self):
+        QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew"))
+        logging.info("打开Bloret Github 组织页面")
+
+    def copy_skin_to_clipboard(self, widget):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.player_skin)
+        logging.info(f"皮肤URL {self.player_skin} 已复制到剪贴板")
+
+    def copy_cape_to_clipboard(self, widget):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.player_cape)
+        logging.info(f"披风URL {self.player_cape} 已复制到剪贴板")
+
+    def open_skin_url(self, widget):
+        QDesktopServices.openUrl(QUrl(self.player_skin))
+        logging.info(f"打开皮肤URL: {self.player_skin}")
+
+    def open_cape_url(self, widget):
+        QDesktopServices.openUrl(QUrl(self.player_cape))
+        logging.info(f"打开披风URL: {self.player_cape}")
+
+    def query_player_name(self, widget):
+        player_uuid_edit = widget.findChild(QLineEdit, "search_name_type")
+        name_result_label = widget.findChild(QLabel, "search_name")
+        if player_uuid_edit and name_result_label:
+            name_result_label.setText("查询中，请稍等...")
+            player_uuid = player_uuid_edit.text()
+            response = requests.get(f"https://sessionserver.mojang.com/session/minecraft/profile/{player_uuid}")
+            if response.status_code == 200:
+                player_data = response.json()
+                self.player_name = player_data.get("name", "未找到名称")
+                name_result_label.setText(self.player_name)
+                logging.info(f"查询UUID {player_uuid} 的名称: {self.player_name}")
+            else:
+                name_result_label.setText("查询失败")
+                logging.error(f"查询UUID {player_uuid} 的名称失败")
+
+    def copy_name_to_clipboard(self, widget):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.player_name)
+        logging.info(f"名称 {self.player_name} 已复制到剪贴板")
+
+    def open_github_bloret_Launcher(self):
+        QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew/Bloret-Launcher"))
+        logging.info("打开该项目的Github页面")
+
+    def open_qq_link(self):
+        QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
+        logging.info("打开Bloret QQ 群页面")
+
+    def animate_sidebar(self):
+        start_geometry = self.navigation_interface.geometry()
+        end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
+        self.sidebar_animation.setStartValue(start_geometry)
+        self.sidebar_animation.setEndValue(end_geometry)
+        self.sidebar_animation.start()
+
+    def animate_fade_in(self):
+        self.fade_in_animation.start()
+
     def apply_theme(self):
         theme = self.settings.value("theme", "light")
         if theme == "dark":
@@ -174,6 +236,7 @@ class MainWindow(QMainWindow):
 
     def load_download_ui(self):
         self.load_ui("ui/download.ui", animate=False)
+        self.setup_download_ui(self.content_layout.itemAt(0).widget())
 
     def on_passport_clicked(self):
         logging.info("通行证 被点击")
@@ -190,6 +253,9 @@ class MainWindow(QMainWindow):
     def on_tools_clicked(self):
         logging.info("工具 被点击")
         self.load_ui("ui/tools.ui")
+
+    def on_button_clicked(self):
+        logging.info("按钮 被点击")
 
     def load_ui(self, ui_path, animate=True):
         widget = uic.loadUi(ui_path)
@@ -214,7 +280,7 @@ class MainWindow(QMainWindow):
         if animate:
             self.animate_sidebar()
             self.animate_fade_in()
-
+    
     def setup_home_ui(self, widget):
         github_org_button = widget.findChild(QPushButton, "pushButton_2")
         if github_org_button:
@@ -223,12 +289,67 @@ class MainWindow(QMainWindow):
         if github_project_button:
             github_project_button.clicked.connect(self.open_github_bloret_Launcher)
         
-        # 创建 ComboBox 并添加到首页布局中
-        comboBox = ComboBox(widget)
-        items = ['shoko', '西宫硝子', '宝多六花', '小鸟游六花']
-        comboBox.addItems(items)
-        comboBox.currentIndexChanged.connect(lambda index: print(comboBox.currentText()))
-        widget.layout().addWidget(comboBox)
+        # 获取 set_list
+        try:
+            result = subprocess.run(["cmcl", "-l"], capture_output=True, text=True, check=True)
+            set_list = result.stdout.splitlines()[1:]  # 从第二行开始读取
+            logging.info(f"cmcl -l 输出: {set_list}")
+        except subprocess.CalledProcessError as e:
+            logging.error(f"执行 cmcl -l 失败: {e}")
+            set_list = []
+        
+        run_choose = widget.findChild(ComboBox, "run_choose")
+        if run_choose:
+            run_choose.addItems(set_list)
+
+        # 添加 run 按钮的点击事件
+        run_button = widget.findChild(QPushButton, "run_button")  # 假设 run 按钮的对象名称为 run_button
+        if run_button:
+            run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText()))
+
+    def run_cmcl(self, version):
+        # 显示“正在启动”气泡消息
+        logging.info(f"正在启动 {version}")
+        teaching_tip = TeachingTip.create(
+            target=self.sender(),
+            icon=InfoBarIcon.SUCCESS,  # 使用可用的图标常量
+            title=f'正在启动 {version}',
+            content="请稍等",
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=0,  # 设置为0表示不自动关闭
+            parent=self
+        )
+        teaching_tip.move(self.sender().mapToGlobal(self.sender().rect().topLeft()))
+        
+        logging.info(f"运行 cmcl {version}")
+        try:
+            result = subprocess.run(["cmcl", version], capture_output=True, text=True, check=True)
+            logging.info(f"cmcl {version} 运行成功: {result.stdout}")
+            teaching_tip.close()  # 关闭气泡消息
+            TeachingTip.create(
+                target=self.sender(),
+                icon=InfoBarIcon.SUCCESS,
+                title='提示',
+                content=f"cmcl {version} 运行成功",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
+        except subprocess.CalledProcessError as e:
+            logging.error(f"cmcl {version} 运行失败: {e.stderr}")
+            teaching_tip.close()  # 关闭气泡消息
+            TeachingTip.create(
+                target=self.sender(),
+                icon=InfoBarIcon.ERROR,
+                title='提示',
+                content=f"cmcl {version} 运行失败: {e.stderr}",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
 
     def setup_info_ui(self, widget):
         github_org_button = widget.findChild(QPushButton, "pushButton_2")
@@ -311,16 +432,6 @@ class MainWindow(QMainWindow):
         if download_button:
             def on_download_clicked():
                 self.start_download(widget)
-                TeachingTip.create(
-                    target=download_button,
-                    icon=InfoBarIcon.SUCCESS,  # 使用可用的图标常量
-                    title='提示',
-                    content="已经开始下载",
-                    isClosable=True,
-                    tailPosition=TeachingTipTailPosition.BOTTOM,
-                    duration=2000,
-                    parent=self
-                )
             download_button.clicked.connect(on_download_clicked)
 
         # 设置和启动 GIF 动画
@@ -403,33 +514,82 @@ class MainWindow(QMainWindow):
     def update_minecraft_versions(self, widget, show_all=False):
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
         if minecraft_choose:
-            response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
-            if response.status_code == 200:
-                version_data = response.json()
-                latest_release = version_data["latest"]["release"]
-                latest_snapshot = version_data["latest"]["snapshot"]
-                versions = version_data["versions"]
-            
-                for version in versions:
-                    ver_id.append(version["id"])  # 直接将版本ID添加到列表中
-                    ver_url[version["id"]] = version["url"]  # 使用版本ID作为键
-
-                    if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
-                        ver_id_main.append(version["id"])
-
-                minecraft_choose.clear()
-                if show_all:
-                    minecraft_choose.addItems(ver_id)
-                else:
-                    minecraft_choose.addItems(ver_id_main)
+            try:
+                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
+                if response.status_code == 200:
+                    version_data = response.json()
+                    latest_release = version_data["latest"]["release"]
+                    latest_snapshot = version_data["latest"]["snapshot"]
+                    versions = version_data["versions"]
                 
-                logging.info(f"最新发布版本: {latest_release}")
-                logging.info(f"最新快照版本: {latest_snapshot}")
-                logging.info("Minecraft 版本列表已更新")
-            else:
-                logging.error("无法获取 Minecraft 版本列表")
+                    for version in versions:
+                        ver_id.append(version["id"])  # 直接将版本ID添加到列表中
+                        ver_url[version["id"]] = version["url"]  # 使用版本ID作为键
+
+                        if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
+                            ver_id_main.append(version["id"])
+
+                    minecraft_choose.clear()
+                    if show_all:
+                        minecraft_choose.addItems(ver_id)
+                    else:
+                        minecraft_choose.addItems(ver_id_main)
+                    
+                    logging.info(f"最新发布版本: {latest_release}")
+                    logging.info(f"最新快照版本: {latest_snapshot}")
+                    logging.info("Minecraft 版本列表已更新")
+                else:
+                    logging.error("无法获取 Minecraft 版本列表")
+            except requests.exceptions.SSLError as e:
+                logging.error(f"SSL 错误: {e}")
+                TeachingTip.create(
+                    target=minecraft_choose,
+                    icon=InfoBarIcon.ERROR,  # 使用错误图标
+                    title='提示',
+                    content="无法连接到服务器，请检查网络连接或稍后再试。",
+                    isClosable=True,
+                    tailPosition=TeachingTipTailPosition.BOTTOM,
+                    duration=2000,
+                    parent=self
+                )
+
+    
+    class DownloadThread(QThread):
+        finished = pyqtSignal()
+        error_occurred = pyqtSignal(str)  # 添加错误信号
+
+        def __init__(self, version):
+            super().__init__()
+            self.version = version
+
+        def run(self):
+            try:
+                result = subprocess.run(["cmcl", "install", self.version], capture_output=True, text=True, check=True)
+                self.finished.emit()
+            except subprocess.CalledProcessError as e:
+                if "该名称已存在，请更换一个名称。" in e.stderr:
+                    self.error_occurred.emit("你已下载过该版本。")
+                else:
+                    self.error_occurred.emit("下载失败，原因：未知错误。")
+
+        def on_download_error(self, error_message, widget):
+            download_button = widget.findChild(QPushButton, "download")
+            if download_button:
+                TeachingTip.create(
+                    target=download_button,
+                    icon=InfoBarIcon.ERROR,  # 使用错误图标
+                    title='提示',
+                    content=f"下载失败，原因：{error_message}",
+                    isClosable=True,
+                    tailPosition=TeachingTipTailPosition.BOTTOM,
+                    duration=2000,
+                    parent=self
+                )
 
 
+    def on_download_finished(self, version):
+        logging.info(f'"{version}" 下载完成')
+    
     def start_download(self, widget):
         minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
         download_way_choose = widget.findChild(ComboBox, "download_way_choose")
@@ -441,18 +601,6 @@ class MainWindow(QMainWindow):
             version = minecraft_choose.currentText()
 
             download_button = widget.findChild(QPushButton, "download")
-            if download_button:
-                # 显示气泡消息提示已经开始下载
-                TeachingTip.create(
-                    target=download_button,
-                    icon=InfoBarIcon.SUCCESS,
-                    title='提示',
-                    content="已经开始下载",
-                    isClosable=True,
-                    tailPosition=TeachingTipTailPosition.BOTTOM,
-                    duration=2000,
-                    parent=self
-                )
 
             # 创建versions文件夹
             versions_folder = os.path.join(minecraft_part, "versions")
@@ -461,29 +609,70 @@ class MainWindow(QMainWindow):
 
             # 创建版本文件夹
             download_part = os.path.join(versions_folder, version)
-            if not os.path.exists(download_part):
+            if os.path.exists(download_part):
+                TeachingTip.create(
+                    target=download_button,
+                    icon=InfoBarIcon.ERROR,
+                    title='你已下载过该版本',
+                    content="百洛谷启动器暂不支持同版本多次下载\n如您需要重新下载，请手动删除该版本文件夹",
+                    isClosable=True,
+                    tailPosition=TeachingTipTailPosition.BOTTOM,
+                    duration=2000,
+                    parent=self
+                )
+                return
+            else:
                 os.makedirs(download_part)
 
-            logging.info(f"下载路径: {download_part}")
+                # 显示“已经开始下载”气泡消息
+                teaching_tip = TeachingTip.create(
+                    target=download_button,
+                    icon=InfoBarIcon.SUCCESS,  # 使用可用的图标常量
+                    title='已经开始下载',
+                    content="由于雷达太厉害，关闭百洛谷启动器后还能继续下载✔\n请勿关闭计算机。",
+                    isClosable=True,
+                    tailPosition=TeachingTipTailPosition.BOTTOM,
+                    duration=2000,
+                    parent=self
+                )
+                teaching_tip.move(download_button.mapToGlobal(download_button.rect().topLeft()))
 
-            # 获取版本信息
-            res_url = ver_url[version]
-            response = requests.get(res_url)
-            if response.status_code == 200:
-                version_data = response.json()
-                client_url = version_data["downloads"]["client"]["url"]
-                client_filename = os.path.join(download_part, f"{version}.jar")
+                logging.info(f"下载路径: {download_part}")
 
-                # 下载文件
-                with requests.get(client_url, stream=True) as r:
-                    r.raise_for_status()
-                    with open(client_filename, 'wb') as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk)
-                logging.info(f"下载完成: {client_filename}")
-            else:
-                logging.error(f"无法获取版本信息: {res_url}")
+                # 获取版本信息
+                res_url = ver_url[version]
+                response = requests.get(res_url)
+                if response.status_code == 200:
+                    version_data = response.json()
+                    client_url = version_data["downloads"]["client"]["url"]
+                    client_filename = os.path.join(download_part, f"{version}.jar")
 
+                    # 使用 cmcl 下载
+                    self.download_thread = MainWindow.DownloadThread(version)
+                    self.download_thread.finished.connect(lambda: self.on_download_finished(version))
+                    self.download_thread.error_occurred.connect(lambda error_message: self.on_download_error(error_message, widget, teaching_tip))
+                    self.download_thread.start()
+
+                    # 执行 cmcl -l 命令并将读取的内容存储在列表 set_list 中
+                    result = subprocess.run(["cmcl", "-l"], capture_output=True, text=True, check=True)
+                    set_list = result.stdout.splitlines()[1:]  # 从第二行开始读取
+                    logging.info(f"cmcl -l 输出: {set_list}")
+
+def on_download_error(self, error_message, widget, teaching_tip):
+    download_button = widget.findChild(QPushButton, "download")
+    if download_button:
+        teaching_tip.close()  # 关闭“已经开始下载”的气泡消息
+        TeachingTip.create(
+            target=download_button,
+            icon=InfoBarIcon.ERROR,  # 使用错误图标
+            title='提示',
+            content=f"下载失败，原因：{error_message}",
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=2000,
+            parent=self
+        )
+    
     def query_player_uuid(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "name2uuid_player_uuid")
         result_label = widget.findChild(QLabel, "label_2")
@@ -569,70 +758,6 @@ class MainWindow(QMainWindow):
                 skin_result_label.setText("查询失败")
                 cape_result_label.setText("查询失败")
                 logging.error(f"查询玩家 {player_uuid} 的皮肤和披风信息失败")
-
-    def copy_skin_to_clipboard(self, widget):
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self.player_skin)
-        logging.info(f"皮肤URL {self.player_skin} 已复制到剪贴板")
-
-    def copy_cape_to_clipboard(self, widget):
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self.player_cape)
-        logging.info(f"披风URL {self.player_cape} 已复制到剪贴板")
-
-    def open_skin_url(self, widget):
-        QDesktopServices.openUrl(QUrl(self.player_skin))
-        logging.info(f"打开皮肤URL: {self.player_skin}")
-
-    def open_cape_url(self, widget):
-        QDesktopServices.openUrl(QUrl(self.player_cape))
-        logging.info(f"打开披风URL: {self.player_cape}")
-
-    def query_player_name(self, widget):
-        player_uuid_edit = widget.findChild(QLineEdit, "search_name_type")
-        name_result_label = widget.findChild(QLabel, "search_name")
-        if player_uuid_edit and name_result_label:
-            name_result_label.setText("查询中，请稍等...")
-            player_uuid = player_uuid_edit.text()
-            response = requests.get(f"https://sessionserver.mojang.com/session/minecraft/profile/{player_uuid}")
-            if response.status_code == 200:
-                player_data = response.json()
-                self.player_name = player_data.get("name", "未找到名称")
-                name_result_label.setText(self.player_name)
-                logging.info(f"查询UUID {player_uuid} 的名称: {self.player_name}")
-            else:
-                name_result_label.setText("查询失败")
-                logging.error(f"查询UUID {player_uuid} 的名称失败")
-
-    def copy_name_to_clipboard(self, widget):
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self.player_name)
-        logging.info(f"名称 {self.player_name} 已复制到剪贴板")
-
-    def open_github_bloret(self):
-        QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew"))
-        logging.info("打开Bloret Github 组织页面")
-
-    def open_github_bloret_Launcher(self):
-        QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew/Bloret-Launcher"))
-        logging.info("打开该项目的Github页面")
-
-    def open_qq_link(self):
-        QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
-        logging.info("打开Bloret QQ 群页面")
-
-    def animate_sidebar(self):
-        start_geometry = self.navigation_interface.geometry()
-        end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
-        self.sidebar_animation.setStartValue(start_geometry)
-        self.sidebar_animation.setEndValue(end_geometry)
-        self.sidebar_animation.start()
-
-    def animate_fade_in(self):
-        self.fade_in_animation.start()
-
-    def on_button_clicked(self):
-        logging.info("按钮 被点击")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
