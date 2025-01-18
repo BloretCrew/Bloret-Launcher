@@ -223,6 +223,11 @@ class MainWindow(QMainWindow):
             self.setStyleSheet("")
             self.setPalette(self.style().standardPalette())
 
+    
+    # -----------------------------------------------------------
+    # 以下内容是对于UI文件中各个元素的设定
+    # -----------------------------------------------------------
+
     def on_home_clicked(self):
         logging.info("主页 被点击")
         self.load_ui("ui/home.ui")
@@ -256,6 +261,46 @@ class MainWindow(QMainWindow):
 
     def on_button_clicked(self):
         logging.info("按钮 被点击")
+
+    def on_player_name_set_clicked(self):
+        player_name_edit = self.findChild(QLineEdit, "lineEdit")
+        player_name = player_name_edit.text()
+        
+        if not player_name:
+            TeachingTip.create(
+                target=self.sender(),
+                icon=InfoBarIcon.ERROR,
+                title='提示',
+                content="请填写值后设定",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
+        elif any('\u4e00' <= char <= '\u9fff' for char in player_name):
+            TeachingTip.create(
+                target=self.sender(),
+                icon=InfoBarIcon.ERROR,
+                title='提示',
+                content="名称不能包含中文",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
+        else:
+            with open('cmcl.json', 'r', encoding='utf-8') as file:
+                data = json.load(file)
+            data['accounts'][0]['playerName'] = player_name
+            with open('cmcl.json', 'w', encoding='utf-8') as file:
+                json.dump(data, file, ensure_ascii=False, indent=4)
+
+        # -----------------------------------------------------------
+        # 以上内容是对于UI文件中各个元素的设定，
+        # -----------------------------------------------------------
+        # 下面是对于UI文件的加载和设置的方法
+        # -----------------------------------------------------------
+
 
     def load_ui(self, ui_path, animate=True):
         widget = uic.loadUi(ui_path)

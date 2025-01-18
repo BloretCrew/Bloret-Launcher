@@ -70,20 +70,48 @@
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
-           <widget class="StrongBodyLabel" name="label_2">
-            <property name="maximumSize">
-             <size>
-              <width>16777210</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>账户名</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignJustify|Qt::AlignVCenter</set>
-            </property>
-           </widget>
+           <layout class="QVBoxLayout" name="verticalLayout">
+            <item>
+             <widget class="StrongBodyLabel" name="label_2">
+              <property name="maximumSize">
+               <size>
+                <width>16777210</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>账户名</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignJustify|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_3">
+              <property name="text">
+               <string>请记得单击设定，否则更改不会生效</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color>
+                <red>127</red>
+                <green>127</green>
+                <blue>127</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color>
+                <red>185</red>
+                <green>185</green>
+                <blue>185</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
           <item>
            <spacer name="horizontalSpacer">
@@ -99,7 +127,27 @@
            </spacer>
           </item>
           <item>
-           <widget class="QLineEdit" name="lineEdit"/>
+           <widget class="LineEdit" name="player_name">
+            <property name="minimumSize">
+             <size>
+              <width>200</width>
+              <height>0</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="PushButton" name="player_name_set">
+            <property name="minimumSize">
+             <size>
+              <width>100</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>设定</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -178,6 +226,16 @@
   <customwidget>
    <class>CaptionLabel</class>
    <extends>QLabel</extends>
+   <header location="global">qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>LineEdit</class>
+   <extends>QLineEdit</extends>
+   <header location="global">qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>PushButton</class>
+   <extends>QPushButton</extends>
    <header location="global">qfluentwidgets</header>
   </customwidget>
  </customwidgets>
