@@ -10,6 +10,8 @@
 
 ![Show](img/show.gif)
 
+## 托开发组要求，特添加此图 👇
+
 ![](img/if-not-use-jiedi-will.jpg)
 
 ## 功能与计划
