@@ -1,10 +1,11 @@
 {
   "exitWithMinecraft": false,
+  "selectedVersion": "1.21.4",
   "language": "zh",
   "downloadSource": 1,
   "checkAccountBeforeStart": "false",
   "accounts": [{
-    "playerName": "Detritalw",
+    "playerName": "Bloret-Player",
     "loginMethod": 0,
     "selected": true
   }],

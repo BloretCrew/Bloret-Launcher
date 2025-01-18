@@ -43,7 +43,7 @@
    <item>
     <widget class="TitleLabel" name="TitleLabel">
      <property name="text">
-      <string>Bloret 启动器 (beta)</string>
+      <string>Bloret 启动器 (Preview)</string>
      </property>
     </widget>
    </item>
@@ -118,8 +118,9 @@
                  </size>
                 </property>
                 <property name="text">
-                 <string>百洛谷启动器目前处于 Beta 阶段，当前开发中项目不代表最终成果。
-如发现任何 Bug 或有建议等，请到 Github 上提交 Issue</string>
+                 <string>百洛谷启动器目前处于 Preview 阶段，属于公测版本，存在大量问题。
+如发现任何 Bug 或有建议等，请到 Github 上提交 Issue
+也欢迎您前往 Github 页面拉取 Pull request 请求，为百洛谷启动器做贡献。</string>
                 </property>
                 <property name="textFormat">
                  <enum>Qt::AutoText</enum>

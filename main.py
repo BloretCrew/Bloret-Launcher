@@ -35,11 +35,23 @@ class DownloadWorker(QThread):
         time.sleep(5)  # 模拟数据处理耗时
         self.finished.emit()
 
+class RunScriptThread(QThread):
+    finished = pyqtSignal()
+    error_occurred = pyqtSignal(str)
+
+    def run(self):
+        script_path = "run.ps1"
+        try:
+            subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", script_path], check=True)
+            self.finished.emit()
+        except subprocess.CalledProcessError as e:
+            self.error_occurred.emit(str(e.stderr))
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Bloret 启动器 (beta)")
+        self.setWindowTitle("Bloret 启动器 (Preview)")  # 设置软件标题
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QIcon("icons/bloret.png"))  # 设置软件图标
 
@@ -223,6 +235,23 @@ class MainWindow(QMainWindow):
             self.setStyleSheet("")
             self.setPalette(self.style().standardPalette())
 
+    def setup_passport_ui(self, widget):
+        player_name_edit = widget.findChild(QLineEdit, "player_name")
+        player_name_set_button = widget.findChild(QPushButton, "player_name_set")
+        if player_name_edit and player_name_set_button:
+            player_name_set_button.clicked.connect(lambda: self.on_player_name_set_clicked(widget))
+
+            # 读取 cmcl.json 中的 playerName 并设置到输入框中
+            try:
+                with open('cmcl.json', 'r', encoding='utf-8') as file:
+                    data = json.load(file)
+                player_name = data['accounts'][0].get('playerName', '')
+                player_name_edit.setText(player_name)
+                logging.info(f"读取到的 playerName: {player_name}")
+            except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+                logging.error(f"读取 cmcl.json 失败: {e}")
+                player_name_edit.setText('')  # 如果读取失败，清空输入框
+
     
     # -----------------------------------------------------------
     # 以下内容是对于UI文件中各个元素的设定
@@ -262,8 +291,8 @@ class MainWindow(QMainWindow):
     def on_button_clicked(self):
         logging.info("按钮 被点击")
 
-    def on_player_name_set_clicked(self):
-        player_name_edit = self.findChild(QLineEdit, "lineEdit")
+    def on_player_name_set_clicked(self, widget):
+        player_name_edit = widget.findChild(QLineEdit, "player_name")
         player_name = player_name_edit.text()
         
         if not player_name:
@@ -295,12 +324,6 @@ class MainWindow(QMainWindow):
             with open('cmcl.json', 'w', encoding='utf-8') as file:
                 json.dump(data, file, ensure_ascii=False, indent=4)
 
-        # -----------------------------------------------------------
-        # 以上内容是对于UI文件中各个元素的设定，
-        # -----------------------------------------------------------
-        # 下面是对于UI文件的加载和设置的方法
-        # -----------------------------------------------------------
-
 
     def load_ui(self, ui_path, animate=True):
         widget = uic.loadUi(ui_path)
@@ -321,6 +344,8 @@ class MainWindow(QMainWindow):
             self.setup_settings_ui(widget)
         elif ui_path == "ui/download_load.ui":
             self.setup_download_load_ui(widget)
+        elif ui_path == "ui/passport.ui":  # 添加这一行
+            self.setup_passport_ui(widget)  # 添加这一行
 
         if animate:
             self.animate_sidebar()
@@ -337,7 +362,7 @@ class MainWindow(QMainWindow):
         # 获取 set_list
         try:
             result = subprocess.run(["cmcl", "-l"], capture_output=True, text=True, check=True)
-            set_list = result.stdout.splitlines()[1:]  # 从第二行开始读取
+            set_list = [line.strip() for line in result.stdout.splitlines()[1:]]  # 去除每行末尾的空格
             logging.info(f"cmcl -l 输出: {set_list}")
         except subprocess.CalledProcessError as e:
             logging.error(f"执行 cmcl -l 失败: {e}")
@@ -348,7 +373,7 @@ class MainWindow(QMainWindow):
             run_choose.addItems(set_list)
 
         # 添加 run 按钮的点击事件
-        run_button = widget.findChild(QPushButton, "run_button")  # 假设 run 按钮的对象名称为 run_button
+        run_button = widget.findChild(QPushButton, "run")  # 修改为 "run"
         if run_button:
             run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText()))
 
@@ -367,34 +392,70 @@ class MainWindow(QMainWindow):
         )
         teaching_tip.move(self.sender().mapToGlobal(self.sender().rect().topLeft()))
         
-        logging.info(f"运行 cmcl {version}")
+        logging.info(f"运行 cmcl version {version} --export-script-ps=run.ps1")
         try:
-            result = subprocess.run(["cmcl", version], capture_output=True, text=True, check=True)
-            logging.info(f"cmcl {version} 运行成功: {result.stdout}")
-            teaching_tip.close()  # 关闭气泡消息
-            TeachingTip.create(
-                target=self.sender(),
-                icon=InfoBarIcon.SUCCESS,
-                title='提示',
-                content=f"cmcl {version} 运行成功",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=2000,
-                parent=self
-            )
+            result = subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"], capture_output=True, text=True, check=True)
+            logging.info(f"cmcl version {version} --export-script-ps=run.ps1 运行成功: {result.stdout}")
+            
+            # 替换 run.ps1 文件中的 "CMCL 2.2.2" 为 "Bloret Launcher"
+            script_path = "run.ps1"
+            if os.path.exists(script_path):
+                with open(script_path, 'r', encoding='utf-8') as file:
+                    script_content = file.read()
+                
+                script_content = script_content.replace('CMCL 2.2.2', 'Bloret Launcher')
+                
+                with open(script_path, 'w', encoding='utf-8') as file:
+                    file.write(script_content)
+                
+                logging.info(f"成功替换 {script_path} 中的 'CMCL 2.2.2' 为 'Bloret Launcher'")
+            
+            # 运行 run.ps1 脚本
+            logging.info(f"运行 {script_path}")
+            self.run_script_thread = RunScriptThread()
+            self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip))
+            self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip))
+            self.run_script_thread.start()
+            
         except subprocess.CalledProcessError as e:
-            logging.error(f"cmcl {version} 运行失败: {e.stderr}")
+            logging.error(f"cmcl version {version} --export-script-ps=run.ps1 运行失败: {e.stderr}")
             teaching_tip.close()  # 关闭气泡消息
             TeachingTip.create(
                 target=self.sender(),
                 icon=InfoBarIcon.ERROR,
                 title='提示',
-                content=f"cmcl {version} 运行失败: {e.stderr}",
+                content=f"cmcl version {version} --export-script-ps=run.ps1 运行失败: {e.stderr}",
                 isClosable=True,
                 tailPosition=TeachingTipTailPosition.BOTTOM,
                 duration=2000,
                 parent=self
             )
+
+    def on_run_script_finished(self, teaching_tip):
+        teaching_tip.close()  # 关闭气泡消息
+        TeachingTip.create(
+            target=self.sender(),
+            icon=InfoBarIcon.SUCCESS,
+            title='提示',
+            content="run.ps1 运行成功",
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=2000,
+            parent=self
+        )
+
+    def on_run_script_error(self, error, teaching_tip):
+        teaching_tip.close()  # 关闭气泡消息
+        TeachingTip.create(
+            target=self.sender(),
+            icon=InfoBarIcon.ERROR,
+            title='提示',
+            content=f"run.ps1 运行失败: {error}",
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=2000,
+            parent=self
+        )
 
     def setup_info_ui(self, widget):
         github_org_button = widget.findChild(QPushButton, "pushButton_2")
@@ -700,23 +761,23 @@ class MainWindow(QMainWindow):
 
                     # 执行 cmcl -l 命令并将读取的内容存储在列表 set_list 中
                     result = subprocess.run(["cmcl", "-l"], capture_output=True, text=True, check=True)
-                    set_list = result.stdout.splitlines()[1:]  # 从第二行开始读取
+                    set_list = [line.strip() for line in result.stdout.splitlines()[1:]]  # 去除每行末尾的空格
                     logging.info(f"cmcl -l 输出: {set_list}")
 
-def on_download_error(self, error_message, widget, teaching_tip):
-    download_button = widget.findChild(QPushButton, "download")
-    if download_button:
-        teaching_tip.close()  # 关闭“已经开始下载”的气泡消息
-        TeachingTip.create(
-            target=download_button,
-            icon=InfoBarIcon.ERROR,  # 使用错误图标
-            title='提示',
-            content=f"下载失败，原因：{error_message}",
-            isClosable=True,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=2000,
-            parent=self
-        )
+    def on_download_error(self, error_message, widget, teaching_tip):
+        download_button = widget.findChild(QPushButton, "download")
+        if download_button:
+            teaching_tip.close()  # 关闭“已经开始下载”的气泡消息
+            TeachingTip.create(
+                target=download_button,
+                icon=InfoBarIcon.ERROR,  # 使用错误图标
+                title='提示',
+                content=f"下载失败，原因：{error_message}",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
     
     def query_player_uuid(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "name2uuid_player_uuid")
