@@ -50,8 +50,14 @@ jobs:
     - name: 创建压缩包
       run: Compress-Archive -Path output\* -DestinationPath output\Bloret-Launcher-Windows.zip
 
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v3
+      with:
+        name: Bloret-Launcher
+        path: output/Bloret-Launcher.exe
+
     - name: 上传安装包
       uses: actions/upload-artifact@v3
       with:
         name: Bloret-Launcher-Windows
-        path: output/Bloret-Launcher-Windows.zip
+        path: output/Bloret-Launcher-Windows
