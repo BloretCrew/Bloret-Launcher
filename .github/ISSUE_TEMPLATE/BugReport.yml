@@ -1,6 +1,5 @@
 name: Bug 反馈
 description: 在使用 Bloret 启动器 的过程中遇到了 Bug。
-title: ""
 labels: ["Bug"]
 body:
   - type: markdown
