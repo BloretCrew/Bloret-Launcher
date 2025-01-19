@@ -7,11 +7,6 @@ body:
       value: |
         感谢您进行 Bug 反馈。请起一个能够清晰描述您的问题的标题，便于开发者解决您的问题。
         
-        > [!important]
-        > 重要：如果要提出**多个 Bug**，请为每一个 Bug 开一个 **单独** 的 issue。
-        >
-        > 如果您不知道如何有效、精准地表述，我们建议您先阅读[《提问的智慧》](https://github.com/ryanhanwu/How-To-Ask-Questions-The-Smart-Way/blob/main/README-zh_CN.md)。
-
         ### 检查清单
 
         在反馈此问题之前，请先确认一下事项是否满足：
