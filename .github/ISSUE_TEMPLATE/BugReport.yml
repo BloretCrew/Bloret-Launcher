@@ -14,15 +14,6 @@ body:
         1. 我已更新到最新版 ![GitHub Release](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?include_prereleases)，并看过[最新提交](https://github.com/BloretCrew/Bloret-Launcher/commits)。
         2. 我已在 [Issues](https://github.com/BloretCrew/Bloret-Launcher/issues?q=label%3ABug) 中检索，确认这一 Bug 未被提交过。
         3. 我已知晓并同意，此处仅用于汇报程序中存在的问题（关于其他非程序本身的问题应当在 Discussion 板块提出）。
-        
-  - type: checkboxes
-    id: checklist
-    attributes:
-      label: 确认检查清单
-      description: 在反馈此问题之前，请先确认一下事项是否满足：
-      options:
-        - label: 我已阅读以上清单并确认。
-          required: true
 
   - type: markdown
     attributes: 
@@ -73,31 +64,10 @@ body:
   - type: textarea
     id: excepted
     attributes:
-      label: 期望的行为
-      description: 详细的描述你期望发生的行为，突出与目前（可能不正确的）行为的不同。（选填）
+      label: 请描述 Bug 内容
+      description: 详细的描述你期望发生的行为，突出与目前（可能不正确的）行为的不同。实际发生的行为，尽量包含如截图、录屏、文本描述等信息，便于开发者追踪问题。详细描述需要怎么操作才能再次触发这个 Bug，可包含如截图、录屏等附件。
     validations:
       required: false
-
-  - type: textarea
-    id: what-happened
-    attributes:
-      label: 实际结果
-      description: 实际发生的行为，尽量包含如截图、录屏、文本描述等信息，便于开发者追踪问题。
-    validations:
-      required: true
-
-  - type: textarea
-    id: reproduce-steps
-    attributes:
-      label: 重现步骤
-      description: |
-        详细描述需要怎么操作才能再次触发这个 Bug，可包含如截图、录屏等附件。
-      placeholder: |
-        1. 首先……
-        2. 然后……
-        3. ……
-    validations:
-      required: true
 
   - type: textarea
     id: stacktrace
@@ -123,12 +93,3 @@ body:
         若您当前使用的操作系统为 Windows，可以运行 `winver.exe` 查看；其他系统的查询方式可上网查阅。
         如果您不能肯定此 Bug 与操作系统无关，请填写此项。
       placeholder: 如：Windows - 10.0.22000.0
-
-  - type: checkboxes
-    id: revision
-    attributes:
-      label: 最后一步
-      description: 回顾您的回答
-      options:
-        - label: 我认为上述的描述已经足以详细，以允许开发人员能复现该问题。如果我的 issue 没有按照上述的要求填写，可能会被 **无条件关闭**。
-          required: true
