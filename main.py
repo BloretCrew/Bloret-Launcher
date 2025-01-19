@@ -432,7 +432,8 @@ class MainWindow(QMainWindow):
             )
 
     def on_run_script_finished(self, teaching_tip):
-        teaching_tip.close()  # 关闭气泡消息
+        if teaching_tip:
+            teaching_tip.close()  # 关闭气泡消息
         TeachingTip.create(
             target=self.sender(),
             icon=InfoBarIcon.SUCCESS,
@@ -444,13 +445,14 @@ class MainWindow(QMainWindow):
             parent=self
         )
 
-    def on_run_script_error(self, error, teaching_tip):
-        teaching_tip.close()  # 关闭气泡消息
+    def on_run_script_finished(self, teaching_tip):
+        if teaching_tip:
+            teaching_tip.close()  # 关闭气泡消息
         TeachingTip.create(
             target=self.sender(),
-            icon=InfoBarIcon.ERROR,
+            icon=InfoBarIcon.SUCCESS,
             title='提示',
-            content=f"run.ps1 运行失败: {error}",
+            content="run.ps1 运行成功",
             isClosable=True,
             tailPosition=TeachingTipTailPosition.BOTTOM,
             duration=2000,
