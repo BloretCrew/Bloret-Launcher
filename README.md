@@ -17,11 +17,11 @@
 >    （使用步骤二前请先安装 Python ， 运行 `winget install python` 即可）
 
 > [!WARNING]
-> Windows 安全中心会拦截此软件，本软件不是任何病毒
-> 百洛谷启动器是开源项目，您可以查阅源代码。
-> 请按照下方操作打开软件
-> ![](Windows1.jpg)
-> ![](Windows2.jpg)
+> Windows 安全中心会拦截此软件，本软件不是任何病毒  
+> 百洛谷启动器是开源项目，您可以查阅源代码。  
+> 请按照下方操作打开软件  
+> ![](img/Windows1.jpg)
+> ![](img/Windows2.jpg)
 
 ## 托开发组要求，特添加此图 👇
 
