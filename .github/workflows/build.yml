@@ -21,16 +21,8 @@ jobs:
     - name: 安装依赖
       run: |
         pip install -r requirements.txt
-
-    - name: 安装依赖
-      run: |
         pip install loguru
-        
-    - name: 安装 PyQt-Fluent-Widgets
-      run: pip install PyQt-Fluent-Widgets -i https://pypi.org/simple/
-
-    - name: 安装 PyInstaller 和 Pillow
-      run: |
+        pip install PyQt-Fluent-Widgets -i https://pypi.org/simple/
         pip install pyinstaller
         pip install pillow
 
@@ -43,17 +35,14 @@ jobs:
         cp dist/Bloret-Launcher.exe output/
         cp -r cmcl/ output/
         cp -r icons/ output/
+        cp -r log/ output/
         cp -r ui/ output/
+        cp cmcl.exe output/
+        cp cmcl.json output/
         cp config.ini output/
 
-    - name: 安装 Inno Setup
-      run: choco install innosetup
-
-    - name: 制作安装器
-      run: |
-        $isccPath = "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe"
-        $arguments = "/Q /Ooutput /FBloret-Launcher-Installer output/Bloret-Launcher.exe"
-        Start-Process -FilePath $isccPath -ArgumentList $arguments -NoNewWindow -Wait
+    - name: 创建压缩包
+      run: Compress-Archive -Path output/* -DestinationPath output/Bloret-Launcher-Windows.zip
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v3
@@ -64,5 +53,5 @@ jobs:
     - name: 上传安装包
       uses: actions/upload-artifact@v3
       with:
-        name: Bloret-Launcher-Installer
-        path: output/Bloret-Launcher-Installer.exe
+        name: Bloret-Launcher-Windows
+        path: output/Bloret-Launcher-Windows.zip
