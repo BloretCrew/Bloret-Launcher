@@ -42,7 +42,7 @@ jobs:
         cp config.ini output/
 
     - name: 创建压缩包
-      run: Compress-Archive -Path output/* -DestinationPath output/Bloret-Launcher-Windows.zip
+      run: Compress-Archive -Path output\* -DestinationPath output\Bloret-Launcher-Windows.zip
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v3
