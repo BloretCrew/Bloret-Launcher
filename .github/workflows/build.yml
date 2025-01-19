@@ -41,6 +41,12 @@ jobs:
         cp cmcl.json output/
         cp config.ini output/
 
+    - name: 清理旧压缩包
+      run: |
+        if (Test-Path "output\Bloret-Launcher-Windows.zip") {
+          Remove-Item "output\Bloret-Launcher-Windows.zip"
+        }
+
     - name: 创建压缩包
       run: Compress-Archive -Path output\* -DestinationPath output\Bloret-Launcher-Windows.zip
 
