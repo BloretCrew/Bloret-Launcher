@@ -1,0 +1,140 @@
+name: Bug 反馈
+description: 在使用 Bloret 启动器 的过程中遇到了 Bug。
+title: "[BUG]: "
+labels: ["Bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢您进行 Bug 反馈。请起一个能够清晰描述您的问题的标题，便于开发者解决您的问题。
+        
+        > [!important]
+        > 重要：如果要提出**多个 Bug**，请为每一个 Bug 开一个 **单独** 的 issue。
+        >
+        > 如果您不知道如何有效、精准地表述，我们建议您先阅读[《提问的智慧》](https://github.com/ryanhanwu/How-To-Ask-Questions-The-Smart-Way/blob/main/README-zh_CN.md)。
+
+        ### 检查清单
+
+        在反馈此问题之前，请先确认一下事项是否满足：
+
+        1. 我已更新到最新版 ![GitHub Release](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?include_prereleases)，并看过[最新提交](https://github.com/BloretCrew/Bloret-Launcher/commits)。
+        2. 我已在 [Issues](https://github.com/BloretCrew/Bloret-Launcher/issues?q=label%3ABug) 中检索，确认这一 Bug 未被提交过。
+        3. 我已知晓并同意，此处仅用于汇报程序中存在的问题（关于其他非程序本身的问题应当在 Discussion 板块提出）。
+        
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 确认检查清单
+      description: 在反馈此问题之前，请先确认一下事项是否满足：
+      options:
+        - label: 我已阅读以上清单并确认。
+          required: true
+
+  - type: markdown
+    attributes: 
+      value: |
+        ## Bug 信息
+
+        描述您遇到的 Bug。您可以附上截图、录屏、堆栈跟踪、日志等材料，便于开发者追踪问题。
+        
+        > [!WARNING]
+        > 若您要上传材料，请等待材料文件上传完成后再发布 Issue。
+        >
+        > 若显示为 `![Uploading 文件名]()` 即为上传中，请等待链接变动后再提交。
+
+  - type: dropdown
+    id: where-happened
+    attributes:
+      label: 问题发生的位置
+      options:
+        - 启动
+        - 主页
+        - 加载界面
+        - 下载
+        - 下载→核心
+        - 下载→选择版本文件夹
+        - 下载→选择版本
+        - 下载→选择镜像源
+        - 下载→下载完成后通知
+        - 下载→下载并安装
+        - 小工具
+        - 小工具→玩家UUID查询
+        - 小工具→玩家名字查询
+        - 小工具→玩家皮肤获取
+        - 小工具→玩家披风获取
+        - 通行证
+        - 通行证→账户名设定
+        - 设置
+        - 设置→检查版本更新
+        - 设置→主题切换
+        - 设置→加载图标切换
+        - 设置→日志存储
+        - 设置→清空日志
+        - 关于
+        - 其他
+      description: 选择问题发生的位置，以便于我们更好发现问题。
+    validations:
+      required: true
+
+  - type: textarea
+    id: excepted
+    attributes:
+      label: 期望的行为
+      description: 详细的描述你期望发生的行为，突出与目前（可能不正确的）行为的不同。（选填）
+    validations:
+      required: false
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 实际结果
+      description: 实际发生的行为，尽量包含如截图、录屏、文本描述等信息，便于开发者追踪问题。
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce-steps
+    attributes:
+      label: 重现步骤
+      description: |
+        详细描述需要怎么操作才能再次触发这个 Bug，可包含如截图、录屏等附件。
+      placeholder: |
+        1. 首先……
+        2. 然后……
+        3. ……
+    validations:
+      required: true
+
+  - type: textarea
+    id: stacktrace
+    attributes:
+      label: 堆栈跟踪
+      description: 请将log文件夹下发生问题的那次log复制到这里，便于开发者定位 Bug。
+      render: shell
+
+  - type: input
+    id: app_version
+    attributes:
+      label: 应用版本
+      description: 您当前使用的 Bloret 启动器 版本号，可以在【设置】中查看。
+      placeholder: 如：1
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: 操作系统版本
+      description: |
+        若您当前使用的操作系统为 Windows，可以运行 `winver.exe` 查看；其他系统的查询方式可上网查阅。
+        如果您不能肯定此 Bug 与操作系统无关，请填写此项。
+      placeholder: 如：Windows - 10.0.22000.0
+
+  - type: checkboxes
+    id: revision
+    attributes:
+      label: 最后一步
+      description: 回顾您的回答
+      options:
+        - label: 我认为上述的描述已经足以详细，以允许开发人员能复现该问题。如果我的 issue 没有按照上述的要求填写，可能会被 **无条件关闭**。
+          required: true
