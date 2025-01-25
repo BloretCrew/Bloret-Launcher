@@ -57,7 +57,7 @@
 ## 致谢以下存储库或项目
 - [PyQt5](https://www.riverbankcomputing.com/static/Docs/PyQt5/)
 - [PyQt Fluent Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)
-- [SF Symbols](https://developer.apple.com/cn/sf-symbols/)
+- [ SF Symbols](https://developer.apple.com/cn/sf-symbols/)
 - [Console Minecraft Launcher](https://github.com/MrShieh-X/console-minecraft-launcher)
 - [Class Widgets](https://github.com/Class-Widgets/Class-Widgets)
 ## 相关链接
