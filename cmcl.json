@@ -1,11 +1,12 @@
 {
   "exitWithMinecraft": false,
   "selectedVersion": "1.21.4",
+  "javaPath": "C:\\Program Files\\Zulu\\zulu-21\\bin\\java.exe",
   "language": "zh",
   "downloadSource": 1,
   "checkAccountBeforeStart": "false",
   "accounts": [{
-    "playerName": "Bloret_Player",
+    "playerName": "Detritalw",
     "loginMethod": 0,
     "selected": true
   }],
