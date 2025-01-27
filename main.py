@@ -340,13 +340,13 @@ class MainWindow(QMainWindow):
         elif ui_path == "ui/tools.ui":
             self.setup_tools_ui(widget)
         elif ui_path == "ui/download.ui":
-            self.load_download_ui(widget)
+            self.setup_download_ui(widget)
         elif ui_path == "ui/settings.ui":
             self.setup_settings_ui(widget)
         elif ui_path == "ui/download_load.ui":
             self.setup_download_load_ui(widget)
-        elif ui_path == "ui/passport.ui":  # 添加这一行
-            self.setup_passport_ui(widget)  # 添加这一行
+        elif ui_path == "ui/passport.ui":
+            self.setup_passport_ui(widget)
 
         if animate:
             self.animate_sidebar()
@@ -467,6 +467,10 @@ class MainWindow(QMainWindow):
 
     def setup_download_load_ui(self, widget):
         # 设置下载加载界面的UI元素
+        pass
+
+    def setup_download_ui(self, widget):
+        # 设置下载界面的UI元素
         pass
 
 if __name__ == "__main__":
