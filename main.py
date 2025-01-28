@@ -40,12 +40,26 @@ class DownloadWorker(QThread):
 class RunScriptThread(QThread):
     finished = pyqtSignal()
     error_occurred = pyqtSignal(str)
+    output_received = pyqtSignal(str)
 
     def run(self):
         script_path = "run.ps1"
         try:
-            subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", script_path], check=True)
-            self.finished.emit()
+            process = subprocess.Popen(
+                ["powershell", "-ExecutionPolicy", "Bypass", "-File", script_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding='utf-8'
+            )
+            for line in iter(process.stdout.readline, ''):
+                self.output_received.emit(line.strip())
+            process.stdout.close()
+            process.wait()
+            if process.returncode == 0:
+                self.finished.emit()
+            else:
+                self.error_occurred.emit(process.stderr.read().strip())
         except subprocess.CalledProcessError as e:
             self.error_occurred.emit(str(e.stderr))
 
@@ -510,7 +524,11 @@ class MainWindow(QMainWindow):
             parent=self
         )
         teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
-        
+        # 删除目录下的 run.ps1 文件
+        script_path = "run.ps1"
+        if os.path.exists(script_path):
+            os.remove(script_path)
+            logging.info(f"删除文件: {script_path}")
         logging.info(f"运行 cmcl version {version} --export-script-ps=run.ps1")
         try:
             result = subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"], capture_output=True, text=True, check=True)
@@ -533,6 +551,7 @@ class MainWindow(QMainWindow):
             logging.info(f"运行 {script_path}")
             self.run_script_thread = RunScriptThread()
             self.run_script_thread.teaching_tip = teaching_tip  # 将 TeachingTip 对象保存为线程的属性
+            self.run_script_thread.output_received.connect(self.log_output)
             self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
             self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
             self.run_script_thread.start()
@@ -552,6 +571,8 @@ class MainWindow(QMainWindow):
                 parent=self
             )
 
+    def log_output(self, output):
+        logging.info(output)
 
     def on_run_script_finished(self, teaching_tip, run_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
@@ -559,14 +580,19 @@ class MainWindow(QMainWindow):
         TeachingTip.create(
             target=run_button,
             icon=InfoBarIcon.SUCCESS,
-            title='{version} 启动成功',
+            title='启动成功',
             content="请等待 Minecraft 界面出现\n注意左下角是 Bloret Launcher 哦",
             isClosable=True,
             tailPosition=TeachingTipTailPosition.BOTTOM,
             duration=5000,
             parent=self
         )
-
+        self.run_script_thread = RunScriptThread()
+        self.run_script_thread.output_received.connect(self.log_output)
+        self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
+        self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
+        self.run_script_thread.start()
+        
     def on_run_script_error(self, error, teaching_tip, run_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
@@ -699,6 +725,17 @@ class MainWindow(QMainWindow):
         except requests.RequestException as e:
             logging.error(f"查询最新版本时发生错误: {e}")
             return "未知版本"
+
+    def setup_info_ui(self, widget):
+        github_org_button = widget.findChild(QPushButton, "pushButton_2")
+        if github_org_button:
+            github_org_button.clicked.connect(self.open_github_bloret)
+        github_project_button = widget.findChild(QPushButton, "button_github")
+        if github_project_button:
+            github_project_button.clicked.connect(self.open_github_bloret_Launcher)
+        qq_group_button = widget.findChild(QPushButton, "pushButton")
+        if qq_group_button:
+            qq_group_button.clicked.connect(self.open_qq_link)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
