@@ -2,7 +2,7 @@ import sys
 import logging
 import os
 from datetime import datetime
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
 from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie
@@ -51,6 +51,8 @@ class RunScriptThread(QThread):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        #
+        self.check_for_updates()
 
         self.setWindowTitle("Bloret 启动器 (Preview)")  # 设置软件标题
         self.setGeometry(100, 100, 800, 600)
@@ -143,6 +145,43 @@ class MainWindow(QMainWindow):
 
         # 默认加载主页
         self.load_ui("ui/home.ui", animate=False)
+
+        # 显示窗口
+        self.show()
+
+    def check_for_updates(self):
+        self.BL_latest_ver = self.get_latest_version()
+        logging.info(f"最新正式版: {self.BL_latest_ver}")
+        BL_ver = 1.0
+        if BL_ver < float(self.BL_latest_ver):
+            logging.warning(f"当前版本不是最新版，请更新到 {self.BL_latest_ver} 版本")
+            
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Warning)
+            msg_box.setWindowTitle('版本更新提示')
+            msg_box.setText(f'当前版本不是最新版，请更新到 {self.BL_latest_ver} 版本')
+            msg_box.setWindowIcon(QIcon("icons/bloret.png"))  # 设置弹窗图标
+            msg_box.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+            msg_box.button(QMessageBox.Ok).setText('立即更新')
+            msg_box.button(QMessageBox.Cancel).setText('暂时不了')
+            if msg_box.exec() == QMessageBox.Ok:
+                self.update_to_latest_version()
+
+    def update_to_latest_version(self):
+        url = f"http://123.129.241.101:30398/zipdownload/{self.BL_latest_ver}.zip"
+        save_path = os.path.join(os.getcwd(), f"{self.BL_latest_ver}.zip")
+        
+        try:
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
+            with open(save_path, 'wb') as file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    file.write(chunk)
+            logging.info(f"版本 {self.BL_latest_ver} 下载成功，保存路径: {save_path}")
+            QMessageBox.information(self, "下载完成", f"版本 {self.BL_latest_ver} 下载成功")
+        except requests.RequestException as e:
+            logging.error(f"下载版本 {self.BL_latest_ver} 失败: {e}")
+            QMessageBox.critical(self, "下载失败", f"下载版本 {self.BL_latest_ver} 失败: {e}")
 
     def toggle_show_all_versions(self, state):
         widget = self.findChild(QWidget, "downloadWidget")  # 假设你的下载界面的QWidget对象名称为downloadWidget
@@ -472,6 +511,116 @@ class MainWindow(QMainWindow):
     def setup_download_ui(self, widget):
         # 设置下载界面的UI元素
         pass
+
+    def setup_tools_ui(self, widget):
+        name2uuid_button = widget.findChild(QPushButton, "name2uuid_player_Button")
+        if name2uuid_button:
+            name2uuid_button.clicked.connect(lambda: self.query_player_uuid(widget))
+
+        search_name_button = widget.findChild(QPushButton, "search_name_button")
+        if search_name_button:
+            search_name_button.clicked.connect(lambda: self.query_player_name(widget))
+
+        skin_search_button = widget.findChild(QPushButton, "skin_search_button")
+        if skin_search_button:
+            skin_search_button.clicked.connect(lambda: self.query_player_skin(widget))
+
+        name_copy_button = widget.findChild(QPushButton, "search_name_copy")
+        if name_copy_button:
+            name_copy_button.clicked.connect(lambda: self.copy_name_to_clipboard(widget))
+
+        uuid_copy_button = widget.findChild(QPushButton, "pushButton_5")
+        if uuid_copy_button:
+            uuid_copy_button.clicked.connect(lambda: self.copy_uuid_to_clipboard(widget))
+
+        skin_copy_button = widget.findChild(QPushButton, "search_skin_copy")
+        if skin_copy_button:
+            skin_copy_button.clicked.connect(lambda: self.copy_skin_to_clipboard(widget))
+
+        cape_copy_button = widget.findChild(QPushButton, "search_cape_copy")
+        if cape_copy_button:
+            cape_copy_button.clicked.connect(lambda: self.copy_cape_to_clipboard(widget))
+
+    def copy_uuid_to_clipboard(self, widget):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.player_uuid)
+        logging.info(f"UUID {self.player_uuid} 已复制到剪贴板")
+
+    def download_skin(self, widget):
+        if self.player_skin:
+            skin_url = self.player_skin
+            skin_data = requests.get(skin_url).content
+            with open("player_skin.png", "wb") as file:
+                file.write(skin_data)
+            logging.info(f"皮肤已下载到 player_skin.png")
+
+    def download_cape(self, widget):
+        if self.player_cape:
+            cape_url = self.player_cape
+            cape_data = requests.get(cape_url).content
+            with open("player_cape.png", "wb") as file:
+                file.write(cape_data)
+            logging.info(f"披风已下载到 player_cape.png")
+
+    def query_player_uuid(self, widget):
+        player_name_edit = widget.findChild(QLineEdit, "name2uuid_player_uuid")
+        uuid_result_label = widget.findChild(QLabel, "label_2")
+        if player_name_edit and uuid_result_label:
+            uuid_result_label.setText("查询中，请稍等...")
+            player_name = player_name_edit.text()
+            response = requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player_name}")
+            if response.status_code == 200:
+                player_data = response.json()
+                self.player_uuid = player_data.get("id", "未找到UUID")
+                uuid_result_label.setText(self.player_uuid)
+                logging.info(f"查询玩家名称 {player_name} 的UUID: {self.player_uuid}")
+            else:
+                uuid_result_label.setText("查询失败")
+                logging.error(f"查询玩家名称 {player_name} 的UUID失败")
+
+    def query_player_skin(self, widget):
+        skin_uuid_edit = widget.findChild(QLineEdit, "skin_uuid")
+        skin_result_label = widget.findChild(QLabel, "search_skin")
+        cape_result_label = widget.findChild(QLabel, "search_cape")
+        if skin_uuid_edit and skin_result_label and cape_result_label:
+            skin_result_label.setText("查询中，请稍等...")
+            cape_result_label.setText("查询中，请稍等...")
+            player_uuid = skin_uuid_edit.text()
+            response = requests.get(f"https://sessionserver.mojang.com/session/minecraft/profile/{player_uuid}")
+            if response.status_code == 200:
+                player_data = response.json()
+                properties = player_data.get("properties", [])
+                for prop in properties:
+                    if prop["name"] == "textures":
+                        textures = json.loads(base64.b64decode(prop["value"]).decode("utf-8"))
+                        self.player_skin = textures["textures"].get("SKIN", {}).get("url", "未找到皮肤")
+                        self.player_cape = textures["textures"].get("CAPE", {}).get("url", "未找到披风")
+                        skin_result_label.setText(self.player_skin[:12] + "..." if len(self.player_skin) > 12 else self.player_skin)
+                        cape_result_label.setText(self.player_cape[:12] + "..." if len(self.player_cape) > 12 else self.player_cape)
+                        logging.info(f"查询玩家UUID {player_uuid} 的皮肤: {self.player_skin}")
+                        logging.info(f"查询玩家UUID {player_uuid} 的披风: {self.player_cape}")
+                        break
+            else:
+                skin_result_label.setText("查询失败")
+                cape_result_label.setText("查询失败")
+                logging.error(f"查询玩家UUID {player_uuid} 的皮肤和披风失败")
+
+    def setup_settings_ui(self, widget):
+        # 设置设置界面的UI元素
+        pass
+
+    def get_latest_version(self):
+        try:
+            response = requests.get("https://api.github.com/repos/BloretCrew/Bloret-Launcher/releases/latest")
+            if response.status_code == 200:
+                latest_release = response.json()
+                return latest_release.get("tag_name", "未知版本")
+            else:
+                logging.error("查询最新版本失败")
+                return "未知版本"
+        except requests.RequestException as e:
+            logging.error(f"查询最新版本时发生错误: {e}")
+            return "未知版本"
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
