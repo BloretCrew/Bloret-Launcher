@@ -211,8 +211,8 @@ class MainWindow(QMainWindow):
             with open(bat_file_path, 'w') as bat_file:
                 bat_file.write(f'taskkill /im Bloret-Launcher.exe /f\n')
                 bat_file.write(f'Remove-Item -Path ".\{current_folder_name}" -Recurse -Force\n')
-                bat_file.write(r'Rename-Item -Path ".\\updating" -NewName "Bloret-Launcher"' + '\n')
-                bat_file.write(r'.\\Bloret-Launcher\\Bloret-Launcher.exe' + '\n')
+                bat_file.write(r'Rename-Item -Path ".\updating" -NewName "Bloret-Launcher"' + '\n')
+                bat_file.write(r'.\Bloret-Launcher\Bloret-Launcher.exe' + '\n')
             logging.info(f"创建 updata.ps1 文件: {bat_file_path}")
 
             # 运行 updata.ps1 文件
