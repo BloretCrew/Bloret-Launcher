@@ -54,9 +54,10 @@ jobs:
 
     - name: 清理旧压缩包
       run: |
-        if [ -f "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ]; then
-          rm "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
-        fi
+        if (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}") {
+          Remove-Item "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+        }
+      shell: pwsh
 
     - name: 创建压缩包
       run: Compress-Archive -Path "${{ env.OUTPUT_DIR }}/*" -DestinationPath "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
