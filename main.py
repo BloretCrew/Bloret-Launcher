@@ -168,7 +168,7 @@ class MainWindow(QMainWindow):
                 self.update_to_latest_version()
 
     def update_to_latest_version(self):
-        url = f"http://123.129.241.101:30398/zipdownload/{self.BL_latest_ver}.zip"
+        url = f"http://123.129.241.101:30399/zipdownload/{self.BL_latest_ver}.zip"
         save_path = os.path.join(os.getcwd(), f"{self.BL_latest_ver}.zip")
         
         try:
