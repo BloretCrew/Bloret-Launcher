@@ -13,6 +13,7 @@ import json
 import configparser
 import subprocess
 import sip
+import zipfile
 
 # 全局变量
 ver_id_main = []
@@ -168,9 +169,14 @@ class MainWindow(QMainWindow):
                 self.update_to_latest_version()
 
     def update_to_latest_version(self):
-        url = f"http://123.129.241.101:30399/zipdownload/{self.BL_latest_ver}.zip"
+        url = f"http://localhost:100/zipdownload/{self.BL_latest_ver}.zip"
+        #url = f"http://123.129.241.101:30399/zipdownload/{self.BL_latest_ver}.zip"
         save_path = os.path.join(os.getcwd(), f"{self.BL_latest_ver}.zip")
-        
+        updating_folder = os.path.join(os.path.dirname(os.getcwd()), "updating")
+
+        if not os.path.exists(updating_folder):
+            os.makedirs(updating_folder)
+
         try:
             response = requests.get(url, stream=True)
             response.raise_for_status()
@@ -178,10 +184,54 @@ class MainWindow(QMainWindow):
                 for chunk in response.iter_content(chunk_size=8192):
                     file.write(chunk)
             logging.info(f"版本 {self.BL_latest_ver} 下载成功，保存路径: {save_path}")
-            QMessageBox.information(self, "下载完成", f"版本 {self.BL_latest_ver} 下载成功")
+
+            # 将下载的文件移动到 updating 文件夹
+            new_save_path = os.path.join(updating_folder, f"{self.BL_latest_ver}.zip")
+            os.rename(save_path, new_save_path)
+
+            # 解压缩文件到 updating 文件夹
+            with zipfile.ZipFile(new_save_path, 'r') as zip_ref:
+                zip_ref.extractall(updating_folder)
+            logging.info(f"版本 {self.BL_latest_ver} 解压缩成功，路径: {updating_folder}")
+
+            # 删除压缩包
+            os.remove(new_save_path)
+            logging.info(f"删除压缩包: {new_save_path}")
+
+            # 移动 .minecraft 文件夹到 updating 文件夹
+            minecraft_folder = os.path.join(os.getcwd(), ".minecraft")
+            if os.path.exists(minecraft_folder):
+                new_minecraft_folder = os.path.join(updating_folder, ".minecraft")
+                os.rename(minecraft_folder, new_minecraft_folder)
+                logging.info(f"移动 .minecraft 文件夹到: {new_minecraft_folder}")
+
+            # 创建 updata.ps1 文件
+            current_folder_name = os.path.basename(os.getcwd())
+            bat_file_path = os.path.join(os.path.dirname(os.getcwd()), "updata.ps1")
+            with open(bat_file_path, 'w') as bat_file:
+                bat_file.write(f'taskkill /im Bloret-Launcher.exe /f\n')
+                bat_file.write(f'Remove-Item -Path ".\{current_folder_name}" -Recurse -Force\n')
+                bat_file.write(r'Rename-Item -Path ".\\updating" -NewName "Bloret-Launcher"' + '\n')
+                bat_file.write(r'.\\Bloret-Launcher\\Bloret-Launcher.exe' + '\n')
+            logging.info(f"创建 updata.ps1 文件: {bat_file_path}")
+
+            # 运行 updata.ps1 文件
+            subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", bat_file_path], check=True)
+            logging.info(f"运行 updata.ps1 文件: {bat_file_path}")
+
+            QMessageBox.information(self, "下载完成", f"版本 {self.BL_latest_ver} 下载并解压缩成功")
         except requests.RequestException as e:
             logging.error(f"下载版本 {self.BL_latest_ver} 失败: {e}")
             QMessageBox.critical(self, "下载失败", f"下载版本 {self.BL_latest_ver} 失败: {e}")
+        except zipfile.BadZipFile as e:
+            logging.error(f"解压缩版本 {self.BL_latest_ver} 失败: {e}")
+            QMessageBox.critical(self, "解压缩失败", f"解压缩版本 {self.BL_latest_ver} 失败: {e}")
+        except OSError as e:
+            logging.error(f"文件操作失败: {e}")
+            QMessageBox.critical(self, "文件操作失败", f"文件操作失败: {e}")
+        except subprocess.CalledProcessError as e:
+            logging.error(f"运行 updata.ps1 文件失败: {e}")
+            QMessageBox.critical(self, "更新失败", f"运行 updata.ps1 文件失败: {e}")
 
     def toggle_show_all_versions(self, state):
         widget = self.findChild(QWidget, "downloadWidget")  # 假设你的下载界面的QWidget对象名称为downloadWidget
