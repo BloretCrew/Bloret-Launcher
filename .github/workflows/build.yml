@@ -50,6 +50,10 @@ jobs:
         cp -r cmcl/ ${{ env.OUTPUT_DIR }}/
         cp -r icons/ ${{ env.OUTPUT_DIR }}/
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
+        cp -r cmcl.json ${{ env.OUTPUT_DIR }}/
+        cp -r config.ini ${{ env.OUTPUT_DIR }}/
+        cp -r LICENSE.txt ${{ env.OUTPUT_DIR }}/
 
     - name: 清理旧压缩包
       run: |
