@@ -209,6 +209,7 @@ class MainWindow(QMainWindow):
             current_folder_name = os.path.basename(os.getcwd())
             bat_file_path = os.path.join(os.path.dirname(os.getcwd()), "updata.ps1")
             with open(bat_file_path, 'w') as bat_file:
+                bat_file.write(f'Start-Sleep -Seconds 2\n')
                 bat_file.write(f'taskkill /im Bloret-Launcher.exe /f\n')
                 bat_file.write(f'Remove-Item -Path ".\{current_folder_name}" -Recurse -Force\n')
                 bat_file.write(r'Rename-Item -Path ".\updating" -NewName "Bloret-Launcher"' + '\n')
