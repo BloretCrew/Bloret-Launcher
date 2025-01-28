@@ -52,7 +52,10 @@ class RunScriptThread(QThread):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        #
+        self.config = configparser.ConfigParser()
+        self.config.read('config.ini')
+        self.handle_first_run()
+
         self.check_for_updates()
 
         self.setWindowTitle("Bloret 启动器 (Preview)")  # 设置软件标题
@@ -149,6 +152,27 @@ class MainWindow(QMainWindow):
 
         # 显示窗口
         self.show()
+
+    def handle_first_run(self):
+        if self.config.getboolean('DEFAULT', 'first-run', fallback=True):
+            parent_dir = os.path.dirname(os.getcwd())
+            updating_folder = os.path.join(parent_dir, "updating")
+            updata_ps1_file = os.path.join(parent_dir, "updata.ps1")
+
+            if os.path.exists(updating_folder):
+                subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-Command", f"Remove-Item -Path '{updating_folder}' -Recurse -Force"], check=True)
+                logging.info(f"删除文件夹: {updating_folder}")
+
+            if os.path.exists(updata_ps1_file):
+                os.remove(updata_ps1_file)
+                logging.info(f"删除文件: {updata_ps1_file}")
+
+            QMessageBox.information(self, "欢迎", "欢迎使用百洛谷启动器 (＾ｰ^)ノ")
+
+            # 更新配置文件中的 first-run 值
+            self.config.set('DEFAULT', 'first-run', 'false')
+            with open('config.ini', 'w', encoding='utf-8') as configfile:
+                self.config.write(configfile)
 
     def check_for_updates(self):
         self.BL_latest_ver = self.get_latest_version()
