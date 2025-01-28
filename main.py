@@ -210,19 +210,20 @@ class MainWindow(QMainWindow):
             bat_file_path = os.path.join(os.path.dirname(os.getcwd()), "updata.ps1")
             with open(bat_file_path, 'w') as bat_file:
                 bat_file.write(f'cd "{os.path.dirname(os.getcwd())}"\n')
-                bat_file.write(f'Start-Sleep -Seconds 2\n')
                 bat_file.write(f'taskkill /im Bloret-Launcher.exe /f\n')
+                bat_file.write(f'Start-Sleep -Seconds 2\n')
                 bat_file.write(f'Remove-Item -Path ".\{current_folder_name}" -Recurse -Force\n')
                 bat_file.write(r'Rename-Item -Path ".\updating" -NewName "Bloret-Launcher"' + '\n')
                 bat_file.write(f'cd "{os.path.join(os.path.dirname(os.getcwd()), "Bloret-Launcher")}"\n')
                 bat_file.write(f'Start-Process -FilePath "Bloret-Launcher.exe"\n')
             logging.info(f"创建 updata.ps1 文件: {bat_file_path}")
 
+            QMessageBox.information(self, "即将安装", f"版本 {self.BL_latest_ver} 即将开始安装")
+        
             # 运行 updata.ps1 文件
             subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", bat_file_path], check=True)
             logging.info(f"运行 updata.ps1 文件: {bat_file_path}")
 
-            QMessageBox.information(self, "下载完成", f"版本 {self.BL_latest_ver} 下载并解压缩成功")
         except requests.RequestException as e:
             logging.error(f"下载版本 {self.BL_latest_ver} 失败: {e}")
             QMessageBox.critical(self, "下载失败", f"下载版本 {self.BL_latest_ver} 失败: {e}")
