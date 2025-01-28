@@ -49,7 +49,6 @@ jobs:
         cp dist/Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
         cp -r cmcl/ ${{ env.OUTPUT_DIR }}/
         cp -r icons/ ${{ env.OUTPUT_DIR }}/
-        cp -r log/ ${{ env.OUTPUT_DIR }}/
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
 
     - name: 清理旧压缩包
