@@ -1,7 +1,0 @@
-2025-01-28 16:52:47,244 [INFO] 最新正式版: 1.1
-2025-01-28 16:52:47,244 [WARNING] 当前版本不是最新版，请更新到 1.1 版本
-2025-01-28 16:53:03,686 [INFO] 版本 1.1 下载成功，保存路径: C:\Users\Admin\Desktop\Bloret-Launcher\1.1.zip
-2025-01-28 16:53:04,085 [INFO] 版本 1.1 解压缩成功，路径: C:\Users\Admin\Desktop\updating
-2025-01-28 16:53:04,085 [INFO] 删除压缩包: C:\Users\Admin\Desktop\updating\1.1.zip
-2025-01-28 16:53:04,085 [INFO] 创建 updata.ps1 文件: C:\Users\Admin\Desktop\updata.ps1
-2025-01-28 16:53:07,658 [INFO] cmcl -l 输出: ['']
