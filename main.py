@@ -3,10 +3,10 @@ import logging
 import os
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
-from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox
+from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie
-from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal
+from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt
 import requests
 import base64
 import json
@@ -70,12 +70,13 @@ class MainWindow(QMainWindow):
         self.config.read('config.ini')
         self.handle_first_run()
 
+        self.logshow = self.config.getboolean('DEFAULT', 'logshow', fallback=False)
         self.check_for_updates()
 
         self.setWindowTitle("Bloret 启动器 (Preview)")  # 设置软件标题
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QIcon("icons/bloret.png"))  # 设置软件图标
-
+        self.is_running = False
         self.player_uuid = ""  
         self.player_skin = ""  
         self.player_cape = ""  
@@ -167,6 +168,299 @@ class MainWindow(QMainWindow):
         # 显示窗口
         self.show()
 
+        self.download_worker = None  # 初始化下载工作线程
+
+    def log(self, message, level=logging.INFO):
+        if self.logshow:
+            print(message)
+        else:
+            logging.log(level, message)
+
+    def on_download_clicked(self):
+        self.log("下载 被点击")
+        self.load_ui("ui/download_load.ui", animate=False)
+        self.download_worker = DownloadWorker()
+        self.download_worker.finished.connect(self.load_download_ui)
+        self.download_worker.start()
+
+    def load_download_ui(self):
+        self.load_ui("ui/download.ui", animate=False)
+        self.setup_download_ui(self.content_layout.itemAt(0).widget())
+
+    def setup_download_ui(self, widget):
+        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
+        minecraft_part_choose_button = widget.findChild(QPushButton, "minecraft_part_choose")
+        minecraft_part_set_button = widget.findChild(QPushButton, "minecraft_part_set")
+        download_way_choose = widget.findChild(ComboBox, "download_way_choose")  # 获取 download_way_choose 元素
+        download_way_F5_button = widget.findChild(QPushButton, "download_way_F5")
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+        show_all_versions = widget.findChild(SwitchButton, "show_all_minecraft_2")  # 修改为 SwitchButton
+        download_button = widget.findChild(QPushButton, "download")
+
+        if minecraft_part_edit:
+            config = configparser.ConfigParser()
+            config.read('config.ini')
+            if 'DEFAULT' in config and 'minecraft-part' in config['DEFAULT']:
+                minecraft_part_edit.setText(config['DEFAULT']['minecraft-part'])
+            else:
+                minecraft_part_edit.setText(os.path.join(os.getcwd(), ".minecraft"))
+
+        if minecraft_part_choose_button:
+            minecraft_part_choose_button.clicked.connect(lambda: self.choose_minecraft_part(widget))
+
+        if minecraft_part_set_button:
+            minecraft_part_set_button.clicked.connect(lambda: self.set_minecraft_part(widget))
+
+        if download_way_choose:
+            download_way_choose.clear()  # 清空下拉框
+            download_way_choose.addItems(ver_id)  # 添加 ver_id 数组的内容
+
+        if download_way_F5_button:
+            download_way_F5_button.clicked.connect(lambda: self.update_minecraft_versions(widget))
+
+        if minecraft_choose:
+            if show_all_versions:
+                self.update_minecraft_versions(widget, show_all_versions.checked)  # 传递 show_all_versions 的状态
+                show_all_versions.checkedChanged.connect(lambda checked: self.update_minecraft_versions(widget, checked))
+            else:
+                self.log("未能找到 show_all_minecraft_2 元素", logging.ERROR)
+                self.update_minecraft_versions(widget, False)  # 默认不显示所有版本
+
+        if download_button:
+            download_button.clicked.connect(lambda: self.start_download(widget))
+
+        loading_label = widget.findChild(QLabel, "label_2")
+        if loading_label:
+            self.setup_loading_gif(loading_label)
+
+    def choose_minecraft_part(self, widget):
+        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
+        minecraft_part_choose_button = widget.findChild(QPushButton, "minecraft_part_choose")
+        if minecraft_part_edit and minecraft_part_choose_button:
+            folder_path = QFileDialog.getExistingDirectory(self, "选择 .minecraft 文件夹", os.getcwd())
+            if folder_path:
+                minecraft_part_edit.setText(folder_path)
+                config = configparser.ConfigParser()
+                config.read('config.ini')
+                if 'DEFAULT' not in config:
+                    config['DEFAULT'] = {}
+                config['DEFAULT']['minecraft-part'] = folder_path
+                with open('config.ini', 'w') as configfile:
+                    config.write(configfile)
+                self.log(f"选择的 .minecraft 文件夹路径: {folder_path}")
+                self.showTeachingTip(minecraft_part_choose_button, folder_path)
+
+    def set_minecraft_part(self, widget):
+        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
+        minecraft_part_set_button = widget.findChild(QPushButton, "minecraft_part_set")
+        if minecraft_part_edit and minecraft_part_set_button:
+            folder_path = minecraft_part_edit.text()
+            config = configparser.ConfigParser()
+            config.read('config.ini')
+            if 'DEFAULT' not in config:
+                config['DEFAULT'] = {}
+            config['DEFAULT']['minecraft-part'] = folder_path
+            with open('config.ini', 'w') as configfile:
+                config.write(configfile)
+            self.log(f"设置的 .minecraft 文件夹路径: {folder_path}")
+            self.showTeachingTip(minecraft_part_set_button, folder_path)
+
+    def showTeachingTip(self, target_widget, folder_path):
+        TeachingTip.create(
+            target=target_widget,
+            icon=InfoBarIcon.SUCCESS,
+            title='提示',
+            content=f"已存储 Minecraft 核心文件夹位置为\n{folder_path}",
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=2000,
+            parent=self
+        ).move(target_widget.mapToGlobal(target_widget.rect().topLeft()))
+
+    def update_minecraft_versions(self, widget, show_all=False):
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+        if minecraft_choose:
+            try:
+                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
+                if response.status_code == 200:
+                    version_data = response.json()
+                    latest_release = version_data["latest"]["release"]
+                    latest_snapshot = version_data["latest"]["snapshot"]
+                    versions = version_data["versions"]
+
+                    for version in versions:
+                        ver_id.append(version["id"])
+                        ver_url[version["id"]] = version["url"]
+
+                        if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
+                            ver_id_main.append(version["id"])
+
+                    minecraft_choose.clear()
+                    if show_all:
+                        minecraft_choose.addItems(ver_id)
+                    else:
+                        minecraft_choose.addItems(ver_id_main)
+
+                    self.log(f"最新发布版本: {latest_release}")
+                    self.log(f"最新快照版本: {latest_snapshot}")
+                    self.log("Minecraft 版本列表已更新")
+                else:
+                    self.log("无法获取 Minecraft 版本列表", logging.ERROR)
+            except requests.exceptions.RequestException as e:
+                self.log(f"请求错误: {e}", logging.ERROR)
+                TeachingTip.create(
+                    target=minecraft_choose,
+                    icon=InfoBarIcon.ERROR,
+                    title='提示',
+                    content="无法连接到服务器，请检查网络连接或稍后再试。",
+                    isClosable=True,
+                    tailPosition=TeachingTipTailPosition.BOTTOM,
+                    duration=2000,
+                    parent=self
+                )
+            except requests.exceptions.SSLError as e:
+                self.log(f"SSL 错误: {e}", logging.ERROR)
+                TeachingTip.create(
+                    target=minecraft_choose,
+                    icon=InfoBarIcon.ERROR,
+                    title='提示',
+                    content="无法连接到服务器，请检查网络连接或稍后再试。",
+                    isClosable=True,
+                    tailPosition=TeachingTipTailPosition.BOTTOM,
+                    duration=2000,
+                    parent=self
+                )
+
+    def start_download(self, widget):
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+        download_button = widget.findChild(QPushButton, "download")
+
+        if minecraft_choose and download_button:
+            choose_ver = minecraft_choose.currentText()
+            teaching_tip = TeachingTip.create(
+                target=download_button,
+                icon=InfoBarIcon.SUCCESS,
+                title='正在下载',
+                content="请稍等",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=0,  # 设置为0表示不自动关闭
+                parent=self
+            )
+            teaching_tip.move(download_button.mapToGlobal(download_button.rect().topLeft()))
+
+            self.download_thread = self.DownloadThread(choose_ver)
+            self.download_thread.output_received.connect(self.log_output)
+            self.download_thread.finished.connect(lambda: self.on_download_finished(teaching_tip, download_button))
+            self.download_thread.error_occurred.connect(lambda error: self.on_download_error(error, teaching_tip, download_button))
+            self.download_thread.start()
+
+
+    def setup_loading_gif(self, label):
+        movie = QMovie("ui/icon/loading2.gif")
+        label.setMovie(movie)
+        movie.start()
+
+    class DownloadThread(QThread):
+        finished = pyqtSignal()
+        error_occurred = pyqtSignal(str)
+        output_received = pyqtSignal(str)
+
+        def __init__(self, version):
+            super().__init__()
+            self.version = version
+
+        def run(self):
+            try:
+                process = subprocess.Popen(
+                    ["cmcl", "install", self.version],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding='utf-8'
+                )
+                for line in iter(process.stdout.readline, ''):
+                    self.output_received.emit(line.strip())
+                process.stdout.close()
+                process.wait()
+                if process.returncode == 0:
+                    self.finished.emit()
+                else:
+                    self.error_occurred.emit(process.stderr.read().strip())
+            except subprocess.CalledProcessError as e:
+                self.error_occurred.emit(str(e.stderr))
+
+    def on_download_error(self, error_message, widget, teaching_tip):
+        download_button = widget.findChild(QPushButton, "download")
+        if download_button:
+            teaching_tip.close()
+            TeachingTip.create(
+                target=download_button,
+                icon=InfoBarIcon.ERROR,
+                title='提示',
+                content=f"下载失败，原因：{error_message}",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
+
+    def on_download_finished(self, teaching_tip, download_button):
+        if teaching_tip and not sip.isdeleted(teaching_tip):
+            teaching_tip.close()
+        TeachingTip.create(
+            target=download_button,
+            icon=InfoBarIcon.SUCCESS,
+            title='下载成功',
+            content="版本已成功下载",
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=2000,
+            parent=self
+        )
+
+    def on_download_error(self, error_message, teaching_tip, download_button):
+        if teaching_tip and not sip.isdeleted(teaching_tip):
+            teaching_tip.close()
+        TeachingTip.create(
+            target=download_button,
+            icon=InfoBarIcon.ERROR,
+            title='下载失败',
+            content=f"下载失败，原因：{error_message}",
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=2000,
+            parent=self
+        )
+
+    # def update_minecraft_versions(self, minecraft_choose, show_all):
+    #     try:
+    #         response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
+    #         response.raise_for_status()
+    #         version_data = response.json()
+    #         versions = version_data["versions"]
+
+    #         ver_id.clear()
+    #         ver_id_main.clear()
+    #         ver_url.clear()
+
+    #         for version in versions:
+    #             ver_id.append(version["id"])
+    #             ver_url[version["id"]] = version["url"]
+    #             if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
+    #                 ver_id_main.append(version["id"])
+
+    #         minecraft_choose.clear()
+    #         if show_all:
+    #             minecraft_choose.addItems(ver_id)
+    #         else:
+    #             minecraft_choose.addItems(ver_id_main)
+
+    #         logging.info("Minecraft 版本列表已更新")
+    #     except requests.RequestException as e:
+    #         logging.error(f"无法获取 Minecraft 版本列表: {e}")
+    #         QMessageBox.critical(self, "错误", f"无法获取 Minecraft 版本列表: {e}")
+
     def handle_first_run(self):
         if self.config.getboolean('DEFAULT', 'first-run', fallback=True):
             parent_dir = os.path.dirname(os.getcwd())
@@ -175,11 +469,11 @@ class MainWindow(QMainWindow):
 
             if os.path.exists(updating_folder):
                 subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-Command", f"Remove-Item -Path '{updating_folder}' -Recurse -Force"], check=True)
-                logging.info(f"删除文件夹: {updating_folder}")
+                self.log(f"删除文件夹: {updating_folder}")
 
             if os.path.exists(updata_ps1_file):
                 os.remove(updata_ps1_file)
-                logging.info(f"删除文件: {updata_ps1_file}")
+                self.log(f"删除文件: {updata_ps1_file}")
 
             QMessageBox.information(self, "欢迎", "欢迎使用百洛谷启动器 (＾ｰ^)ノ")
 
@@ -190,10 +484,10 @@ class MainWindow(QMainWindow):
 
     def check_for_updates(self):
         self.BL_latest_ver = self.get_latest_version()
-        logging.info(f"最新正式版: {self.BL_latest_ver}")
-        BL_ver = 1.0
+        self.log(f"最新正式版: {self.BL_latest_ver}")
+        BL_ver = 2.2 # 当前版本
         if BL_ver < float(self.BL_latest_ver):
-            logging.warning(f"当前版本不是最新版，请更新到 {self.BL_latest_ver} 版本")
+            self.log(f"当前版本不是最新版，请更新到 {self.BL_latest_ver} 版本", logging.WARNING)
             
             msg_box = QMessageBox(self)
             msg_box.setIcon(QMessageBox.Warning)
@@ -221,7 +515,7 @@ class MainWindow(QMainWindow):
             with open(save_path, 'wb') as file:
                 for chunk in response.iter_content(chunk_size=8192):
                     file.write(chunk)
-            logging.info(f"版本 {self.BL_latest_ver} 下载成功，保存路径: {save_path}")
+            self.log(f"版本 {self.BL_latest_ver} 下载成功，保存路径: {save_path}")
 
             # 将下载的文件移动到 updating 文件夹
             new_save_path = os.path.join(updating_folder, f"{self.BL_latest_ver}.zip")
@@ -230,18 +524,18 @@ class MainWindow(QMainWindow):
             # 解压缩文件到 updating 文件夹
             with zipfile.ZipFile(new_save_path, 'r') as zip_ref:
                 zip_ref.extractall(updating_folder)
-            logging.info(f"版本 {self.BL_latest_ver} 解压缩成功，路径: {updating_folder}")
+            self.log(f"版本 {self.BL_latest_ver} 解压缩成功，路径: {updating_folder}")
 
             # 删除压缩包
             os.remove(new_save_path)
-            logging.info(f"删除压缩包: {new_save_path}")
+            self.log(f"删除压缩包: {new_save_path}")
 
             # 移动 .minecraft 文件夹到 updating 文件夹
             minecraft_folder = os.path.join(os.getcwd(), ".minecraft")
             if os.path.exists(minecraft_folder):
                 new_minecraft_folder = os.path.join(updating_folder, ".minecraft")
                 os.rename(minecraft_folder, new_minecraft_folder)
-                logging.info(f"移动 .minecraft 文件夹到: {new_minecraft_folder}")
+                self.log(f"移动 .minecraft 文件夹到: {new_minecraft_folder}")
 
             # 创建 updata.ps1 文件
             current_folder_name = os.path.basename(os.getcwd())
@@ -254,25 +548,25 @@ class MainWindow(QMainWindow):
                 bat_file.write(f'Move-Item -Path ".\\updating\\*" -Destination ".\\{current_folder_name}"\n')
                 bat_file.write(f'cd "{os.path.join(os.path.dirname(os.getcwd()), "Bloret-Launcher")}"\n')
                 bat_file.write(f'Start-Process -FilePath "Bloret-Launcher.exe"\n')
-            logging.info(f"创建 updata.ps1 文件: {bat_file_path}")
+            self.log(f"创建 updata.ps1 文件: {bat_file_path}")
 
             QMessageBox.information(self, "即将安装", f"版本 {self.BL_latest_ver} 即将开始安装")
         
             # 运行 updata.ps1 文件
             subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", bat_file_path], check=True)
-            logging.info(f"运行 updata.ps1 文件: {bat_file_path}")
+            self.log(f"运行 updata.ps1 文件: {bat_file_path}")
 
         except requests.RequestException as e:
-            logging.error(f"下载版本 {self.BL_latest_ver} 失败: {e}")
+            self.log(f"下载版本 {self.BL_latest_ver} 失败: {e}", logging.ERROR)
             QMessageBox.critical(self, "下载失败", f"下载版本 {self.BL_latest_ver} 失败: {e}")
         except zipfile.BadZipFile as e:
-            logging.error(f"解压缩版本 {self.BL_latest_ver} 失败: {e}")
+            self.log(f"解压缩版本 {self.BL_latest_ver} 失败: {e}", logging.ERROR)
             QMessageBox.critical(self, "解压缩失败", f"解压缩版本 {self.BL_latest_ver} 失败: {e}")
         except OSError as e:
-            logging.error(f"文件操作失败: {e}")
+            self.log(f"文件操作失败: {e}", logging.ERROR)
             QMessageBox.critical(self, "文件操作失败", f"文件操作失败: {e}")
         except subprocess.CalledProcessError as e:
-            logging.error(f"运行 updata.ps1 文件失败: {e}")
+            self.log(f"运行 updata.ps1 文件失败: {e}", logging.ERROR)
             QMessageBox.critical(self, "更新失败", f"运行 updata.ps1 文件失败: {e}")
 
     def toggle_show_all_versions(self, state):
@@ -285,25 +579,25 @@ class MainWindow(QMainWindow):
 
     def open_github_bloret(self):
         QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew"))
-        logging.info("打开Bloret Github 组织页面")
+        self.log("打开Bloret Github 组织页面")
 
     def copy_skin_to_clipboard(self, widget):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_skin)
-        logging.info(f"皮肤URL {self.player_skin} 已复制到剪贴板")
+        self.log(f"皮肤URL {self.player_skin} 已复制到剪贴板")
 
     def copy_cape_to_clipboard(self, widget):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_cape)
-        logging.info(f"披风URL {self.player_cape} 已复制到剪贴板")
+        self.log(f"披风URL {self.player_cape} 已复制到剪贴板")
 
     def open_skin_url(self, widget):
         QDesktopServices.openUrl(QUrl(self.player_skin))
-        logging.info(f"打开皮肤URL: {self.player_skin}")
+        self.log(f"打开皮肤URL: {self.player_skin}")
 
     def open_cape_url(self, widget):
         QDesktopServices.openUrl(QUrl(self.player_cape))
-        logging.info(f"打开披风URL: {self.player_cape}")
+        self.log(f"打开披风URL: {self.player_cape}")
 
     def query_player_name(self, widget):
         player_uuid_edit = widget.findChild(QLineEdit, "search_name_type")
@@ -316,23 +610,23 @@ class MainWindow(QMainWindow):
                 player_data = response.json()
                 self.player_name = player_data.get("name", "未找到名称")
                 name_result_label.setText(self.player_name)
-                logging.info(f"查询UUID {player_uuid} 的名称: {self.player_name}")
+                self.log(f"查询UUID {player_uuid} 的名称: {self.player_name}")
             else:
                 name_result_label.setText("查询失败")
-                logging.error(f"查询UUID {player_uuid} 的名称失败")
+                self.log(f"查询UUID {player_uuid} 的名称失败", logging.ERROR)
 
     def copy_name_to_clipboard(self, widget):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_name)
-        logging.info(f"名称 {self.player_name} 已复制到剪贴板")
+        self.log(f"名称 {self.player_name} 已复制到剪贴板")
 
     def open_github_bloret_Launcher(self):
         QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew/Bloret-Launcher"))
-        logging.info("打开该项目的Github页面")
+        self.log("打开该项目的Github页面")
 
     def open_qq_link(self):
         QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
-        logging.info("打开Bloret QQ 群页面")
+        self.log("打开Bloret QQ 群页面")
 
     def animate_sidebar(self):
         start_geometry = self.navigation_interface.geometry()
@@ -379,9 +673,9 @@ class MainWindow(QMainWindow):
                     data = json.load(file)
                 player_name = data['accounts'][0].get('playerName', '')
                 player_name_edit.setText(player_name)
-                logging.info(f"读取到的 playerName: {player_name}")
+                self.log(f"读取到的 playerName: {player_name}")
             except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-                logging.error(f"读取 cmcl.json 失败: {e}")
+                self.log(f"读取 cmcl.json 失败: {e}", logging.ERROR)
                 player_name_edit.setText('')  # 如果读取失败，清空输入框
 
     
@@ -390,11 +684,16 @@ class MainWindow(QMainWindow):
     # -----------------------------------------------------------
 
     def on_home_clicked(self):
-        logging.info("主页 被点击")
+        self.log("主页 被点击")
         self.load_ui("ui/home.ui")
 
     def on_download_clicked(self):
-        logging.info("下载 被点击")
+        self.log("下载 被点击")
+        widget = self.content_layout.itemAt(0).widget()
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+        show_all_versions = widget.findChild(QCheckBox, "show_all_versions")
+        if minecraft_choose and show_all_versions:
+            self.update_minecraft_versions(minecraft_choose, show_all_versions.isChecked())
         self.load_ui("ui/download_load.ui", animate=False)
         self.download_worker = DownloadWorker()
         self.download_worker.finished.connect(self.load_download_ui)
@@ -405,23 +704,23 @@ class MainWindow(QMainWindow):
         self.setup_download_ui(self.content_layout.itemAt(0).widget())
 
     def on_passport_clicked(self):
-        logging.info("通行证 被点击")
+        self.log("通行证 被点击")
         self.load_ui("ui/passport.ui")
 
     def on_settings_clicked(self):
-        logging.info("设置 被点击")
+        self.log("设置 被点击")
         self.load_ui("ui/settings.ui")
 
     def on_info_clicked(self):
-        logging.info("关于 被点击")
+        self.log("关于 被点击")
         self.load_ui("ui/info.ui")
 
     def on_tools_clicked(self):
-        logging.info("工具 被点击")
+        self.log("工具 被点击")
         self.load_ui("ui/tools.ui")
 
     def on_button_clicked(self):
-        logging.info("按钮 被点击")
+        self.log("按钮 被点击")
 
     def on_player_name_set_clicked(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "player_name")
@@ -495,9 +794,9 @@ class MainWindow(QMainWindow):
         try:
             result = subprocess.run(["cmcl", "-l"], capture_output=True, text=True, check=True)
             set_list = [line.strip() for line in result.stdout.splitlines()[1:]]  # 去除每行末尾的空格
-            logging.info(f"cmcl -l 输出: {set_list}")
+            self.log(f"cmcl -l 输出: {set_list}")
         except subprocess.CalledProcessError as e:
-            logging.error(f"执行 cmcl -l 失败: {e}")
+            self.log(f"执行 cmcl -l 失败: {e}", logging.ERROR)
             set_list = []
         
         run_choose = widget.findChild(ComboBox, "run_choose")
@@ -510,8 +809,13 @@ class MainWindow(QMainWindow):
             run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText()))
 
     def run_cmcl(self, version):
+        if self.is_running:
+            self.log("run.ps1 正在运行中，不启动新的实例")
+            return
+
+        self.is_running = True  # 设置标志变量为True
         # 显示“正在启动”气泡消息
-        logging.info(f"正在启动 {version}")
+        self.log(f"正在启动 {version}")
         run_button = self.sender()  # 获取按钮对象
         teaching_tip = TeachingTip.create(
             target=run_button,  # 修改为按钮对象
@@ -528,11 +832,11 @@ class MainWindow(QMainWindow):
         script_path = "run.ps1"
         if os.path.exists(script_path):
             os.remove(script_path)
-            logging.info(f"删除文件: {script_path}")
-        logging.info(f"运行 cmcl version {version} --export-script-ps=run.ps1")
+            self.log(f"删除文件: {script_path}")
+        self.log(f"运行 cmcl version {version} --export-script-ps=run.ps1")
         try:
             result = subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"], capture_output=True, text=True, check=True)
-            logging.info(f"cmcl version {version} --export-script-ps=run.ps1 运行成功: {result.stdout}")
+            self.log(f"cmcl version {version} --export-script-ps=run.ps1 运行成功: {result.stdout}")
             
             # 替换 run.ps1 文件中的 "CMCL 2.2.2" 为 "Bloret Launcher"
             script_path = "run.ps1"
@@ -545,10 +849,10 @@ class MainWindow(QMainWindow):
                 with open(script_path, 'w', encoding='utf-8') as file:
                     file.write(script_content)
                 
-                logging.info(f"成功替换 {script_path} 中的 'CMCL 2.2.2' 为 'Bloret Launcher'")
+                self.log(f"成功替换 {script_path} 中的 'CMCL 2.2.2' 为 'Bloret Launcher'")
             
             # 运行 run.ps1 脚本
-            logging.info(f"运行 {script_path}")
+            self.log(f"运行 {script_path}")
             self.run_script_thread = RunScriptThread()
             self.run_script_thread.teaching_tip = teaching_tip  # 将 TeachingTip 对象保存为线程的属性
             self.run_script_thread.output_received.connect(self.log_output)
@@ -557,7 +861,7 @@ class MainWindow(QMainWindow):
             self.run_script_thread.start()
             
         except subprocess.CalledProcessError as e:
-            logging.error(f"cmcl version {version} --export-script-ps=run.ps1 运行失败: {e.stderr}")
+            self.log(f"cmcl version {version} --export-script-ps=run.ps1 运行失败: {e.stderr}", logging.ERROR)
             if teaching_tip:
                 teaching_tip.close()  # 关闭气泡消息
             TeachingTip.create(
@@ -572,7 +876,7 @@ class MainWindow(QMainWindow):
             )
 
     def log_output(self, output):
-        logging.info(output)
+        self.log(output)
 
     def on_run_script_finished(self, teaching_tip, run_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
@@ -606,15 +910,26 @@ class MainWindow(QMainWindow):
             duration=2000,
             parent=self
         )
-        logging.error(f"run.ps1 运行失败: {error}")
+        self.log(f"run.ps1 运行失败: {error}", logging.ERROR)
 
     def setup_download_load_ui(self, widget):
         # 设置下载加载界面的UI元素
         pass
 
-    def setup_download_ui(self, widget):
-        # 设置下载界面的UI元素
-        pass
+    # def se tup_download_ui(self, widget):
+    #     # 设置下载界面的UI元素
+    #     minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+    #     show_all_versions = widget.findChild(QCheckBox, "show_all_versions")
+    #     if minecraft_choose and show_all_versions:
+    #         show_all_versions.stateChanged.connect(lambda state: self.update_minecraft_versions(minecraft_choose, state == Qt.Checked))
+    #         self.update_minecraft_versions(minecraft_choose, show_all_versions.isChecked())
+
+    def get_minecraft_versions(self, show_all):
+        # 模拟获取 Minecraft 版本列表
+        if show_all:
+            return ["1.18.1", "1.18", "1.17.1", "1.17", "1.16.5", "1.16.4", "1.16.3", "1.16.2", "1.16.1", "1.16"]
+        else:
+            return ["1.18.1", "1.17.1", "1.16.5"]
 
     def setup_tools_ui(self, widget):
         name2uuid_button = widget.findChild(QPushButton, "name2uuid_player_Button")
@@ -648,7 +963,7 @@ class MainWindow(QMainWindow):
     def copy_uuid_to_clipboard(self, widget):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_uuid)
-        logging.info(f"UUID {self.player_uuid} 已复制到剪贴板")
+        self.log(f"UUID {self.player_uuid} 已复制到剪贴板")
 
     def download_skin(self, widget):
         if self.player_skin:
@@ -656,7 +971,7 @@ class MainWindow(QMainWindow):
             skin_data = requests.get(skin_url).content
             with open("player_skin.png", "wb") as file:
                 file.write(skin_data)
-            logging.info(f"皮肤已下载到 player_skin.png")
+            self.log(f"皮肤已下载到 player_skin.png")
 
     def download_cape(self, widget):
         if self.player_cape:
@@ -664,7 +979,7 @@ class MainWindow(QMainWindow):
             cape_data = requests.get(cape_url).content
             with open("player_cape.png", "wb") as file:
                 file.write(cape_data)
-            logging.info(f"披风已下载到 player_cape.png")
+            self.log(f"披风已下载到 player_cape.png")
 
     def query_player_uuid(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "name2uuid_player_uuid")
@@ -677,10 +992,10 @@ class MainWindow(QMainWindow):
                 player_data = response.json()
                 self.player_uuid = player_data.get("id", "未找到UUID")
                 uuid_result_label.setText(self.player_uuid)
-                logging.info(f"查询玩家名称 {player_name} 的UUID: {self.player_uuid}")
+                self.log(f"查询玩家名称 {player_name} 的UUID: {self.player_uuid}")
             else:
                 uuid_result_label.setText("查询失败")
-                logging.error(f"查询玩家名称 {player_name} 的UUID失败")
+                self.log(f"查询玩家名称 {player_name} 的UUID失败", logging.ERROR)
 
     def query_player_skin(self, widget):
         skin_uuid_edit = widget.findChild(QLineEdit, "skin_uuid")
@@ -701,13 +1016,13 @@ class MainWindow(QMainWindow):
                         self.player_cape = textures["textures"].get("CAPE", {}).get("url", "未找到披风")
                         skin_result_label.setText(self.player_skin[:12] + "..." if len(self.player_skin) > 12 else self.player_skin)
                         cape_result_label.setText(self.player_cape[:12] + "..." if len(self.player_cape) > 12 else self.player_cape)
-                        logging.info(f"查询玩家UUID {player_uuid} 的皮肤: {self.player_skin}")
-                        logging.info(f"查询玩家UUID {player_uuid} 的披风: {self.player_cape}")
+                        self.log(f"查询玩家UUID {player_uuid} 的皮肤: {self.player_skin}")
+                        self.log(f"查询玩家UUID {player_uuid} 的披风: {self.player_cape}")
                         break
             else:
                 skin_result_label.setText("查询失败")
                 cape_result_label.setText("查询失败")
-                logging.error(f"查询玩家UUID {player_uuid} 的皮肤和披风失败")
+                self.log(f"查询玩家UUID {player_uuid} 的皮肤和披风失败", logging.ERROR)
 
     def setup_settings_ui(self, widget):
         # 设置设置界面的UI元素
@@ -720,10 +1035,10 @@ class MainWindow(QMainWindow):
                 latest_release = response.json()
                 return latest_release.get("tag_name", "未知版本")
             else:
-                logging.error("查询最新版本失败")
+                self.log("查询最新版本失败", logging.ERROR)
                 return "未知版本"
         except requests.RequestException as e:
-            logging.error(f"查询最新版本时发生错误: {e}")
+            self.log(f"查询最新版本时发生错误: {e}", logging.ERROR)
             return "未知版本"
 
     def setup_info_ui(self, widget):
