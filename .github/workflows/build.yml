@@ -41,7 +41,14 @@ jobs:
         "
 
     - name: 使用 PyInstaller 打包
-      run: pyinstaller --onefile --noconsole --icon=icons/bloret.ico --name=Bloret-Launcher main.py
+      run: |
+        pyinstaller --onefile --noconsole --icon=icons/bloret.ico --name=Bloret-Launcher \
+          --add-data "icons:bloret.ico" \
+          --add-data "config.ini:." \
+          --add-data "ui:ui" \
+          --add-data "cmcl.json:." \
+          --hidden-import=sip \
+          main.py
 
     - name: 创建包含其他文件夹的目录
       run: |
