@@ -876,12 +876,25 @@ class MainWindow(QMainWindow):
         # 获取 set_list
         try:
             self.log("正在获取 cmcl -l 输出")
-            result = subprocess.run(["cmcl", "-l"], capture_output=True, text=True, check=True)
+            cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")
+            if not os.path.exists(cmcl_path):
+                raise FileNotFoundError(f"未找到 {cmcl_path}")
+
+            result = subprocess.run(
+                [cmcl_path, "-l"],
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=os.getcwd()  # 确保在当前工作目录下运行
+            )
             set_list = [line.strip() for line in result.stdout.splitlines()[1:]]  # 去除每行末尾的空格
             self.log(f"cmcl -l 输出: {set_list}")
         except subprocess.CalledProcessError as e:
-            self.log(f"执行 cmcl -l 失败: {e}", logging.ERROR)
-            set_list = []
+            self.log(f"执行 cmcl -l 失败: {e.stderr}", logging.ERROR)
+            set_list = ["无法获取版本列表，请检查 cmcl.exe 是否正常"]
+        except Exception as e:
+            self.log(f"运行 cmcl -l 时发生未知错误: {e}", logging.ERROR)
+            set_list = ["无法获取版本列表，请检查 cmcl.exe 是否正常"]
 
         run_choose = widget.findChild(ComboBox, "run_choose")
         if run_choose:
