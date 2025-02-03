@@ -872,16 +872,17 @@ class MainWindow(QMainWindow):
         github_project_button = widget.findChild(QPushButton, "pushButton")
         if github_project_button:
             github_project_button.clicked.connect(self.open_github_bloret_Launcher)
-        
+
         # 获取 set_list
         try:
+            self.log("正在获取 cmcl -l 输出")
             result = subprocess.run(["cmcl", "-l"], capture_output=True, text=True, check=True)
             set_list = [line.strip() for line in result.stdout.splitlines()[1:]]  # 去除每行末尾的空格
             self.log(f"cmcl -l 输出: {set_list}")
         except subprocess.CalledProcessError as e:
             self.log(f"执行 cmcl -l 失败: {e}", logging.ERROR)
             set_list = []
-        
+
         run_choose = widget.findChild(ComboBox, "run_choose")
         if run_choose:
             run_choose.addItems(set_list)
@@ -897,8 +898,8 @@ class MainWindow(QMainWindow):
             return
 
         self.is_running = True  # 设置标志变量为True
-        # 显示“正在启动”气泡消息
         self.log(f"正在启动 {version}")
+
         run_button = self.sender()  # 获取按钮对象
         teaching_tip = TeachingTip.create(
             target=run_button,  # 修改为按钮对象
@@ -911,33 +912,36 @@ class MainWindow(QMainWindow):
             parent=self
         )
         teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
-        # 删除目录下的 run.ps1 文件
+
         script_path = "run.ps1"
         if os.path.exists(script_path):
             os.remove(script_path)
             self.log(f"删除文件: {script_path}")
-        self.log(f"运行 cmcl version {version} --export-script-ps=run.ps1")
+
         try:
-            result = subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"], capture_output=True, text=True, check=True)
+            self.log(f"运行 cmcl version {version} --export-script-ps=run.ps1")
+            result = subprocess.run(
+                ["cmcl", "version", version, "--export-script-ps=run.ps1"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
             self.log(f"cmcl version {version} --export-script-ps=run.ps1 运行成功: {result.stdout}")
-            
-            # 添加调试信息
+
             if not os.path.exists(script_path):
                 self.log(f"生成的脚本文件 {script_path} 不存在", logging.ERROR)
                 raise FileNotFoundError(f"生成的脚本文件 {script_path} 不存在")
 
-            # 替换 run.ps1 文件中的 "CMCL 2.2.2" 为 "Bloret Launcher"
             with open(script_path, 'r', encoding='utf-8') as file:
                 script_content = file.read()
-            
+
             script_content = script_content.replace('CMCL 2.2.2', 'Bloret Launcher')
-            
+
             with open(script_path, 'w', encoding='utf-8') as file:
                 file.write(script_content)
-            
+
             self.log(f"成功替换 {script_path} 中的 'CMCL 2.2.2' 为 'Bloret Launcher'")
-            
-            # 运行 run.ps1 脚本
+
             self.log(f"运行 {script_path}")
             self.run_script_thread = RunScriptThread()
             self.run_script_thread.teaching_tip = teaching_tip  # 将 TeachingTip 对象保存为线程的属性
@@ -945,7 +949,7 @@ class MainWindow(QMainWindow):
             self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
             self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
             self.run_script_thread.start()
-            
+
         except subprocess.CalledProcessError as e:
             self.log(f"cmcl version {version} --export-script-ps=run.ps1 运行失败: {e.stderr}", logging.ERROR)
             if teaching_tip:
@@ -975,7 +979,6 @@ class MainWindow(QMainWindow):
                 parent=self
             )
             self.is_running = False  # 重置标志变量
-
     def log_output(self, output):
         self.log(output)
 
