@@ -2,8 +2,9 @@
   "language": "zh",
   "downloadSource": 1,
   "checkAccountBeforeStart": false,
+  "printStartupInfo": true,
   "accounts": [{
-    "playerName": "Bloret_player",
+    "playerName": "Bloret_Player",
     "loginMethod": 0,
     "selected": true
   }]

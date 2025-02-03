@@ -12,10 +12,10 @@ import base64
 import json
 import configparser
 import subprocess
-import shutil
 import sip # type: ignore
 import zipfile
 import time
+import shutil
 
 # 全局变量
 ver_id_bloret = ['1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21']
@@ -312,6 +312,9 @@ class MainWindow(QMainWindow):
             self.showTeachingTip(minecraft_part_set_button, folder_path)
 
     def showTeachingTip(self, target_widget, folder_path):
+        if sip.isdeleted(target_widget):
+            self.log(f"目标小部件已被删除，无法显示 TeachingTip", logging.ERROR)
+            return
         TeachingTip.create(
             target=target_widget,
             icon=InfoBarIcon.SUCCESS,
@@ -398,6 +401,16 @@ class MainWindow(QMainWindow):
         download_button = widget.findChild(QPushButton, "download")
 
         if minecraft_choose and download_button:
+            # 覆盖 cmcl.json 文件
+            cmcl_save_path = os.path.join(os.getcwd(), "cmcl_save.json")
+            cmcl_path = os.path.join(os.getcwd(), "cmcl.json")
+            if os.path.exists(cmcl_save_path):
+                try:
+                    shutil.copy(cmcl_save_path, cmcl_path)
+                    self.log(f"成功覆盖 {cmcl_path} 文件")
+                except Exception as e:
+                    self.log(f"覆盖 {cmcl_path} 文件失败: {e}", logging.ERROR)
+
             choose_ver = minecraft_choose.currentText()
             teaching_tip = TeachingTip.create(
                 target=widget,
@@ -458,20 +471,20 @@ class MainWindow(QMainWindow):
             except subprocess.CalledProcessError as e:
                 self.error_occurred.emit(str(e.stderr))
 
-    def on_download_error(self, error_message, widget, teaching_tip):
-        download_button = widget.findChild(QPushButton, "download")
-        if download_button:
-            teaching_tip.close()
-            TeachingTip.create(
-                target=download_button,
-                icon=InfoBarIcon.ERROR,
-                title='提示',
-                content=f"下载失败，原因：{error_message}",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=2000,
-                parent=self
-            )
+    # def on_download_error(self, error_message, widget, teaching_tip):
+    #     download_button = widget.findChild(QPushButton, "download")
+    #     if download_button:
+    #         teaching_tip.close()
+    #         TeachingTip.create(
+    #             target=download_button,
+    #             icon=InfoBarIcon.ERROR,
+    #             title='提示',
+    #             content=f"下载失败，原因：{error_message}",
+    #             isClosable=True,
+    #             tailPosition=TeachingTipTailPosition.BOTTOM,
+    #             duration=2000,
+    #             parent=self
+    #         )
 
     def on_download_finished(self, teaching_tip, download_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
@@ -498,6 +511,8 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 self.log(f"拷贝 {src_file} 到 {dest_dir} 失败: {e}", logging.ERROR)
 
+        self.is_running = False  # 重置标志变量
+
     def on_download_error(self, error_message, teaching_tip, download_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
@@ -511,6 +526,8 @@ class MainWindow(QMainWindow):
             duration=2000,
             parent=self
         )
+
+        self.is_running = False  # 重置标志变量
 
     # def update_minecraft_versions(self, minecraft_choose, show_all):
     #     try:
@@ -787,7 +804,7 @@ class MainWindow(QMainWindow):
 
     def on_player_name_set_clicked(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "player_name")
-        player_name = player_name_edit.text()
+        player_name = player_name.edit.text()
         
         if not player_name:
             TeachingTip.create(
@@ -864,8 +881,7 @@ class MainWindow(QMainWindow):
         
         run_choose = widget.findChild(ComboBox, "run_choose")
         if run_choose:
-            run_choose.clear()  # 清空选择框
-            run_choose.addItems(set_list)  # 添加 set_list 的内容
+            run_choose.addItems(set_list)
 
         # 添加 run 按钮的点击事件
         run_button = widget.findChild(QPushButton, "run")  # 修改为 "run"
@@ -918,17 +934,6 @@ class MainWindow(QMainWindow):
             
             self.log(f"成功替换 {script_path} 中的 'CMCL 2.2.2' 为 'Bloret Launcher'")
             
-            # 显示气泡消息
-            TeachingTip.create(
-                target=run_button,
-                icon=InfoBarIcon.SUCCESS,
-                title='提示',
-                content="正在运行 run.ps1 脚本，请稍等...",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=2000,
-                parent=self
-            )
             # 运行 run.ps1 脚本
             self.log(f"运行 {script_path}")
             self.run_script_thread = RunScriptThread()
@@ -952,7 +957,6 @@ class MainWindow(QMainWindow):
                 duration=2000,
                 parent=self
             )
-            self.is_running = False  # 重置标志变量
         except Exception as e:
             self.log(f"运行 cmcl version {version} --export-script-ps=run.ps1 时发生未知错误: {e}", logging.ERROR)
             if teaching_tip:
@@ -978,15 +982,22 @@ class MainWindow(QMainWindow):
         TeachingTip.create(
             target=run_button,
             icon=InfoBarIcon.SUCCESS,
-            title='Minecraft 已结束',
-            content="感谢使用百络谷启动器\n若异常退出，请打开百络\n谷启动器文件夹下的\nlogs 文件夹内最后一个\n日志文件，并提交到 Github 或 QQ 群",
+            title='启动成功',
+            content="请等待 Minecraft 界面出现\n注意左下角是 Bloret Launcher 哦",
             isClosable=True,
             tailPosition=TeachingTipTailPosition.BOTTOM,
             duration=5000,
             parent=self
         )
+        # 移除以下代码，避免重复启动线程
+        # self.run_script_thread = RunScriptThread()
+        # self.run_script_thread.output_received.connect(self.log_output)
+        # self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
+        # self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
+        # self.run_script_thread.start()
+        
         self.is_running = False  # 重置标志变量
-
+        
     def on_run_script_error(self, error, teaching_tip, run_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
@@ -1001,6 +1012,7 @@ class MainWindow(QMainWindow):
             parent=self
         )
         self.log(f"run.ps1 运行失败: {error}", logging.ERROR)
+
         self.is_running = False  # 重置标志变量
 
     def setup_download_load_ui(self, widget):
@@ -1165,3 +1177,51 @@ if __name__ == "__main__":
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
+
+
+"""
+有关 cmcl 配置文件的注释
++-------------------------+----------+----------------------------------------------------------------+
+| 配置名                  | 类型     | 含义                                                           |
++-------------------------+----------+----------------------------------------------------------------+
+| accounts                | JSON数组 | 账号（非直接修改，请通过“account -h”获得相关使用教程以进行修 |
+|                         |          | 改）                                                           |
+| downloadSource          | 整数     | 下载源，0为官方，1为BMCLAPI                                    |
+| language                | 文本     | 语言，zh为简体中文，en为英文，cantonese是粤语（简体）          |
+| selectedVersion         | 文本     | 已选择的版本，可直接使用“cmcl”进行启动                       |
+| maxMemory               | 整数     | [游戏相关]最大内存（单位：MB）                                 |
+| gameDir                 | 文本     | [游戏相关]自定义游戏目录路径（或设置版本隔离），默认为.minecra |
+|                         |          | ft                                                             |
+| assetsDir               | 文本     | [游戏相关]自定义assets资源目录路径，若为空则为游戏目录内的asse |
+|                         |          | ts目录                                                         |
+| resourcesDir            | 文本     | [游戏相关]自定义资源包目录路径，若为空则为游戏目录内的resource |
+|                         |          | packs目录                                                      |
+| javaPath                | 文本     | [游戏相关]Java 路径（如果为空会自动获得）                      |
+| windowSizeWidth         | 整数     | [游戏相关]游戏窗口的宽                                         |
+| windowSizeHeight        | 整数     | [游戏相关]游戏窗口的高                                         |
+| isFullscreen            | 布尔值   | [游戏相关]游戏窗口是否为全屏                                   |
+| exitWithMinecraft       | 布尔值   | [游戏相关]运行游戏时，是否需要退出启动器时顺便退出游戏         |
+| printStartupInfo        | 布尔值   | [游戏相关]开始游戏的时候，是否输出启动信息（Java 路径、最大内  |
+|                         |          | 存等）                                                         |
+| checkAccountBeforeStart | 布尔值   | [游戏相关]开始游戏之前，是否检查账号是否可用                   |
+| jvmArgs                 | JSON数组 | [游戏相关]自定义JVM参数（通过“jvmArgs -h”获得相关使用教程以  |
+|                         |          | 进行修改）                                                     |
+| gameArgs                | JSON对象 | [游戏相关]自定义游戏参数（通过“gameArgs -h”获得相关使用教程  |
+|                         |          | 以进行修改）                                                   |
+| qpLogFile               | 文本     | [游戏相关]快速游玩（Quick Play，Minecraft 1.20 的新功能，设置  |
+|                         |          | 下面三项配置即可启动游戏后分别直接进入存档、服务器、领域，只能 |
+|                         |          | 设置一项）的日志文件路径（相对于游戏目录），可选               |
+| qpSaveName              | 文本     | [游戏相关]快速游玩直接进入的存档名称                           |
+| qpServerAddress         | 文本     | [游戏相关]快速游玩直接进入的服务器地址（包括端口），该配置也适 |
+|                         |          | 用于1.20之前的版本                                             |
+| qpRealmsID              | 文本     | [游戏相关]快速游玩直接进入的领域ID                             |
+| proxyEnabled            | 布尔值   | 是否开启网络代理                                               |
+| proxyHost               | 文本     | 代理主机地址                                                   |
+| proxyPort               | 整数     | 代理端口                                                       |
+| proxyUsername           | 文本     | 代理验证的账户（代理可选）                                     |
+| proxyPassword           | 文本     | 代理验证的密码（代理可选）                                     |
+| modDownloadSource       | 文本     | 模组下载源，curseforge或modrinth                               |
+| modpackDownloadSource   | 文本     | 整合包下载源，curseforge或modrinth                             |
+| simplifyCommands        | JSON对象 | 简化命令（通过“simplify -h”获得相关使用教程以进行修改）      |
++-------------------------+----------+----------------------------------------------------------------+
+"""
