@@ -15,12 +15,12 @@ jobs:
       ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'
 
     steps:
-    # - name: 验证资源文件路径
-    #   run: |
-    #     ls icons/bloret.ico
-    #     ls config.ini
-    #     ls ui
-    #     ls cmcl.json
+    - name: 验证资源文件路径
+      run: |
+        ls icons/bloret.ico
+        ls config.ini
+        ls ui
+        ls cmcl.json
 
     - name: 检出代码
       uses: actions/checkout@v2
@@ -49,7 +49,15 @@ jobs:
 
     - name: 使用 PyInstaller 打包
       run: |
-        pyinstaller --onefile --noconsole --icon=icons/bloret.ico --name=Bloret-Launcher --add-data "icons\\bloret.ico;." --add-data "config.ini;." --add-data "ui;ui" --add-data "cmcl.json;." --hidden-import=sip main.py
+        pyinstaller --onefile --noconsole --icon=icons/bloret.ico --name=Bloret-Launcher \
+          --add-data "icons\\bloret.ico;." \
+          --add-data "config.ini;." \
+          --add-data "ui;ui" \
+          --add-data "cmcl.json;." \
+          --add-data "cmcl.exe;." \
+          --add-data "run.ps1;." \
+          --hidden-import=sip \
+          main.py
       shell: pwsh
 
     - name: 创建包含其他文件夹的目录
@@ -65,6 +73,14 @@ jobs:
         cp -r LICENSE.txt ${{ env.OUTPUT_DIR }}/
         cp -r servers.dat ${{ env.OUTPUT_DIR }}/
         cp -r cmcl_save.json ${{ env.OUTPUT_DIR }}/
+
+    - name: 验证资源文件路径
+      run: |
+        if (-not (Test-Path "icons/bloret.ico")) { exit 1 }
+        if (-not (Test-Path "config.ini")) { exit 1 }
+        if (-not (Test-Path "ui")) { exit 1 }
+        if (-not (Test-Path "cmcl.json")) { exit 1 }
+      shell: pwsh
 
     - name: 清理旧压缩包
       run: |
