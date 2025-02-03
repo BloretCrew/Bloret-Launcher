@@ -12,7 +12,8 @@ import base64
 import json
 import configparser
 import subprocess
-import sip
+import shutil
+import sip # type: ignore
 import zipfile
 import time
 
@@ -487,6 +488,16 @@ class MainWindow(QMainWindow):
         )
         self.run_cmcl_list()  # 完成下载任务后运行 cmcl -l 获取列表
 
+        # 拷贝 servers.dat 文件到 .minecraft 文件夹
+        src_file = os.path.join(os.getcwd(), "servers.dat")
+        dest_dir = os.path.join(os.getcwd(), ".minecraft")
+        if os.path.exists(src_file):
+            try:
+                shutil.copy(src_file, dest_dir)
+                self.log(f"成功拷贝 {src_file} 到 {dest_dir}")
+            except Exception as e:
+                self.log(f"拷贝 {src_file} 到 {dest_dir} 失败: {e}", logging.ERROR)
+
     def on_download_error(self, error_message, teaching_tip, download_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
@@ -853,7 +864,8 @@ class MainWindow(QMainWindow):
         
         run_choose = widget.findChild(ComboBox, "run_choose")
         if run_choose:
-            run_choose.addItems(set_list)
+            run_choose.clear()  # 清空选择框
+            run_choose.addItems(set_list)  # 添加 set_list 的内容
 
         # 添加 run 按钮的点击事件
         run_button = widget.findChild(QPushButton, "run")  # 修改为 "run"
@@ -906,6 +918,17 @@ class MainWindow(QMainWindow):
             
             self.log(f"成功替换 {script_path} 中的 'CMCL 2.2.2' 为 'Bloret Launcher'")
             
+            # 显示气泡消息
+            TeachingTip.create(
+                target=run_button,
+                icon=InfoBarIcon.SUCCESS,
+                title='提示',
+                content="正在运行 run.ps1 脚本，请稍等...",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
             # 运行 run.ps1 脚本
             self.log(f"运行 {script_path}")
             self.run_script_thread = RunScriptThread()
@@ -929,6 +952,7 @@ class MainWindow(QMainWindow):
                 duration=2000,
                 parent=self
             )
+            self.is_running = False  # 重置标志变量
         except Exception as e:
             self.log(f"运行 cmcl version {version} --export-script-ps=run.ps1 时发生未知错误: {e}", logging.ERROR)
             if teaching_tip:
@@ -954,19 +978,15 @@ class MainWindow(QMainWindow):
         TeachingTip.create(
             target=run_button,
             icon=InfoBarIcon.SUCCESS,
-            title='启动成功',
-            content="请等待 Minecraft 界面出现\n注意左下角是 Bloret Launcher 哦",
+            title='Minecraft 已结束',
+            content="感谢使用百络谷启动器\n若异常退出，请打开百络\n谷启动器文件夹下的\nlogs 文件夹内最后一个\n日志文件，并提交到 Github 或 QQ 群",
             isClosable=True,
             tailPosition=TeachingTipTailPosition.BOTTOM,
             duration=5000,
             parent=self
         )
-        self.run_script_thread = RunScriptThread()
-        self.run_script_thread.output_received.connect(self.log_output)
-        self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
-        self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
-        self.run_script_thread.start()
-        
+        self.is_running = False  # 重置标志变量
+
     def on_run_script_error(self, error, teaching_tip, run_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
@@ -981,6 +1001,7 @@ class MainWindow(QMainWindow):
             parent=self
         )
         self.log(f"run.ps1 运行失败: {error}", logging.ERROR)
+        self.is_running = False  # 重置标志变量
 
     def setup_download_load_ui(self, widget):
         loading_label = widget.findChild(QLabel, "loading_label")
