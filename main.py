@@ -259,16 +259,16 @@ class MainWindow(QMainWindow):
                 self.loading_dialogs.clear()  # 清空列表
 
         if version_type in ["正式版本", "快照版本", "远古版本"]:
-            TeachingTip.create(
-                target=widget,
-                icon=InfoBarIcon.SUCCESS,
-                title='正在切换',
-                content=f"正在切换显示到 {version_type}\n这可能需要几秒钟时间，我们在向互联网获取最新 Minecraft 版本列表",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=2000,
-                parent=self
-            )
+            # TeachingTip.create(
+            #     target=widget,
+            #     icon=InfoBarIcon.SUCCESS,
+            #     title='正在切换',
+            #     content=f"正在切换显示到 {version_type}\n这可能需要几秒钟时间，我们在向互联网获取最新 Minecraft 版本列表",
+            #     isClosable=True,
+            #     tailPosition=TeachingTipTailPosition.BOTTOM,
+            #     duration=2000,
+            #     parent=self
+            # )
             QTimer.singleShot(2000, fetch_versions)
             self.update_minecraft_versions(widget, version_type)
             TeachingTip.create(
