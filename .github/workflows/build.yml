@@ -24,6 +24,7 @@ jobs:
         if (-not (Test-Path "config.ini")) { exit 1 }
         if (-not (Test-Path "ui")) { exit 1 }
         if (-not (Test-Path "cmcl.json")) { exit 1 }
+        if (-not (Test-Path "cmcl.exe")) { exit 1 }  # 添加对 cmcl.exe 的验证
       shell: pwsh
 
     - name: 设置 Python
