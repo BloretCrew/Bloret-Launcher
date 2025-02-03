@@ -1,10 +1,9 @@
 {
-  "exitWithMinecraft": false,
   "language": "zh",
   "downloadSource": 1,
   "checkAccountBeforeStart": false,
   "accounts": [{
-    "playerName": "Bloret_Player",
+    "playerName": "Bloret_player",
     "loginMethod": 0,
     "selected": true
   }],

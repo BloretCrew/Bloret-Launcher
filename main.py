@@ -257,27 +257,30 @@ class MainWindow(QMainWindow):
                 for dialog in self.loading_dialogs:  # 关闭所有 loading_dialog
                     dialog.close()
                 self.loading_dialogs.clear()  # 清空列表
-        if version_type in ["正式版本", "快照版本", "远古版本"]:
-            # loading_dialog = QMessageBox(self)
-            # loading_dialog.setWindowTitle("加载中")
-            # loading_dialog.setText("正在加载列表，请稍等...")
-            # loading_dialog.setStandardButtons(QMessageBox.NoButton)
-            # loading_dialog.setWindowModality(Qt.ApplicationModal)
-            # loading_dialog.show()
-            # self.loading_dialogs.append(loading_dialog)  # 将 loading_dialog 添加到列表
 
+        if version_type in ["正式版本", "快照版本", "远古版本"]:
             TeachingTip.create(
-                    target=widget,
-                    icon=InfoBarIcon.SUCCESS,
-                    title='提示',
-                    content=f"已切换到 {version_type}",
-                    isClosable=True,
-                    tailPosition=TeachingTipTailPosition.BOTTOM,
-                    duration=2000,
-                    parent=self
-                )
-            
-            # QTimer.singleShot(100, fetch_versions)
+                target=widget,
+                icon=InfoBarIcon.SUCCESS,
+                title='正在切换',
+                content=f"正在切换显示到 {version_type}\n这可能需要几秒钟时间，我们在向互联网获取最新 Minecraft 版本列表",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
+            QTimer.singleShot(2000, fetch_versions)
+            self.update_minecraft_versions(widget, version_type)
+            TeachingTip.create(
+                target=widget,
+                icon=InfoBarIcon.SUCCESS,
+                title='切换完成 ✔',
+                content=f"已切换显示到 {version_type}",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
 
     def choose_minecraft_part(self, widget):
         minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
