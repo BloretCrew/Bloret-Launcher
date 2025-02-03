@@ -15,6 +15,13 @@ jobs:
       ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'
 
     steps:
+    - name: 验证资源文件路径
+      run: |
+        ls icons/bloret.ico
+        ls config.ini
+        ls ui
+        ls cmcl.json
+
     - name: 检出代码
       uses: actions/checkout@v2
 
@@ -42,7 +49,8 @@ jobs:
 
     - name: 使用 PyInstaller 打包
       run: |
-        pyinstaller --onefile --noconsole --icon=icons/bloret.ico --name=Bloret-Launcher --add-data "icons:bloret.ico" --add-data "config.ini:." --add-data "ui:ui" --add-data "cmcl.json:." --hidden-import=sip main.py
+        pyinstaller --onefile --noconsole --icon=icons/bloret.ico --name=Bloret-Launcher --add-data "icons\\bloret.ico;." --add-data "config.ini;." --add-data "ui;ui" --add-data "cmcl.json;." --hidden-import=sip main.py
+      shell: pwsh
 
     - name: 创建包含其他文件夹的目录
       run: |
