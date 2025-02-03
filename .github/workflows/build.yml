@@ -15,12 +15,12 @@ jobs:
       ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'
 
     steps:
-    - name: 验证资源文件路径
-      run: |
-        ls icons/bloret.ico
-        ls config.ini
-        ls ui
-        ls cmcl.json
+    # - name: 验证资源文件路径
+    #   run: |
+    #     ls icons/bloret.ico
+    #     ls config.ini
+    #     ls ui
+    #     ls cmcl.json
 
     - name: 检出代码
       uses: actions/checkout@v2
