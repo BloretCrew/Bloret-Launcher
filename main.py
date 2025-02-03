@@ -584,7 +584,7 @@ class MainWindow(QMainWindow):
     def check_for_updates(self):
         self.BL_latest_ver = self.get_latest_version()
         self.log(f"最新正式版: {self.BL_latest_ver}")
-        BL_ver = 2.2 # 当前版本
+        BL_ver = float(self.config.get('DEFAULT', 'ver', fallback='0.0'))  # 从config.ini读取当前版本
         if BL_ver < float(self.BL_latest_ver):
             self.log(f"当前版本不是最新版，请更新到 {self.BL_latest_ver} 版本", logging.WARNING)
             
