@@ -36,11 +36,6 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
-        pip install loguru==0.6.0
-        pip install PyQt-Fluent-Widgets==1.0.0 -i https://pypi.org/simple/
-        pip install pyinstaller==4.5.1
-        pip install pillow==8.4.0
-        pip install PyQt5 qfluentwidgets requests win10toast pywin32
 
     - name: 将 PNG 图标转换为 ICO
       run: |
