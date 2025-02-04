@@ -93,7 +93,7 @@
        <item>
         <widget class="CaptionLabel" name="CaptionLabel_3">
          <property name="text">
-          <string>百洛谷 Minecraft 启动器</string>
+          <string>百络谷 Minecraft 启动器</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
@@ -132,7 +132,7 @@
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_5">
           <item>
-           <widget class="CaptionLabel" name="CaptionLabel_5">
+           <widget class="CaptionLabel" name="QQ_icon">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
               <horstretch>0</horstretch>
@@ -151,8 +151,14 @@
               <height>50</height>
              </size>
             </property>
+            <property name="frameShape">
+             <enum>QFrame::Box</enum>
+            </property>
             <property name="pixmap">
-             <pixmap>icon/favicon.ico</pixmap>
+             <pixmap>icon/qq.png</pixmap>
+            </property>
+            <property name="scaledContents">
+             <bool>true</bool>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>
@@ -228,7 +234,7 @@
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_6">
           <item>
-           <widget class="QLabel" name="label_2">
+           <widget class="QLabel" name="Github_icon">
             <property name="minimumSize">
              <size>
               <width>50</width>

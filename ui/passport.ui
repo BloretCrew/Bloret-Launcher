@@ -155,7 +155,7 @@
        <item>
         <widget class="CaptionLabel" name="CaptionLabel_2">
          <property name="text">
-          <string>未来将添加对账户的更多管理，百洛谷通行证和微软登录等。</string>
+          <string>未来将添加对账户的更多管理，百络谷通行证和微软登录等。</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>

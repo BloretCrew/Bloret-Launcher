@@ -1,12 +1,13 @@
+from datetime import datetime
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
+from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition
+from PyQt5 import uic
+from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
+from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer
+from win10toast import ToastNotifier
 import sys
 import logging
 import os
-from datetime import datetime
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
-from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton
-from PyQt5 import uic
-from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie
-from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer
 import requests
 import base64
 import json
@@ -16,6 +17,7 @@ import sip # type: ignore
 import zipfile
 import time
 import shutil
+from win32com.client import Dispatch
 
 # 全局变量
 ver_id_bloret = ['1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21']
@@ -88,6 +90,49 @@ class UpdateShowTextThread(QThread):
 
     def update_last_output(self, text):
         self.last_output = text
+
+class LoadMinecraftVersionsThread(QThread):
+    versions_loaded = pyqtSignal(list)
+    error_occurred = pyqtSignal(str)
+
+    def __init__(self, version_type):
+        super().__init__()
+        self.version_type = version_type
+
+    def run(self):
+        try:
+            response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
+            response.raise_for_status()
+            version_data = response.json()
+            versions = version_data["versions"]
+
+            ver_id_main.clear()
+            ver_id_short.clear()
+            ver_id_long.clear()
+
+            for version in versions:
+                if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
+                    ver_id_main.append(version["id"])
+                else:
+                    if version["type"] == "snapshot":
+                        ver_id_short.append(version["id"])
+                    elif version["type"] in ["old_alpha", "old_beta"]:
+                        ver_id_long.append(version["id"])
+
+            if self.version_type == "百络谷支持版本":
+                self.versions_loaded.emit(ver_id_bloret)
+            elif self.version_type == "正式版本":
+                self.versions_loaded.emit(ver_id_main)
+            elif self.version_type == "快照版本":
+                self.versions_loaded.emit(ver_id_short)
+            elif self.version_type == "远古版本":
+                self.versions_loaded.emit(ver_id_long)
+            else:
+                self.error_occurred.emit("未知的版本类型")
+        except requests.RequestException as e:
+            self.error_occurred.emit(f"请求错误: {e}")
+        except requests.exceptions.SSLError as e:
+            self.error_occurred.emit(f"SSL 错误: {e}")
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -204,12 +249,21 @@ class MainWindow(QMainWindow):
         self.download_worker = None  # 初始化下载工作线程
         self.run_cmcl_list()  # 启动程序时运行 cmcl -l 获取列表
         self.update_show_text_thread = None  # 初始化更新线程
+        self.threads = []  # 用于存储所有启动的线程
 
     def log(self, message, level=logging.INFO):
         if self.logshow:
             print(message)
         else:
             logging.log(level, message)
+
+    def closeEvent(self, event):
+        # 在窗口关闭时终止所有线程
+        for thread in self.threads:
+            if thread.isRunning():
+                thread.terminate()
+                thread.wait()
+        event.accept()
 
     def on_download_clicked(self):
         self.log("下载 被点击")
@@ -266,48 +320,90 @@ class MainWindow(QMainWindow):
             minecraft_choose.addItems(ver_id_bloret)
 
     def on_show_way_changed(self, widget, version_type):
-        def fetch_versions():
-            try:
-                self.update_minecraft_versions(widget, version_type)
-            except Exception as e:
-                TeachingTip.create(
-                    target=widget,
-                    icon=InfoBarIcon.ERROR,
-                    title='错误',
-                    content=f"加载列表时出错: {e}",
-                    isClosable=True,
-                    tailPosition=TeachingTipTailPosition.BOTTOM,
-                    duration=2000,
-                    parent=self
-                )
-            finally:
-                for dialog in self.loading_dialogs:  # 关闭所有 loading_dialog
-                    dialog.close()
-                self.loading_dialogs.clear()  # 清空列表
+        show_way = widget.findChild(ComboBox, "show_way")
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+        
+        if show_way and minecraft_choose:
+            show_way.setEnabled(False)
+            minecraft_choose.setEnabled(False)
+            InfoBar.success(
+                title='⏱️ 正在加载',
+                content=f"正在加载 {version_type} 的列表",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self
+            )
 
-        if version_type in ["正式版本", "快照版本", "远古版本"]:
+        def fetch_versions():
+            self.load_versions_thread = LoadMinecraftVersionsThread(version_type)
+            self.threads.append(self.load_versions_thread)  # 将线程添加到列表中
+            self.load_versions_thread.versions_loaded.connect(lambda versions: self.update_minecraft_choose(widget, versions))
+            self.load_versions_thread.error_occurred.connect(lambda error: self.show_error_tip(widget, error))
+            self.load_versions_thread.start()
+
+        QTimer.singleShot(2000, fetch_versions)
+        if minecraft_choose:
+            minecraft_choose.clear()
+            minecraft_choose.addItems(ver_id_bloret)
             # TeachingTip.create(
             #     target=widget,
             #     icon=InfoBarIcon.SUCCESS,
-            #     title='正在切换',
-            #     content=f"正在切换显示到 {version_type}\n这可能需要几秒钟时间，我们在向互联网获取最新 Minecraft 版本列表",
+            #     title='切换完成 ✔',
+            #     content=f"已切换显示到 {version_type}",
+            #     isClosable=True,
+            #     tailPosition=TeachingTipTailPosition.BOTTOM,
+            #     duration=2000,
+            #     parent=self
+            #)
+
+            # teaching_tip.move(show_way.mapToGlobal(show_way.rect().center() - teaching_tip.rect().center()))
+            
+            # TeachingTip.create(
+            #     target=widget,
+            #     icon=InfoBarIcon.SUCCESS,
+            #     title='正在加载 ⏱️',
+            #     content=f"正在加载 {version_type} 的列表",
             #     isClosable=True,
             #     tailPosition=TeachingTipTailPosition.BOTTOM,
             #     duration=2000,
             #     parent=self
             # )
-            QTimer.singleShot(2000, fetch_versions)
-            self.update_minecraft_versions(widget, version_type)
-            TeachingTip.create(
-                target=widget,
-                icon=InfoBarIcon.SUCCESS,
-                title='切换完成 ✔',
-                content=f"已切换显示到 {version_type}",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=2000,
-                parent=self
-            )
+
+    def update_minecraft_choose(self, widget, versions):
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+        show_way = widget.findChild(ComboBox, "show_way")
+        if minecraft_choose:
+            minecraft_choose.clear()
+            minecraft_choose.addItems(versions)
+            minecraft_choose.setEnabled(True)
+        if show_way:
+            show_way.setEnabled(True)
+        for dialog in self.loading_dialogs:
+            dialog.close()
+        self.loading_dialogs.clear()
+
+    def show_error_tip(self, widget, error):
+        show_way = widget.findChild(ComboBox, "show_way")
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+        if show_way:
+            show_way.setEnabled(True)
+        if minecraft_choose:
+            minecraft_choose.setEnabled(True)
+        TeachingTip.create(
+            target=widget,
+            icon=InfoBarIcon.ERROR,
+            title='错误',
+            content=f"加载列表时出错: {error}",
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=2000,
+            parent=self
+        )
+        for dialog in self.loading_dialogs:
+            dialog.close()
+        self.loading_dialogs.clear()
 
     def choose_minecraft_part(self, widget):
         minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
@@ -454,7 +550,9 @@ class MainWindow(QMainWindow):
             )
             teaching_tip.move(download_button.mapToGlobal(download_button.rect().topLeft()))
 
-            self.download_thread = self.DownloadThread(choose_ver)
+            cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")
+            self.download_thread = self.DownloadThread(cmcl_path, choose_ver)
+            self.threads.append(self.download_thread)  # 将线程添加到列表中
             self.download_thread.output_received.connect(self.log_output)
             self.download_thread.output_received.connect(lambda text: download_button.setText(text[:60] + '...' if len(text) > 60 else text))  # 实时更新按钮文字
             self.download_thread.finished.connect(lambda: self.on_download_finished(teaching_tip, download_button))
@@ -469,18 +567,29 @@ class MainWindow(QMainWindow):
         finished = pyqtSignal()
         error_occurred = pyqtSignal(str)
         output_received = pyqtSignal(str)
-        def __init__(self, version):
+        def __init__(self, cmcl_path, version):
             super().__init__()
+            self.cmcl_path = cmcl_path
             self.version = version
         def run(self):
             try:
                 process = subprocess.Popen(
-                    ["cmcl", "install", self.version],
+                    [self.cmcl_path, "install", self.version],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
                     encoding=None
                 )
+                for line in iter(process.stdout.readline, ''):
+                    if "该名称已存在，请更换一个名称。" in line:
+                        self.error_occurred.emit("该版本已下载过。")
+                        process.terminate()
+                        return
+                    ["cmcl", "install", self.version],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding=None
                 for line in iter(process.stdout.readline, ''):
                     if "该名称已存在，请更换一个名称。" in line:
                         self.error_occurred.emit("该版本已下载过。")
@@ -519,16 +628,17 @@ class MainWindow(QMainWindow):
     def on_download_finished(self, teaching_tip, download_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
-        TeachingTip.create(
-            target=download_button,
-            icon=InfoBarIcon.SUCCESS,
-            title='下载成功',
-            content="版本已成功下载",
-            isClosable=True,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=2000,
-            parent=self
-        )
+        if download_button:
+            TeachingTip.create(
+                target=download_button,
+                icon=InfoBarIcon.SUCCESS,
+                title='下载成功',
+                content="版本已成功下载",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
         self.run_cmcl_list()  # 完成下载任务后运行 cmcl -l 获取列表
 
         # 拷贝 servers.dat 文件到 .minecraft 文件夹
@@ -542,6 +652,21 @@ class MainWindow(QMainWindow):
                 self.log(f"拷贝 {src_file} 到 {dest_dir} 失败: {e}", logging.ERROR)
 
         self.is_running = False  # 重置标志变量
+
+        # 发送系统通知
+        QTimer.singleShot(0, lambda: self.send_system_notification("下载完成", f"版本 {self.download_thread.version} 已成功下载"))
+
+    def send_system_notification(self, title, message):
+        try:
+            if sys.platform == "win32":
+                toaster = ToastNotifier()
+                toaster.show_toast(title, message, duration=10)
+            elif sys.platform == "darwin":
+                subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
+            else:
+                subprocess.run(["notify-send", title, message])
+        except Exception as e:
+            self.log(f"发送系统通知失败: {e}", logging.ERROR)
 
     def on_download_error(self, error_message, teaching_tip, download_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
@@ -600,6 +725,20 @@ class MainWindow(QMainWindow):
             if os.path.exists(updata_ps1_file):
                 os.remove(updata_ps1_file)
                 self.log(f"删除文件: {updata_ps1_file}")
+                def create_shortcut(self):
+                    desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+                    shortcut_path = os.path.join(desktop, 'Bloret Launcher.lnk')
+                    target = os.path.join(os.getcwd(), 'Bloret-Launcher.exe')
+                    icon = os.path.join(os.getcwd(), 'icons', 'bloret.ico')
+
+                    shell = Dispatch('WScript.Shell')
+                    shortcut = shell.CreateShortCut(shortcut_path)
+                    shortcut.TargetPath = target
+                    shortcut.WorkingDirectory = os.getcwd()
+                    shortcut.IconLocation = icon
+                    shortcut.save()
+
+                self.create_shortcut()
 
             #首次启动向 http://123.129.241.101:30399/ 发送请求，服务器计数器+1
             #具体可见项目 https://github.com/BloretCrew/Bloret-Launcher-Server
@@ -981,14 +1120,15 @@ class MainWindow(QMainWindow):
             self.log(f"删除文件: {script_path}")
 
         try:
-            self.log(f"运行 cmcl version {version} --export-script-ps=run.ps1")
+            cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")
+            self.log(f"运行 {cmcl_path} version {version} --export-script-ps=run.ps1")
             result = subprocess.run(
-                ["cmcl", "version", version, "--export-script-ps=run.ps1"],
+                [cmcl_path, "version", version, "--export-script-ps=run.ps1"],
                 capture_output=True,
                 text=True,
                 check=True
             )
-            self.log(f"cmcl version {version} --export-script-ps=run.ps1 运行成功: {result.stdout}")
+            self.log(f"{cmcl_path} version {version} --export-script-ps=run.ps1 运行成功: {result.stdout}")
 
             if not os.path.exists(script_path):
                 self.log(f"生成的脚本文件 {script_path} 不存在", logging.ERROR)
@@ -1006,9 +1146,9 @@ class MainWindow(QMainWindow):
 
             self.log(f"运行 {script_path}")
             self.run_script_thread = RunScriptThread()
+            self.threads.append(self.run_script_thread)  # 将线程添加到列表中
             self.run_script_thread.output_received.connect(self.log_output)
             self.run_script_thread.last_output_received.connect(self.update_show_text)  # 连接信号到槽
-            self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
 
             self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
             self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
@@ -1016,6 +1156,7 @@ class MainWindow(QMainWindow):
 
             # 启动更新show文字框的线程
             self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
+            self.threads.append(self.update_show_text_thread)  # 将线程添加到列表中
             self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)  # 连接信号到更新线程
             self.update_show_text_thread.update_text.connect(self.update_show_text)
             self.update_show_text_thread.start()
@@ -1049,6 +1190,7 @@ class MainWindow(QMainWindow):
                 parent=self
             )
             self.is_running = False  # 重置标志变量
+
     def log_output(self, output):
         self.log(output)
 
@@ -1242,6 +1384,9 @@ class MainWindow(QMainWindow):
         qq_group_button = widget.findChild(QPushButton, "pushButton")
         if qq_group_button:
             qq_group_button.clicked.connect(self.open_qq_link)
+        qq_icon = widget.findChild(QLabel, "QQ_icon")
+        if qq_icon:
+            qq_icon.setPixmap(QPixmap("ui/icon/qq.png"))
 
     def run_cmcl_list(self):
         try:
