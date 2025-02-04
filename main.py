@@ -46,6 +46,7 @@ class RunScriptThread(QThread):
     finished = pyqtSignal()
     error_occurred = pyqtSignal(str)
     output_received = pyqtSignal(str)
+    last_output_received = pyqtSignal(str)  # 新增信号
 
     def run(self):
         script_path = "run.ps1"
@@ -58,8 +59,11 @@ class RunScriptThread(QThread):
                 encoding='latin-1',
                 errors='ignore'
             )
+            last_line = ""
             for line in iter(process.stdout.readline, ''):
-                self.output_received.emit(line.strip())
+                last_line = line.strip()
+                self.output_received.emit(last_line)
+            self.last_output_received.emit(last_line)  # 发射最后一行输出信号
             process.stdout.close()
             process.wait()
             if process.returncode == 0:
@@ -69,14 +73,32 @@ class RunScriptThread(QThread):
         except subprocess.CalledProcessError as e:
             self.error_occurred.emit(str(e.stderr))
 
+class UpdateShowTextThread(QThread):
+    update_text = pyqtSignal(str)
+
+    def __init__(self, run_script_thread):
+        super().__init__()
+        self.run_script_thread = run_script_thread
+        self.last_output = ""
+
+    def run(self):
+        while self.run_script_thread.isRunning():
+            time.sleep(1)  # 每秒更新一次
+            self.update_text.emit(self.last_output)
+
+    def update_last_output(self, text):
+        self.last_output = text
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.loading_dialogs = []  # 初始化 loading_dialogs 属性
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
+        self.logshow = self.config.getboolean('DEFAULT', 'logshow', fallback=False)
         self.handle_first_run()
 
+        # 确保 logshow 属性被正确初始化
         self.logshow = self.config.getboolean('DEFAULT', 'logshow', fallback=False)
         self.check_for_updates()
 
@@ -102,6 +124,7 @@ class MainWindow(QMainWindow):
             onClick=self.on_home_clicked,
             position=NavigationItemPosition.TOP
         )
+        
         self.navigation_interface.addItem(
             routeKey="download",
             icon=QIcon("icons/download.png"),  
@@ -109,6 +132,7 @@ class MainWindow(QMainWindow):
             onClick=self.on_download_clicked,
             position=NavigationItemPosition.TOP
         )
+
         self.navigation_interface.addItem(
             routeKey="tools",
             icon=QIcon("icons/tools.png"),  
@@ -116,6 +140,7 @@ class MainWindow(QMainWindow):
             onClick=self.on_tools_clicked,
             position=NavigationItemPosition.TOP
         )
+
         self.navigation_interface.addItem(
             routeKey="passport",
             icon=QIcon("icons/passport.png"),  
@@ -123,6 +148,7 @@ class MainWindow(QMainWindow):
             onClick=self.on_passport_clicked,
             position=NavigationItemPosition.BOTTOM
         )
+
         self.navigation_interface.addItem(
             routeKey="settings",
             icon=QIcon("icons/settings.png"),  
@@ -177,6 +203,7 @@ class MainWindow(QMainWindow):
 
         self.download_worker = None  # 初始化下载工作线程
         self.run_cmcl_list()  # 启动程序时运行 cmcl -l 获取列表
+        self.update_show_text_thread = None  # 初始化更新线程
 
     def log(self, message, level=logging.INFO):
         if self.logshow:
@@ -574,7 +601,27 @@ class MainWindow(QMainWindow):
                 os.remove(updata_ps1_file)
                 self.log(f"删除文件: {updata_ps1_file}")
 
-            QMessageBox.information(self, "欢迎", "欢迎使用百络谷启动器 (＾ｰ^)ノ")
+            #首次启动向 http://123.129.241.101:30399/ 发送请求，服务器计数器+1
+            #具体可见项目 https://github.com/BloretCrew/Bloret-Launcher-Server
+
+            response = requests.get("http://123.129.241.101:30399/")
+            if response.status_code == 200:
+                data = response.json()
+                self.bl_users = data.get("user", "未知用户")
+                self.log(f"获取到的用户数: {self.bl_users}")
+            else:
+                self.bl_users = "未知用户"
+                self.log("无法获取用户数", logging.ERROR)
+            
+            #首次启动显示弹窗提醒
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Information)
+            msg_box.setWindowTitle('欢迎')
+            msg_box.setText("欢迎使用百络谷启动器 (＾ｰ^)ノ\n您是百络谷启动器的第 %s 位用户" % self.bl_users)
+            msg_box.setWindowIcon(QIcon("icons/bloret.png"))  # 设置弹窗图标
+            msg_box.setStandardButtons(QMessageBox.Ok)
+            msg_box.exec()
+            # QMessageBox.information(self, "欢迎", "欢迎使用百络谷启动器 (＾ｰ^)ノ\n您是百络谷启动器的第 %s 位用户" % self.bl_users)
 
             # 更新配置文件中的 first-run 值
             self.config.set('DEFAULT', 'first-run', 'false')
@@ -905,6 +952,8 @@ class MainWindow(QMainWindow):
         if run_button:
             run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText()))
 
+        self.show_text = widget.findChild(QLabel, "show")  # 获取show文字框
+
     def run_cmcl(self, version):
         if self.is_running:
             self.log("run.ps1 正在运行中，不启动新的实例")
@@ -957,14 +1006,22 @@ class MainWindow(QMainWindow):
 
             self.log(f"运行 {script_path}")
             self.run_script_thread = RunScriptThread()
-            self.run_script_thread.teaching_tip = teaching_tip  # 将 TeachingTip 对象保存为线程的属性
             self.run_script_thread.output_received.connect(self.log_output)
+            self.run_script_thread.last_output_received.connect(self.update_show_text)  # 连接信号到槽
+            self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
+
             self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
             self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
             self.run_script_thread.start()
 
+            # 启动更新show文字框的线程
+            self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
+            self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)  # 连接信号到更新线程
+            self.update_show_text_thread.update_text.connect(self.update_show_text)
+            self.update_show_text_thread.start()
+
         except subprocess.CalledProcessError as e:
-            self.log(f"cmcl version {version} --export-script-ps=run.ps1 运行失败: {e.stderr}", logging.ERROR)
+            self.log(f"cmcl version {version} --expzcort-script-ps=run.ps1 运行失败: {e.stderr}", logging.ERROR)
             if teaching_tip:
                 teaching_tip.close()  # 关闭气泡消息
             TeachingTip.create(
@@ -996,13 +1053,17 @@ class MainWindow(QMainWindow):
         self.log(output)
 
     def on_run_script_finished(self, teaching_tip, run_button):
+        # ...existing code...
+        if self.update_show_text_thread:
+            self.update_show_text_thread.terminate()  # 停止更新线程
+        # ...existing code...
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()  # 关闭气泡消息
         TeachingTip.create(
             target=run_button,
             icon=InfoBarIcon.SUCCESS,
-            title='启动成功',
-            content="请等待 Minecraft 界面出现\n注意左下角是 Bloret Launcher 哦",
+            title='游戏结束',
+            content="Minecraft 已结束\n如果您认为是异常退出，请查看 log 文件夹中的最后一份日志文件\n并前往本项目的 Github 或 百络谷QQ群 询问",
             isClosable=True,
             tailPosition=TeachingTipTailPosition.BOTTOM,
             duration=5000,
@@ -1018,6 +1079,10 @@ class MainWindow(QMainWindow):
         self.is_running = False  # 重置标志变量
         
     def on_run_script_error(self, error, teaching_tip, run_button):
+        # ...existing code...
+        if self.update_show_text_thread:
+            self.update_show_text_thread.terminate()  # 停止更新线程
+        # ...existing code...
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
         TeachingTip.create(
@@ -1033,6 +1098,9 @@ class MainWindow(QMainWindow):
         self.log(f"run.ps1 运行失败: {error}", logging.ERROR)
 
         self.is_running = False  # 重置标志变量
+
+    def update_show_text(self, text):
+        self.show_text.setText(text)  # 更新show文字框的内容
 
     def setup_download_load_ui(self, widget):
         loading_label = widget.findChild(QLabel, "loading_label")

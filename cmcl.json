@@ -3,7 +3,7 @@
   "downloadSource": 1,
   "checkAccountBeforeStart": false,
   "accounts": [{
-    "playerName": "Bloret_player",
+    "playerName": "Bloret_Player",
     "loginMethod": 0,
     "selected": true
   }],
