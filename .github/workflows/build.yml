@@ -59,6 +59,8 @@ jobs:
           --add-data "cmcl.json;." `
           --add-data "cmcl.exe;." `
           --hidden-import=sip `
+          --hidden-import=qfluentwidgets `
+          --paths=. `
           main.py
       shell: pwsh
 
