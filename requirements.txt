@@ -4,9 +4,9 @@ colorama==0.4.6
 configparser~=7.1.0
 darkdetect==0.8.0
 idna==3.10
-loguru~=0.7.2
+loguru~=0.6.0
 PyQt5~=5.15.11
-PyQt-Fluent-Widgets~=1.7.2
+PyQt-Fluent-Widgets==1.0.0
 pyqt5-frameless-window==0.4.3
 pyqt5-qt5==5.15.2
 pyqt5-sip==12.15.0
@@ -20,3 +20,5 @@ PyGetWindow~=0.0.9
 Markdown~=3.7
 pygame~=2.6.1
 plyer==2.1.0
+Pillow==8.4.0
+pyinstaller==4.5.1
