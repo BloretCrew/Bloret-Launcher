@@ -20,5 +20,5 @@ PyGetWindow~=0.0.9
 Markdown~=3.7
 pygame~=2.6.1
 plyer==2.1.0
-Pillow==8.4.0
+Pillow==10.3.0
 pyinstaller==4.5.1
