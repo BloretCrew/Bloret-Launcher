@@ -22,3 +22,4 @@ pygame~=2.6.1
 plyer==2.1.0
 Pillow==10.3.0
 pyinstaller==4.5.1
+win10toast
