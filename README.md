@@ -7,7 +7,9 @@
 <p align="center">
  百络谷 Minecraft 启动器
 </p>
+
 [![将 Python 打包为 EXE](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml)
+
 
 ![Show](img/show.gif)
 
