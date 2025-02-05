@@ -34,6 +34,7 @@
 ## 功能与计划
 - [x] 下载 Minecraft
 - [x] 启动 Minecraft
+- [ ] 安装 Mod 加载器
 - [x] Minecraft 数据查询
 - [x] 日志
 - [x] 支持深浅色
