@@ -60,6 +60,7 @@ jobs:
           --add-data "cmcl.exe;." `
           --hidden-import=sip `
           --hidden-import=qfluentwidgets `
+          --hidden-import=win10toast `
           --paths=. `
           Bloret-Launcher.py
       shell: pwsh
