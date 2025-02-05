@@ -18,6 +18,7 @@ import zipfile
 import time
 import shutil
 from win32com.client import Dispatch
+import platform
 
 # 全局变量
 ver_id_bloret = ['1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21']
@@ -155,6 +156,7 @@ class MainWindow(QMainWindow):
         self.player_skin = ""  
         self.player_cape = ""  
         self.player_name = ""  
+        self.cmcl_path = "cmcl.exe" if platform.system() == "Windows" else "cmcl.jar"
 
         # 读取设置
         self.settings = QSettings("Bloret", "Launcher")
@@ -658,13 +660,12 @@ class MainWindow(QMainWindow):
 
     def send_system_notification(self, title, message):
         try:
-            if sys.platform == "win32":
-                toaster = ToastNotifier()
-                toaster.show_toast(title, message, duration=10)
-            elif sys.platform == "darwin":
-                subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
-            else:
+            if platform.system() == "Windows":
+                subprocess.run(["powershell", "-Command", f"New-BurntToastNotification -Text '{title}', '{message}'"])
+            elif platform.system() == "Linux":
                 subprocess.run(["notify-send", title, message])
+            else:
+                self.log(f"不支持的操作系统: {platform.system()}", logging.ERROR)
         except Exception as e:
             self.log(f"发送系统通知失败: {e}", logging.ERROR)
 
@@ -786,8 +787,10 @@ class MainWindow(QMainWindow):
                 self.update_to_latest_version()
 
     def update_to_latest_version(self):
-        #url = f"http://localhost:100/zipdownload/{self.BL_latest_ver}.zip"
-        url = f"http://123.129.241.101:30399/zipdownload/{self.BL_latest_ver}.zip"
+        #url = f"http://localhost:100/zipdownload/{self.BL_latest_ver}.zip" #本地
+        url = f"http://123.129.241.101:30399/zipdownload/{self.BL_latest_ver}.zip" #百络谷服务器
+        #url = f"https://github.com/BloretCrew/Bloret-Launcher/releases/download/{self.BL_latest_ver}/Bloret-Launcher.zip" #GITHUB
+        #url = f"https://kkgithub.com/BloretCrew/Bloret-Launcher/releases/download/{self.BL_latest_ver}/Bloret-Launcher.zip" #KGITHUB
         save_path = os.path.join(os.getcwd(), f"{self.BL_latest_ver}.zip")
         updating_folder = os.path.join(os.path.dirname(os.getcwd()), "updating")
 
@@ -1120,15 +1123,14 @@ class MainWindow(QMainWindow):
             self.log(f"删除文件: {script_path}")
 
         try:
-            cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")
-            self.log(f"运行 {cmcl_path} version {version} --export-script-ps=run.ps1")
+            self.log(f"运行 {self.cmcl_path} version {version} --export-script-ps=run.ps1")
             result = subprocess.run(
-                [cmcl_path, "version", version, "--export-script-ps=run.ps1"],
+                [self.cmcl_path, "version", version, "--export-script-ps=run.ps1"],
                 capture_output=True,
                 text=True,
                 check=True
             )
-            self.log(f"{cmcl_path} version {version} --export-script-ps=run.ps1 运行成功: {result.stdout}")
+            self.log(f"{self.cmcl_path} version {version} --export-script-ps=run.ps1 运行成功: {result.stdout}")
 
             if not os.path.exists(script_path):
                 self.log(f"生成的脚本文件 {script_path} 不存在", logging.ERROR)
@@ -1162,28 +1164,28 @@ class MainWindow(QMainWindow):
             self.update_show_text_thread.start()
 
         except subprocess.CalledProcessError as e:
-            self.log(f"cmcl version {version} --expzcort-script-ps=run.ps1 运行失败: {e.stderr}", logging.ERROR)
+            self.log(f"{self.cmcl_path} version {version} --export-script-ps=run.ps1 运行失败: {e.stderr}", logging.ERROR)
             if teaching_tip:
                 teaching_tip.close()  # 关闭气泡消息
             TeachingTip.create(
                 target=self.sender(),
                 icon=InfoBarIcon.ERROR,
                 title='提示',
-                content=f"cmcl version {version} --export-script-ps=run.ps1 运行失败: {e.stderr}",
+                content=f"{self.cmcl_path} version {version} --export-script-ps=run.ps1 运行失败: {e.stderr}",
                 isClosable=True,
                 tailPosition=TeachingTipTailPosition.BOTTOM,
                 duration=2000,
                 parent=self
             )
         except Exception as e:
-            self.log(f"运行 cmcl version {version} --export-script-ps=run.ps1 时发生未知错误: {e}", logging.ERROR)
+            self.log(f"运行 {self.cmcl_path} version {version} --export-script-ps=run.ps1 时发生未知错误: {e}", logging.ERROR)
             if teaching_tip:
                 teaching_tip.close()  # 关闭气泡消息
             TeachingTip.create(
                 target=self.sender(),
                 icon=InfoBarIcon.ERROR,
                 title='提示',
-                content=f"运行 cmcl version {version} --export-script-ps=run.ps1 时发生未知错误: {e}",
+                content=f"运行 {self.cmcl_path} version {version} --export-script-ps=run.ps1 时发生未知错误: {e}",
                 isClosable=True,
                 tailPosition=TeachingTipTailPosition.BOTTOM,
                 duration=2000,
@@ -1390,21 +1392,20 @@ class MainWindow(QMainWindow):
 
     def run_cmcl_list(self):
         try:
-            cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")
-            if not os.path.exists(cmcl_path) or not os.access(cmcl_path, os.X_OK):
-                self.log(f"cmcl.exe 不存在或不可执行: {cmcl_path}", logging.ERROR)
+            if not os.path.exists(self.cmcl_path) or not os.access(self.cmcl_path, os.X_OK):
+                self.log(f"{self.cmcl_path} 不存在或不可执行", logging.ERROR)
                 return
 
-            self.log(f"正在运行 {cmcl_path} -l")
+            self.log(f"正在运行 {self.cmcl_path} -l")
             result = subprocess.run(
-                [cmcl_path, "-l"],
+                [self.cmcl_path, "-l"],
                 capture_output=True,
                 text=True,
                 check=True,
                 cwd=os.getcwd()  # 确保在当前工作目录下运行
             )
             set_list = [line.strip() for line in result.stdout.splitlines()[1:]]  # 去除每行末尾的空格
-            self.log(f"cmcl -l 输出: {set_list}")
+            self.log(f"{self.cmcl_path} -l 输出: {set_list}")
             if not set_list:
                 set_list = ["你还未安装任何版本哦，请前往下载页面安装"]
             # 处理获取到的列表，例如更新UI中的某个组件
@@ -1414,11 +1415,11 @@ class MainWindow(QMainWindow):
             #     run_choose.clear()
             #     run_choose.addItems(set_list)
         except subprocess.CalledProcessError as e:
-            self.log(f"执行 cmcl -l 失败: {e.stderr}", logging.ERROR)
+            self.log(f"执行 {self.cmcl_path} -l 失败: {e.stderr}", logging.ERROR)
         except OSError as e:
-            self.log(f"运行 cmcl -l 时发生操作系统错误: {e}", logging.ERROR)
+            self.log(f"运行 {self.cmcl_path} -l 时发生操作系统错误: {e}", logging.ERROR)
         except Exception as e:
-            self.log(f"运行 cmcl -l 时发生未知错误: {e}", logging.ERROR)
+            self.log(f"运行 {self.cmcl_path} -l 时发生未知错误: {e}", logging.ERROR)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
