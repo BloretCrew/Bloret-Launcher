@@ -61,7 +61,7 @@ jobs:
           --hidden-import=sip `
           --hidden-import=qfluentwidgets `
           --paths=. `
-          main.py
+          Bloret-Launcher.py
       shell: pwsh
 
     - name: 创建包含其他文件夹的目录
