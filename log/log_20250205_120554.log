@@ -1,0 +1,8 @@
+2025-02-05 12:05:54,793 [INFO] 最新正式版: 3.1
+2025-02-05 12:05:55,548 [INFO] 正在获取 cmcl -l 输出
+2025-02-05 12:05:56,321 [INFO] cmcl -l 输出: ['']
+2025-02-05 12:05:56,497 [INFO] 正在运行 G:\Work\Bloret-Launcher\cmcl.exe -l
+2025-02-05 12:05:57,291 [INFO] cmcl -l 输出: ['']
+2025-02-05 12:05:59,782 [INFO] 下载 被点击
+2025-02-05 12:06:03,430 [INFO] 成功覆盖 G:\Work\Bloret-Launcher\cmcl.json 文件
+2025-02-05 12:06:03,460 [INFO] 成功覆盖 G:\Work\Bloret-Launcher\cmcl.json 文件
