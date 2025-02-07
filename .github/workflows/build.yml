@@ -25,12 +25,7 @@ jobs:
     - name: 安装系统依赖
       run: |
         choco source add -n="official" -s="https://community.chocolatey.org/api/v2"
-        choco install -y gobject-introspection --pre
-      shell: pwsh
-
-    - name: 设置环境变量
-      run: |
-        echo "PKG_CONFIG_PATH=C:\Program Files\GObject Introspection\lib\pkgconfig" >> $env:GITHUB_ENV
+        choco install -y gobject-introspection --pre --ignore-checksums --source="https://community.chocolatey.org/api/v2/"
       shell: pwsh
 
     - name: 设置 Python
