@@ -26,12 +26,11 @@ jobs:
       run: |
         choco source add -n="official" -s="https://community.chocolatey.org/api/v2"
         choco install -y gobject-introspection --pre --ignore-checksums --source="https://community.chocolatey.org/api/v2/"
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "Trying alternative source for gobject-introspection"
+          choco install -y gobject-introspection --pre --ignore-checksums --source="https://some-alternative-source/api/v2/"
+        }
       shell: pwsh
-
-    - name: 设置 Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: 安装依赖
       run: |
