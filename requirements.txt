@@ -21,6 +21,6 @@ Markdown~=3.7
 pygame~=2.6.1
 plyer==2.1.0
 Pillow==10.3.0
-pyinstaller==4.5.1
+pyinstaller==6.10.0
 # win10toast
 PyGObject
