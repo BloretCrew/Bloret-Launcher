@@ -62,7 +62,7 @@
 - [PyQt5](https://www.riverbankcomputing.com/static/Docs/PyQt5/)
 - [PyQt Fluent Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)
 - [SF Symbols](https://developer.apple.com/cn/sf-symbols/)
-- [Console Minecraft Launcher](https://github.com/MrShieh-X/console-minecraft-launcher)
+- [Console Minecraft Launcher](https://github.com/MrShieh-X/console-minecraft-launcher) *本项目有一部分基于此项目构建
 - [Class Widgets](https://github.com/Class-Widgets/Class-Widgets)
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
