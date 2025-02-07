@@ -22,6 +22,12 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v2
 
+    - name: 安装 pkg-config 和 gobject-introspection
+      run: |
+        choco install pkgconfiglite
+        choco install gobject-introspection
+      shell: pwsh
+
     - name: 安装依赖
       run: |
         pip install --upgrade pip
