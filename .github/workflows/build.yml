@@ -18,13 +18,19 @@ jobs:
       ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'
 
     steps:
+      
     - name: 检出代码
       uses: actions/checkout@v2
 
+    - name: 测试网络连接
+      run: |
+        Invoke-WebRequest -Uri https://community.chocolatey.org/api/v2
+      shell: pwsh
+
     - name: 安装系统依赖
       run: |
-        choco source add -n="official" -s="https://chocolatey.org/api/v2"
-        choco install -y gobject-introspection
+        choco source add -n="official" -s="https://community.chocolatey.org/api/v2"
+        choco install -y gobject-introspection --pre
       shell: pwsh
 
     - name: 设置环境变量
