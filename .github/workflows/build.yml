@@ -23,6 +23,7 @@ jobs:
 
     - name: 安装系统依赖
       run: |
+        choco source add -n="official" -s="https://chocolatey.org/api/v2"
         choco install -y gobject-introspection
       shell: pwsh
 
