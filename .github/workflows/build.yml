@@ -18,13 +18,14 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v2
 
-    - name: 验证资源文件路径
+    - name: 安装系统依赖
       run: |
-        if (-not (Test-Path "icons/bloret.png")) { exit 1 }
-        if (-not (Test-Path "config.ini")) { exit 1 }
-        if (-not (Test-Path "ui")) { exit 1 }
-        if (-not (Test-Path "cmcl.json")) { exit 1 }
-        if (-not (Test-Path "cmcl.exe")) { exit 1 }  # 添加对 cmcl.exe 的验证
+        choco install -y gobject-introspection
+      shell: pwsh
+
+    - name: 设置环境变量
+      run: |
+        echo "PKG_CONFIG_PATH=C:\Program Files\GObject Introspection\lib\pkgconfig" >> $env:GITHUB_ENV
       shell: pwsh
 
     - name: 设置 Python
@@ -36,6 +37,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
+      shell: pwsh
 
     - name: 将 PNG 图标转换为 ICO
       run: |
