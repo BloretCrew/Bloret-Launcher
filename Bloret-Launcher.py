@@ -122,19 +122,16 @@ class LoadMinecraftVersionsThread(QThread):
 class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
-
         # 初始化 sidebar_animation
         self.sidebar_animation = QPropertyAnimation(self.navigationInterface, b"geometry")
         self.sidebar_animation.setDuration(300)  # 设置动画持续时间
         self.sidebar_animation.setEasingCurve(QEasingCurve.InOutQuad)
-
         # 初始化 fade_in_animation
         self.fade_in_animation = QPropertyAnimation(self, b"windowOpacity")
         self.fade_in_animation.setDuration(500)
         self.fade_in_animation.setStartValue(0)
         self.fade_in_animation.setEndValue(1)
         self.fade_in_animation.setEasingCurve(QEasingCurve.InOutQuad)
-
         self.loading_dialogs = []  # 初始化 loading_dialogs 属性
         self.threads = []  # 初始化 threads 属性
         self.config = configparser.ConfigParser()
@@ -156,12 +153,10 @@ class MainWindow(FluentWindow):
         self.initNavigation()
         self.initWindow()
         self.show()
-
         self.setAttribute(Qt.WA_QuitOnClose, True)  # 确保窗口关闭时程序退出
         self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)  # 确保窗口显示在最前面
         self.raise_()
         self.activateWindow()
-
     def initNavigation(self):
         self.homeInterface = QWidget()
         self.downloadInterface = QWidget()
@@ -169,82 +164,64 @@ class MainWindow(FluentWindow):
         self.passportInterface = QWidget()
         self.settingsInterface = QWidget()
         self.infoInterface = QWidget()
-
         self.homeInterface.setObjectName("home")
         self.downloadInterface.setObjectName("download")
         self.toolsInterface.setObjectName("tools")
         self.passportInterface.setObjectName("passport")
         self.settingsInterface.setObjectName("settings")
         self.infoInterface.setObjectName("info")
-
         self.addSubInterface(self.homeInterface, QIcon("icons/bloret.png"), "主页")
         self.addSubInterface(self.downloadInterface, QIcon("icons/download.png"), "下载")
         self.addSubInterface(self.toolsInterface, QIcon("icons/tools.png"), "工具")
         self.addSubInterface(self.passportInterface, QIcon("icons/passport.png"), "通行证", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.settingsInterface, QIcon("icons/settings.png"), "设置", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.infoInterface, QIcon("icons/info.png"), "关于", NavigationItemPosition.BOTTOM)
-
         self.load_ui("ui/home.ui", parent=self.homeInterface)
         self.load_ui("ui/download.ui", parent=self.downloadInterface)
         self.load_ui("ui/tools.ui", parent=self.toolsInterface)
         self.load_ui("ui/passport.ui", parent=self.passportInterface)
         self.load_ui("ui/settings.ui", parent=self.settingsInterface)
         self.load_ui("ui/info.ui", parent=self.infoInterface)
-
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
         self.sidebar_animation.setStartValue(start_geometry)
         self.sidebar_animation.setEndValue(end_geometry)
         self.sidebar_animation.start()
-
     def initWindow(self):
         self.resize(900, 700)
         self.setWindowIcon(QIcon("icons/bloret.png"))
         self.setWindowTitle("Bloret 启动器 (Preview)")
-
     def load_ui(self, ui_path, parent=None, animate=True):
         widget = uic.loadUi(ui_path)
         
         if parent:
-            # 检查父部件是否已有布局
-            if parent.layout() is not None:
-                # 解除父级关系
-                existing_layout = parent.layout()
-                existing_layout.setParent(None)
-                del existing_layout  # 删除旧布局对象
-            parent.setLayout(QVBoxLayout())
+            # 确保父部件只有一个布局
+            if parent.layout() is None:
+                parent.setLayout(QVBoxLayout())
             parent.layout().addWidget(widget)  # 直接添加到现有布局
         
         if animate:
             self.animate_sidebar()
             self.animate_fade_in()
-
     def on_home_clicked(self):
         self.log("主页 被点击")
         self.switchTo(self.homeInterface)
-
     def on_download_clicked(self):
         self.log("下载 被点击")
-        self.load_ui("ui/download.ui", animate=False)
-        self.setup_download_ui(self.content_layout.itemAt(0).widget())
-
+        self.switchTo(self.downloadInterface)
     def on_tools_clicked(self):
         self.log("工具 被点击")
         self.switchTo(self.toolsInterface)
-
     def on_passport_clicked(self):
         self.log("通行证 被点击")
         self.switchTo(self.passportInterface)
-
     def on_settings_clicked(self):
         self.log("设置 被点击")
         self.switchTo(self.settingsInterface)
-
     def on_info_clicked(self):
         self.log("关于 被点击")
         self.switchTo(self.infoInterface)
-
     def run_cmcl_list(self):
         try:
             result = subprocess.run(
@@ -261,7 +238,6 @@ class MainWindow(FluentWindow):
         except Exception as e:
             self.log(f"运行 cmcl -l 失败: {e}", logging.ERROR)
             set_list = ["无法获取版本列表"]
-
     def log(self, message, level=logging.INFO):
         if self.logshow:
             print(message)
@@ -322,7 +298,7 @@ class MainWindow(FluentWindow):
     def on_show_way_changed(self, widget, version_type):
         show_way = widget.findChild(ComboBox, "show_way")
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-        
+
         if show_way and minecraft_choose:
             show_way.setEnabled(False)
             minecraft_choose.setEnabled(False)
@@ -356,7 +332,7 @@ class MainWindow(FluentWindow):
             #     parent=self
             #)
             # teaching_tip.move(show_way.mapToGlobal(show_way.rect().center() - teaching_tip.rect().center()))
-            
+
             # TeachingTip.create(
             #     target=widget,
             #     icon=InfoBarIcon.SUCCESS,
@@ -708,7 +684,7 @@ class MainWindow(FluentWindow):
             else:
                 self.bl_users = "未知用户"
                 self.log("无法获取用户数", logging.ERROR)
-            
+
             #首次启动显示弹窗提醒
             msg_box = QMessageBox(self)
             msg_box.setIcon(QMessageBox.Information)
@@ -728,7 +704,7 @@ class MainWindow(FluentWindow):
         BL_ver = float(self.config.get('DEFAULT', 'ver', fallback='0.0'))  # 从config.ini读取当前版本
         if BL_ver < float(self.BL_latest_ver):
             self.log(f"当前版本不是最新版，请更新到 {self.BL_latest_ver} 版本", logging.WARNING)
-            
+
             msg_box = QMessageBox(self)
             msg_box.setIcon(QMessageBox.Warning)
             msg_box.setWindowTitle('版本更新提示')
@@ -782,7 +758,7 @@ class MainWindow(FluentWindow):
                 bat_file.write(f'Start-Process -FilePath "Bloret-Launcher.exe"\n')
             self.log(f"创建 updata.ps1 文件: {bat_file_path}")
             QMessageBox.information(self, "即将安装", f"版本 {self.BL_latest_ver} 即将开始安装")
-        
+
             # 运行 updata.ps1 文件
             subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", bat_file_path], check=True)
             self.log(f"运行 updata.ps1 文件: {bat_file_path}")
@@ -851,6 +827,12 @@ class MainWindow(FluentWindow):
     def open_qq_link(self):
         QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
         self.log("打开Bloret QQ 群页面")
+    def animate_sidebar(self):
+        start_geometry = self.navigationInterface.geometry()  # 修正拼写错误
+        end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
+        self.sidebar_animation.setStartValue(start_geometry)
+        self.sidebar_animation.setEndValue(end_geometry)
+        self.sidebar_animation.start()
     def animate_fade_in(self):
         self.fade_in_animation.start()
     def apply_theme(self):
@@ -890,7 +872,7 @@ class MainWindow(FluentWindow):
             except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
                 self.log(f"读取 cmcl.json 失败: {e}", logging.ERROR)
                 player_name_edit.setText('')  # 如果读取失败，清空输入框
-    
+
     # -----------------------------------------------------------
     # 以下内容是对于UI文件中各个元素的设定
     # -----------------------------------------------------------
@@ -915,7 +897,7 @@ class MainWindow(FluentWindow):
     def on_player_name_set_clicked(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "player_name")
         player_name = player_name_edit.text()
-        
+
         if not player_name:
             TeachingTip.create(
                 target=self.sender(),
@@ -944,6 +926,7 @@ class MainWindow(FluentWindow):
             data['accounts'][0]['playerName'] = player_name
             with open('cmcl.json', 'w', encoding='utf-8') as file:
                 json.dump(data, file, ensure_ascii=False, indent=4)
+
     def setup_home_ui(self, widget):
         github_org_button = widget.findChild(QPushButton, "pushButton_2")
         if github_org_button:
@@ -1009,9 +992,9 @@ class MainWindow(FluentWindow):
         # self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
         # self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
         # self.run_script_thread.start()
-        
+
         self.is_running = False  # 重置标志变量
-        
+
     def on_run_script_error(self, error, teaching_tip, run_button):
         # ...existing code...
         if self.update_show_text_thread:
