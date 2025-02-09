@@ -208,8 +208,12 @@ class MainWindow(FluentWindow):
         
         if parent:
             # 检查父部件是否已有布局
-            if parent.layout() is None:
-                parent.setLayout(QVBoxLayout())
+            if parent.layout() is not None:
+                # 解除父级关系
+                existing_layout = parent.layout()
+                existing_layout.setParent(None)
+                del existing_layout  # 删除旧布局对象
+            parent.setLayout(QVBoxLayout())
             parent.layout().addWidget(widget)  # 直接添加到现有布局
         
         if animate:
@@ -222,7 +226,8 @@ class MainWindow(FluentWindow):
 
     def on_download_clicked(self):
         self.log("下载 被点击")
-        self.switchTo(self.downloadInterface)
+        self.load_ui("ui/download.ui", animate=False)
+        self.setup_download_ui(self.content_layout.itemAt(0).widget())
 
     def on_tools_clicked(self):
         self.log("工具 被点击")
@@ -846,12 +851,6 @@ class MainWindow(FluentWindow):
     def open_qq_link(self):
         QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
         self.log("打开Bloret QQ 群页面")
-    def animate_sidebar(self):
-        start_geometry = self.navigationInterface.geometry()  # 修正拼写错误
-        end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
-        self.sidebar_animation.setStartValue(start_geometry)
-        self.sidebar_animation.setEndValue(end_geometry)
-        self.sidebar_animation.start()
     def animate_fade_in(self):
         self.fade_in_animation.start()
     def apply_theme(self):
@@ -945,15 +944,6 @@ class MainWindow(FluentWindow):
             data['accounts'][0]['playerName'] = player_name
             with open('cmcl.json', 'w', encoding='utf-8') as file:
                 json.dump(data, file, ensure_ascii=False, indent=4)
-    def load_ui(self, ui_path, parent=None, animate=True):
-        widget = uic.loadUi(ui_path)
-        
-        if parent:
-            # 直接使用父部件的布局（若不存在则创建）
-            if parent.layout() is None:
-                parent.setLayout(QVBoxLayout(parent))
-            parent.layout().addWidget(widget)  # 直接添加到现有布局
-    
     def setup_home_ui(self, widget):
         github_org_button = widget.findChild(QPushButton, "pushButton_2")
         if github_org_button:
