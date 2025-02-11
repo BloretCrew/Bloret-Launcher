@@ -318,31 +318,6 @@ class MainWindow(FluentWindow):
             self.load_versions_thread.error_occurred.connect(lambda error: self.show_error_tip(widget, error))
             self.load_versions_thread.start()
         QTimer.singleShot(2000, fetch_versions)
-        if minecraft_choose:
-            minecraft_choose.clear()
-            minecraft_choose.addItems(ver_id_bloret)
-            # TeachingTip.create(
-            #     target=widget,
-            #     icon=InfoBarIcon.SUCCESS,
-            #     title='切换完成 ✔',
-            #     content=f"已切换显示到 {version_type}",
-            #     isClosable=True,
-            #     tailPosition=TeachingTipTailPosition.BOTTOM,
-            #     duration=2000,
-            #     parent=self
-            #)
-            # teaching_tip.move(show_way.mapToGlobal(show_way.rect().center() - teaching_tip.rect().center()))
-
-            # TeachingTip.create(
-            #     target=widget,
-            #     icon=InfoBarIcon.SUCCESS,
-            #     title='正在加载 ⏱️',
-            #     content=f"正在加载 {version_type} 的列表",
-            #     isClosable=True,
-            #     tailPosition=TeachingTipTailPosition.BOTTOM,
-            #     duration=2000,
-            #     parent=self
-            # )
     def update_minecraft_choose(self, widget, versions):
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
         show_way = widget.findChild(ComboBox, "show_way")
