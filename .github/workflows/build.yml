@@ -28,7 +28,6 @@ jobs:
 
     - name: 安装 pkgconfiglite
       run: |
-        choco install pkgconfiglite -y
 
     - name: 打包应用程序
       run: |
