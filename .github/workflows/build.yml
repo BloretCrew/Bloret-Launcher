@@ -36,7 +36,7 @@ jobs:
     - name: 创建包含其他文件夹的目录
       run: |
         mkdir -p output
-        cp dist/Bloret-Launcher.exe output/
+        cp dist/main output/
         cp -r cmcl/ output/
         cp -r icons/ output/
         cp -r ui/ output/
