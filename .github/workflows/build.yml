@@ -49,11 +49,28 @@ jobs:
     - name: 上传构建产物 Bloret-Launcher.zip
       uses: actions/upload-artifact@v4
       with:
-        name: Bloret-Launcher
+        name: Bloret-Launcher.zip
         path: output/Bloret-Launcher.zip
 
-    - name: 上传构建产物
+    - name: 上传构建产物 Bloret-Launcher.exe
       uses: actions/upload-artifact@v4
       with:
-        name: installer
-        path: dist/
+        name: Bloret-Launcher.exe
+        path: Bloret-Launcher.exe
+    
+    - name: 创建包含其他文件夹的目录
+      run: |
+        mkdir -p output
+        cp main.py output/
+        cp Bloret-Launcher.py output/
+
+    - name: 创建 zip 包含构建产物
+      run: |
+        cd output
+        zip -r Bloret-Launcher-code.zip Bloret-Launcher.py main.py cmcl icons ui config.ini
+
+    - name: 上传部分源码
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher-code.zip
+        path: Bloret-Launcher-code.zip
