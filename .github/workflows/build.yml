@@ -14,10 +14,10 @@ jobs:
 
     steps:
     - name: 检出仓库
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: 设置 Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: '3.x'
 
@@ -44,7 +44,7 @@ jobs:
         zip -r Bloret-Launcher.zip Bloret-Launcher icons ui config.ini
 
     - name: 上传构建产物 Bloret-Launcher.zip
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher.zip
         path: output/Bloret-Launcher.zip
@@ -59,7 +59,7 @@ jobs:
         zip -r Bloret-Launcher-code.zip ../main.py ../cmcl ../icons ../ui ../config.ini
 
     - name: 上传源码 Bloret-Launcher-code.zip
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher-code.zip
         path: output/Bloret-Launcher-code.zip
