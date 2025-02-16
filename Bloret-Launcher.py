@@ -1,24 +1,13 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
-from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow
+from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow,SplashScreen
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
-from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer
+from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
 from win10toast import ToastNotifier
-import sys
-import logging
-import os
-import requests
-import base64
-import json
-import configparser
-import subprocess
+import sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
-import zipfile
-import time
-import shutil
 from win32com.client import Dispatch
-import platform
 # 全局变量
 ver_id_bloret = ['1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21']
 ver_id_main = []
@@ -122,16 +111,28 @@ class LoadMinecraftVersionsThread(QThread):
 class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
+        
+        # 1. 创建启动页面
+        self.splashScreen = SplashScreen(QIcon('icon/bloret.png'), self)
+        self.splashScreen.setIconSize(QSize(102, 102))
+        self.splashScreen.setWindowTitle("Bloret 启动器 (Preview)")
+        self.splashScreen.setWindowIcon(QIcon('icon/bloret.png'))
+        
+        # 2. 在创建其他子页面前先显示主界面
+        self.splashScreen.show()
+        
         # 初始化 sidebar_animation
         self.sidebar_animation = QPropertyAnimation(self.navigationInterface, b"geometry")
         self.sidebar_animation.setDuration(300)  # 设置动画持续时间
         self.sidebar_animation.setEasingCurve(QEasingCurve.InOutQuad)
+        
         # 初始化 fade_in_animation
         self.fade_in_animation = QPropertyAnimation(self, b"windowOpacity")
         self.fade_in_animation.setDuration(500)
         self.fade_in_animation.setStartValue(0)
         self.fade_in_animation.setEndValue(1)
         self.fade_in_animation.setEasingCurve(QEasingCurve.InOutQuad)
+        
         self.loading_dialogs = []  # 初始化 loading_dialogs 属性
         self.threads = []  # 初始化 threads 属性
         self.config = configparser.ConfigParser()
@@ -140,7 +141,10 @@ class MainWindow(FluentWindow):
         self.handle_first_run()
         self.logshow = self.config.getboolean('DEFAULT', 'logshow', fallback=False)
         self.check_for_updates()
-        self.setWindowTitle("Bloret 启动器 (Preview)")  # 设置软件标题
+
+        self.setWindowTitle("Bloret 启动器 (Preview)")
+        self.setWindowIcon(QIcon("icons/bloret.png"))
+
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QIcon("icons/bloret.png"))  # 设置软件图标
         self.is_running = False
@@ -157,6 +161,9 @@ class MainWindow(FluentWindow):
         self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)  # 确保窗口显示在最前面
         self.raise_()
         self.activateWindow()
+        
+        # 3. 隐藏启动页面
+        QTimer.singleShot(3000, self.splashScreen.finish)  # 3秒后隐藏启动画面
     def initNavigation(self):
         self.homeInterface = QWidget()
         self.downloadInterface = QWidget()
@@ -182,6 +189,12 @@ class MainWindow(FluentWindow):
         self.load_ui("ui/passport.ui", parent=self.passportInterface)
         self.load_ui("ui/settings.ui", parent=self.settingsInterface)
         self.load_ui("ui/info.ui", parent=self.infoInterface)
+        self.setup_home_ui(self.homeInterface)
+        self.setup_download_ui(self.downloadInterface)
+        self.setup_tools_ui(self.toolsInterface)
+        self.setup_passport_ui(self.passportInterface)
+        self.setup_settings_ui(self.settingsInterface)
+        self.setup_info_ui(self.infoInterface)
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -229,7 +242,7 @@ class MainWindow(FluentWindow):
                 capture_output=True,
                 text=True,
                 check=True,
-                encoding="utf-8"  # 明确指定编码
+                encoding="latin-1"  # 修改编码为 latin-1
             )
             # 按空格分割并过滤空字符串
             cmcl_output_list = result.stdout.strip().replace("\r", "").split()
@@ -500,11 +513,13 @@ class MainWindow(FluentWindow):
         finished = pyqtSignal()
         error_occurred = pyqtSignal(str)
         output_received = pyqtSignal(str)
+
         def __init__(self, cmcl_path, version, log_method):
             self.log = log_method
             super().__init__()
             self.cmcl_path = cmcl_path
             self.version = version
+
         def run(self):
             try:
                 self.log(f"正在下载版本 {self.version}")
@@ -514,7 +529,7 @@ class MainWindow(FluentWindow):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    encoding=None
+                    encoding='latin-1'  # 修改编码为 latin-1
                 )
                 for line in iter(process.stdout.readline, ''):
                     if "该名称已存在，请更换一个名称。" in line:
@@ -526,9 +541,6 @@ class MainWindow(FluentWindow):
                 while process.poll() is None:
                     self.output_received.emit("正在下载并安装")
                     time.sleep(1)
-                for line in iter(process.stdout.readline, ''):
-                    self.output_received.emit(line.strip().encode('utf-8', errors='replace').decode('utf-8'))  # 修改这里
-                    self.log(line.strip().encode('utf-8', errors='replace').decode('utf-8'))  # 将输出存入日志
                 process.stdout.close()
                 process.wait()
                 if process.returncode == 0:
@@ -537,20 +549,6 @@ class MainWindow(FluentWindow):
                     self.error_occurred.emit(process.stderr.read().strip())
             except subprocess.CalledProcessError as e:
                 self.error_occurred.emit(str(e.stderr))
-    # def on_download_error(self, error_message, widget, teaching_tip):
-    #     download_button = widget.findChild(QPushButton, "download")
-    #     if download_button:
-    #         teaching_tip.close()
-    #         TeachingTip.create(
-    #             target=download_button,
-    #             icon=InfoBarIcon.ERROR,
-    #             title='提示',
-    #             content=f"下载失败，原因：{error_message}",
-    #             isClosable=True,
-    #             tailPosition=TeachingTipTailPosition.BOTTOM,
-    #             duration=2000,
-    #             parent=self
-    #         )
     def on_download_finished(self, teaching_tip, download_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
