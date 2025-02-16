@@ -1,4 +1,4 @@
-name: 打包为安装程序
+name: 打包为应用程序
 
 on:
   push:
@@ -52,7 +52,7 @@ jobs:
         name: Bloret-Launcher
         path: output/Bloret-Launcher.zip
 
-    - name: 上传安装程序
+    - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
         name: installer
