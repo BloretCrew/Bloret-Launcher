@@ -30,10 +30,14 @@ jobs:
       run: |
         pyinstaller --onefile --name=Bloret-Launcher main.py
 
+    - name: 确认生成的文件
+      run: |
+        ls dist
+
     - name: 创建包含其他文件夹的目录
       run: |
         mkdir -p output
-        cp dist/Bloret-Launcher.exe output/
+        cp dist/Bloret-Launcher output/
         cp -r icons/ output/
         cp -r ui/ output/
         cp config.ini output/
@@ -41,7 +45,7 @@ jobs:
     - name: 创建 zip 包含构建产物
       run: |
         cd output
-        zip -r Bloret-Launcher.zip Bloret-Launcher.exe icons ui config.ini
+        zip -r Bloret-Launcher.zip Bloret-Launcher icons ui config.ini
 
     - name: 上传构建产物 Bloret-Launcher.zip
       uses: actions/upload-artifact@v4
