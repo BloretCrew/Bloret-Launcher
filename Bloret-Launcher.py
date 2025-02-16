@@ -5,8 +5,18 @@ from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer
 from win10toast import ToastNotifier
-import sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil
+import sys
+import logging
+import os
+import requests
+import base64
+import json
+import configparser
+import subprocess
 import sip # type: ignore
+import zipfile
+import time
+import shutil
 from win32com.client import Dispatch
 import platform
 # 全局变量
@@ -109,15 +119,25 @@ class LoadMinecraftVersionsThread(QThread):
             self.error_occurred.emit(f"请求错误: {e}")
         except requests.exceptions.SSLError as e:
             self.error_occurred.emit(f"SSL 错误: {e}")
-class MainWindow(QMainWindow):
+class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
+        # 初始化 sidebar_animation
+        self.sidebar_animation = QPropertyAnimation(self.navigationInterface, b"geometry")
+        self.sidebar_animation.setDuration(300)  # 设置动画持续时间
+        self.sidebar_animation.setEasingCurve(QEasingCurve.InOutQuad)
+        # 初始化 fade_in_animation
+        self.fade_in_animation = QPropertyAnimation(self, b"windowOpacity")
+        self.fade_in_animation.setDuration(500)
+        self.fade_in_animation.setStartValue(0)
+        self.fade_in_animation.setEndValue(1)
+        self.fade_in_animation.setEasingCurve(QEasingCurve.InOutQuad)
         self.loading_dialogs = []  # 初始化 loading_dialogs 属性
+        self.threads = []  # 初始化 threads 属性
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
         self.logshow = self.config.getboolean('DEFAULT', 'logshow', fallback=False)
         self.handle_first_run()
-        # 确保 logshow 属性被正确初始化
         self.logshow = self.config.getboolean('DEFAULT', 'logshow', fallback=False)
         self.check_for_updates()
         self.setWindowTitle("Bloret 启动器 (Preview)")  # 设置软件标题
@@ -128,126 +148,102 @@ class MainWindow(QMainWindow):
         self.player_skin = ""  
         self.player_cape = ""  
         self.player_name = ""  
-        # 读取设置
         self.settings = QSettings("Bloret", "Launcher")
         self.apply_theme()
-        # 创建侧边栏
-        self.navigation_interface = NavigationInterface(self)
-        self.navigation_interface.addItem(
-            routeKey="home",
-            icon=QIcon("icons/bloret.png"),  
-            text="主页",
-            onClick=self.on_home_clicked,
-            position=NavigationItemPosition.TOP
-        )
-
-        self.navigation_interface.addItem(
-            routeKey="download",
-            icon=QIcon("icons/download.png"),  
-            text="下载",
-            onClick=self.on_download_clicked,
-            position=NavigationItemPosition.TOP
-        )
-        self.navigation_interface.addItem(
-            routeKey="tools",
-            icon=QIcon("icons/tools.png"),  
-            text="工具",
-            onClick=self.on_tools_clicked,
-            position=NavigationItemPosition.TOP
-        )
-        self.navigation_interface.addItem(
-            routeKey="passport",
-            icon=QIcon("icons/passport.png"),  
-            text="通行证",
-            onClick=self.on_passport_clicked,
-            position=NavigationItemPosition.BOTTOM
-        )
-        self.navigation_interface.addItem(
-            routeKey="settings",
-            icon=QIcon("icons/settings.png"),  
-            text="设置",
-            onClick=self.on_settings_clicked,
-            position=NavigationItemPosition.BOTTOM
-        )
-        self.navigation_interface.addItem(
-            routeKey="info",
-            icon=QIcon("icons/info.png"),  
-            text="关于",
-            onClick=self.on_info_clicked,
-            position=NavigationItemPosition.BOTTOM
-        )
-        # 创建按钮
-        self.button = QPushButton("Click Me")
-        self.button.clicked.connect(self.on_button_clicked)
-        # 主布局
-        self.main_layout = QHBoxLayout()  # 使用QHBoxLayout使侧边栏在左侧，内容在右侧
-        self.main_layout.addWidget(self.navigation_interface)
-        self.content_layout = QVBoxLayout()
-        self.content_layout.addWidget(self.button)
-        self.main_layout.addLayout(self.content_layout)
-        self.container = QWidget()
-        self.container.setLayout(self.main_layout)
-        self.setCentralWidget(self.container)
-        self.animation_duration = 300  # 动画持续时间（毫秒）
-        # 创建侧边栏动画
-        self.sidebar_animation = QPropertyAnimation(self.navigation_interface, b"geometry")
-        self.sidebar_animation.setDuration(self.animation_duration)
-        self.sidebar_animation.setEasingCurve(QEasingCurve.InOutQuad)
-        # 创建内容淡入动画
-        self.fade_in_animation = QPropertyAnimation(self.container, b"windowOpacity")
-        self.fade_in_animation.setDuration(self.animation_duration)
-        self.fade_in_animation.setStartValue(0)
-        self.fade_in_animation.setEndValue(1)
-        self.fade_in_animation.setEasingCurve(QEasingCurve.InOutQuad)
-        # 默认加载主页
-        self.load_ui("ui/home.ui", animate=False)
-        # 显示窗口
+        self.initNavigation()
+        self.initWindow()
         self.show()
-        self.download_worker = None  # 初始化下载工作线程
-        self.run_cmcl_list()  # 启动程序时运行 cmcl -l 获取列表
-        self.update_show_text_thread = None  # 初始化更新线程
-        self.threads = []  # 用于存储所有启动的线程
-        self.cmcl_command = "cmcl.exe" if platform.system() == "Windows" else "cmcl"  # 根据系统设置命令
+        self.setAttribute(Qt.WA_QuitOnClose, True)  # 确保窗口关闭时程序退出
+        self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)  # 确保窗口显示在最前面
+        self.raise_()
+        self.activateWindow()
+    def initNavigation(self):
+        self.homeInterface = QWidget()
+        self.downloadInterface = QWidget()
+        self.toolsInterface = QWidget()
+        self.passportInterface = QWidget()
+        self.settingsInterface = QWidget()
+        self.infoInterface = QWidget()
+        self.homeInterface.setObjectName("home")
+        self.downloadInterface.setObjectName("download")
+        self.toolsInterface.setObjectName("tools")
+        self.passportInterface.setObjectName("passport")
+        self.settingsInterface.setObjectName("settings")
+        self.infoInterface.setObjectName("info")
+        self.addSubInterface(self.homeInterface, QIcon("icons/bloret.png"), "主页")
+        self.addSubInterface(self.downloadInterface, QIcon("icons/download.png"), "下载")
+        self.addSubInterface(self.toolsInterface, QIcon("icons/tools.png"), "工具")
+        self.addSubInterface(self.passportInterface, QIcon("icons/passport.png"), "通行证", NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.settingsInterface, QIcon("icons/settings.png"), "设置", NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.infoInterface, QIcon("icons/info.png"), "关于", NavigationItemPosition.BOTTOM)
+        self.load_ui("ui/home.ui", parent=self.homeInterface)
+        self.load_ui("ui/download.ui", parent=self.downloadInterface)
+        self.load_ui("ui/tools.ui", parent=self.toolsInterface)
+        self.load_ui("ui/passport.ui", parent=self.passportInterface)
+        self.load_ui("ui/settings.ui", parent=self.settingsInterface)
+        self.load_ui("ui/info.ui", parent=self.infoInterface)
+    def animate_sidebar(self):
+        start_geometry = self.navigationInterface.geometry()
+        end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
+        self.sidebar_animation.setStartValue(start_geometry)
+        self.sidebar_animation.setEndValue(end_geometry)
+        self.sidebar_animation.start()
+    def initWindow(self):
+        self.resize(900, 700)
+        self.setWindowIcon(QIcon("icons/bloret.png"))
+        self.setWindowTitle("Bloret 启动器 (Preview)")
+    def load_ui(self, ui_path, parent=None, animate=True):
+        widget = uic.loadUi(ui_path)
+
+        if parent:
+            # 确保父部件只有一个布局
+            if parent.layout() is None:
+                parent.setLayout(QVBoxLayout())
+            parent.layout().addWidget(widget)  # 直接添加到现有布局
+
+        if animate:
+            self.animate_sidebar()
+            self.animate_fade_in()
+    def on_home_clicked(self):
+        self.log("主页 被点击")
+        self.switchTo(self.homeInterface)
+    def on_download_clicked(self):
+        self.log("下载 被点击")
+        self.switchTo(self.downloadInterface)
+    def on_tools_clicked(self):
+        self.log("工具 被点击")
+        self.switchTo(self.toolsInterface)
+    def on_passport_clicked(self):
+        self.log("通行证 被点击")
+        self.switchTo(self.passportInterface)
+    def on_settings_clicked(self):
+        self.log("设置 被点击")
+        self.switchTo(self.settingsInterface)
+    def on_info_clicked(self):
+        self.log("关于 被点击")
+        self.switchTo(self.infoInterface)
     def run_cmcl_list(self):
         try:
-            cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")
-            if not os.path.exists(cmcl_path) or not os.access(cmcl_path, os.X_OK):
-                self.log(f"cmcl.exe 不存在或不可执行: {cmcl_path}", logging.ERROR)
-                return
-            self.log(f"正在运行 {cmcl_path} -l")
             result = subprocess.run(
-                [cmcl_path, "-l"],
+                ["cmcl.exe", "-l"],
                 capture_output=True,
                 text=True,
                 check=True,
-                cwd=os.getcwd()  # 确保在当前工作目录下运行
+                encoding="utf-8"  # 明确指定编码
             )
-            cmcl_output_list = [line.strip() for line in result.stdout.splitlines()[1:]]  # 去除每行末尾的空格
-            self.log(f"cmcl -l 输出: {cmcl_output_list}")
-            if not cmcl_output_list:
-                cmcl_output_list = ["你还未安装任何版本哦，请前往下载页面安装"]
-            self.log(f"cmcl -l 输出: {set_list}")
-            if not set_list:
-                set_list = ["你还未安装任何版本哦，请前往下载页面安装"]
-            # 处理获取到的列表，例如更新UI中的某个组件
-            # 例如：
-            # run_choose = self.findChild(ComboBox, "run_choose")
-            # if run_choose:
-            #     run_choose.clear()
-            #     run_choose.addItems(set_list)
-        except subprocess.CalledProcessError as e:
-            self.log(f"执行 cmcl -l 失败: {e.stderr}", logging.ERROR)
-        except OSError as e:
-            self.log(f"运行 cmcl -l 时发生操作系统错误: {e}", logging.ERROR)
+            # 按空格分割并过滤空字符串
+            cmcl_output_list = result.stdout.strip().replace("\r", "").split()
+            global set_list
+            set_list = cmcl_output_list if cmcl_output_list else ["你还未安装任何版本"]
         except Exception as e:
-            self.log(f"运行 cmcl -l 时发生未知错误: {e}", logging.ERROR)
+            self.log(f"运行 cmcl -l 失败: {e}", logging.ERROR)
+            set_list = ["无法获取版本列表"]
     def log(self, message, level=logging.INFO):
         if self.logshow:
             print(message)
         else:
             logging.log(level, message)
     def closeEvent(self, event):
-        # 在窗口关闭时终止所有线程
         for thread in self.threads:
             if thread.isRunning():
                 thread.terminate()
@@ -322,31 +318,6 @@ class MainWindow(QMainWindow):
             self.load_versions_thread.error_occurred.connect(lambda error: self.show_error_tip(widget, error))
             self.load_versions_thread.start()
         QTimer.singleShot(2000, fetch_versions)
-        if minecraft_choose:
-            minecraft_choose.clear()
-            minecraft_choose.addItems(ver_id_bloret)
-            # TeachingTip.create(
-            #     target=widget,
-            #     icon=InfoBarIcon.SUCCESS,
-            #     title='切换完成 ✔',
-            #     content=f"已切换显示到 {version_type}",
-            #     isClosable=True,
-            #     tailPosition=TeachingTipTailPosition.BOTTOM,
-            #     duration=2000,
-            #     parent=self
-            #)
-            # teaching_tip.move(show_way.mapToGlobal(show_way.rect().center() - teaching_tip.rect().center()))
-
-            # TeachingTip.create(
-            #     target=widget,
-            #     icon=InfoBarIcon.SUCCESS,
-            #     title='正在加载 ⏱️',
-            #     content=f"正在加载 {version_type} 的列表",
-            #     isClosable=True,
-            #     tailPosition=TeachingTipTailPosition.BOTTOM,
-            #     duration=2000,
-            #     parent=self
-            # )
     def update_minecraft_choose(self, widget, versions):
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
         show_way = widget.findChild(ComboBox, "show_way")
@@ -678,9 +649,9 @@ class MainWindow(QMainWindow):
                     shortcut.IconLocation = icon
                     shortcut.save()
                 self.create_shortcut()
-            #首次启动向 http://123.129.241.101:30399/ 发送请求，服务器计数器+1
+            #首次启动向 http://pcfs.top:2/api/blnum 发送请求，服务器计数器+1
             #具体可见项目 https://github.com/BloretCrew/Bloret-Launcher-Server
-            response = requests.get("http://123.129.241.101:30399/")
+            response = requests.get("http://pcfs.top:2/api/blnum")
             if response.status_code == 200:
                 data = response.json()
                 self.bl_users = data.get("user", "未知用户")
@@ -785,6 +756,10 @@ class MainWindow(QMainWindow):
             show_all_versions = widget.findChild(QCheckBox, "show_all_versions")
             if minecraft_choose and show_all_versions:
                 self.update_minecraft_versions(widget, show_all=state)
+
+    def open_bloret_web(self):
+        QDesktopServices.openUrl(QUrl("http://pcfs.top:2"))
+        self.log("打开 Bloret Launcher 网页")
     def open_github_bloret(self):
         QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew"))
         self.log("打开Bloret Github 组织页面")
@@ -828,7 +803,7 @@ class MainWindow(QMainWindow):
         QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
         self.log("打开Bloret QQ 群页面")
     def animate_sidebar(self):
-        start_geometry = self.navigation_interface.geometry()
+        start_geometry = self.navigationInterface.geometry()  # 修正拼写错误
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
         self.sidebar_animation.setStartValue(start_geometry)
         self.sidebar_animation.setEndValue(end_geometry)
@@ -876,6 +851,7 @@ class MainWindow(QMainWindow):
     # -----------------------------------------------------------
     # 以下内容是对于UI文件中各个元素的设定
     # -----------------------------------------------------------
+
     def on_home_clicked(self):
         self.log("主页 被点击")
         self.load_ui("ui/home.ui")
@@ -895,7 +871,7 @@ class MainWindow(QMainWindow):
         self.log("按钮 被点击")
     def on_player_name_set_clicked(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "player_name")
-        player_name = player_name.edit.text()
+        player_name = player_name_edit.text()
 
         if not player_name:
             TeachingTip.create(
@@ -925,29 +901,6 @@ class MainWindow(QMainWindow):
             data['accounts'][0]['playerName'] = player_name
             with open('cmcl.json', 'w', encoding='utf-8') as file:
                 json.dump(data, file, ensure_ascii=False, indent=4)
-    def load_ui(self, ui_path, animate=True):
-        widget = uic.loadUi(ui_path)
-        # 清除之前的内容
-        for i in reversed(range(self.content_layout.count())):
-            self.content_layout.itemAt(i).widget().setParent(None)
-        self.content_layout.addWidget(widget)
-        if ui_path == "ui/home.ui":
-            self.setup_home_ui(widget)
-        elif ui_path == "ui/info.ui":
-            self.setup_info_ui(widget)
-        elif ui_path == "ui/tools.ui":
-            self.setup_tools_ui(widget)
-        elif ui_path == "ui/download.ui":
-            self.setup_download_ui(widget)
-        elif ui_path == "ui/settings.ui":
-            self.setup_settings_ui(widget)
-        elif ui_path == "ui/download_load.ui":
-            self.setup_download_load_ui(widget)
-        elif ui_path == "ui/passport.ui":
-            self.setup_passport_ui(widget)
-        if animate:
-            self.animate_sidebar()
-            self.animate_fade_in()
 
     def setup_home_ui(self, widget):
         github_org_button = widget.findChild(QPushButton, "pushButton_2")
@@ -956,16 +909,20 @@ class MainWindow(QMainWindow):
         github_project_button = widget.findChild(QPushButton, "pushButton")
         if github_project_button:
             github_project_button.clicked.connect(self.open_github_bloret_Launcher)
+
+        # 插入以下代码
+        openblweb_button = widget.findChild(QPushButton, "openblweb")
+        if openblweb_button:
+            openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("http://pcfs.top:2")))
+
         self.run_cmcl_list()
         run_choose = widget.findChild(ComboBox, "run_choose")
         if run_choose:
-            # self.run_cmcl_list()
             run_choose.addItems(set_list)
-        # 添加 run 按钮的点击事件
-        run_button = widget.findChild(QPushButton, "run")  # 修改为 "run"
+        run_button = widget.findChild(QPushButton, "run")
         if run_button:
             run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText()))
-        self.show_text = widget.findChild(QLabel, "show")  # 获取show文字框
+        self.show_text = widget.findChild(QLabel, "show")
     def run_cmcl(self, version):
         if self.is_running:
             self.log("run.ps1 正在运行中，不启动新的实例")
@@ -983,73 +940,8 @@ class MainWindow(QMainWindow):
             duration=0,  # 设置为0表示不自动关闭
             parent=self
         )
-        teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
-        script_path = "run.ps1"
-        if os.path.exists(script_path):
-            os.remove(script_path)
-            self.log(f"删除文件: {script_path}")
-        try:
-            cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")
-            self.log(f"运行 {cmcl_path} version {version} --export-script-ps=run.ps1")
-            result = subprocess.run(
-                [cmcl_path, "version", version, "--export-script-ps=run.ps1"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.log(f"{cmcl_path} version {version} --export-script-ps=run.ps1 运行成功: {result.stdout}")
-            if not os.path.exists(script_path):
-                self.log(f"生成的脚本文件 {script_path} 不存在", logging.ERROR)
-                raise FileNotFoundError(f"生成的脚本文件 {script_path} 不存在")
-            with open(script_path, 'r', encoding='utf-8') as file:
-                script_content = file.read()
-            script_content = script_content.replace('CMCL 2.2.2', 'Bloret Launcher')
-            with open(script_path, 'w', encoding='utf-8') as file:
-                file.write(script_content)
-            self.log(f"成功替换 {script_path} 中的 'CMCL 2.2.2' 为 'Bloret Launcher'")
-            self.log(f"运行 {script_path}")
-            self.run_script_thread = RunScriptThread()
-            self.threads.append(self.run_script_thread)  # 将线程添加到列表中
-            self.run_script_thread.output_received.connect(self.log_output)
-            self.run_script_thread.last_output_received.connect(self.update_show_text)  # 连接信号到槽
-            self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
-            self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
-            self.run_script_thread.start()
-            # 启动更新show文字框的线程
-            self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
-            self.threads.append(self.update_show_text_thread)  # 将线程添加到列表中
-            self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)  # 连接信号到更新线程
-            self.update_show_text_thread.update_text.connect(self.update_show_text)
-            self.update_show_text_thread.start()
-        except subprocess.CalledProcessError as e:
-            self.log(f"cmcl version {version} --expzcort-script-ps=run.ps1 运行失败: {e.stderr}", logging.ERROR)
-            if teaching_tip:
-                teaching_tip.close()  # 关闭气泡消息
-            TeachingTip.create(
-                target=self.sender(),
-                icon=InfoBarIcon.ERROR,
-                title='提示',
-                content=f"cmcl version {version} --export-script-ps=run.ps1 运行失败: {e.stderr}",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=2000,
-                parent=self
-            )
-        except Exception as e:
-            self.log(f"运行 cmcl version {version} --export-script-ps=run.ps1 时发生未知错误: {e}", logging.ERROR)
-            if teaching_tip:
-                teaching_tip.close()  # 关闭气泡消息
-            TeachingTip.create(
-                target=self.sender(),
-                icon=InfoBarIcon.ERROR,
-                title='提示',
-                content=f"运行 cmcl version {version} --export-script-ps=run.ps1 时发生未知错误: {e}",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=2000,
-                parent=self
-            )
-            self.is_running = False  # 重置标志变量
+        if teaching_tip:
+            teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
     def log_output(self, output):
         self.log(output)
     def on_run_script_finished(self, teaching_tip, run_button):
@@ -1230,4 +1122,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
