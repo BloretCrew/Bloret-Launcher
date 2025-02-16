@@ -49,13 +49,13 @@ jobs:
         zip -r Bloret-Launcher.zip Bloret-Launcher.exe cmcl icons ui config.ini
 
     - name: 上传构建产物 Bloret-Launcher.zip
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher
         path: output/Bloret-Launcher.zip
 
     - name: 上传安装程序
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: installer
         path: dist/
