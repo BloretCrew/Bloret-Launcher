@@ -111,7 +111,10 @@ class LoadMinecraftVersionsThread(QThread):
 class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
-        
+
+        app.setAttribute(Qt.AA_EnableHighDpiScaling)
+        app.setAttribute(Qt.AA_UseHighDpiPixmaps)
+
         # 1. 创建启动页面
         self.splashScreen = SplashScreen(QIcon('icon/bloret.png'), self)
         self.splashScreen.setIconSize(QSize(102, 102))
@@ -478,13 +481,20 @@ class MainWindow(FluentWindow):
         if minecraft_choose and download_button:
             # 覆盖 cmcl.json 文件
             cmcl_save_path = os.path.join(os.getcwd(), "cmcl_save.json")
-            cmcl_path = os.path.join(os.getcwd(), "cmcl.json")
+            cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")  # 修改这里，使用固定的 cmcl.exe 文件名
             if os.path.exists(cmcl_save_path):
                 try:
                     shutil.copy(cmcl_save_path, cmcl_path)
                     self.log(f"成功覆盖 {cmcl_path} 文件")
                 except Exception as e:
                     self.log(f"覆盖 {cmcl_path} 文件失败: {e}", logging.ERROR)
+            
+            # 检查 cmcl.exe 是否存在并且是一个有效的可执行文件
+            if not os.path.isfile(cmcl_path):
+                self.log(f"文件 {cmcl_path} 不存在", logging.ERROR)
+                QMessageBox.critical(self, "错误", f"文件 {cmcl_path} 不存在")
+                return
+            
             choose_ver = minecraft_choose.currentText()
             teaching_tip = TeachingTip.create(
                 target=widget,
@@ -497,7 +507,6 @@ class MainWindow(FluentWindow):
                 parent=self
             )
             teaching_tip.move(download_button.mapToGlobal(download_button.rect().topLeft()))
-            cmcl_path = os.path.join(os.getcwd(), self.cmcl_command)
             self.download_thread = self.DownloadThread(cmcl_path, choose_ver, self.log)
             self.threads.append(self.download_thread)  # 将线程添加到列表中
             self.download_thread.output_received.connect(self.log_output)
@@ -523,9 +532,9 @@ class MainWindow(FluentWindow):
         def run(self):
             try:
                 self.log(f"正在下载版本 {self.version}")
-                self.log("执行命令: " + f"{self.cmcl_path} install {self.version}")
+                self.log("执行命令: " + f"cmcl install {self.version}")
                 process = subprocess.Popen(
-                    [self.cmcl_path, "install", self.version],
+                    ["cmcl install", self.version],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
@@ -1118,6 +1127,8 @@ class MainWindow(FluentWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setAttribute(Qt.AA_EnableHighDpiScaling)
+    app.setAttribute(Qt.AA_UseHighDpiPixmaps)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
