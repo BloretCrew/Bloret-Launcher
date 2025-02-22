@@ -27,7 +27,7 @@ jobs:
         if (-not (Test-Path "config.ini")) { exit 1 }
         if (-not (Test-Path "ui")) { exit 1 }
         if (-not (Test-Path "cmcl.json")) { exit 1 }
-        if (-not (Test-Path "cmcl.exe")) { exit 1 }  # 添加对 cmcl.exe 的验证
+        if (-not (Test-Path "cmcl.exe")) { exit 1 }
 
       shell: pwsh
 
@@ -36,12 +36,12 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: 安装依赖
+    - name: 安装程序依赖和打包依赖
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pillow  # 添加 Pillow 库的安装
-        pip install pyinstaller  # 添加 PyInstaller 的安装
+        pip install pillow
+        pip install pyinstaller
 
     - name: 将 PNG 图标转换为 ICO
       run: |
