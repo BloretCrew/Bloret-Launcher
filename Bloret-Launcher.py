@@ -1,6 +1,6 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
-from qfluentwidgets import NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow,SplashScreen
+from qfluentwidgets import MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
@@ -127,14 +127,29 @@ class MainWindow(FluentWindow):
         if sys.stderr:
             sys.stderr.reconfigure(encoding='utf-8')
 
+        # 初始化 self.logshow
+        self.config = configparser.ConfigParser()
+        self.config.read('config.ini')
+        self.logshow = self.config.getboolean('DEFAULT', 'logshow', fallback=False)
+
         # 1. 创建启动页面
-        self.splashScreen = SplashScreen(QIcon('icon/bloret.png'), self)
+        icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
+        if os.path.exists(icon_path):
+            self.log(f"图标路径存在: {icon_path}")
+        else:
+            self.log(f"图标路径不存在: {icon_path}", logging.ERROR)
+        self.splashScreen = SplashScreen(QIcon(icon_path), self)
+        self.log("启动画面创建完成")
         self.splashScreen.setIconSize(QSize(102, 102))
-        self.splashScreen.setWindowTitle("Bloret 启动器 (Preview)")
-        self.splashScreen.setWindowIcon(QIcon('icon/bloret.png'))
+        self.splashScreen.setWindowTitle("Bloret Launcher")
+        self.splashScreen.setWindowIcon(QIcon(icon_path))
         
         # 2. 在创建其他子页面前先显示主界面
         self.splashScreen.show()
+        self.log("启动画面已显示")
+
+        # 监听系统主题变化
+        QApplication.instance().paletteChanged.connect(self.apply_theme)
         
         # 初始化 sidebar_animation
         self.sidebar_animation = QPropertyAnimation(self.navigationInterface, b"geometry")
@@ -150,18 +165,19 @@ class MainWindow(FluentWindow):
         
         self.loading_dialogs = []  # 初始化 loading_dialogs 属性
         self.threads = []  # 初始化 threads 属性
-        self.config = configparser.ConfigParser()
-        self.config.read('config.ini')
-        self.logshow = self.config.getboolean('DEFAULT', 'logshow', fallback=False)
         self.handle_first_run()
-        self.logshow = self.config.getboolean('DEFAULT', 'logshow', fallback=False)
         self.check_for_updates()
 
-        self.setWindowTitle("Bloret 启动器 (Preview)")
-        self.setWindowIcon(QIcon("icons/bloret.png"))
+        self.setWindowTitle("Bloret Launcher")
+        icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
+        if os.path.exists(icon_path):
+            self.log(f"图标路径存在: {icon_path}")
+        else:
+            self.log(f"图标路径不存在: {icon_path}", logging.ERROR)
+        self.setWindowIcon(QIcon(icon_path))
 
         self.setGeometry(100, 100, 800, 600)
-        self.setWindowIcon(QIcon("icons/bloret.png"))  # 设置软件图标
+        self.setWindowIcon(QIcon(icon_path))  # 设置软件图标
         self.is_running = False
         self.player_uuid = ""  
         self.player_skin = ""  
@@ -169,6 +185,8 @@ class MainWindow(FluentWindow):
         self.player_name = ""  
         self.settings = QSettings("Bloret", "Launcher")
         self.apply_theme()
+        self.cmcl_data = None  # 显式初始化
+        self.load_cmcl_data()
         self.initNavigation()
         self.initWindow()
         self.show()
@@ -178,7 +196,56 @@ class MainWindow(FluentWindow):
         self.activateWindow()
         
         # 3. 隐藏启动页面
-        QTimer.singleShot(3000, self.splashScreen.finish)  # 3秒后隐藏启动画面
+        QTimer.singleShot(3000, lambda: (self.log("隐藏启动画面"), self.splashScreen.finish()))
+
+        # 再初始化需要cmcl_data的组件
+        self.initNavigation()
+        self.initWindow()
+
+        # 应用深浅色主题
+        self.apply_theme()
+
+
+    def load_cmcl_data(self):
+        self.log(f"开始向 cmcl.json 读取数据")
+        try:
+            with open('cmcl.json', 'r', encoding='utf-8') as file:
+                self.cmcl_data = json.load(file)
+            
+            # 添加对空accounts列表的检查
+            if not self.cmcl_data.get('accounts'):
+                self.player_name = "未登录"
+                self.login_mod = "请在下方登录"
+                self.log("cmcl.json 中的 accounts 列表为空")
+                return
+                
+            # 添加索引越界保护
+            account = self.cmcl_data['accounts'][0] if self.cmcl_data['accounts'] else {}
+            
+            self.player_name = account.get('playerName', '未登录')
+            self.login_mod_num = account.get('loginMethod', -1)  # 默认-1表示未知
+            
+            # 更新登录方式描述
+            self.login_mod = {
+                0: "离线登录",
+                2: "微软登录"
+            }.get(self.login_mod_num, "未知登录方式")
+
+            self.log(f"读取到的 playerName: {self.player_name}")
+            self.log(f"读取到的 loginMethod: {self.login_mod}")
+            
+        except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+            self.log(f"读取 cmcl.json 失败: {e}", logging.ERROR)
+            self.cmcl_data = None
+            # 设置默认值
+            self.player_name = "未登录"
+            self.login_mod = "请在下方登录"
+        except Exception as e:
+            self.log(f"其他错误: {e}", logging.ERROR)
+            self.cmcl_data = None
+            self.player_name = "未登录"
+            self.login_mod = "请在下方登录"
+
     def initNavigation(self):
         self.homeInterface = QWidget()
         self.downloadInterface = QWidget()
@@ -196,6 +263,7 @@ class MainWindow(FluentWindow):
         self.addSubInterface(self.downloadInterface, QIcon("icons/download.png"), "下载")
         self.addSubInterface(self.toolsInterface, QIcon("icons/tools.png"), "工具")
         self.addSubInterface(self.passportInterface, QIcon("icons/passport.png"), "通行证", NavigationItemPosition.BOTTOM)
+        self.setup_passport_ui(self.passportInterface)
         self.addSubInterface(self.settingsInterface, QIcon("icons/settings.png"), "设置", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.infoInterface, QIcon("icons/info.png"), "关于", NavigationItemPosition.BOTTOM)
         self.load_ui("ui/home.ui", parent=self.homeInterface)
@@ -219,7 +287,7 @@ class MainWindow(FluentWindow):
     def initWindow(self):
         self.resize(900, 700)
         self.setWindowIcon(QIcon("icons/bloret.png"))
-        self.setWindowTitle("Bloret 启动器 (Preview)")
+        self.setWindowTitle("Bloret Launcher")
     def load_ui(self, ui_path, parent=None, animate=True):
         widget = uic.loadUi(ui_path)
 
@@ -243,7 +311,9 @@ class MainWindow(FluentWindow):
         self.switchTo(self.toolsInterface)
     def on_passport_clicked(self):
         self.log("通行证 被点击")
-        self.switchTo(self.passportInterface)
+        self.switchTo(self.passportInterface)  # 切换到通行证页面
+        self.setup_passport_ui(self.passportInterface)  # 调用 setup_passport_ui 方法
+        self.log("通行证页面UI加载完成")
     def on_settings_clicked(self):
         self.log("设置 被点击")
         self.switchTo(self.settingsInterface)
@@ -363,7 +433,7 @@ class MainWindow(FluentWindow):
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
-                duration=3000,
+                duration=5000,
                 parent=self
             )
         def fetch_versions():
@@ -372,7 +442,7 @@ class MainWindow(FluentWindow):
             self.load_versions_thread.versions_loaded.connect(lambda versions: self.update_minecraft_choose(widget, versions))
             self.load_versions_thread.error_occurred.connect(lambda error: self.show_error_tip(widget, error))
             self.load_versions_thread.start()
-        QTimer.singleShot(2000, fetch_versions)
+        QTimer.singleShot(5000, fetch_versions)
     def update_minecraft_choose(self, widget, versions):
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
         show_way = widget.findChild(ComboBox, "show_way")
@@ -392,14 +462,12 @@ class MainWindow(FluentWindow):
             show_way.setEnabled(True)
         if minecraft_choose:
             minecraft_choose.setEnabled(True)
-        TeachingTip.create(
-            target=widget,
-            icon=InfoBarIcon.ERROR,
+        InfoBar.error(
             title='错误',
             content=f"加载列表时出错: {error}",
             isClosable=True,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=2000,
+            position=InfoBarPosition.TOP,
+            duration=5000,
             parent=self
         )
         for dialog in self.loading_dialogs:
@@ -439,16 +507,14 @@ class MainWindow(FluentWindow):
         if sip.isdeleted(target_widget):
             self.log(f"目标小部件已被删除，无法显示 TeachingTip", logging.ERROR)
             return
-        TeachingTip.create(
-            target=target_widget,
-            icon=InfoBarIcon.SUCCESS,
-            title='提示',
+        InfoBar.success(
+            title='✅ 提示',
             content=f"已存储 Minecraft 核心文件夹位置为\n{folder_path}",
             isClosable=True,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=2000,
+            position=InfoBarPosition.TOP,
+            duration=5000,
             parent=self
-        ).move(target_widget.mapToGlobal(target_widget.rect().topLeft()))
+        )
     def update_minecraft_versions(self, widget, version_type):
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
         if minecraft_choose:
@@ -488,26 +554,22 @@ class MainWindow(FluentWindow):
                     self.log("无法获取 Minecraft 版本列表", logging.ERROR)
             except requests.exceptions.RequestException as e:
                 self.log(f"请求错误: {e}", logging.ERROR)
-                TeachingTip.create(
-                    target=minecraft_choose,
-                    icon=InfoBarIcon.ERROR,
+                InfoBar.error(
                     title='提示',
                     content="无法连接到服务器，请检查网络连接或稍后再试。",
                     isClosable=True,
-                    tailPosition=TeachingTipTailPosition.BOTTOM,
-                    duration=2000,
+                    position=InfoBarPosition.TOP,
+                    duration=5000,
                     parent=self
                 )
             except requests.exceptions.SSLError as e:
                 self.log(f"SSL 错误: {e}", logging.ERROR)
-                TeachingTip.create(
-                    target=minecraft_choose,
-                    icon=InfoBarIcon.ERROR,
+                InfoBar.error(
                     title='提示',
                     content="无法连接到服务器，请检查网络连接或稍后再试。",
                     isClosable=True,
-                    tailPosition=TeachingTipTailPosition.BOTTOM,
-                    duration=2000,
+                    position=InfoBarPosition.TOP,
+                    duration=5000,
                     parent=self
                 )
             finally:
@@ -535,7 +597,7 @@ class MainWindow(FluentWindow):
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
-                duration=3000,
+                duration=5000,
                 parent=self
             )
             
@@ -611,7 +673,7 @@ class MainWindow(FluentWindow):
                     orient=Qt.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
-                    duration=3000,
+                    duration=5000,
                     parent=self
                 )
             self.run_cmcl_list()  # 完成下载任务后运行 cmcl -l 获取列表
@@ -643,6 +705,187 @@ class MainWindow(FluentWindow):
                     subprocess.run(["notify-send", title, message])
             except Exception as e:
                 self.log(f"发送系统通知失败: {e}", logging.ERROR)
+
+    class MicrosoftLoginThread(QThread):
+        finished = pyqtSignal(bool, str)
+        
+        def __init__(self):
+            super().__init__()
+            self.log_method = None
+            
+        def run(self):
+            try:
+                # 执行微软登录命令
+                process = subprocess.Popen(["cmcl", "account", "--login=microsoft"],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        text=True,
+                                        encoding='utf-8')
+                
+                # 实时读取输出
+                output = []
+                while True:
+                    line = process.stdout.readline()
+                    if not line and process.poll() is not None:
+                        break
+                    if line:
+                        output.append(line.strip())
+                        self.log_method(f"CMCL输出: {line.strip()}")
+
+                process.wait()
+                
+                if process.returncode == 0:
+                    self.finished.emit(True, "登录成功")
+                else:
+                    error = process.stderr.read()
+                    self.finished.emit(False, f"登录失败: {error}")
+                    
+            except Exception as e:
+                self.finished.emit(False, f"执行异常: {str(e)}")
+
+    class OfflineLoginThread(QThread):
+        finished = pyqtSignal(bool, str)
+        
+        def __init__(self, username):
+            super().__init__()
+            self.username = username
+            
+        def run(self):
+            try:
+                process = subprocess.Popen(["cmcl", "account", "--login=offline", "-n", self.username],
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                process.wait()
+                if process.returncode == 0:
+                    self.finished.emit(True, "离线登录成功")
+                else:
+                    error = process.stderr.read()
+                    self.finished.emit(False, f"登录失败: {error}")
+            except Exception as e:
+                self.finished.emit(False, f"执行异常: {str(e)}")
+
+    # 添加 MessageBox 类
+    class MessageBox(MessageBoxBase):
+        def __init__(self, title, content, parent=None):
+            super().__init__(parent)
+            self.name_edit = LineEdit()
+            self.viewLayout.addWidget(SubtitleLabel(content))
+            self.viewLayout.addWidget(self.name_edit)
+            self.widget.setMinimumWidth(300)
+
+    class CustomMessageBox(MessageBoxBase):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+            self.titleLabel = SubtitleLabel('离线登录')
+            self.usernameLineEdit = LineEdit()
+
+            self.usernameLineEdit.setPlaceholderText('请输入玩家名称')
+            self.usernameLineEdit.setClearButtonEnabled(True)
+
+            self.viewLayout.addWidget(self.titleLabel)
+            self.viewLayout.addWidget(self.usernameLineEdit)
+
+            self.widget.setMinimumWidth(300)
+
+        def validate(self):
+            """ 重写验证表单数据的方法 """
+            isValid = len(self.usernameLineEdit.text()) > 0
+            return isValid
+    def handle_login(self, widget):
+        login_way_choose = widget.findChild(ComboBox, "login_way")
+        # 添加离线登录处理
+        if login_way_choose.currentText() == "离线登录":
+                try:
+                    shutil.copyfile('cmcl.blank.json', 'cmcl.json')
+                    dialog = self.CustomMessageBox(self)
+                    if dialog.exec():
+                        username = dialog.usernameLineEdit.text()
+                        self.offline_thread = self.OfflineLoginThread(username)
+                        self.offline_thread.finished.connect(
+                            lambda success, msg: self.on_login_finished(widget, success, msg))
+                        self.offline_thread.start()
+                except Exception as e:
+                    self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
+        elif login_way_choose.currentText() == "微软登录":
+            login_way_choose = widget.findChild(ComboBox, "login_way")
+            if not login_way_choose or login_way_choose.currentText() != "微软登录":
+                return
+
+            # 覆盖cmcl.json
+            try:
+                shutil.copyfile('cmcl.blank.json', 'cmcl.json')
+                self.log("成功覆盖cmcl.json文件")
+            except Exception as e:
+                self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
+                return
+
+            # 创建并启动登录线程
+            self.microsoft_login_thread = self.MicrosoftLoginThread()
+            self.microsoft_login_thread.log_method = self.log
+            self.microsoft_login_thread.finished.connect(
+                lambda success, msg: self.on_login_finished(widget, success, msg)
+            )
+            
+            # 显示加载提示
+            self.login_tip = InfoBar(
+                icon=InfoBarIcon.WARNING,
+                title='⏱️ 正在登录微软账户',
+                content='请按照浏览器中的提示完成登录...',
+                isClosable=True,  # 允许用户手动关闭
+                position=InfoBarPosition.TOP,
+                duration=5000,  # 设置自动关闭时间
+                parent=self
+            )
+            self.login_tip.show()
+            
+            self.microsoft_login_thread.start()
+
+    def on_login_finished(self, widget, success, message):
+        # 添加有效性检查
+        if hasattr(self, 'login_tip') and self.login_tip and not sip.isdeleted(self.login_tip):
+            try:
+                self.login_tip.close()
+            except RuntimeError:
+                pass  # 如果对象已被销毁则忽略异常
+        
+        # 处理结果
+        if success:
+            self.load_cmcl_data()
+            self.update_passport_ui(widget)
+            InfoBar.success(
+                title='✅ 登录成功',
+                content='登录成功',
+                parent=self
+            )
+        else:
+            InfoBar.error(
+                title='❎ 登录失败',
+                content=message,
+                parent=self
+            )
+
+    def update_passport_ui(self, widget):
+        # 更新UI显示
+        login_way_combo = widget.findChild(ComboBox, "player_login_way")
+        name_combo = widget.findChild(ComboBox, "playername")
+        
+        if self.cmcl_data:
+            # 更新登录方式
+            login_method = "微软登录" if self.login_mod_num == 2 else "离线登录"
+            if login_way_combo:
+                login_way_combo.clear()
+                login_way_combo.addItem(login_method)
+            
+            # 更新玩家名称
+            if name_combo:
+                name_combo.clear()
+                name_combo.addItem(self.player_name)
+                
+    def show_error(self, title, content):
+        InfoBar.error(
+            title=title,
+            content=content,
+            parent=self
+        )
     def send_system_notification(self, title, message):
         try:
             if sys.platform == "win32":
@@ -660,11 +903,11 @@ class MainWindow(FluentWindow):
         TeachingTip.create(
             target=download_button,
             icon=InfoBarIcon.ERROR,
-            title='提示',
+            title='❎ 提示',
             content=f"下载失败，原因：{error_message}",
             isClosable=True,
             tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=2000,
+            duration=5000,
             parent=self
         )
         self.is_running = False  # 重置标志变量
@@ -875,11 +1118,33 @@ class MainWindow(FluentWindow):
         self.sidebar_animation.start()
     def animate_fade_in(self):
         self.fade_in_animation.start()
-    def apply_theme(self):
-        theme = self.settings.value("theme", "light")
+    def apply_theme(self, palette=None):
+        if palette is None:
+            palette = QApplication.palette()
+        
+        # 检测系统主题
+        if palette.color(QPalette.Window).lightness() < 128:
+            theme = "dark"
+        else:
+            theme = "light"
+        
         if theme == "dark":
-            self.setStyleSheet("QWidget { background-color: #2e2e2e; color: #ffffff; }")
-            palette = QPalette()
+            self.setStyleSheet("""
+                QWidget { background-color: #2e2e2e; color: #ffffff; }
+                QPushButton { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
+                QPushButton:hover { background-color: #4a4a4a; color: #ffffff; }
+                QPushButton:pressed { background-color: #5a5a5a; color: #ffffff; }
+                QComboBox { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
+                QComboBox:hover { background-color: #4a4a4a; color: #ffffff; }
+                QComboBox:pressed { background-color: #5a5a5a; color: #ffffff; }
+                QComboBox QAbstractItemView { background-color: #2e2e2e; selection-background-color: #4a4a4a; color: #ffffff; }
+                QLineEdit { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
+                QLabel { color: #ffffff; }
+                QCheckBox { color: #ffffff; }
+                QCheckBox::indicator { width: 20px; height: 20px; }
+                QCheckBox::indicator:checked { image: url(ui/icon/checked.png); }
+                QCheckBox::indicator:unchecked { image: url(ui/icon/unchecked.png); }
+            """)
             palette.setColor(QPalette.Window, QColor("#2e2e2e"))
             palette.setColor(QPalette.WindowText, QColor("#ffffff"))
             palette.setColor(QPalette.Base, QColor("#1e1e1e"))
@@ -887,7 +1152,7 @@ class MainWindow(FluentWindow):
             palette.setColor(QPalette.ToolTipBase, QColor("#ffffff"))
             palette.setColor(QPalette.ToolTipText, QColor("#ffffff"))
             palette.setColor(QPalette.Text, QColor("#ffffff"))
-            palette.setColor(QPalette.Button, QColor("#2e2e2e"))
+            palette.setColor(QPalette.Button, QColor("#3a3a3a"))
             palette.setColor(QPalette.ButtonText, QColor("#ffffff"))
             palette.setColor(QPalette.BrightText, QColor("#ff0000"))
             palette.setColor(QPalette.Link, QColor("#2a82da"))
@@ -900,18 +1165,47 @@ class MainWindow(FluentWindow):
     def setup_passport_ui(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "player_name")
         player_name_set_button = widget.findChild(QPushButton, "player_name_set")
+        login_way_combo = widget.findChild(ComboBox, "player_login_way")
+        login_way_choose = widget.findChild(ComboBox, "login_way")
+        name_combo = widget.findChild(ComboBox, "playername")
+        # if player_name_edit:
+        #     player_name_edit.setText(self.player_name if self.cmcl_data else '')
+        # else:
+        #     self.log("未找到player_name输入框", logging.ERROR)
+    
         if player_name_edit and player_name_set_button:
             player_name_set_button.clicked.connect(lambda: self.on_player_name_set_clicked(widget))
-            # 读取 cmcl.json 中的 playerName 并设置到输入框中
-            try:
-                with open('cmcl.json', 'r', encoding='utf-8') as file:
-                    data = json.load(file)
-                player_name = data['accounts'][0].get('playerName', '')
-                player_name_edit.setText(player_name)
-                self.log(f"读取到的 playerName: {player_name}")
-            except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-                self.log(f"读取 cmcl.json 失败: {e}", logging.ERROR)
-                player_name_edit.setText('')  # 如果读取失败，清空输入框
+            self.log("已连接 player_name_set_button 点击事件")
+    
+        if self.cmcl_data:
+            self.log("成功读取 cmcl.json 数据")
+            
+            if login_way_combo:
+                login_way_choose.clear()
+                login_way_choose.addItems(["离线登录", "微软登录"])
+                login_way_choose.setCurrentText(self.login_mod)
+                login_way_choose.setCurrentIndex(0)
+    
+            if login_way_combo:
+                login_way_combo.clear()
+                login_way_combo.addItem(str(self.login_mod))
+                login_way_combo.setCurrentIndex(0)
+                self.log(f"设置 login_way_combo 当前索引为: {self.login_mod}")
+    
+            if name_combo:
+                name_combo.clear()
+                name_combo.addItem(self.player_name)
+                name_combo.setCurrentIndex(0)
+                self.log(f"设置 name_combo 当前索引为: {self.player_name}")
+        else:
+            self.log("读取 cmcl.json 失败")
+        
+        # 添加登录按钮点击事件
+        login_button = widget.findChild(QPushButton, "login")
+        if login_button:
+            login_button.clicked.connect(lambda: self.handle_login(widget))
+
+        
 
     # -----------------------------------------------------------
     # 以下内容是对于UI文件中各个元素的设定
@@ -922,7 +1216,9 @@ class MainWindow(FluentWindow):
         self.load_ui("ui/home.ui")
     def on_passport_clicked(self):
         self.log("通行证 被点击")
-        self.load_ui("ui/passport.ui")
+        self.load_ui("ui/passport.ui", parent=self.passportInterface)
+        self.setup_passport_ui(self.passportInterface)
+        self.log("通行证页面UI加载完成")
     def on_settings_clicked(self):
         self.log("设置 被点击")
         self.load_ui("ui/settings.ui")
@@ -939,25 +1235,21 @@ class MainWindow(FluentWindow):
         player_name = player_name_edit.text()
 
         if not player_name:
-            TeachingTip.create(
-                target=self.sender(),
-                icon=InfoBarIcon.ERROR,
-                title='提示',
+            InfoBar.warning(
+                title='⚠️ 提示',
                 content="请填写值后设定",
                 isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=2000,
+                position=InfoBarPosition.TOP,
+                duration=5000,
                 parent=self
             )
         elif any('\u4e00' <= char <= '\u9fff' for char in player_name):
-            TeachingTip.create(
-                target=self.sender(),
-                icon=InfoBarIcon.ERROR,
-                title='提示',
+            InfoBar.warning(
+                title='⚠️ 提示',
                 content="名称不能包含中文",
                 isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=2000,
+                position=InfoBarPosition.TOP,
+                duration=5000,
                 parent=self
             )
         else:
@@ -1000,7 +1292,7 @@ class MainWindow(FluentWindow):
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
-                duration=3000,
+                duration=5000,
                 parent=self
             )
 
@@ -1059,13 +1351,11 @@ class MainWindow(FluentWindow):
             self.update_show_text_thread.wait()  # 确保线程完全停止
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()  # 关闭气泡消息
-        TeachingTip.create(
-            target=run_button,
-            icon=InfoBarIcon.SUCCESS,
-            title='游戏结束',
+        InfoBar.success(
+            title='⏹️ 游戏结束',
             content="Minecraft 已结束\n如果您认为是异常退出，请查看 log 文件夹中的最后一份日志文件\n并前往本项目的 Github 或 百络谷QQ群 询问",
             isClosable=True,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
+            position=InfoBarPosition.TOP,
             duration=5000,
             parent=self
         )
@@ -1079,14 +1369,12 @@ class MainWindow(FluentWindow):
             self.update_show_text_thread.terminate()  # 停止更新线程
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
-        TeachingTip.create(
-            target=run_button,
-            icon=InfoBarIcon.ERROR,
-            title='提示',
+        InfoBar.error(
+            title='❌ 运行失败',
             content=f"run.ps1 运行失败: {error}",
             isClosable=True,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=2000,
+            position=InfoBarPosition.TOP,
+            duration=5000,
             parent=self
         )
         self.log(f"run.ps1 运行失败: {error}", logging.ERROR)
@@ -1193,7 +1481,45 @@ class MainWindow(FluentWindow):
                 self.log(f"查询玩家UUID {player_uuid} 的皮肤和披风失败", logging.ERROR)
     def setup_settings_ui(self, widget):
         # 设置设置界面的UI元素
-        pass
+        log_clear_button = widget.findChild(QPushButton, "log_clear_button")
+        if log_clear_button:
+            log_clear_button.clicked.connect(self.clear_log_files)
+
+        # 添加深浅色模式选择框
+        light_dark_choose = widget.findChild(ComboBox, "light_dark_choose")
+        if light_dark_choose:
+            light_dark_choose.clear()
+            light_dark_choose.addItems(["跟随系统", "深色模式", "浅色模式"])
+            light_dark_choose.currentTextChanged.connect(self.on_light_dark_changed)
+
+    def on_light_dark_changed(self, mode):
+        if mode == "跟随系统":
+            self.apply_theme()
+        elif mode == "深色模式":
+            self.apply_theme(QPalette(QColor("#2e2e2e")))
+        elif mode == "浅色模式":
+            self.apply_theme(QPalette(QColor("#ffffff")))
+
+    def clear_log_files(self):
+        log_folder = os.path.join(os.getcwd(), 'log')
+        if os.path.exists(log_folder) and os.path.isdir(log_folder):
+            for filename in os.listdir(log_folder):
+                file_path = os.path.join(log_folder, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                    InfoBar.success(
+                        title='🗑️ 清理成功',
+                        content=f"已清理 {file_path}",
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=5000,
+                        parent=self
+                    )
+                except Exception as e:
+                    self.log(f"Failed to delete {file_path}. Reason: {e}", logging.ERROR)
     def get_latest_version(self):
         try:
             response = requests.get("https://api.github.com/repos/BloretCrew/Bloret-Launcher/releases/latest")
