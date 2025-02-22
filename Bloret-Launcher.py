@@ -5,7 +5,7 @@ from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
 from win10toast import ToastNotifier
-import sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
+import locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
 from win32com.client import Dispatch
 # 全局变量
@@ -22,7 +22,14 @@ if not os.path.exists('log'):
     os.makedirs('log')
 # 设置日志配置
 log_filename = os.path.join('log', f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+
+logging.basicConfig(
+    filename=log_filename, 
+    level=logging.INFO, 
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    encoding='utf-8'  # 添加编码参数
+)
+
 class DownloadWorker(QThread):
     finished = pyqtSignal()
     def run(self):
@@ -36,6 +43,7 @@ class RunScriptThread(QThread):
     output_received = pyqtSignal(str)
     last_output_received = pyqtSignal(str)  # 新增信号
     def run(self):
+
         script_path = "run.ps1"
         try:
             process = subprocess.Popen(
@@ -43,8 +51,8 @@ class RunScriptThread(QThread):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                encoding='latin-1',
-                errors='ignore'
+                encoding='utf-8',
+                errors='replace'
             )
             last_line = ""
             for line in iter(process.stdout.readline, ''):
@@ -112,8 +120,10 @@ class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
 
-        app.setAttribute(Qt.AA_EnableHighDpiScaling)
-        app.setAttribute(Qt.AA_UseHighDpiPixmaps)
+        # 设置全局编码
+        codec = locale.getpreferredencoding()
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
 
         # 1. 创建启动页面
         self.splashScreen = SplashScreen(QIcon('icon/bloret.png'), self)
@@ -239,21 +249,48 @@ class MainWindow(FluentWindow):
         self.log("关于 被点击")
         self.switchTo(self.infoInterface)
     def run_cmcl_list(self):
+        global set_list  # 添加全局声明
         try:
-            result = subprocess.run(
-                ["cmcl.exe", "-l"],
-                capture_output=True,
-                text=True,
-                check=True,
-                encoding="latin-1"  # 修改编码为 latin-1
-            )
-            # 按空格分割并过滤空字符串
-            cmcl_output_list = result.stdout.strip().replace("\r", "").split()
-            global set_list
-            set_list = cmcl_output_list if cmcl_output_list else ["你还未安装任何版本"]
+            versions_path = os.path.join(os.getcwd(), ".minecraft", "versions")
+            temp_list = []  # 使用临时变量
+            
+            if os.path.exists(versions_path) and os.path.isdir(versions_path):
+                temp_list = [d for d in os.listdir(versions_path)
+                            if os.path.isdir(os.path.join(versions_path, d))]
+                
+                if not temp_list:
+                    temp_list = ["你还未安装任何版本哦，请前往下载页面安装"]
+                    self.log(f"版本目录为空: {versions_path}")
+                else:
+                    self.log(f"成功读取版本列表: {temp_list}")
+            else:
+                temp_list = ["无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装"]
+                self.log(f"路径无效: {versions_path}", logging.ERROR)
+                
+            set_list = temp_list  # 最后统一赋值给全局变量
+            self.update_version_combobox()  # 新增UI更新方法
+            
         except Exception as e:
-            self.log(f"运行 cmcl -l 失败: {e}", logging.ERROR)
-            set_list = ["无法获取版本列表"]
+            self.log(f"读取版本列表失败: {e}", logging.ERROR)
+            set_list = ["无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装"]
+
+    def update_version_combobox(self):
+        home_interface = self.findChild(QWidget, "home")
+        if home_interface:
+            run_choose = home_interface.findChild(ComboBox, "run_choose")
+            if run_choose:
+                # 添加版本去重逻辑
+                unique_versions = list(dict.fromkeys(set_list))  # 保持顺序去重
+                current_text = run_choose.currentText()  # 保留当前选中项
+                
+                run_choose.clear()
+                run_choose.addItems(unique_versions)
+                
+                # 恢复选中项或默认选择
+                if current_text in unique_versions:
+                    run_choose.setCurrentText(current_text)
+                elif unique_versions:
+                    run_choose.setCurrentIndex(0)
     def log(self, message, level=logging.INFO):
         if self.logshow:
             print(message)
@@ -482,13 +519,7 @@ class MainWindow(FluentWindow):
             # 覆盖 cmcl.json 文件
             cmcl_save_path = os.path.join(os.getcwd(), "cmcl_save.json")
             cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")  # 修改这里，使用固定的 cmcl.exe 文件名
-            if os.path.exists(cmcl_save_path):
-                try:
-                    shutil.copy(cmcl_save_path, cmcl_path)
-                    self.log(f"成功覆盖 {cmcl_path} 文件")
-                except Exception as e:
-                    self.log(f"覆盖 {cmcl_path} 文件失败: {e}", logging.ERROR)
-            
+
             # 检查 cmcl.exe 是否存在并且是一个有效的可执行文件
             if not os.path.isfile(cmcl_path):
                 self.log(f"文件 {cmcl_path} 不存在", logging.ERROR)
@@ -496,23 +527,29 @@ class MainWindow(FluentWindow):
                 return
             
             choose_ver = minecraft_choose.currentText()
-            teaching_tip = TeachingTip.create(
-                target=widget,
-                icon=InfoBarIcon.SUCCESS,
-                title='正在下载',
-                content="请稍等",
+            InfoBar.success(
+                title='⬇️ 正在下载',
+                content=f"正在下载你所选的版本...",
+                orient=Qt.Horizontal,
                 isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=0,  # 设置为0表示不自动关闭
+                position=InfoBarPosition.TOP,
+                duration=3000,
                 parent=self
             )
-            teaching_tip.move(download_button.mapToGlobal(download_button.rect().topLeft()))
+            
             self.download_thread = self.DownloadThread(cmcl_path, choose_ver, self.log)
             self.threads.append(self.download_thread)  # 将线程添加到列表中
             self.download_thread.output_received.connect(self.log_output)
             self.download_thread.output_received.connect(lambda text: download_button.setText(text[:70] + '...' if len(text) > 70 else text))  # 实时更新按钮文字
-            self.download_thread.finished.connect(lambda: self.on_download_finished(teaching_tip, download_button))
-            self.download_thread.error_occurred.connect(lambda error: self.on_download_error(error, teaching_tip, download_button))
+            
+            self.download_thread.finished.connect(
+                lambda: self.send_system_notification("下载完成", f"版本 {choose_ver} 已成功下载")
+            )
+            self.download_thread.finished.connect(self.run_cmcl_list)
+            
+            self.download_thread.error_occurred.connect(
+                lambda error: self.on_download_error(error, download_button)
+            )
             self.download_thread.start()
     def setup_loading_gif(self, label):
         movie = QMovie("ui/icon/loading2.gif")
@@ -534,13 +571,16 @@ class MainWindow(FluentWindow):
                 self.log(f"正在下载版本 {self.version}")
                 self.log("执行命令: " + f"cmcl install {self.version}")
                 process = subprocess.Popen(
-                    ["cmcl install", self.version],
+                    ["cmcl", "install", self.version],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    encoding='latin-1'  # 修改编码为 latin-1
+                    encoding='utf-8',
+                    errors='ignore'
                 )
                 for line in iter(process.stdout.readline, ''):
+                    clean_line = line.strip() or ""  # 确保不为None
+                    self.output_received.emit(clean_line)
                     if "该名称已存在，请更换一个名称。" in line:
                         self.error_occurred.emit("该版本已下载过。")
                         process.terminate()
@@ -555,36 +595,52 @@ class MainWindow(FluentWindow):
                 if process.returncode == 0:
                     self.finished.emit()
                 else:
-                    self.error_occurred.emit(process.stderr.read().strip())
+                    error = process.stderr.read().strip() or "Unknown error"
+                    self.error_occurred.emit(error)
             except subprocess.CalledProcessError as e:
                 self.error_occurred.emit(str(e.stderr))
-    def on_download_finished(self, teaching_tip, download_button):
-        if teaching_tip and not sip.isdeleted(teaching_tip):
-            teaching_tip.close()
-        if download_button:
-            TeachingTip.create(
-                target=download_button,
-                icon=InfoBarIcon.SUCCESS,
-                title='下载成功',
-                content="版本已成功下载",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=2000,
-                parent=self
-            )
-        self.run_cmcl_list()  # 完成下载任务后运行 cmcl -l 获取列表
-        # 拷贝 servers.dat 文件到 .minecraft 文件夹
-        src_file = os.path.join(os.getcwd(), "servers.dat")
-        dest_dir = os.path.join(os.getcwd(), ".minecraft")
-        if os.path.exists(src_file):
+        def on_download_finished(self, teaching_tip, download_button):
+            if teaching_tip and not sip.isdeleted(teaching_tip):
+                teaching_tip.close()
+            if download_button:
+                InfoBar.success(
+                    title='✅ 下载完成',
+                    content=f"版本 {self.version} 已成功下载\n前往主页就可以启动了！",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self
+                )
+            self.run_cmcl_list()  # 完成下载任务后运行 cmcl -l 获取列表
+            # 拷贝 servers.dat 文件到 .minecraft 文件夹
+            src_file = os.path.join(os.getcwd(), "servers.dat")
+            dest_dir = os.path.join(os.getcwd(), ".minecraft")
+            if os.path.exists(src_file):
+                try:
+                    shutil.copy(src_file, dest_dir)
+                    self.log(f"成功拷贝 {src_file} 到 {dest_dir}")
+                except Exception as e:
+                    self.log(f"拷贝 {src_file} 到 {dest_dir} 失败: {e}", logging.ERROR)
+            self.is_running = False  # 重置标志变量
+            # 发送系统通知
+            QTimer.singleShot(0, lambda: self.send_system_notification("下载完成", f"版本 {self.version} 已成功下载"))
+            # 检查 NoneType 错误
+            if self.show_text is not None:
+                self.show_text.setText("下载完成")
+            else:
+                self.log("show_text is None", logging.ERROR)
+        def send_system_notification(self, title, message):
             try:
-                shutil.copy(src_file, dest_dir)
-                self.log(f"成功拷贝 {src_file} 到 {dest_dir}")
+                if sys.platform == "win32":
+                    toaster = ToastNotifier()
+                    toaster.show_toast(title, message, duration=10)
+                elif sys.platform == "darwin":
+                    subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
+                else:
+                    subprocess.run(["notify-send", title, message])
             except Exception as e:
-                self.log(f"拷贝 {src_file} 到 {dest_dir} 失败: {e}", logging.ERROR)
-        self.is_running = False  # 重置标志变量
-        # 发送系统通知
-        QTimer.singleShot(0, lambda: self.send_system_notification("下载完成", f"版本 {self.download_thread.version} 已成功下载"))
+                self.log(f"发送系统通知失败: {e}", logging.ERROR)
     def send_system_notification(self, title, message):
         try:
             if sys.platform == "win32":
@@ -699,7 +755,7 @@ class MainWindow(FluentWindow):
                 self.update_to_latest_version()
     def update_to_latest_version(self):
         #url = f"http://localhost:100/zipdownload/{self.BL_latest_ver}.zip"
-        url = f"http://123.129.241.101:30399/zipdownload/{self.BL_latest_ver}.zip"
+        url = f"http://pcfs.top:2/zipdownload/latest.zip"
         save_path = os.path.join(os.getcwd(), f"{self.BL_latest_ver}.zip")
         updating_folder = os.path.join(os.path.dirname(os.getcwd()), "updating")
         if not os.path.exists(updating_folder):
@@ -917,25 +973,57 @@ class MainWindow(FluentWindow):
         if github_project_button:
             github_project_button.clicked.connect(self.open_github_bloret_Launcher)
 
-        # 插入以下代码
         openblweb_button = widget.findChild(QPushButton, "openblweb")
         if openblweb_button:
             openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("http://pcfs.top:2")))
 
         self.run_cmcl_list()
         run_choose = widget.findChild(ComboBox, "run_choose")
-        if run_choose:
-            run_choose.addItems(set_list)
+        # if run_choose:
+        #     run_choose.addItems(set_list)
         run_button = widget.findChild(QPushButton, "run")
         if run_button:
             run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText()))
         self.show_text = widget.findChild(QLabel, "show")
+
+        # self.run_cmcl_list()  # 初始化时加载版本列表
+        # run_choose = widget.findChild(ComboBox, "run_choose")
+        # if run_choose:
+        #     run_choose.addItems(set_list)
     def run_cmcl(self, version):
+
+        InfoBar.success(
+                title=f'🔄️ 正在启动 {version}',
+                content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self
+            )
+
         if self.is_running:
-            self.log("run.ps1 正在运行中，不启动新的实例")
             return
-        self.is_running = True  # 设置标志变量为True
+        self.is_running = True
         self.log(f"正在启动 {version}")
+        
+        # 新增生成脚本命令
+        subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"])
+        
+        # 替换 CMCL 2.2.2 → Bloret Launcher
+        with open("run.ps1", "r+", encoding='utf-8') as f:
+            content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
+            f.seek(0)
+            f.write(content)
+            f.truncate()
+
+        # 替换 CMCL → Bloret-Launcher
+        with open("run.ps1", "r+", encoding='utf-8') as f:
+            content = f.read().replace('CMCL', 'Bloret-Launcher')
+            f.seek(0)
+            f.write(content)
+            f.truncate()
+
         run_button = self.sender()  # 获取按钮对象
         teaching_tip = TeachingTip.create(
             target=run_button,  # 修改为按钮对象
@@ -949,13 +1037,24 @@ class MainWindow(FluentWindow):
         )
         if teaching_tip:
             teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
+        
+        # 线程
+        self.run_script_thread = RunScriptThread()
+        self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))  # 替换...为实际处理函数
+        self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
+        self.run_script_thread.start()  # 添加线程启动
+
+        self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
+        self.update_show_text_thread.update_text.connect(self.update_show_text)
+        self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
+        self.update_show_text_thread.start()
     def log_output(self, output):
-        self.log(output)
+        if output:
+            self.log(output.strip())
     def on_run_script_finished(self, teaching_tip, run_button):
-        # ...existing code...
         if self.update_show_text_thread:
             self.update_show_text_thread.terminate()  # 停止更新线程
-        # ...existing code...
+            self.update_show_text_thread.wait()  # 确保线程完全停止
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()  # 关闭气泡消息
         TeachingTip.create(
@@ -968,20 +1067,14 @@ class MainWindow(FluentWindow):
             duration=5000,
             parent=self
         )
-        # 移除以下代码，避免重复启动线程
-        # self.run_script_thread = RunScriptThread()
-        # self.run_script_thread.output_received.connect(self.log_output)
-        # self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
-        # self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
-        # self.run_script_thread.start()
-
         self.is_running = False  # 重置标志变量
 
+        QApplication.processEvents()  # 处理所有挂起的事件
+        time.sleep(1)  # 等待1秒确保所有事件处理完毕
+
     def on_run_script_error(self, error, teaching_tip, run_button):
-        # ...existing code...
         if self.update_show_text_thread:
             self.update_show_text_thread.terminate()  # 停止更新线程
-        # ...existing code...
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
         TeachingTip.create(
@@ -1125,10 +1218,13 @@ class MainWindow(FluentWindow):
         if qq_icon:
             qq_icon.setPixmap(QPixmap("ui/icon/qq.png"))
 
+
 if __name__ == "__main__":
+    # 先设置高DPI属性再创建应用实例
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    
     app = QApplication(sys.argv)
-    app.setAttribute(Qt.AA_EnableHighDpiScaling)
-    app.setAttribute(Qt.AA_UseHighDpiPixmaps)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

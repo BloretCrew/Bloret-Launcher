@@ -43,7 +43,7 @@
    <item>
     <widget class="TitleLabel" name="TitleLabel">
      <property name="text">
-      <string>Bloret 启动器 (Preview)</string>
+      <string>Bloret Launcher</string>
      </property>
     </widget>
    </item>
@@ -118,7 +118,7 @@
                  </size>
                 </property>
                 <property name="text">
-                 <string>百络谷启动器目前处于 Preview 阶段，属于公测版本，存在大量问题。
+                 <string>欢迎使用百络谷 Minecraft 启动器。
 如发现任何 Bug 或有建议等，请到 Github 上提交 Issue
 也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。</string>
                 </property>
