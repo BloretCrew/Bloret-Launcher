@@ -23,13 +23,23 @@
 > 百络谷启动器已证书签名，一般不会被拦截了
 > Windows 安全中心可能会拦截此软件，本软件不是任何病毒  
 > 百洛谷启动器是开源项目，您可以查阅源代码。  
-> 请按照下方操作打开软件  
+> 请按照下方操作打开软件
+> <details>
+>
+> **<summary>单击此处展开，查看操作方法 (2 张图片)</summary>**
+>
 > ![](img/Windows1.jpg)
 > ![](img/Windows2.jpg)
+>
+> </details>
 
 ## 托开发组要求，特添加此图 👇
-
+<details>
+  
+**<summary>单击此处展开，查看宣传图 (1 张图片)</summary>**
 ![](img/if-not-use-jiedi-will.jpg)
+
+</details>
 
 ## 功能与计划
 - [x] 下载 Minecraft
@@ -42,6 +52,10 @@
 - [x] 离线登录
 - [ ] ……
 ## 软件截图
+<details>
+
+**<summary>单击此处展开，查看软件截图 (7 张图片)</summary>**
+
 #### 主界面
 ![Home](img/Home.png)
 #### 下载
@@ -56,6 +70,9 @@
 ![info](img/info.png)
 #### 侧边栏
 ![menu](img/menu.png)
+
+</details>
+
 ## 安装&使用
 到[这里](https://github.com/BloretCrew/Bloret-Launcher/releases)下载最新版本的压缩文件，解压到合适位置后，打开 `Bloret-Launcher.exe` 即可。
 ## 致谢以下存储库或项目
