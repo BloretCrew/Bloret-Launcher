@@ -37,7 +37,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
-
+        pip install pillow  # 添加 Pillow 库的安装
 
     - name: 将 PNG 图标转换为 ICO
       run: |
