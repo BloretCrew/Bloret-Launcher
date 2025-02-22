@@ -1,4 +1,4 @@
-name: 将 Python 打包为 EXE
+name: 打包为应用程序
 
 on:
   push:
