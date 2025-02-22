@@ -1,69 +1,98 @@
-name: 打包为应用程序
+name: 将 Python 打包为 EXE
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+
+    env:
+      PYTHON_VERSION: '3.9'
+      OUTPUT_DIR: 'output'
+      ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'
 
     steps:
-    - name: 检出仓库
-      uses: actions/checkout@v3
+    - name: 检出代码
+      uses: actions/checkout@v2
+
+    - name: 验证资源文件路径
+      run: |
+        if (-not (Test-Path "icons/bloret.png")) { exit 1 }
+        if (-not (Test-Path "config.ini")) { exit 1 }
+        if (-not (Test-Path "ui")) { exit 1 }
+        if (-not (Test-Path "cmcl.json")) { exit 1 }
+        if (-not (Test-Path "cmcl.exe")) { exit 1 }  # 添加对 cmcl.exe 的验证
+
+      shell: pwsh
 
     - name: 设置 Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v2
       with:
-        python-version: '3.x'
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: 安装依赖
       run: |
-        python -m pip install --upgrade pip
-        pip install pyinstaller
+        pip install --upgrade pip
+        pip install -r requirements.txt
 
-    - name: 打包应用程序
-      run: |
-        pyinstaller --onefile --name=Bloret-Launcher main.py
 
-    - name: 确认生成的文件
+    - name: 将 PNG 图标转换为 ICO
       run: |
-        ls dist
+        python -c "
+        from PIL import Image
+        img = Image.open('icons/bloret.png')
+        img.save('icons/bloret.ico', format='ICO')
+        "
+
+    - name: 验证转换后的 ICO 文件路径
+      run: |
+        if (-not (Test-Path "icons/bloret.ico")) { exit 1 }
+      shell: pwsh
+
+    - name: 使用 PyInstaller 打包
+      run: |
+        pyinstaller --onefile --noconsole --icon=icons/bloret.ico --name=Bloret-Launcher `
+          --add-data "icons\\bloret.ico;." `
+          --add-data "config.ini;." `
+          --add-data "ui;ui" `
+          --add-data "cmcl.json;." `
+          --add-data "cmcl.exe;." `
+          --hidden-import=sip `
+          --hidden-import=qfluentwidgets `
+          --hidden-import=win10toast `
+          --paths=. `
+          Bloret-Launcher.py
+      shell: pwsh
 
     - name: 创建包含其他文件夹的目录
       run: |
-        mkdir -p output
-        cp dist/Bloret-Launcher output/
-        cp -r icons/ output/
-        cp -r ui/ output/
-        cp config.ini output/
+        mkdir -p ${{ env.OUTPUT_DIR }}
+        cp dist/Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
+        cp -r icons/ ${{ env.OUTPUT_DIR }}/
+        cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
+        cp -r cmcl.json ${{ env.OUTPUT_DIR }}/
+        cp -r config.ini ${{ env.OUTPUT_DIR }}/
+        cp -r LICENSE.txt ${{ env.OUTPUT_DIR }}/
+        cp -r servers.dat ${{ env.OUTPUT_DIR }}/
+        cp -r cmcl_save.json ${{ env.OUTPUT_DIR }}/
 
-    - name: 创建 zip 包含构建产物
+    - name: 清理旧压缩包
       run: |
-        cd output
-        zip -r Bloret-Launcher.zip Bloret-Launcher icons ui config.ini
+        if (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}") {
+          Remove-Item "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+        }
+      shell: pwsh
 
-    - name: 上传构建产物 Bloret-Launcher.zip
+    - name: 创建压缩包
+      run: Compress-Archive -Path "${{ env.OUTPUT_DIR }}/*" -DestinationPath "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+      shell: pwsh
+
+    - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
-        name: Bloret-Launcher.zip
-        path: output/Bloret-Launcher.zip
-
-    - name: 创建包含源码的目录
-      run: |
-        mkdir -p output
-
-    - name: 创建 zip 包含源码
-      run: |
-        cd output
-        zip -r Bloret-Launcher-code.zip ../main.py ../cmcl ../icons ../ui ../config.ini
-
-    - name: 上传源码 Bloret-Launcher-code.zip
-      uses: actions/upload-artifact@v4
-      with:
-        name: Bloret-Launcher-code.zip
-        path: output/Bloret-Launcher-code.zip
+        name: Bloret-Launcher
+        path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
