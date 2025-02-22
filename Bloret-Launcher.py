@@ -122,8 +122,10 @@ class MainWindow(FluentWindow):
 
         # 设置全局编码
         codec = locale.getpreferredencoding()
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
+        if sys.stdout:
+            sys.stdout.reconfigure(encoding='utf-8')
+        if sys.stderr:
+            sys.stderr.reconfigure(encoding='utf-8')
 
         # 1. 创建启动页面
         self.splashScreen = SplashScreen(QIcon('icon/bloret.png'), self)
