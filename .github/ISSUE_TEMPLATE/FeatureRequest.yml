@@ -1,0 +1,76 @@
+name: 功能请求
+description: 提出一项新的功能。
+labels: ["New"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢您贡献您的想法。请起一个能够清晰概括此功能的标题，便于开发者了解您的想法。
+        
+        > [!important]
+        > 重要：如果您想要提出 **多项功能**，请为每一个功能开一个 **单独** 的 issue。
+        ### 检查清单
+        在提出建议之前，请先确认以下所有事项：
+        
+        1. 我已更新到最新版 ![GitHub Release](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?include_prereleases)，并看过[最新提交](https://github.com/BloretCrew/Bloret-Launcher/commits/main/)，确认我想要的功能还没有实现。
+        2. 我已在 [Issues](https://github.com/BloretCrew/Bloret-Launcher/issues?q=label:New) 中检索，确认这一类似的建议 **未被提交过**。
+        3. 我认为我想要的功能是用户广泛需要的，插件不能替代的，且没有超出 **软件本来** 的开发目标，而非 **添加与课表及教学辅助无关的内容** 。
+        4. 我已知晓由于开发者时间精力有限，我提交的功能请求可能需要比较久的时间才能实现。
+        
+  - type: markdown
+    attributes: 
+      value: |
+        ### 新功能
+        描述您的新功能。您可以附上截图、录屏、堆栈跟踪、日志等材料，便于开发者进行开发。
+        
+        > [!WARNING]
+        > 若您要上传材料，请等待材料文件上传完成后再发布Issue
+        >
+        > 若显示为`![Uploading 文件名]()`即为上传中，请等待链接变动后再提交。
+  - type: dropdown
+    id: where-want
+    attributes:
+      label: 需要改进的位置
+      options:
+        - 启动
+        - 主页
+        - 加载界面
+        - 下载
+        - 下载→核心
+        - 下载→选择版本文件夹
+        - 下载→选择版本
+        - 下载→选择镜像源
+        - 下载→下载完成后通知
+        - 下载→下载并安装
+        - 小工具
+        - 小工具→玩家UUID查询
+        - 小工具→玩家名字查询
+        - 小工具→玩家皮肤获取
+        - 小工具→玩家披风获取
+        - 通行证
+        - 通行证→账户名设定
+        - 设置
+        - 设置→检查版本更新
+        - 设置→主题切换
+        - 设置→加载图标切换
+        - 设置→日志存储
+        - 设置→清空日志
+        - 关于
+        - 其他
+      description: 选择需要改进的位置，以便于我们更好发现实现该功能。
+    validations:
+      required: true
+  - type: textarea
+    id: back
+    attributes:
+      label: 背景与动机
+      description: 添加此功能的理由。（可选）
+    validations:
+      required: false
+  - type: textarea
+    id: req
+    attributes:
+      label: 想要实现或优化的功能
+      description: 详细地描述一下你想要的功能，描述的越具体，采纳的可能性越高；也可以提供图片等附件，以使开发者更好理解您的意图。
+    validations:
+      required: true

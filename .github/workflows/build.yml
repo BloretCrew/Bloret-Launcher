@@ -1,0 +1,25 @@
+name: 构建和归档仓库
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v2
+
+      - name: 归档仓库文件
+        run: zip -r code.zip .
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v2
+        with:
+          name: 仓库归档
+          path: code.zip
