@@ -1,7 +1,0 @@
-PyQt5
-PyQt-Fluent-Widgets
-requests
-win10toast
-pywin32
-configparser
-sip
