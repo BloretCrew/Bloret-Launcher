@@ -1,0 +1,11 @@
+{
+  "language": "zh",
+  "downloadSource": 1,
+  "checkAccountBeforeStart": false,
+  "accounts": [{
+    "playerName": "Bloret_Player",
+    "loginMethod": 0,
+    "selected": true
+  }],
+  "printStartupInfo": true
+}
