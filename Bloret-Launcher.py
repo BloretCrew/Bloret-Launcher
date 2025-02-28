@@ -128,9 +128,9 @@ class MainWindow(FluentWindow):
             sys.stderr.reconfigure(encoding='utf-8')
 
         # 初始化 self.logshow
-        self.config = configparser.ConfigParser()
-        self.config.read('config.ini')
-        self.logshow = self.config.getboolean('DEFAULT', 'logshow', fallback=False)
+        with open('config.json', 'r', encoding='utf-8') as f:
+            self.config = json.load(f)
+        # self.logshow = self.config.get('logshow', False)  # 删除 logshow 配置读取
 
         # 1. 创建启动页面
         icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
@@ -364,10 +364,8 @@ class MainWindow(FluentWindow):
                 elif unique_versions:
                     run_choose.setCurrentIndex(0)
     def log(self, message, level=logging.INFO):
-        if self.logshow:
-            print(message)
-        else:
-            logging.log(level, message)
+        print(message)
+        logging.log(level, message)
     def closeEvent(self, event):
         for thread in self.threads:
             if thread.isRunning():
@@ -935,7 +933,7 @@ class MainWindow(FluentWindow):
     #         logging.error(f"无法获取 Minecraft 版本列表: {e}")
     #         QMessageBox.critical(self, "错误", f"无法获取 Minecraft 版本列表: {e}")
     def handle_first_run(self):
-        if self.config.getboolean('DEFAULT', 'first-run', fallback=True):
+        if self.config.get('first-run', True):
             parent_dir = os.path.dirname(os.getcwd())
             updating_folder = os.path.join(parent_dir, "updating")
             updata_ps1_file = os.path.join(parent_dir, "updata.ps1")
@@ -978,13 +976,13 @@ class MainWindow(FluentWindow):
             msg_box.exec()
             # QMessageBox.information(self, "欢迎", "欢迎使用百络谷启动器 (＾ｰ^)ノ\n您是百络谷启动器的第 %s 位用户" % self.bl_users)
             # 更新配置文件中的 first-run 值
-            self.config.set('DEFAULT', 'first-run', 'false')
-            with open('config.ini', 'w', encoding='utf-8') as configfile:
-                self.config.write(configfile)
+            self.config['first-run'] = False
+            with open('config.json', 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, ensure_ascii=False, indent=4)
     def check_for_updates(self):
         self.BL_latest_ver = self.get_latest_version()
         self.log(f"最新正式版: {self.BL_latest_ver}")
-        BL_ver = float(self.config.get('DEFAULT', 'ver', fallback='0.0'))  # 从config.ini读取当前版本
+        BL_ver = float(self.config.get('ver', '0.0'))  # 从config.json读取当前版本
         if BL_ver < float(self.BL_latest_ver):
             self.log(f"当前版本不是最新版，请更新到 {self.BL_latest_ver} 版本", logging.WARNING)
 
