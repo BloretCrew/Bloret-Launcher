@@ -5,7 +5,7 @@ from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
 from win10toast import ToastNotifier
-import locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
+import re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
 from win32com.client import Dispatch
 # 全局变量
@@ -42,8 +42,8 @@ class RunScriptThread(QThread):
     error_occurred = pyqtSignal(str)
     output_received = pyqtSignal(str)
     last_output_received = pyqtSignal(str)  # 新增信号
+    
     def run(self):
-
         script_path = "run.ps1"
         try:
             process = subprocess.Popen(
@@ -52,13 +52,13 @@ class RunScriptThread(QThread):
                 stderr=subprocess.PIPE,
                 text=True,
                 encoding='utf-8',
-                errors='replace'
+                errors='replace'  # 此处统一处理解码错误
             )
             last_line = ""
-            for line in iter(process.stdout.readline, ''):
+            for line in iter(lambda: process.stdout.readline(), ''):  # 移除errors参数
                 last_line = line.strip()
                 self.output_received.emit(last_line)
-            self.last_output_received.emit(last_line)  # 发射最后一行输出信号
+            self.last_output_received.emit(last_line)
             process.stdout.close()
             process.wait()
             if process.returncode == 0:
@@ -418,6 +418,33 @@ class MainWindow(FluentWindow):
         notification_switch = widget.findChild(SwitchButton, "Notification")
         if notification_switch:
             notification_switch.setChecked(True)  # 将Notification开关设置成开
+
+        fabric_ver = ["不安装"]
+        response = requests.get("https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader")
+        if response.status_code == 200:
+            data = response.json()
+            for item in data:
+                fabric_ver.append(item["version"])
+
+        fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
+        if fabric_choose:
+            fabric_choose.clear()
+            fabric_choose.addItems(fabric_ver)
+            fabric_choose.setCurrentText("不安装")
+
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+        vername_edit = widget.findChild(LineEdit, "vername_edit")
+        if minecraft_choose and vername_edit:
+            minecraft_choose.currentTextChanged.connect(vername_edit.setText)
+
+        # 默认填入百络谷支持版本的第一项
+        if minecraft_choose:
+            minecraft_choose.clear()
+            minecraft_choose.addItems(ver_id_bloret)
+            vername_edit = widget.findChild(LineEdit, "vername_edit")  # 新增
+            if vername_edit and ver_id_bloret:  # 新增
+                vername_edit.setText(ver_id_bloret[0])  # 新增
+
     def on_show_way_changed(self, widget, version_type):
         show_way = widget.findChild(ComboBox, "show_way")
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
@@ -577,18 +604,34 @@ class MainWindow(FluentWindow):
     def start_download(self, widget):
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
         download_button = widget.findChild(QPushButton, "download")
-        if minecraft_choose and download_button:
-            # 覆盖 cmcl.json 文件
-            cmcl_save_path = os.path.join(os.getcwd(), "cmcl_save.json")
-            cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")  # 修改这里，使用固定的 cmcl.exe 文件名
+        fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
 
-            # 检查 cmcl.exe 是否存在并且是一个有效的可执行文件
+        vername_edit = widget.findChild(LineEdit, "vername_edit")
+        if vername_edit:
+            vername = vername_edit.text().strip()
+            # 校验命名规范
+            pattern = r'^(?!^(PRN|AUX|NUL|CON|COM[1-9]|LPT[1-9])$)[^\\/:*?"<>|\x00-\x1F\u4e00-\u9fff]+$'
+            if not re.match(pattern, vername):
+                msg = MessageBox(
+                    title="非法名称",
+                    content="名称包含非法字符或中文，请遵循以下规则：\n1. 不能包含 \\ / : * ? \" < > |\n2. 不能包含中文\n3. 不能使用系统保留名称",
+                    parent=self  # 确保设置父级窗口
+                )
+                msg.exec()
+                return
+
+        if minecraft_choose and download_button and fabric_choose:
+            cmcl_save_path = os.path.join(os.getcwd(), "cmcl_save.json")
+            cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")
+
             if not os.path.isfile(cmcl_path):
                 self.log(f"文件 {cmcl_path} 不存在", logging.ERROR)
                 QMessageBox.critical(self, "错误", f"文件 {cmcl_path} 不存在")
                 return
             
             choose_ver = minecraft_choose.currentText()
+            fabric_download = fabric_choose.currentText()
+
             InfoBar.success(
                 title='⬇️ 正在下载',
                 content=f"正在下载你所选的版本...",
@@ -599,10 +642,17 @@ class MainWindow(FluentWindow):
                 parent=self
             )
             
-            self.download_thread = self.DownloadThread(cmcl_path, choose_ver, self.log)
-            self.threads.append(self.download_thread)  # 将线程添加到列表中
+            if fabric_download != "不安装":
+                command = f"\"{cmcl_path}\" install {choose_ver} -n {vername} --fabric={fabric_download}"
+            else:
+                command = f"\"{cmcl_path}\" install {choose_ver} -n {vername}"
+
+            self.log(f"下载命令: {command}")
+
+            self.download_thread = self.DownloadThread(cmcl_path, command, self.log)
+            self.threads.append(self.download_thread)
             self.download_thread.output_received.connect(self.log_output)
-            self.download_thread.output_received.connect(lambda text: download_button.setText(text[:70] + '...' if len(text) > 70 else text))  # 实时更新按钮文字
+            self.download_thread.output_received.connect(lambda text: download_button.setText(text[:70] + '...' if len(text) > 70 else text))
             
             self.download_thread.finished.connect(
                 lambda: self.send_system_notification("下载完成", f"版本 {choose_ver} 已成功下载")
@@ -613,10 +663,6 @@ class MainWindow(FluentWindow):
                 lambda error: self.on_download_error(error, download_button)
             )
             self.download_thread.start()
-    def setup_loading_gif(self, label):
-        movie = QMovie("ui/icon/loading2.gif")
-        label.setMovie(movie)
-        movie.start()
     class DownloadThread(QThread):
         finished = pyqtSignal()
         error_occurred = pyqtSignal(str)
@@ -631,18 +677,19 @@ class MainWindow(FluentWindow):
         def run(self):
             try:
                 self.log(f"正在下载版本 {self.version}")
-                self.log("执行命令: " + f"cmcl install {self.version}")
+                self.log("执行命令: " + f"{self.version}")
                 process = subprocess.Popen(
-                    ["cmcl", "install", self.version],
+                    self.version,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
                     encoding='utf-8',
-                    errors='ignore'
+                    errors='replace'
                 )
+                last_line = ""
                 for line in iter(process.stdout.readline, ''):
-                    clean_line = line.strip() or ""  # 确保不为None
-                    self.output_received.emit(clean_line)
+                    last_line = line.strip()
+                    self.output_received.emit(last_line)
                     if "该名称已存在，请更换一个名称。" in line:
                         self.error_occurred.emit("该版本已下载过。")
                         process.terminate()
@@ -712,34 +759,20 @@ class MainWindow(FluentWindow):
             self.log_method = None
             
         def run(self):
-            try:
-                # 执行微软登录命令
-                process = subprocess.Popen(["cmcl", "account", "--login=microsoft"],
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE,
-                                        text=True,
-                                        encoding='utf-8')
-                
-                # 实时读取输出
-                output = []
-                while True:
-                    line = process.stdout.readline()
-                    if not line and process.poll() is not None:
-                        break
-                    if line:
-                        output.append(line.strip())
-                        self.log_method(f"CMCL输出: {line.strip()}")
+            # 执行微软登录命令
+            process = subprocess.Popen(["cmcl", "account", "--login=microsoft"],
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    text=True,
+                                    encoding='utf-8')
 
-                process.wait()
-                
-                if process.returncode == 0:
-                    self.finished.emit(True, "登录成功")
-                else:
-                    error = process.stderr.read()
-                    self.finished.emit(False, f"登录失败: {error}")
-                    
-            except Exception as e:
-                self.finished.emit(False, f"执行异常: {str(e)}")
+            process.wait()
+            
+            if process.returncode == 0:
+                self.finished.emit(True, "登录成功")
+            else:
+                error = process.stderr.read()
+                self.finished.emit(False, f"登录失败: {error}")
 
     class OfflineLoginThread(QThread):
         finished = pyqtSignal(bool, str)
@@ -1104,10 +1137,10 @@ class MainWindow(FluentWindow):
         self.log(f"名称 {self.player_name} 已复制到剪贴板")
     def open_github_bloret_Launcher(self):
         QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew/Bloret-Launcher"))
-        self.log("打开该项目的Github页面")
+        self.log("打开该项目的 Github 页面")
     def open_qq_link(self):
         QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
-        self.log("打开Bloret QQ 群页面")
+        self.log("打开 Bloret QQ 群页面")
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()  # 修正拼写错误
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -1298,7 +1331,8 @@ class MainWindow(FluentWindow):
             return
         self.is_running = True
         self.log(f"正在启动 {version}")
-        
+        if os.path.exists("run.ps1"):
+            os.remove("run.ps1")
         # 新增生成脚本命令
         subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"])
         

@@ -2,6 +2,16 @@
   "language": "zh",
   "downloadSource": 1,
   "checkAccountBeforeStart": false,
-  "accounts": [],
+  "accounts": [{
+    "expiresIn": 1740874285648,
+    "loginMethod": 2,
+    "playerName": "Detritalw",
+    "id": "cf535bd4-ba05-4b3e-9c69-2a7733d6494b",
+    "accessToken": "eyJraWQiOiJhYzg0YSIsImFsZyI6IkhTMjU2In0.eyJ4dWlkIjoiMjUzNTQ1MDIxMzQ2OTExMSIsImFnZyI6IkFkdWx0Iiwic3ViIjoiY2Y1MzViZDQtYmEwNS00YjNlLTljNjktMmE3NzMzZDY0OTRiIiwiYXV0aCI6IlhCT1giLCJucyI6ImRlZmF1bHQiLCJyb2xlcyI6W10sImlzcyI6ImF1dGhlbnRpY2F0aW9uIiwiZmxhZ3MiOlsidHdvZmFjdG9yYXV0aCIsIm1zYW1pZ3JhdGlvbl9zdGFnZTQiLCJvcmRlcnNfMjAyMiIsIm11bHRpcGxheWVyIl0sInByb2ZpbGVzIjp7Im1jIjoiZjI4MmRkYTAtNjlhOS00Nzg3LWIxMmItYWExNmExOTM5ZmM0In0sInBsYXRmb3JtIjoiVU5LTk9XTiIsInl1aWQiOiJkZmU3N2FkOTExNWZiYTMyNGRiODYyYzYzY2I0ZTgzOSIsIm5iZiI6MTc0MDc4Nzg4NywiZXhwIjoxNzQwODc0Mjg3LCJpYXQiOjE3NDA3ODc4ODd9.CBYEr0jzSW8P2CGZ5zl74zdJYNVajMxJEYc6bFNdpVw",
+    "tokenType": "bearer",
+    "uuid": "f282dda069a94787b12baa16a1939fc4",
+    "selected": true,
+    "refreshToken": "M.C539_SN1.0.U.-CsqD!!9BjX8tn0fQQzntqCd3DEcd1wh5BHTIZRno6BQhGa7lYiYGwp7*mkNj1xGcjuFOmO*mVV8C4e!rVibRlCEDuY1hLEDHDRk5QFn6nbog7g1ouuadL5RSQ5qqSw0YkUJV8wh7lF4lzbdgoWm9kALxgQZKXXC3D67bcyR4SJXtkQyjHzSHjX9oYNfbRsdOPWt329eUojvSL9mrcN1Br1MaLF12uhw9dedlGcBez5FpnA1137bDow8gIsrjYh2yaEv2gppItXdIlD0kFHGTDr3a3h2t95yS1MbjSiMcObKWHVNK862ZhzACvRG!LIPXFQi!UrBSpHxTejZkPvYwYni4c89YZQWkMJvRLN2LHqeb"
+  }],
   "printStartupInfo": true
 }

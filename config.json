@@ -1,5 +1,5 @@
 {
-    "minecraft-part":".minecraft",
-    "first-run":true,
-    "ver":4.1
+    "minecraft-part": ".minecraft",
+    "first-run": false,
+    "ver": 4.1
 }

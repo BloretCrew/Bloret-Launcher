@@ -46,7 +46,7 @@
         <x>0</x>
         <y>0</y>
         <width>670</width>
-        <height>554</height>
+        <height>529</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -98,7 +98,7 @@
                  </size>
                 </property>
                 <property name="text">
-                 <string>4.1</string>
+                 <string>5.0</string>
                 </property>
                 <property name="alignment">
                  <set>Qt::AlignCenter</set>
@@ -111,6 +111,153 @@
           </widget>
          </item>
         </layout>
+       </item>
+       <item>
+        <widget class="SubtitleLabel" name="label_6">
+         <property name="text">
+          <string>界面</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <item>
+             <widget class="StrongBodyLabel" name="StrongBodyLabel_17">
+              <property name="text">
+               <string>缩放</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_5">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>调整到你喜欢的比例，重启后生效</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="150">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_10">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>165</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="Slider" name="Slider">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimum">
+             <number>50</number>
+            </property>
+            <property name="maximum">
+             <number>200</number>
+            </property>
+            <property name="singleStep">
+             <number>0</number>
+            </property>
+            <property name="pageStep">
+             <number>10</number>
+            </property>
+            <property name="value">
+             <number>100</number>
+            </property>
+            <property name="sliderPosition">
+             <number>100</number>
+            </property>
+            <property name="tracking">
+             <bool>true</bool>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="invertedAppearance">
+             <bool>false</bool>
+            </property>
+            <property name="invertedControls">
+             <bool>false</bool>
+            </property>
+            <property name="tickPosition">
+             <enum>QSlider::NoTicks</enum>
+            </property>
+            <property name="tickInterval">
+             <number>0</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="CompactSpinBox" name="CompactSpinBox">
+            <property name="suffix">
+             <string>%</string>
+            </property>
+            <property name="prefix">
+             <string/>
+            </property>
+            <property name="minimum">
+             <number>50</number>
+            </property>
+            <property name="maximum">
+             <number>200</number>
+            </property>
+            <property name="singleStep">
+             <number>1</number>
+            </property>
+            <property name="stepType">
+             <enum>QAbstractSpinBox::DefaultStepType</enum>
+            </property>
+            <property name="value">
+             <number>100</number>
+            </property>
+            <property name="displayIntegerBase">
+             <number>10</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
        </item>
        <item>
         <widget class="SubtitleLabel" name="label_5">
@@ -196,21 +343,6 @@
               <height>20</height>
              </size>
             </property>
-            <item>
-             <property name="text">
-              <string>跟随系统</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>浅色</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>深色</string>
-             </property>
-            </item>
            </widget>
           </item>
          </layout>
@@ -256,7 +388,7 @@
                </sizepolicy>
               </property>
               <property name="text">
-               <string>清空log文件夹</string>
+               <string>清空 log 文件夹</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
@@ -323,36 +455,31 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>ComboBox</class>
+   <extends>QPushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>PushButton</class>
+   <extends>QPushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>Slider</class>
+   <extends>QSlider</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
    <class>CardWidget</class>
    <extends>QFrame</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>SmoothScrollArea</class>
    <extends>QScrollArea</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>StrongBodyLabel</class>
-   <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>TitleLabel</class>
-   <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>PushButton</class>
-   <extends>QPushButton</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>SubtitleLabel</class>
-   <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
   </customwidget>
   <customwidget>
    <class>CaptionLabel</class>
@@ -360,8 +487,23 @@
    <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
-   <class>ComboBox</class>
-   <extends>QComboBox</extends>
+   <class>StrongBodyLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>SubtitleLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>TitleLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>CompactSpinBox</class>
+   <extends>QSpinBox</extends>
    <header>qfluentwidgets</header>
   </customwidget>
  </customwidgets>

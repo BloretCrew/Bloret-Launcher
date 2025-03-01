@@ -1,0 +1,27 @@
+2025-03-01 08:11:03,814 [INFO] 图标路径存在: G:\Work\git\Bloret-Launcher\icons\bloret.png
+2025-03-01 08:11:03,892 [INFO] 启动画面创建完成
+2025-03-01 08:11:03,975 [INFO] 启动画面已显示
+2025-03-01 08:11:04,489 [INFO] 最新正式版: 4.1
+2025-03-01 08:11:04,992 [INFO] 图标路径存在: G:\Work\git\Bloret-Launcher\icons\bloret.png
+2025-03-01 08:11:05,192 [INFO] 开始向 cmcl.json 读取数据
+2025-03-01 08:11:05,202 [INFO] 读取到的 playerName: Detritalw
+2025-03-01 08:11:05,202 [INFO] 读取到的 loginMethod: 微软登录
+2025-03-01 08:11:05,293 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 08:11:05,776 [INFO] 成功读取版本列表: ['1.21.4-FABric']
+2025-03-01 08:11:05,884 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 08:11:05,886 [INFO] 设置 login_way_combo 当前索引为: 微软登录
+2025-03-01 08:11:05,888 [INFO] 设置 name_combo 当前索引为: Detritalw
+2025-03-01 08:11:06,135 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 08:11:06,531 [INFO] 成功读取版本列表: ['1.21.4-FABric']
+2025-03-01 08:11:06,639 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 08:11:06,641 [INFO] 设置 login_way_combo 当前索引为: 微软登录
+2025-03-01 08:11:06,642 [INFO] 设置 name_combo 当前索引为: Detritalw
+2025-03-01 08:11:09,047 [INFO] 隐藏启动画面
+2025-03-01 08:11:16,360 [INFO] 开始向 cmcl.json 读取数据
+2025-03-01 08:11:16,373 [INFO] 读取到的 playerName: s
+2025-03-01 08:11:16,374 [INFO] 读取到的 loginMethod: 离线登录
+2025-03-01 08:11:19,038 [INFO] 成功覆盖cmcl.json文件
+2025-03-01 08:11:26,166 [INFO] 开始向 cmcl.json 读取数据
+2025-03-01 08:11:26,178 [INFO] 读取到的 playerName: Detritalw
+2025-03-01 08:11:26,178 [INFO] 读取到的 loginMethod: 微软登录
+2025-03-01 08:11:35,510 [INFO] 正在启动 1.21.4-FABric

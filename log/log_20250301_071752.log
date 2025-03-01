@@ -1,0 +1,21 @@
+2025-03-01 07:17:53,005 [INFO] 图标路径存在: G:\Work\git\Bloret-Launcher\icons\bloret.png
+2025-03-01 07:17:53,087 [INFO] 启动画面创建完成
+2025-03-01 07:17:53,170 [INFO] 启动画面已显示
+2025-03-01 07:17:53,736 [INFO] 最新正式版: 4.1
+2025-03-01 07:17:54,245 [INFO] 图标路径存在: G:\Work\git\Bloret-Launcher\icons\bloret.png
+2025-03-01 07:17:54,428 [INFO] 开始向 cmcl.json 读取数据
+2025-03-01 07:17:54,429 [INFO] cmcl.json 中的 accounts 列表为空
+2025-03-01 07:17:54,513 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 07:17:54,904 [INFO] 成功读取版本列表: ['1.21.4']
+2025-03-01 07:17:54,963 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 07:17:54,964 [INFO] 设置 login_way_combo 当前索引为: 请在下方登录
+2025-03-01 07:17:54,966 [INFO] 设置 name_combo 当前索引为: 未登录
+2025-03-01 07:17:55,210 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 07:17:55,554 [INFO] 成功读取版本列表: ['1.21.4']
+2025-03-01 07:17:55,611 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 07:17:55,614 [INFO] 设置 login_way_combo 当前索引为: 请在下方登录
+2025-03-01 07:17:55,617 [INFO] 设置 name_combo 当前索引为: 未登录
+2025-03-01 07:17:58,128 [INFO] 隐藏启动画面
+2025-03-01 07:18:01,023 [INFO] 下载命令: "G:\Work\git\Bloret-Launcher\cmcl.exe" install 1.21.4
+2025-03-01 07:18:01,024 [INFO] 正在下载版本 "G:\Work\git\Bloret-Launcher\cmcl.exe" install 1.21.4
+2025-03-01 07:18:01,024 [INFO] 执行命令: "G:\Work\git\Bloret-Launcher\cmcl.exe" install 1.21.4

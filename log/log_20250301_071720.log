@@ -1,0 +1,21 @@
+2025-03-01 07:17:20,721 [INFO] 图标路径存在: G:\Work\git\Bloret-Launcher\icons\bloret.png
+2025-03-01 07:17:20,807 [INFO] 启动画面创建完成
+2025-03-01 07:17:20,892 [INFO] 启动画面已显示
+2025-03-01 07:17:21,469 [INFO] 最新正式版: 4.1
+2025-03-01 07:17:21,942 [INFO] 图标路径存在: G:\Work\git\Bloret-Launcher\icons\bloret.png
+2025-03-01 07:17:22,115 [INFO] 开始向 cmcl.json 读取数据
+2025-03-01 07:17:22,116 [INFO] cmcl.json 中的 accounts 列表为空
+2025-03-01 07:17:22,200 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 07:17:22,649 [ERROR] 路径无效: G:\Work\git\Bloret-Launcher\.minecraft\versions
+2025-03-01 07:17:22,710 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 07:17:22,712 [INFO] 设置 login_way_combo 当前索引为: 请在下方登录
+2025-03-01 07:17:22,713 [INFO] 设置 name_combo 当前索引为: 未登录
+2025-03-01 07:17:22,978 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 07:17:23,342 [ERROR] 路径无效: G:\Work\git\Bloret-Launcher\.minecraft\versions
+2025-03-01 07:17:23,398 [INFO] 成功读取 cmcl.json 数据
+2025-03-01 07:17:23,400 [INFO] 设置 login_way_combo 当前索引为: 请在下方登录
+2025-03-01 07:17:23,401 [INFO] 设置 name_combo 当前索引为: 未登录
+2025-03-01 07:17:25,891 [INFO] 隐藏启动画面
+2025-03-01 07:17:31,071 [INFO] 下载命令: "G:\Work\git\Bloret-Launcher\cmcl.exe" install 1.21.4 --fabric=0.16.10 --api
+2025-03-01 07:17:31,072 [INFO] 正在下载版本 "G:\Work\git\Bloret-Launcher\cmcl.exe" install 1.21.4 --fabric=0.16.10 --api
+2025-03-01 07:17:31,073 [INFO] 执行命令: "G:\Work\git\Bloret-Launcher\cmcl.exe" install 1.21.4 --fabric=0.16.10 --api
