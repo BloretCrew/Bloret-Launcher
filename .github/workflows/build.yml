@@ -23,11 +23,12 @@ jobs:
 
     - name: 验证资源文件路径
       run: |
-        if (-not (Test-Path "icons/bloret.png")) { exit 1 }
-        if (-not (Test-Path "config.ini")) { exit 1 }
-        if (-not (Test-Path "ui")) { exit 1 }
-        if (-not (Test-Path "cmcl.json")) { exit 1 }
-        if (-not (Test-Path "cmcl.exe")) { exit 1 }
+        Get-ChildItem -Path .
+        if (-not (Test-Path "icons/bloret.png")) { Write-Host "icons/bloret.png not found"; exit 1 }
+        if (-not (Test-Path "config.ini")) { Write-Host "config.ini not found"; exit 1 }
+        if (-not (Test-Path "ui")) { Write-Host "ui directory not found"; exit 1 }
+        if (-not (Test-Path "cmcl.json")) { Write-Host "cmcl.json not found"; exit 1 }
+        if (-not (Test-Path "cmcl.exe")) { Write-Host "cmcl.exe not found"; exit 1 }
       shell: pwsh
 
     - name: 设置 Python
