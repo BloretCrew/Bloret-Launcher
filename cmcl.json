@@ -3,9 +3,9 @@
   "downloadSource": 1,
   "checkAccountBeforeStart": false,
   "accounts": [{
-    "playerName": "Detritalw",
+    "playerName": "asd",
     "loginMethod": 0,
-    "selected": false
+    "selected": true
   }],
   "printStartupInfo": true
 }
