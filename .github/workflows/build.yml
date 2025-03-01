@@ -25,7 +25,7 @@ jobs:
       run: |
         Get-ChildItem -Path .
         if (-not (Test-Path "icons/bloret.png")) { Write-Host "icons/bloret.png not found"; exit 1 }
-        if (-not (Test-Path "config.ini")) { Write-Host "config.ini not found"; exit 1 }
+        if (-not (Test-Path "config.json")) { Write-Host "config.json not found"; exit 1 }
         if (-not (Test-Path "ui")) { Write-Host "ui directory not found"; exit 1 }
         if (-not (Test-Path "cmcl.json")) { Write-Host "cmcl.json not found"; exit 1 }
         if (-not (Test-Path "cmcl.exe")) { Write-Host "cmcl.exe not found"; exit 1 }
