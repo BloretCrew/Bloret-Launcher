@@ -60,7 +60,7 @@ jobs:
       run: |
         pyinstaller --onefile --noconsole --icon=icons/bloret.ico --name=Bloret-Launcher `
           --add-data "icons\\bloret.ico;." `
-          --add-data "config.ini;." `
+          --add-data "config.json;." `
           --add-data "ui;ui" `
           --add-data "cmcl.json;." `
           --add-data "cmcl.exe;." `
@@ -79,7 +79,7 @@ jobs:
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.json ${{ env.OUTPUT_DIR }}/
-        cp -r config.ini ${{ env.OUTPUT_DIR }}/
+        cp -r config.json ${{ env.OUTPUT_DIR }}/
         cp -r LICENSE.txt ${{ env.OUTPUT_DIR }}/
         cp -r servers.dat ${{ env.OUTPUT_DIR }}/
         cp -r cmcl_save.json ${{ env.OUTPUT_DIR }}/
