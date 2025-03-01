@@ -1,6 +1,6 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
-from qfluentwidgets import MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
+from qfluentwidgets import MessageBox, SubtitleLabel, MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
@@ -12,7 +12,7 @@ from win32com.client import Dispatch
 ver_id_bloret = ['1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21']
 ver_id_main = []
 ver_id_short = []
-ver_id = [] 
+ver_id = []
 ver_url = {}
 ver_id_long = []
 set_list = ["你还未安装任何版本哦，请前往下载页面安装"]
@@ -165,8 +165,6 @@ class MainWindow(FluentWindow):
         
         self.loading_dialogs = []  # 初始化 loading_dialogs 属性
         self.threads = []  # 初始化 threads 属性
-        self.handle_first_run()
-        self.check_for_updates()
 
         self.setWindowTitle("Bloret Launcher")
         icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
@@ -194,6 +192,8 @@ class MainWindow(FluentWindow):
         self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)  # 确保窗口显示在最前面
         self.raise_()
         self.activateWindow()
+        self.handle_first_run()
+        self.check_for_updates()
         
         # 3. 隐藏启动页面
         QTimer.singleShot(3000, lambda: (self.log("隐藏启动画面"), self.splashScreen.finish()))
@@ -245,7 +245,26 @@ class MainWindow(FluentWindow):
             self.cmcl_data = None
             self.player_name = "未登录"
             self.login_mod = "请在下方登录"
+    def setup_mods_ui(self, widget):
+        download_mod_button = widget.findChild(QPushButton, "download_mod_button")
+        if download_mod_button:
+            download_mod_button.clicked.connect(self.download_mod)
+    
+        # 添加对 Modrinth 按钮的处理
+        modrinth_button_ui = widget.findChild(QPushButton, "Modrinth")
+        if modrinth_button_ui:
+            modrinth_button_ui.clicked.connect(self.open_modrinth)
 
+    def open_modrinth(self):
+        QDesktopServices.openUrl(QUrl("https://modrinth.com/mods"))
+        self.log("打开 Modrinth 网站")
+
+    def download_mod(self):
+        InfoBar.info(
+            title='功能开发中',
+            content='模组下载功能正在紧张开发...',
+            parent=self
+        )
     def initNavigation(self):
         self.homeInterface = QWidget()
         self.downloadInterface = QWidget()
@@ -278,6 +297,11 @@ class MainWindow(FluentWindow):
         self.setup_passport_ui(self.passportInterface)
         self.setup_settings_ui(self.settingsInterface)
         self.setup_info_ui(self.infoInterface)
+        self.modsInterface = QWidget()
+        self.modsInterface.setObjectName("mods")
+        self.addSubInterface(self.modsInterface, QIcon("icons/mods.png"), "模组下载")
+        self.load_ui("ui/mods.ui", parent=self.modsInterface)
+        self.setup_mods_ui(self.modsInterface)
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -1554,10 +1578,10 @@ class MainWindow(FluentWindow):
                     self.log(f"Failed to delete {file_path}. Reason: {e}", logging.ERROR)
     def get_latest_version(self):
         try:
-            response = requests.get("https://api.github.com/repos/BloretCrew/Bloret-Launcher/releases/latest")
+            response = requests.get("http://pcfs.top:2/api/BLlatest")
             if response.status_code == 200:
                 latest_release = response.json()
-                return latest_release.get("tag_name", "未知版本")
+                return str(latest_release.get("Bloret-Launcher-latest", "未知版本"))
             else:
                 self.log("查询最新版本失败", logging.ERROR)
                 return "未知版本"
