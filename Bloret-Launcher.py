@@ -1043,15 +1043,15 @@ class MainWindow(FluentWindow):
         if BL_ver < float(self.BL_latest_ver):
             self.log(f"当前版本不是最新版，请更新到 {self.BL_latest_ver} 版本", logging.WARNING)
 
-            msg_box = QMessageBox(self)
-            msg_box.setIcon(QMessageBox.Warning)
-            msg_box.setWindowTitle('版本更新提示')
-            msg_box.setText(f'当前版本不是最新版，请更新到 {self.BL_latest_ver} 版本')
-            msg_box.setWindowIcon(QIcon("icons/bloret.png"))  # 设置弹窗图标
-            msg_box.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+            msg_box = MessageBox(
+                title='版本更新提示',
+                content=f'当前版本不是最新版，请更新到 {self.BL_latest_ver} 版本',
+                parent=self
+            )
             msg_box.button(QMessageBox.Ok).setText('立即更新')
             msg_box.button(QMessageBox.Cancel).setText('暂时不了')
-            if msg_box.exec() == QMessageBox.Ok:
+
+            if msg_box.exec():
                 self.update_to_latest_version()
     def update_to_latest_version(self):
         #url = f"http://localhost:100/zipdownload/{self.BL_latest_ver}.zip"
