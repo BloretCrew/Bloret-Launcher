@@ -5,7 +5,7 @@ from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
 from win10toast import ToastNotifier
-import re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
+import socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
 from win32com.client import Dispatch
 # 全局变量
@@ -132,7 +132,6 @@ class MainWindow(FluentWindow):
         # 初始化 self.logshow
         with open('config.json', 'r', encoding='utf-8') as f:
             self.config = json.load(f)
-        # self.logshow = self.config.get('logshow', False)  # 删除 logshow 配置读取
 
         # 1. 创建启动页面
         icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
@@ -178,20 +177,22 @@ class MainWindow(FluentWindow):
             self.log(f"图标路径不存在: {icon_path}", logging.ERROR)
         self.setWindowIcon(QIcon(icon_path))
 
-        self.setGeometry(100, 100, 800, 600)
-        self.setWindowIcon(QIcon(icon_path))  # 设置软件图标
+        # 读取 config.json 中 "size" 的值
+        self.scale_factor = self.config.get('size', 100) / 100.0
+        self.log(f"读取到的 scale_factor: {self.scale_factor}")
+        self.resize(int(900 * self.scale_factor), int(700 * self.scale_factor))
+
         self.is_running = False
-        self.player_uuid = ""  
-        self.player_skin = ""  
-        self.player_cape = ""  
-        self.player_name = ""  
+        self.player_uuid = ""
+        self.player_skin = ""
+        self.player_cape = ""
+        self.player_name = ""
         self.settings = QSettings("Bloret", "Launcher")
         self.apply_theme()
         self.cmcl_data = None  # 显式初始化
         self.load_cmcl_data()
         self.initNavigation()
         self.initWindow()
-        self.show()
         self.setAttribute(Qt.WA_QuitOnClose, True)  # 确保窗口关闭时程序退出
         self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)  # 确保窗口显示在最前面
         self.raise_()
@@ -206,9 +207,14 @@ class MainWindow(FluentWindow):
         self.initNavigation()
         self.initWindow()
 
-        # 应用深浅色主题
-        self.apply_theme()
+        # # 应用深浅色主题
+        # self.apply_theme()
+        # 是人用的吗？
 
+        # 显示窗口
+        self.show()
+        self.scale_factor = self.config.get('size', 90) / 100.0  # 修改 scale_factor 为 90%
+        self.resize(int(900 * self.scale_factor), int(700 * self.scale_factor))
 
     def load_cmcl_data(self):
         self.log(f"开始向 cmcl.json 读取数据")
@@ -292,6 +298,8 @@ class MainWindow(FluentWindow):
         self.resize(900, 700)
         self.setWindowIcon(QIcon("icons/bloret.png"))
         self.setWindowTitle("Bloret Launcher")
+        self.scale_factor = self.config.get('size', 90) / 100.0  # 修改 scale_factor 为 90%
+        self.resize(int(900 * self.scale_factor), int(700 * self.scale_factor))
     def load_ui(self, ui_path, parent=None, animate=True):
         widget = uic.loadUi(ui_path)
 
@@ -1028,12 +1036,9 @@ class MainWindow(FluentWindow):
 
     def check_for_updates(self):
         try:
-            # 插入 ping 检查
-            response = subprocess.run(['ping', 'pcfs.top', '-n', '1'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if response.returncode != 0:
-                self.log("无法连接到 pcfs.top", logging.ERROR)
-                return
-
+            # 插入 socket 检查
+            socket.setdefaulttimeout(3)
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(('pcfs.top', 2))
             BL_latest_ver, BL_update_text = self.get_latest_version()
             self.log(f"最新正式版: {BL_latest_ver}")
             BL_ver = float(self.config.get('ver', '0.0'))  # 从config.json读取当前版本
@@ -1052,6 +1057,14 @@ class MainWindow(FluentWindow):
                 w.yesButton.clicked.connect(self.update_to_latest_version)
         except Exception as e:
             self.log(f"检查更新时发生错误: {e}", logging.ERROR)
+            
+            self.log("无法连接到 pcfs.top", logging.ERROR)
+            w = MessageBox(
+                title="无法连接到 pcfs.top",
+                content=f'您无法连接到 PCFS 服务器来检查版本更新\n这可能是由于您的网络不佳？或是 PCFS 服务出现故障？\n请检查您的网络连接，或者稍后再试。\n我们等待了 3 秒，但它只显示：{e}',
+                parent=self
+            )
+            w.show()
     def update_to_latest_version(self):
         #url = f"http://localhost:100/zipdownload/{self.BL_latest_ver}.zip"
         url = f"http://pcfs.top:2/zipdownload/latest.zip"

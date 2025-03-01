@@ -1,5 +1,6 @@
 {
     "minecraft-part": ".minecraft",
     "first-run": false,
-    "ver": 4.2
+    "ver": 4.2,
+    "size": 100
 }
