@@ -1,6 +1,6 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
-from qfluentwidgets import MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
+from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
@@ -36,7 +36,6 @@ class DownloadWorker(QThread):
     finished = pyqtSignal()
     def run(self):
         # 模拟数据处理
-        import time
         time.sleep(5)  # 模拟数据处理耗时
         self.finished.emit()
 class RunScriptThread(QThread):
@@ -177,11 +176,6 @@ class MainWindow(FluentWindow):
             self.log(f"图标路径不存在: {icon_path}", logging.ERROR)
         self.setWindowIcon(QIcon(icon_path))
 
-        # 读取 config.json 中 "size" 的值
-        self.scale_factor = self.config.get('size', 100) / 100.0
-        self.log(f"读取到的 scale_factor: {self.scale_factor}")
-        self.resize(int(900 * self.scale_factor), int(700 * self.scale_factor))
-
         self.is_running = False
         self.player_uuid = ""
         self.player_skin = ""
@@ -213,8 +207,11 @@ class MainWindow(FluentWindow):
 
         # 显示窗口
         self.show()
-        self.scale_factor = self.config.get('size', 90) / 100.0  # 修改 scale_factor 为 90%
-        self.resize(int(900 * self.scale_factor), int(700 * self.scale_factor))
+
+        self.destroyed.connect(lambda: (
+            json.dump(self.config, open('config.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+            if hasattr(self, 'config') else None
+        ))
 
     def load_cmcl_data(self):
         self.log(f"开始向 cmcl.json 读取数据")
@@ -298,8 +295,8 @@ class MainWindow(FluentWindow):
         self.resize(900, 700)
         self.setWindowIcon(QIcon("icons/bloret.png"))
         self.setWindowTitle("Bloret Launcher")
-        self.scale_factor = self.config.get('size', 90) / 100.0  # 修改 scale_factor 为 90%
-        self.resize(int(900 * self.scale_factor), int(700 * self.scale_factor))
+        self.scale_factor = self.config.get('size', 90) / 100.0
+        self.resize(int(800 * self.scale_factor), int(600 * self.scale_factor))
     def load_ui(self, ui_path, parent=None, animate=True):
         widget = uic.loadUi(ui_path)
 
@@ -426,25 +423,11 @@ class MainWindow(FluentWindow):
         self.load_ui("ui/download.ui", animate=False)
         self.setup_download_ui(self.content_layout.itemAt(0).widget())
     def setup_download_ui(self, widget):
-        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
-        minecraft_part_choose_button = widget.findChild(QPushButton, "minecraft_part_choose")
-        minecraft_part_set_button = widget.findChild(QPushButton, "minecraft_part_set")
         download_way_choose = widget.findChild(ComboBox, "download_way_choose")  # 获取 download_way_choose 元素
         download_way_F5_button = widget.findChild(QPushButton, "download_way_F5")
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
         show_way = widget.findChild(ComboBox, "show_way")
         download_button = widget.findChild(QPushButton, "download")
-        if minecraft_part_edit:
-            config = configparser.ConfigParser()
-            config.read('config.ini')
-            if 'DEFAULT' in config and 'minecraft-part' in config['DEFAULT']:
-                minecraft_part_edit.setText(config['DEFAULT']['minecraft-part'])
-            else:
-                minecraft_part_edit.setText(os.path.join(os.getcwd(), ".minecraft"))
-        if minecraft_part_choose_button:
-            minecraft_part_choose_button.clicked.connect(lambda: self.choose_minecraft_part(widget))
-        if minecraft_part_set_button:
-            minecraft_part_set_button.clicked.connect(lambda: self.set_minecraft_part(widget))
         if show_way:
             show_way.clear()
             show_way.addItems(["百络谷支持版本", "正式版本", "快照版本", "远古版本"])
@@ -547,36 +530,6 @@ class MainWindow(FluentWindow):
         for dialog in self.loading_dialogs:
             dialog.close()
         self.loading_dialogs.clear()
-    def choose_minecraft_part(self, widget):
-        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
-        minecraft_part_choose_button = widget.findChild(QPushButton, "minecraft_part_choose")
-        if minecraft_part_edit and minecraft_part_choose_button:
-            folder_path = QFileDialog.getExistingDirectory(self, "选择 .minecraft 文件夹", os.getcwd())
-            if folder_path:
-                minecraft_part_edit.setText(folder_path)
-                config = configparser.ConfigParser()
-                config.read('config.ini')
-                if 'DEFAULT' not in config:
-                    config['DEFAULT'] = {}
-                config['DEFAULT']['minecraft-part'] = folder_path
-                with open('config.ini', 'w') as configfile:
-                    config.write(configfile)
-                self.log(f"选择的 .minecraft 文件夹路径: {folder_path}")
-                self.showTeachingTip(minecraft_part_choose_button, folder_path)
-    def set_minecraft_part(self, widget):
-        minecraft_part_edit = widget.findChild(QLineEdit, "minecraft_part")
-        minecraft_part_set_button = widget.findChild(QPushButton, "minecraft_part_set")
-        if minecraft_part_edit and minecraft_part_set_button:
-            folder_path = minecraft_part_edit.text()
-            config = configparser.ConfigParser()
-            config.read('config.ini')
-            if 'DEFAULT' not in config:
-                config['DEFAULT'] = {}
-            config['DEFAULT']['minecraft-part'] = folder_path
-            with open('config.ini', 'w') as configfile:
-                config.write(configfile)
-            self.log(f"设置的 .minecraft 文件夹路径: {folder_path}")
-            self.showTeachingTip(minecraft_part_set_button, folder_path)
     def showTeachingTip(self, target_widget, folder_path):
         if sip.isdeleted(target_widget):
             self.log(f"目标小部件已被删除，无法显示 TeachingTip", logging.ERROR)
@@ -1559,6 +1512,14 @@ class MainWindow(FluentWindow):
             light_dark_choose.clear()
             light_dark_choose.addItems(["跟随系统", "深色模式", "浅色模式"])
             light_dark_choose.currentTextChanged.connect(self.on_light_dark_changed)
+
+        size_choose = widget.findChild(SpinBox, "Size_Choose")
+        if size_choose:
+            size_choose.setValue(self.config.get("size", 100))
+            size_choose.valueChanged.connect(lambda value: (
+                self.config.update(size=value),
+                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+            ))
 
     def on_light_dark_changed(self, mode):
         if mode == "跟随系统":
