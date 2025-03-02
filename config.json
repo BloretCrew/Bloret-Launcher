@@ -1,4 +1,6 @@
 {
-    "name": "打开记事本",
-    "action": "notepad"
+    "minecraft-part": ".minecraft",
+    "first-run": false,
+    "ver": 4.2,
+    "size": 100
 }
