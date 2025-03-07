@@ -90,8 +90,7 @@
 **<summary>[Console Minecraft Launcher](https://github.com/MrShieh-X/console-minecraft-launcher)</summary>**
 
 本项目有一部分基于此项目构建
-> [!WARNING]
-> 本软件已取得 CMCL 作者许可，请不要像 #12 一样来问关于 CMCL 的版权问题
+> 本软件已取得 CMCL 作者许可，请不要像 [不符合 Console Minecraft Launcher (CMCL) 的使用协议 #12](https://github.com/BloretCrew/Bloret-Launcher/issues/12) 一样来问关于 CMCL 的版权问题
 > ![CMCLLICENSE](img/CMCLLICENSE.png)
 
 </details>
