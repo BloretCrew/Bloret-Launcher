@@ -1,6 +1,6 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
-from qfluentwidgets import FluentStyleSheet,setTheme,Theme,SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
+from qfluentwidgets import setTheme,Theme,SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
@@ -120,9 +120,6 @@ class LoadMinecraftVersionsThread(QThread):
 class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
-        self._current_theme = None
-        QApplication.instance().paletteChanged.connect(self.apply_theme)
-        self.apply_theme()  # 初始应用主题
 
         # 设置全局编码
         codec = locale.getpreferredencoding()
@@ -185,6 +182,7 @@ class MainWindow(FluentWindow):
         self.player_cape = ""
         self.player_name = ""
         self.settings = QSettings("Bloret", "Launcher")
+        self.apply_theme()
         self.cmcl_data = None  # 显式初始化
         self.load_cmcl_data()
         self.initNavigation()
@@ -749,7 +747,7 @@ class MainWindow(FluentWindow):
             
         def run(self):
             # 执行微软登录命令
-            process = subprocess.Popen(["cmcl", "account", "--login=microsoft","-s"],
+            process = subprocess.Popen(["cmcl", "account", "--login=microsoft"],
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE,
                                     text=True,
@@ -1141,38 +1139,15 @@ class MainWindow(FluentWindow):
     def animate_fade_in(self):
         self.fade_in_animation.start()
     def apply_theme(self, palette=None):
-        palette = palette or self.palette()
-        new_theme = Theme.LIGHT if palette.color(QPalette.Window).lightness() > 128 else Theme.DARK
-        
-        if hasattr(self, '_current_theme') and self._current_theme == new_theme:
-            return
-        
-        setTheme(new_theme)
-        self._current_theme = new_theme
-        
-        # 强制刷新所有控件样式
-        self.setStyleSheet("")  # 先清空样式
-        FluentStyleSheet.FLUENT_WINDOW.apply(self)  # 重新应用基础样式
-        self.update_all_children()
+        from qfluentwidgets import setTheme, Theme
+        if palette is None:
+            palette = QApplication.palette()
+        # 根据系统主题色判断并设置
+        if palette.color(QPalette.Window).lightness() < 128:
+            setTheme(Theme.DARK)
+        else:
+            setTheme(Theme.LIGHT)
 
-        # 添加渐变动画
-        fade_anim = QPropertyAnimation(self, b"windowOpacity")
-        fade_anim.setDuration(300)
-        fade_anim.setStartValue(0.7)
-        fade_anim.setEndValue(1)
-        fade_anim.start()
-
-    def update_all_children(self, widget=None):
-        widget = widget or self
-        for child in widget.findChildren(QWidget):
-            try:
-                child.style().unpolish(child)
-                child.style().polish(child)
-                child.update()
-                if child.children():
-                    self.update_all_children(child)
-            except:
-                pass
     def setup_passport_ui(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "player_name")
         player_name_set_button = widget.findChild(QPushButton, "player_name_set")
@@ -1492,7 +1467,6 @@ class MainWindow(FluentWindow):
                 cape_result_label.setText("查询失败")
                 self.log(f"查询玩家UUID {player_uuid} 的皮肤和披风失败", logging.ERROR)
     def setup_settings_ui(self, widget):
-        # 设置设置界面的UI元素
         log_clear_button = widget.findChild(QPushButton, "log_clear_button")
         if log_clear_button:
             log_clear_button.clicked.connect(self.clear_log_files)
@@ -1501,12 +1475,14 @@ class MainWindow(FluentWindow):
         light_dark_choose = widget.findChild(ComboBox, "light_dark_choose")
         if light_dark_choose:
             light_dark_choose.clear()
-            light_dark_choose.addItems(["跟随系统", "深色模式", "浅色模式"])
-            light_dark_choose.currentTextChanged.connect(lambda text: {
-                '跟随系统': lambda: setTheme(Theme.AUTO),
-                '深色模式': lambda: setTheme(Theme.DARK),
-                '浅色模式': lambda: setTheme(Theme.LIGHT)  # 明确设置浅色主题
-            }[text]())
+            light_dark_choose.addItems(["浅色模式", "深色模式"])
+            # 连接文本变化信号以便切换主题
+            light_dark_choose.currentTextChanged.connect(self.on_light_dark_changed)
+            # 初始状态下应用当前选中的主题
+            if light_dark_choose.currentText() == "深色模式":
+                self.apply_theme(QPalette(QColor("#2e2e2e")))
+            elif light_dark_choose.currentText() == "浅色模式":
+                self.apply_theme(QPalette(QColor("#ffffff")))
 
         size_choose = widget.findChild(SpinBox, "Size_Choose")
         if size_choose:
@@ -1520,9 +1496,9 @@ class MainWindow(FluentWindow):
         if mode == "跟随系统":
             self.apply_theme()
         elif mode == "深色模式":
-            self.apply_theme(QPalette(QColor("#2e2e2e")))
+            setTheme(Theme.DARK)
         elif mode == "浅色模式":
-            self.apply_theme(QPalette(QColor("#ffffff")))
+            setTheme(Theme.LIGHT)
 
     def clear_log_files(self):
         log_folder = os.path.join(os.getcwd(), 'log')

@@ -80,7 +80,7 @@ jobs:
         cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.json ${{ env.OUTPUT_DIR }}/
         cp -r config.json ${{ env.OUTPUT_DIR }}/
-        cp -r LICENSE.txt ${{ env.OUTPUT_DIR }}/
+        cp -r LICENSE ${{ env.OUTPUT_DIR }}/
         cp -r servers.dat ${{ env.OUTPUT_DIR }}/
         cp -r cmcl_save.json ${{ env.OUTPUT_DIR }}/
 
