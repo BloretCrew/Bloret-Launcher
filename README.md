@@ -85,7 +85,17 @@
 - [PyQt5](https://www.riverbankcomputing.com/static/Docs/PyQt5/)
 - [PyQt Fluent Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)
 - [SF Symbols](https://developer.apple.com/cn/sf-symbols/)
-- [Console Minecraft Launcher](https://github.com/MrShieh-X/console-minecraft-launcher) *本项目有一部分基于此项目构建
+<details>
+
+**<summary>[Console Minecraft Launcher](https://github.com/MrShieh-X/console-minecraft-launcher)</summary>**
+
+本项目有一部分基于此项目构建
+> [!WARNING]
+> 本软件已取得 CMCL 作者许可，请不要像 #12 一样来问关于 CMCL 的版权问题
+> ![CMCLLICENSE](img/CMCLLICENSE.png)
+
+</details>
+
 - [Class Widgets](https://github.com/Class-Widgets/Class-Widgets)
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)

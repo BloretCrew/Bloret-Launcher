@@ -1,6 +1,6 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
-from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
+from qfluentwidgets import setTheme,Theme,SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
@@ -120,6 +120,7 @@ class LoadMinecraftVersionsThread(QThread):
 class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
+        setTheme(Theme.AUTO)  # 设置默认跟随系统
 
         # 设置全局编码
         codec = locale.getpreferredencoding()
@@ -182,7 +183,6 @@ class MainWindow(FluentWindow):
         self.player_cape = ""
         self.player_name = ""
         self.settings = QSettings("Bloret", "Launcher")
-        self.apply_theme()
         self.cmcl_data = None  # 显式初始化
         self.load_cmcl_data()
         self.initNavigation()
@@ -1139,49 +1139,7 @@ class MainWindow(FluentWindow):
     def animate_fade_in(self):
         self.fade_in_animation.start()
     def apply_theme(self, palette=None):
-        if palette is None:
-            palette = QApplication.palette()
-        
-        # 检测系统主题
-        if palette.color(QPalette.Window).lightness() < 128:
-            theme = "dark"
-        else:
-            theme = "light"
-        
-        if theme == "dark":
-            self.setStyleSheet("""
-                QWidget { background-color: #2e2e2e; color: #ffffff; }
-                QPushButton { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
-                QPushButton:hover { background-color: #4a4a4a; color: #ffffff; }
-                QPushButton:pressed { background-color: #5a5a5a; color: #ffffff; }
-                QComboBox { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
-                QComboBox:hover { background-color: #4a4a4a; color: #ffffff; }
-                QComboBox:pressed { background-color: #5a5a5a; color: #ffffff; }
-                QComboBox QAbstractItemView { background-color: #2e2e2e; selection-background-color: #4a4a4a; color: #ffffff; }
-                QLineEdit { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
-                QLabel { color: #ffffff; }
-                QCheckBox { color: #ffffff; }
-                QCheckBox::indicator { width: 20px; height: 20px; }
-                QCheckBox::indicator:checked { image: url(ui/icon/checked.png); }
-                QCheckBox::indicator:unchecked { image: url(ui/icon/unchecked.png); }
-            """)
-            palette.setColor(QPalette.Window, QColor("#2e2e2e"))
-            palette.setColor(QPalette.WindowText, QColor("#ffffff"))
-            palette.setColor(QPalette.Base, QColor("#1e1e1e"))
-            palette.setColor(QPalette.AlternateBase, QColor("#2e2e2e"))
-            palette.setColor(QPalette.ToolTipBase, QColor("#ffffff"))
-            palette.setColor(QPalette.ToolTipText, QColor("#ffffff"))
-            palette.setColor(QPalette.Text, QColor("#ffffff"))
-            palette.setColor(QPalette.Button, QColor("#3a3a3a"))
-            palette.setColor(QPalette.ButtonText, QColor("#ffffff"))
-            palette.setColor(QPalette.BrightText, QColor("#ff0000"))
-            palette.setColor(QPalette.Link, QColor("#2a82da"))
-            palette.setColor(QPalette.Highlight, QColor("#2a82da"))
-            palette.setColor(QPalette.HighlightedText, QColor("#000000"))
-            self.setPalette(palette)
-        else:
-            self.setStyleSheet("")
-            self.setPalette(self.style().standardPalette())
+        QApplication.instance().paletteChanged.connect(self.apply_theme)
     def setup_passport_ui(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "player_name")
         player_name_set_button = widget.findChild(QPushButton, "player_name_set")
@@ -1511,7 +1469,11 @@ class MainWindow(FluentWindow):
         if light_dark_choose:
             light_dark_choose.clear()
             light_dark_choose.addItems(["跟随系统", "深色模式", "浅色模式"])
-            light_dark_choose.currentTextChanged.connect(self.on_light_dark_changed)
+            light_dark_choose.currentTextChanged.connect(lambda text: {
+                '跟随系统': lambda: setTheme(Theme.AUTO),
+                '深色模式': lambda: setTheme(Theme.DARK),
+                '浅色模式': lambda: [setTheme(Theme.LIGHT), QApplication.instance().setStyleSheet('')]
+            }[text]())
 
         size_choose = widget.findChild(SpinBox, "Size_Choose")
         if size_choose:
