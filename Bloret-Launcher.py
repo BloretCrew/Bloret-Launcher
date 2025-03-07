@@ -121,7 +121,7 @@ class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
         self._current_theme = None
-        self.paletteChanged.connect(lambda p: self.apply_theme(p))
+        QApplication.instance().paletteChanged.connect(self.apply_theme)
         self.apply_theme()  # 初始应用主题
 
         # 设置全局编码

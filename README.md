@@ -95,6 +95,17 @@
 
 </details>
 
-- [Class Widgets](https://github.com/Class-Widgets/Class-Widgets)
+<details>
+
+**<summary>[Class Widgets](https://github.com/Class-Widgets)</summary>**
+关于为什么会致谢 [Class Widgets](https://github.com/Class-Widgets)：  
+[Class Widgets](https://github.com/Class-Widgets) 为 Bloret Launcher 有以下值得我们致谢的点：
+ - 为 Bloret Launcher 的 UI 提供了想法
+ - Bloret Launcher 已加入 Class Widgets 插件广场
+ - @RinLit 为本作品有写法指导
+ - [[not cw] 求助为什么崩溃 #392](https://github.com/orgs/Class-Widgets/discussions/392)
+ - [求教如何往下拉选择框做东西进去 #338](https://github.com/orgs/Class-Widgets/discussions/338)
+</details>
+
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
