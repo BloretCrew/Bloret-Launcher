@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.cpp": "cpp",
+        "qlabel": "cpp",
+        "qpushbutton": "cpp"
+    }
+}

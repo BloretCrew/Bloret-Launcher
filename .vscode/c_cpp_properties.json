@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/Qt/Qt5.0.2/5.0.2/msvc2012_64/include",
+                "C:/Qt/Qt5.0.2/5.0.2/msvc2012_64/include/QtCore",
+                "C:/Qt/Qt5.0.2/5.0.2/msvc2012_64/include/QtGui",
+                "C:/Qt/Qt5.0.2/5.0.2/msvc2012_64/include/QtWidgets",
+                "C:/Qt/Qt5.0.2/5.0.2/msvc2012_64/include/QtNetwork"
+            ],
+            "defines": [],
+            "compilerPath": "G:/apps/mingw32/bin/g++.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}
