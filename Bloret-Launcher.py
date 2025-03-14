@@ -18,6 +18,7 @@ ver_id_long = []
 set_list = ["你还未安装任何版本哦，请前往下载页面安装"]
 BL_update_text = ""
 BL_latest_ver = 0
+AskAdmin = False
 
 def check_admin_permissions():
     try:
@@ -48,6 +49,8 @@ def check_admin_permissions():
                     
                     if int(ret) > 32:
                         print("成功请求管理员权限")
+                        global AskAdmin
+                        AskAdmin = True
                         return True
                     else:
                         print("请求管理员权限失败")
@@ -247,6 +250,17 @@ class MainWindow(FluentWindow):
 
         # 修改 destroyed 信号处理
         self.destroyed.connect(self.save_config)
+
+        # 检查是否需要显示管理员权限提示
+        if AskAdmin:
+            w = MessageBox(
+                title="Bloret Launcher 需要管理员权限才能写入文件",
+                content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在 非 Program Files , Program Files (x86) 等只读的文件夹",
+                parent=self,
+                isClosable=False,
+                showCancelButton=False
+            )
+            w.exec()
 
     def save_config(self):
         try:
