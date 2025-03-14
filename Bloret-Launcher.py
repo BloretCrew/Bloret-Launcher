@@ -1,6 +1,6 @@
 from datetime import datetime
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
-from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QFormLayout, QFrame, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QLayout
+from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit, CardWidget, StrongBodyLabel, BodyLabel
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
@@ -134,12 +134,38 @@ class MainWindow(FluentWindow):
                 if sys.platform == 'win32':
                     import ctypes
                     if not ctypes.windll.shell32.IsUserAnAdmin():
-                        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-                        sys.exit()
-                self.log("成功获取管理员权限")
+                        # 获取当前脚本的完整路径
+                        script = os.path.abspath(sys.argv[0])
+                        params = ' '.join(sys.argv[1:])
+                        
+                        # 使用ShellExecuteW以管理员权限重新运行程序
+                        ret = ctypes.windll.shell32.ShellExecuteW(
+                            None, 
+                            "runas", 
+                            sys.executable, 
+                            f'"{script}" {params}', 
+                            None, 
+                            1
+                        )
+                        
+                        if int(ret) > 32:
+                            self.log("成功请求管理员权限，程序将重新启动")
+                            sys.exit(0)
+                        else:
+                            self.log("请求管理员权限失败", logging.ERROR)
+                            QMessageBox.critical(
+                                self, 
+                                "权限错误", 
+                                "无法获取管理员权限，程序可能无法正常运行。\n请右键以管理员身份运行程序。"
+                            )
+                            sys.exit(1)
             except Exception as e:
                 self.log(f"获取管理员权限失败: {e}", logging.ERROR)
-                QMessageBox.critical(self, "权限错误", "无法获取管理员权限，程序可能无法正常运行。")
+                QMessageBox.critical(
+                    self, 
+                    "权限错误", 
+                    f"获取管理员权限失败: {e}\n请右键以管理员身份运行程序。"
+                )
                 sys.exit(1)
 
         # 设置全局编码
@@ -221,10 +247,6 @@ class MainWindow(FluentWindow):
         # 再初始化需要cmcl_data的组件
         self.initNavigation()
         self.initWindow()
-
-        # # 应用深浅色主题
-        # self.apply_theme()
-        # 是人用的吗？
 
         # 显示窗口
         self.show()
@@ -322,10 +344,13 @@ class MainWindow(FluentWindow):
         widget = uic.loadUi(ui_path)
 
         if parent:
-            # 确保父部件只有一个布局
-            if parent.layout() is None:
+            # 如果父部件已经有布局，直接添加widget
+            if parent.layout():
+                parent.layout().addWidget(widget)
+            else:
+                # 如果父部件没有布局，创建一个新的布局
                 parent.setLayout(QVBoxLayout())
-            parent.layout().addWidget(widget)  # 直接添加到现有布局
+                parent.layout().addWidget(widget)
 
         if animate:
             self.animate_sidebar()
@@ -387,6 +412,10 @@ class MainWindow(FluentWindow):
     def on_info_clicked(self):
         self.log("关于 被点击")
         self.switchTo(self.infoInterface)
+    def on_forum_clicked(self):
+        self.log("论坛 被点击")
+        self.switchTo(self.forumInterface)
+        self.load_forum_posts()
     def run_cmcl_list(self):
         global set_list  # 添加全局声明
         try:
@@ -1617,6 +1646,149 @@ class MainWindow(FluentWindow):
         qq_icon = widget.findChild(QLabel, "QQ_icon")
         if qq_icon:
             qq_icon.setPixmap(QPixmap("ui/icon/qq.png"))
+
+    def setup_forum_ui(self, widget):
+        self.forum_widget = widget
+        # 获取UI文件中定义的布局
+        self.forum_layout = widget.findChild(QVBoxLayout, "verticalLayout")
+        if not self.forum_layout:
+            self.log("未找到论坛布局", logging.WARNING)
+            return
+            
+        # 设置布局的边距和间距
+        self.forum_layout.setContentsMargins(20, 20, 20, 20)
+        self.forum_layout.setSpacing(10)
+        self.log("论坛页面布局初始化完成")
+
+    def load_forum_posts(self):
+        try:
+            # 从 API 获取帖子数据
+            response = requests.get("http://pcfs.top:2/api/part")
+            if response.status_code == 200:
+                posts = response.json()
+                self.log("成功从 API 获取帖子数据")
+                self.log("完整的 JSON 数据结构:")
+                self.log(json.dumps(posts, ensure_ascii=False, indent=2))
+                
+                # 记录每个分类的信息
+                for category, post_list in posts.items():
+                    self.log(f"\n分类: {category}")
+                    self.log(f"该分类下的帖子数量: {len(post_list)}")
+                    for post in post_list:
+                        self.log(f"\n帖子标题: {post.get('title')}")
+                        self.log(f"帖子内容: {post.get('text')}")
+                        self.log(f"帖子类型: {post.get('type')}")
+                        self.log(f"发布时间: {post.get('time')}")
+            else:
+                self.log(f"从 API 获取数据失败，状态码: {response.status_code}", logging.ERROR)
+                InfoBar.error(
+                    title='❌ 加载失败',
+                    content=f"从服务器获取数据失败，状态码: {response.status_code}",
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=5000,
+                    parent=self
+                )
+                return
+                
+            # 获取滚动区域的内容部件
+            scroll_area = self.forum_widget.findChild(QWidget, "scrollAreaWidgetContents")
+            if not scroll_area:
+                self.log("未找到滚动区域内容部件", logging.WARNING)
+                return
+                
+            # 获取主布局
+            main_layout = scroll_area.findChild(QVBoxLayout, "verticalLayout_4")
+            if not main_layout:
+                self.log("未找到主布局", logging.WARNING)
+                return
+            
+            # 清除现有内容，包括第一个布局
+            while main_layout.count() > 0:
+                item = main_layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+            
+            # 为每个分类创建布局
+            for category, post_list in posts.items():
+                if category:  # 跳过空分类
+                    self.log(f"\n处理分类: {category}")
+                    self.log(f"该分类下的帖子数量: {len(post_list)}")
+                    # 创建分类布局
+                    form_layout = QFormLayout()
+                    form_layout.setSizeConstraint(QLayout.SetDefaultConstraint)
+                    form_layout.setLabelAlignment(Qt.AlignLeading | Qt.AlignLeft | Qt.AlignTop)
+                    form_layout.setFormAlignment(Qt.AlignLeading | Qt.AlignLeft | Qt.AlignTop)
+                    form_layout.setLeftMargin(0)
+                    form_layout.setTopMargin(0)
+                    
+                    # 创建分类标题标签
+                    category_label = SubtitleLabel(self.forum_widget)
+                    category_label.setText(f"=== {category} ===")
+                    form_layout.addRow(category_label, QWidget())  # 添加一个空的widget作为占位符
+                    
+                    # 显示该分类下的所有帖子
+                    if post_list:  # 确保帖子列表不为空
+                        for post in post_list:
+                            self.log(f"\n处理帖子: {post.get('title')}")
+                            self.log(f"帖子内容: {post.get('text')}")
+                            self.log(f"帖子类型: {post.get('type')}")
+                            self.log(f"发布时间: {post.get('time')}")
+                            # 创建卡片容器
+                            card = CardWidget()
+                            card.setMinimumSize(0, 140)
+                            card.setFrameShape(QFrame.StyledPanel)
+                            card.setFrameShadow(QFrame.Raised)
+                            
+                            # 创建卡片内部布局
+                            card_layout = QVBoxLayout()
+                            
+                            # 创建标题标签
+                            title_label = StrongBodyLabel()
+                            title_label.setText(post.get('title', '无标题'))
+                            card_layout.addWidget(title_label)
+                            
+                            # 创建内容标签
+                            text_label = BodyLabel()
+                            text_label.setMinimumSize(5, 100)
+                            text_label.setAlignment(Qt.AlignLeading | Qt.AlignLeft | Qt.AlignTop)
+                            
+                            # 构建内容文本
+                            types = post.get('type', [])
+                            type_text = f"类型: {', '.join(types)}\n" if types else ""
+                            content = f"{type_text}{post.get('text', '无内容')}"
+                            text_label.setText(content)
+                            
+                            card_layout.addWidget(text_label)
+                            card.setLayout(card_layout)
+                            
+                            # 将卡片添加到表单布局
+                            form_layout.addRow(QWidget(), card)  # 添加一个空的widget作为占位符
+                    
+                    # 将表单布局添加到主布局
+                    main_layout.addLayout(form_layout)
+            
+            self.log("\n成功加载论坛帖子")
+        except requests.RequestException as e:
+            self.log(f"请求 API 时发生错误: {e}", logging.ERROR)
+            InfoBar.error(
+                title='❌ 加载失败',
+                content=f"请求服务器时发生错误: {e}",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+        except Exception as e:
+            self.log(f"加载论坛帖子时发生错误: {e}", logging.ERROR)
+            InfoBar.error(
+                title='❌ 加载失败',
+                content=f"加载论坛帖子时发生错误: {e}",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
 
 
 if __name__ == "__main__":
