@@ -1,11 +1,11 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
-from qfluentwidgets import setTheme,Theme,SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
+from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
 from win10toast import ToastNotifier
-import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
+import socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
 from win32com.client import Dispatch
 # 全局变量
@@ -24,26 +24,6 @@ if not os.path.exists('log'):
     os.makedirs('log')
 # 设置日志配置
 log_filename = os.path.join('log', f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-
-def check_write_permission():
-    try:
-        test_file = os.path.join(os.getcwd(), 'test_write_permission.txt')
-        with open(test_file, 'w') as f:
-            f.write('test')
-        os.remove(test_file)
-        return True
-    except IOError:
-        return False
-
-def request_admin_privileges():
-    if ctypes.windll.shell32.IsUserAnAdmin():
-        return True
-    else:
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
-        sys.exit()
-
-if not check_write_permission():
-    request_admin_privileges()
 
 logging.basicConfig(
     filename=log_filename, 
@@ -140,6 +120,27 @@ class LoadMinecraftVersionsThread(QThread):
 class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
+
+        # 检查当前目录的写入权限
+        try:
+            test_file = os.path.join(os.getcwd(), 'test_write.tmp')
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+            self.log("当前目录具有写入权限")
+        except PermissionError:
+            self.log("当前目录没有写入权限，尝试请求管理员权限", logging.WARNING)
+            try:
+                if sys.platform == 'win32':
+                    import ctypes
+                    if not ctypes.windll.shell32.IsUserAnAdmin():
+                        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+                        sys.exit()
+                self.log("成功获取管理员权限")
+            except Exception as e:
+                self.log(f"获取管理员权限失败: {e}", logging.ERROR)
+                QMessageBox.critical(self, "权限错误", "无法获取管理员权限，程序可能无法正常运行。")
+                sys.exit(1)
 
         # 设置全局编码
         codec = locale.getpreferredencoding()
@@ -721,8 +722,7 @@ class MainWindow(FluentWindow):
                     stderr=subprocess.PIPE,
                     text=True,
                     encoding='utf-8',
-                    errors='replace',
-                    shell=True  # 使用管理员权限
+                    errors='replace'
                 )
                 last_line = ""
                 for line in iter(process.stdout.readline, ''):
@@ -1160,15 +1160,49 @@ class MainWindow(FluentWindow):
     def animate_fade_in(self):
         self.fade_in_animation.start()
     def apply_theme(self, palette=None):
-        from qfluentwidgets import setTheme, Theme
         if palette is None:
             palette = QApplication.palette()
-        # 根据系统主题色判断并设置
+        
+        # 检测系统主题
         if palette.color(QPalette.Window).lightness() < 128:
-            setTheme(Theme.DARK)
+            theme = "dark"
         else:
-            setTheme(Theme.LIGHT)
-
+            theme = "light"
+        
+        if theme == "dark":
+            self.setStyleSheet("""
+                QWidget { background-color: #2e2e2e; color: #ffffff; }
+                QPushButton { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
+                QPushButton:hover { background-color: #4a4a4a; color: #ffffff; }
+                QPushButton:pressed { background-color: #5a5a5a; color: #ffffff; }
+                QComboBox { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
+                QComboBox:hover { background-color: #4a4a4a; color: #ffffff; }
+                QComboBox:pressed { background-color: #5a5a5a; color: #ffffff; }
+                QComboBox QAbstractItemView { background-color: #2e2e2e; selection-background-color: #4a4a4a; color: #ffffff; }
+                QLineEdit { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
+                QLabel { color: #ffffff; }
+                QCheckBox { color: #ffffff; }
+                QCheckBox::indicator { width: 20px; height: 20px; }
+                QCheckBox::indicator:checked { image: url(ui/icon/checked.png); }
+                QCheckBox::indicator:unchecked { image: url(ui/icon/unchecked.png); }
+            """)
+            palette.setColor(QPalette.Window, QColor("#2e2e2e"))
+            palette.setColor(QPalette.WindowText, QColor("#ffffff"))
+            palette.setColor(QPalette.Base, QColor("#1e1e1e"))
+            palette.setColor(QPalette.AlternateBase, QColor("#2e2e2e"))
+            palette.setColor(QPalette.ToolTipBase, QColor("#ffffff"))
+            palette.setColor(QPalette.ToolTipText, QColor("#ffffff"))
+            palette.setColor(QPalette.Text, QColor("#ffffff"))
+            palette.setColor(QPalette.Button, QColor("#3a3a3a"))
+            palette.setColor(QPalette.ButtonText, QColor("#ffffff"))
+            palette.setColor(QPalette.BrightText, QColor("#ff0000"))
+            palette.setColor(QPalette.Link, QColor("#2a82da"))
+            palette.setColor(QPalette.Highlight, QColor("#2a82da"))
+            palette.setColor(QPalette.HighlightedText, QColor("#000000"))
+            self.setPalette(palette)
+        else:
+            self.setStyleSheet("")
+            self.setPalette(self.style().standardPalette())
     def setup_passport_ui(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "player_name")
         player_name_set_button = widget.findChild(QPushButton, "player_name_set")
@@ -1292,7 +1326,6 @@ class MainWindow(FluentWindow):
         # if run_choose:
         #     run_choose.addItems(set_list)
     def run_cmcl(self, version):
-
         InfoBar.success(
                 title=f'🔄️ 正在启动 {version}',
                 content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
@@ -1309,42 +1342,62 @@ class MainWindow(FluentWindow):
         self.log(f"正在启动 {version}")
         if os.path.exists("run.ps1"):
             os.remove("run.ps1")
-        # 新增生成脚本命令
-        subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"])
-        
-        # 替换 CMCL 2.2.2 → Bloret Launcher
-        with open("run.ps1", "r+", encoding='utf-8') as f:
-            content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
-            f.seek(0)
-            f.write(content)
-            f.truncate()
+        # 使用管理员权限运行 cmcl 命令
+        try:
+            if sys.platform == 'win32':
+                import ctypes
+                if not ctypes.windll.shell32.IsUserAnAdmin():
+                    self.log("当前没有管理员权限，尝试重新以管理员权限运行", logging.WARNING)
+                    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+                    sys.exit()
+            
+            # 新增生成脚本命令
+            subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"], shell=True)
+            
+            # 替换 CMCL 2.2.2 → Bloret Launcher
+            with open("run.ps1", "r+", encoding='utf-8') as f:
+                content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
+                f.seek(0)
+                f.write(content)
+                f.truncate()
 
-        # 替换 CMCL → Bloret-Launcher
-        with open("run.ps1", "r+", encoding='utf-8') as f:
-            content = f.read().replace('CMCL', 'Bloret-Launcher')
-            f.seek(0)
-            f.write(content)
-            f.truncate()
+            # 替换 CMCL → Bloret-Launcher
+            with open("run.ps1", "r+", encoding='utf-8') as f:
+                content = f.read().replace('CMCL', 'Bloret-Launcher')
+                f.seek(0)
+                f.write(content)
+                f.truncate()
 
-        run_button = self.sender()  # 获取按钮对象
-        teaching_tip = TeachingTip.create(
-            target=run_button,  # 修改为按钮对象
-            icon=InfoBarIcon.SUCCESS,
-            title=f'正在启动 {version}',
-            content="请稍等",
-            isClosable=True,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=0,  # 设置为0表示不自动关闭
-            parent=self
-        )
-        if teaching_tip:
-            teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
-        
-        # 线程
-        self.run_script_thread = RunScriptThread()
-        self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))  # 替换...为实际处理函数
-        self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
-        self.run_script_thread.start()  # 添加线程启动
+            run_button = self.sender()  # 获取按钮对象
+            teaching_tip = TeachingTip.create(
+                target=run_button,  # 修改为按钮对象
+                icon=InfoBarIcon.SUCCESS,
+                title=f'正在启动 {version}',
+                content="请稍等",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=0,  # 设置为0表示不自动关闭
+                parent=self
+            )
+            if teaching_tip:
+                teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
+            
+            # 线程
+            self.run_script_thread = RunScriptThread()
+            self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
+            self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
+            self.run_script_thread.start()
+        except Exception as e:
+            self.log(f"运行 cmcl 命令失败: {e}", logging.ERROR)
+            InfoBar.error(
+                title='❌ 运行失败',
+                content=f"运行 cmcl 命令失败: {e}",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+            self.is_running = False
 
         self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
         self.update_show_text_thread.update_text.connect(self.update_show_text)
@@ -1488,6 +1541,7 @@ class MainWindow(FluentWindow):
                 cape_result_label.setText("查询失败")
                 self.log(f"查询玩家UUID {player_uuid} 的皮肤和披风失败", logging.ERROR)
     def setup_settings_ui(self, widget):
+        # 设置设置界面的UI元素
         log_clear_button = widget.findChild(QPushButton, "log_clear_button")
         if log_clear_button:
             log_clear_button.clicked.connect(self.clear_log_files)
@@ -1496,14 +1550,8 @@ class MainWindow(FluentWindow):
         light_dark_choose = widget.findChild(ComboBox, "light_dark_choose")
         if light_dark_choose:
             light_dark_choose.clear()
-            light_dark_choose.addItems(["浅色模式", "深色模式"])
-            # 连接文本变化信号以便切换主题
+            light_dark_choose.addItems(["跟随系统", "深色模式", "浅色模式"])
             light_dark_choose.currentTextChanged.connect(self.on_light_dark_changed)
-            # 初始状态下应用当前选中的主题
-            if light_dark_choose.currentText() == "深色模式":
-                self.apply_theme(QPalette(QColor("#2e2e2e")))
-            elif light_dark_choose.currentText() == "浅色模式":
-                self.apply_theme(QPalette(QColor("#ffffff")))
 
         size_choose = widget.findChild(SpinBox, "Size_Choose")
         if size_choose:
@@ -1517,9 +1565,9 @@ class MainWindow(FluentWindow):
         if mode == "跟随系统":
             self.apply_theme()
         elif mode == "深色模式":
-            setTheme(Theme.DARK)
+            self.apply_theme(QPalette(QColor("#2e2e2e")))
         elif mode == "浅色模式":
-            setTheme(Theme.LIGHT)
+            self.apply_theme(QPalette(QColor("#ffffff")))
 
     def clear_log_files(self):
         log_folder = os.path.join(os.getcwd(), 'log')
