@@ -1,6 +1,6 @@
 {
     "minecraft-part": ".minecraft",
-    "first-run": false,
+    "first-run": true,
     "ver": 4.2,
     "size": 100,
     "themelight": true
