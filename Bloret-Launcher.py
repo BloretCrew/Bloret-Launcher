@@ -265,8 +265,11 @@ class MainWindow(FluentWindow):
     def save_config(self):
         try:
             if hasattr(self, 'config'):
-                with open('config.json', 'w', encoding='utf-8') as f:
-                    json.dump(self.config, f, ensure_ascii=False, indent=4)
+                try:
+                    with open('config.json', 'w', encoding='utf-8') as f:
+                        json.dump(self.config, f, ensure_ascii=False, indent=4)
+                except PermissionError:
+                    self.log("无法保存配置文件，权限不足", logging.ERROR)
         except Exception as e:
             self.log(f"保存配置文件失败: {e}", logging.ERROR)
 
@@ -1671,17 +1674,18 @@ if __name__ == "__main__":
     # 检查权限
     if not check_admin_permissions():
         sys.exit(1)
-        
+
+    window = MainWindow()  # 确保在使用之前初始化 window
+    
     # 如果成功获取权限，显示对话框并设置日志
     if ctypes.windll.shell32.IsUserAnAdmin():
-        msg = MessageBox(
-            title="Bloret Launcher 需要管理员权限才能写入文件",
-            content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
-            parent=app.activeWindow()
-        )
+        if window:
+            msg = MessageBox(
+                title="Bloret Launcher 需要管理员权限才能写入文件",
+                content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
+                parent=app.activeWindow()
+            )
         msg.exec()
         setup_logging()  # 设置日志
-
-    window = MainWindow()
     window.show()
     sys.exit(app.exec())
