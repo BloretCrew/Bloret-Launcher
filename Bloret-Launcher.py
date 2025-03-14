@@ -19,53 +19,56 @@ set_list = ["你还未安装任何版本哦，请前往下载页面安装"]
 BL_update_text = ""
 BL_latest_ver = 0
 
-# 检查当前目录的写入权限
-try:
-    test_file = os.path.join(os.getcwd(), 'test_write.tmp')
-    with open(test_file, 'w') as f:
-        f.write('test')
-    os.remove(test_file)
-    print("当前目录具有写入权限")
-except PermissionError:
-    print("当前目录没有写入权限，尝试请求管理员权限")
+def check_admin_permissions():
     try:
-        if sys.platform == 'win32':
-            if not ctypes.windll.shell32.IsUserAnAdmin():
-                # 获取当前脚本的完整路径
-                script = os.path.abspath(sys.argv[0])
-                params = ' '.join(sys.argv[1:])
-                
-                # 使用ShellExecuteW以管理员权限重新运行程序
-                ret = ctypes.windll.shell32.ShellExecuteW(
-                    None, 
-                    "runas", 
-                    sys.executable, 
-                    f'"{script}" {params}', 
-                    None, 
-                    1
-                )
-                
-                if int(ret) > 32:
-                    print("成功请求管理员权限")
-                else:
-                    print("请求管理员权限失败")
-                    sys.exit(1)
-    except Exception as e:
-        print(f"获取管理员权限失败: {e}")
-        sys.exit(1)
+        test_file = os.path.join(os.getcwd(), 'test_write.tmp')
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        print("当前目录具有写入权限")
+        return True
+    except PermissionError:
+        print("当前目录没有写入权限，尝试请求管理员权限")
+        try:
+            if sys.platform == 'win32':
+                if not ctypes.windll.shell32.IsUserAnAdmin():
+                    # 获取当前脚本的完整路径
+                    script = os.path.abspath(sys.argv[0])
+                    params = ' '.join(sys.argv[1:])
+                    
+                    # 使用ShellExecuteW以管理员权限重新运行程序
+                    ret = ctypes.windll.shell32.ShellExecuteW(
+                        None, 
+                        "runas", 
+                        sys.executable, 
+                        f'"{script}" {params}', 
+                        None, 
+                        1
+                    )
+                    
+                    if int(ret) > 32:
+                        print("成功请求管理员权限")
+                        return True
+                    else:
+                        print("请求管理员权限失败")
+                        return False
+        except Exception as e:
+            print(f"获取管理员权限失败: {e}")
+            return False
 
-# 创建日志文件夹
-if not os.path.exists('log'):
-    os.makedirs('log')
-# 设置日志配置
-log_filename = os.path.join('log', f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-
-logging.basicConfig(
-    filename=log_filename, 
-    level=logging.INFO, 
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    encoding='utf-8'  # 添加编码参数
-)
+def setup_logging():
+    # 创建日志文件夹
+    if not os.path.exists('log'):
+        os.makedirs('log')
+    # 设置日志配置
+    log_filename = os.path.join('log', f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+    
+    logging.basicConfig(
+        filename=log_filename, 
+        level=logging.INFO, 
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        encoding='utf-8'  # 添加编码参数
+    )
 
 class DownloadWorker(QThread):
     finished = pyqtSignal()
@@ -164,8 +167,11 @@ class MainWindow(FluentWindow):
             sys.stderr.reconfigure(encoding='utf-8')
 
         # 初始化 self.logshow
-        with open('config.json', 'r', encoding='utf-8') as f:
-            self.config = json.load(f)
+        try:
+            with open('config.json', 'r', encoding='utf-8') as f:
+                self.config = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.config = {'first-run': True, 'ver': '0.0', 'size': 100}
 
         # 1. 创建启动页面
         icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
@@ -236,17 +242,19 @@ class MainWindow(FluentWindow):
         self.initNavigation()
         self.initWindow()
 
-        # # 应用深浅色主题
-        # self.apply_theme()
-        # 是人用的吗？
-
         # 显示窗口
         self.show()
 
-        self.destroyed.connect(lambda: (
-            json.dump(self.config, open('config.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-            if hasattr(self, 'config') else None
-        ))
+        # 修改 destroyed 信号处理
+        self.destroyed.connect(self.save_config)
+
+    def save_config(self):
+        try:
+            if hasattr(self, 'config'):
+                with open('config.json', 'w', encoding='utf-8') as f:
+                    json.dump(self.config, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            self.log(f"保存配置文件失败: {e}", logging.ERROR)
 
     def load_cmcl_data(self):
         self.log(f"开始向 cmcl.json 读取数据")
@@ -1645,6 +1653,21 @@ if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     
     app = QApplication(sys.argv)
+    
+    # 检查权限
+    if not check_admin_permissions():
+        sys.exit(1)
+        
+    # 如果成功获取权限，显示对话框并设置日志
+    if ctypes.windll.shell32.IsUserAnAdmin():
+        msg = MessageBox(
+            title="Bloret Launcher 需要管理员权限才能写入文件",
+            content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
+            parent=app.activeWindow()
+        )
+        msg.exec()
+        setup_logging()  # 设置日志
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

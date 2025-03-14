@@ -1,0 +1,19 @@
+2025-03-14 22:10:27,363 [INFO] 图标路径存在: G:\Work\git\Bloret-Launcher\icons\bloret.png
+2025-03-14 22:10:27,470 [INFO] 启动画面创建完成
+2025-03-14 22:10:27,583 [INFO] 启动画面已显示
+2025-03-14 22:10:29,014 [INFO] 最新正式版: 4.2
+2025-03-14 22:10:29,524 [INFO] 图标路径存在: G:\Work\git\Bloret-Launcher\icons\bloret.png
+2025-03-14 22:10:29,729 [INFO] 开始向 cmcl.json 读取数据
+2025-03-14 22:10:29,731 [INFO] 读取到的 playerName: Bloret-Player
+2025-03-14 22:10:29,733 [INFO] 读取到的 loginMethod: 离线登录
+2025-03-14 22:10:29,957 [INFO] 成功读取 cmcl.json 数据
+2025-03-14 22:10:30,807 [ERROR] 路径无效: G:\Work\git\Bloret-Launcher\.minecraft\versions
+2025-03-14 22:10:30,928 [INFO] 成功读取 cmcl.json 数据
+2025-03-14 22:10:30,935 [INFO] 设置 login_way_combo 当前索引为: 离线登录
+2025-03-14 22:10:30,937 [INFO] 设置 name_combo 当前索引为: Bloret-Player
+2025-03-14 22:10:31,222 [INFO] 成功读取 cmcl.json 数据
+2025-03-14 22:10:31,928 [ERROR] 路径无效: G:\Work\git\Bloret-Launcher\.minecraft\versions
+2025-03-14 22:10:32,022 [INFO] 成功读取 cmcl.json 数据
+2025-03-14 22:10:32,025 [INFO] 设置 login_way_combo 当前索引为: 离线登录
+2025-03-14 22:10:32,026 [INFO] 设置 name_combo 当前索引为: Bloret-Player
+2025-03-14 22:10:34,092 [INFO] 隐藏启动画面
