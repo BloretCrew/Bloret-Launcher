@@ -5,7 +5,7 @@ from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
 from win10toast import ToastNotifier
-import socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
+import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
 from win32com.client import Dispatch
 # 全局变量
@@ -24,6 +24,26 @@ if not os.path.exists('log'):
     os.makedirs('log')
 # 设置日志配置
 log_filename = os.path.join('log', f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+
+def check_write_permission():
+    try:
+        test_file = os.path.join(os.getcwd(), 'test_write_permission.txt')
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        return True
+    except IOError:
+        return False
+
+def request_admin_privileges():
+    if ctypes.windll.shell32.IsUserAnAdmin():
+        return True
+    else:
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
+        sys.exit()
+
+if not check_write_permission():
+    request_admin_privileges()
 
 logging.basicConfig(
     filename=log_filename, 
@@ -701,7 +721,8 @@ class MainWindow(FluentWindow):
                     stderr=subprocess.PIPE,
                     text=True,
                     encoding='utf-8',
-                    errors='replace'
+                    errors='replace',
+                    shell=True  # 使用管理员权限
                 )
                 last_line = ""
                 for line in iter(process.stdout.readline, ''):
