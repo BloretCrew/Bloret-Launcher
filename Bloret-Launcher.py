@@ -129,7 +129,7 @@ class MainWindow(FluentWindow):
             os.remove(test_file)
             self.log("当前目录具有写入权限")
         except PermissionError:
-            self.log("当前目录没有写入权限，尝试请求管理员权限", logging.WARNING)
+            # self.log("当前目录没有写入权限，尝试请求管理员权限", logging.WARNING)
             try:
                 if sys.platform == 'win32':
                     import ctypes
@@ -152,7 +152,7 @@ class MainWindow(FluentWindow):
                             self.log("成功请求管理员权限，程序将重新启动")
                             sys.exit(0)
                         else:
-                            self.log("请求管理员权限失败", logging.ERROR)
+                            # self.log("请求管理员权限失败", logging.ERROR)
                             QMessageBox.critical(
                                 self, 
                                 "权限错误", 
@@ -248,6 +248,10 @@ class MainWindow(FluentWindow):
         self.initNavigation()
         self.initWindow()
 
+        # # 应用深浅色主题
+        # self.apply_theme()
+        # 是人用的吗？
+
         # 显示窗口
         self.show()
 
@@ -303,15 +307,18 @@ class MainWindow(FluentWindow):
         self.passportInterface = QWidget()
         self.settingsInterface = QWidget()
         self.infoInterface = QWidget()
+        self.forumInterface = QWidget()  # 新增论坛界面
         self.homeInterface.setObjectName("home")
         self.downloadInterface.setObjectName("download")
         self.toolsInterface.setObjectName("tools")
         self.passportInterface.setObjectName("passport")
         self.settingsInterface.setObjectName("settings")
         self.infoInterface.setObjectName("info")
+        self.forumInterface.setObjectName("forum")  # 新增
         self.addSubInterface(self.homeInterface, QIcon("icons/bloret.png"), "主页")
         self.addSubInterface(self.downloadInterface, QIcon("icons/download.png"), "下载")
         self.addSubInterface(self.toolsInterface, QIcon("icons/tools.png"), "工具")
+        self.addSubInterface(self.forumInterface, QIcon("icons/doc.plaintext.png"), "论坛")  # 修改图标路径
         self.addSubInterface(self.passportInterface, QIcon("icons/passport.png"), "通行证", NavigationItemPosition.BOTTOM)
         self.setup_passport_ui(self.passportInterface)
         self.addSubInterface(self.settingsInterface, QIcon("icons/settings.png"), "设置", NavigationItemPosition.BOTTOM)
@@ -322,12 +329,14 @@ class MainWindow(FluentWindow):
         self.load_ui("ui/passport.ui", parent=self.passportInterface)
         self.load_ui("ui/settings.ui", parent=self.settingsInterface)
         self.load_ui("ui/info.ui", parent=self.infoInterface)
+        self.load_ui("ui/forum.ui", parent=self.forumInterface)  # 新增
         self.setup_home_ui(self.homeInterface)
         self.setup_download_ui(self.downloadInterface)
         self.setup_tools_ui(self.toolsInterface)
         self.setup_passport_ui(self.passportInterface)
         self.setup_settings_ui(self.settingsInterface)
         self.setup_info_ui(self.infoInterface)
+        self.setup_forum_ui(self.forumInterface)  # 新增
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
