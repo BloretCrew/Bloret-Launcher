@@ -1051,8 +1051,16 @@ class MainWindow(FluentWindow):
             # QMessageBox.information(self, "欢迎", "欢迎使用百络谷启动器 (＾ｰ^)ノ\n您是百络谷启动器的第 %s 位用户" % self.bl_users)
             # 更新配置文件中的 first-run 值
             self.config['first-run'] = False
-            with open('config.json', 'w', encoding='utf-8') as f:
-                json.dump(self.config, f, ensure_ascii=False, indent=4)
+            try:
+                with open('config.json', 'w', encoding='utf-8') as f:
+                    json.dump(self.config, f, ensure_ascii=False, indent=4)
+            except PermissionError as e:
+                self.log(f"无法保存配置文件: {e}", logging.ERROR)
+                InfoBar.error(
+                    title='错误',
+                    content="无法保存配置文件，权限不足，请检查文件夹写入权限。",
+                    parent=self
+                )
 
     def check_for_updates(self):
         try:
@@ -1677,15 +1685,13 @@ if __name__ == "__main__":
 
     window = MainWindow()  # 确保在使用之前初始化 window
     
-    # 如果成功获取权限，显示对话框并设置日志
-    if ctypes.windll.shell32.IsUserAnAdmin():
-        if window:
-            msg = MessageBox(
-                title="Bloret Launcher 需要管理员权限才能写入文件",
-                content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
-                parent=app.activeWindow()
-            )
-        msg.exec()
-        setup_logging()  # 设置日志
     window.show()
-    sys.exit(app.exec())
+    app.processEvents()  # 确保窗口显示完成
+
+    if ctypes.windll.shell32.IsUserAnAdmin():
+        msg = MessageBox(
+            title="Bloret Launcher 需要管理员权限才能写入文件",
+            content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
+            parent=window  # 使用主窗口作为父对象
+        )
+        msg.exec()

@@ -1,4 +1,4 @@
-name: 打包为应用程序
+name: 应用程序打包
 
 permissions:
   contents: read
