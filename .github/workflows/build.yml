@@ -196,20 +196,25 @@ jobs:
 
     - name: 创建输出目录
       run: |
-        mkdir -p output  # 确保创建 output 目录
+        mkdir -p code-package/output  # 确保创建 output 目录
+      shell: pwsh
+
+    - name: 复制所有文件到输出目录
+      run: |
+        Copy-Item -Path * -Destination code-package/output -Recurse -Force
       shell: pwsh
 
     - name: 创建压缩包
       run: |
         # 在创建压缩包之前，确保没有其他进程在使用该文件
-        if (Test-Path "output/package.zip") {
-          Remove-Item "output/package.zip"
+        if (Test-Path "code-package/output/package.zip") {
+          Remove-Item "code-package/output/package.zip"
         }
-        Compress-Archive -Path * -DestinationPath "output/package.zip"
+        Compress-Archive -Path "code-package/output/*" -DestinationPath "code-package/output/package.zip"
       shell: pwsh
 
     - name: 上传压缩包
       uses: actions/upload-artifact@v4
       with:
         name: package
-        path: "output/package.zip"
+        path: "code-package/output/package.zip"
