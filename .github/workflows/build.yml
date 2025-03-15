@@ -107,38 +107,27 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v2
 
-    - name: 创建输出目录
+    - name: 创建输出目录并清理
       run: |
-        New-Item -ItemType Directory -Force -Path "code-package/output"
+        # 强制创建目录并清理旧内容
+        New-Item -ItemType Directory -Force -Path "output"
+        Remove-Item -Path "output/*" -Recurse -ErrorAction Ignore
       shell: pwsh
 
     - name: 复制所有文件（排除 .git）
       run: |
-        # 删除目标目录中已存在的文件（避免残留）
-        Remove-Item -Path "code-package/output/*" -Recurse -ErrorAction Ignore
-
-        # 复制所有文件和子目录（排除 .git）
-        Copy-Item -Path "*" -Destination "code-package/output" -Recurse -Exclude @(".git")
+        # 递归复制所有文件到 output 目录，排除 .git 目录
+        Copy-Item -Path "*" -Destination "output" -Recurse -Exclude @(".git")
       shell: pwsh
 
-    - name: 显示复制后的目录内容
-      run: |
-        Write-Host "复制后的目录内容："
-        Get-ChildItem -Path "code-package/output" -Recurse | ForEach-Object { $_.FullName }
-      shell: pwsh
     - name: 创建压缩包
       run: |
-        # 删除旧压缩包（如果存在）
-        if (Test-Path "code-package/output/package.zip") {
-          Remove-Item "code-package/output/package.zip"
-        }
-
-        # 压缩目录
-        Compress-Archive -Path "code-package/output/*" -DestinationPath "code-package/output/package.zip" -Force
+        # 直接压缩 output 目录内容为 package.zip
+        Compress-Archive -Path "output/*" -DestinationPath "output/package.zip" -Force
       shell: pwsh
 
     - name: 上传压缩包
       uses: actions/upload-artifact@v4
       with:
         name: package
-        path: "code-package/output/package.zip"
+        path: "output/package.zip"
