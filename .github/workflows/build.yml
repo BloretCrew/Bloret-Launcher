@@ -100,13 +100,104 @@ jobs:
       with:
         name: Bloret-Launcher
         path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+  build-NoPermissions:
+    runs-on: windows-latest
 
-  package:
+    env:
+      PYTHON_VERSION: '3.9'
+      OUTPUT_DIR: 'output'
+      ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v2
+
+    - name: 验证资源文件路径
+      run: |
+        Get-ChildItem -Path .
+        if (-not (Test-Path "icons/bloret.png")) { Write-Host "icons/bloret.png not found"; exit 1 }
+        if (-not (Test-Path "config.json")) { Write-Host "config.json not found"; exit 1 }
+        if (-not (Test-Path "ui")) { Write-Host "ui directory not found"; exit 1 }
+        if (-not (Test-Path "cmcl.json")) { Write-Host "cmcl.json not found"; exit 1 }
+        if (-not (Test-Path "cmcl.exe")) { Write-Host "cmcl.exe not found"; exit 1 }
+      shell: pwsh
+
+    - name: 设置 Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: 安装程序依赖和打包依赖
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pillow
+        pip install pyinstaller
+
+    - name: 将 PNG 图标转换为 ICO
+      run: |
+        python -c "
+        from PIL import Image
+        img = Image.open('icons/bloret.png')
+        img.save('icons/bloret.ico', format='ICO')
+        "
+
+    - name: 验证转换后的 ICO 文件路径
+      run: |
+        if (-not (Test-Path "icons/bloret.ico")) { exit 1 }
+      shell: pwsh
+
+    - name: 使用 PyInstaller 打包
+      run: |
+        pyinstaller --onefile --noconsole --icon=icons/bloret.ico --name=Bloret-Launcher `
+          --hidden-import=sip `
+          --hidden-import=qfluentwidgets `
+          --hidden-import=win10toast `
+          --paths=. `
+          Bloret-Launcher.py
+      shell: pwsh
+
+    - name: 创建包含其他文件夹的目录
+      run: |
+        mkdir -p ${{ env.OUTPUT_DIR }}
+        cp dist/Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
+        cp -r icons/ ${{ env.OUTPUT_DIR }}/
+        cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
+        cp -r cmcl.json ${{ env.OUTPUT_DIR }}/
+        cp -r config.json ${{ env.OUTPUT_DIR }}/
+        cp -r LICENSE ${{ env.OUTPUT_DIR }}/
+        cp -r servers.dat ${{ env.OUTPUT_DIR }}/
+        cp -r cmcl_save.json ${{ env.OUTPUT_DIR }}/
+
+    - name: 清理旧压缩包
+      run: |
+        if (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}") {
+          Remove-Item "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+        }
+      shell: pwsh
+
+    - name: 创建压缩包
+      run: Compress-Archive -Path "${{ env.OUTPUT_DIR }}/*" -DestinationPath "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+      shell: pwsh
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher
+        path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+
+  code-package:
     runs-on: windows-latest
 
     steps:
     - name: 检出代码
       uses: actions/checkout@v2
+
+    - name: 创建输出目录
+      run: |
+        mkdir -p output  # 确保创建 output 目录
+      shell: pwsh
 
     - name: 创建压缩包
       run: |
