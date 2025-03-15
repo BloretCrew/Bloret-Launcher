@@ -56,8 +56,97 @@
        <item>
         <widget class="SubtitleLabel" name="label_3">
          <property name="text">
-          <string>离线登录</string>
+          <string>Minecraft 账户</string>
          </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget_5">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_2">
+            <item>
+             <widget class="StrongBodyLabel" name="label_4">
+              <property name="maximumSize">
+               <size>
+                <width>16777210</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>目前登录</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignJustify|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_4">
+              <property name="text">
+               <string>您目前登录的账户</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color>
+                <red>127</red>
+                <green>127</green>
+                <blue>127</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color>
+                <red>185</red>
+                <green>185</green>
+                <blue>185</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="ComboBox" name="player_login_way">
+            <property name="minimumSize">
+             <size>
+              <width>200</width>
+              <height>0</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="ComboBox" name="playername">
+            <property name="minimumSize">
+             <size>
+              <width>200</width>
+              <height>0</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>
@@ -80,7 +169,7 @@
                </size>
               </property>
               <property name="text">
-               <string>账户名</string>
+               <string>选择登录方式</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignJustify|Qt::AlignVCenter</set>
@@ -127,7 +216,7 @@
            </spacer>
           </item>
           <item>
-           <widget class="LineEdit" name="player_name">
+           <widget class="ComboBox" name="login_way">
             <property name="minimumSize">
              <size>
               <width>200</width>
@@ -137,7 +226,7 @@
            </widget>
           </item>
           <item>
-           <widget class="PushButton" name="player_name_set">
+           <widget class="PushButton" name="login">
             <property name="minimumSize">
              <size>
               <width>100</width>
@@ -145,35 +234,11 @@
              </size>
             </property>
             <property name="text">
-             <string>设定</string>
+             <string>重新登录</string>
             </property>
            </widget>
           </item>
          </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="CaptionLabel" name="CaptionLabel_2">
-         <property name="text">
-          <string>未来将添加对账户的更多管理，百络谷通行证和微软登录等。</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-         </property>
-         <property name="lightColor" stdset="0">
-          <color>
-           <red>127</red>
-           <green>127</green>
-           <blue>127</blue>
-          </color>
-         </property>
-         <property name="darkColor" stdset="0">
-          <color>
-           <red>185</red>
-           <green>185</green>
-           <blue>185</blue>
-          </color>
-         </property>
         </widget>
        </item>
        <item>
@@ -229,13 +294,13 @@
    <header location="global">qfluentwidgets</header>
   </customwidget>
   <customwidget>
-   <class>LineEdit</class>
-   <extends>QLineEdit</extends>
+   <class>PushButton</class>
+   <extends>QPushButton</extends>
    <header location="global">qfluentwidgets</header>
   </customwidget>
   <customwidget>
-   <class>PushButton</class>
-   <extends>QPushButton</extends>
+   <class>ComboBox</class>
+   <extends>QComboBox</extends>
    <header location="global">qfluentwidgets</header>
   </customwidget>
  </customwidgets>

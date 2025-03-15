@@ -46,7 +46,7 @@
         <x>0</x>
         <y>0</y>
         <width>670</width>
-        <height>554</height>
+        <height>529</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -138,7 +138,7 @@
                 <property name="minimumSize">
                  <size>
                   <width>450</width>
-                  <height>0</height>
+                  <height>30</height>
                  </size>
                 </property>
                 <property name="maximumSize">
@@ -156,6 +156,12 @@
                <layout class="QHBoxLayout" name="player_uuid">
                 <item>
                  <widget class="StrongBodyLabel" name="label_2">
+                  <property name="minimumSize">
+                   <size>
+                    <width>0</width>
+                    <height>30</height>
+                   </size>
+                  </property>
                   <property name="maximumSize">
                    <size>
                     <width>300</width>
@@ -172,7 +178,7 @@
                   <property name="minimumSize">
                    <size>
                     <width>150</width>
-                    <height>0</height>
+                    <height>30</height>
                    </size>
                   </property>
                   <property name="maximumSize">
@@ -271,7 +277,7 @@
               <property name="minimumSize">
                <size>
                 <width>450</width>
-                <height>0</height>
+                <height>30</height>
                </size>
               </property>
               <property name="maximumSize">
@@ -289,6 +295,12 @@
              <layout class="QHBoxLayout" name="player_uuid_6">
               <item>
                <widget class="StrongBodyLabel" name="search_name">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>30</height>
+                 </size>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>300</width>
@@ -305,7 +317,7 @@
                 <property name="minimumSize">
                  <size>
                   <width>150</width>
-                  <height>0</height>
+                  <height>30</height>
                  </size>
                 </property>
                 <property name="maximumSize">
@@ -398,7 +410,7 @@
               <property name="minimumSize">
                <size>
                 <width>450</width>
-                <height>0</height>
+                <height>30</height>
                </size>
               </property>
               <property name="maximumSize">
@@ -416,6 +428,12 @@
              <layout class="QHBoxLayout" name="horizontalLayout">
               <item>
                <widget class="StrongBodyLabel" name="search_skin">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>30</height>
+                 </size>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>300</width>
@@ -432,7 +450,7 @@
                 <property name="minimumSize">
                  <size>
                   <width>150</width>
-                  <height>0</height>
+                  <height>30</height>
                  </size>
                 </property>
                 <property name="maximumSize">
@@ -446,31 +464,18 @@
                 </property>
                </widget>
               </item>
-              <item>
-               <widget class="PushButton" name="search_skin_down">
-                <property name="minimumSize">
-                 <size>
-                  <width>150</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>150</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>下载</string>
-                </property>
-               </widget>
-              </item>
              </layout>
             </item>
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_7">
               <item>
                <widget class="StrongBodyLabel" name="search_cape">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>30</height>
+                 </size>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>300</width>
@@ -487,7 +492,7 @@
                 <property name="minimumSize">
                  <size>
                   <width>150</width>
-                  <height>0</height>
+                  <height>30</height>
                  </size>
                 </property>
                 <property name="maximumSize">
@@ -498,25 +503,6 @@
                 </property>
                 <property name="text">
                  <string>复制到剪贴板</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="PushButton" name="search_cape_down">
-                <property name="minimumSize">
-                 <size>
-                  <width>150</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>150</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>下载</string>
                 </property>
                </widget>
               </item>
@@ -548,41 +534,41 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>PushButton</class>
+   <extends>QPushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
    <class>CardWidget</class>
    <extends>QFrame</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>SmoothScrollArea</class>
    <extends>QScrollArea</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>StrongBodyLabel</class>
    <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>TitleLabel</class>
-   <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>PushButton</class>
-   <extends>QPushButton</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
    <class>SubtitleLabel</class>
    <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>TitleLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
    <class>LineEdit</class>
    <extends>QLineEdit</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
   </customwidget>
  </customwidgets>
  <resources/>
