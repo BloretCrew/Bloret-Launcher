@@ -1,11 +1,11 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
-from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
+from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
 from win10toast import ToastNotifier
-import socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
+import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
 from win32com.client import Dispatch
 # 全局变量
@@ -20,8 +20,17 @@ BL_update_text = ""
 BL_latest_ver = 0
 
 def check_write_permission():
-    print("检查写入权限")
-    return os.access(os.getcwd(), os.W_OK)  # 检查当前工作目录的写入权限
+    # 检查当前目录的写入权限
+    try:
+        test_file = os.path.join(os.getcwd(), 'test_write.tmp')
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        print("当前目录具有写入权限")
+        return True
+    except PermissionError:
+        print("当前目录没有写入权限")
+        return False
 
 class DownloadWorker(QThread):
     finished = pyqtSignal()
@@ -1591,11 +1600,19 @@ if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     
     app = QApplication(sys.argv)
+    
+    # 先创建 QApplication 实例，再检查权限
 
     # 在创建主窗口之前检查写入权限
     if not check_write_permission():
-        QMessageBox.critical(None, "权限错误", "当前文件夹没有写入权限，程序将退出。")
-        sys.exit(1)
+        w = Dialog("Bloret Launcher 无法写入文件", "Bloret Launcher 需要在安装文件夹写入文件，但是我们在多次尝试后仍无法正常写入文件\n这可能是由于安装文件夹是只读的。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n由于没有写入权限，百络谷启动器将退出。")
+        if w.exec():
+            print('确认')
+        else:
+            print('取消')
+        # QMessageBox.critical(None, "Bloret Launcher 需要管理员权限才能写入文件", "百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹")
+        exit(0)
+
 
     # 创建日志文件夹在 %AppData%\Roaming\Bloret-Launcher\log 下
     log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
