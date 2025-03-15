@@ -29,6 +29,7 @@ jobs:
         if (-not (Test-Path "ui")) { Write-Host "ui directory not found"; exit 1 }
         if (-not (Test-Path "cmcl.json")) { Write-Host "cmcl.json not found"; exit 1 }
         if (-not (Test-Path "cmcl.exe")) { Write-Host "cmcl.exe not found"; exit 1 }
+        if (-not (Test-Path "cmcl.blank.json")) { Write-Host "cmcl.blank.json not found"; exit 1 }
       shell: pwsh
 
     - name: 设置 Python
@@ -64,6 +65,7 @@ jobs:
           --add-data "ui;ui" `
           --add-data "cmcl.json;." `
           --add-data "cmcl.exe;." `
+          --add-data "cmcl.blank.json;." `
           --hidden-import=sip `
           --hidden-import=qfluentwidgets `
           --hidden-import=win10toast `
@@ -79,6 +81,7 @@ jobs:
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.json ${{ env.OUTPUT_DIR }}/
+        cp -r cmcl.blank.json ${{ env.OUTPUT_DIR }}/
         cp -r config.json ${{ env.OUTPUT_DIR }}/
         cp -r LICENSE ${{ env.OUTPUT_DIR }}/
         cp -r servers.dat ${{ env.OUTPUT_DIR }}/
