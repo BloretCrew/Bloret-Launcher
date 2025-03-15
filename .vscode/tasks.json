@@ -4,7 +4,7 @@
         {
             "label": "Run Packaged App",
             "type": "shell",
-            "command": "${workspaceFolder}/dist/main.exe",
+            "command": "${workspaceFolder}/dist/Bloret-Launcher.exe",
             "group": {
                 "kind": "build",
                 "isDefault": true

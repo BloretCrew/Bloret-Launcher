@@ -27,6 +27,7 @@ def check_admin_permissions():
             f.write('test')
         os.remove(test_file)
         print("当前目录具有写入权限")
+        setup_logging()  # 设置日志
         return True
     except PermissionError:
         print("当前目录没有写入权限，尝试请求管理员权限")
@@ -59,12 +60,16 @@ def check_admin_permissions():
             print(f"获取管理员权限失败: {e}")
             return False
 
+
+
 def setup_logging():
     # 创建日志文件夹
-    if not os.path.exists('log'):
-        os.makedirs('log')
+    log_folder = 'log'
+    if not os.path.exists(log_folder):
+        os.makedirs(log_folder)
+    
     # 设置日志配置
-    log_filename = os.path.join('log', f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+    log_filename = os.path.join(log_folder, f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
     
     logging.basicConfig(
         filename=log_filename, 
@@ -95,9 +100,9 @@ class RunScriptThread(QThread):
                 text=True,
                 encoding='utf-8',
                 errors='replace'  # 此处统一处理解码错误
-            )
+                )
             last_line = ""
-            for line in iter(lambda: process.stdout.readline(), ''):  # 移除errors参数
+            for line in iter(process.stdout.readline, b''):  # 移除errors参数
                 last_line = line.strip()
                 self.output_received.emit(last_line)
             self.last_output_received.emit(last_line)
@@ -254,24 +259,38 @@ class MainWindow(FluentWindow):
         # 检查是否需要显示管理员权限提示
         if AskAdmin:
             w = MessageBox(
-                title="Bloret Launcher 需要管理员权限才能写入文件",
-                content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在 非 Program Files , Program Files (x86) 等只读的文件夹",
-                parent=self,
-                isClosable=False,
-                showCancelButton=False
+                title="Bloret Launcher 无法写入文件",
+                content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n在该模式下，部分功能可能不可用。\nBloret Launcher 不接受在无权限运行下的任何问题反馈\n已关闭日志记录、账户登录等功能，原因为无法在无权限情况运行下写入文件。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
+                parent=self
             )
             w.exec()
 
     def save_config(self):
         try:
             if hasattr(self, 'config'):
-                try:
-                    with open('config.json', 'w', encoding='utf-8') as f:
-                        json.dump(self.config, f, ensure_ascii=False, indent=4)
-                except PermissionError:
-                    self.log("无法保存配置文件，权限不足", logging.ERROR)
-        except Exception as e:
+                config_path = os.path.join(os.getcwd(), 'config.json')
+                # 移除管理员权限检查
+                with open(config_path, 'w', encoding='utf-8') as f:
+                    json.dump(self.config, f, ensure_ascii=False, indent=4)
+        except PermissionError as e:
             self.log(f"保存配置文件失败: {e}", logging.ERROR)
+            # QMessageBox.critical(self, "权限错误", "无法保存配置文件，请确保程序具有写入权限。")
+            msg = MessageBox(
+                title="Bloret Launcher 无法写入文件",
+                content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n在该模式下，部分功能可能不可用。\nBloret Launcher 不接受在无权限运行下的任何问题反馈\n已关闭日志记录、账户登录等功能，原因为无法在无权限情况运行下写入文件。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
+                parent=app.activeWindow()
+            )
+            msg.exec()
+        except Exception as e:
+            # self.log(f"保存配置文件失败: {e}", logging.ERROR)
+            msg = MessageBox(
+                title="Bloret Launcher 无法写入文件",
+                content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n在该模式下，部分功能可能不可用。\nBloret Launcher 不接受在无权限运行下的任何问题反馈\n已关闭日志记录、账户登录等功能，原因为无法在无权限情况运行下写入文件。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
+                parent=app.activeWindow()
+            )
+            msg.exec()
+            QMessageBox.critical(self, "错误", f"保存配置文件失败: {e}")
+
 
     def load_cmcl_data(self):
         self.log(f"开始向 cmcl.json 读取数据")
@@ -877,52 +896,37 @@ class MainWindow(FluentWindow):
             return isValid
     def handle_login(self, widget):
         login_way_choose = widget.findChild(ComboBox, "login_way")
-        # 添加离线登录处理
         if login_way_choose.currentText() == "离线登录":
-                try:
-                    shutil.copyfile('cmcl.blank.json', 'cmcl.json')
-                    dialog = self.CustomMessageBox(self)
-                    if dialog.exec():
-                        username = dialog.usernameLineEdit.text()
-                        self.offline_thread = self.OfflineLoginThread(username)
-                        self.offline_thread.finished.connect(
-                            lambda success, msg: self.on_login_finished(widget, success, msg))
-                        self.offline_thread.start()
-                except Exception as e:
-                    self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
+            # 移除管理员权限检查
+            shutil.copyfile('cmcl.blank.json', 'cmcl.json')
+            dialog = self.CustomMessageBox(self)
+            if dialog.exec():
+                username = dialog.usernameLineEdit.text()
+                self.offline_thread = self.OfflineLoginThread(username)
+                self.offline_thread.finished.connect(
+                    lambda success, msg: self.on_login_finished(widget, success, msg))
+                self.offline_thread.start()
         elif login_way_choose.currentText() == "微软登录":
-            login_way_choose = widget.findChild(ComboBox, "login_way")
-            if not login_way_choose or login_way_choose.currentText() != "微软登录":
-                return
-
-            # 覆盖cmcl.json
-            try:
-                shutil.copyfile('cmcl.blank.json', 'cmcl.json')
-                self.log("成功覆盖cmcl.json文件")
-            except Exception as e:
-                self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
-                return
-
-            # 创建并启动登录线程
+            # 移除管理员权限检查
+            shutil.copyfile('cmcl.blank.json', 'cmcl.json')
+            self.log("成功覆盖cmcl.json文件")
             self.microsoft_login_thread = self.MicrosoftLoginThread()
             self.microsoft_login_thread.log_method = self.log
             self.microsoft_login_thread.finished.connect(
                 lambda success, msg: self.on_login_finished(widget, success, msg)
             )
-            
-            # 显示加载提示
             self.login_tip = InfoBar(
                 icon=InfoBarIcon.WARNING,
                 title='⏱️ 正在登录微软账户',
                 content='请按照浏览器中的提示完成登录...',
-                isClosable=True,  # 允许用户手动关闭
+                isClosable=True,
                 position=InfoBarPosition.TOP,
-                duration=5000,  # 设置自动关闭时间
+                duration=5000,
                 parent=self
             )
             self.login_tip.show()
-            
             self.microsoft_login_thread.start()
+
 
     def on_login_finished(self, widget, success, message):
         # 添加有效性检查
@@ -1051,16 +1055,8 @@ class MainWindow(FluentWindow):
             # QMessageBox.information(self, "欢迎", "欢迎使用百络谷启动器 (＾ｰ^)ノ\n您是百络谷启动器的第 %s 位用户" % self.bl_users)
             # 更新配置文件中的 first-run 值
             self.config['first-run'] = False
-            try:
-                with open('config.json', 'w', encoding='utf-8') as f:
-                    json.dump(self.config, f, ensure_ascii=False, indent=4)
-            except PermissionError as e:
-                self.log(f"无法保存配置文件: {e}", logging.ERROR)
-                InfoBar.error(
-                    title='错误',
-                    content="无法保存配置文件，权限不足，请检查文件夹写入权限。",
-                    parent=self
-                )
+            with open('config.json', 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, ensure_ascii=False, indent=4)
 
     def check_for_updates(self):
         try:
@@ -1598,6 +1594,7 @@ class MainWindow(FluentWindow):
         log_clear_button = widget.findChild(QPushButton, "log_clear_button")
         if log_clear_button:
             log_clear_button.clicked.connect(self.clear_log_files)
+            self.update_log_clear_button_text(log_clear_button)  # 更新按钮文本
 
         # 添加深浅色模式选择框
         light_dark_choose = widget.findChild(ComboBox, "light_dark_choose")
@@ -1611,8 +1608,18 @@ class MainWindow(FluentWindow):
             size_choose.setValue(self.config.get("size", 100))
             size_choose.valueChanged.connect(lambda value: (
                 self.config.update(size=value),
-                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+                self.save_config()
             ))
+
+    def update_log_clear_button_text(self, button):
+        log_folder = os.path.join(os.getcwd(), 'log')
+        if os.path.exists(log_folder) and os.path.isdir(log_folder):
+            file_count = len([f for f in os.listdir(log_folder) if os.path.isfile(os.path.join(log_folder, f))])
+            total_size = sum(os.path.getsize(os.path.join(log_folder, f)) for f in os.listdir(log_folder) if os.path.isfile(os.path.join(log_folder, f)))
+            total_size_str = f"{total_size / 1024:.2f} KB"  # 将文件大小转换为 KB，并保留两位小数
+            button.setText(f"清空 {file_count-1} 个日志，总计 {total_size_str}")
+        else:
+            button.setText("清空日志")
 
     def on_light_dark_changed(self, mode):
         if mode == "跟随系统":
@@ -1621,6 +1628,9 @@ class MainWindow(FluentWindow):
             self.apply_theme(QPalette(QColor("#2e2e2e")))
         elif mode == "浅色模式":
             self.apply_theme(QPalette(QColor("#ffffff")))
+
+        self.save_config()
+
 
     def clear_log_files(self):
         log_folder = os.path.join(os.getcwd(), 'log')
@@ -1682,16 +1692,15 @@ if __name__ == "__main__":
     # 检查权限
     if not check_admin_permissions():
         sys.exit(1)
-
-    window = MainWindow()  # 确保在使用之前初始化 window
-    
-    window.show()
-    app.processEvents()  # 确保窗口显示完成
-
+        
+    # 如果成功获取权限，显示对话框并设置日志
     if ctypes.windll.shell32.IsUserAnAdmin():
         msg = MessageBox(
-            title="Bloret Launcher 需要管理员权限才能写入文件",
-            content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
-            parent=window  # 使用主窗口作为父对象
+            title="Bloret Launcher 无法写入文件",
+            content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n在该模式下，部分功能可能不可用。\nBloret Launcher 不接受在无权限运行下的任何问题反馈\n已关闭日志记录、账户登录等功能，原因为无法在无权限情况运行下写入文件。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\nBloret Launcher 不接受在无权限运行下的任何问题反馈\n已关闭日志记录、账户登录等功能，原因为无法在无权限情况运行下写入文件。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
+            parent=app.activeWindow()
         )
         msg.exec()
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
