@@ -114,10 +114,10 @@ jobs:
         Remove-Item -Path "output/*" -Recurse -ErrorAction Ignore
       shell: pwsh
 
-    - name: 复制所有文件（排除 .git）
+    - name: 复制所有文件（排除 .git 和 output）
       run: |
-        # 递归复制所有文件到 output 目录，排除 .git 目录
-        Copy-Item -Path "*" -Destination "output" -Recurse -Exclude @(".git")
+        # 递归复制所有文件到 output 目录，排除 .git 和 output 目录
+        Copy-Item -Path "*" -Destination "output" -Recurse -Exclude @(".git", "output")
       shell: pwsh
 
     - name: 创建压缩包
