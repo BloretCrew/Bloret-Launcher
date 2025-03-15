@@ -1,11 +1,11 @@
 from datetime import datetime
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QFormLayout, QFrame, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QLayout
-from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit, CardWidget, StrongBodyLabel, BodyLabel
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
+from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, LineEdit
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
 from win10toast import ToastNotifier
-import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
+import socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
 from win32com.client import Dispatch
 # 全局变量
@@ -18,65 +18,10 @@ ver_id_long = []
 set_list = ["你还未安装任何版本哦，请前往下载页面安装"]
 BL_update_text = ""
 BL_latest_ver = 0
-AskAdmin = False
 
-def check_admin_permissions():
-    try:
-        test_file = os.path.join(os.getcwd(), 'test_write.tmp')
-        with open(test_file, 'w') as f:
-            f.write('test')
-        os.remove(test_file)
-        print("当前目录具有写入权限")
-        setup_logging()  # 设置日志
-        return True
-    except PermissionError:
-        print("当前目录没有写入权限，尝试请求管理员权限")
-        try:
-            if sys.platform == 'win32':
-                if not ctypes.windll.shell32.IsUserAnAdmin():
-                    # 获取当前脚本的完整路径
-                    script = os.path.abspath(sys.argv[0])
-                    params = ' '.join(sys.argv[1:])
-                    
-                    # 使用ShellExecuteW以管理员权限重新运行程序
-                    ret = ctypes.windll.shell32.ShellExecuteW(
-                        None, 
-                        "runas", 
-                        sys.executable, 
-                        f'"{script}" {params}', 
-                        None, 
-                        1
-                    )
-                    
-                    if int(ret) > 32:
-                        print("成功请求管理员权限")
-                        global AskAdmin
-                        AskAdmin = True
-                        return True
-                    else:
-                        print("请求管理员权限失败")
-                        return False
-        except Exception as e:
-            print(f"获取管理员权限失败: {e}")
-            return False
-
-
-
-def setup_logging():
-    # 创建日志文件夹
-    log_folder = 'log'
-    if not os.path.exists(log_folder):
-        os.makedirs(log_folder)
-    
-    # 设置日志配置
-    log_filename = os.path.join(log_folder, f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-    
-    logging.basicConfig(
-        filename=log_filename, 
-        level=logging.INFO, 
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        encoding='utf-8'  # 添加编码参数
-    )
+def check_write_permission():
+    print("检查写入权限")
+    return os.access(os.getcwd(), os.W_OK)  # 检查当前工作目录的写入权限
 
 class DownloadWorker(QThread):
     finished = pyqtSignal()
@@ -100,9 +45,9 @@ class RunScriptThread(QThread):
                 text=True,
                 encoding='utf-8',
                 errors='replace'  # 此处统一处理解码错误
-                )
+            )
             last_line = ""
-            for line in iter(process.stdout.readline, b''):  # 移除errors参数
+            for line in iter(lambda: process.stdout.readline(), ''):  # 移除errors参数
                 last_line = line.strip()
                 self.output_received.emit(last_line)
             self.last_output_received.emit(last_line)
@@ -175,11 +120,8 @@ class MainWindow(FluentWindow):
             sys.stderr.reconfigure(encoding='utf-8')
 
         # 初始化 self.logshow
-        try:
-            with open('config.json', 'r', encoding='utf-8') as f:
-                self.config = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            self.config = {'first-run': True, 'ver': '0.0', 'size': 100}
+        with open('config.json', 'r', encoding='utf-8') as f:
+            self.config = json.load(f)
 
         # 1. 创建启动页面
         icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
@@ -250,47 +192,17 @@ class MainWindow(FluentWindow):
         self.initNavigation()
         self.initWindow()
 
+        # # 应用深浅色主题
+        # self.apply_theme()
+        # 是人用的吗？
+
         # 显示窗口
         self.show()
 
-        # 修改 destroyed 信号处理
-        self.destroyed.connect(self.save_config)
-
-        # 检查是否需要显示管理员权限提示
-        if AskAdmin:
-            w = MessageBox(
-                title="Bloret Launcher 无法写入文件",
-                content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n在该模式下，部分功能可能不可用。\nBloret Launcher 不接受在无权限运行下的任何问题反馈\n已关闭日志记录、账户登录等功能，原因为无法在无权限情况运行下写入文件。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
-                parent=self
-            )
-            w.exec()
-
-    def save_config(self):
-        try:
-            if hasattr(self, 'config'):
-                config_path = os.path.join(os.getcwd(), 'config.json')
-                # 移除管理员权限检查
-                with open(config_path, 'w', encoding='utf-8') as f:
-                    json.dump(self.config, f, ensure_ascii=False, indent=4)
-        except PermissionError as e:
-            self.log(f"保存配置文件失败: {e}", logging.ERROR)
-            # QMessageBox.critical(self, "权限错误", "无法保存配置文件，请确保程序具有写入权限。")
-            msg = MessageBox(
-                title="Bloret Launcher 无法写入文件",
-                content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n在该模式下，部分功能可能不可用。\nBloret Launcher 不接受在无权限运行下的任何问题反馈\n已关闭日志记录、账户登录等功能，原因为无法在无权限情况运行下写入文件。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
-                parent=app.activeWindow()
-            )
-            msg.exec()
-        except Exception as e:
-            # self.log(f"保存配置文件失败: {e}", logging.ERROR)
-            msg = MessageBox(
-                title="Bloret Launcher 无法写入文件",
-                content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n在该模式下，部分功能可能不可用。\nBloret Launcher 不接受在无权限运行下的任何问题反馈\n已关闭日志记录、账户登录等功能，原因为无法在无权限情况运行下写入文件。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
-                parent=app.activeWindow()
-            )
-            msg.exec()
-            QMessageBox.critical(self, "错误", f"保存配置文件失败: {e}")
-
+        self.destroyed.connect(lambda: (
+            json.dump(self.config, open('config.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+            if hasattr(self, 'config') else None
+        ))
 
     def load_cmcl_data(self):
         self.log(f"开始向 cmcl.json 读取数据")
@@ -380,13 +292,10 @@ class MainWindow(FluentWindow):
         widget = uic.loadUi(ui_path)
 
         if parent:
-            # 如果父部件已经有布局，直接添加widget
-            if parent.layout():
-                parent.layout().addWidget(widget)
-            else:
-                # 如果父部件没有布局，创建一个新的布局
+            # 确保父部件只有一个布局
+            if parent.layout() is None:
                 parent.setLayout(QVBoxLayout())
-                parent.layout().addWidget(widget)
+            parent.layout().addWidget(widget)  # 直接添加到现有布局
 
         if animate:
             self.animate_sidebar()
@@ -448,10 +357,6 @@ class MainWindow(FluentWindow):
     def on_info_clicked(self):
         self.log("关于 被点击")
         self.switchTo(self.infoInterface)
-    def on_forum_clicked(self):
-        self.log("论坛 被点击")
-        self.switchTo(self.forumInterface)
-        self.load_forum_posts()
     def run_cmcl_list(self):
         global set_list  # 添加全局声明
         try:
@@ -896,37 +801,52 @@ class MainWindow(FluentWindow):
             return isValid
     def handle_login(self, widget):
         login_way_choose = widget.findChild(ComboBox, "login_way")
+        # 添加离线登录处理
         if login_way_choose.currentText() == "离线登录":
-            # 移除管理员权限检查
-            shutil.copyfile('cmcl.blank.json', 'cmcl.json')
-            dialog = self.CustomMessageBox(self)
-            if dialog.exec():
-                username = dialog.usernameLineEdit.text()
-                self.offline_thread = self.OfflineLoginThread(username)
-                self.offline_thread.finished.connect(
-                    lambda success, msg: self.on_login_finished(widget, success, msg))
-                self.offline_thread.start()
+                try:
+                    shutil.copyfile('cmcl.blank.json', 'cmcl.json')
+                    dialog = self.CustomMessageBox(self)
+                    if dialog.exec():
+                        username = dialog.usernameLineEdit.text()
+                        self.offline_thread = self.OfflineLoginThread(username)
+                        self.offline_thread.finished.connect(
+                            lambda success, msg: self.on_login_finished(widget, success, msg))
+                        self.offline_thread.start()
+                except Exception as e:
+                    self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
         elif login_way_choose.currentText() == "微软登录":
-            # 移除管理员权限检查
-            shutil.copyfile('cmcl.blank.json', 'cmcl.json')
-            self.log("成功覆盖cmcl.json文件")
+            login_way_choose = widget.findChild(ComboBox, "login_way")
+            if not login_way_choose or login_way_choose.currentText() != "微软登录":
+                return
+
+            # 覆盖cmcl.json
+            try:
+                shutil.copyfile('cmcl.blank.json', 'cmcl.json')
+                self.log("成功覆盖cmcl.json文件")
+            except Exception as e:
+                self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
+                return
+
+            # 创建并启动登录线程
             self.microsoft_login_thread = self.MicrosoftLoginThread()
             self.microsoft_login_thread.log_method = self.log
             self.microsoft_login_thread.finished.connect(
                 lambda success, msg: self.on_login_finished(widget, success, msg)
             )
+            
+            # 显示加载提示
             self.login_tip = InfoBar(
                 icon=InfoBarIcon.WARNING,
                 title='⏱️ 正在登录微软账户',
                 content='请按照浏览器中的提示完成登录...',
-                isClosable=True,
+                isClosable=True,  # 允许用户手动关闭
                 position=InfoBarPosition.TOP,
-                duration=5000,
+                duration=5000,  # 设置自动关闭时间
                 parent=self
             )
             self.login_tip.show()
+            
             self.microsoft_login_thread.start()
-
 
     def on_login_finished(self, widget, success, message):
         # 添加有效性检查
@@ -1376,6 +1296,7 @@ class MainWindow(FluentWindow):
         # if run_choose:
         #     run_choose.addItems(set_list)
     def run_cmcl(self, version):
+
         InfoBar.success(
                 title=f'🔄️ 正在启动 {version}',
                 content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
@@ -1392,61 +1313,42 @@ class MainWindow(FluentWindow):
         self.log(f"正在启动 {version}")
         if os.path.exists("run.ps1"):
             os.remove("run.ps1")
-        # 使用管理员权限运行 cmcl 命令
-        try:
-            if sys.platform == 'win32':
-                if not ctypes.windll.shell32.IsUserAnAdmin():
-                    self.log("当前没有管理员权限，尝试重新以管理员权限运行", logging.WARNING)
-                    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-                    sys.exit()
-            
-            # 新增生成脚本命令
-            subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"], shell=True)
-            
-            # 替换 CMCL 2.2.2 → Bloret Launcher
-            with open("run.ps1", "r+", encoding='utf-8') as f:
-                content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
-                f.seek(0)
-                f.write(content)
-                f.truncate()
+        # 新增生成脚本命令
+        subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"])
+        
+        # 替换 CMCL 2.2.2 → Bloret Launcher
+        with open("run.ps1", "r+", encoding='utf-8') as f:
+            content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
+            f.seek(0)
+            f.write(content)
+            f.truncate()
 
-            # 替换 CMCL → Bloret-Launcher
-            with open("run.ps1", "r+", encoding='utf-8') as f:
-                content = f.read().replace('CMCL', 'Bloret-Launcher')
-                f.seek(0)
-                f.write(content)
-                f.truncate()
+        # 替换 CMCL → Bloret-Launcher
+        with open("run.ps1", "r+", encoding='utf-8') as f:
+            content = f.read().replace('CMCL', 'Bloret-Launcher')
+            f.seek(0)
+            f.write(content)
+            f.truncate()
 
-            run_button = self.sender()  # 获取按钮对象
-            teaching_tip = TeachingTip.create(
-                target=run_button,  # 修改为按钮对象
-                icon=InfoBarIcon.SUCCESS,
-                title=f'正在启动 {version}',
-                content="请稍等",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=0,  # 设置为0表示不自动关闭
-                parent=self
-            )
-            if teaching_tip:
-                teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
-            
-            # 线程
-            self.run_script_thread = RunScriptThread()
-            self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))
-            self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
-            self.run_script_thread.start()
-        except Exception as e:
-            self.log(f"运行 cmcl 命令失败: {e}", logging.ERROR)
-            InfoBar.error(
-                title='❌ 运行失败',
-                content=f"运行 cmcl 命令失败: {e}",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            self.is_running = False
+        run_button = self.sender()  # 获取按钮对象
+        teaching_tip = TeachingTip.create(
+            target=run_button,  # 修改为按钮对象
+            icon=InfoBarIcon.SUCCESS,
+            title=f'正在启动 {version}',
+            content="请稍等",
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=0,  # 设置为0表示不自动关闭
+            parent=self
+        )
+        if teaching_tip:
+            teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
+        
+        # 线程
+        self.run_script_thread = RunScriptThread()
+        self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))  # 替换...为实际处理函数
+        self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
+        self.run_script_thread.start()  # 添加线程启动
 
         self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
         self.update_show_text_thread.update_text.connect(self.update_show_text)
@@ -1608,18 +1510,8 @@ class MainWindow(FluentWindow):
             size_choose.setValue(self.config.get("size", 100))
             size_choose.valueChanged.connect(lambda value: (
                 self.config.update(size=value),
-                self.save_config()
+                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
             ))
-
-    def update_log_clear_button_text(self, button):
-        log_folder = os.path.join(os.getcwd(), 'log')
-        if os.path.exists(log_folder) and os.path.isdir(log_folder):
-            file_count = len([f for f in os.listdir(log_folder) if os.path.isfile(os.path.join(log_folder, f))])
-            total_size = sum(os.path.getsize(os.path.join(log_folder, f)) for f in os.listdir(log_folder) if os.path.isfile(os.path.join(log_folder, f)))
-            total_size_str = f"{total_size / 1024:.2f} KB"  # 将文件大小转换为 KB，并保留两位小数
-            button.setText(f"清空 {file_count-1} 个日志，总计 {total_size_str}")
-        else:
-            button.setText("清空日志")
 
     def on_light_dark_changed(self, mode):
         if mode == "跟随系统":
@@ -1629,11 +1521,8 @@ class MainWindow(FluentWindow):
         elif mode == "浅色模式":
             self.apply_theme(QPalette(QColor("#ffffff")))
 
-        self.save_config()
-
-
     def clear_log_files(self):
-        log_folder = os.path.join(os.getcwd(), 'log')
+        log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
         if os.path.exists(log_folder) and os.path.isdir(log_folder):
             for filename in os.listdir(log_folder):
                 file_path = os.path.join(log_folder, filename)
@@ -1681,6 +1570,20 @@ class MainWindow(FluentWindow):
         if qq_icon:
             qq_icon.setPixmap(QPixmap("ui/icon/qq.png"))
 
+    def update_log_clear_button_text(self, button):
+        log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
+        if os.path.exists(log_folder) and os.path.isdir(log_folder):
+            log_files = os.listdir(log_folder)
+            log_file_count = len(log_files)
+            total_size = sum(os.path.getsize(os.path.join(log_folder, f)) for f in log_files)
+            if log_file_count-1 <= 0:
+                button.setText("没有日志可以清空了")
+                button.setEnabled(False)
+            else:
+                button.setText(f"清空 {log_file_count-1} 个日志，总计 {total_size // 1024} KB")
+        else:
+            button.setText("清空日志")
+
 
 if __name__ == "__main__":
     # 先设置高DPI属性再创建应用实例
@@ -1688,19 +1591,27 @@ if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     
     app = QApplication(sys.argv)
-    
-    # 检查权限
-    if not check_admin_permissions():
+
+    # 在创建主窗口之前检查写入权限
+    if not check_write_permission():
+        QMessageBox.critical(None, "权限错误", "当前文件夹没有写入权限，程序将退出。")
         sys.exit(1)
-        
-    # 如果成功获取权限，显示对话框并设置日志
-    if ctypes.windll.shell32.IsUserAnAdmin():
-        msg = MessageBox(
-            title="Bloret Launcher 无法写入文件",
-            content="百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n在该模式下，部分功能可能不可用。\nBloret Launcher 不接受在无权限运行下的任何问题反馈\n已关闭日志记录、账户登录等功能，原因为无法在无权限情况运行下写入文件。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\nBloret Launcher 不接受在无权限运行下的任何问题反馈\n已关闭日志记录、账户登录等功能，原因为无法在无权限情况运行下写入文件。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹",
-            parent=app.activeWindow()
-        )
-        msg.exec()
+
+    # 创建日志文件夹在 %AppData%\Roaming\Bloret-Launcher\log 下
+    log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
+    if not os.path.exists(log_folder):
+        os.makedirs(log_folder)
+    
+    # 设置日志配置
+    log_filename = os.path.join(log_folder, f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+
+    logging.basicConfig(
+        filename=log_filename, 
+        level=logging.INFO, 
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        encoding='utf-8'  # 添加编码参数
+    )
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
