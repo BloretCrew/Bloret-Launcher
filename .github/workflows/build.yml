@@ -100,3 +100,21 @@ jobs:
       with:
         name: Bloret-Launcher
         path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+
+  package:
+    runs-on: windows-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v2
+
+    - name: 创建压缩包
+      run: |
+        Compress-Archive -Path * -DestinationPath "output/package.zip"
+      shell: pwsh
+
+    - name: 上传压缩包
+      uses: actions/upload-artifact@v4
+      with:
+        name: package
+        path: "output/package.zip"
