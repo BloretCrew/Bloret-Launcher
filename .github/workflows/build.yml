@@ -201,7 +201,7 @@ jobs:
 
     - name: 复制所有文件到输出目录
       run: |
-        Copy-Item -Path * -Destination code-package/output -Recurse -Force
+        robocopy . code-package/output /E /Z /R:3 /W:5
       shell: pwsh
 
     - name: 创建压缩包
