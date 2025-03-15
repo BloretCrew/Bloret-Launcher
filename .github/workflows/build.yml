@@ -121,6 +121,11 @@ jobs:
         Copy-Item -Path "*" -Destination "code-package/output" -Recurse -Exclude @(".git")
       shell: pwsh
 
+    - name: 显示复制后的目录内容
+      run: |
+        Write-Host "复制后的目录内容："
+        Get-ChildItem -Path "code-package/output" -Recurse | ForEach-Object { $_.FullName }
+      shell: pwsh
     - name: 创建压缩包
       run: |
         # 删除旧压缩包（如果存在）
