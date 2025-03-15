@@ -1611,7 +1611,7 @@ if __name__ == "__main__":
         else:
             print('取消')
         # QMessageBox.critical(None, "Bloret Launcher 需要管理员权限才能写入文件", "百络谷启动器需要在安装文件夹写入文件，因此需要获取管理员权限。\n如果您不想频繁接受用户账户控制的提权通知，\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹")
-        exit(0)
+        sys.exit(0)
 
 
     # 创建日志文件夹在 %AppData%\Roaming\Bloret-Launcher\log 下
