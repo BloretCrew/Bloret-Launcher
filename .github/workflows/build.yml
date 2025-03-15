@@ -201,6 +201,10 @@ jobs:
 
     - name: 创建压缩包
       run: |
+        # 在创建压缩包之前，确保没有其他进程在使用该文件
+        if (Test-Path "output/package.zip") {
+          Remove-Item "output/package.zip"
+        }
         Compress-Archive -Path * -DestinationPath "output/package.zip"
       shell: pwsh
 
