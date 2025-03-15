@@ -109,21 +109,27 @@ jobs:
 
     - name: 创建输出目录
       run: |
-        mkdir -p code-package/output  # 确保创建 output 目录
+        New-Item -ItemType Directory -Force -Path "code-package/output"
       shell: pwsh
 
-    - name: 复制所有文件到输出目录
+    - name: 复制所有文件（排除 .git）
       run: |
-        robocopy . code-package/output /E /Z /R:3 /W:5
+        # 删除目标目录中已存在的文件（避免残留）
+        Remove-Item -Path "code-package/output/*" -Recurse -ErrorAction Ignore
+
+        # 复制所有文件和子目录（排除 .git）
+        Copy-Item -Path "*" -Destination "code-package/output" -Recurse -Exclude @(".git")
       shell: pwsh
 
     - name: 创建压缩包
       run: |
-        # 在创建压缩包之前，确保没有其他进程在使用该文件
+        # 删除旧压缩包（如果存在）
         if (Test-Path "code-package/output/package.zip") {
           Remove-Item "code-package/output/package.zip"
         }
-        Compress-Archive -Path "code-package/output/*" -DestinationPath "code-package/output/package.zip"
+
+        # 压缩目录
+        Compress-Archive -Path "code-package/output/*" -DestinationPath "code-package/output/package.zip" -Force
       shell: pwsh
 
     - name: 上传压缩包
