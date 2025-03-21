@@ -18,6 +18,17 @@
 ![Show](img/show.gif)
 
 > [!NOTE]
+> Bloret Launcher 现已加入 [Windows 包管理器 ( Windows Package Manager )](https://github.com/microsoft/winget-cli)
+> 因此，现在您可以在终端中输入以下命令快速安装 百络谷启动器
+> ```
+> winget install "Bloret Launcher"
+> ```
+> 或
+> ```
+> winget install Bloret.BloretLauncher
+> ```
+
+> [!NOTE]
 > 您可以以两种方式打开百洛谷启动器
 > 1. 下载 `Bloret-Launcher-Windows.zip` ，解压后打开其中的 `Bloret-Launcher.exe`
 > 2. 下载软件源代码压缩包 `Source code (zip)` ，解压后在所在目录下运行 `python main.py`
