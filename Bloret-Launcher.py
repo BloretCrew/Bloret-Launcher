@@ -19,6 +19,10 @@ set_list = ["你还未安装任何版本哦，请前往下载页面安装"]
 BL_update_text = ""
 BL_latest_ver = 0
 
+def log(message, level=logging.INFO):
+    print(message)
+    logging.log(level, message)
+
 def check_write_permission():
     # 检查当前目录的写入权限
     try:
@@ -31,6 +35,160 @@ def check_write_permission():
     except PermissionError:
         print("当前目录没有写入权限")
         return False
+
+def BL_download_minecraft():
+    class MinecraftDownloadThread(QThread):
+        progress_signal = pyqtSignal(str)
+        error_signal = pyqtSignal(str)
+        
+        def __init__(self, base_url, temp_dir, target_dir):
+            super().__init__()
+            self.base_url = base_url
+            self.temp_dir = temp_dir
+            self.target_dir = target_dir
+            
+        def run(self):
+            tasks = [
+                {"name": "libraries.zip", "path": self.temp_dir},
+                {"name": "objects-01.zip", "path": os.path.join(self.temp_dir, "assets/objects")},
+                {"name": "objects-02.zip", "path": os.path.join(self.temp_dir, "assets/objects")},
+                {"name": "objects-03.zip", "path": os.path.join(self.temp_dir, "assets/objects")},
+                {"name": "objects-04.zip", "path": os.path.join(self.temp_dir, "assets/objects")},
+                {"name": "19.json", "path": os.path.join(self.temp_dir, "assets/indexes")},
+            ]
+            
+            for task in tasks:
+                file_name = task["name"]
+                save_path = os.path.join(task["path"], file_name)
+                self.progress_signal.emit(f"准备下载文件: {file_name} 到路径: {save_path}")
+                
+                success = False
+                for attempt in range(5):
+                    try:
+                        self.progress_signal.emit(f"尝试下载 {file_name} (第 {attempt+1} 次)")
+                        response = requests.get(self.base_url + file_name, stream=True, timeout=10)
+                        with open(save_path, 'wb') as f:
+                            for chunk in response.iter_content(chunk_size=8192):
+                                f.write(chunk)
+                        self.progress_signal.emit(f"成功下载文件: {file_name}")
+                        success = True
+                        break
+                    except Exception as e:
+                        self.error_signal.emit(f"下载失败 {file_name} 尝试次数: {attempt+1}, 错误: {str(e)}")
+                        time.sleep(3)
+                        
+                if not success:
+                    self.error_signal.emit(f"无法下载文件: {file_name}")
+                    return
+                time.sleep(3)
+                
+            # 解压文件
+            try:
+                self.progress_signal.emit("开始解压文件")
+                with zipfile.ZipFile(os.path.join(self.temp_dir, "libraries.zip"), 'r') as zip_ref:
+                    zip_ref.extractall(os.path.join(self.temp_dir, "libraries"))
+                self.progress_signal.emit("成功解压 libraries.zip")
+                os.remove(os.path.join(self.temp_dir, "libraries.zip"))
+                
+                for i in range(1,5):
+                    zip_path = os.path.join(self.temp_dir, "assets/objects", f"objects-{i}.zip")
+                    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                        zip_ref.extractall(os.path.join(self.temp_dir, "assets/objects"))
+                    self.progress_signal.emit(f"成功解压 objects-{i}.zip")
+                    os.remove(zip_path)
+            except Exception as e:
+                self.error_signal.emit(f"解压失败: {str(e)}")
+                return
+                
+            # 移动并清理
+            try:
+                self.progress_signal.emit("开始移动文件到目标目录")
+                if os.path.exists(self.target_dir):
+                    shutil.rmtree(self.target_dir)
+                shutil.move(self.temp_dir, os.getcwd())
+                self.progress_signal.emit(f"成功将文件移动到目标目录: {self.target_dir}")
+                
+                bloret_dir = os.path.expanduser("~/.BloretLauncher")
+                if os.path.exists(bloret_dir):
+                    shutil.rmtree(bloret_dir)
+            except Exception as e:
+                self.error_signal.emit(f"文件移动失败: {str(e)}")
+                return
+                
+            self.progress_signal.emit("文件下载和安装完成")
+            
+    base_url = "https://gitee.com/detrital/minecraft/releases/download/minecraft/"
+    temp_dir = os.path.expanduser("~/.BloretLauncher/.minecraft")
+    target_dir = os.path.join(os.getcwd(), ".minecraft")
+    
+    thread = MinecraftDownloadThread(base_url, temp_dir, target_dir)
+    thread.progress_signal.connect(log)
+    thread.error_signal.connect(lambda e: QMessageBox.critical(None, "错误", str(e)))
+    thread.finished.connect(lambda: QMessageBox.information(None, "完成", "文件下载和安装完成"))
+    thread.start()
+    threads = []  # Initialize a threads list if not already defined
+    threads.append(thread)  # 将线程添加到列表中
+
+def BL_download(version):
+    class VersionDownloadThread(QThread):
+        progress_signal = pyqtSignal(str)
+        error_signal = pyqtSignal(str)
+        finished_signal = pyqtSignal()
+        
+        def __init__(self, version, minecraft_dir):
+            super().__init__()
+            self.version = version
+            self.minecraft_dir = minecraft_dir
+            
+        def run(self):
+            target_dir = os.path.join(self.minecraft_dir, "versions", self.version)
+            os.makedirs(target_dir, exist_ok=True)
+            zip_path = os.path.join(target_dir, f"{self.version}.zip")
+            url = f"https://gitee.com/detrital/minecraft/releases/download/version/{self.version}.zip"
+            
+            success = False
+            for attempt in range(5):
+                try:
+                    self.progress_signal.emit(f"尝试下载 {self.version}.zip (第 {attempt+1} 次)")
+                    response = requests.get(url, stream=True, timeout=10)
+                    with open(zip_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    self.progress_signal.emit(f"成功下载文件: {zip_path}")
+                    success = True
+                    break
+                except Exception as e:
+                    self.error_signal.emit(f"下载失败 {self.version}.zip 尝试次数: {attempt+1}, 错误: {str(e)}")
+                    time.sleep(3)
+                    
+            if not success:
+                self.error_signal.emit(f"无法下载文件: {self.version}.zip")
+                return
+                
+            try:
+                self.progress_signal.emit(f"开始解压文件: {zip_path}")
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(target_dir)
+                self.progress_signal.emit(f"成功解压文件到: {target_dir}")
+                os.remove(zip_path)
+            except Exception as e:
+                self.error_signal.emit(f"解压失败: {str(e)}")
+                return
+                
+            self.progress_signal.emit(f"版本 {self.version} 下载和解压完成")
+            self.finished_signal.emit()
+            
+    minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
+    if not os.path.exists(minecraft_dir):
+        BL_download_minecraft()
+        
+    thread = VersionDownloadThread(version, minecraft_dir)
+    thread.progress_signal.connect(log)
+    thread.error_signal.connect(lambda e: QMessageBox.critical(None, "下载失败", str(e)))
+    thread.finished_signal.connect(lambda: QMessageBox.information(None, "完成", f"已成功下载并解压版本 {version}"))
+    thread.start()
+    threads = []  # Initialize a threads list if not already defined
+    threads.append(thread)  # 将线程添加到列表中
 
 class DownloadWorker(QThread):
     finished = pyqtSignal()
@@ -348,7 +506,7 @@ class MainWindow(FluentWindow):
             self.show_text.setText("下载完成")
         else:
             self.log("show_text is None", logging.ERROR)
-
+        self.run_cmcl_list()
     def on_download_clicked(self):
         self.log("下载 被点击")
         self.switchTo(self.downloadInterface)
@@ -415,8 +573,8 @@ class MainWindow(FluentWindow):
     def closeEvent(self, event):
         for thread in self.threads:
             if thread.isRunning():
-                thread.terminate()
-                thread.wait()
+                thread.quit()  # 请求线程退出
+                thread.wait()  # 等待线程完全退出
         event.accept()
     def on_download_clicked(self):
         self.log("下载 被点击")
@@ -435,7 +593,8 @@ class MainWindow(FluentWindow):
             show_way.currentTextChanged.connect(lambda: self.on_show_way_changed(widget, show_way.currentText()))
         if download_way_choose:
             download_way_choose.clear()  # 清空下拉框
-            download_way_choose.addItem("BMCLAPI")  # 只添加 BMCLAPI
+            download_way_choose.addItem("Bloret Launcher")
+            download_way_choose.addItem("CMCL")
         if download_way_F5_button:
             download_way_F5_button.clicked.connect(lambda: self.update_minecraft_versions(widget, show_way.currentText()))
         if download_button:
@@ -645,39 +804,54 @@ class MainWindow(FluentWindow):
             )
     
             download_button.setText("已经开始下载...下载状态将会显示在这里")
-            
-            if fabric_download != "不安装":
-                command = f"\"{cmcl_path}\" install {choose_ver} -n {vername} --fabric={fabric_download}"
-            else:
-                command = f"\"{cmcl_path}\" install {choose_ver} -n {vername}"
-    
-            self.log(f"下载命令: {command}")
-    
-            self.download_thread = self.DownloadThread(cmcl_path, command, self.log)
-            self.threads.append(self.download_thread)
-            self.download_thread.output_received.connect(self.log_output)
-            self.download_thread.output_received.connect(lambda text: download_button.setText(text[:70] + '...' if len(text) > 70 else text))
-            
-            teaching_tip = InfoBar(
-                icon=InfoBarIcon.SUCCESS,
-                title='✅ 正在下载',
-                content=f"正在下载你所选的版本...",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            teaching_tip.show()
-    
-            self.download_thread.finished.connect(
-                lambda: self.on_download_finished(teaching_tip, download_button)
-            )
-            
-            self.download_thread.error_occurred.connect(
-                lambda error: self.on_download_error(error, teaching_tip, download_button)
-            )
-            self.download_thread.start()
+
+            download_way_choose = widget.findChild(ComboBox, "download_way_choose")
+            selected_way = download_way_choose.currentText()
+
+            if selected_way == "Bloret Launcher": # Bloret Launcher 方法
+                success = BL_download(choose_ver)
+                if success:
+                    self.on_download_finished(teaching_tip, download_button)
+                else:
+                    w = Dialog("Bloret Launcher 文件下载失败", "Bloret Launcher 核心无法下载文件，请反馈问题，检查日志，或换用 CMCL 核心。")
+                    if w.exec():
+                        print('确认')
+                    else:
+                        print('取消')
+            else: # CMCL 方法
+                if fabric_download != "不安装":
+                    command = f"\"{cmcl_path}\" install {choose_ver} -n {vername} --fabric={fabric_download}"
+                else:
+                    command = f"\"{cmcl_path}\" install {choose_ver} -n {vername}"
+        
+                self.log(f"下载命令: {command}")
+        
+                self.download_thread = self.DownloadThread(cmcl_path, command, self.log)
+                self.threads.append(self.download_thread)
+                self.download_thread.output_received.connect(self.log_output)
+                self.download_thread.output_received.connect(lambda text: download_button.setText(text[:70] + '...' if len(text) > 70 else text))
+                
+                teaching_tip = InfoBar(
+                    icon=InfoBarIcon.SUCCESS,
+                    title='✅ 正在下载',
+                    content=f"正在下载你所选的版本...",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=5000,
+                    parent=self
+                )
+                teaching_tip.show()
+        
+                self.download_thread.finished.connect(
+                    lambda: self.on_download_finished(teaching_tip, download_button)
+                )
+                
+                self.download_thread.error_occurred.connect(
+                    lambda error: self.on_download_error(error, teaching_tip, download_button)
+                )
+                self.download_thread.start()
+                self.threads.append(self.download_thread)  # 将线程添加到列表中
 
 
     class DownloadThread(QThread):
@@ -1019,64 +1193,76 @@ class MainWindow(FluentWindow):
             )
             w.show()
     def update_to_latest_version(self):
-        #url = f"http://localhost:100/zipdownload/{self.BL_latest_ver}.zip"
-        url = f"http://pcfs.top:2/zipdownload/latest.zip"
-        save_path = os.path.join(os.getcwd(), f"{self.BL_latest_ver}.zip")
-        updating_folder = os.path.join(os.path.dirname(os.getcwd()), "updating")
-        if not os.path.exists(updating_folder):
-            os.makedirs(updating_folder)
+        update_script_path = os.path.join(os.getcwd(), "update.ps1")
         try:
-            response = requests.get(url, stream=True)
-            response.raise_for_status()
-            with open(save_path, 'wb') as file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    file.write(chunk)
-            self.log(f"版本 {self.BL_latest_ver} 下载成功，保存路径: {save_path}")
-            # 将下载的文件移动到 updating 文件夹
-            new_save_path = os.path.join(updating_folder, f"{self.BL_latest_ver}.zip")
-            os.rename(save_path, new_save_path)
-            # 解压缩文件到 updating 文件夹
-            with zipfile.ZipFile(new_save_path, 'r') as zip_ref:
-                zip_ref.extractall(updating_folder)
-            self.log(f"版本 {self.BL_latest_ver} 解压缩成功，路径: {updating_folder}")
-            # 删除压缩包
-            os.remove(new_save_path)
-            self.log(f"删除压缩包: {new_save_path}")
-            # 移动 .minecraft 文件夹到 updating 文件夹
-            minecraft_folder = os.path.join(os.getcwd(), ".minecraft")
-            if os.path.exists(minecraft_folder):
-                new_minecraft_folder = os.path.join(updating_folder, ".minecraft")
-                os.rename(minecraft_folder, new_minecraft_folder)
-                self.log(f"移动 .minecraft 文件夹到: {new_minecraft_folder}")
-            # 创建 updata.ps1 文件
-            current_folder_name = os.path.basename(os.getcwd())
-            bat_file_path = os.path.join(os.path.dirname(os.getcwd()), "updata.ps1")
-            with open(bat_file_path, 'w', encoding='utf-8') as bat_file:
-                bat_file.write(f'cd "{os.path.dirname(os.getcwd())}"\n')
-                bat_file.write(f'taskkill /im Bloret-Launcher.exe /f\n')
-                bat_file.write(f'Start-Sleep -Seconds 2\n')
-                bat_file.write(f'Remove-Item -Path ".\\{current_folder_name}" -Recurse -Force\n')
-                bat_file.write(f'Move-Item -Path ".\\updating\\*" -Destination ".\\{current_folder_name}"\n')
-                bat_file.write(f'cd "{os.path.join(os.path.dirname(os.getcwd()), "Bloret-Launcher")}"\n')
-                bat_file.write(f'Start-Process -FilePath "Bloret-Launcher.exe"\n')
-            self.log(f"创建 updata.ps1 文件: {bat_file_path}")
-            QMessageBox.information(self, "即将安装", f"版本 {self.BL_latest_ver} 即将开始安装")
+            with open(update_script_path, "w", encoding="utf-8") as update_script:
+                update_script.write(
+                    "taskkill /im Bloret-Launcher.exe /f\n"
+                    "winget update Bloret.BloretLauncher\n"
+                )# 通过 winget 更新
+            self.log(f"创建更新脚本: {update_script_path}")
+            subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", update_script_path], check=True)
+        except Exception as e:
+            self.log(f"创建或运行更新脚本失败: {e}", logging.ERROR)
+            QMessageBox.critical(self, "更新失败", f"创建或运行更新脚本失败: {e}")
+    #     #url = f"http://localhost:100/zipdownload/{self.BL_latest_ver}.zip"
+    #     url = f"http://pcfs.top:2/zipdownload/latest.zip"
+    #     save_path = os.path.join(os.getcwd(), f"{self.BL_latest_ver}.zip")
+    #     updating_folder = os.path.join(os.path.dirname(os.getcwd()), "updating")
+    #     if not os.path.exists(updating_folder):
+    #         os.makedirs(updating_folder)
+    #     try:
+    #         response = requests.get(url, stream=True)
+    #         response.raise_for_status()
+    #         with open(save_path, 'wb') as file:
+    #             for chunk in response.iter_content(chunk_size=8192):
+    #                 file.write(chunk)
+    #         self.log(f"版本 {self.BL_latest_ver} 下载成功，保存路径: {save_path}")
+    #         # 将下载的文件移动到 updating 文件夹
+    #         new_save_path = os.path.join(updating_folder, f"{self.BL_latest_ver}.zip")
+    #         os.rename(save_path, new_save_path)
+    #         # 解压缩文件到 updating 文件夹
+    #         with zipfile.ZipFile(new_save_path, 'r') as zip_ref:
+    #             zip_ref.extractall(updating_folder)
+    #         self.log(f"版本 {self.BL_latest_ver} 解压缩成功，路径: {updating_folder}")
+    #         # 删除压缩包
+    #         os.remove(new_save_path)
+    #         self.log(f"删除压缩包: {new_save_path}")
+    #         # 移动 .minecraft 文件夹到 updating 文件夹
+    #         minecraft_folder = os.path.join(os.getcwd(), ".minecraft")
+    #         if os.path.exists(minecraft_folder):
+    #             new_minecraft_folder = os.path.join(updating_folder, ".minecraft")
+    #             os.rename(minecraft_folder, new_minecraft_folder)
+    #             self.log(f"移动 .minecraft 文件夹到: {new_minecraft_folder}")
+    #         # 创建 updata.ps1 文件
+    #         current_folder_name = os.path.basename(os.getcwd())
+    #         bat_file_path = os.path.join(os.path.dirname(os.getcwd()), "updata.ps1")
+    #         with open(bat_file_path, 'w', encoding='utf-8') as bat_file:
+    #             bat_file.write(f'cd "{os.path.dirname(os.getcwd())}"\n')
+    #             bat_file.write(f'taskkill /im Bloret-Launcher.exe /f\n')
+    #             bat_file.write(f'Start-Sleep -Seconds 2\n')
+    #             bat_file.write(f'Remove-Item -Path ".\\{current_folder_name}" -Recurse -Force\n')
+    #             bat_file.write(f'Move-Item -Path ".\\updating\\*" -Destination ".\\{current_folder_name}"\n')
+    #             bat_file.write(f'cd "{os.path.join(os.path.dirname(os.getcwd()), "Bloret-Launcher")}"\n')
+    #             bat_file.write(f'Start-Process -FilePath "Bloret-Launcher.exe"\n')
+    #         self.log(f"创建 updata.ps1 文件: {bat_file_path}")
+    #         QMessageBox.information(self, "即将安装", f"版本 {self.BL_latest_ver} 即将开始安装")
 
-            # 运行 updata.ps1 文件
-            subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", bat_file_path], check=True)
-            self.log(f"运行 updata.ps1 文件: {bat_file_path}")
-        except requests.RequestException as e:
-            self.log(f"下载版本 {self.BL_latest_ver} 失败: {e}", logging.ERROR)
-            QMessageBox.critical(self, "下载失败", f"下载版本 {self.BL_latest_ver} 失败: {e}")
-        except zipfile.BadZipFile as e:
-            self.log(f"解压缩版本 {self.BL_latest_ver} 失败: {e}", logging.ERROR)
-            QMessageBox.critical(self, "解压缩失败", f"解压缩版本 {self.BL_latest_ver} 失败: {e}")
-        except OSError as e:
-            self.log(f"文件操作失败: {e}", logging.ERROR)
-            QMessageBox.critical(self, "文件操作失败", f"文件操作失败: {e}")
-        except subprocess.CalledProcessError as e:
-            self.log(f"运行 updata.ps1 文件失败: {e}", logging.ERROR)
-            QMessageBox.critical(self, "更新失败", f"运行 updata.ps1 文件失败: {e}")
+    #         # 运行 updata.ps1 文件
+    #         subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", bat_file_path], check=True)
+    #         self.log(f"运行 updata.ps1 文件: {bat_file_path}")
+    #     except requests.RequestException as e:
+    #         self.log(f"下载版本 {self.BL_latest_ver} 失败: {e}", logging.ERROR)
+    #         QMessageBox.critical(self, "下载失败", f"下载版本 {self.BL_latest_ver} 失败: {e}")
+    #     except zipfile.BadZipFile as e:
+    #         self.log(f"解压缩版本 {self.BL最新版本} 失败: {e}", logging.ERROR)
+    #         QMessageBox.critical(self, "解压缩失败", f"解压缩版本 {self.BL最新版本} 失败: {e}")
+    #     except OSError as e:
+    #         self.log(f"文件操作失败: {e}", logging.ERROR)
+    #         QMessageBox.critical(self, "文件操作失败", f"文件操作失败: {e}")
+    #     except subprocess.CalledProcessError as e:
+    #         self.log(f"运行 updata.ps1 文件失败: {e}", logging.ERROR)
+    #         QMessageBox.critical(self, "更新失败", f"运行 updata.ps1 文件失败: {e}")
     def toggle_show_all_versions(self, state):
         widget = self.findChild(QWidget, "downloadWidget")  # 假设你的下载界面的QWidget对象名称为downloadWidget
         if widget:
@@ -1358,11 +1544,13 @@ class MainWindow(FluentWindow):
         self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))  # 替换...为实际处理函数
         self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
         self.run_script_thread.start()  # 添加线程启动
+        self.threads.append(self.run_script_thread)  # 将线程添加到列表中
 
         self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
         self.update_show_text_thread.update_text.connect(self.update_show_text)
         self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
         self.update_show_text_thread.start()
+        self.threads.append(self.update_show_text_thread)  # 将线程添加到列表中
     def log_output(self, output):
         if output:
             self.log(output.strip())
