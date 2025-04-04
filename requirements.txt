@@ -1,7 +1,7 @@
 PyQt5
 PyQt-Fluent-Widgets
 requests
-win10toast
+win11toast
 pywin32
 configparser
 sip

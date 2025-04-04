@@ -4,7 +4,7 @@ from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, Navi
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
-from win10toast import ToastNotifier
+from win11toast import toast  # 替换 win10toast 为 win11toast
 import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
 from win32com.client import Dispatch
@@ -27,8 +27,7 @@ def log(message, level=logging.INFO):
 def send_system_notification(title, message):
     try:
         if sys.platform == "win32":
-            toaster = ToastNotifier()
-            toaster.show_toast(title, message, duration=10)
+            toast(title, message, duration="short")  # 使用 win11toast 的 toast 方法
         elif sys.platform == "darwin":
             subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
         else:
@@ -169,9 +168,11 @@ def BL_download(version, parent):
             QApplication.processEvents()  # 确保界面及时更新
 
         def closeEvent(self, event):
-            # 确保在关闭对话框时没有异常
-            parent.log("下载对话框关闭事件触发")
-            super().closeEvent(event)
+            for thread in threads:
+                if thread.isRunning():
+                    thread.quit()  # 请求线程退出
+                    thread.wait()  # 等待线程完全退出
+            super().closeEvent(event)  # 确保调用父类的 closeEvent
 
     class VersionDownloadThread(QThread):
         progress_signal = pyqtSignal(int, str)  # 信号传递进度值和消息
@@ -230,7 +231,7 @@ def BL_download(version, parent):
                         downloaded_size += len(chunk)
                         progress = int(downloaded_size / total_size * 100)
                         self.progress_signal.emit(progress, f"下载进度: {progress}%")
-                        parent.log(f"下载进度: {progress}%")
+                        # parent.log(f"下载进度: {progress}%")
 
                 parent.log(f"文件 {file_name} 下载完成，开始解压缩")
 
@@ -270,9 +271,23 @@ def BL_download(version, parent):
     def download_finished():
         parent.log(f"下载完成: 版本 {version}")
         QTimer.singleShot(0, lambda: send_system_notification("下载完成", f"版本 {version} 已成功下载"))
-        download_dialog.close()
-        QMessageBox.information(None, "完成", f"已成功下载并解压版本 {version}")
-        download_dialog.deleteLater()  # 确保对话框被正确销毁
+        
+        # 先断开所有信号
+        thread.progress_signal.disconnect()
+        thread.error_signal.disconnect()
+        thread.finished_signal.disconnect()
+        
+        # 确保线程退出
+        if thread.isRunning():
+            thread.quit()
+            thread.wait(2000)  # 增加等待时间
+        
+        # 最后关闭对话框
+        QTimer.singleShot(0, download_dialog.close)
+        QTimer.singleShot(0, download_dialog.deleteLater)
+        QTimer.singleShot(0, thread.deleteLater)
+        
+        parent.log("下载完成处理结束")
 
     thread.finished_signal.connect(download_finished)
 
@@ -1004,8 +1019,7 @@ class MainWindow(FluentWindow):
         def send_system_notification(self, title, message):
             try:
                 if sys.platform == "win32":
-                    toaster = ToastNotifier()
-                    toaster.show_toast(title, message, duration=10)
+                    toast(title, message, duration="short")  # 使用 win11toast 的 toast 方法
                 elif sys.platform == "darwin":
                     subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
                 else:
@@ -1182,8 +1196,7 @@ class MainWindow(FluentWindow):
     def send_system_notification(self, title, message):
         try:
             if sys.platform == "win32":
-                toaster = ToastNotifier()
-                toaster.show_toast(title, message, duration=10)
+                toast(title, message, duration="short")  # 使用 win11toast 的 toast 方法
             elif sys.platform == "darwin":
                 subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
             else:
