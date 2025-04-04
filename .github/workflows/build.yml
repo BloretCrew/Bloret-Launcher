@@ -134,3 +134,40 @@ jobs:
       with:
         name: package
         path: "output/package.zip"
+  release:
+    needs: [build, code-package]
+    runs-on: windows-latest
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v2
+
+    - name: 创建发布版本
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}
+        release_name: 预发布版本 v${{ github.run_number }}
+        draft: false
+        prerelease: true
+
+    - name: 上传构建产物到发布版本
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}
+        asset_name: ${{ env.ARTIFACT_NAME }}
+        asset_content_type: application/zip
+
+    - name: 上传代码包到发布版本
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: output/package.zip
+        asset_name: package.zip
+        asset_content_type: application/zip
