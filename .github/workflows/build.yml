@@ -137,6 +137,9 @@ jobs:
   release:
     needs: [build, code-package]
     runs-on: windows-latest
+    env:
+      OUTPUT_DIR: 'output'  # 定义 OUTPUT_DIR 环境变量
+      ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'  # 定义 ARTIFACT_NAME 环境变量
     steps:
     - name: 检出代码
       uses: actions/checkout@v2
