@@ -2,6 +2,10 @@
   "language": "zh",
   "downloadSource": 1,
   "checkAccountBeforeStart": false,
-  "accounts": [],
+  "accounts": [{
+    "playerName": "aaa",
+    "loginMethod": 0,
+    "selected": true
+  }],
   "printStartupInfo": true
 }

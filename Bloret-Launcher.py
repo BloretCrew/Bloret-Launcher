@@ -1,5 +1,5 @@
 from datetime import datetime
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox
+from PyQt5.QtWidgets import QDialog, QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar
 from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
@@ -18,11 +18,29 @@ ver_id_long = []
 set_list = ["你还未安装任何版本哦，请前往下载页面安装"]
 BL_update_text = ""
 BL_latest_ver = 0
+threads = []
 
 def log(message, level=logging.INFO):
     print(message)
     logging.log(level, message)
 
+def send_system_notification(title, message):
+    try:
+        if sys.platform == "win32":
+            toaster = ToastNotifier()
+            toaster.show_toast(title, message, duration=10)
+        elif sys.platform == "darwin":
+            subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
+        else:
+            subprocess.run(["notify-send", title, message])
+    except Exception as e:
+        log(f"发送系统通知失败: {e}", logging.ERROR)
+def closeEvent(event):
+    for thread in threads:
+        if thread.isRunning():
+            thread.quit()  # 请求线程退出
+            thread.wait()  # 等待线程完全退出
+    event.accept()
 def check_write_permission():
     # 检查当前目录的写入权限
     try:
@@ -35,8 +53,8 @@ def check_write_permission():
     except PermissionError:
         print("当前目录没有写入权限")
         return False
-
 def BL_download_minecraft():
+    
     class MinecraftDownloadThread(QThread):
         progress_signal = pyqtSignal(str)
         error_signal = pyqtSignal(str)
@@ -116,6 +134,8 @@ def BL_download_minecraft():
                 return
                 
             self.progress_signal.emit("文件下载和安装完成")
+            self.finished.emit()
+            self.quit()
             
     base_url = "https://gitee.com/detrital/minecraft/releases/download/minecraft/"
     temp_dir = os.path.expanduser("~/.BloretLauncher/.minecraft")
@@ -126,70 +146,154 @@ def BL_download_minecraft():
     thread.error_signal.connect(lambda e: QMessageBox.critical(None, "错误", str(e)))
     thread.finished.connect(lambda: QMessageBox.information(None, "完成", "文件下载和安装完成"))
     thread.start()
-    threads = []  # Initialize a threads list if not already defined
-    threads.append(thread)  # 将线程添加到列表中
+    
+    threads.append(thread)  # 将线程添加到外部列表中
+def BL_download(version, parent):
+    class BLDownloadDialog(QDialog):
+        def __init__(self, version, parent=None):
+            super().__init__(parent)
+            self.version = version
+            self.setWindowTitle(f"下载版本 {version}")
+            uic.loadUi("ui/BL_download.ui", self)  # 加载 UI 文件
+            self.progress_bar = self.findChild(QProgressBar, "version")  # 确保进度条的 objectName 是 "version"
+            # 如果 UI 文件中进度条的 objectName 不是 "version"，请修改为正确的名称
 
-def BL_download(version):
+        def update_progress(self, value, message):
+            """更新进度条和进度信息"""
+            if self.progress_bar:
+                self.progress_bar.setValue(value)
+            # 如果 UI 文件中有进度标签，请确保其 objectName 是 "progress_label"
+            progress_label = self.findChild(QLabel, "progress_label")  # 查找进度标签
+            if progress_label:
+                progress_label.setText(message)
+            QApplication.processEvents()  # 确保界面及时更新
+
+        def closeEvent(self, event):
+            # 确保在关闭对话框时没有异常
+            parent.log("下载对话框关闭事件触发")
+            super().closeEvent(event)
+
     class VersionDownloadThread(QThread):
-        progress_signal = pyqtSignal(str)
+        progress_signal = pyqtSignal(int, str)  # 信号传递进度值和消息
         error_signal = pyqtSignal(str)
         finished_signal = pyqtSignal()
-        
+
         def __init__(self, version, minecraft_dir):
             super().__init__()
             self.version = version
             self.minecraft_dir = minecraft_dir
-            
-        def run(self):
-            target_dir = os.path.join(self.minecraft_dir, "versions", self.version)
-            os.makedirs(target_dir, exist_ok=True)
-            zip_path = os.path.join(target_dir, f"{self.version}.zip")
-            url = f"https://gitee.com/detrital/minecraft/releases/download/version/{self.version}.zip"
-            
-            success = False
-            for attempt in range(5):
-                try:
-                    self.progress_signal.emit(f"尝试下载 {self.version}.zip (第 {attempt+1} 次)")
-                    response = requests.get(url, stream=True, timeout=10)
-                    with open(zip_path, 'wb') as f:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            f.write(chunk)
-                    self.progress_signal.emit(f"成功下载文件: {zip_path}")
-                    success = True
-                    break
-                except Exception as e:
-                    self.error_signal.emit(f"下载失败 {self.version}.zip 尝试次数: {attempt+1}, 错误: {str(e)}")
-                    time.sleep(3)
-                    
-            if not success:
-                self.error_signal.emit(f"无法下载文件: {self.version}.zip")
-                return
-                
-            try:
-                self.progress_signal.emit(f"开始解压文件: {zip_path}")
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(target_dir)
-                self.progress_signal.emit(f"成功解压文件到: {target_dir}")
-                os.remove(zip_path)
-            except Exception as e:
-                self.error_signal.emit(f"解压失败: {str(e)}")
-                return
-                
-            self.progress_signal.emit(f"版本 {self.version} 下载和解压完成")
-            self.finished_signal.emit()
-            
-    minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
-    if not os.path.exists(minecraft_dir):
-        BL_download_minecraft()
-        
-    thread = VersionDownloadThread(version, minecraft_dir)
-    thread.progress_signal.connect(log)
-    thread.error_signal.connect(lambda e: QMessageBox.critical(None, "下载失败", str(e)))
-    thread.finished_signal.connect(lambda: QMessageBox.information(None, "完成", f"已成功下载并解压版本 {version}"))
-    thread.start()
-    threads = []  # Initialize a threads list if not already defined
-    threads.append(thread)  # 将线程添加到列表中
+            self.base_url = f"https://gitee.com/detrital/minecraft/releases/download/version/"  # 替换为实际的下载URL
 
+        def run(self):
+            try:
+                parent.log(f"开始下载版本 {self.version}，目标目录: {self.minecraft_dir}")
+
+                # 确保 .minecraft 文件夹存在
+                minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
+                if not os.path.exists(minecraft_dir):
+                    parent.log(f".minecraft 文件夹不存在，开始下载 Minecraft 核心")
+                    BL_download_minecraft()
+                    parent.log(f"Minecraft 核心下载完成")
+                else:
+                    parent.log(f".minecraft 文件夹已存在")
+
+                # 确保 .minecraft/versions 文件夹存在
+                versions_dir = os.path.join(minecraft_dir, "versions")
+                if not os.path.exists(versions_dir):
+                    os.makedirs(versions_dir)
+                    parent.log(f"创建 .minecraft/versions 文件夹: {versions_dir}")
+                else:
+                    parent.log(f".minecraft/versions 文件夹已存在")
+
+                # 确保 .minecraft/versions/{version} 文件夹存在
+                version_dir = os.path.join(versions_dir, self.version)
+                if not os.path.exists(version_dir):
+                    os.makedirs(version_dir)
+                    parent.log(f"创建 .minecraft/versions/{self.version} 文件夹: {version_dir}")
+                else:
+                    parent.log(f".minecraft/versions/{self.version} 文件夹已存在")
+
+                file_name = f"{self.version}.zip"
+                file_path = os.path.join(version_dir, file_name)
+                parent.log(f"准备下载文件: {file_name} 到路径: {file_path}")
+
+                response = requests.get(self.base_url + file_name, stream=True, timeout=10)
+                response.raise_for_status()  # 如果响应状态码不是200，抛出异常
+                parent.log(f"成功获取文件: {file_name}，开始下载")
+
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded_size = 0
+
+                with open(file_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                        downloaded_size += len(chunk)
+                        progress = int(downloaded_size / total_size * 100)
+                        self.progress_signal.emit(progress, f"下载进度: {progress}%")
+                        parent.log(f"下载进度: {progress}%")
+
+                parent.log(f"文件 {file_name} 下载完成，开始解压缩")
+
+                # 解压缩文件
+                with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                    zip_ref.extractall(version_dir)
+                parent.log(f"文件 {file_name} 解压缩完成")
+
+                # 删除 .zip 文件
+                os.remove(file_path)
+                parent.log(f"删除文件: {file_path}")
+
+                self.finished_signal.emit()
+                parent.log(f"版本 {self.version} 下载和解压缩完成")
+            except Exception as e:
+                parent.log(f"下载版本 {self.version} 时发生错误: {str(e)}", logging.ERROR)
+                self.error_signal.emit(str(e))
+            finally:
+                self.quit()  # 确保线程正确退出
+                # self.wait()  # 移除这一行
+
+    # 创建对话框
+    download_dialog = BLDownloadDialog(version, parent)
+    parent.log(f"创建下载对话框: 版本 {version}")
+
+    # 创建下载线程
+    minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
+    parent.log(f"设置 Minecraft 目录为: {minecraft_dir}")
+    thread = VersionDownloadThread(version, minecraft_dir)
+
+    # 连接信号与槽
+    thread.progress_signal.connect(lambda value, message: download_dialog.update_progress(value, message))
+    thread.error_signal.connect(lambda e: (
+        parent.log(f"下载失败: {e}", logging.ERROR),
+        QMessageBox.critical(download_dialog, "下载失败", str(e))
+    ))
+
+    def download_finished():
+        parent.log(f"下载完成: 版本 {version}")
+        QTimer.singleShot(0, lambda: send_system_notification("下载完成", f"版本 {version} 已成功下载"))
+        download_dialog.close()
+        QMessageBox.information(None, "完成", f"已成功下载并解压版本 {version}")
+        # 确保在关闭对话框后不再访问其属性
+        download_dialog.deleteLater()  # 确保对话框被正确销毁
+
+    thread.finished_signal.connect(download_finished)
+
+    # 在对话框显示时启动线程
+    parent.log("启动下载线程")
+    thread.start()
+
+    # 将线程添加到全局线程列表中
+    threads.append(thread)
+    parent.log("下载线程已添加到全局线程列表")
+
+    # 显示对话框
+    parent.log("显示下载对话框")
+    download_dialog.exec()
+    parent.log("下载对话框已关闭")
+
+    return 0
+
+    
 class DownloadWorker(QThread):
     finished = pyqtSignal()
     def run(self):
@@ -804,12 +908,12 @@ class MainWindow(FluentWindow):
             )
     
             download_button.setText("已经开始下载...下载状态将会显示在这里")
-
+    
             download_way_choose = widget.findChild(ComboBox, "download_way_choose")
             selected_way = download_way_choose.currentText()
-
-            if selected_way == "Bloret Launcher": # Bloret Launcher 方法
-                success = BL_download(choose_ver)
+    
+            if selected_way == "Bloret Launcher":  # Bloret Launcher 方法
+                success = BL_download(choose_ver, self)  # 修复：添加 parent 参数
                 if success:
                     self.on_download_finished(teaching_tip, download_button)
                 else:
@@ -818,7 +922,7 @@ class MainWindow(FluentWindow):
                         print('确认')
                     else:
                         print('取消')
-            else: # CMCL 方法
+            else:  # CMCL 方法
                 if fabric_download != "不安装":
                     command = f"\"{cmcl_path}\" install {choose_ver} -n {vername} --fabric={fabric_download}"
                 else:
