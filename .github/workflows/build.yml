@@ -144,52 +144,43 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v2
 
-    - name: 获取最新预发布版本
-      id: get_release
+    - name: 获取最新的预发布版本
+      id: get_latest_release
       uses: actions/github-script@v6
       with:
-      script: |
-        const { data: releases } = await github.rest.repos.listReleases({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        });
-        const prerelease = releases.find(release => release.prerelease);
-        if (!prerelease) {
-        throw new Error("No prerelease found.");
-        }
-        core.setOutput("id", prerelease.id);
+        script: |
+          const releases = await github.repos.listReleases({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            per_page: 100,
+          });
 
-    - name: 更新最新预发布版本
-      id: update_release
-      uses: actions/github-script@v6
-      with:
-      script: |
-        await github.rest.repos.updateRelease({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        release_id: ${{ steps.get_release.outputs.id }},
-        tag_name: `v${{ github.run_number }}`,
-        name: `预发布版本 v${{ github.run_number }}`,
-        draft: false,
-        prerelease: true,
-        });
+          const latestPrerelease = releases.data.find(
+            (release) => release.prerelease && !release.draft
+          );
 
-    - name: 上传构建产物到发布版本
+          if (!latestPrerelease) {
+            throw new Error('No latest prerelease found');
+          }
+
+          return latestPrerelease.id;
+
+    - name: 上传构建产物到最新预发布版本
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ steps.get_latest_release.outputs.result }}/assets
         asset_path: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}
         asset_name: ${{ env.ARTIFACT_NAME }}
         asset_content_type: application/zip
 
-    - name: 上传代码包到发布版本
+    - name: 上传代码包到最新预发布版本
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ steps.get_latest_release.outputs.result }}/assets
         asset_path: output/package.zip
         asset_name: package.zip
         asset_content_type: application/zip
