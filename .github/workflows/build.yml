@@ -1,7 +1,7 @@
 name: 应用程序打包
 
 permissions:
-  contents: read
+  contents: write
 
 on:
   push:
