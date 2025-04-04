@@ -250,7 +250,6 @@ def BL_download(version, parent):
                 self.error_signal.emit(str(e))
             finally:
                 self.quit()  # 确保线程正确退出
-                # self.wait()  # 移除这一行
 
     # 创建对话框
     download_dialog = BLDownloadDialog(version, parent)
@@ -273,7 +272,6 @@ def BL_download(version, parent):
         QTimer.singleShot(0, lambda: send_system_notification("下载完成", f"版本 {version} 已成功下载"))
         download_dialog.close()
         QMessageBox.information(None, "完成", f"已成功下载并解压版本 {version}")
-        # 确保在关闭对话框后不再访问其属性
         download_dialog.deleteLater()  # 确保对话框被正确销毁
 
     thread.finished_signal.connect(download_finished)
@@ -292,7 +290,6 @@ def BL_download(version, parent):
     parent.log("下载对话框已关闭")
 
     return 0
-
     
 class DownloadWorker(QThread):
     finished = pyqtSignal()
