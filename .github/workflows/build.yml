@@ -150,8 +150,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: v${{ github.run_number }}
-        release_name: 预发布版本 v${{ github.run_number }}
+        tag_name: Actions
+        release_name: Actions 自动发布测试版 ${{ github.run_number }}
         draft: false
         prerelease: true
 
