@@ -144,16 +144,35 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v2
 
-    - name: 创建发布版本
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: 获取最新预发布版本
+      id: get_release
+      uses: actions/github-script@v6
       with:
-        tag_name: v${{ github.run_number }}
-        release_name: 预发布版本 v${{ github.run_number }}
-        draft: false
-        prerelease: true
+      script: |
+        const { data: releases } = await github.rest.repos.listReleases({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        });
+        const prerelease = releases.find(release => release.prerelease);
+        if (!prerelease) {
+        throw new Error("No prerelease found.");
+        }
+        core.setOutput("id", prerelease.id);
+
+    - name: 更新最新预发布版本
+      id: update_release
+      uses: actions/github-script@v6
+      with:
+      script: |
+        await github.rest.repos.updateRelease({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        release_id: ${{ steps.get_release.outputs.id }},
+        tag_name: `v${{ github.run_number }}`,
+        name: `预发布版本 v${{ github.run_number }}`,
+        draft: false,
+        prerelease: true,
+        });
 
     - name: 上传构建产物到发布版本
       uses: actions/upload-release-asset@v1
