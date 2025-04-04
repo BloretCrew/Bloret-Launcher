@@ -1,7 +1,7 @@
 name: 应用程序打包
 
 permissions:
-  contents: read
+  contents: write
 
 on:
   push:
@@ -144,43 +144,51 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v2
 
-    - name: 获取最新的预发布版本
-      id: get_latest_release
+    - name: 编辑最新预发布版本
+      id: edit_release
       uses: actions/github-script@v6
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         script: |
           const releases = await github.repos.listReleases({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            per_page: 100,
+            per_page: 1,
+            state: 'prereleased'
           });
 
-          const latestPrerelease = releases.data.find(
-            (release) => release.prerelease && !release.draft
-          );
-
-          if (!latestPrerelease) {
-            throw new Error('No latest prerelease found');
+          if (releases.data.length > 0) {
+            const latestRelease = releases.data[0];
+            await github.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: latestRelease.id,
+              tag_name: 'Actions',
+              name: 'Actions 自动发布测试版 ${{ github.run_number }}',
+              draft: false,
+              prerelease: true
+            });
+          } else {
+            throw new Error('No prerelease found to edit');
           }
 
-          return latestPrerelease.id;
-
-    - name: 上传构建产物到最新预发布版本
+    - name: 上传构建产物到发布版本
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.get_latest_release.outputs.result }}/assets
+        upload_url: ${{ steps.edit_release.outputs.upload_url }}
         asset_path: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}
         asset_name: ${{ env.ARTIFACT_NAME }}
         asset_content_type: application/zip
 
-    - name: 上传代码包到最新预发布版本
+    - name: 上传代码包到发布版本
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.get_latest_release.outputs.result }}/assets
+        upload_url: ${{ steps.edit_release.outputs.upload_url }}
         asset_path: output/package.zip
         asset_name: package.zip
         asset_content_type: application/zip
