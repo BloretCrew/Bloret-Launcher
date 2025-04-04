@@ -170,7 +170,7 @@ jobs:
               prerelease: true
             });
             console.log('Updated release:', updatedRelease);
-            core.setOutput('upload_url', updatedRelease.upload_url);
+            core.setOutput('upload_url', updatedRelease.data.upload_url); // 修复此处，确保正确设置 upload_url
           } else {
             throw new Error('No prerelease found to edit');
           }
