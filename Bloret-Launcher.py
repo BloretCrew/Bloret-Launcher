@@ -4,7 +4,7 @@ from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, Navi
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
-from win11toast import toast  # 替换 win10toast 为 win11toast
+from win11toast import toast, notify, update_progress
 import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
 from win32com.client import Dispatch
@@ -24,14 +24,14 @@ def log(message, level=logging.INFO):
     print(message)
     logging.log(level, message)
 
+icon = {
+    'src': 'icons/bloret.png',
+    'placement': 'appLogoOverride'
+}
+
 def send_system_notification(title, message):
     try:
-        if sys.platform == "win32":
-            toast(title, message, duration="short")  # 使用 win11toast 的 toast 方法
-        elif sys.platform == "darwin":
-            subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
-        else:
-            subprocess.run(["notify-send", title, message])
+        toast(title, message, duration="short", icon=icon)  # 使用 win11toast 的 toast 方法
     except Exception as e:
         log(f"发送系统通知失败: {e}", logging.ERROR)
 def closeEvent(event):
@@ -153,29 +153,32 @@ def BL_download(version, parent):
             super().__init__(parent)
             self.version = version
             self.setWindowTitle(f"下载版本 {version}")
-            uic.loadUi("ui/BL_download.ui", self)  # 加载 UI 文件
-            self.progress_bar = self.findChild(QProgressBar, "version")  # 确保进度条的 objectName 是 "version"
-            # 如果 UI 文件中进度条的 objectName 不是 "version"，请修改为正确的名称
+            uic.loadUi("ui/BL_download.ui", self)
+            self.progress_bar = self.findChild(QProgressBar, "version")
 
         def update_progress(self, value, message):
-            """更新进度条和进度信息"""
             if self.progress_bar:
                 self.progress_bar.setValue(value)
-            # 如果 UI 文件中有进度标签，请确保其 objectName 是 "progress_label"
-            progress_label = self.findChild(QLabel, "progress_label")  # 查找进度标签
+            progress_label = self.findChild(QLabel, "progress_label")
             if progress_label:
                 progress_label.setText(message)
-            QApplication.processEvents()  # 确保界面及时更新
+            QApplication.processEvents()
 
         def closeEvent(self, event):
-            for thread in threads:
-                if thread.isRunning():
-                    thread.quit()  # 请求线程退出
-                    thread.wait()  # 等待线程完全退出
-            super().closeEvent(event)  # 确保调用父类的 closeEvent
+            for thread in list(self.threads):
+                try:
+                    if thread.isRunning():
+                        thread.quit()
+                        thread.wait()
+                except RuntimeError:
+                    pass
+                finally:
+                    if thread in self.threads:
+                        self.threads.remove(thread)
+            event.accept()
 
     class VersionDownloadThread(QThread):
-        progress_signal = pyqtSignal(int, str)  # 信号传递进度值和消息
+        progress_signal = pyqtSignal(int, str)
         error_signal = pyqtSignal(str)
         finished_signal = pyqtSignal()
 
@@ -183,7 +186,7 @@ def BL_download(version, parent):
             super().__init__()
             self.version = version
             self.minecraft_dir = minecraft_dir
-            self.base_url = f"https://gitee.com/detrital/minecraft/releases/download/version/"  # 替换为实际的下载URL
+            self.base_url = f"https://gitee.com/detrital/minecraft/releases/download/version/"
 
         def run(self):
             try:
@@ -218,8 +221,16 @@ def BL_download(version, parent):
                 file_path = os.path.join(version_dir, file_name)
                 parent.log(f"准备下载文件: {file_name} 到路径: {file_path}")
 
+                # 显示通知
+                notify(progress={
+                    'title': f'下载版本 {self.version}',
+                    'status': '正在下载...',
+                    'value': '0',
+                    'valueStringOverride': '0%'
+                })
+
                 response = requests.get(self.base_url + file_name, stream=True, timeout=10)
-                response.raise_for_status()  # 如果响应状态码不是200，抛出异常
+                response.raise_for_status()
                 parent.log(f"成功获取文件: {file_name}，开始下载")
 
                 total_size = int(response.headers.get('content-length', 0))
@@ -231,7 +242,7 @@ def BL_download(version, parent):
                         downloaded_size += len(chunk)
                         progress = int(downloaded_size / total_size * 100)
                         self.progress_signal.emit(progress, f"下载进度: {progress}%")
-                        # parent.log(f"下载进度: {progress}%")
+                        update_progress({'value': progress / 100, 'valueStringOverride': f'{progress}%'})
 
                 parent.log(f"文件 {file_name} 下载完成，开始解压缩")
 
@@ -246,20 +257,23 @@ def BL_download(version, parent):
 
                 self.finished_signal.emit()
                 parent.log(f"版本 {self.version} 下载和解压缩完成")
+
+                # 更新通知状态
+                update_progress({'status': '下载完成！'})
             except Exception as e:
                 parent.log(f"下载版本 {self.version} 时发生错误: {str(e)}", logging.ERROR)
                 self.error_signal.emit(str(e))
             finally:
-                self.quit()  # 确保线程正确退出
+                self.quit()
 
     # 创建对话框
     download_dialog = BLDownloadDialog(version, parent)
-    parent.log(f"创建下载对话框: 版本 {version}")
 
     # 创建下载线程
     minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
-    parent.log(f"设置 Minecraft 目录为: {minecraft_dir}")
     thread = VersionDownloadThread(version, minecraft_dir)
+    thread.finished.connect(lambda t=thread: threads.remove(t))
+    threads.append(thread)
 
     # 连接信号与槽
     thread.progress_signal.connect(lambda value, message: download_dialog.update_progress(value, message))
@@ -271,38 +285,31 @@ def BL_download(version, parent):
     def download_finished():
         parent.log(f"下载完成: 版本 {version}")
         QTimer.singleShot(0, lambda: send_system_notification("下载完成", f"版本 {version} 已成功下载"))
-        
-        # 先断开所有信号
+
+        # 断开信号
         thread.progress_signal.disconnect()
         thread.error_signal.disconnect()
         thread.finished_signal.disconnect()
-        
+
         # 确保线程退出
         if thread.isRunning():
             thread.quit()
-            thread.wait(2000)  # 增加等待时间
-        
-        # 最后关闭对话框
+            thread.wait(2000)
+
+        # 关闭对话框
         QTimer.singleShot(0, download_dialog.close)
         QTimer.singleShot(0, download_dialog.deleteLater)
         QTimer.singleShot(0, thread.deleteLater)
-        
+
         parent.log("下载完成处理结束")
 
     thread.finished_signal.connect(download_finished)
 
-    # 在对话框显示时启动线程
-    parent.log("启动下载线程")
+    # 启动线程
     thread.start()
 
-    # 将线程添加到全局线程列表中
-    threads.append(thread)
-    parent.log("下载线程已添加到全局线程列表")
-
     # 显示对话框
-    parent.log("显示下载对话框")
     download_dialog.exec()
-    parent.log("下载对话框已关闭")
 
     return 0
     
