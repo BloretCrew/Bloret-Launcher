@@ -90,6 +90,64 @@
         </widget>
        </item>
        <item>
+        <widget class="CardWidget" name="CardWidget_7">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_7">
+          <item>
+           <widget class="StrongBodyLabel" name="StrongBodyLabel_12">
+            <property name="text">
+             <string>资源库文件 libraries</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="ProgressBar" name="libraries"/>
+          </item>
+          <item>
+           <widget class="StrongBodyLabel" name="StrongBodyLabel_13">
+            <property name="text">
+             <string>63.1 MB</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget_8">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_8">
+          <item>
+           <widget class="StrongBodyLabel" name="StrongBodyLabel_14">
+            <property name="text">
+             <string>指标文件 indexes</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="ProgressBar" name="indexes"/>
+          </item>
+          <item>
+           <widget class="StrongBodyLabel" name="StrongBodyLabel_15">
+            <property name="text">
+             <string>379 KB</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="CardWidget" name="CardWidget">
          <property name="minimumSize">
           <size>
@@ -101,7 +159,7 @@
           <item>
            <widget class="StrongBodyLabel" name="StrongBodyLabel">
             <property name="text">
-             <string>Minecraft 资源文件 1</string>
+             <string>对象文件 objects 1</string>
             </property>
            </widget>
           </item>
@@ -130,7 +188,7 @@
           <item>
            <widget class="StrongBodyLabel" name="StrongBodyLabel_2">
             <property name="text">
-             <string>Minecraft 资源文件 2</string>
+             <string>对象文件 objects 2</string>
             </property>
            </widget>
           </item>
@@ -162,7 +220,7 @@
           <item>
            <widget class="StrongBodyLabel" name="StrongBodyLabel_3">
             <property name="text">
-             <string>Minecraft 资源文件 3</string>
+             <string>对象文件 objects 3</string>
             </property>
            </widget>
           </item>
@@ -191,7 +249,7 @@
           <item>
            <widget class="StrongBodyLabel" name="StrongBodyLabel_4">
             <property name="text">
-             <string>Minecraft 资源文件 4</string>
+             <string>对象文件 objects 4</string>
             </property>
            </widget>
           </item>
@@ -202,64 +260,6 @@
            <widget class="StrongBodyLabel" name="StrongBodyLabel_10">
             <property name="text">
              <string>42.5 MB</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="CardWidget" name="CardWidget_6">
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>70</height>
-          </size>
-         </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_6">
-          <item>
-           <widget class="StrongBodyLabel" name="StrongBodyLabel_6">
-            <property name="text">
-             <string>indexes json</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="ProgressBar" name="indexes"/>
-          </item>
-          <item>
-           <widget class="StrongBodyLabel" name="StrongBodyLabel_11">
-            <property name="text">
-             <string>634 KB</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="CardWidget" name="CardWidget_7">
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>70</height>
-          </size>
-         </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_7">
-          <item>
-           <widget class="StrongBodyLabel" name="StrongBodyLabel_12">
-            <property name="text">
-             <string>资源库文件 libraries</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="ProgressBar" name="libraries"/>
-          </item>
-          <item>
-           <widget class="StrongBodyLabel" name="StrongBodyLabel_13">
-            <property name="text">
-             <string>63.1 MB</string>
             </property>
            </widget>
           </item>

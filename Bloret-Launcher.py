@@ -63,18 +63,30 @@ def BL_download(version, parent):
             super().__init__(parent)
             self.version = version
             self.setWindowTitle(f"下载版本 {version}")
-            uic.loadUi("ui/BL_download.ui", self)
 
-            # 初始化进度条控件
-            self.progress_bars = {
-                "version": self.findChild(QProgressBar, "version"),
-                "libraries": self.findChild(QProgressBar, "libraries"),
-                "objects1": self.findChild(QProgressBar, "objects1"),
-                "objects2": self.findChild(QProgressBar, "objects2"),
-                "objects3": self.findChild(QProgressBar, "objects3"),
-                "objects4": self.findChild(QProgressBar, "objects4"),
-                "indexes": self.findChild(QProgressBar, "indexes")
-            }
+            # 检查 .minecraft 文件夹是否存在
+            minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
+            if not os.path.exists(minecraft_dir):
+                log(".minecraft 文件夹不存在")
+                uic.loadUi("ui/BL_download.ui", self)
+                # 初始化进度条控件
+                self.progress_bars = {
+                    "version": self.findChild(QProgressBar, "version"),
+                    "libraries": self.findChild(QProgressBar, "libraries"),
+                    "objects1": self.findChild(QProgressBar, "objects1"),
+                    "objects2": self.findChild(QProgressBar, "objects2"),
+                    "objects3": self.findChild(QProgressBar, "objects3"),
+                    "objects4": self.findChild(QProgressBar, "objects4"),
+                    "indexes": self.findChild(QProgressBar, "indexes")
+                }
+            else:
+                parent.log(".minecraft 文件夹已存在")
+                uic.loadUi("ui/BL_download_version.ui", self)
+                self.progress_bars = {
+                    "version": self.findChild(QProgressBar, "version")
+                }
+
+            
 
             # 初始化 threads 属性
             self.threads = []
@@ -200,30 +212,33 @@ def BL_download(version, parent):
                 log(".minecraft 文件夹已存在")
 
         def BL_download_minecraft(self):
-            """下载 Minecraft 核心文件"""
+            """下载 Minecraft 资源文件"""
+        
             # 确保 .minecraft 文件夹存在
             self.ensure_minecraft_dir()
         
             # 创建必要的子文件夹
-            assets_dir = os.path.join(MINECRAFT_DIR, "assets")
-            objects_dir = os.path.join(assets_dir, "objects")
-            indexes_dir = os.path.join(assets_dir, "indexes")
-            libraries_dir = os.path.join(MINECRAFT_DIR, "libraries")
+            assets_dir = os.path.join(MINECRAFT_DIR, "assets")  # 定义 assets 文件夹路径
+            objects_dir = os.path.join(assets_dir, "objects")  # 定义 objects 文件夹路径
+            indexes_dir = os.path.join(assets_dir, "indexes")  # 定义 indexes 文件夹路径
+            libraries_dir = os.path.join(MINECRAFT_DIR, "libraries")  # 定义 libraries 文件夹路径
         
-            os.makedirs(objects_dir, exist_ok=True)
-            os.makedirs(indexes_dir, exist_ok=True)
-            os.makedirs(libraries_dir, exist_ok=True)
+            # 确保上述文件夹存在，如果不存在则创建
+            os.makedirs(objects_dir, exist_ok=True)  # 创建 objects 文件夹
+            os.makedirs(indexes_dir, exist_ok=True)  # 创建 indexes 文件夹
+            os.makedirs(libraries_dir, exist_ok=True)  # 创建 libraries 文件夹
         
-            # 下载并解压资源文件
+            # 定义需要下载的文件及其目标路径
             files_to_download = [
-                ("libraries.zip", libraries_dir, "libraries"),
-                ("objects-01.zip", objects_dir, "objects1"),
-                ("objects-02.zip", objects_dir, "objects2"),
-                ("objects-03.zip", objects_dir, "objects3"),
-                ("objects-04.zip", objects_dir, "objects4")
+                ("indexes.zip", indexes_dir, "indexes"),  # indexes.zip 文件下载到 indexes 文件夹
+                ("libraries.zip", libraries_dir, "libraries"),  # libraries.zip 文件下载到 libraries 文件夹
+                ("objects-01.zip", objects_dir, "objects1"),  # objects-01.zip 文件下载到 objects 文件夹
+                ("objects-02.zip", objects_dir, "objects2"),  # objects-02.zip 文件下载到 objects 文件夹
+                ("objects-03.zip", objects_dir, "objects3"),  # objects-03.zip 文件下载到 objects 文件夹
+                ("objects-04.zip", objects_dir, "objects4")  # objects-04.zip 文件下载到 objects 文件夹
             ]
         
-            # 使用线程锁保护日志输出
+            # 使用线程锁保护日志输出，避免多线程日志混乱
             log_lock = threading.Lock()
         
             def download_file(file_name, target_dir, progress_key):
@@ -232,17 +247,18 @@ def BL_download(version, parent):
                 file_path = os.path.join(target_dir, file_name)
                 max_retries = 5
                 retry_delay = 3
-        
+            
+                log(f"开始处理文件: {file_name}, 目标路径: {file_path}")
+            
                 for attempt in range(max_retries):
                     try:
-                        with log_lock:
-                            log(f"开始下载 {file_name} (尝试 {attempt + 1}/{max_retries})")
+                        log(f"准备下载 {file_name} 到 {file_path} (尝试 {attempt + 1}/{max_retries})")
                         response = requests.get(url, stream=True, timeout=10)
                         response.raise_for_status()
-        
+            
                         total_size = int(response.headers.get('content-length', 0))
                         downloaded_size = 0
-        
+            
                         with open(file_path, 'wb') as f:
                             for chunk in response.iter_content(chunk_size=8192):
                                 if chunk:
@@ -250,68 +266,74 @@ def BL_download(version, parent):
                                     downloaded_size += len(chunk)
                                     progress = int(downloaded_size / total_size * 100)
                                     self.progress_signal.emit(progress_key, progress, f"下载进度: {progress}%")
-        
-                        with log_lock:
-                            log(f"文件 {file_name} 下载完成")
+            
+                        log(f"文件 {file_name} 下载完成")
                         return True
                     except requests.RequestException as e:
-                        with log_lock:
-                            log(f"下载 {file_name} 失败 (尝试 {attempt + 1}/{max_retries}): {e}", logging.ERROR)
+                        log(f"下载 {file_name} 失败 (尝试 {attempt + 1}/{max_retries}): {e}", logging.ERROR)
                         time.sleep(retry_delay)
                     except Exception as e:
-                        with log_lock:
-                            log(f"下载 {file_name} 时发生未知错误: {e}", logging.ERROR)
+                        log(f"下载 {file_name} 时发生未知错误: {e}", logging.ERROR)
                         time.sleep(retry_delay)
-        
-                with log_lock:
-                    log(f"下载 {file_name} 失败，已达到最大重试次数", logging.ERROR)
+            
+                log(f"下载 {file_name} 失败，已达到最大重试次数", logging.ERROR)
                 return False
         
-            # 使用线程池下载文件
+            # 使用线程池并发下载文件
             with ThreadPoolExecutor(max_workers=5) as executor:
+                # 提交下载任务到线程池
                 futures = [executor.submit(download_file, file_name, target_dir, progress_key) for file_name, target_dir, progress_key in files_to_download]
                 for future in futures:
                     try:
-                        future.result()
+                        future.result()  # 等待任务完成
                     except Exception as e:
-                        log(f"下载文件时发生错误: {e}", logging.ERROR)
+                        log(f"下载文件时发生错误: {e}", logging.ERROR)  # 记录任务执行错误日志
         
-            # 解压文件
+            # 解压下载的文件
             try:
-                for file_name, target_dir, progress_key in files_to_download:
-                    file_path = os.path.join(target_dir, file_name)
-                    if os.path.exists(file_path):
-                        with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                            zip_ref.extractall(target_dir)
-                        log(f"文件 {file_name} 解压缩完成")
-                        os.remove(file_path)
-                        log(f"删除文件: {file_path}")
+                for file_name, target_dir, _ in files_to_download:
+                    file_path = os.path.join(target_dir, file_name)  # 获取文件路径
+                    if os.path.exists(file_path):  # 检查文件是否存在
+                        with zipfile.ZipFile(file_path, 'r') as zip_ref:  # 打开 ZIP 文件
+                            zip_ref.extractall(target_dir)  # 解压文件到目标目录
+                        log(f"文件 {file_name} 解压缩完成")  # 记录解压完成日志
+                        os.remove(file_path)  # 删除 ZIP 文件
+                        log(f"删除文件: {file_path}")  # 记录删除文件日志
                     else:
-                        log(f"文件 {file_name} 不存在，无法解压缩", logging.ERROR)
-            except Exception as e:
-                log(f"解压文件失败: {e}", logging.ERROR)
-                return False
+                        log(f"文件 {file_name} 不存在，无法解压缩", logging.ERROR)  # 记录文件不存在日志
+            except Exception as e:  # 捕获解压异常
+                log(f"解压文件失败: {e}", logging.ERROR)  # 记录解压失败日志
+                return False  # 返回 False 表示解压失败
         
-            log("所有文件下载和解压完成")
-            return True
-
+            log("所有文件下载和解压完成")  # 记录所有文件下载和解压完成日志
+            return True  # 返回 True 表示成功
         def download_file_with_retry(self, file_name, target_dir, progress_key):
             """下载文件并支持重试"""
+            # 构造下载 URL
             url = f"https://gitee.com/detrital/minecraft/releases/download/minecraft/{file_name}"
+            # 构造文件保存路径
             file_path = os.path.join(target_dir, file_name)
+            # 设置最大重试次数
             max_retries = 5
+            # 设置每次重试之间的延迟时间（秒）
             retry_delay = 3
-
+        
+            # 循环尝试下载文件，最多重试 max_retries 次
             for attempt in range(max_retries):
                 try:
+                    # 记录日志，显示当前尝试次数
                     parent.log(f"开始下载 {file_name} (尝试 {attempt + 1}/{max_retries})")
+                    # 发起 HTTP GET 请求，启用流式下载，设置超时时间为 10 秒
                     response = requests.get(url, stream=True, timeout=10)
-                    response.raise_for_status()  # 检查 HTTP 状态码
-
+                    # 检查 HTTP 响应状态码，如果不是 200 则抛出异常
+                    response.raise_for_status()
+        
+                    # 获取文件总大小（字节）
                     total_size = int(response.headers.get('content-length', 0))
+                    # 初始化已下载大小为 0
                     downloaded_size = 0
-
-                    # 显示通知
+        
+                    # 显示通知，初始化进度条
                     notify(progress={
                         'title': f'下载资源文件 {file_name}',
                         'status': '正在下载... ↓',
@@ -319,95 +341,48 @@ def BL_download(version, parent):
                         'valueStringOverride': '0%',
                         'icon': os.path.join(os.getcwd(), 'icons', 'bloret.png')  # 确保路径有效
                     })
-
-                    with open(file_path, 'wb') as f:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            if chunk:  # 确保 chunk 不为空
-                                f.write(chunk)
-                                downloaded_size += len(chunk)
-                                progress = int(downloaded_size / total_size * 100)
-                                self.progress_signal.emit(progress_key, progress, f"下载进度: {progress}%")
-                                update_progress({'value': progress / 100, 'valueStringOverride': f'{progress}%'})
-
-                    parent.log(f"文件 {file_name} 下载完成")
-                    
-                    # 更新通知状态
-                    update_progress({
-                        'status': '下载完成！✅',
-                        'value': 100,
-                        'valueStringOverride': f'100%'
-                    })
-                    time.sleep(3)  # 每个文件下载完成后间隔 3 秒
-                    return True
-                except requests.RequestException as e:
-                    parent.log(f"下载 {file_name} 失败 (尝试 {attempt + 1}/{max_retries}): {e}", logging.ERROR)
-                    time.sleep(retry_delay)
-                except Exception as e:
-                    parent.log(f"下载 {file_name} 时发生未知错误: {e}", logging.ERROR)
-                    time.sleep(retry_delay)
-                finally:
-                    # 确保 response 被正确关闭
-                    if 'response' in locals():
-                        response.close()
-
-            parent.log(f"下载 {file_name} 失败，已达到最大重试次数", logging.ERROR)
-            return False
         
-        def download_file_with_retry(self, file_name, target_dir, progress_key):
-            """下载文件并支持重试"""
-            url = f"https://gitee.com/detrital/minecraft/releases/download/minecraft/{file_name}"
-            file_path = os.path.join(target_dir, file_name)
-            max_retries = 5
-            retry_delay = 3
-
-            for attempt in range(max_retries):
-                try:
-                    parent.log(f"开始下载 {file_name} (尝试 {attempt + 1}/{max_retries})")
-                    response = requests.get(url, stream=True, timeout=10)
-                    response.raise_for_status()  # 检查 HTTP 状态码
-
-                    total_size = int(response.headers.get('content-length', 0))
-                    downloaded_size = 0
-
-                    # 显示通知
-                    notify(progress={
-                        'title': f'下载资源文件 {file_name}',
-                        'status': '正在下载... ↓',
-                        'value': '0',
-                        'valueStringOverride': '0%',
-                        'icon': os.path.join(os.getcwd(), 'icons', 'bloret.png')  # 确保路径有效
-                    })
-
+                    # 打开文件并写入下载内容
                     with open(file_path, 'wb') as f:
+                        # 分块下载文件，每次读取 8192 字节
                         for chunk in response.iter_content(chunk_size=8192):
                             if chunk:  # 确保 chunk 不为空
-                                f.write(chunk)
-                                downloaded_size += len(chunk)
+                                f.write(chunk)  # 写入文件
+                                downloaded_size += len(chunk)  # 更新已下载大小
+                                # 计算下载进度百分比
                                 progress = int(downloaded_size / total_size * 100)
+                                # 发送进度信号，更新 UI
                                 self.progress_signal.emit(progress_key, progress, f"下载进度: {progress}%")
+                                # 更新通知的进度条
                                 update_progress({'value': progress / 100, 'valueStringOverride': f'{progress}%'})
-
+        
+                    # 记录日志，显示文件下载完成
                     parent.log(f"文件 {file_name} 下载完成")
-                    
-                    # 更新通知状态
+        
+                    # 更新通知状态为下载完成
                     update_progress({
                         'status': '下载完成！✅',
                         'value': 100,
                         'valueStringOverride': f'100%'
                     })
-                    time.sleep(3)  # 每个文件下载完成后间隔 3 秒
-                    return True
+        
+                    # 每个文件下载完成后间隔 3 秒
+                    time.sleep(3)
+                    return True  # 下载成功，返回 True
                 except requests.RequestException as e:
+                    # 捕获请求异常，记录日志并等待一段时间后重试
                     parent.log(f"下载 {file_name} 失败 (尝试 {attempt + 1}/{max_retries}): {e}", logging.ERROR)
                     time.sleep(retry_delay)
                 except Exception as e:
+                    # 捕获其他异常，记录日志并等待一段时间后重试
                     parent.log(f"下载 {file_name} 时发生未知错误: {e}", logging.ERROR)
                     time.sleep(retry_delay)
                 finally:
                     # 确保 response 被正确关闭
                     if 'response' in locals():
                         response.close()
-
+        
+            # 如果达到最大重试次数仍未成功，记录日志并返回 False
             parent.log(f"下载 {file_name} 失败，已达到最大重试次数", logging.ERROR)
             return False
     # 创建对话框
@@ -426,7 +401,7 @@ def BL_download(version, parent):
     thread.error_signal.connect(
         lambda e: (
             parent.log(f"下载失败: {e}", logging.ERROR),
-            QMessageBox.critical(download_dialog, "下载失败", str(e))
+            Dialog("下载失败", f"下载过程中发生错误: {e}").exec()
         )
     )
 
@@ -764,7 +739,7 @@ class MainWindow(FluentWindow):
                 duration=5000,
                 parent=self
             )
-        self.run_cmcl_list()  # 完成下载任务后运行 cmcl -l 获取列表
+        self.run_cmcl_list()
         # 拷贝 servers.dat 文件到 .minecraft 文件夹
         src_file = os.path.join(os.getcwd(), "servers.dat")
         dest_dir = os.path.join(os.getcwd(), ".minecraft")
@@ -1086,14 +1061,7 @@ class MainWindow(FluentWindow):
     
             if selected_way == "Bloret Launcher":  # Bloret Launcher 方法
                 success = BL_download(choose_ver, self)  # 修复：添加 parent 参数
-                if success:
-                    self.on_download_finished(teaching_tip, download_button)
-                else:
-                    w = Dialog("Bloret Launcher 文件下载失败", "Bloret Launcher 核心无法下载文件，请反馈问题，检查日志，或换用 CMCL 核心。")
-                    if w.exec():
-                        print('确认')
-                    else:
-                        print('取消')
+                self.on_download_finished(teaching_tip, download_button)
             else:  # CMCL 方法
                 if fabric_download != "不安装":
                     command = f"\"{cmcl_path}\" install {choose_ver} -n {vername} --fabric={fabric_download}"
