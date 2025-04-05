@@ -144,6 +144,12 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v2
 
+    - name: 下载构建产物
+      uses: actions/download-artifact@v3
+      with:
+        name: Bloret-Launcher
+        path: ${{ env.OUTPUT_DIR }}
+
     - name: 编辑最新预发布版本
       id: edit_release
       uses: actions/github-script@v6

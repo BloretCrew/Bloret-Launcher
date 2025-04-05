@@ -6,3 +6,6 @@ contact_links:
   - name: QQ 群
     url: https://qm.qq.com/q/Q07CSpcP6i
     about: 欢迎加入 百洛谷 QQ群
+  - name: CMCL 核心问题
+      url: https://github.com/MrShieh-X/console-minecraft-launcher
+      about: 有些问题不是 Bloret-Launcher 的问题，而是 CMCL 核心的问题，请前往 CMCL 仓库提问。
