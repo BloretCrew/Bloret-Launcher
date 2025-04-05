@@ -260,12 +260,29 @@ def BL_download(version, parent):
                     total_size = int(response.headers.get('content-length', 0))
                     downloaded_size = 0
 
+                    # 显示通知
+                    notify(progress={
+                        'title': f'下载资源文件 {file_name}',
+                        'status': '正在下载... ⬇️',
+                        'value': '0',
+                        'valueStringOverride': '0%',
+                        'icon': os.path.join(os.getcwd(), 'icons', 'bloret.png')
+                    })
+
                     with open(file_path, 'wb') as f:
                         for chunk in response.iter_content(chunk_size=8192):
                             f.write(chunk)
                             downloaded_size += len(chunk)
                             progress = int(downloaded_size / total_size * 100)
-                            self.progress_signal.emit(progress_key, progress, f"下载 {file_name}: {progress}%")
+                            self.progress_signal.emit(progress_key, progress, f"下载进度: {progress}%")
+                            update_progress({'value': progress / 100, 'valueStringOverride': f'{progress}%'})
+
+                    # 更新通知状态
+                    update_progress({
+                        'status': '下载完成！✅',
+                        'value': 100,
+                        'valueStringOverride': f'100%'
+                    })
                     time.sleep(3)  # 每个文件下载完成后间隔 3 秒
                     return True
                 except Exception as e:
