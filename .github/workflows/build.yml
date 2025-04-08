@@ -174,12 +174,14 @@ jobs:
           if (releases.length > 0) {
             const latestRelease = releases[0];
             console.log('Found latest prerelease:', latestRelease);
+            // 修改：使用动态tag_name避免重复
+            const newTagName = `Actions-${context.runNumber}`;
             const updatedRelease = await github.rest.repos.updateRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: latestRelease.id,
-              tag_name: 'Actions',
-              name: `Actions 自动发布测试版 ${context.runNumber}`,
+              tag_name: newTagName, // 修改此处为动态值
+              name: `Actions 自动发布测试版 ${context.runNumber}`, // 添加运行编号
               draft: false,
               prerelease: true
             });
