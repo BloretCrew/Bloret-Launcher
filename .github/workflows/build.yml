@@ -150,6 +150,14 @@ jobs:
         name: Bloret-Launcher
         path: ${{ env.OUTPUT_DIR }}
 
+    - name: 检查 package.zip 是否存在
+      run: |
+        if (-not (Test-Path "${{ env.OUTPUT_DIR }}/package.zip")) {
+          Write-Host "package.zip not found"
+          exit 1
+        }
+      shell: pwsh
+
     - name: 编辑最新预发布版本
       id: edit_release
       uses: actions/github-script@v6
@@ -176,17 +184,27 @@ jobs:
               prerelease: true
             });
             console.log('Updated release:', updatedRelease);
-            core.setOutput('upload_url', updatedRelease.data.upload_url); // 修复此处，确保正确设置 upload_url
+            // 使用环境文件设置输出变量
+            const fs = require('fs');
+            const path = require('path');
+            const filePath = path.join(process.env.GITHUB_WORKSPACE, 'upload_url.txt');
+            fs.writeFileSync(filePath, updatedRelease.data.upload_url);
           } else {
             throw new Error('No prerelease found to edit');
           }
+
+    - name: 设置上传 URL 环境变量
+      id: set_upload_url
+      run: |
+        echo "UPLOAD_URL=$(cat upload_url.txt)" >> $GITHUB_ENV
+      shell: pwsh
 
     - name: 上传构建产物到发布版本
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.edit_release.outputs.upload_url }}
+        upload_url: ${{ env.UPLOAD_URL }}
         asset_path: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}
         asset_name: ${{ env.ARTIFACT_NAME }}
         asset_content_type: application/zip
@@ -196,7 +214,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.edit_release.outputs.upload_url }}
+        upload_url: ${{ env.UPLOAD_URL }}
         asset_path: output/package.zip
         asset_name: package.zip
         asset_content_type: application/zip

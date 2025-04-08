@@ -1148,10 +1148,6 @@ class MainWindow(FluentWindow):
             try:
                 if sys.platform == "win32":
                     toast(title, message, duration="short")  # 使用 win11toast 的 toast 方法
-                elif sys.platform == "darwin":
-                    subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
-                else:
-                    subprocess.run(["notify-send", title, message])
             except Exception as e:
                 self.log(f"发送系统通知失败: {e}", logging.ERROR)
 
@@ -2039,6 +2035,7 @@ class MainWindow(FluentWindow):
 
 if __name__ == "__main__":
 
+    app = QApplication(["Bloret Launcher"])  # 第一个参数作为程序名称
 
     # 先设置高DPI属性再创建应用实例
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
