@@ -204,9 +204,21 @@ jobs:
               prerelease: true
             });
             console.log('Updated release:', updatedRelease);
+
+            // 确保生成 upload_url.txt 文件
+            const filePath = path.join(process.env.GITHUB_WORKSPACE, 'upload_url.txt');
+            fs.writeFileSync(filePath, updatedRelease.data.upload_url);
           } else {
             throw new Error('No prerelease found to edit');
           }
+
+    - name: 检查 upload_url.txt 是否存在
+      run: |
+        if (-not (Test-Path "upload_url.txt")) {
+          Write-Host "upload_url.txt 文件未找到"
+          exit 1
+        }
+      shell: pwsh
 
     - name: 检查构建产物是否存在
       run: |
