@@ -212,12 +212,12 @@ jobs:
         asset_name: ${{ env.ARTIFACT_NAME }}
         asset_content_type: application/zip
 
-    - name: 上传代码包到发布版本
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ env.UPLOAD_URL }}
-        asset_path: output/package.zip
-        asset_name: package.zip
-        asset_content_type: application/zip
+    # - name: 上传代码包到发布版本
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ env.UPLOAD_URL }}
+    #     asset_path: output/package.zip
+    #     asset_name: package.zip
+    #     asset_content_type: application/zip
