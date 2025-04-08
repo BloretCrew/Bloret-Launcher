@@ -165,6 +165,25 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         script: |
+          const fs = require('fs');
+          const path = require('path');
+
+          // 读取 release.md 文件内容
+          const releaseNotesPath = path.join(process.env.GITHUB_WORKSPACE, '.github/workflows/release.md');
+          if (!fs.existsSync(releaseNotesPath)) {
+            throw new Error('release.md 文件未找到');
+          }
+          const releaseNotes = fs.readFileSync(releaseNotesPath, 'utf8');
+
+          // 添加代码改动记录
+          const changeLog = `
+          ## 代码改动记录
+          - 替换编辑最新预发布版本的内容为 release.md 文件内容
+          - 移除原有附件
+          `;
+          const updatedNotes = `${releaseNotes}\n\n${changeLog}`;
+
+          // 获取最新的预发布版本
           const { data: releases } = await github.rest.repos.listReleases({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -174,23 +193,17 @@ jobs:
           if (releases.length > 0) {
             const latestRelease = releases[0];
             console.log('Found latest prerelease:', latestRelease);
-            // 修改：使用动态tag_name避免重复
-            const newTagName = `Actions-${context.runNumber}`;
+
+            // 更新预发布版本
             const updatedRelease = await github.rest.repos.updateRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: latestRelease.id,
-              tag_name: newTagName, // 修改此处为动态值
-              name: `Actions 自动发布测试版 ${context.runNumber}`, // 添加运行编号
+              body: updatedNotes,
               draft: false,
               prerelease: true
             });
             console.log('Updated release:', updatedRelease);
-            // 使用环境文件设置输出变量
-            const fs = require('fs');
-            const path = require('path');
-            const filePath = path.join(process.env.GITHUB_WORKSPACE, 'upload_url.txt');
-            fs.writeFileSync(filePath, updatedRelease.data.upload_url);
           } else {
             throw new Error('No prerelease found to edit');
           }
