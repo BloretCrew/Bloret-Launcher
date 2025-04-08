@@ -228,6 +228,14 @@ jobs:
         }
       shell: pwsh
 
+    - name: 检查上传 URL 是否有效
+      run: |
+        if (-not "${{ env.UPLOAD_URL }}") {
+          Write-Host "UPLOAD_URL 未正确设置"
+          exit 1
+        }
+      shell: pwsh
+
     - name: 设置上传 URL 环境变量
       id: set_upload_url
       run: |
