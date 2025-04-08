@@ -149,11 +149,11 @@ jobs:
       with:
         name: Bloret-Launcher
         path: ${{ env.OUTPUT_DIR }}
-
-    - name: 检查 package.zip 是否存在
+        
+    - name: 检查 Bloret-Launcher.zip 是否存在
       run: |
-        if (-not (Test-Path "${{ env.OUTPUT_DIR }}/package.zip")) {
-          Write-Host "package.zip not found"
+        if (-not (Test-Path "${{ env.OUTPUT_DIR }}/Bloret-Launcher.zip")) {
+          Write-Host "Bloret-Launcher.zip not found"
           exit 1
         }
       shell: pwsh
