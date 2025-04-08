@@ -212,20 +212,24 @@ jobs:
             throw new Error('No prerelease found to edit');
           }
 
-    - name: 检查 upload_url.txt 是否存在
+    - name: 检查 upload_url.txt 是否存在并验证内容
       run: |
         if (-not (Test-Path "upload_url.txt")) {
           Write-Host "upload_url.txt 文件未找到"
           exit 1
         }
-      shell: pwsh
-
-    - name: 检查构建产物是否存在
-      run: |
-        if (-not (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}")) {
-          Write-Host "构建产物未找到: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+        $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
+        if (-not $uploadUrl) {
+          Write-Host "upload_url.txt 内容为空"
           exit 1
         }
+      shell: pwsh
+
+    - name: 设置上传 URL 环境变量
+      id: set_upload_url
+      run: |
+        $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
+        Add-Content -Path $env:GITHUB_ENV -Value "UPLOAD_URL=$uploadUrl"
       shell: pwsh
 
     - name: 检查上传 URL 是否有效
@@ -236,15 +240,12 @@ jobs:
         }
       shell: pwsh
 
-    - name: 设置上传 URL 环境变量
-      id: set_upload_url
+    - name: 检查构建产物是否存在
       run: |
-        $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
-        if (-not $uploadUrl) {
-          Write-Host "上传 URL 未正确设置"
+        if (-not (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}")) {
+          Write-Host "构建产物未找到: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
           exit 1
         }
-        Add-Content -Path $env:GITHUB_ENV -Value "UPLOAD_URL=$uploadUrl"
       shell: pwsh
 
     - name: 上传构建产物到发布版本
