@@ -198,7 +198,8 @@ jobs:
     - name: 设置上传 URL 环境变量
       id: set_upload_url
       run: |
-        echo "UPLOAD_URL=$(cat upload_url.txt)" >> $GITHUB_ENV
+        $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
+        Add-Content -Path $env:GITHUB_ENV -Value "UPLOAD_URL=$uploadUrl"
       shell: pwsh
 
     - name: 上传构建产物到发布版本
