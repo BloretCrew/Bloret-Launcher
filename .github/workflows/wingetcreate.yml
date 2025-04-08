@@ -1,0 +1,31 @@
+name: 提交 Winget 更新软件包
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-winget:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '6.0.x'
+
+    - name: Install wingetcreate
+      run: dotnet tool install --global wingetcreate
+
+    - name: Update Winget Package
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        wingetcreate update \
+          --id Bloret.BloretLauncher \
+          --version ${{ github.event.release.tag_name }} \
+          --url ${{ github.event.release.assets[0].browser_download_url }} \
+          --token $GITHUB_TOKEN
