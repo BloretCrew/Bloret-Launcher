@@ -158,8 +158,8 @@ jobs:
         }
       shell: pwsh
 
-    - name: 编辑最新预发布版本
-      id: edit_release
+    - name: 创建预发布版本
+      id: create_release
       uses: actions/github-script@v6
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -175,42 +175,22 @@ jobs:
           }
           const releaseNotes = fs.readFileSync(releaseNotesPath, 'utf8');
 
-          // 添加代码改动记录
-          const changeLog = `
-          ## 代码改动记录
-          - 替换编辑最新预发布版本的内容为 release.md 文件内容
-          - 移除原有附件
-          `;
-          const updatedNotes = `${releaseNotes}\n\n${changeLog}`;
-
-          // 获取最新的预发布版本
-          const { data: releases } = await github.rest.repos.listReleases({
+          // 创建预发布版本
+          const { data: release } = await github.rest.repos.createRelease({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            per_page: 1
+            tag_name: `v${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 12)}`, // 使用时间戳作为标签
+            name: '预发布版本',
+            body: releaseNotes,
+            draft: false,
+            prerelease: true
           });
 
-          if (releases.length > 0) {
-            const latestRelease = releases[0];
-            console.log('Found latest prerelease:', latestRelease);
+          console.log('Created release:', release);
 
-            // 更新预发布版本
-            const updatedRelease = await github.rest.repos.updateRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: latestRelease.id,
-              body: updatedNotes,
-              draft: false,
-              prerelease: true
-            });
-            console.log('Updated release:', updatedRelease);
-
-            // 确保生成 upload_url.txt 文件
-            const filePath = path.join(process.env.GITHUB_WORKSPACE, 'upload_url.txt');
-            fs.writeFileSync(filePath, updatedRelease.data.upload_url);
-          } else {
-            throw new Error('No prerelease found to edit');
-          }
+          // 确保生成 upload_url.txt 文件
+          const filePath = path.join(process.env.GITHUB_WORKSPACE, 'upload_url.txt');
+          fs.writeFileSync(filePath, release.upload_url);
 
     - name: 检查 upload_url.txt 是否存在并验证内容
       run: |
@@ -248,33 +228,7 @@ jobs:
         }
       shell: pwsh
 
-    - name: 删除同名资产（如果存在）
-      uses: actions/github-script@v6
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        script: |
-          const assetName = '${{ env.ARTIFACT_NAME }}';
-          const { data: releases } = await github.rest.repos.listReleases({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            per_page: 1
-          });
-
-          if (releases.length > 0) {
-            const latestRelease = releases[0];
-            const existingAsset = latestRelease.assets.find(asset => asset.name === assetName);
-            if (existingAsset) {
-              console.log(`Deleting existing asset: ${assetName}`);
-              await github.rest.repos.deleteReleaseAsset({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                asset_id: existingAsset.id
-              });
-            }
-          }
-
-    - name: 上传构建产物到发布版本
+    - name: 上传构建产物到预发布版本
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -283,13 +237,3 @@ jobs:
         asset_path: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}
         asset_name: ${{ env.ARTIFACT_NAME }}
         asset_content_type: application/zip
-
-    # - name: 上传代码包到发布版本
-    #   uses: actions/upload-release-asset@v1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ env.UPLOAD_URL }}
-    #     asset_path: output/package.zip
-    #     asset_name: package.zip
-    #     asset_content_type: application/zip
