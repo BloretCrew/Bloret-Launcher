@@ -253,8 +253,8 @@ jobs:
 
     - name: 运行 Inno Setup 构建安装程序
       run: |
-        # 使用相对路径运行 Inno Setup 脚本
-        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
+        # 使用 & 调用可执行文件并正确包裹路径
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
       shell: pwsh
 
     - name: 上传安装程序
