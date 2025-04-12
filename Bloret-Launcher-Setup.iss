@@ -59,8 +59,8 @@ Source: "D:\output\cmcl_save.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\output\config.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\output\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\output\servers.dat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\output\icons\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "D:\output\ui\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "D:\output\icons\*"; DestDir: "{app}\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "D:\output\ui\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; 注意：不要在任何共享系统文件上使用 "Flags: ignoreversion"
 
 [Registry]
