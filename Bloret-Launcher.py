@@ -4,7 +4,7 @@ from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, Navi
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
-from win11toast import toast, notify, update_progress
+from modules.win11toast import toast, notify, update_progress
 import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
 from win32com.client import Dispatch
@@ -28,14 +28,11 @@ def log(message, level=logging.INFO):
     print(message)
     logging.log(level, message)
 
-icon = {
-    'src': 'icons/bloret.png',
-    'placement': 'appLogoOverride'
-}
+icon = {'src': 'icons/bloret.png','placement': 'appLogoOverride'}
 
 def send_system_notification(title, message):
     try:
-        toast(title, message, duration="short", icon=icon)  # 使用 win11toast 的 toast 方法
+        toast(title, message, duration="short", icon={'src': 'icons/bloret.png','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
     except Exception as e:
         log(f"发送系统通知失败: {e}", logging.ERROR)
 def closeEvent(event):
@@ -1059,6 +1056,9 @@ class MainWindow(FluentWindow):
             download_way_choose = widget.findChild(ComboBox, "download_way_choose")
             selected_way = download_way_choose.currentText()
     
+            # 定义 teaching_tip 变量
+            teaching_tip = None
+    
             if selected_way == "Bloret Launcher":  # Bloret Launcher 方法
                 success = BL_download(choose_ver, self)  # 修复：添加 parent 参数
                 self.on_download_finished(teaching_tip, download_button)
@@ -1096,7 +1096,6 @@ class MainWindow(FluentWindow):
                 )
                 self.download_thread.start()
                 self.threads.append(self.download_thread)  # 将线程添加到列表中
-
 
     class DownloadThread(QThread):
         finished = pyqtSignal()
@@ -1147,7 +1146,7 @@ class MainWindow(FluentWindow):
         def send_system_notification(self, title, message):
             try:
                 if sys.platform == "win32":
-                    toast(title, message, duration="short")  # 使用 win11toast 的 toast 方法
+                    toast(title, message, duration="short", icon={'src': 'icons/bloret.png','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
             except Exception as e:
                 self.log(f"发送系统通知失败: {e}", logging.ERROR)
 
@@ -1320,7 +1319,7 @@ class MainWindow(FluentWindow):
     def send_system_notification(self, title, message):
         try:
             if sys.platform == "win32":
-                toast(title, message, duration="short")  # 使用 win11toast 的 toast 方法
+                toast(title, message, duration="short", icon={'src': 'icons/bloret.png','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
             elif sys.platform == "darwin":
                 subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
             else:
@@ -2035,8 +2034,6 @@ class MainWindow(FluentWindow):
 
 if __name__ == "__main__":
 
-    app = QApplication(["Bloret Launcher"])  # 第一个参数作为程序名称
-
     # 先设置高DPI属性再创建应用实例
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
@@ -2079,6 +2076,9 @@ if __name__ == "__main__":
         format='%(asctime)s [%(levelname)s] %(message)s',
         encoding='utf-8'  # 添加编码参数
     )
+    
+    app = QApplication(["Bloret Launcher"])  # 第一个参数作为程序名称
+
 
     window = MainWindow()
     window.show()
