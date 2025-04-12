@@ -134,6 +134,33 @@ jobs:
       with:
         name: package
         path: "output/package.zip"
+
+  setup-build:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v2
+
+    - name: 安装 Inno Setup
+      run: |
+        choco install innosetup --yes
+      shell: pwsh
+
+    - name: 运行 Inno Setup 构建安装程序
+      run: |
+        # 使用 & 调用可执行文件并正确包裹路径
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
+      shell: pwsh
+
+    - name: 上传安装程序
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher-Setup
+        path: "./output/Bloret Launcher Setup.exe"
+
+
   # release:
   #   needs: [build, code-package]
   #   runs-on: windows-latest
@@ -238,27 +265,3 @@ jobs:
   #       asset_name: ${{ env.ARTIFACT_NAME }}
   #       asset_content_type: application/zip
   
-  setup-build:
-    needs: build
-    runs-on: windows-latest
-
-    steps:
-    - name: 检出代码
-      uses: actions/checkout@v2
-
-    - name: 安装 Inno Setup
-      run: |
-        choco install innosetup --yes
-      shell: pwsh
-
-    - name: 运行 Inno Setup 构建安装程序
-      run: |
-        # 使用 & 调用可执行文件并正确包裹路径
-        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
-      shell: pwsh
-
-    - name: 上传安装程序
-      uses: actions/upload-artifact@v4
-      with:
-        name: Bloret-Launcher-Setup
-        path: "./output/Bloret Launcher Setup.exe"
