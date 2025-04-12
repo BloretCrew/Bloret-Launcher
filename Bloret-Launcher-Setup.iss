@@ -6,14 +6,14 @@
 #define MyAppPublisher "Bloret"
 #define MyAppURL "http://pcfs.top:2"
 #define MyAppExeName "Bloret-Launcher.exe"
-#define MyAppAssocName "Minecraft Java"
+#define MyAppAssocName "Java 可执行文件"
 #define MyAppAssocExt ".jar"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
 
 [Setup]
 ; 注意：AppId 的值唯一标识此应用程序。不要在其他应用程序的安装程序中使用相同的 AppId 值。
 ; (若要生成新的 GUID，请在 IDE 中单击 "工具|生成 GUID"。)
-AppId={{265F7FFE-9C08-4DE6-AB01-25B2923911E1}
+AppId={{A9AFE7D1-89A9-47C5-9E1A-003DB3575EB8}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
@@ -21,8 +21,9 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={autopf}\Bloret-Launcher
-DisableDirPage=yes
+; 修改安装目录使用Inno Setup内置宏确保路径正确
+DefaultDirName={userappdata}\{#MyAppName}
+DisableDirPage=no
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ; "ArchitecturesAllowed=x64compatible" 指定安装程序无法运行
 ; 除 Arm 上的 x64 和 Windows 11 之外的任何平台上。
@@ -33,14 +34,15 @@ ArchitecturesAllowed=x64compatible
 ; 注册表的 64 位视图。
 ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
-DisableProgramGroupPage=yes
-LicenseFile=g:\Work\git\Bloret-Launcher\LICENSE
-; 取消注释以下行以在非管理安装模式下运行 (仅为当前用户安装)。
-;PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
-OutputDir=g:\Work\git\Bloret-Launcher\output
-OutputBaseFilename=Bloret Launcher Setup
-SetupIconFile=g:\Work\git\Bloret-Launcher\icons\bloret.ico
+DefaultGroupName={#MyAppName}
+AllowNoIcons=yes
+LicenseFile=D:\output\LICENSE
+; 移除以下行以在管理安装模式下运行 (为所有用户安装)。
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=commandline
+OutputDir=D:\BLS-output
+OutputBaseFilename=Bloret-Launcher-Setup
+SetupIconFile=D:\output\icons\bloret.ico
 SolidCompression=yes
 WizardStyle=modern
 
@@ -48,16 +50,17 @@ WizardStyle=modern
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "g:\Work\git\Bloret-Launcher\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "g:\Work\git\Bloret-Launcher\icons\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "g:\Work\git\Bloret-Launcher\ui\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "g:\Work\git\Bloret-Launcher\cmcl.blank.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "g:\Work\git\Bloret-Launcher\cmcl.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "g:\Work\git\Bloret-Launcher\cmcl.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "g:\Work\git\Bloret-Launcher\cmcl_save.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "g:\Work\git\Bloret-Launcher\config.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "g:\Work\git\Bloret-Launcher\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
-Source: "g:\Work\git\Bloret-Launcher\servers.dat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\output\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\output\Bloret-Launcher.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\output\cmcl.blank.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\output\cmcl.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\output\cmcl.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\output\cmcl_save.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\output\config.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\output\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\output\servers.dat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\output\icons\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "D:\output\ui\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; 注意：不要在任何共享系统文件上使用 "Flags: ignoreversion"
 
 [Registry]
@@ -67,7 +70,9 @@ Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\DefaultIcon"; ValueType: s
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{cm:ProgramOnTheWeb,{#MyAppName}}"; Filename: "{#MyAppURL}"
+Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
