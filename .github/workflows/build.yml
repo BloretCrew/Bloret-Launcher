@@ -147,7 +147,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: Bloret-Launcher
-        path: ./output # 对应ISS脚本中的D:\output路径
+        path: output # 修改路径参数为"output"而非"./output"
 
     - name: 安装 Inno Setup
       run: |
@@ -156,7 +156,6 @@ jobs:
 
     - name: 运行 Inno Setup 构建安装程序
       run: |
-        # 使用 & 调用可执行文件并正确包裹路径
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
       shell: pwsh
 

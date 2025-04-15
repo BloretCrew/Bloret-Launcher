@@ -59,7 +59,7 @@ def BL_download(version, parent):
         def __init__(self, version, parent=None):
             super().__init__(parent)
             self.version = version
-            self.setWindowTitle(f"下载版本 {version}")
+            self.setWindowTitle("Bloret Launcher")
 
             # 检查 .minecraft 文件夹是否存在
             minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
@@ -524,6 +524,15 @@ class LoadMinecraftVersionsThread(QThread):
             self.error_occurred.emit(f"SSL 错误: {e}")
 class MainWindow(FluentWindow):
     def __init__(self):
+        # 显示通知
+        notify(progress={
+            'title': '正在启动 Bloret Launcher',
+            'status': '正在做打开软件前的工作...',
+            'value': '0',
+            'valueStringOverride': '0%',
+            'icon': os.path.join(os.getcwd(), 'icons', 'bloret.png')
+        })
+
         super().__init__()
 
         # 设置全局编码
@@ -538,6 +547,7 @@ class MainWindow(FluentWindow):
             self.config = json.load(f)
 
         # 1. 创建启动页面
+        update_progress({'value': 10 / 100, 'valueStringOverride': '1/10', 'status': '创建启动页面'})
         icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
         if os.path.exists(icon_path):
             self.log(f"图标路径存在: {icon_path}")
@@ -550,18 +560,22 @@ class MainWindow(FluentWindow):
         self.splashScreen.setWindowIcon(QIcon(icon_path))
         
         # 2. 在创建其他子页面前先显示主界面
+        update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': '连接服务器'})
         self.splashScreen.show()
         self.log("启动画面已显示")
+
 
         # 监听系统主题变化
         QApplication.instance().paletteChanged.connect(self.apply_theme)
         
         # 初始化 sidebar_animation
+        update_progress({'value': 30 / 100, 'valueStringOverride': '3/10', 'status': '初始化侧边栏动画'})
         self.sidebar_animation = QPropertyAnimation(self.navigationInterface, b"geometry")
         self.sidebar_animation.setDuration(300)  # 设置动画持续时间
         self.sidebar_animation.setEasingCurve(QEasingCurve.InOutQuad)
         
         # 初始化 fade_in_animation
+        update_progress({'value': 40 / 100, 'valueStringOverride': '4/10', 'status': '初始化淡入动画'})
         self.fade_in_animation = QPropertyAnimation(self, b"windowOpacity")
         self.fade_in_animation.setDuration(500)
         self.fade_in_animation.setStartValue(0)
@@ -574,6 +588,8 @@ class MainWindow(FluentWindow):
         self.check_for_updates()
         self.check_Bloret_version()
 
+        # 设置窗口标题和图标
+        update_progress({'value': 50 / 100, 'valueStringOverride': '5/10', 'status': '设置窗口标题和图标'})
         self.setWindowTitle("Bloret Launcher")
         icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
         if os.path.exists(icon_path):
@@ -582,6 +598,8 @@ class MainWindow(FluentWindow):
             self.log(f"图标路径不存在: {icon_path}", logging.ERROR)
         self.setWindowIcon(QIcon(icon_path))
 
+        # 初始化其他属性
+        update_progress({'value': 60 / 100, 'valueStringOverride': '6/10', 'status': '初始化其他属性'})
         self.is_running = False
         self.player_uuid = ""
         self.player_skin = ""
@@ -598,20 +616,21 @@ class MainWindow(FluentWindow):
         self.raise_()
         self.activateWindow()
 
+        # 处理首次运行
+        update_progress({'value': 70 / 100, 'valueStringOverride': '7/10', 'status': '处理首次运行'})
         QTimer.singleShot(0, lambda: self.handle_first_run())
         
-        # 3. 隐藏启动页面
+        # 隐藏启动页面
+        update_progress({'value': 80 / 100, 'valueStringOverride': '8/10', 'status': '隐藏启动页面'})
         QTimer.singleShot(3000, lambda: (self.log("隐藏启动画面"), self.splashScreen.finish()))
 
-        # 再初始化需要cmcl_data的组件
+        # 初始化需要 cmcl_data 的组件
+        update_progress({'value': 90 / 100, 'valueStringOverride': '9/10', 'status': '初始化需要 cmcl_data 的组件'})
         self.initNavigation()
         self.initWindow()
 
-        # # 应用深浅色主题
-        # self.apply_theme()
-        # 是人用的吗？
-
         # 显示窗口
+        update_progress({'value': 100 / 100, 'valueStringOverride': '10/10', 'status': '显示窗口'})
         self.show()
 
         self.destroyed.connect(lambda: (
@@ -1441,6 +1460,7 @@ class MainWindow(FluentWindow):
                 content=f'您无法连接到 PCFS 服务器来检查版本更新\n这可能是由于您的网络不佳？或是 PCFS 服务出现故障？\n请检查您的网络连接，或者稍后再试。\n我们等待了 3 秒，但它只显示：{e}',
                 parent=self
             )
+            update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': '无法连接到服务器 ❌'})
             w.show()
     def update_to_latest_version(self):
         update_script_path = os.path.join(os.getcwd(), "update.ps1")

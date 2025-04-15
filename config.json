@@ -3,5 +3,12 @@
     "first-run": false,
     "ver": 5,
     "size": 100,
-    "themelight": true
+    "themelight": true,
+    "Customize": {
+        "Explorer": {
+            "icon": "icon/bloret.ico",
+            "name": "explorer.exe",
+            "path": "C:\\Windows"
+        }
+    }
 }
