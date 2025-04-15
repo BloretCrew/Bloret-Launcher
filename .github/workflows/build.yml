@@ -147,7 +147,12 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: Bloret-Launcher
-        path: output # 修改路径参数为"output"而非"./output"
+        path: output
+
+    - name: 解压构建产物
+      run: |
+        Expand-Archive -Path "output/Bloret-Launcher-Windows.zip" -DestinationPath "output/"
+      shell: pwsh
 
     - name: 安装 Inno Setup
       run: |
