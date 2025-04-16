@@ -154,6 +154,22 @@ jobs:
         Expand-Archive -Path "output/Bloret-Launcher-Windows.zip" -DestinationPath "output/"
       shell: pwsh
 
+    # 新增步骤：确保 LICENSE 文件存在
+    - name: 确保 LICENSE 文件存在
+      run: |
+        if (-not (Test-Path "output/LICENSE")) {
+          Write-Host "LICENSE 文件未找到"
+          exit 1
+        }
+      shell: pwsh
+
+    # 新增步骤：展示完整文件夹目录
+    - name: 展示完整文件夹目录
+      run: |
+        Write-Host "当前文件夹目录结构如下："
+        Get-ChildItem -Path "output" -Recurse | Format-Table -AutoSize
+      shell: pwsh
+
     - name: 安装 Inno Setup
       run: |
         choco install innosetup --yes
