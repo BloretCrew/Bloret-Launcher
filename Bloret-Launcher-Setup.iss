@@ -36,7 +36,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-LicenseFile=D:\output\LICENSE
+LicenseFile=output\LICENSE
 ; 移除以下行以在管理安装模式下运行 (为所有用户安装)。
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline

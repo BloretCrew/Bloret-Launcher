@@ -121,6 +121,13 @@ jobs:
       run: |
         # 递归复制所有文件到 output 目录，排除 .git 和 output 目录
         Copy-Item -Path "*" -Destination "output" -Recurse -Exclude @(".git", "output")
+        # 确保 LICENSE 文件被复制
+        if (Test-Path "LICENSE") {
+          Copy-Item -Path "LICENSE" -Destination "output\"
+        } else {
+          Write-Host "LICENSE 文件未找到"
+          exit 1
+        }
       shell: pwsh
 
     - name: 创建压缩包
