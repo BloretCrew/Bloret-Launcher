@@ -40,8 +40,8 @@ LicenseFile=output\LICENSE
 ; 移除以下行以在管理安装模式下运行 (为所有用户安装)。
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline
-OutputDir=D:\BLS-output
-OutputBaseFilename=Bloret-Launcher-Setup
+OutputDir=.\output
+OutputBaseFilename=Bloret Launcher Setup
 SetupIconFile=output\icons\bloret.ico
 SolidCompression=yes
 WizardStyle=modern

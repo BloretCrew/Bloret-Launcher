@@ -51,7 +51,6 @@ def check_write_permission():
     except PermissionError:
         print("当前目录没有写入权限")
         return False
-
 def BL_download(version, parent):
     class BLDownloadDialog(QDialog):
         def __init__(self, version, parent=None):
@@ -2048,7 +2047,6 @@ class MainWindow(FluentWindow):
                 button.setText(f"清空 {log_file_count-1} 个日志，总计 {total_size // 1024} KB")
         else:
             button.setText("清空日志")
-
 
 if __name__ == "__main__":
 

@@ -253,7 +253,7 @@ CMCL 核心可提供更多版本</string>
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>90</height>
+             <height>124</height>
             </size>
            </property>
            <property name="frameShape">
@@ -262,7 +262,7 @@ CMCL 核心可提供更多版本</string>
            <property name="frameShadow">
             <enum>QFrame::Raised</enum>
            </property>
-           <layout class="QHBoxLayout" name="horizontalLayout_6">
+           <layout class="QHBoxLayout" name="horizontalLayout_7">
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_3">
               <item>
@@ -272,38 +272,20 @@ CMCL 核心可提供更多版本</string>
                 </property>
                </widget>
               </item>
-              <item>
-               <widget class="CaptionLabel" name="CaptionLabel_4">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="text">
-                 <string>你想要下载的版本
-默认显示 Bloret 支持的版本</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-                <property name="lightColor" stdset="0">
-                 <color alpha="150">
-                  <red>0</red>
-                  <green>0</green>
-                  <blue>0</blue>
-                 </color>
-                </property>
-                <property name="darkColor" stdset="0">
-                 <color alpha="200">
-                  <red>255</red>
-                  <green>255</green>
-                  <blue>255</blue>
-                 </color>
-                </property>
-               </widget>
-              </item>
              </layout>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_5">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>70</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
             </item>
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -341,12 +323,65 @@ CMCL 核心可提供更多版本</string>
                </layout>
               </item>
               <item>
-               <widget class="ComboBox" name="minecraft_choose">
+               <layout class="QHBoxLayout" name="horizontalLayout_6">
+                <item>
+                 <spacer name="horizontalSpacer_6">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="ComboBox" name="minecraft_choose">
+                  <property name="minimumSize">
+                   <size>
+                    <width>350</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>350</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="CaptionLabel" name="CaptionLabel_5">
                 <property name="minimumSize">
                  <size>
-                  <width>350</width>
+                  <width>470</width>
                   <height>0</height>
                  </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>350</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Bloret Launcher 核心使用 Light Minecraft 协议，暂时仅支持百络谷支持版本进行下载。
+若要下载其他版本，请在上方选择 CMCL 核心。</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="lightColor" stdset="0">
+                 <color alpha="150">
+                  <red>0</red>
+                  <green>0</green>
+                  <blue>0</blue>
+                 </color>
                 </property>
                </widget>
               </item>
@@ -698,7 +733,7 @@ CMCL 核心可提供更多版本</string>
              </spacer>
             </item>
             <item>
-             <widget class="PushButton" name="PushButton">
+             <widget class="PushButton" name="Customize">
               <property name="minimumSize">
                <size>
                 <width>200</width>
