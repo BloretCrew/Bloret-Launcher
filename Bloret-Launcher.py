@@ -23,13 +23,11 @@ BL_update_text = ""
 BL_latest_ver = 0
 threads = []
 MINECRAFT_DIR = os.path.join(os.getcwd(), ".minecraft")
+icon = {'src': 'icons/bloret.png','placement': 'appLogoOverride'}
 
 def log(message, level=logging.INFO):
     print(message)
     logging.log(level, message)
-
-icon = {'src': 'icons/bloret.png','placement': 'appLogoOverride'}
-
 def send_system_notification(title, message):
     try:
         toast(title, message, duration="short", icon={'src': 'icons/bloret.png','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法

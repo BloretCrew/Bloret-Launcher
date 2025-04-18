@@ -50,17 +50,17 @@ WizardStyle=modern
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "D:\output\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\output\Bloret-Launcher.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\output\cmcl.blank.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\output\cmcl.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\output\cmcl.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\output\cmcl_save.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\output\config.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\output\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\output\servers.dat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\output\icons\*"; DestDir: "{app}\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "D:\output\ui\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "output\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "output\Bloret-Launcher.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "output\cmcl.blank.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "output\cmcl.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "output\cmcl.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "output\cmcl_save.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "output\config.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "output\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "output\servers.dat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "output\icons\*"; DestDir: "{app}\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "output\ui\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; 注意：不要在任何共享系统文件上使用 "Flags: ignoreversion"
 
 [Registry]
