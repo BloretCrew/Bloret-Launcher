@@ -42,7 +42,7 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline
 OutputDir=D:\BLS-output
 OutputBaseFilename=Bloret-Launcher-Setup
-SetupIconFile=D:\output\icons\bloret.ico
+SetupIconFile=output\icons\bloret.ico
 SolidCompression=yes
 WizardStyle=modern
 
