@@ -4,11 +4,10 @@
     "ver": 5,
     "size": 100,
     "themelight": true,
-    "Customize": {
-        "Explorer": {
-            "icon": "icon/bloret.ico",
-            "name": "explorer.exe",
-            "path": "C:\\Windows"
+    "Customize": [
+        {
+            "showname": "文件资源管理器",
+            "path": "C:\\Windows\\Explorer.exe"
         }
-    }
+    ]
 }

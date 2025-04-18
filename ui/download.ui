@@ -61,7 +61,7 @@
         <x>0</x>
         <y>0</y>
         <width>776</width>
-        <height>1021</height>
+        <height>1038</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -658,6 +658,48 @@ CMCL 核心可提供更多版本</string>
           </widget>
          </item>
          <item>
+          <widget class="CaptionLabel" name="Fabric_text_3">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>350</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>350</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>Bloret Launcher 不一定启动 Minecraft ，它还可以启动更多。</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+           <property name="lightColor" stdset="0">
+            <color alpha="150">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </property>
+           <property name="darkColor" stdset="0">
+            <color alpha="200">
+             <red>255</red>
+             <green>255</green>
+             <blue>255</blue>
+            </color>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="CardWidget" name="CardWidget_2">
            <property name="minimumSize">
             <size>
@@ -671,7 +713,7 @@ CMCL 核心可提供更多版本</string>
               <item>
                <widget class="StrongBodyLabel" name="StrongBodyLabel">
                 <property name="text">
-                 <string>自定义启动</string>
+                 <string>选择应用程序</string>
                 </property>
                </widget>
               </item>
@@ -685,7 +727,7 @@ CMCL 核心可提供更多版本</string>
                 </property>
                 <property name="minimumSize">
                  <size>
-                  <width>350</width>
+                  <width>230</width>
                   <height>0</height>
                  </size>
                 </property>
@@ -696,7 +738,7 @@ CMCL 核心可提供更多版本</string>
                  </size>
                 </property>
                 <property name="text">
-                 <string>Bloret Launcher 不一定启动 Minecraft ，它还可以启动更多。</string>
+                 <string>选择你要自定义启动的程序</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -733,7 +775,29 @@ CMCL 核心可提供更多版本</string>
              </spacer>
             </item>
             <item>
-             <widget class="PushButton" name="Customize">
+             <widget class="LineEdit" name="Customize_path">
+              <property name="minimumSize">
+               <size>
+                <width>250</width>
+                <height>33</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>33</height>
+               </size>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="placeholderText">
+               <string>应用程序路径</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="PushButton" name="Customize_choose">
               <property name="minimumSize">
                <size>
                 <width>200</width>
@@ -741,7 +805,214 @@ CMCL 核心可提供更多版本</string>
                </size>
               </property>
               <property name="text">
-               <string>添加自定义配置</string>
+               <string>选择应用程序</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="CardWidget" name="CardWidget_3">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>70</height>
+            </size>
+           </property>
+           <layout class="QHBoxLayout" name="horizontalLayout_9">
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_13">
+              <item>
+               <widget class="StrongBodyLabel" name="StrongBodyLabel_2">
+                <property name="text">
+                 <string>显示名称</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="CaptionLabel" name="Fabric_text_4">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>230</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>350</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>设定该应用程序显示在百络谷启动器内的名称</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+                <property name="lightColor" stdset="0">
+                 <color alpha="150">
+                  <red>0</red>
+                  <green>0</green>
+                  <blue>0</blue>
+                 </color>
+                </property>
+                <property name="darkColor" stdset="0">
+                 <color alpha="200">
+                  <red>255</red>
+                  <green>255</green>
+                  <blue>255</blue>
+                 </color>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_8">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>121</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="LineEdit" name="Customize_showname">
+              <property name="minimumSize">
+               <size>
+                <width>250</width>
+                <height>33</height>
+               </size>
+              </property>
+              <property name="placeholderText">
+               <string>应用程序显示名称</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="CardWidget" name="CardWidget_4">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>70</height>
+            </size>
+           </property>
+           <layout class="QHBoxLayout" name="horizontalLayout_10">
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_14">
+              <item>
+               <widget class="StrongBodyLabel" name="StrongBodyLabel_3">
+                <property name="text">
+                 <string>显示图标</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="CaptionLabel" name="Fabric_text_5">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>200</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>350</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>设定该应用程序显示在百络谷启动器内的图标</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+                <property name="lightColor" stdset="0">
+                 <color alpha="150">
+                  <red>0</red>
+                  <green>0</green>
+                  <blue>0</blue>
+                 </color>
+                </property>
+                <property name="darkColor" stdset="0">
+                 <color alpha="200">
+                  <red>255</red>
+                  <green>255</green>
+                  <blue>255</blue>
+                 </color>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_9">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>121</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="ImageLabel" name="Customize_icon">
+              <property name="minimumSize">
+               <size>
+                <width>50</width>
+                <height>50</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>50</width>
+                <height>50</height>
+               </size>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="ElevatedCardWidget" name="ElevatedCardWidget_3">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>70</height>
+            </size>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_15">
+            <item>
+             <widget class="PushButton" name="Customize_add">
+              <property name="text">
+               <string>添加到百络谷启动器</string>
               </property>
              </widget>
             </item>
@@ -826,6 +1097,11 @@ CMCL 核心可提供更多版本</string>
   </customwidget>
   <customwidget>
    <class>TitleLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>ImageLabel</class>
    <extends>QLabel</extends>
    <header>qfluentwidgets</header>
   </customwidget>

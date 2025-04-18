@@ -25,6 +25,27 @@ threads = []
 MINECRAFT_DIR = os.path.join(os.getcwd(), ".minecraft")
 icon = {'src': 'icons/bloret.png','placement': 'appLogoOverride'}
 
+def on_customize_add_clicked(self):
+    widget = self.findChild(QWidget, "downloadWidget")  # 假设你的下载界面的QWidget对象名称为downloadWidget
+    if widget:
+        customize_path = widget.findChild(LineEdit, "Customize_path").text()
+        customize_showname = widget.findChild(LineEdit, "Customize_showname").text()
+
+        # 检查路径是否正确且文件存在
+        if os.path.isfile(customize_path) and customize_showname.strip():
+            # 读取现有配置
+            with open('config.json', 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            
+            # 添加新条目
+            config["Customize"].append({
+                "showname": customize_showname,
+                "path": customize_path
+            })
+            
+            # 写回配置文件
+            with open('config.json', 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=4)
 def log(message, level=logging.INFO):
     print(message)
     logging.log(level, message)
