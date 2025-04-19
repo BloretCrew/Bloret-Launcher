@@ -1,6 +1,6 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QSystemTrayIcon, QAction, QMenu, QDialog, QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QPlainTextEdit, QCheckBox
-from qfluentwidgets import ImageLabel,SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, PrimaryPushButton, Flyout, FlyoutAnimationType, FluentIcon, PlainTextEdit, PushButton, CheckBox
+from qfluentwidgets import ImageLabel,SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, PrimaryPushButton, Flyout, FlyoutAnimationType, FluentIcon, PlainTextEdit, PushButton, CheckBox, SystemTrayMenu, Action
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPoint, QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
@@ -27,7 +27,7 @@ icon = {'src': 'icons/bloret.png','placement': 'appLogoOverride'}
 minecraft_list = []
 
 def restart():
-    log.debug('重启程序')
+    log("重启程序", level=logging.DEBUG)
     os.execl(sys.executable, sys.executable, *sys.argv)
 def log(message, level=logging.INFO):
     print(message)
@@ -437,45 +437,138 @@ def BL_download(version, parent):
     download_dialog.exec()
 
     return 0
-class SystemTrayMenu(QMenu):
-    """ 自定义系统托盘菜单 """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.parent = parent
+def run_cmcl(self, version):
+    if version not in minecraft_list:
+        # 自定义启动
+        # InfoBar.success(
+        #     title='🔄️ 正在启动 {version}',
+        #     content=f"...",
+        #     isClosable=True,
+        #     position=InfoBarPosition.TOP,
+        #     duration=5000,
+        #     parent=self
+        # )
+        # 查找 config.json 中 Customize 的 showname 是否匹配 version
+        for item in self.config.get("Customize", []):
+            if item.get("showname") == version:
+                program_path = item.get("path")
+                if program_path and os.path.exists(program_path):
+                    InfoBar.success(
+                        title=f'🔄️ 正在启动 {version}',
+                        content=f"...",
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=5000,
+                        parent=self
+                    )
+                    subprocess.Popen(program_path, shell=True)
+                    return
+                else:
+                    InfoBar.error(
+                        title='❌ 启动失败',
+                        content=f"路径 {program_path} 不存在或无效",
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=5000,
+                        parent=self
+                    )
+                    return
+        InfoBar.error(
+            title='❌ 启动失败',
+            content=f"未找到与 {version} 匹配的自定义程序",
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=5000,
+            parent=self
+        )
+    else:
+        InfoBar.success(
+                title=f'🔄️ 正在启动 {version}',
+                content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
 
-        # 添加菜单项
-        self.addAction(QAction('显示窗口', triggered=self.restore_window))
-        self.addSeparator()
-        self.addAction(QAction('退出', triggered=self.quit_app))
+        if self.is_running:
+            return
+        self.is_running = True
+        self.log(f"正在启动 {version}")
+        if os.path.exists("run.ps1"):
+            os.remove("run.ps1")
+        # 新增生成脚本命令
+        subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"])
+        
+        # 替换 CMCL 2.2.2 → Bloret Launcher
+        with open("run.ps1", "r+", encoding='utf-8') as f:
+            content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
+            f.seek(0)
+            f.write(content)
+            f.truncate()
 
-    def restore_window(self):
-        """ 恢复主窗口显示 """
-        self.parent.showNormal()  # 显示窗口并恢复正常状态
-        self.parent.activateWindow()  # 激活窗口
+        # 替换 CMCL → Bloret-Launcher
+        with open("run.ps1", "r+", encoding='utf-8') as f:
+            content = f.read().replace('CMCL', 'Bloret-Launcher')
+            f.seek(0)
+            f.write(content)
+            f.truncate()
 
-    def quit_app(self):
-        """ 退出应用程序 """
-        QApplication.quit()
+        run_button = self.sender()  # 获取按钮对象
+        teaching_tip = TeachingTip.create(
+            target=run_button,  # 修改为按钮对象
+            icon=InfoBarIcon.SUCCESS,
+            title=f'正在启动 {version}',
+            content="请稍等",
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=0,  # 设置为0表示不自动关闭
+            parent=self
+        )
+        if teaching_tip:
+            teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
+        
+        # 线程
+        self.run_script_thread = RunScriptThread()
+        self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))  # 替换...为实际处理函数
+        self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
+        self.run_script_thread.start()  # 添加线程启动
+        self.threads.append(self.run_script_thread)  # 将线程添加到列表中
 
-        print("应用程序已退出")
+        self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
+        self.update_show_text_thread.update_text.connect(self.update_show_text)
+        self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
+        self.update_show_text_thread.start()
+        self.threads.append(self.update_show_text_thread)  # 将线程添加到列表中
+
 class SystemTrayIcon(QSystemTrayIcon):
     """ 系统托盘图标 """
     def __init__(self, parent=None):
-        super().__init__(parent)
+        super().__init__(parent=parent)
+        self.setIcon(QIcon('icons/bloret.ico'))  # 设置托盘图标
         self.parent = parent
-
-        # 设置托盘图标
-        icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.ico')
-        if os.path.exists(icon_path):
-            self.setIcon(QIcon(icon_path))
-        else:
-            print(f"图标路径不存在: {icon_path}")
 
         # 创建托盘菜单
         self.menu = SystemTrayMenu(parent=parent)
+
+        # 添加二级菜单
+        launch_menu = SystemTrayMenu("🔼  启动版本", self.menu)
+        Actions_list = []
+        for version in set_list:
+            Actions_list.append(Action(version, triggered=lambda v=version: run_cmcl(v)))
+            log(f"添加启动版本: {version}")
+        launch_menu.addActions(Actions_list)
+
+        self.menu.addMenu(launch_menu)
+
+        self.menu.addActions([
+            Action('🔄️  重启程序', triggered=lambda: os.execl(sys.executable, sys.executable, *sys.argv)),
+            Action('❎  退出程序', triggered=QApplication.quit)
+        ])
         self.setContextMenu(self.menu)
 
-        # 单击托盘图标显示/隐藏窗口
+        # 连接托盘图标激活事件
         self.activated.connect(self.on_tray_icon_activated)
 
     def on_tray_icon_activated(self, reason):
@@ -486,6 +579,7 @@ class SystemTrayIcon(QSystemTrayIcon):
                 self.parent.activateWindow()
             else:
                 self.parent.hide()
+
 class DownloadWorker(QThread):
     finished = pyqtSignal()
     def run(self):
@@ -1927,118 +2021,14 @@ class MainWindow(FluentWindow):
         #     run_choose.addItems(set_list)
         run_button = widget.findChild(QPushButton, "run")
         if run_button:
-            run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText()))
+            run_button.clicked.connect(lambda: run_cmcl(run_choose.currentText()))
         self.show_text = widget.findChild(QLabel, "show")
 
         # self.run_cmcl_list()  # 初始化时加载版本列表
         # run_choose = widget.findChild(ComboBox, "run_choose")
         # if run_choose:
         #     run_choose.addItems(set_list)
-    def run_cmcl(self, version):
-        
-        if version not in minecraft_list:
-            # 自定义启动
-            # InfoBar.success(
-            #     title='🔄️ 正在启动 {version}',
-            #     content=f"...",
-            #     isClosable=True,
-            #     position=InfoBarPosition.TOP,
-            #     duration=5000,
-            #     parent=self
-            # )
-            # 查找 config.json 中 Customize 的 showname 是否匹配 version
-            for item in self.config.get("Customize", []):
-                if item.get("showname") == version:
-                    program_path = item.get("path")
-                    if program_path and os.path.exists(program_path):
-                        InfoBar.success(
-                            title=f'🔄️ 正在启动 {version}',
-                            content=f"...",
-                            isClosable=True,
-                            position=InfoBarPosition.TOP,
-                            duration=5000,
-                            parent=self
-                        )
-                        subprocess.Popen(program_path, shell=True)
-                        return
-                    else:
-                        InfoBar.error(
-                            title='❌ 启动失败',
-                            content=f"路径 {program_path} 不存在或无效",
-                            isClosable=True,
-                            position=InfoBarPosition.TOP,
-                            duration=5000,
-                            parent=self
-                        )
-                        return
-            InfoBar.error(
-                title='❌ 启动失败',
-                content=f"未找到与 {version} 匹配的自定义程序",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-        else:
-            InfoBar.success(
-                    title=f'🔄️ 正在启动 {version}',
-                    content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
-                    orient=Qt.Horizontal,
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
 
-            if self.is_running:
-                return
-            self.is_running = True
-            self.log(f"正在启动 {version}")
-            if os.path.exists("run.ps1"):
-                os.remove("run.ps1")
-            # 新增生成脚本命令
-            subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"])
-            
-            # 替换 CMCL 2.2.2 → Bloret Launcher
-            with open("run.ps1", "r+", encoding='utf-8') as f:
-                content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
-                f.seek(0)
-                f.write(content)
-                f.truncate()
-
-            # 替换 CMCL → Bloret-Launcher
-            with open("run.ps1", "r+", encoding='utf-8') as f:
-                content = f.read().replace('CMCL', 'Bloret-Launcher')
-                f.seek(0)
-                f.write(content)
-                f.truncate()
-
-            run_button = self.sender()  # 获取按钮对象
-            teaching_tip = TeachingTip.create(
-                target=run_button,  # 修改为按钮对象
-                icon=InfoBarIcon.SUCCESS,
-                title=f'正在启动 {version}',
-                content="请稍等",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=0,  # 设置为0表示不自动关闭
-                parent=self
-            )
-            if teaching_tip:
-                teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
-            
-            # 线程
-            self.run_script_thread = RunScriptThread()
-            self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))  # 替换...为实际处理函数
-            self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
-            self.run_script_thread.start()  # 添加线程启动
-            self.threads.append(self.run_script_thread)  # 将线程添加到列表中
-
-            self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
-            self.update_show_text_thread.update_text.connect(self.update_show_text)
-            self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
-            self.update_show_text_thread.start()
-            self.threads.append(self.update_show_text_thread)  # 将线程添加到列表中
     def log_output(self, output):
         if output:
             self.log(output.strip())
