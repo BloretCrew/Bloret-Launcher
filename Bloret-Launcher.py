@@ -1,9 +1,9 @@
 from datetime import datetime
-from PyQt5.QtWidgets import QDialog, QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QFileIconProvider
-from qfluentwidgets import SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit
+from PyQt5.QtWidgets import QDialog, QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, PlainTextEdit, PushButton, CheckBox
+from qfluentwidgets import ImageLabel,SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, PrimaryPushButton, Flyout, FlyoutAnimationType
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
-from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QFileInfo
+from PyQt5.QtCore import QPoint, QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
 from modules.win11toast import toast, notify, update_progress
 import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
@@ -23,9 +23,29 @@ BL_update_text = ""
 BL_latest_ver = 0
 threads = []
 MINECRAFT_DIR = os.path.join(os.getcwd(), ".minecraft")
-
 icon = {'src': 'icons/bloret.png','placement': 'appLogoOverride'}
 
+def on_customize_add_clicked(self):
+    widget = self.findChild(QWidget, "downloadWidget")  # 假设你的下载界面的QWidget对象名称为downloadWidget
+    if widget:
+        customize_path = widget.findChild(LineEdit, "Customize_path").text()
+        customize_showname = widget.findChild(LineEdit, "Customize_showname").text()
+
+        # 检查路径是否正确且文件存在
+        if os.path.isfile(customize_path) and customize_showname.strip():
+            # 读取现有配置
+            with open('config.json', 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            
+            # 添加新条目
+            config["Customize"].append({
+                "showname": customize_showname,
+                "path": customize_path
+            })
+            
+            # 写回配置文件
+            with open('config.json', 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=4)
 def log(message, level=logging.INFO):
     print(message)
     logging.log(level, message)
@@ -635,81 +655,7 @@ class MainWindow(FluentWindow):
             json.dump(self.config, open('config.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
             if hasattr(self, 'config') else None
         ))
-    def on_customize_choose_clicked(self):
-        print("on_customize_choose_clicked 被调用")  # 调试输出
-        options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getOpenFileName(self, "选择应用程序", "", "所有文件 (*);;可执行文件 (*.exe)", options=options)
-        if file_path:
-            print(f"选择的文件路径: {file_path}")  # 调试输出
 
-            customize_path_input = self.findChild(QLineEdit, "Customize_path")
-            if customize_path_input:
-                if not customize_path_input.text():  # 检查输入框是否有内容
-                    customize_path_input.setText(file_path)
-                    print("Customize_path 设置成功")  # 调试输出
-                else:
-                    print("Customize_path 已有内容，未覆盖")  # 调试输出
-
-            customize_icon_label = self.findChild(QLabel, "Customize_icon")
-            if customize_icon_label:
-                icon_provider = QFileIconProvider()
-                icon = icon_provider.icon(QFileInfo(file_path))
-                customize_icon_label.setPixmap(icon.pixmap(50, 50))
-                print("Customize_icon 设置成功")  # 调试输出
-
-            customize_showname_input = self.findChild(QLineEdit, "Customize_showname")
-            if customize_showname_input:
-                if not customize_showname_input.text():  # 检查输入框是否有内容
-                    customize_showname_input.setText(os.path.splitext(os.path.basename(file_path))[0])
-                    print("Customize_showname 设置成功")  # 调试输出
-                else:
-                    print("Customize_showname 已有内容，未覆盖")  # 调试输出
-    def on_customize_add_clicked(self, widget):
-        customize_path = widget.findChild(QLineEdit, "Customize_path").text()
-        customize_showname = widget.findChild(QLineEdit, "Customize_showname").text()
-
-        if not os.path.isfile(customize_path):
-            InfoBar.error(
-                title='路径无效',
-                content=f"路径 {customize_path} 无效或文件不存在",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            return
-
-        if not customize_showname.strip():
-            InfoBar.error(
-                title='名称无效',
-                content="请输入有效的显示名称",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            return
-
-        new_entry = {
-            "showname": customize_showname,
-            "path": customize_path
-        }
-
-        with open('config.json', 'r+', encoding='utf-8') as f:
-            config = json.load(f)
-            config["Customize"].append(new_entry)
-            f.seek(0)
-            json.dump(config, f, ensure_ascii=False, indent=4)
-            f.truncate()
-
-        InfoBar.success(
-            title='添加成功',
-            content=f"已添加: {customize_showname}",
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=5000,
-            parent=self
-        )
     def load_cmcl_data(self):
         self.log(f"开始向 cmcl.json 读取数据")
         try:
@@ -925,18 +871,6 @@ class MainWindow(FluentWindow):
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
         show_way = widget.findChild(ComboBox, "show_way")
         download_button = widget.findChild(QPushButton, "download")
-        
-        customize_add_button = widget.findChild(QPushButton, "Customize_add")
-        if customize_add_button:
-            customize_add_button.clicked.connect(lambda: self.on_customize_add_clicked(widget))
-        
-        customize_choose_button = widget.findChild(QPushButton, "Customize_choose")
-        if customize_choose_button:
-            customize_choose_button.clicked.connect(self.on_customize_choose_clicked)
-            print("Customize_choose 按钮连接成功")  # 调试输出
-        else:
-            print("Customize_choose 按钮未找到")  # 调试输出
-
         if show_way:
             show_way.clear()
             show_way.addItems(["百络谷支持版本", "正式版本", "快照版本", "远古版本"])
@@ -957,6 +891,50 @@ class MainWindow(FluentWindow):
         if minecraft_choose:
             minecraft_choose.clear()
             minecraft_choose.addItems(ver_id_bloret)
+        notification_switch = widget.findChild(SwitchButton, "Notification")
+        if notification_switch:
+            notification_switch.setChecked(True)  # 将Notification开关设置成开
+
+        fabric_ver = ["不安装"]
+        response = requests.get("https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader")
+        if response.status_code == 200:
+            data = response.json()
+            for item in data:
+                fabric_ver.append(item["version"])
+
+        fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
+        if fabric_choose:
+            fabric_choose.clear()
+            fabric_choose.addItems(fabric_ver)
+            fabric_choose.setCurrentText("不安装")
+
+        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+        vername_edit = widget.findChild(LineEdit, "vername_edit")
+        if minecraft_choose and vername_edit:
+            minecraft_choose.currentTextChanged.connect(vername_edit.setText)
+
+        # 默认填入百络谷支持版本的第一项
+        if minecraft_choose:
+            minecraft_choose.clear()
+            minecraft_choose.addItems(ver_id_bloret)
+            vername_edit = widget.findChild(LineEdit, "vername_edit")  # 新增
+            if vername_edit and ver_id_bloret:  # 新增
+                vername_edit.setText(ver_id_bloret[0])  # 新增
+
+        Customize_path = widget.findChild(LineEdit, "Customize_path")
+        Customize_showname = widget.findChild(LineEdit, "Customize_showname")
+        Customize_icon = widget.findChild(ImageLabel, "Customize_icon")
+        Customize_choose = widget.findChild(QPushButton, "Customize_choose")
+        if Customize_choose:
+            Customize_choose.clicked.connect(lambda: self.on_customize_choose_clicked(widget))
+
+
+    def on_customize_choose_clicked(self, widget):
+        Customize_choose_path, _ = QFileDialog.getOpenFileName(self, "选择文件", os.getcwd(), "所有文件 (*.*)")
+        if Customize_choose_path:
+            Customize_path.setText(Customize_choose_path)
+            self.showTeachingTip(Customize_showname, Customize_choose_path)
+        
     def on_show_way_changed(self, widget, version_type):
         show_way = widget.findChild(ComboBox, "show_way")
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
@@ -2123,6 +2101,109 @@ if __name__ == "__main__":
         sys.exit(app.exec())
     except Exception as e:
         log(f"程序发生未捕获的异常: {e}", logging.ERROR)
+        class ErrorDialog(Dialog):  # 重大错误提示框
+            def __init__(self, error_details='Traceback (most recent call last):', parent=None):
+                # KeyboardInterrupt 直接 exit
+                if error_details.endswith('KeyboardInterrupt') or error_details.endswith('KeyboardInterrupt\n'):
+                       sys.exit(0)
+             
+                super().__init__(
+                    'Class Widgets 崩溃报告',
+                    '抱歉！Class Widgets 发生了严重的错误从而无法正常运行。您可以保存下方的错误信息并向他人求助。'
+                    '若您认为这是程序的Bug，请点击“报告此问题”或联系开发者。',
+                    parent
+                )
+                global error_dialog
+                error_dialog = True
+
+                self.is_dragging = False
+                self.drag_position = QPoint()
+                self.title_bar_height = 30
+
+                self.title_layout = QHBoxLayout()
+
+                self.iconLabel = ImageLabel()
+                self.iconLabel.setImage(f"{base_directory}/img/logo/favicon-error.ico")
+                self.error_log = PlainTextEdit()
+                self.report_problem = PushButton(fIcon.FEEDBACK, '报告此问题')
+                self.copy_log_btn = PushButton(fIcon.COPY, '复制日志')
+                self.ignore_error_btn = PushButton(fIcon.INFO, '忽略错误')
+                self.ignore_same_error = CheckBox()
+                self.ignore_same_error.setText('在下次启动之前，忽略此错误')
+                self.restart_btn = PrimaryPushButton(fIcon.SYNC, '重新启动')
+
+                self.iconLabel.setScaledContents(True)
+                self.iconLabel.setFixedSize(50, 50)
+                self.titleLabel.setText('出错啦！ヽ(*。>Д<)o゜')
+                self.titleLabel.setStyleSheet("font-family: Microsoft YaHei UI; font-size: 25px; font-weight: 500;")
+                self.error_log.setReadOnly(True)
+                self.error_log.setPlainText(error_details)
+                self.error_log.setFixedHeight(200)
+                self.restart_btn.setFixedWidth(150)
+                self.yesButton.hide()
+                self.cancelButton.hide()  # 隐藏取消按钮
+                self.title_layout.setSpacing(12)
+
+                # 按钮事件
+                self.report_problem.clicked.connect(
+                    lambda: QDesktopServices.openUrl(QUrl(
+                        'https://github.com/Class-Widgets/Class-Widgets/issues/'
+                        'new?assignees=&labels=Bug&projects=&template=BugReport.yml&title=[Bug]:'))
+                )
+                self.copy_log_btn.clicked.connect(self.copy_log)
+                self.ignore_error_btn.clicked.connect(self.ignore_error)
+                self.restart_btn.clicked.connect(restart)
+
+                self.title_layout.addWidget(self.iconLabel)  # 标题布局
+                self.title_layout.addWidget(self.titleLabel)
+                self.textLayout.insertLayout(0, self.title_layout)  # 页面
+                self.textLayout.addWidget(self.error_log)
+                self.textLayout.addWidget(self.ignore_same_error)
+                self.buttonLayout.insertStretch(0, 1)  # 按钮布局
+                self.buttonLayout.insertWidget(0, self.copy_log_btn)
+                self.buttonLayout.insertWidget(1, self.report_problem)
+                self.buttonLayout.insertStretch(1)
+                self.buttonLayout.insertWidget(4, self.ignore_error_btn)
+                self.buttonLayout.insertWidget(5, self.restart_btn)
+
+            def copy_log(self):  # 复制日志
+                QApplication.clipboard().setText(self.error_log.toPlainText())
+                Flyout.create(
+                    icon=InfoBarIcon.SUCCESS,
+                    title='复制成功！ヾ(^▽^*)))',
+                    content="日志已成功复制到剪贴板。",
+                    target=self.copy_log_btn,
+                    parent=self,
+                    isClosable=True,
+                    aniType=FlyoutAnimationType.PULL_UP
+                )
+
+            def ignore_error(self):
+                global ignore_errors
+                if self.ignore_same_error.isChecked():
+                    ignore_errors.append(self.error_log.toPlainText())
+                self.close()
+
+            def mousePressEvent(self, event):
+                if event.button() == Qt.LeftButton and event.y() <= self.title_bar_height:
+                    self.is_dragging = True
+                    self.drag_position = event.globalPos() - self.frameGeometry().topLeft()
+
+            def mouseMoveEvent(self, event):
+                if self.is_dragging:
+                    self.move(event.globalPos() - self.drag_position)
+
+            def mouseReleaseEvent(self, event):
+                if event.button() == Qt.LeftButton:
+                    self.is_dragging = False
+
+            def closeEvent(self, event):
+                global error_dialog
+                error_dialog = False
+                event.ignore()
+                self.hide()
+                self.deleteLater()
+
 
     # 在创建主窗口之前检查写入权限
     if not check_write_permission():
