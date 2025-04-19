@@ -1,6 +1,6 @@
 from datetime import datetime
-from PyQt5.QtWidgets import QDialog, QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, PlainTextEdit, PushButton, CheckBox
-from qfluentwidgets import ImageLabel,SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, PrimaryPushButton, Flyout, FlyoutAnimationType
+from PyQt5.QtWidgets import QSystemTrayIcon, QAction, QMenu, QDialog, QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QPlainTextEdit, QCheckBox
+from qfluentwidgets import ImageLabel,SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, PrimaryPushButton, Flyout, FlyoutAnimationType, FluentIcon, PlainTextEdit, PushButton, CheckBox
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPoint, QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
@@ -24,28 +24,11 @@ BL_latest_ver = 0
 threads = []
 MINECRAFT_DIR = os.path.join(os.getcwd(), ".minecraft")
 icon = {'src': 'icons/bloret.png','placement': 'appLogoOverride'}
+minecraft_list = []
 
-def on_customize_add_clicked(self):
-    widget = self.findChild(QWidget, "downloadWidget")  # 假设你的下载界面的QWidget对象名称为downloadWidget
-    if widget:
-        customize_path = widget.findChild(LineEdit, "Customize_path").text()
-        customize_showname = widget.findChild(LineEdit, "Customize_showname").text()
-
-        # 检查路径是否正确且文件存在
-        if os.path.isfile(customize_path) and customize_showname.strip():
-            # 读取现有配置
-            with open('config.json', 'r', encoding='utf-8') as f:
-                config = json.load(f)
-            
-            # 添加新条目
-            config["Customize"].append({
-                "showname": customize_showname,
-                "path": customize_path
-            })
-            
-            # 写回配置文件
-            with open('config.json', 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=4)
+def restart():
+    log.debug('重启程序')
+    os.execl(sys.executable, sys.executable, *sys.argv)
 def log(message, level=logging.INFO):
     print(message)
     logging.log(level, message)
@@ -454,7 +437,55 @@ def BL_download(version, parent):
     download_dialog.exec()
 
     return 0
-    
+class SystemTrayMenu(QMenu):
+    """ 自定义系统托盘菜单 """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+
+        # 添加菜单项
+        self.addAction(QAction('显示窗口', triggered=self.restore_window))
+        self.addSeparator()
+        self.addAction(QAction('退出', triggered=self.quit_app))
+
+    def restore_window(self):
+        """ 恢复主窗口显示 """
+        self.parent.showNormal()  # 显示窗口并恢复正常状态
+        self.parent.activateWindow()  # 激活窗口
+
+    def quit_app(self):
+        """ 退出应用程序 """
+        QApplication.quit()
+
+        print("应用程序已退出")
+class SystemTrayIcon(QSystemTrayIcon):
+    """ 系统托盘图标 """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+
+        # 设置托盘图标
+        icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.ico')
+        if os.path.exists(icon_path):
+            self.setIcon(QIcon(icon_path))
+        else:
+            print(f"图标路径不存在: {icon_path}")
+
+        # 创建托盘菜单
+        self.menu = SystemTrayMenu(parent=parent)
+        self.setContextMenu(self.menu)
+
+        # 单击托盘图标显示/隐藏窗口
+        self.activated.connect(self.on_tray_icon_activated)
+
+    def on_tray_icon_activated(self, reason):
+        """ 托盘图标激活事件 """
+        if reason == QSystemTrayIcon.Trigger:  # 单击托盘图标
+            if self.parent.isMinimized() or not self.parent.isVisible():
+                self.parent.showNormal()
+                self.parent.activateWindow()
+            else:
+                self.parent.hide()
 class DownloadWorker(QThread):
     finished = pyqtSignal()
     def run(self):
@@ -633,6 +664,10 @@ class MainWindow(FluentWindow):
         self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)  # 确保窗口显示在最前面
         self.raise_()
         self.activateWindow()
+
+        # 初始化托盘图标
+        self.tray_icon = SystemTrayIcon(parent=self)
+        self.tray_icon.show()
 
         # 处理首次运行
         update_progress({'value': 70 / 100, 'valueStringOverride': '7/10', 'status': '处理首次运行'})
@@ -829,6 +864,18 @@ class MainWindow(FluentWindow):
                 self.log(f"路径无效: {versions_path}", logging.ERROR)
                 
             set_list = temp_list  # 最后统一赋值给全局变量
+
+            minecraft_list = temp_list # 保留原 Minecraft 版本列表备用
+            self.log(f"Minecraft 版本列表: {minecraft_list}")
+
+            customize_list = []
+            if "Customize" in self.config:
+                customize_list = [item.get("showname") for item in self.config["Customize"]]
+            self.log(f"Customize 列表中的 showname 值: {customize_list}")
+            set_list = temp_list + customize_list  # 合并 customize_list 到 set_list
+
+            self.log(f"合并后的版本列表: {set_list}")
+
             self.update_version_combobox()  # 新增UI更新方法
             
         except Exception as e:
@@ -856,11 +903,15 @@ class MainWindow(FluentWindow):
         print(message)
         logging.log(level, message)
     def closeEvent(self, event):
-        for thread in self.threads:
-            if thread.isRunning():
-                thread.quit()  # 请求线程退出
-                thread.wait()  # 等待线程完全退出
-        event.accept()
+        """ 重写关闭事件，隐藏窗口而不是退出程序 """
+        event.ignore()  # 忽略关闭事件
+        self.hide()  # 隐藏窗口
+        self.tray_icon.showMessage(
+            "Bloret Launcher",
+            "程序已最小化到系统托盘",
+            QSystemTrayIcon.Information,
+            2000  # 提示持续时间（毫秒）
+        )
     def on_download_clicked(self):
         self.log("下载 被点击")
         self.load_ui("ui/download.ui", animate=False)
@@ -921,19 +972,110 @@ class MainWindow(FluentWindow):
             if vername_edit and ver_id_bloret:  # 新增
                 vername_edit.setText(ver_id_bloret[0])  # 新增
 
-        Customize_path = widget.findChild(LineEdit, "Customize_path")
-        Customize_showname = widget.findChild(LineEdit, "Customize_showname")
-        Customize_icon = widget.findChild(ImageLabel, "Customize_icon")
         Customize_choose = widget.findChild(QPushButton, "Customize_choose")
         if Customize_choose:
             Customize_choose.clicked.connect(lambda: self.on_customize_choose_clicked(widget))
 
+        Customize_add = widget.findChild(QPushButton, "Customize_add")
+        if Customize_add:
+            Customize_add.clicked.connect(lambda: self.on_customize_add_clicked(widget))
 
     def on_customize_choose_clicked(self, widget):
+        Customize_path = widget.findChild(LineEdit, "Customize_path")
+        Customize_showname = widget.findChild(LineEdit, "Customize_showname")
+        # Customize_icon = widget.findChild(QLabel, "Customize_icon")
         Customize_choose_path, _ = QFileDialog.getOpenFileName(self, "选择文件", os.getcwd(), "所有文件 (*.*)")
         if Customize_choose_path:
             Customize_path.setText(Customize_choose_path)
-            self.showTeachingTip(Customize_showname, Customize_choose_path)
+            Customize_showname.setText(os.path.splitext(os.path.basename(Customize_choose_path))[0])
+            # icon = QIcon(Customize_choose_path)
+            # if not icon.isNull():
+            #     Customize_icon.setPixmap(icon.pixmap(64, 64))  # 设置图标大小为 64x64
+            # else:
+            #     Customize_icon.setText("无法加载图标")
+            # self.showTeachingTip(Customize_showname, Customize_choose_path)
+    def on_customize_add_clicked(self, widget):
+        Customize_path = widget.findChild(LineEdit, "Customize_path")
+        Customize_showname = widget.findChild(LineEdit, "Customize_showname")
+        Customize_path_value = Customize_path.text()
+        Customize_showname_value = Customize_showname.text()
+        self.log(f"Customize Path: {Customize_path_value}, Customize Show Name: {Customize_showname_value}")
+        if not Customize_path_value or not Customize_showname_value:
+            InfoBar.warning(
+                title='⚠️ 提示',
+                content="路径或显示名称不能为空",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+            return
+
+        if not os.path.exists(Customize_path_value):
+            InfoBar.error(
+                title='❌ 错误',
+                content="指定的路径不存在，请重新选择",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+            return
+
+        if not os.path.isfile(Customize_path_value):
+            InfoBar.error(
+                title='❌ 错误',
+                content="指定的路径不是文件，请重新选择",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+            return
+
+        # InfoBar.success(
+        #     title='✅ 成功',
+        #     content=f"路径 {Customize_path_value} 和显示名称 {Customize_showname_value} 已成功校验",
+        #     isClosable=True,
+        #     position=InfoBarPosition.TOP,
+        #     duration=5000,
+        #     parent=self
+        # )
+
+        # Save to config.json
+        try:
+            with open('config.json', 'r', encoding='utf-8') as file:
+                config_data = json.load(file)
+
+            if "Customize" not in config_data:
+                config_data["Customize"] = []
+
+            config_data["Customize"].append({
+                "showname": Customize_showname_value,
+                "path": Customize_path_value
+            })
+
+            with open('config.json', 'w', encoding='utf-8') as file:
+                json.dump(config_data, file, ensure_ascii=False, indent=4)
+
+            InfoBar.success(
+                title='✅ 成功',
+                content=f"路径 {Customize_path_value} 和显示名称 {Customize_showname_value} 已成功保存",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+            
+        except Exception as e:
+            InfoBar.error(
+                title='❌ 错误',
+                content=f"保存到 config.json 时发生错误: {e}",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
         
     def on_show_way_changed(self, widget, version_type):
         show_way = widget.findChild(ComboBox, "show_way")
@@ -1793,66 +1935,110 @@ class MainWindow(FluentWindow):
         # if run_choose:
         #     run_choose.addItems(set_list)
     def run_cmcl(self, version):
-
-        InfoBar.success(
-                title=f'🔄️ 正在启动 {version}',
-                content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
-                orient=Qt.Horizontal,
+        
+        if version not in minecraft_list:
+            # 自定义启动
+            # InfoBar.success(
+            #     title='🔄️ 正在启动 {version}',
+            #     content=f"...",
+            #     isClosable=True,
+            #     position=InfoBarPosition.TOP,
+            #     duration=5000,
+            #     parent=self
+            # )
+            # 查找 config.json 中 Customize 的 showname 是否匹配 version
+            for item in self.config.get("Customize", []):
+                if item.get("showname") == version:
+                    program_path = item.get("path")
+                    if program_path and os.path.exists(program_path):
+                        InfoBar.success(
+                            title=f'🔄️ 正在启动 {version}',
+                            content=f"...",
+                            isClosable=True,
+                            position=InfoBarPosition.TOP,
+                            duration=5000,
+                            parent=self
+                        )
+                        subprocess.Popen(program_path, shell=True)
+                        return
+                    else:
+                        InfoBar.error(
+                            title='❌ 启动失败',
+                            content=f"路径 {program_path} 不存在或无效",
+                            isClosable=True,
+                            position=InfoBarPosition.TOP,
+                            duration=5000,
+                            parent=self
+                        )
+                        return
+            InfoBar.error(
+                title='❌ 启动失败',
+                content=f"未找到与 {version} 匹配的自定义程序",
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=5000,
                 parent=self
             )
+        else:
+            InfoBar.success(
+                    title=f'🔄️ 正在启动 {version}',
+                    content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=5000,
+                    parent=self
+                )
 
-        if self.is_running:
-            return
-        self.is_running = True
-        self.log(f"正在启动 {version}")
-        if os.path.exists("run.ps1"):
-            os.remove("run.ps1")
-        # 新增生成脚本命令
-        subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"])
-        
-        # 替换 CMCL 2.2.2 → Bloret Launcher
-        with open("run.ps1", "r+", encoding='utf-8') as f:
-            content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
-            f.seek(0)
-            f.write(content)
-            f.truncate()
+            if self.is_running:
+                return
+            self.is_running = True
+            self.log(f"正在启动 {version}")
+            if os.path.exists("run.ps1"):
+                os.remove("run.ps1")
+            # 新增生成脚本命令
+            subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"])
+            
+            # 替换 CMCL 2.2.2 → Bloret Launcher
+            with open("run.ps1", "r+", encoding='utf-8') as f:
+                content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
+                f.seek(0)
+                f.write(content)
+                f.truncate()
 
-        # 替换 CMCL → Bloret-Launcher
-        with open("run.ps1", "r+", encoding='utf-8') as f:
-            content = f.read().replace('CMCL', 'Bloret-Launcher')
-            f.seek(0)
-            f.write(content)
-            f.truncate()
+            # 替换 CMCL → Bloret-Launcher
+            with open("run.ps1", "r+", encoding='utf-8') as f:
+                content = f.read().replace('CMCL', 'Bloret-Launcher')
+                f.seek(0)
+                f.write(content)
+                f.truncate()
 
-        run_button = self.sender()  # 获取按钮对象
-        teaching_tip = TeachingTip.create(
-            target=run_button,  # 修改为按钮对象
-            icon=InfoBarIcon.SUCCESS,
-            title=f'正在启动 {version}',
-            content="请稍等",
-            isClosable=True,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=0,  # 设置为0表示不自动关闭
-            parent=self
-        )
-        if teaching_tip:
-            teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
-        
-        # 线程
-        self.run_script_thread = RunScriptThread()
-        self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))  # 替换...为实际处理函数
-        self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
-        self.run_script_thread.start()  # 添加线程启动
-        self.threads.append(self.run_script_thread)  # 将线程添加到列表中
+            run_button = self.sender()  # 获取按钮对象
+            teaching_tip = TeachingTip.create(
+                target=run_button,  # 修改为按钮对象
+                icon=InfoBarIcon.SUCCESS,
+                title=f'正在启动 {version}',
+                content="请稍等",
+                isClosable=True,
+                tailPosition=TeachingTipTailPosition.BOTTOM,
+                duration=0,  # 设置为0表示不自动关闭
+                parent=self
+            )
+            if teaching_tip:
+                teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
+            
+            # 线程
+            self.run_script_thread = RunScriptThread()
+            self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))  # 替换...为实际处理函数
+            self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
+            self.run_script_thread.start()  # 添加线程启动
+            self.threads.append(self.run_script_thread)  # 将线程添加到列表中
 
-        self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
-        self.update_show_text_thread.update_text.connect(self.update_show_text)
-        self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
-        self.update_show_text_thread.start()
-        self.threads.append(self.update_show_text_thread)  # 将线程添加到列表中
+            self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
+            self.update_show_text_thread.update_text.connect(self.update_show_text)
+            self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
+            self.update_show_text_thread.start()
+            self.threads.append(self.update_show_text_thread)  # 将线程添加到列表中
     def log_output(self, output):
         if output:
             self.log(output.strip())
@@ -2123,14 +2309,14 @@ if __name__ == "__main__":
                 self.title_layout = QHBoxLayout()
 
                 self.iconLabel = ImageLabel()
-                self.iconLabel.setImage(f"{base_directory}/img/logo/favicon-error.ico")
+                self.iconLabel.setImage(f"/icons/bloret.ico")
                 self.error_log = PlainTextEdit()
-                self.report_problem = PushButton(fIcon.FEEDBACK, '报告此问题')
-                self.copy_log_btn = PushButton(fIcon.COPY, '复制日志')
-                self.ignore_error_btn = PushButton(fIcon.INFO, '忽略错误')
+                self.report_problem = PushButton(FluentIcon.FEEDBACK, '报告此问题')
+                self.copy_log_btn = PushButton(FluentIcon.COPY, '复制日志')
+                self.ignore_error_btn = PushButton(FluentIcon.INFO, '忽略错误')
                 self.ignore_same_error = CheckBox()
                 self.ignore_same_error.setText('在下次启动之前，忽略此错误')
-                self.restart_btn = PrimaryPushButton(fIcon.SYNC, '重新启动')
+                self.restart_btn = PrimaryPushButton(FluentIcon.SYNC, '重新启动')
 
                 self.iconLabel.setScaledContents(True)
                 self.iconLabel.setFixedSize(50, 50)
@@ -2152,7 +2338,7 @@ if __name__ == "__main__":
                 )
                 self.copy_log_btn.clicked.connect(self.copy_log)
                 self.ignore_error_btn.clicked.connect(self.ignore_error)
-                self.restart_btn.clicked.connect(restart)
+                self.restart_btn.clicked.connect(self.restart)
 
                 self.title_layout.addWidget(self.iconLabel)  # 标题布局
                 self.title_layout.addWidget(self.titleLabel)
