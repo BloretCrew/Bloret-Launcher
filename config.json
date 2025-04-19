@@ -1,17 +1,8 @@
 {
     "minecraft-part": ".minecraft",
     "first-run": false,
-    "ver": 5,
+    "ver": 6,
     "size": 100,
     "themelight": true,
-    "Customize": [
-        {
-            "showname": "文件资源管理器",
-            "path": "C:\\Windows\\Explorer.exe"
-        },
-        {
-            "showname": "gallery",
-            "path": "G:/apps/gallery.exe"
-        }
-    ]
+    "Customize": []
 }

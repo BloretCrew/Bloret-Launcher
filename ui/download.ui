@@ -61,7 +61,7 @@
         <x>0</x>
         <y>0</y>
         <width>776</width>
-        <height>1021</height>
+        <height>1088</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -90,6 +90,29 @@
              <widget class="PushButton" name="download">
               <property name="text">
                <string>开始下载并安装</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_5">
+              <property name="text">
+               <string>如果您想下载百络谷支持版本中的最新版，可直接点按该下载按钮，无需调整下列选项。</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="150">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="pixelFontSize" stdset="0">
+               <number>12</number>
+              </property>
+              <property name="strikeOut" stdset="0">
+               <bool>false</bool>
               </property>
              </widget>
             </item>
@@ -230,7 +253,7 @@ CMCL 核心可提供更多版本</string>
                 </property>
                 <property name="lightColor" stdset="0">
                  <color alpha="150">
-                  <red>255</red>
+                  <red>0</red>
                   <green>0</green>
                   <blue>0</blue>
                  </color>
@@ -240,6 +263,132 @@ CMCL 核心可提供更多版本</string>
                 </property>
                 <property name="strikeOut" stdset="0">
                  <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="CardWidget" name="frame_6">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>70</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <layout class="QHBoxLayout" name="horizontalLayout_10">
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_14">
+              <item>
+               <widget class="StrongBodyLabel" name="Fabric_2">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="baseSize">
+                 <size>
+                  <width>0</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Light Minecraft 下载源</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="CaptionLabel" name="Fabric_text_5">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>350</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>使用 Bloret Launcher 核心时可用。
+如果下载速度过慢或失败，请尝试切换下载源。</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+                <property name="lightColor" stdset="0">
+                 <color alpha="150">
+                  <red>0</red>
+                  <green>0</green>
+                  <blue>0</blue>
+                 </color>
+                </property>
+                <property name="darkColor" stdset="0">
+                 <color alpha="200">
+                  <red>255</red>
+                  <green>255</green>
+                  <blue>255</blue>
+                 </color>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_9">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>16</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_16">
+              <item>
+               <widget class="ComboBox" name="LM_download_way_choose">
+                <property name="minimumSize">
+                 <size>
+                  <width>300</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>150</width>
+                  <height>16777215</height>
+                 </size>
                 </property>
                </widget>
               </item>
@@ -306,6 +455,9 @@ CMCL 核心可提供更多版本</string>
                 </item>
                 <item>
                  <widget class="ComboBox" name="show_way">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
                   <property name="minimumSize">
                    <size>
                     <width>150</width>
@@ -575,6 +727,9 @@ CMCL 核心可提供更多版本</string>
              <layout class="QVBoxLayout" name="verticalLayout_10">
               <item>
                <widget class="ComboBox" name="Fabric_choose">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="minimumSize">
                  <size>
                   <width>300</width>

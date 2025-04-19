@@ -1,11 +1,11 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QSystemTrayIcon, QAction, QMenu, QDialog, QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QPlainTextEdit, QCheckBox
-from qfluentwidgets import ImageLabel,SpinBox,MessageBox,SubtitleLabel,MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, PrimaryPushButton, Flyout, FlyoutAnimationType, FluentIcon, PlainTextEdit, PushButton, CheckBox, SystemTrayMenu, Action
+from qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, PrimaryPushButton, Flyout, FlyoutAnimationType, FluentIcon, PlainTextEdit, PushButton, CheckBox, SystemTrayMenu, Action
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPoint, QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
 from modules.win11toast import toast, notify, update_progress
-import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
+import ctypes.wintypes,ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
 import sip # type: ignore
 from win32com.client import Dispatch
 import threading
@@ -25,7 +25,37 @@ threads = []
 MINECRAFT_DIR = os.path.join(os.getcwd(), ".minecraft")
 icon = {'src': 'icons/bloret.png','placement': 'appLogoOverride'}
 minecraft_list = []
+tabbar = None
+isdarktheme = False
 
+def is_dark_theme():
+    try:
+        # 定义注册表路径和键名
+        reg_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
+        reg_key = "AppsUseLightTheme"
+        
+        # 打开注册表键
+        hkey = ctypes.wintypes.HKEY()
+        if ctypes.windll.advapi32.RegOpenKeyExW(0x80000001, reg_path, 0, 0x20019, ctypes.byref(hkey)) != 0:
+            print("无法打开注册表键")
+            return False
+        
+        # 读取键值
+        value = ctypes.c_int()
+        size = ctypes.c_uint(4)
+        if ctypes.windll.advapi32.RegQueryValueExW(hkey, reg_key, 0, None, ctypes.byref(value), ctypes.byref(size)) != 0:
+            print("无法读取注册表键值")
+            ctypes.windll.advapi32.RegCloseKey(hkey)
+            return False
+        
+        # 关闭注册表键
+        ctypes.windll.advapi32.RegCloseKey(hkey)
+        
+        # 返回主题状态
+        return value.value == 0  # 0 表示深色主题，1 表示浅色主题
+    except Exception as e:
+        print(f"检测主题时发生错误: {e}")
+        return False
 def restart():
     log("重启程序", level=logging.DEBUG)
     os.execl(sys.executable, sys.executable, *sys.argv)
@@ -110,7 +140,8 @@ def BL_download(version, parent):
             super().__init__()
             self.version = version
             self.minecraft_dir = minecraft_dir
-            self.base_url = f"https://gitee.com/detrital/minecraft/releases/download/minecraft/"
+            # self.base_url = f"https://gitee.com/detrital/minecraft/releases/download/minecraft/"
+            self.base_url = f"http://pcfs.top:2/download/light-minecraft/"
 
         def run(self):
             try:
@@ -437,7 +468,6 @@ def BL_download(version, parent):
     download_dialog.exec()
 
     return 0
-
 class SystemTrayIcon(QSystemTrayIcon):
     """ 系统托盘图标 """
     def __init__(self, parent=None):
@@ -465,6 +495,8 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.menu.addMenu(launch_menu)
 
         self.menu.addActions([
+            # Action('🔄️  重启程序', triggered=os.execl(sys.executable, sys.executable, *sys.argv)),
+            Action('✅  显示窗口', triggered=self.main_window.show_main_window),
             Action('❎  退出程序', triggered=QApplication.quit)
         ])
         self.setContextMenu(self.menu)
@@ -567,6 +599,9 @@ class LoadMinecraftVersionsThread(QThread):
             self.error_occurred.emit(f"SSL 错误: {e}")
 class MainWindow(FluentWindow):
     def __init__(self):
+        if(isdarktheme):
+            from qfluentwidgets import setTheme, Theme
+            setTheme(Theme.AUTO)
         # 显示通知
         notify(progress={
             'title': '正在启动 Bloret Launcher',
@@ -607,9 +642,9 @@ class MainWindow(FluentWindow):
         self.splashScreen.show()
         self.log("启动画面已显示")
 
-
-        # 监听系统主题变化
-        QApplication.instance().paletteChanged.connect(self.apply_theme)
+        if not isdarktheme:
+            # 监听系统主题变化
+            QApplication.instance().paletteChanged.connect(self.apply_theme)
         
         # 初始化 sidebar_animation
         update_progress({'value': 30 / 100, 'valueStringOverride': '3/10', 'status': '初始化侧边栏动画'})
@@ -649,8 +684,9 @@ class MainWindow(FluentWindow):
         self.player_cape = ""
         self.player_name = ""
         self.settings = QSettings("Bloret", "Launcher")
-        self.apply_theme()
-        self.cmcl_data = None  # 显式初始化
+        if not isdarktheme:
+            self.apply_theme()
+        self.cmcl_data = None
         self.load_cmcl_data()
         self.initNavigation()
         self.initWindow()
@@ -738,13 +774,21 @@ class MainWindow(FluentWindow):
         self.passportInterface.setObjectName("passport")
         self.settingsInterface.setObjectName("settings")
         self.infoInterface.setObjectName("info")
-        self.addSubInterface(self.homeInterface, QIcon("icons/bloret.png"), "主页")
-        self.addSubInterface(self.downloadInterface, QIcon("icons/download.png"), "下载")
-        self.addSubInterface(self.toolsInterface, QIcon("icons/tools.png"), "工具")
-        self.addSubInterface(self.passportInterface, QIcon("icons/passport.png"), "通行证", NavigationItemPosition.BOTTOM)
+        if isdarktheme:
+            self.addSubInterface(self.homeInterface, QIcon("icons/dark/bloret.png"), "主页")
+            self.addSubInterface(self.downloadInterface, QIcon("icons/dark/download.png"), "下载")
+            self.addSubInterface(self.toolsInterface, QIcon("icons/dark/tools.png"), "工具")
+            self.addSubInterface(self.passportInterface, QIcon("icons/dark/passport.png"), "通行证", NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.settingsInterface, QIcon("icons/dark/settings.png"), "设置", NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.infoInterface, QIcon("icons/dark/info.png"), "关于", NavigationItemPosition.BOTTOM)
+        else:  
+            self.addSubInterface(self.homeInterface, QIcon("icons/bloret.png"), "主页")
+            self.addSubInterface(self.downloadInterface, QIcon("icons/download.png"), "下载")
+            self.addSubInterface(self.toolsInterface, QIcon("icons/tools.png"), "工具")
+            self.addSubInterface(self.passportInterface, QIcon("icons/passport.png"), "通行证", NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.settingsInterface, QIcon("icons/settings.png"), "设置", NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.infoInterface, QIcon("icons/info.png"), "关于", NavigationItemPosition.BOTTOM)
         self.setup_passport_ui(self.passportInterface)
-        self.addSubInterface(self.settingsInterface, QIcon("icons/settings.png"), "设置", NavigationItemPosition.BOTTOM)
-        self.addSubInterface(self.infoInterface, QIcon("icons/info.png"), "关于", NavigationItemPosition.BOTTOM)
         self.load_ui("ui/home.ui", parent=self.homeInterface)
         self.load_ui("ui/download.ui", parent=self.downloadInterface)
         self.load_ui("ui/tools.ui", parent=self.toolsInterface)
@@ -876,6 +920,11 @@ class MainWindow(FluentWindow):
             self.log(f"读取版本列表失败: {e}", logging.ERROR)
             set_list = ["无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装"]
     def run_cmcl(self, version):
+        # self.tabBar.addTab(
+        #     routeKey={version},
+        #     text={version},
+        #     onClick=lambda: print("Click")
+        # )
         if version not in minecraft_list:
             # 自定义启动
             # InfoBar.success(
@@ -1004,18 +1053,32 @@ class MainWindow(FluentWindow):
         """ 重写关闭事件，隐藏窗口而不是退出程序 """
         event.ignore()  # 忽略关闭事件
         self.hide()  # 隐藏窗口
-        self.tray_icon.showMessage(
-            "Bloret Launcher",
-            "程序已最小化到系统托盘",
-            QSystemTrayIcon.Information,
-            2000  # 提示持续时间（毫秒）
-        )
+        # self.tray_icon.showMessage(
+        #     "Bloret Launcher",
+        #     "程序已最小化到系统托盘",
+        #     QSystemTrayIcon.Information,
+        #     2000  # 提示持续时间（毫秒）
+        # )
     def on_download_clicked(self):
         self.log("下载 被点击")
         self.load_ui("ui/download.ui", animate=False)
         self.setup_download_ui(self.content_layout.itemAt(0).widget())
+    def on_download_way_changed(self, widget, selected_way):
+        show_way = widget.findChild(ComboBox, "show_way")
+        fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
+        if selected_way == "Bloret Launcher":
+            if show_way:
+                show_way.setEnabled(False)
+            if fabric_choose:
+                fabric_choose.setEnabled(False)
+        else:
+            if show_way:
+                show_way.setEnabled(True)
+            if fabric_choose:
+                fabric_choose.setEnabled(True)
     def setup_download_ui(self, widget):
         download_way_choose = widget.findChild(ComboBox, "download_way_choose")  # 获取 download_way_choose 元素
+        LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
         download_way_F5_button = widget.findChild(QPushButton, "download_way_F5")
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
         show_way = widget.findChild(ComboBox, "show_way")
@@ -1029,6 +1092,11 @@ class MainWindow(FluentWindow):
             download_way_choose.clear()  # 清空下拉框
             download_way_choose.addItem("Bloret Launcher")
             download_way_choose.addItem("CMCL")
+            download_way_choose.currentTextChanged.connect(lambda text: self.on_download_way_changed(widget, text))
+        if LM_download_way_choose:
+            LM_download_way_choose.clear()  # 清空下拉框
+            LM_download_way_choose.addItem("Bloret")
+            LM_download_way_choose.addItem("Gitee")
         if download_way_F5_button:
             download_way_F5_button.clicked.connect(lambda: self.update_minecraft_versions(widget, show_way.currentText()))
         if download_button:
@@ -1066,9 +1134,9 @@ class MainWindow(FluentWindow):
         if minecraft_choose:
             minecraft_choose.clear()
             minecraft_choose.addItems(ver_id_bloret)
-            vername_edit = widget.findChild(LineEdit, "vername_edit")  # 新增
-            if vername_edit and ver_id_bloret:  # 新增
-                vername_edit.setText(ver_id_bloret[0])  # 新增
+            vername_edit = widget.findChild(LineEdit, "vername_edit")
+            if vername_edit and ver_id_bloret:
+                vername_edit.setText(ver_id_bloret[0])
 
         Customize_choose = widget.findChild(QPushButton, "Customize_choose")
         if Customize_choose:
@@ -1952,7 +2020,11 @@ class MainWindow(FluentWindow):
         login_button = widget.findChild(QPushButton, "login")
         if login_button:
             login_button.clicked.connect(lambda: self.handle_login(widget))
-
+    def show_main_window(self):
+        """显示主窗口"""
+        self.show()
+        self.raise_()
+        self.activateWindow()
         
 
     # -----------------------------------------------------------
@@ -2032,6 +2104,8 @@ class MainWindow(FluentWindow):
         # run_choose = widget.findChild(ComboBox, "run_choose")
         # if run_choose:
         #     run_choose.addItems(set_list)
+
+        # tabBar = widget.findChild(TabBar, "runs")
 
     def log_output(self, output):
         if output:
@@ -2264,6 +2338,10 @@ class MainWindow(FluentWindow):
             button.setText("清空日志")
 
 if __name__ == "__main__":
+    # 获取系统深浅色主题
+    isdarktheme = is_dark_theme()
+    log(f"当前主题:{isdarktheme}")
+
     # 先设置高DPI属性
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
