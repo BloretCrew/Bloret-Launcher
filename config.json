@@ -12,10 +12,6 @@
         {
             "showname": "gallery",
             "path": "G:/apps/gallery.exe"
-        },
-        {
-            "showname": "config",
-            "path": "G:/Work/git/Bloret-Launcher/config.json"
         }
     ]
 }
