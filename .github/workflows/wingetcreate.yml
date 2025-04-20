@@ -18,7 +18,7 @@ jobs:
         dotnet-version: '6.0.x'
 
     - name: Install wingetcreate
-      run: dotnet tool install --global wingetcreate
+      run: winget install --id Microsoft.WingetCreate --source winget
 
     - name: Update Winget Package
       env:
