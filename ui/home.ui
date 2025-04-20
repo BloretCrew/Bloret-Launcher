@@ -61,7 +61,7 @@
         <x>0</x>
         <y>0</y>
         <width>640</width>
-        <height>536</height>
+        <height>511</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -253,41 +253,41 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>ComboBox</class>
+   <extends>QPushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>PushButton</class>
+   <extends>QPushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
    <class>CardWidget</class>
    <extends>QFrame</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>SmoothScrollArea</class>
    <extends>QScrollArea</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>StrongBodyLabel</class>
    <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
    <class>SubtitleLabel</class>
    <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
    <class>TitleLabel</class>
    <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>PushButton</class>
-   <extends>QPushButton</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>ComboBox</class>
-   <extends>QComboBox</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
   </customwidget>
  </customwidgets>
  <resources/>

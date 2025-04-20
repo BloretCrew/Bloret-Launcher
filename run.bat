@@ -1,5 +1,5 @@
 echo off
 cd plugins\Bloret-Launcher
 cls
-Bloret-Launcher
+start Bloret-Launcher
 pause
