@@ -27,6 +27,10 @@ icon = {'src': 'icons/bloret.png','placement': 'appLogoOverride'}
 minecraft_list = []
 tabbar = None
 isdarktheme = False
+LM_Download_Way = {}
+LM_Download_Way_list = []
+LM_Download_Way_version = {}
+LM_Download_Way_minecraft = {}
 
 def is_dark_theme():
     try:
@@ -85,7 +89,24 @@ def check_write_permission():
     except PermissionError:
         print("当前目录没有写入权限")
         return False
-def BL_download(version, parent):
+def check_Light_Minecraft_Download_Way():
+    try:
+        response = requests.get("http://pcfs.top:2/api/Light-Minecraft-Download-Way")
+        if response.status_code == 200:
+            data = response.json()
+            LM_Download_Way = data.get("Light-Minecraft-Download-Way", {})  # 确保是字典
+
+            LM_Download_Way_list.extend(LM_Download_Way.get("download-way", []))
+            LM_Download_Way_version = LM_Download_Way.get("version", {})
+            LM_Download_Way_minecraft = LM_Download_Way.get("minecraft", {})
+            return LM_Download_Way, LM_Download_Way_list, LM_Download_Way_version, LM_Download_Way_minecraft
+            # log(f"成功获取 Light-Minecraft-Download-Way: {LM_Download_Way}，LM_Download_Way_list:{LM_Download_Way_list}，LM_Download_Way_version:{LM_Download_Way_version}，LM_Download_Way_minecraft:{LM_Download_Way_minecraft}")
+        else:
+            log("无法获取 Light-Minecraft-Download-Way", logging.ERROR)
+    except requests.RequestException as e:
+        log(f"获取 Light-Minecraft-Download-Way时发生错误: {e}", logging.ERROR)
+
+def BL_download(version, LM_download_way_choose, parent):
     class BLDownloadDialog(QDialog):
         def __init__(self, version, parent=None):
             super().__init__(parent)
@@ -141,7 +162,8 @@ def BL_download(version, parent):
             self.version = version
             self.minecraft_dir = minecraft_dir
             # self.base_url = f"https://gitee.com/detrital/minecraft/releases/download/minecraft/"
-            self.base_url = f"http://pcfs.top:2/download/light-minecraft/"
+            self.base_url = LM_Download_Way_minecraft.get(LM_download_way_choose)
+            log(f"下载链接:{self.base_url}")
 
         def run(self):
             try:
@@ -186,8 +208,12 @@ def BL_download(version, parent):
                     'valueStringOverride': '0%',
                     'icon': os.path.join(os.getcwd(), 'icons', 'bloret.png')
                 })
+                
+                log(f"LM_download_way_choose:{LM_download_way_choose}")
+                version_download_url = LM_Download_Way_version.get(LM_download_way_choose)
+                log(f"下载链接:{version_download_url}")
 
-                response = requests.get('https://gitee.com/detrital/minecraft/releases/download/version/' + file_name, stream=True, timeout=10)
+                response = requests.get(version_download_url + file_name, stream=True, timeout=10)
                 response.raise_for_status()
                 parent.log(f"成功获取文件: {file_name}，开始下载")
 
@@ -272,7 +298,8 @@ def BL_download(version, parent):
         
             def download_file(file_name, target_dir, progress_key):
                 """下载文件并支持重试"""
-                url = f"https://gitee.com/detrital/minecraft/releases/download/minecraft/{file_name}"
+                url = f"{LM_Download_Way_minecraft.get(LM_download_way_choose)}{file_name}"
+                log(f"下载链接:{url}")
                 file_path = os.path.join(target_dir, file_name)
                 max_retries = 5
                 retry_delay = 3
@@ -339,7 +366,8 @@ def BL_download(version, parent):
         def download_file_with_retry(self, file_name, target_dir, progress_key):
             """下载文件并支持重试"""
             # 构造下载 URL
-            url = f"https://gitee.com/detrital/minecraft/releases/download/minecraft/{file_name}"
+            url = f"{LM_Download_Way_version.get(LM_download_way_choose)}{file_name}"
+            log(f"下载链接:{url}")
             # 构造文件保存路径
             file_path = os.path.join(target_dir, file_name)
             # 设置最大重试次数
@@ -665,7 +693,7 @@ class MainWindow(FluentWindow):
         self.handle_first_run()
         self.check_for_updates()
         self.check_Bloret_version()
-
+        
         # 设置窗口标题和图标
         update_progress({'value': 50 / 100, 'valueStringOverride': '5/10', 'status': '设置窗口标题和图标'})
         self.setWindowTitle("Bloret Launcher")
@@ -1066,16 +1094,21 @@ class MainWindow(FluentWindow):
     def on_download_way_changed(self, widget, selected_way):
         show_way = widget.findChild(ComboBox, "show_way")
         fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
+        LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
         if selected_way == "Bloret Launcher":
             if show_way:
                 show_way.setEnabled(False)
             if fabric_choose:
                 fabric_choose.setEnabled(False)
+            if LM_download_way_choose:
+                LM_download_way_choose.setEnabled(True)
         else:
             if show_way:
                 show_way.setEnabled(True)
             if fabric_choose:
                 fabric_choose.setEnabled(True)
+            if LM_download_way_choose:
+                LM_download_way_choose.setEnabled(False)
     def setup_download_ui(self, widget):
         download_way_choose = widget.findChild(ComboBox, "download_way_choose")  # 获取 download_way_choose 元素
         LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
@@ -1095,11 +1128,12 @@ class MainWindow(FluentWindow):
             download_way_choose.currentTextChanged.connect(lambda text: self.on_download_way_changed(widget, text))
         if LM_download_way_choose:
             LM_download_way_choose.clear()  # 清空下拉框
-            LM_download_way_choose.addItem("Bloret")
-            LM_download_way_choose.addItem("Gitee")
+            for item in LM_Download_Way_list:
+                LM_download_way_choose.addItem(item)
         if download_way_F5_button:
             download_way_F5_button.clicked.connect(lambda: self.update_minecraft_versions(widget, show_way.currentText()))
         if download_button:
+            log(f"成功获取 Light-Minecraft-Download-Way: {LM_Download_Way}，LM_Download_Way_list:{LM_Download_Way_list}，LM_Download_Way_version:{LM_Download_Way_version}，LM_Download_Way_minecraft:{LM_Download_Way_minecraft}")
             download_button.clicked.connect(lambda: self.start_download(widget))
         loading_label = widget.findChild(QLabel, "label_2")
         if loading_label:
@@ -1419,7 +1453,9 @@ class MainWindow(FluentWindow):
             teaching_tip = None
     
             if selected_way == "Bloret Launcher":  # Bloret Launcher 方法
-                success = BL_download(choose_ver, self)  # 修复：添加 parent 参数
+                log(f"LM_Download_Way_minecraft:{LM_Download_Way_minecraft}")
+                LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
+                BL_download(choose_ver, LM_download_way_choose.currentText(), self)
                 self.on_download_finished(teaching_tip, download_button)
             else:  # CMCL 方法
                 if fabric_download != "不安装":
@@ -1769,7 +1805,6 @@ class MainWindow(FluentWindow):
                 self.log("无法获取 Bloret 版本列表", logging.ERROR)
         except requests.RequestException as e:
             self.log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
-
     def check_for_updates(self):
         try:
             # 插入 socket 检查
@@ -2341,6 +2376,7 @@ if __name__ == "__main__":
     # 获取系统深浅色主题
     isdarktheme = is_dark_theme()
     log(f"当前主题:{isdarktheme}")
+    LM_Download_Way,LM_Download_Way_list,LM_Download_Way_version,LM_Download_Way_minecraft=check_Light_Minecraft_Download_Way()
 
     # 先设置高DPI属性
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)

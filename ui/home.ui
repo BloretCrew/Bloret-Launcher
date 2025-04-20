@@ -225,25 +225,6 @@
         </spacer>
        </item>
        <item>
-        <widget class="TabBar" name="runs">
-         <property name="movable">
-          <bool>false</bool>
-         </property>
-         <property name="scrollable">
-          <bool>false</bool>
-         </property>
-         <property name="tabMaxWidth" stdset="0">
-          <number>240</number>
-         </property>
-         <property name="tabMinWidth" stdset="0">
-          <number>64</number>
-         </property>
-         <property name="tabShadowEnabled">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
           <widget class="ComboBox" name="run_choose">
@@ -294,12 +275,6 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>SingleDirectionScrollArea</class>
-   <extends>QScrollArea</extends>
-   <header>qfluentwidgets</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>StrongBodyLabel</class>
    <extends>QLabel</extends>
    <header>qfluentwidgets</header>
@@ -312,11 +287,6 @@
   <customwidget>
    <class>TitleLabel</class>
    <extends>QLabel</extends>
-   <header>qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>TabBar</class>
-   <extends>SingleDirectionScrollArea</extends>
    <header>qfluentwidgets</header>
   </customwidget>
  </customwidgets>

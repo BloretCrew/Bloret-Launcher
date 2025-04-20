@@ -61,7 +61,7 @@
         <x>0</x>
         <y>0</y>
         <width>776</width>
-        <height>1088</height>
+        <height>1072</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -380,7 +380,7 @@ CMCL 核心可提供更多版本</string>
                <widget class="ComboBox" name="LM_download_way_choose">
                 <property name="minimumSize">
                  <size>
-                  <width>300</width>
+                  <width>217</width>
                   <height>0</height>
                  </size>
                 </property>
