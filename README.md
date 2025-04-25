@@ -57,6 +57,9 @@
 </details>
 
 ## 功能与计划
+
+- [x] 托盘与托盘菜单
+- [x] 自定义启动
 - [x] 下载 Minecraft
 - [x] 启动 Minecraft
 - [x] Minecraft 数据查询
