@@ -122,5 +122,13 @@
  - [求教如何往下拉选择框做东西进去 #338](https://github.com/orgs/Class-Widgets/discussions/338)
 </details>
 
+## 使用人数统计（实时）
+
+![Bloret Launcher 实时新增使用人数](http://pcfs.top:2/api/BL/madeuserpic)
+
+## 星标历史
+
+[![Star History Chart](https://api.star-history.com/svg?repos=BloretCrew/Bloret-Launcher&type=Date)](https://www.star-history.com/#BloretCrew/Bloret-Launcher&Date)
+
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
