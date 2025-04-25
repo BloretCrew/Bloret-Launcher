@@ -128,7 +128,11 @@
 
 ## 星标历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=BloretCrew/Bloret-Launcher&type=Date)](https://www.star-history.com/#BloretCrew/Bloret-Launcher&Date)
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=BloretCrew/Bloret-Launcher&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=BloretCrew/Bloret-Launcher&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=BloretCrew/Bloret-Launcher&type=Date" />
+ </picture>
 
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
