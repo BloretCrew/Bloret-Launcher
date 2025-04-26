@@ -20,6 +20,15 @@ jobs:
       run: |
         python .github/workflows/refresh-version.py
 
+    - name: 提交版本号更新到仓库
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add Bloret-Launcher-Setup.iss
+        git commit -m "更新 MyAppVersion 版本号"
+        git push
+      shell: pwsh
+
   Build:
     needs: Set-Version
     runs-on: windows-latest

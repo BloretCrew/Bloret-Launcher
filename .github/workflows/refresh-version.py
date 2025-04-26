@@ -24,9 +24,4 @@ for i, line in enumerate(setup_content):
 with open(setup_file_path, 'w', encoding='utf-8') as setup_file:
     setup_file.writelines(setup_content)
 
-# 提交更改到 Git
-subprocess.run(['git', 'add', setup_file_path], check=True)
-subprocess.run(['git', 'commit', '-m', f'更新 MyAppVersion 为 {version_str}'], check=True)
-subprocess.run(['git', 'push'], check=True)
-
 print(f"Updated MyAppVersion to {version_str} in {setup_file_path}")
