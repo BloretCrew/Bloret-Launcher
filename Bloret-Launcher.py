@@ -2549,6 +2549,9 @@ class MainWindow(FluentWindow):
                 open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
                 self.log(f"重复运行设置已更改为: {'启用' if state else '禁用'}")
             ))
+        BL_version = widget.findChild(QLabel, "BL_version")
+        if BL_version:
+            BL_version.setText(f"{self.config.get('ver', '未知')}")
     def on_light_dark_changed(self, mode):
         if mode == "跟随系统":
             self.apply_theme()
