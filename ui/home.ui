@@ -105,7 +105,7 @@
              <widget class="StrongBodyLabel" name="label">
               <property name="minimumSize">
                <size>
-                <width>500</width>
+                <width>0</width>
                 <height>0</height>
                </size>
               </property>
@@ -119,6 +119,9 @@
               </property>
               <property name="alignment">
                <set>Qt::AlignCenter</set>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
               </property>
              </widget>
             </item>
@@ -183,7 +186,7 @@
            <widget class="StrongBodyLabel" name="show">
             <property name="minimumSize">
              <size>
-              <width>500</width>
+              <width>0</width>
               <height>0</height>
              </size>
             </property>
@@ -195,6 +198,9 @@
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -220,7 +226,19 @@
           <widget class="ComboBox" name="run_choose">
            <property name="minimumSize">
             <size>
-             <width>500</width>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="sizeIncrement">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="baseSize">
+            <size>
+             <width>0</width>
              <height>0</height>
             </size>
            </property>
@@ -228,6 +246,12 @@
          </item>
          <item>
           <widget class="PushButton" name="run">
+           <property name="maximumSize">
+            <size>
+             <width>150</width>
+             <height>16777215</height>
+            </size>
+           </property>
            <property name="text">
             <string>启动</string>
            </property>

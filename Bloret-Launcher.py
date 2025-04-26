@@ -1,9 +1,9 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QSystemTrayIcon, QAction, QMenu, QDialog, QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QPlainTextEdit, QCheckBox
-from qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, PrimaryPushButton, Flyout, FlyoutAnimationType, FluentIcon, PlainTextEdit, PushButton, CheckBox, SystemTrayMenu, Action
+from qfluentwidgets import SpinBox, MessageBox, TitleLabel, SubtitleLabel, MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, PrimaryPushButton, Flyout, FlyoutAnimationType, FluentIcon, PlainTextEdit, PushButton, CheckBox, SystemTrayMenu, Action, setThemeColor, FluentTranslator
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
-from PyQt5.QtCore import QPoint, QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
+from PyQt5.QtCore import QPoint, QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
 from modules.win11toast import toast, notify, update_progress
 import ctypes.wintypes,ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform,traceback
 import sip # type: ignore
@@ -55,6 +55,40 @@ log_lock = threading.Lock()
 def log_thread_safe(message, level=logging.INFO):
     with log_lock:
         log(message, level)
+
+def get_system_theme_color():
+    """获取系统主题颜色"""
+    try:
+        # 定义注册表路径和键名
+        reg_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
+        reg_key = "AccentColor"
+
+        # 打开注册表键
+        hkey = ctypes.wintypes.HKEY()
+        if ctypes.windll.advapi32.RegOpenKeyExW(0x80000001, reg_path, 0, 0x20019, ctypes.byref(hkey)) != 0:
+            print("无法打开注册表键")
+            return "#0078D7"  # 默认蓝色
+
+        # 读取键值
+        value = ctypes.c_uint()
+        size = ctypes.c_uint(4)
+        if ctypes.windll.advapi32.RegQueryValueExW(hkey, reg_key, 0, None, ctypes.byref(value), ctypes.byref(size)) != 0:
+            print("无法读取注册表键值")
+            ctypes.windll.advapi32.RegCloseKey(hkey)
+            return "#0078D7"  # 默认蓝色
+
+        # 关闭注册表键
+        ctypes.windll.advapi32.RegCloseKey(hkey)
+
+        # 转换为 RGB 颜色代码
+        accent_color = value.value
+        red = (accent_color & 0xFF0000) >> 16
+        green = (accent_color & 0x00FF00) >> 8
+        blue = (accent_color & 0x0000FF)
+        return f"#{red:02X}{green:02X}{blue:02X}"
+    except Exception as e:
+        print(f"获取系统主题颜色时发生错误: {e}")
+        return "#0078D7"  # 默认蓝色
 
 def is_dark_theme():
     try:
@@ -671,17 +705,33 @@ class LoadMinecraftVersionsThread(QThread):
             self.error_occurred.emit(f"SSL 错误: {e}")
 class MainWindow(FluentWindow):
     def __init__(self):
+        # 初始化配置文件
+        with open('config.json', 'r', encoding='utf-8') as f:
+            self.config = json.load(f)
+        Bloret_PassPort_User_UserName = self.config.get('Bloret_PassPort_UserName', '未登录')
+
+        # 获取系统主题颜色
+        theme_color = get_system_theme_color()
+        log(f"系统主题颜色: {theme_color}")
+        setThemeColor(theme_color)
+
         if(isdarktheme):
             from qfluentwidgets import setTheme, Theme
             setTheme(Theme.AUTO)
-        # 显示通知
-        notify(progress={
-            'title': '正在启动 Bloret Launcher',
-            'status': '正在做打开软件前的工作...',
-            'value': '0',
-            'valueStringOverride': '0%',
-            'icon': os.path.join(os.getcwd(), 'icons', 'bloret.png')
-        })
+
+        if self.config.get('show_runtime_do', False):
+            log("显示软件打开过程已启用")
+            # 显示通知
+            notify(progress={
+                'title': '正在启动 Bloret Launcher',
+                'status': '正在做打开软件前的工作...',
+                'value': '0',
+                'valueStringOverride': '0%',
+                'icon': os.path.join(os.getcwd(), 'icons', 'bloret.png')
+            })
+        else:
+            log("显示软件打开过程已禁用")
+
 
         super().__init__()
 
@@ -691,10 +741,6 @@ class MainWindow(FluentWindow):
             sys.stdout.reconfigure(encoding='utf-8')
         if sys.stderr:
             sys.stderr.reconfigure(encoding='utf-8')
-
-        # 初始化 self.logshow
-        with open('config.json', 'r', encoding='utf-8') as f:
-            self.config = json.load(f)
 
         # 1. 创建启动页面
         update_progress({'value': 10 / 100, 'valueStringOverride': '1/10', 'status': '创建启动页面'})
@@ -861,7 +907,6 @@ class MainWindow(FluentWindow):
             self.addSubInterface(self.passportInterface, QIcon("icons/passport.png"), "通行证", NavigationItemPosition.BOTTOM)
             self.addSubInterface(self.settingsInterface, QIcon("icons/settings.png"), "设置", NavigationItemPosition.BOTTOM)
             self.addSubInterface(self.infoInterface, QIcon("icons/info.png"), "关于", NavigationItemPosition.BOTTOM)
-        self.setup_passport_ui(self.passportInterface)
         self.load_ui("ui/home.ui", parent=self.homeInterface)
         self.load_ui("ui/download.ui", parent=self.downloadInterface)
         self.load_ui("ui/tools.ui", parent=self.toolsInterface)
@@ -1061,14 +1106,14 @@ class MainWindow(FluentWindow):
             )
         else:
             InfoBar.success(
-                    title=f'🔄️ 正在启动 {version}',
-                    content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
-                    orient=Qt.Horizontal,
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
+                title=f'🔄️ 正在启动 {version}',
+                content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
 
             if self.is_running:
                 return
@@ -1076,9 +1121,8 @@ class MainWindow(FluentWindow):
             self.log(f"正在启动 {version}")
             if os.path.exists("run.ps1"):
                 os.remove("run.ps1")
-            # 新增生成脚本命令
             subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"])
-            
+
             # 替换 CMCL 2.2.2 → Bloret Launcher
             with open("run.ps1", "r+", encoding='utf-8') as f:
                 content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
@@ -1093,35 +1137,38 @@ class MainWindow(FluentWindow):
                 f.write(content)
                 f.truncate()
 
-            run_button = self.sender()  # 获取按钮对象
-            teaching_tip = TeachingTip.create(
-                target=run_button,  # 修改为按钮对象
-                icon=InfoBarIcon.SUCCESS,
-                title=f'正在启动 {version}',
-                content="请稍等",
-                isClosable=True,
-                tailPosition=TeachingTipTailPosition.BOTTOM,
-                duration=0,  # 设置为0表示不自动关闭
-                parent=self
-            )
-            if teaching_tip:
-                teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
-            
+            run_button = self.sender()  # 获取按钮对象（可能为 None）
+            if run_button is not None:
+                teaching_tip = TeachingTip.create(
+                    target=run_button,
+                    icon=InfoBarIcon.SUCCESS,
+                    title=f'正在启动 {version}',
+                    content="请稍等",
+                    isClosable=True,
+                    tailPosition=TeachingTipTailPosition.BOTTOM,
+                    duration=0,  # 设置为0表示不自动关闭
+                    parent=self
+                )
+                if teaching_tip:
+                    teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
+            else:
+                self.log("托盘菜单启动，不显示 TeachingTip")
+
             # 线程
             self.run_script_thread = RunScriptThread()
-            self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(teaching_tip, run_button))  # 替换...为实际处理函数
-            self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, teaching_tip, run_button))
-            self.run_script_thread.start()  # 添加线程启动
-            self.threads.append(self.run_script_thread)  # 将线程添加到列表中
+            self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(None, run_button))
+            self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, None, run_button))
+            self.run_script_thread.start()
+            self.threads.append(self.run_script_thread)
 
             self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
             self.update_show_text_thread.update_text.connect(self.update_show_text)
             self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
             self.update_show_text_thread.start()
-            self.threads.append(self.update_show_text_thread)  # 将线程添加到列表中
+            self.threads.append(self.update_show_text_thread)
 
     def update_version_combobox(self):
-        home_interface = self.findChild(QWidget, "home")
+        home_interface = self.homeInterface
         if home_interface:
             run_choose = home_interface.findChild(ComboBox, "run_choose")
             if run_choose:
@@ -1196,7 +1243,7 @@ class MainWindow(FluentWindow):
         if download_way_F5_button:
             download_way_F5_button.clicked.connect(lambda: self.update_minecraft_versions(widget, show_way.currentText()))
         if download_button:
-            log(f"成功获取 Light-Minecraft-Download-Way: {LM_Download_Way}，LM_Download_Way_list:{LM_Download_Way_list}，LM_Download_Way_version:{LM_Download_Way_version}，LM_Download_Way_minecraft:{LM_Download_Way_minecraft}")
+            # log(f"成功获取 Light-Minecraft-Download-Way: {LM_Download_Way}，LM_Download_Way_list:{LM_Download_Way_list}，LM_Download_Way_version:{LM_Download_Way_version}，LM_Download_Way_minecraft:{LM_Download_Way_minecraft}")
             download_button.clicked.connect(lambda: self.start_download(widget))
         loading_label = widget.findChild(QLabel, "label_2")
         if loading_label:
@@ -1329,6 +1376,7 @@ class MainWindow(FluentWindow):
                 duration=5000,
                 parent=self
             )
+            self.run_cmcl_list()
             
         except Exception as e:
             InfoBar.error(
@@ -2024,6 +2072,12 @@ class MainWindow(FluentWindow):
     def open_qq_link(self):
         QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
         self.log("打开 Bloret QQ 群页面")
+    def open_BLC_qq_link(self):
+        QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/kEt8fb41wc"))
+        self.log("打开 BLC QQ 群页面")
+    def open_BBBS_link(self):
+        QDesktopServices.openUrl(QUrl(server_ip+"bbs/"))
+        self.log("打开 BBBS 页面")
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()  # 修正拼写错误
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -2118,6 +2172,122 @@ class MainWindow(FluentWindow):
         login_button = widget.findChild(QPushButton, "login")
         if login_button:
             login_button.clicked.connect(lambda: self.handle_login(widget))
+        Bloret_PassPort_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
+        Bloret_PassPort_logout = widget.findChild(QPushButton, "Bloret_PassPort_logout")
+        Bloret_PassPort_login = widget.findChild(QPushButton, "Bloret_PassPort_login")
+        Bloret_PassPort_view_BBBS = widget.findChild(QPushButton, "Bloret_PassPort_view_BBBS")
+        if Bloret_PassPort_UserName:
+            Bloret_PassPort_UserName.setText(self.config.get('Bloret_PassPort_UserName', '未登录'))
+        if Bloret_PassPort_logout:
+            Bloret_PassPort_logout.clicked.connect(lambda: self.Bloret_PassPort_Account_logout(widget))
+        if Bloret_PassPort_login:
+            Bloret_PassPort_login.clicked.connect(lambda: self.Bloret_PassPort_Account_login(widget))
+        if Bloret_PassPort_view_BBBS:
+            Bloret_PassPort_view_BBBS.clicked.connect(lambda: self.open_BBBS_link())
+    def Bloret_PassPort_Account_logout(self, widget):
+        self.config.update(Bloret_PassPort_UserName='未登录')
+        self.config.update(Bloret_PassPort_PassWord='')
+        self.config.update(Bloret_PassPort_Admin=False)
+        
+        open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+        # 更新界面显示
+        Bloret_PassPort_User_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
+        Bloret_PassPort_User_UserName.setText("未登录")
+        InfoBar.success(
+            title='⏫ 已退出登录',
+            content="",
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=5000,
+            parent=self
+        )
+        self.log("已退出登录")
+    def Bloret_PassPort_Account_login(self, widget):
+        class CustomLoginDialog(MessageBoxBase):
+            """ 自定义登录对话框 """
+            def __init__(self, parent=None):
+                super().__init__(parent)
+                
+                # 用户名组件
+                self.usernameLabel = SubtitleLabel('用户名', self)
+                self.usernameLineEdit = LineEdit(self)
+                self.usernameLineEdit.setPlaceholderText('请输入用户名')
+                
+                # 密码组件
+                self.passwordLabel = SubtitleLabel('密码', self)
+                self.passwordLineEdit = LineEdit(self)
+                self.passwordLineEdit.setPlaceholderText('请输入密码')
+                self.passwordLineEdit.setEchoMode(LineEdit.Password)
+                
+                # 添加到布局
+                self.viewLayout.addWidget(self.usernameLabel)
+                self.viewLayout.addWidget(self.usernameLineEdit)
+                self.viewLayout.addWidget(self.passwordLabel)
+                self.viewLayout.addWidget(self.passwordLineEdit)
+                
+                self.widget.setMinimumWidth(350)
+
+            def validate(self):
+                """ 验证输入不能为空 """
+                username = self.usernameLineEdit.text().strip()
+                password = self.passwordLineEdit.text().strip()
+                return bool(username and password)
+        """ 登录账户方法 """
+        # 创建并显示自定义对话框
+        dialog = CustomLoginDialog(self)
+        if dialog.exec():  # 用户点击确认
+            username = dialog.usernameLineEdit.text().strip()
+            password = dialog.passwordLineEdit.text().strip()
+
+            try:
+                response = requests.get(
+                    f"{server_ip}api/login",
+                    params={"name": username, "password": password}
+                )
+                response_data = response.json()
+                if response_data.get("status") is False:
+                    log(f"登录失败:{response_data.get("message", "未知错误")}", logging.ERROR)
+                    InfoBar.error(
+                        title='❌ 登录失败',
+                        content=response_data.get("message", "未知错误"),
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=5000,
+                        parent=self
+                    )
+                    return
+                elif response_data.get("status") is True:
+                    # 更新配置并记录日志
+                    self.config['Bloret_PassPort_UserName'] = username
+                    self.config['Bloret_PassPort_PassWord'] = password
+                    self.config['Bloret_PassPort_Admin'] = response_data.get("admin", False)
+                    self.log(f"登录成功: 用户名={username}", logging.INFO)
+                    
+                    # 更新界面显示
+                    Bloret_PassPort_User_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
+                    Bloret_PassPort_User_UserName.setText(username)
+
+                    open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+                    InfoBar.success(
+                        title='✅ 登录成功',
+                        content="",
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=5000,
+                        parent=self
+                    )
+            except Exception as e:
+                log("请求失败: %s" % str(e), logging.ERROR)
+                InfoBar.error(
+                    title='❌ 登录失败',
+                    content=f"请求失败: {str(e)}",
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=5000,
+                    parent=self
+                )
+        else:
+            self.log("登录对话框被取消", logging.INFO)
     def show_main_window(self):
         """显示主窗口"""
         self.show()
@@ -2363,7 +2533,22 @@ class MainWindow(FluentWindow):
                 self.config.update(size=value),
                 open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
             ))
-
+        repeat_run_button = widget.findChild(SwitchButton, "repeat_run_button")
+        if repeat_run_button:
+            repeat_run_button.setChecked(self.config.get('repeat_run', False))
+            repeat_run_button.checkedChanged.connect(lambda state: (
+                self.config.update(repeat_run=state),
+                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+                self.log(f"显示软件打开过程: {'启用' if state else '禁用'}")
+            ))
+        show_runtime_do_button = widget.findChild(SwitchButton, "show_runtime_do_button")
+        if show_runtime_do_button:
+            show_runtime_do_button.setChecked(self.config.get('show_runtime_do', False))
+            show_runtime_do_button.checkedChanged.connect(lambda state: (
+                self.config.update(show_runtime_do=state),
+                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+                self.log(f"重复运行设置已更改为: {'启用' if state else '禁用'}")
+            ))
     def on_light_dark_changed(self, mode):
         if mode == "跟随系统":
             self.apply_theme()
@@ -2430,6 +2615,9 @@ class MainWindow(FluentWindow):
         qq_icon = widget.findChild(QLabel, "QQ_icon")
         if qq_icon:
             qq_icon.setPixmap(QPixmap("ui/icon/qq.png"))
+        BLC_QQ = widget.findChild(QPushButton, "BLC_QQ")
+        if BLC_QQ:
+            BLC_QQ.clicked.connect(self.open_BLC_qq_link)
 
     def update_log_clear_button_text(self, button):
         log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
@@ -2454,27 +2642,24 @@ LM_Download_Way,LM_Download_Way_list,LM_Download_Way_version,LM_Download_Way_min
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
-
 # 创建 QApplication 实例
 app = QApplication(["Bloret Launcher"])
 
+# 初始化 FluentTranslator
+translator = FluentTranslator()
+app.installTranslator(translator)
 
-# 新增：检测是否重复运行
-if sys.platform == "win32":
-    mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\BloretLauncherMutex")
-    if mutex == 0:
-        log("创建互斥体失败")
-        sys.exit(1)
-    error = ctypes.windll.kernel32.GetLastError()
-    if error == 183:  # ERROR_ALREADY_EXISTS
-        log("检测到程序已运行，退出新实例")
-        w = Dialog("Bloret Launcher 已阻止了重复打开软件的操作", "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中设置允许重复运行。")
-        if w.exec():
-            print('确认')
-        else:
-            print('取消')
-        ctypes.windll.kernel32.CloseHandle(mutex)
-        sys.exit(0)
+# 默认语言跟随系统语言
+current_locale = QLocale.system()
+
+# 添加语言切换功能
+def switch_language(locale):
+    global translator
+    app.removeTranslator(translator)  # 移除当前翻译器
+    translator = FluentTranslator(locale)
+    app.installTranslator(translator)
+    window.retranslateUi()  # 重新翻译 UI
+
 
 # 检查写入权限
 if not check_write_permission():
@@ -2488,6 +2673,24 @@ if not check_write_permission():
 # 创建主窗口并显示
 window = MainWindow()
 window.show()
+
+# 检测是否重复运行
+if sys.platform == "win32":
+    mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\BloretLauncherMutex")
+    if mutex == 0:
+        log("创建互斥体失败")
+        sys.exit(1)
+    error = ctypes.windll.kernel32.GetLastError()
+    if error == 183:  # ERROR_ALREADY_EXISTS
+        log("检测到程序重复运行")
+        if not window.config.get('repeat_run', False):
+            log("重复运行被禁用：检测到程序已运行，退出新实例")
+            w = Dialog("Bloret Launcher 已阻止了重复打开软件的操作", "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中设置允许重复运行。")
+            if w.exec():
+                print('确认')
+            ctypes.windll.kernel32.CloseHandle(mutex)
+            sys.exit(0)
+
 
 scale_factor = window.scale_factor
 os.environ["QT_SCALE_FACTOR"] = str(scale_factor)

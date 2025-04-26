@@ -109,7 +109,7 @@
                 </property>
                 <property name="minimumSize">
                  <size>
-                  <width>450</width>
+                  <width>0</width>
                   <height>30</height>
                  </size>
                 </property>
@@ -137,7 +137,7 @@
                <widget class="PushButton" name="name2uuid_player_Button">
                 <property name="minimumSize">
                  <size>
-                  <width>450</width>
+                  <width>0</width>
                   <height>30</height>
                  </size>
                 </property>
@@ -177,7 +177,7 @@
                  <widget class="PushButton" name="pushButton_5">
                   <property name="minimumSize">
                    <size>
-                    <width>150</width>
+                    <width>0</width>
                     <height>30</height>
                    </size>
                   </property>
@@ -248,7 +248,7 @@
               </property>
               <property name="minimumSize">
                <size>
-                <width>450</width>
+                <width>0</width>
                 <height>30</height>
                </size>
               </property>
@@ -276,7 +276,7 @@
              <widget class="PushButton" name="search_name_button">
               <property name="minimumSize">
                <size>
-                <width>450</width>
+                <width>0</width>
                 <height>30</height>
                </size>
               </property>
@@ -316,7 +316,7 @@
                <widget class="PushButton" name="search_name_copy">
                 <property name="minimumSize">
                  <size>
-                  <width>150</width>
+                  <width>0</width>
                   <height>30</height>
                  </size>
                 </property>
@@ -378,7 +378,7 @@
               </property>
               <property name="minimumSize">
                <size>
-                <width>450</width>
+                <width>0</width>
                 <height>30</height>
                </size>
               </property>
@@ -409,7 +409,7 @@
              <widget class="PushButton" name="skin_search_button">
               <property name="minimumSize">
                <size>
-                <width>450</width>
+                <width>0</width>
                 <height>30</height>
                </size>
               </property>
@@ -449,7 +449,7 @@
                <widget class="PushButton" name="search_skin_copy">
                 <property name="minimumSize">
                  <size>
-                  <width>150</width>
+                  <width>0</width>
                   <height>30</height>
                  </size>
                 </property>
@@ -491,7 +491,7 @@
                <widget class="PushButton" name="search_cape_copy">
                 <property name="minimumSize">
                  <size>
-                  <width>150</width>
+                  <width>0</width>
                   <height>30</height>
                  </size>
                 </property>

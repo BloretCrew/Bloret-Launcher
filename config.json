@@ -2,13 +2,12 @@
     "minecraft-part": ".minecraft",
     "first-run": false,
     "ver": 6,
-    "size": 100,
+    "size": 85,
     "themelight": true,
     "repeat_run": false,
-    "Customize": [
-        {
-            "showname": "cmcl",
-            "path": "G:/Work/git/Bloret-Launcher/cmcl.exe"
-        }
-    ]
+    "show_runtime_do": false,
+    "Customize": [],
+    "Bloret_PassPort_UserName": "Detritalw",
+    "Bloret_PassPort_PassWord": "123456",
+    "Bloret_PassPort_Admin": true
 }
