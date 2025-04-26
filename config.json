@@ -1,8 +1,13 @@
 {
     "minecraft-part": ".minecraft",
     "first-run": true,
-    "ver": 6,
-    "size": 100,
+    "ver": 6.1,
+    "size": 85,
     "themelight": true,
-    "Customize": []
+    "repeat_run": false,
+    "show_runtime_do": true,
+    "Customize": [],
+    "Bloret_PassPort_UserName": "未登录",
+    "Bloret_PassPort_PassWord": "",
+    "Bloret_PassPort_Admin": false
 }

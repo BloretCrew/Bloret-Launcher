@@ -32,6 +32,6 @@ class Settings(SettingsBase):
 
     def run_batch_file(self):
         try:
-            subprocess.run(os.path.join(self.PATH, 'run.bat'), check=True)
+            subprocess.run(os.path.join(self.PATH, 'run.bat'), check=True, creationflags=subprocess.CREATE_NO_WINDOW)
         except Exception as e:
             logger.error(f"Failed to run run.bat: {e}")

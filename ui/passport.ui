@@ -46,7 +46,7 @@
         <x>0</x>
         <y>0</y>
         <width>670</width>
-        <height>554</height>
+        <height>529</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -130,7 +130,7 @@
            <widget class="ComboBox" name="player_login_way">
             <property name="minimumSize">
              <size>
-              <width>200</width>
+              <width>100</width>
               <height>0</height>
              </size>
             </property>
@@ -140,7 +140,7 @@
            <widget class="ComboBox" name="playername">
             <property name="minimumSize">
              <size>
-              <width>200</width>
+              <width>100</width>
               <height>0</height>
              </size>
             </property>
@@ -219,7 +219,7 @@
            <widget class="ComboBox" name="login_way">
             <property name="minimumSize">
              <size>
-              <width>200</width>
+              <width>100</width>
               <height>0</height>
              </size>
             </property>
@@ -239,6 +239,112 @@
            </widget>
           </item>
          </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="SubtitleLabel" name="SubtitleLabel">
+         <property name="text">
+          <string>Bloret 通行证</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget_6">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <item>
+             <widget class="StrongBodyLabel" name="Bloret_PassPort_UserName">
+              <property name="text">
+               <string>未登录</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_3">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="PushButton" name="Bloret_PassPort_view_BBBS">
+            <property name="minimumSize">
+             <size>
+              <width>100</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>访问 Bloret BBS</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="PushButton" name="Bloret_PassPort_login">
+            <property name="minimumSize">
+             <size>
+              <width>100</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>重新登录</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="PushButton" name="Bloret_PassPort_logout">
+            <property name="minimumSize">
+             <size>
+              <width>100</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>退出登录</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="CaptionLabel" name="CaptionLabel_5">
+         <property name="text">
+          <string>使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+         </property>
+         <property name="lightColor" stdset="0">
+          <color>
+           <red>127</red>
+           <green>127</green>
+           <blue>127</blue>
+          </color>
+         </property>
+         <property name="darkColor" stdset="0">
+          <color>
+           <red>185</red>
+           <green>185</green>
+           <blue>185</blue>
+          </color>
+         </property>
         </widget>
        </item>
        <item>
@@ -262,46 +368,46 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>ComboBox</class>
+   <extends>QPushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>PushButton</class>
+   <extends>QPushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
    <class>CardWidget</class>
    <extends>QFrame</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>SmoothScrollArea</class>
    <extends>QScrollArea</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>StrongBodyLabel</class>
-   <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>SubtitleLabel</class>
-   <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>TitleLabel</class>
-   <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
   </customwidget>
   <customwidget>
    <class>CaptionLabel</class>
    <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
-   <class>PushButton</class>
-   <extends>QPushButton</extends>
-   <header location="global">qfluentwidgets</header>
+   <class>StrongBodyLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
-   <class>ComboBox</class>
-   <extends>QComboBox</extends>
-   <header location="global">qfluentwidgets</header>
+   <class>SubtitleLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>TitleLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
   </customwidget>
  </customwidgets>
  <resources/>
