@@ -183,7 +183,6 @@ jobs:
         Expand-Archive -Path "output/Bloret-Launcher-Windows.zip" -DestinationPath "output/"
       shell: pwsh
 
-    # 新增步骤：确保 LICENSE 文件存在
     - name: 确保 LICENSE 文件存在
       run: |
         if (-not (Test-Path "output/LICENSE")) {
@@ -192,11 +191,16 @@ jobs:
         }
       shell: pwsh
 
-    # 新增步骤：展示完整文件夹目录
     - name: 展示完整文件夹目录
       run: |
         Write-Host "当前文件夹目录结构如下："
         Get-ChildItem -Path "output" -Recurse | Format-Table -AutoSize
+      shell: pwsh
+
+    - name: 设置系统语言为简体中文
+      run: |
+        Set-WinSystemLocale -SystemLocale zh-CN
+        Write-Host "系统语言已设置为简体中文"
       shell: pwsh
 
     - name: 安装 Inno Setup
