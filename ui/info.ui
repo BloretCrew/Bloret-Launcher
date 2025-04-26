@@ -35,7 +35,7 @@
         <x>0</x>
         <y>0</y>
         <width>688</width>
-        <height>536</height>
+        <height>507</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
@@ -65,7 +65,7 @@
             <string/>
            </property>
            <property name="pixmap">
-            <pixmap>home.png</pixmap>
+            <pixmap>icon/home.png</pixmap>
            </property>
            <property name="scaledContents">
             <bool>true</bool>
@@ -351,39 +351,39 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>PushButton</class>
+   <extends>QPushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
    <class>CardWidget</class>
    <extends>QFrame</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>SmoothScrollArea</class>
    <extends>QScrollArea</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CaptionLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
    <class>StrongBodyLabel</class>
    <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>TitleLabel</class>
-   <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>PushButton</class>
-   <extends>QPushButton</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
    <class>SubtitleLabel</class>
    <extends>QLabel</extends>
-   <header location="global">qfluentwidgets</header>
+   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
-   <class>CaptionLabel</class>
+   <class>TitleLabel</class>
    <extends>QLabel</extends>
    <header>qfluentwidgets</header>
   </customwidget>

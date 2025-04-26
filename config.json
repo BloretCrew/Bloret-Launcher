@@ -1,8 +1,14 @@
 {
     "minecraft-part": ".minecraft",
-    "first-run": true,
+    "first-run": false,
     "ver": 6,
-    "size": 100,
+    "size": 50,
     "themelight": true,
-    "Customize": []
+    "repeat_run": false,
+    "Customize": [
+        {
+            "showname": "cmcl",
+            "path": "G:/Work/git/Bloret-Launcher/cmcl.exe"
+        }
+    ]
 }

@@ -5,13 +5,14 @@ from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
 from PyQt5.QtCore import QPoint, QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize
 from modules.win11toast import toast, notify, update_progress
-import ctypes.wintypes,ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform
+import ctypes.wintypes,ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform,traceback
 import sip # type: ignore
 from win32com.client import Dispatch
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
 # 全局变量
+server_ip = "http://pcfs.top:2/"
 ver_id_bloret = ['1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21']
 ver_id_main = []
 ver_id_short = []
@@ -31,6 +32,29 @@ LM_Download_Way = {}
 LM_Download_Way_list = []
 LM_Download_Way_version = {}
 LM_Download_Way_minecraft = {}
+def handle_exception(exc_type, exc_value, exc_traceback):
+    log("未捕获的异常:", logging.CRITICAL)
+    log("类型: {}".format(exc_type), logging.CRITICAL)
+    log("信息: {}".format(exc_value), logging.CRITICAL)
+    log("回溯: {}".format(traceback.format_tb(exc_traceback)), logging.CRITICAL)
+    w = Dialog("Bloret Launcher 发生了一些小问题...", "类型: {}\n信息: {}\n回溯: {}\n如果您认为这是 Bloret Launcher 的问题，请提交此问题。\n按下确认按钮将以上信息复制到剪贴板".format(exc_type, exc_value, traceback.format_tb(exc_traceback)))
+    w.setWindowIcon(QIcon('icons/bloret.png'))
+    w.setWindowTitle("Bloret Launcher")
+    if w.exec():
+        print('复制到剪贴板')
+        clipboard = QApplication.clipboard()
+        clipboard.setText("类型: {}\n信息: {}\n回溯: {}".format(exc_type, exc_value, ''.join(traceback.format_tb(exc_traceback))))
+    else:
+        print('取消')
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+sys.excepthook = handle_exception
+
+log_lock = threading.Lock()
+
+def log_thread_safe(message, level=logging.INFO):
+    with log_lock:
+        log(message, level)
 
 def is_dark_theme():
     try:
@@ -60,12 +84,27 @@ def is_dark_theme():
     except Exception as e:
         print(f"检测主题时发生错误: {e}")
         return False
-def restart():
-    log("重启程序", level=logging.DEBUG)
-    os.execl(sys.executable, sys.executable, *sys.argv)
+# 创建日志文件夹
+log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
+if not os.path.exists(log_folder):
+    os.makedirs(log_folder)
+
+# 设置日志配置
+log_filename = os.path.join(log_folder, f'Bloret_Launcher_log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+if not os.path.exists(log_filename):
+    with open(log_filename, 'w', encoding='utf-8') as f:
+        f.write('')  # 创建空日志文件
+logging.basicConfig(
+    filename=log_filename,
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    encoding='utf-8'
+)
+
 def log(message, level=logging.INFO):
     print(message)
     logging.log(level, message)
+    logging.getLogger().handlers[0].flush()  # 强制刷新日志
 def send_system_notification(title, message):
     try:
         toast(title, message, duration="short", icon={'src': 'icons/bloret.png','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
@@ -91,7 +130,7 @@ def check_write_permission():
         return False
 def check_Light_Minecraft_Download_Way():
     try:
-        response = requests.get("http://pcfs.top:2/api/Light-Minecraft-Download-Way")
+        response = requests.get(server_ip + "api/Light-Minecraft-Download-Way")
         if response.status_code == 200:
             data = response.json()
             LM_Download_Way = data.get("Light-Minecraft-Download-Way", {})  # 确保是字典
@@ -314,6 +353,7 @@ def BL_download(version, LM_download_way_choose, parent):
             
                         total_size = int(response.headers.get('content-length', 0))
                         downloaded_size = 0
+                        log(f"下载链接:{url}")
             
                         with open(file_path, 'wb') as f:
                             for chunk in response.iter_content(chunk_size=8192):
@@ -322,6 +362,7 @@ def BL_download(version, LM_download_way_choose, parent):
                                     downloaded_size += len(chunk)
                                     progress = int(downloaded_size / total_size * 100)
                                     self.progress_signal.emit(progress_key, progress, f"下载进度: {progress}%")
+                                    # log(f"文件{file_name},下载进度: {progress}%")
             
                         log(f"文件 {file_name} 下载完成")
                         return True
@@ -331,10 +372,12 @@ def BL_download(version, LM_download_way_choose, parent):
                     except Exception as e:
                         log(f"下载 {file_name} 时发生未知错误: {e}", logging.ERROR)
                         time.sleep(retry_delay)
+                    finally:
+                        if 'response' in locals():
+                            response.close()
             
                 log(f"下载 {file_name} 失败，已达到最大重试次数", logging.ERROR)
                 return False
-        
             # 使用线程池并发下载文件
             with ThreadPoolExecutor(max_workers=5) as executor:
                 # 提交下载任务到线程池
@@ -442,6 +485,7 @@ def BL_download(version, LM_download_way_choose, parent):
             # 如果达到最大重试次数仍未成功，记录日志并返回 False
             parent.log(f"下载 {file_name} 失败，已达到最大重试次数", logging.ERROR)
             return False
+    
     # 创建对话框
     download_dialog = BLDownloadDialog(version, parent)
 
@@ -711,6 +755,7 @@ class MainWindow(FluentWindow):
         self.player_skin = ""
         self.player_cape = ""
         self.player_name = ""
+        self.Customize_icon = None
         self.settings = QSettings("Bloret", "Launcher")
         if not isdarktheme:
             self.apply_theme()
@@ -718,6 +763,7 @@ class MainWindow(FluentWindow):
         self.load_cmcl_data()
         self.initNavigation()
         self.initWindow()
+        self.apply_scale()
         self.setAttribute(Qt.WA_QuitOnClose, True)  # 确保窗口关闭时程序退出
         self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)  # 确保窗口显示在最前面
         self.raise_()
@@ -738,7 +784,6 @@ class MainWindow(FluentWindow):
         # 初始化需要 cmcl_data 的组件
         update_progress({'value': 90 / 100, 'valueStringOverride': '9/10', 'status': '初始化需要 cmcl_data 的组件'})
         self.initNavigation()
-        self.initWindow()
 
         # 显示窗口
         update_progress({'value': 100 / 100, 'valueStringOverride': '10/10', 'status': '显示窗口'})
@@ -836,23 +881,39 @@ class MainWindow(FluentWindow):
         self.sidebar_animation.setEndValue(end_geometry)
         self.sidebar_animation.start()
     def initWindow(self):
-        self.resize(900, 700)
+        # self.resize(900, 700)
         self.setWindowIcon(QIcon("icons/bloret.png"))
         self.setWindowTitle("Bloret Launcher")
         self.scale_factor = self.config.get('size', 90) / 100.0
-        self.resize(int(800 * self.scale_factor), int(600 * self.scale_factor))
+        # self.resize(int(800 * self.scale_factor), int(600 * self.scale_factor))
+        # 优化窗口缩放逻辑（替换原有resize调用）
+    def apply_scale(self):
+        base_width, base_height = 800, 600  # 基准尺寸
+        scaled_width = int(base_width * self.scale_factor)
+        scaled_height = int(base_height * self.scale_factor)
+
+        self.resize(scaled_width, scaled_height)
+
+        # 强制控件重新布局
+        self.layout().activate()
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        icon_size = int(64 * self.scale_factor)
+        
+        # 仅在存在 Customize_icon 时更新
+        if hasattr(self, 'Customize_icon') and self.Customize_icon:
+            self.Customize_icon.setPixmap(self.icon.pixmap(icon_size, icon_size))
     def load_ui(self, ui_path, parent=None, animate=True):
         widget = uic.loadUi(ui_path)
-
+    
         if parent:
-            # 确保父部件只有一个布局
-            if parent.layout() is None:
-                parent.setLayout(QVBoxLayout())
-            parent.layout().addWidget(widget)  # 直接添加到现有布局
-
-        if animate:
-            self.animate_sidebar()
-            self.animate_fade_in()
+            # 强制使用布局管理（若原布局缺失）
+            if not parent.layout():
+                layout = QVBoxLayout(parent)  # 使用垂直布局
+                layout.setContentsMargins(0,0,0,0)  # 移除默认边距
+                layout.addWidget(widget)
+            else:
+                parent.layout().addWidget(widget)
     def on_home_clicked(self):
         self.log("主页 被点击")
         self.switchTo(self.homeInterface)
@@ -911,7 +972,7 @@ class MainWindow(FluentWindow):
         self.log("关于 被点击")
         self.switchTo(self.infoInterface)
     def run_cmcl_list(self):
-        global set_list  # 添加全局声明
+        global set_list,minecraft_list  # 添加全局声明
         try:
             versions_path = os.path.join(os.getcwd(), ".minecraft", "versions")
             temp_list = []  # 使用临时变量
@@ -953,6 +1014,8 @@ class MainWindow(FluentWindow):
         #     text={version},
         #     onClick=lambda: print("Click")
         # )
+        
+        log(f"minecraft_list:{minecraft_list}")
         if version not in minecraft_list:
             # 自定义启动
             # InfoBar.success(
@@ -1760,7 +1823,7 @@ class MainWindow(FluentWindow):
                 self.create_shortcut()
             #首次启动向 http://pcfs.top:2/api/blnum 发送请求，服务器计数器+1
             #具体可见项目 https://github.com/BloretCrew/Bloret-Launcher-Server
-            response = requests.get("http://pcfs.top:2/api/blnum")
+            response = requests.get(server_ip + "api/blnum")
             if response.status_code == 200:
                 data = response.json()
                 self.bl_users = data.get("user", "未知用户")
@@ -1795,7 +1858,7 @@ class MainWindow(FluentWindow):
 
     def check_Bloret_version(self):
         try:
-            response = requests.get("http://pcfs.top:2/api/bloret-version")
+            response = requests.get(server_ip + "api/bloret-version")
             if response.status_code == 200:
                 data = response.json()
                 ver_id_bloret.clear()
@@ -2311,6 +2374,7 @@ class MainWindow(FluentWindow):
 
     def clear_log_files(self):
         log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
+        file_num = len(os.listdir(log_folder))-1  # 减去一个正在使用的文件
         if os.path.exists(log_folder) and os.path.isdir(log_folder):
             for filename in os.listdir(log_folder):
                 file_path = os.path.join(log_folder, filename)
@@ -2319,20 +2383,28 @@ class MainWindow(FluentWindow):
                         os.unlink(file_path)
                     elif os.path.isdir(file_path):
                         shutil.rmtree(file_path)
-                    InfoBar.success(
-                        title='🗑️ 清理成功',
-                        content=f"已清理 {file_path}",
-                        isClosable=True,
-                        position=InfoBarPosition.TOP,
-                        duration=5000,
-                        parent=self
-                    )
+                    # InfoBar.success(
+                    #     title='🗑️ 清理成功',
+                    #     content=f"已清理 {file_path}",
+                    #     isClosable=True,
+                    #     position=InfoBarPosition.TOP,
+                    #     duration=5000,
+                    #     parent=self
+                    # )
                 except Exception as e:
                     self.log(f"Failed to delete {file_path}. Reason: {e}", logging.ERROR)
+        InfoBar.success(
+            title='🗑️ 清理成功',
+            content=f"已清理 {file_num} 个文件",
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=5000,
+            parent=self
+        )
     def get_latest_version(self):
 
         try:
-            response = requests.get("http://pcfs.top:2/api/BLlatest")
+            response = requests.get(server_ip + "api/BLlatest")
             if response.status_code == 200:
                 latest_release = response.json()
                 BL_update_text = latest_release.get("text")
@@ -2371,46 +2443,53 @@ class MainWindow(FluentWindow):
                 button.setText(f"清空 {log_file_count-1} 个日志，总计 {total_size // 1024} KB")
         else:
             button.setText("清空日志")
+ 
+# 获取系统深浅色主题
+isdarktheme = is_dark_theme()
+log(f"当前主题:{isdarktheme}")
+LM_Download_Way,LM_Download_Way_list,LM_Download_Way_version,LM_Download_Way_minecraft=check_Light_Minecraft_Download_Way()
 
-if __name__ == "__main__":
-    # 获取系统深浅色主题
-    isdarktheme = is_dark_theme()
-    log(f"当前主题:{isdarktheme}")
-    LM_Download_Way,LM_Download_Way_list,LM_Download_Way_version,LM_Download_Way_minecraft=check_Light_Minecraft_Download_Way()
+# 先设置高DPI属性
+QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
-    # 先设置高DPI属性
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
-    # 创建日志文件夹
-    log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
-    if not os.path.exists(log_folder):
-        os.makedirs(log_folder)
+# 创建 QApplication 实例
+app = QApplication(["Bloret Launcher"])
 
-    # 设置日志配置
-    log_filename = os.path.join(log_folder, f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-    logging.basicConfig(
-        filename=log_filename,
-        level=logging.INFO,
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        encoding='utf-8'
-    )
 
-    # 创建 QApplication 实例
-    app = QApplication(["Bloret Launcher"])
-
-    # 检查写入权限
-    if not check_write_permission():
-        w = Dialog("Bloret Launcher 无法写入文件", "...")
+# 新增：检测是否重复运行
+if sys.platform == "win32":
+    mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\BloretLauncherMutex")
+    if mutex == 0:
+        log("创建互斥体失败")
+        sys.exit(1)
+    error = ctypes.windll.kernel32.GetLastError()
+    if error == 183:  # ERROR_ALREADY_EXISTS
+        log("检测到程序已运行，退出新实例")
+        w = Dialog("Bloret Launcher 已阻止了重复打开软件的操作", "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中设置允许重复运行。")
         if w.exec():
             print('确认')
         else:
             print('取消')
+        ctypes.windll.kernel32.CloseHandle(mutex)
         sys.exit(0)
 
-    # 创建主窗口并显示
-    window = MainWindow()
-    window.show()
+# 检查写入权限
+if not check_write_permission():
+    w = Dialog("Bloret Launcher 无法写入文件", "...")
+    if w.exec():
+        print('确认')
+    else:
+        print('取消')
+    sys.exit(0)
 
-    # 运行应用程序
-    sys.exit(app.exec())
+# 创建主窗口并显示
+window = MainWindow()
+window.show()
+
+scale_factor = window.scale_factor
+os.environ["QT_SCALE_FACTOR"] = str(scale_factor)
+
+# 运行应用程序
+sys.exit(app.exec())

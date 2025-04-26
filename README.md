@@ -127,7 +127,7 @@
 
 ## 使用人数统计（实时）
 
-![Bloret Launcher 实时新增使用人数](http://pcfs.top:2/api/BL/madeuserpic)
+[![Bloret Launcher 实时新增使用人数](http://pcfs.top:2/api/BL/madeuserpic)](http://pcfs.top:2/api/BL/madeuserpic)
 
 ## 星标历史
 
