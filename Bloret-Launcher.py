@@ -2346,7 +2346,7 @@ class MainWindow(FluentWindow):
         # 设置设置界面的UI元素
         log_clear_button = widget.findChild(QPushButton, "log_clear_button")
         if log_clear_button:
-            log_clear_button.clicked.connect(self.clear_log_files)
+            log_clear_button.clicked.connect(lambda: self.clear_log_files(log_clear_button))
             self.update_log_clear_button_text(log_clear_button)  # 更新按钮文本
 
         # 添加深浅色模式选择框
@@ -2372,7 +2372,7 @@ class MainWindow(FluentWindow):
         elif mode == "浅色模式":
             self.apply_theme(QPalette(QColor("#ffffff")))
 
-    def clear_log_files(self):
+    def clear_log_files(self, log_clear_button):
         log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
         file_num = len(os.listdir(log_folder))-1  # 减去一个正在使用的文件
         if os.path.exists(log_folder) and os.path.isdir(log_folder):
@@ -2401,6 +2401,7 @@ class MainWindow(FluentWindow):
             duration=5000,
             parent=self
         )
+        self.update_log_clear_button_text(log_clear_button)
     def get_latest_version(self):
 
         try:
