@@ -46,9 +46,6 @@ SetupIconFile=output\icons\bloret.ico
 SolidCompression=yes
 WizardStyle=modern
 
-[Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
-
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
