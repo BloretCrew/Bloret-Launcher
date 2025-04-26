@@ -2,7 +2,7 @@
 ; 有关创建 Inno Setup 脚本文件的详细信息，请参阅帮助文档！
 
 #define MyAppName "Bloret Launcher"
-#define MyAppVersion "5"
+#define MyAppVersion "测试构建"
 #define MyAppPublisher "Bloret"
 #define MyAppURL "http://pcfs.top:2"
 #define MyAppExeName "Bloret-Launcher.exe"
