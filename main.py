@@ -4,7 +4,7 @@ from datetime import datetime
 from .ClassWidgets.base import PluginBase, SettingsBase, PluginConfig  # 导入CW的基类
 
 from PyQt5.QtWidgets import QHBoxLayout, QPushButton
-from qfluentwidgets import ImageLabel, LineEdit
+from qfluentwidgets import SwitchButton, ImageLabel, LineEdit
 import subprocess, os
 import threading  # 添加导入threading模块
 
@@ -22,9 +22,21 @@ class Settings(SettingsBase):
         self.cfg = PluginConfig(self.PATH, 'config.json')  # 实例化配置类
         self.cfg.load_config(default_config)  # 加载配置
 
+        if self.cfg.config.get('whenCWopen_BLopen', False):
+            self.run_batch_file_in_thread() # 打开 Class-Widgets 时就打开 Bloret-Launcher
+
         # 按钮
         self.openButton = self.findChild(QPushButton, 'open')
         self.openButton.clicked.connect(self.run_batch_file_in_thread)  # 修改连接到新的槽函数
+        # 开关控件
+        self.whenCWopen_BLopen = self.findChild(SwitchButton, 'whenCWopen_BLopen')
+        self.whenCWopen_BLopen.setChecked(self.cfg.config.get('whenCWopen_BLopen', False))  # 根据配置文件设置开关状态
+        self.whenCWopen_BLopen.checkedChanged.connect(self.update_whenCWopen_BLopen)  # 连接到槽函数
+
+    def update_whenCWopen_BLopen(self, state):
+        self.cfg.config['whenCWopen_BLopen'] = state  # 直接更新配置字典
+        self.cfg.save_config()  # 保存配置
+        print(f"whenCWopen_BLopen 开关状态已更新为: {state}")  # 添加日志记录
 
     def run_batch_file_in_thread(self):
         thread = threading.Thread(target=self.run_batch_file)  # 创建新线程
@@ -32,6 +44,6 @@ class Settings(SettingsBase):
 
     def run_batch_file(self):
         try:
-            subprocess.run(os.path.join(self.PATH, 'run.bat'), check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            subprocess.run(os.path.join(self.PATH, 'Bloret-Launcher.exe'), check=True, cwd=self.PATH, creationflags=subprocess.CREATE_NO_WINDOW)
         except Exception as e:
-            logger.error(f"Failed to run run.bat: {e}")
+            logger.error(f"Failed to run Bloret-Launcher.exe: {e}")
