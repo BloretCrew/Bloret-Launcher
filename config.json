@@ -1,13 +1,13 @@
 {
     "minecraft-part": ".minecraft",
-    "first-run": false,
-    "ver": 6,
+    "first-run": true,
+    "ver": 6.1,
     "size": 85,
     "themelight": true,
     "repeat_run": false,
-    "show_runtime_do": false,
+    "show_runtime_do": true,
     "Customize": [],
-    "Bloret_PassPort_UserName": "Detritalw",
-    "Bloret_PassPort_PassWord": "123456",
-    "Bloret_PassPort_Admin": true
+    "Bloret_PassPort_UserName": "未登录",
+    "Bloret_PassPort_PassWord": "",
+    "Bloret_PassPort_Admin": false
 }
