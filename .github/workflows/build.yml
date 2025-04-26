@@ -184,7 +184,7 @@ jobs:
 
     - name: 运行 Inno Setup 构建安装程序
       run: |
-        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\.github\workflows\Bloret-Launcher-Setup.iss"
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
       shell: pwsh
 
     - name: 上传安装程序
