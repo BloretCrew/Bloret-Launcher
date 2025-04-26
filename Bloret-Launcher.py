@@ -1367,7 +1367,7 @@ class MainWindow(FluentWindow):
 
             with open('config.json', 'w', encoding='utf-8') as file:
                 json.dump(config_data, file, ensure_ascii=False, indent=4)
-
+            self.config = config_data  # 同步到 self.config
             InfoBar.success(
                 title='✅ 成功',
                 content=f"路径 {Customize_path_value} 和显示名称 {Customize_showname_value} 已成功保存",
