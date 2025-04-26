@@ -2246,7 +2246,8 @@ class MainWindow(FluentWindow):
                 )
                 response_data = response.json()
                 if response_data.get("status") is False:
-                    log(f"登录失败:{response_data.get("message", "未知错误")}", logging.ERROR)
+                    error_message = response_data.get('message', '未知错误')
+                    log(f"登录失败:{error_message}", logging.ERROR)
                     InfoBar.error(
                         title='❌ 登录失败',
                         content=response_data.get("message", "未知错误"),
