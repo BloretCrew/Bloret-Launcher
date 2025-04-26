@@ -9,5 +9,6 @@
     "Customize": [],
     "Bloret_PassPort_UserName": "未登录",
     "Bloret_PassPort_PassWord": "",
-    "Bloret_PassPort_Admin": false
+    "Bloret_PassPort_Admin": false,
+    "whenCWopen_BLopen": true
 }
