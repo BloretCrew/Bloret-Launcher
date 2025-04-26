@@ -145,15 +145,15 @@ jobs:
 
     - name: 创建压缩包
       run: |
-        # 直接压缩 output 目录内容为 package.zip
-        Compress-Archive -Path "output/*" -DestinationPath "output/package.zip" -Force
+        # 直接压缩 output 目录内容为 Code-Package.zip
+        Compress-Archive -Path "output/*" -DestinationPath "output/Code-Package.zip" -Force
       shell: pwsh
 
     - name: 上传压缩包
       uses: actions/upload-artifact@v4
       with:
-        name: package
-        path: "output/package.zip"
+        name: Code-Package
+        path: "output/Code-Package.zip"
 
   Build-Setup:
     needs: Build
