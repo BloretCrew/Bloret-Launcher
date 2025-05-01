@@ -646,7 +646,7 @@ class RunScriptThread(QThread):
                 text=True,
                 encoding='utf-8',
                 errors='replace',  # 此处统一处理解码错误
-                creationflags=subprocess.CREATE_NO_WINDO  # 隐藏控制台窗口
+                creationflags=subprocess.CREATE_NO_WINDOW  # 隐藏控制台窗口
             )
             last_line = ""
             for line in iter(lambda: process.stdout.readline(), ''):  # 移除errors参数

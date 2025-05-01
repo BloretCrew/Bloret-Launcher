@@ -1,0 +1,38 @@
+[
+    {
+        "type": "folder",
+        "file": "icons"
+    },
+    {
+        "type": "folder",
+        "file": "ui"
+    },
+    {
+        "type": "file",
+        "file": "cmcl.exe"
+    },
+    {
+        "type": "file",
+        "file": "cmcl.json"
+    },
+    {
+        "type": "file",
+        "file": "cmcl.blank.json"
+    },
+    {
+        "type": "file",
+        "file": "config.json"
+    },
+    {
+        "type": "file",
+        "file": "LICENSE"
+    },
+    {
+        "type": "file",
+        "file": "servers.dat"
+    },
+    {
+        "type": "file",
+        "file": "cmcl_save.json"
+    }
+]

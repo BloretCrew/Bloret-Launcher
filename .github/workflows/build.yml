@@ -110,6 +110,8 @@ jobs:
         cp -r LICENSE ${{ env.OUTPUT_DIR }}/
         cp -r servers.dat ${{ env.OUTPUT_DIR }}/
         cp -r cmcl_save.json ${{ env.OUTPUT_DIR }}/
+        cp -r restart.ps1 ${{ env.OUTPUT_DIR }}/
+        cp -r update.ps1 ${{ env.OUTPUT_DIR }}/
 
     - name: 清理旧压缩包
       run: |

@@ -5,7 +5,7 @@
     "size": 100,
     "themelight": true,
     "repeat_run": false,
-    "show_runtime_do": true,
+    "show_runtime_do": false,
     "Customize": [],
     "Bloret_PassPort_UserName": "未登录",
     "Bloret_PassPort_PassWord": "",
