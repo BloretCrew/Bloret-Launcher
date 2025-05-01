@@ -639,7 +639,8 @@ class RunScriptThread(QThread):
                 stderr=subprocess.PIPE,
                 text=True,
                 encoding='utf-8',
-                errors='replace'  # 此处统一处理解码错误
+                errors='replace',  # 此处统一处理解码错误
+                creationflags=subprocess.CREATE_NO_WINDO  # 隐藏控制台窗口
             )
             last_line = ""
             for line in iter(lambda: process.stdout.readline(), ''):  # 移除errors参数
@@ -705,6 +706,8 @@ class LoadMinecraftVersionsThread(QThread):
             self.error_occurred.emit(f"SSL 错误: {e}")
 class MainWindow(FluentWindow):
     def __init__(self):
+        super().__init__()
+
         # 初始化配置文件
         with open('config.json', 'r', encoding='utf-8') as f:
             self.config = json.load(f)
@@ -718,6 +721,31 @@ class MainWindow(FluentWindow):
         if(isdarktheme):
             from qfluentwidgets import setTheme, Theme
             setTheme(Theme.AUTO)
+            
+        self.setWindowTitle("Bloret Launcher")
+        icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
+        if os.path.exists(icon_path):
+            self.log(f"图标路径存在: {icon_path}")
+        else:
+            self.log(f"图标路径不存在: {icon_path}", logging.ERROR)
+        self.setWindowIcon(QIcon(icon_path))
+
+        # 检测是否重复运行
+        if sys.platform == "win32":
+            mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\BloretLauncherMutex")
+            if mutex == 0:
+                log("创建互斥体失败")
+                sys.exit(1)
+            error = ctypes.windll.kernel32.GetLastError()
+            if error == 183:  # ERROR_ALREADY_EXISTS
+                log("检测到程序重复运行")
+                if not self.config.get('repeat_run', False):
+                    log("重复运行被禁用：检测到程序已运行，退出新实例")
+                    w = Dialog("Bloret Launcher 已阻止了重复打开软件的操作", "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。")
+                    if w.exec():
+                        print('确认')
+                    ctypes.windll.kernel32.CloseHandle(mutex)
+                    sys.exit(0)
 
         if self.config.get('show_runtime_do', False):
             log("显示软件打开过程已启用")
@@ -733,7 +761,6 @@ class MainWindow(FluentWindow):
             log("显示软件打开过程已禁用")
 
 
-        super().__init__()
 
         # 设置全局编码
         codec = locale.getpreferredencoding()
@@ -784,15 +811,6 @@ class MainWindow(FluentWindow):
         self.check_for_updates()
         self.check_Bloret_version()
         
-        # 设置窗口标题和图标
-        update_progress({'value': 50 / 100, 'valueStringOverride': '5/10', 'status': '设置窗口标题和图标'})
-        self.setWindowTitle("Bloret Launcher")
-        icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
-        if os.path.exists(icon_path):
-            self.log(f"图标路径存在: {icon_path}")
-        else:
-            self.log(f"图标路径不存在: {icon_path}", logging.ERROR)
-        self.setWindowIcon(QIcon(icon_path))
 
         # 初始化其他属性
         update_progress({'value': 60 / 100, 'valueStringOverride': '6/10', 'status': '初始化其他属性'})
@@ -936,6 +954,7 @@ class MainWindow(FluentWindow):
         base_width, base_height = 800, 600  # 基准尺寸
         self.scale_factor = self.config.get('size', 90) / 100.0
         scaled_width = int(base_width * self.scale_factor)
+        os.environ['QT_SCALE_FACTOR'] = str(self.scale_factor)
         scaled_height = int(base_height * self.scale_factor)
 
         self.resize(scaled_width, scaled_height)
@@ -944,7 +963,7 @@ class MainWindow(FluentWindow):
         self.layout().activate()
 
         # 调用侧边栏缩放函数
-        # self.apply_sidebar_scaling()
+        self.apply_sidebar_scaling()
 
     def apply_sidebar_scaling(self):
         base_sidebar_width = 300  # 设置一个基准宽度
@@ -961,12 +980,12 @@ class MainWindow(FluentWindow):
         else:
             self.log("NavigationInterface does not support collapse", logging.ERROR)
 
-        # 可选：设置最小展开宽度并强制展开
+        # 可选：设置最小展开宽度
         base_window_width = 900
         scaled_min_expand_width = int(base_window_width * size)
         self.resize(int(base_window_width * size), int(700 * size))  # 调整窗口大小
         self.navigationInterface.setMinimumExpandWidth(scaled_min_expand_width)
-        self.navigationInterface.expand(useAni=False)
+        # self.navigationInterface.expand(useAni=False)
     def resizeEvent(self, event):
         super().resizeEvent(event)
         icon_size = int(64 * self.scale_factor)
@@ -2706,24 +2725,6 @@ if not check_write_permission():
 # 创建主窗口并显示
 window = MainWindow()
 window.show()
-
-# 检测是否重复运行
-if sys.platform == "win32":
-    mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\BloretLauncherMutex")
-    if mutex == 0:
-        log("创建互斥体失败")
-        sys.exit(1)
-    error = ctypes.windll.kernel32.GetLastError()
-    if error == 183:  # ERROR_ALREADY_EXISTS
-        log("检测到程序重复运行")
-        if not window.config.get('repeat_run', False):
-            log("重复运行被禁用：检测到程序已运行，退出新实例")
-            w = Dialog("Bloret Launcher 已阻止了重复打开软件的操作", "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中设置允许重复运行。")
-            if w.exec():
-                print('确认')
-            ctypes.windll.kernel32.CloseHandle(mutex)
-            sys.exit(0)
-
 
 scale_factor = window.scale_factor
 os.environ["QT_SCALE_FACTOR"] = str(scale_factor)

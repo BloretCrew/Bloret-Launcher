@@ -5,6 +5,12 @@ import subprocess
 with open('config.json', 'r', encoding='utf-8') as config_file:
     config = json.load(config_file)
 
+# 修改指定字段
+config['first-run'] = True
+config['show_runtime_do'] = True
+config['whenCWopen_BLopen'] = True
+config['repeat_run'] = False
+
 # 获取 ver 值并转换为字符串
 version = config.get('ver', '')
 version_str = str(version)
@@ -25,3 +31,8 @@ with open(setup_file_path, 'w', encoding='utf-8') as setup_file:
     setup_file.writelines(setup_content)
 
 print(f"Updated MyAppVersion to {version_str} in {setup_file_path}")
+# 保存修改后的 config.json
+with open('config.json', 'w', encoding='utf-8') as config_file:
+    json.dump(config, config_file, indent=4)
+
+print("Config values updated successfully.")
