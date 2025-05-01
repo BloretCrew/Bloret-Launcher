@@ -578,7 +578,8 @@ def restart():
     log('重启程序')
     # if share.isAttached():
     #     share.detach()  # 释放共享内存
-    os.execl(sys.executable, sys.executable, *sys.argv)
+    # os.execl(sys.executable, sys.executable, *sys.argv)
+    subprocess.Popen(["powershell", "-ExecutionPolicy", "Bypass", "-File", "restart.ps1"])
 class SystemTrayIcon(QSystemTrayIcon):
     """ 系统托盘图标 """
     def __init__(self, parent=None):
