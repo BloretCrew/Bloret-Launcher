@@ -1,11 +1,11 @@
 from datetime import datetime
-from PyQt5.QtWidgets import QSystemTrayIcon, QAction, QMenu, QDialog, QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QPlainTextEdit, QCheckBox
-from qfluentwidgets import SpinBox, MessageBox, TitleLabel, SubtitleLabel, MessageBoxBase, NavigationInterface, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, ProgressBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, PrimaryPushButton, Flyout, FlyoutAnimationType, FluentIcon, PlainTextEdit, PushButton, CheckBox, SystemTrayMenu, Action, setThemeColor, FluentTranslator
+from PyQt5.QtWidgets import QSystemTrayIcon, QDialog, QApplication, QPushButton, QVBoxLayout, QWidget, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QCheckBox
+from qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit,  SystemTrayMenu, Action, setThemeColor, FluentTranslator
 from PyQt5 import uic
-from PyQt5.QtGui import QIcon, QDesktopServices, QCursor, QColor, QPalette, QMovie, QPixmap
-from PyQt5.QtCore import QPoint, QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
+from PyQt5.QtGui import QIcon, QDesktopServices, QColor, QPalette, QPixmap
+from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
 from modules.win11toast import toast, notify, update_progress
-import ctypes.wintypes,ctypes,socket,re,locale,sys,logging,os,requests,base64,json,configparser,subprocess,zipfile,time,shutil,platform,traceback
+import ctypes.wintypes,ctypes,socket,re,locale,sys,logging,os,requests,base64,json,subprocess,zipfile,time,shutil,traceback
 import sip # type: ignore
 from win32com.client import Dispatch
 import threading
@@ -934,6 +934,7 @@ class MainWindow(FluentWindow):
         # 优化窗口缩放逻辑（替换原有resize调用）
     def apply_scale(self):
         base_width, base_height = 800, 600  # 基准尺寸
+        self.scale_factor = self.config.get('size', 90) / 100.0
         scaled_width = int(base_width * self.scale_factor)
         scaled_height = int(base_height * self.scale_factor)
 
@@ -941,6 +942,31 @@ class MainWindow(FluentWindow):
 
         # 强制控件重新布局
         self.layout().activate()
+
+        # 调用侧边栏缩放函数
+        # self.apply_sidebar_scaling()
+
+    def apply_sidebar_scaling(self):
+        base_sidebar_width = 300  # 设置一个基准宽度
+        size = self.scale_factor   # 使用已有的 scale_factor 属性
+
+        scaled_sidebar_width = int(base_sidebar_width * size)
+        self.navigationInterface.setExpandWidth(scaled_sidebar_width)
+        if hasattr(self.navigationInterface, 'setCollapseWidth'):
+            self.navigationInterface.setCollapseWidth(int(scaled_sidebar_width * size))
+        else:
+            self.log("NavigationInterface does not support setCollapseWidth", logging.ERROR)
+        if hasattr(self.navigationInterface, 'collapse'):
+            self.navigationInterface.collapse(useAni=False)  # 默认收缩
+        else:
+            self.log("NavigationInterface does not support collapse", logging.ERROR)
+
+        # 可选：设置最小展开宽度并强制展开
+        base_window_width = 900
+        scaled_min_expand_width = int(base_window_width * size)
+        self.resize(int(base_window_width * size), int(700 * size))  # 调整窗口大小
+        self.navigationInterface.setMinimumExpandWidth(scaled_min_expand_width)
+        self.navigationInterface.expand(useAni=False)
     def resizeEvent(self, event):
         super().resizeEvent(event)
         icon_size = int(64 * self.scale_factor)
@@ -2642,9 +2668,12 @@ isdarktheme = is_dark_theme()
 log(f"当前主题:{isdarktheme}")
 LM_Download_Way,LM_Download_Way_list,LM_Download_Way_version,LM_Download_Way_minecraft=check_Light_Minecraft_Download_Way()
 
-# 先设置高DPI属性
-QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+# 适配高DPI缩放
+QApplication.setHighDpiScaleFactorRoundingPolicy(
+    Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+
 
 # 创建 QApplication 实例
 app = QApplication(["Bloret Launcher"])
