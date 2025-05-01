@@ -574,6 +574,11 @@ def BL_download(version, LM_download_way_choose, parent):
     download_dialog.exec()
 
     return 0
+def restart():
+    log('重启程序')
+    # if share.isAttached():
+    #     share.detach()  # 释放共享内存
+    os.execl(sys.executable, sys.executable, *sys.argv)
 class SystemTrayIcon(QSystemTrayIcon):
     """ 系统托盘图标 """
     def __init__(self, parent=None):
@@ -601,7 +606,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.menu.addMenu(launch_menu)
 
         self.menu.addActions([
-            # Action('🔄️  重启程序', triggered=os.execl(sys.executable, sys.executable, *sys.argv)),
+            Action('🔄️  重启程序', triggered=lambda: restart()),
             Action('✅  显示窗口', triggered=self.main_window.show_main_window),
             Action('❎  退出程序', triggered=QApplication.quit)
         ])
