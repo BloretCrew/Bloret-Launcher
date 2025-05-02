@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>695</width>
-    <height>733</height>
+    <height>950</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -46,7 +46,7 @@
         <x>0</x>
         <y>0</y>
         <width>677</width>
-        <height>672</height>
+        <height>889</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -563,6 +563,206 @@
            </widget>
           </item>
          </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget_6">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_7">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_10">
+            <item>
+             <widget class="StrongBodyLabel" name="StrongBodyLabel_21">
+              <property name="text">
+               <string>在首页上 显示 Minecraft 账户登录方式</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_10">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>展示你为微软登录或是离线登录</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="150">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_14">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>269</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="SwitchButton" name="home_show_login_mod_button">
+            <property name="spacing">
+             <number>12</number>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>隐藏</string>
+            </property>
+            <property name="onText">
+             <string>展示</string>
+            </property>
+            <property name="offText">
+             <string>隐藏</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget_5">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_9">
+            <item>
+             <widget class="StrongBodyLabel" name="StrongBodyLabel_20">
+              <property name="text">
+               <string>本地模式</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_8">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>不连接一部分的互联网，不允许使用 PCFS 服务。</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="150">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_13">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>269</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="SwitchButton" name="localmod_button">
+            <property name="spacing">
+             <number>12</number>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>关闭</string>
+            </property>
+            <property name="onText">
+             <string>启用</string>
+            </property>
+            <property name="offText">
+             <string>关闭</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="CaptionLabel" name="CaptionLabel_9">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>设置界面大部分内容需要重启程序后生效。</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="lightColor" stdset="0">
+          <color alpha="150">
+           <red>0</red>
+           <green>0</green>
+           <blue>0</blue>
+          </color>
+         </property>
+         <property name="darkColor" stdset="0">
+          <color alpha="200">
+           <red>255</red>
+           <green>255</green>
+           <blue>255</blue>
+          </color>
+         </property>
         </widget>
        </item>
        <item>

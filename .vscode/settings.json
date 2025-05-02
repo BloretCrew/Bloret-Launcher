@@ -1,6 +1,6 @@
 {
     "python.analysis.typeCheckingMode": "off",
-    "python.analysis.autoImportCompletions": false,
+    "python.analysis.autoImportCompletions": true,
     "python.testing.unittestArgs": [
         "-v",
         "-s",

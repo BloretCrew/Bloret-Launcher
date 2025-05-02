@@ -1,6 +1,6 @@
 from datetime import datetime
 from PyQt5.QtWidgets import QSystemTrayIcon, QDialog, QApplication, QPushButton, QVBoxLayout, QWidget, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QCheckBox
-from qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit,  SystemTrayMenu, Action, setThemeColor, FluentTranslator
+from qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit,  SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIconBase, FluentIcon
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QColor, QPalette, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
@@ -177,7 +177,8 @@ def check_Light_Minecraft_Download_Way():
         else:
             log("无法获取 Light-Minecraft-Download-Way", logging.ERROR)
     except requests.RequestException as e:
-        log(f"获取 Light-Minecraft-Download-Way时发生错误: {e}", logging.ERROR)
+        # handle_exception(e)
+        log(f"获取 Light-Minecraft-Download-Way 时发生错误: {e}", logging.ERROR)
 
 def BL_download(version, LM_download_way_choose, parent):
     class BLDownloadDialog(QDialog):
@@ -717,7 +718,6 @@ class MainWindow(FluentWindow):
         # 初始化配置文件
         with open('config.json', 'r', encoding='utf-8') as f:
             self.config = json.load(f)
-        Bloret_PassPort_User_UserName = self.config.get('Bloret_PassPort_UserName', '未登录')
 
         # 获取系统主题颜色
         theme_color = get_system_theme_color()
@@ -863,7 +863,11 @@ class MainWindow(FluentWindow):
             json.dump(self.config, open('config.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
             if hasattr(self, 'config') else None
         ))
-
+    def refresh_home_minecraft_account(self,player_name,widget):
+        Minecraft_account = widget.findChild(QLabel, "Minecraft_account")
+        # if Minecraft_account:
+        log(f"设置主页玩家名称：{player_name}，Minecraft_account:{Minecraft_account}")
+        Minecraft_account.setText(f"{player_name}")
     def load_cmcl_data(self):
         self.log(f"开始向 cmcl.json 读取数据")
         try:
@@ -891,6 +895,8 @@ class MainWindow(FluentWindow):
 
             self.log(f"读取到的 playerName: {self.player_name}")
             self.log(f"读取到的 loginMethod: {self.login_mod}")
+            return self.player_name
+            # self.refresh_home_minecraft_account(self.player_name)
             
         except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
             self.log(f"读取 cmcl.json 失败: {e}", logging.ERROR)
@@ -918,19 +924,19 @@ class MainWindow(FluentWindow):
         self.settingsInterface.setObjectName("settings")
         self.infoInterface.setObjectName("info")
         if isdarktheme:
-            self.addSubInterface(self.homeInterface, QIcon("icons/dark/bloret.png"), "主页")
-            self.addSubInterface(self.downloadInterface, QIcon("icons/dark/download.png"), "下载")
-            self.addSubInterface(self.toolsInterface, QIcon("icons/dark/tools.png"), "工具")
-            self.addSubInterface(self.passportInterface, QIcon("icons/dark/passport.png"), "通行证", NavigationItemPosition.BOTTOM)
-            self.addSubInterface(self.settingsInterface, QIcon("icons/dark/settings.png"), "设置", NavigationItemPosition.BOTTOM)
-            self.addSubInterface(self.infoInterface, QIcon("icons/dark/info.png"), "关于", NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.homeInterface, QIcon("icons/dark/bloret.ico"), "主页")
+            self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, "下载")
+            self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, "工具")
+            self.addSubInterface(self.passportInterface, FluentIcon.FINGERPRINT, "通行证", NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, "设置", NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.infoInterface, FluentIcon.INFO, "关于", NavigationItemPosition.BOTTOM)
         else:  
-            self.addSubInterface(self.homeInterface, QIcon("icons/bloret.png"), "主页")
-            self.addSubInterface(self.downloadInterface, QIcon("icons/download.png"), "下载")
-            self.addSubInterface(self.toolsInterface, QIcon("icons/tools.png"), "工具")
-            self.addSubInterface(self.passportInterface, QIcon("icons/passport.png"), "通行证", NavigationItemPosition.BOTTOM)
-            self.addSubInterface(self.settingsInterface, QIcon("icons/settings.png"), "设置", NavigationItemPosition.BOTTOM)
-            self.addSubInterface(self.infoInterface, QIcon("icons/info.png"), "关于", NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.homeInterface, QIcon("icons/bloret.ico"), "主页")
+            self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, "下载")
+            self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, "工具")
+            self.addSubInterface(self.passportInterface, FluentIcon.FINGERPRINT, "通行证", NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, "设置", NavigationItemPosition.BOTTOM)
+            self.addSubInterface(self.infoInterface, FluentIcon.INFO, "关于", NavigationItemPosition.BOTTOM)
         self.load_ui("ui/home.ui", parent=self.homeInterface)
         self.load_ui("ui/download.ui", parent=self.downloadInterface)
         self.load_ui("ui/tools.ui", parent=self.toolsInterface)
@@ -1308,11 +1314,14 @@ class MainWindow(FluentWindow):
             notification_switch.setChecked(True)  # 将Notification开关设置成开
 
         fabric_ver = ["不安装"]
-        response = requests.get("https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader")
-        if response.status_code == 200:
-            data = response.json()
-            for item in data:
-                fabric_ver.append(item["version"])
+        if not config.get('localmod', False):
+            response = requests.get("https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader")
+            if response.status_code == 200:
+                data = response.json()
+                for item in data:
+                    fabric_ver.append(item["version"])
+        else:
+            log("本地模式已启用，获取 Minecraft 版本 的过程已跳过。")
 
         fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
         if fabric_choose:
@@ -1729,7 +1738,6 @@ class MainWindow(FluentWindow):
             else:
                 error = process.stderr.read()
                 self.finished.emit(False, f"登录失败: {error}")
-
     class OfflineLoginThread(QThread):
         finished = pyqtSignal(bool, str)
         
@@ -1793,38 +1801,47 @@ class MainWindow(FluentWindow):
                 except Exception as e:
                     self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
         elif login_way_choose.currentText() == "微软登录":
-            login_way_choose = widget.findChild(ComboBox, "login_way")
-            if not login_way_choose or login_way_choose.currentText() != "微软登录":
-                return
+            if not config.get('localmod', False):
+                login_way_choose = widget.findChild(ComboBox, "login_way")
+                if not login_way_choose or login_way_choose.currentText() != "微软登录":
+                    return
 
-            # 覆盖cmcl.json
-            try:
-                shutil.copyfile('cmcl.blank.json', 'cmcl.json')
-                self.log("成功覆盖cmcl.json文件")
-            except Exception as e:
-                self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
-                return
+                # 覆盖cmcl.json
+                try:
+                    shutil.copyfile('cmcl.blank.json', 'cmcl.json')
+                    self.log("成功覆盖cmcl.json文件")
+                except Exception as e:
+                    self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
+                    return
 
-            # 创建并启动登录线程
-            self.microsoft_login_thread = self.MicrosoftLoginThread()
-            self.microsoft_login_thread.log_method = self.log
-            self.microsoft_login_thread.finished.connect(
-                lambda success, msg: self.on_login_finished(widget, success, msg)
-            )
+                # 创建并启动登录线程
+                self.microsoft_login_thread = self.MicrosoftLoginThread()
+                self.microsoft_login_thread.log_method = self.log
+                self.microsoft_login_thread.finished.connect(
+                    lambda success, msg: self.on_login_finished(widget, success, msg)
+                )
+                
+                # 显示加载提示
+                self.login_tip = InfoBar(
+                    icon=InfoBarIcon.WARNING,
+                    title='⏱️ 正在登录微软账户',
+                    content='请按照浏览器中的提示完成登录...',
+                    isClosable=True,  # 允许用户手动关闭
+                    position=InfoBarPosition.TOP,
+                    duration=5000,  # 设置自动关闭时间
+                    parent=self
+                )
+                self.login_tip.show()
+                
+                self.microsoft_login_thread.start()
             
-            # 显示加载提示
-            self.login_tip = InfoBar(
-                icon=InfoBarIcon.WARNING,
-                title='⏱️ 正在登录微软账户',
-                content='请按照浏览器中的提示完成登录...',
-                isClosable=True,  # 允许用户手动关闭
-                position=InfoBarPosition.TOP,
-                duration=5000,  # 设置自动关闭时间
-                parent=self
-            )
-            self.login_tip.show()
-            
-            self.microsoft_login_thread.start()
+            else:
+                log("本地模式已启用，无法使用微软登录。")
+                w = Dialog("您已启用本地模式", "Bloret Launcher 在本地模式下无法进行微软登录，\n因为该操作需要互联网\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。")
+                if w.exec():
+                    print('确认')
+                else:
+                    print('取消')
 
     def on_login_finished(self, widget, success, message):
         # 添加有效性检查
@@ -1836,7 +1853,8 @@ class MainWindow(FluentWindow):
         
         # 处理结果
         if success:
-            self.load_cmcl_data()
+            player_name = self.load_cmcl_data()
+            self.refresh_home_minecraft_account(player_name,self.homeInterface)
             self.update_passport_ui(widget)
             InfoBar.success(
                 title='✅ 登录成功',
@@ -1956,49 +1974,55 @@ class MainWindow(FluentWindow):
                 json.dump(self.config, f, ensure_ascii=False, indent=4)
 
     def check_Bloret_version(self):
-        try:
-            response = requests.get(server_ip + "api/bloret-version")
-            if response.status_code == 200:
-                data = response.json()
-                ver_id_bloret.clear()
-                ver_id_bloret.extend(data.get("Bloret-versions", []))
-                self.log(f"成功获取 Bloret 版本列表: {ver_id_bloret}")
-            else:
-                self.log("无法获取 Bloret 版本列表", logging.ERROR)
-        except requests.RequestException as e:
-            self.log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
+        if not config.get('localmod', False):
+            try:
+                response = requests.get(server_ip + "api/bloret-version")
+                if response.status_code == 200:
+                    data = response.json()
+                    ver_id_bloret.clear()
+                    ver_id_bloret.extend(data.get("Bloret-versions", []))
+                    self.log(f"成功获取 Bloret 版本列表: {ver_id_bloret}")
+                else:
+                    self.log("无法获取 Bloret 版本列表", logging.ERROR)
+            except requests.RequestException as e:
+                self.log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
+        else:
+            log("本地模式已启用，获取 Bloret 版本列表 的过程已跳过。")
     def check_for_updates(self):
-        try:
-            # 插入 socket 检查
-            socket.setdefaulttimeout(3)
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(('pcfs.top', 2))
-            BL_latest_ver, BL_update_text = self.get_latest_version()
-            self.log(f"最新正式版: {BL_latest_ver}")
-            BL_ver = float(self.config.get('ver', '0.0'))  # 从config.json读取当前版本
-            if BL_ver < float(BL_latest_ver):
-                self.log(f"当前版本不是最新版，请更新到 {BL_latest_ver} 版本", logging.WARNING)
+        if not config.get('localmod', False):
+            try:
+                # 插入 socket 检查
+                # socket.setdefaulttimeout(3)
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(('pcfs.top', 2))
+                BL_latest_ver, BL_update_text = self.get_latest_version()
+                self.log(f"最新正式版: {BL_latest_ver}")
+                BL_ver = float(self.config.get('ver', '0.0'))  # 从config.json读取当前版本
+                if BL_ver < float(BL_latest_ver):
+                    self.log(f"当前版本不是最新版，请更新到 {BL_latest_ver} 版本", logging.WARNING)
 
-                # 使用非模态对话框
+                    # 使用非模态对话框
+                    w = MessageBox(
+                        title="当前版本不是最新版",
+                        content=f'Bloret Launcher 貌似有个新新新版本\n你似乎正在运行 {BL_ver}，但事实上，百络谷启动器 {BL_latest_ver} 来啦！按下按钮自动更新。\n这个更新... {BL_update_text}',
+                        parent=self
+                    )
+                    w.show()
+
+                    # 连接按钮点击事件以触发更新
+                    w.yesButton.clicked.connect(self.update_to_latest_version)
+            except Exception as e:
+                self.log(f"检查更新时发生错误: {e}", logging.ERROR)
+                
+                self.log("无法连接到 pcfs.top", logging.ERROR)
                 w = MessageBox(
-                    title="当前版本不是最新版",
-                    content=f'Bloret Launcher 貌似有个新新新版本\n你似乎正在运行 {BL_ver}，但事实上，百络谷启动器 {BL_latest_ver} 来啦！按下按钮自动更新。\n这个更新... {BL_update_text}',
+                    title="无法连接到 pcfs.top",
+                    content=f'您无法连接到 PCFS 服务器来检查版本更新\n这可能是由于您的网络不佳？或是 PCFS 服务出现故障？\n请检查您的网络连接，或者稍后再试。\n我们等待了 3 秒，但它只显示：{e}',
                     parent=self
                 )
+                update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': '无法连接到服务器 ❌'})
                 w.show()
-
-                # 连接按钮点击事件以触发更新
-                w.yesButton.clicked.connect(self.update_to_latest_version)
-        except Exception as e:
-            self.log(f"检查更新时发生错误: {e}", logging.ERROR)
-            
-            self.log("无法连接到 pcfs.top", logging.ERROR)
-            w = MessageBox(
-                title="无法连接到 pcfs.top",
-                content=f'您无法连接到 PCFS 服务器来检查版本更新\n这可能是由于您的网络不佳？或是 PCFS 服务出现故障？\n请检查您的网络连接，或者稍后再试。\n我们等待了 3 秒，但它只显示：{e}',
-                parent=self
-            )
-            update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': '无法连接到服务器 ❌'})
-            w.show()
+        else:
+            log("本地模式已启用，检查更新 的过程已跳过。")
     def update_to_latest_version(self):
         update_script_path = os.path.join(os.getcwd(), "update.ps1")
         try:
@@ -2254,92 +2278,101 @@ class MainWindow(FluentWindow):
         )
         self.log("已退出登录")
     def Bloret_PassPort_Account_login(self, widget):
-        class CustomLoginDialog(MessageBoxBase):
-            """ 自定义登录对话框 """
-            def __init__(self, parent=None):
-                super().__init__(parent)
-                
-                # 用户名组件
-                self.usernameLabel = SubtitleLabel('用户名', self)
-                self.usernameLineEdit = LineEdit(self)
-                self.usernameLineEdit.setPlaceholderText('请输入用户名')
-                
-                # 密码组件
-                self.passwordLabel = SubtitleLabel('密码', self)
-                self.passwordLineEdit = LineEdit(self)
-                self.passwordLineEdit.setPlaceholderText('请输入密码')
-                self.passwordLineEdit.setEchoMode(LineEdit.Password)
-                
-                # 添加到布局
-                self.viewLayout.addWidget(self.usernameLabel)
-                self.viewLayout.addWidget(self.usernameLineEdit)
-                self.viewLayout.addWidget(self.passwordLabel)
-                self.viewLayout.addWidget(self.passwordLineEdit)
-                
-                self.widget.setMinimumWidth(350)
+        if not config.get('localmod', False):
+            class CustomLoginDialog(MessageBoxBase):
+                """ 自定义登录对话框 """
+                def __init__(self, parent=None):
+                    super().__init__(parent)
+                    
+                    # 用户名组件
+                    self.usernameLabel = SubtitleLabel('用户名', self)
+                    self.usernameLineEdit = LineEdit(self)
+                    self.usernameLineEdit.setPlaceholderText('请输入用户名')
+                    
+                    # 密码组件
+                    self.passwordLabel = SubtitleLabel('密码', self)
+                    self.passwordLineEdit = LineEdit(self)
+                    self.passwordLineEdit.setPlaceholderText('请输入密码')
+                    self.passwordLineEdit.setEchoMode(LineEdit.Password)
+                    
+                    # 添加到布局
+                    self.viewLayout.addWidget(self.usernameLabel)
+                    self.viewLayout.addWidget(self.usernameLineEdit)
+                    self.viewLayout.addWidget(self.passwordLabel)
+                    self.viewLayout.addWidget(self.passwordLineEdit)
+                    
+                    self.widget.setMinimumWidth(350)
 
-            def validate(self):
-                """ 验证输入不能为空 """
-                username = self.usernameLineEdit.text().strip()
-                password = self.passwordLineEdit.text().strip()
-                return bool(username and password)
-        """ 登录账户方法 """
-        # 创建并显示自定义对话框
-        dialog = CustomLoginDialog(self)
-        if dialog.exec():  # 用户点击确认
-            username = dialog.usernameLineEdit.text().strip()
-            password = dialog.passwordLineEdit.text().strip()
+                def validate(self):
+                    """ 验证输入不能为空 """
+                    username = self.usernameLineEdit.text().strip()
+                    password = self.passwordLineEdit.text().strip()
+                    return bool(username and password)
+            """ 登录账户方法 """
+            # 创建并显示自定义对话框
+            dialog = CustomLoginDialog(self)
+            if dialog.exec():  # 用户点击确认
+                username = dialog.usernameLineEdit.text().strip()
+                password = dialog.passwordLineEdit.text().strip()
 
-            try:
-                response = requests.get(
-                    f"{server_ip}api/login",
-                    params={"name": username, "password": password}
-                )
-                response_data = response.json()
-                if response_data.get("status") is False:
-                    error_message = response_data.get('message', '未知错误')
-                    log(f"登录失败:{error_message}", logging.ERROR)
+                try:
+                    response = requests.get(
+                        f"{server_ip}api/login",
+                        params={"name": username, "password": password}
+                    )
+                    response_data = response.json()
+                    if response_data.get("status") is False:
+                        error_message = response_data.get('message', '未知错误')
+                        log(f"登录失败:{error_message}", logging.ERROR)
+                        InfoBar.error(
+                            title='❌ 登录失败',
+                            content=response_data.get("message", "未知错误"),
+                            isClosable=True,
+                            position=InfoBarPosition.TOP,
+                            duration=5000,
+                            parent=self
+                        )
+                        return
+                    elif response_data.get("status") is True:
+                        # 更新配置并记录日志
+                        self.config['Bloret_PassPort_UserName'] = username
+                        self.config['Bloret_PassPort_PassWord'] = password
+                        self.config['Bloret_PassPort_Admin'] = response_data.get("admin", False)
+                        self.log(f"登录成功: 用户名={username}", logging.INFO)
+                        
+                        # 更新界面显示
+                        Bloret_PassPort_User_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
+                        Bloret_PassPort_User_UserName.setText(username)
+
+                        open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+                        InfoBar.success(
+                            title='✅ 登录成功',
+                            content="",
+                            isClosable=True,
+                            position=InfoBarPosition.TOP,
+                            duration=5000,
+                            parent=self
+                        )
+                except Exception as e:
+                    log("请求失败: %s" % str(e), logging.ERROR)
                     InfoBar.error(
                         title='❌ 登录失败',
-                        content=response_data.get("message", "未知错误"),
+                        content=f"请求失败: {str(e)}",
                         isClosable=True,
                         position=InfoBarPosition.TOP,
                         duration=5000,
                         parent=self
                     )
-                    return
-                elif response_data.get("status") is True:
-                    # 更新配置并记录日志
-                    self.config['Bloret_PassPort_UserName'] = username
-                    self.config['Bloret_PassPort_PassWord'] = password
-                    self.config['Bloret_PassPort_Admin'] = response_data.get("admin", False)
-                    self.log(f"登录成功: 用户名={username}", logging.INFO)
-                    
-                    # 更新界面显示
-                    Bloret_PassPort_User_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
-                    Bloret_PassPort_User_UserName.setText(username)
-
-                    open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
-                    InfoBar.success(
-                        title='✅ 登录成功',
-                        content="",
-                        isClosable=True,
-                        position=InfoBarPosition.TOP,
-                        duration=5000,
-                        parent=self
-                    )
-            except Exception as e:
-                log("请求失败: %s" % str(e), logging.ERROR)
-                InfoBar.error(
-                    title='❌ 登录失败',
-                    content=f"请求失败: {str(e)}",
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
+            else:
+                self.log("登录对话框被取消", logging.INFO)
         else:
-            self.log("登录对话框被取消", logging.INFO)
+            log("本地模式已启用，无法进行 Bloret 通行证登录。")
+            w = Dialog("您已启用本地模式", "Bloret Launcher 在本地模式下无法登录 Bloret 通行证，\n因为该操作需要互联网\n如果需要登录，请到设置界面关闭本地模式。")
+            if w.exec():
+                print('确认')
+            else:
+                print('取消')
+
     def show_main_window(self):
         """显示主窗口"""
         self.show()
@@ -2426,7 +2459,15 @@ class MainWindow(FluentWindow):
         #     run_choose.addItems(set_list)
 
         # tabBar = widget.findChild(TabBar, "runs")
-
+        Bloret_PassPort_Name = widget.findChild(QLabel, "Bloret_PassPort_Name")
+        if Bloret_PassPort_Name:
+            Bloret_PassPort_Name.setText(f"{self.config.get('Bloret_PassPort_UserName', '未登录')}")
+        Minecraft_account = widget.findChild(QLabel, "Minecraft_account")
+        if Minecraft_account:
+            if self.config.get('home_show_login_mod', False):
+                Minecraft_account.setText(f"{self.player_name} ({self.login_mod})")
+            else:
+                Minecraft_account.setText(f"{self.player_name}")
     def log_output(self, output):
         if output:
             self.log(output.strip())
@@ -2604,6 +2645,31 @@ class MainWindow(FluentWindow):
         BL_version = widget.findChild(QLabel, "BL_version")
         if BL_version:
             BL_version.setText(f"{self.config.get('ver', '未知')}")
+        localmod_button = widget.findChild(SwitchButton, "localmod_button")
+        if localmod_button:
+            localmod_button.setChecked(self.config.get('localmod', False))
+            localmod_button.checkedChanged.connect(lambda state: (
+                self.config.update(repeat_run=state),
+                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+                self.log(f"本地模式: {'启用' if state else '禁用'}")
+            ))
+        home_show_login_mod_button = widget.findChild(SwitchButton, "home_show_login_mod_button")
+        if home_show_login_mod_button:
+            home_show_login_mod_button.setChecked(self.config.get('home_show_login_mod', False))
+            home_show_login_mod_button.checkedChanged.connect(lambda state: (
+                self.config.update(home_show_login_mod=state),
+                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+                self.log(f"在首页上 显示 Minecraft 账户登录方式: {'启用' if state else '禁用'}")
+            ))
+    # def setlockconfig(self,widget,button,ConfigThing):
+    #     button = widget.findChild(SwitchButton, "button")
+    #     if button:
+    #         button.setChecked(self.config.get(ConfigThing, False))
+    #         button.checkedChanged.connect(lambda state: (
+    #             self.config.update("ConfigThing"=state),
+    #             open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+    #             self.log(f"在首页上 显示 Minecraft 账户登录方式: {'启用' if state else '禁用'}")
+    #         ))
     def on_light_dark_changed(self, mode):
         if mode == "跟随系统":
             self.apply_theme()
@@ -2688,10 +2754,18 @@ class MainWindow(FluentWindow):
         else:
             button.setText("清空日志")
  
+# 初始化配置文件
+with open('config.json', 'r', encoding='utf-8') as f:
+    config = json.load(f)
+
 # 获取系统深浅色主题
 isdarktheme = is_dark_theme()
 log(f"当前主题:{isdarktheme}")
-LM_Download_Way,LM_Download_Way_list,LM_Download_Way_version,LM_Download_Way_minecraft=check_Light_Minecraft_Download_Way()
+
+if not config.get('localmod', False):
+    LM_Download_Way,LM_Download_Way_list,LM_Download_Way_version,LM_Download_Way_minecraft=check_Light_Minecraft_Download_Way(config)
+else:
+    log("本地模式已启用，获取 Light-Minecraft-Download-Way 的过程已跳过。")
 
 # 适配高DPI缩放
 QApplication.setHighDpiScaleFactorRoundingPolicy(

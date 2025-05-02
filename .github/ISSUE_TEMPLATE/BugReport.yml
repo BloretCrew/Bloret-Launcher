@@ -73,7 +73,7 @@ body:
     id: stacktrace
     attributes:
       label: 堆栈跟踪
-      description: 请将 log 文件夹下发生问题的那次 日志的内容复制到这里，便于开发者定位 Bug。
+      description: 请将 log 文件夹下发生问题的那次 日志的内容复制到这里，便于开发者定位 Bug。(日志文件位于 `%appdata%\Bloret-Launcher\log` ,即 `C:\Users\{用户名}\AppData\Roaming\Bloret-Launcher\log` 下)
       render: shell
 
   - type: input
@@ -81,7 +81,7 @@ body:
     attributes:
       label: 应用版本
       description: 您当前使用的 Bloret 启动器 版本号，可以在【设置】中查看，若使用的是最新构建，请留空。
-      placeholder: 如：4.0
+      placeholder: 如：6.2
     validations:
       required: false
 
@@ -91,5 +91,4 @@ body:
       label: 操作系统版本
       description: |
         若您当前使用的操作系统为 Windows，可以运行 `winver.exe` 查看；其他系统的查询方式可上网查阅。
-        如果您不能肯定此 Bug 与操作系统无关，请填写此项。
       placeholder: 如：Windows 11
