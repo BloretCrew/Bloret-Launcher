@@ -1,15 +1,21 @@
 import json
-import subprocess
 
 # 读取 config.json 文件
 with open('config.json', 'r', encoding='utf-8') as config_file:
     config = json.load(config_file)
 
-# 修改指定字段
+# 修改 config.json 的指定字段
 config['first-run'] = True
-config['show_runtime_do'] = True
-config['whenCWopen_BLopen'] = True
+config['size'] = 85
 config['repeat_run'] = False
+config['show_runtime_do'] = True
+config['Customize'] = []
+config['Bloret_PassPort_UserName'] = "未登录"
+config['Bloret_PassPort_PassWord'] = ""
+config['Bloret_PassPort_Admin'] = False
+config['whenCWopen_BLopen'] = True
+config['home_show_login_mod'] = True
+config['localmod'] = False
 
 # 获取 ver 值并转换为字符串
 version = config.get('ver', '')

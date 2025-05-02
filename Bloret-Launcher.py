@@ -1,15 +1,18 @@
-from datetime import datetime
 from PyQt5.QtWidgets import QSystemTrayIcon, QDialog, QApplication, QPushButton, QVBoxLayout, QWidget, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QCheckBox
-from qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit,  SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIconBase, FluentIcon
+from modules.qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QColor, QPalette, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
 from modules.win11toast import toast, notify, update_progress
-import ctypes.wintypes,ctypes,socket,re,locale,sys,logging,os,requests,base64,json,subprocess,zipfile,time,shutil,traceback
+import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,subprocess,zipfile,time,shutil
 import sip # type: ignore
 from win32com.client import Dispatch
 import threading
 from concurrent.futures import ThreadPoolExecutor
+# 以下部分的导入是 Bloret Launcher 所有的
+from modules.log import log
+import modules.safe
+from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
 
 # 全局变量
 server_ip = "http://pcfs.top:2/"
@@ -32,136 +35,7 @@ LM_Download_Way = {}
 LM_Download_Way_list = []
 LM_Download_Way_version = {}
 LM_Download_Way_minecraft = {}
-def handle_exception(exc_type, exc_value, exc_traceback):
-    log("未捕获的异常:", logging.CRITICAL)
-    log("类型: {}".format(exc_type), logging.CRITICAL)
-    log("信息: {}".format(exc_value), logging.CRITICAL)
-    log("回溯: {}".format(traceback.format_tb(exc_traceback)), logging.CRITICAL)
-    w = Dialog("Bloret Launcher 发生了一些小问题...", "类型: {}\n信息: {}\n回溯: {}\n如果您认为这是 Bloret Launcher 的问题，请提交此问题。\n按下确认按钮将以上信息复制到剪贴板".format(exc_type, exc_value, traceback.format_tb(exc_traceback)))
-    w.setWindowIcon(QIcon('icons/bloret.png'))
-    w.setWindowTitle("Bloret Launcher")
-    if w.exec():
-        print('复制到剪贴板')
-        clipboard = QApplication.clipboard()
-        clipboard.setText("类型: {}\n信息: {}\n回溯: {}".format(exc_type, exc_value, ''.join(traceback.format_tb(exc_traceback))))
-    else:
-        print('取消')
-    sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
-sys.excepthook = handle_exception
-
-log_lock = threading.Lock()
-
-def log_thread_safe(message, level=logging.INFO):
-    with log_lock:
-        log(message, level)
-
-def get_system_theme_color():
-    """获取系统主题颜色"""
-    try:
-        # 定义注册表路径和键名
-        reg_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
-        reg_key = "AccentColor"
-
-        # 打开注册表键
-        hkey = ctypes.wintypes.HKEY()
-        if ctypes.windll.advapi32.RegOpenKeyExW(0x80000001, reg_path, 0, 0x20019, ctypes.byref(hkey)) != 0:
-            print("无法打开注册表键")
-            return "#0078D7"  # 默认蓝色
-
-        # 读取键值
-        value = ctypes.c_uint()
-        size = ctypes.c_uint(4)
-        if ctypes.windll.advapi32.RegQueryValueExW(hkey, reg_key, 0, None, ctypes.byref(value), ctypes.byref(size)) != 0:
-            print("无法读取注册表键值")
-            ctypes.windll.advapi32.RegCloseKey(hkey)
-            return "#0078D7"  # 默认蓝色
-
-        # 关闭注册表键
-        ctypes.windll.advapi32.RegCloseKey(hkey)
-
-        # 转换为 RGB 颜色代码
-        accent_color = value.value
-        red = (accent_color & 0xFF0000) >> 16
-        green = (accent_color & 0x00FF00) >> 8
-        blue = (accent_color & 0x0000FF)
-        return f"#{red:02X}{green:02X}{blue:02X}"
-    except Exception as e:
-        print(f"获取系统主题颜色时发生错误: {e}")
-        return "#0078D7"  # 默认蓝色
-
-def is_dark_theme():
-    try:
-        # 定义注册表路径和键名
-        reg_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
-        reg_key = "AppsUseLightTheme"
-        
-        # 打开注册表键
-        hkey = ctypes.wintypes.HKEY()
-        if ctypes.windll.advapi32.RegOpenKeyExW(0x80000001, reg_path, 0, 0x20019, ctypes.byref(hkey)) != 0:
-            print("无法打开注册表键")
-            return False
-        
-        # 读取键值
-        value = ctypes.c_int()
-        size = ctypes.c_uint(4)
-        if ctypes.windll.advapi32.RegQueryValueExW(hkey, reg_key, 0, None, ctypes.byref(value), ctypes.byref(size)) != 0:
-            print("无法读取注册表键值")
-            ctypes.windll.advapi32.RegCloseKey(hkey)
-            return False
-        
-        # 关闭注册表键
-        ctypes.windll.advapi32.RegCloseKey(hkey)
-        
-        # 返回主题状态
-        return value.value == 0  # 0 表示深色主题，1 表示浅色主题
-    except Exception as e:
-        print(f"检测主题时发生错误: {e}")
-        return False
-# 创建日志文件夹
-log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
-if not os.path.exists(log_folder):
-    os.makedirs(log_folder)
-
-# 设置日志配置
-log_filename = os.path.join(log_folder, f'Bloret_Launcher_log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-if not os.path.exists(log_filename):
-    with open(log_filename, 'w', encoding='utf-8') as f:
-        f.write('')  # 创建空日志文件
-logging.basicConfig(
-    filename=log_filename,
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    encoding='utf-8'
-)
-
-def log(message, level=logging.INFO):
-    print(message)
-    logging.log(level, message)
-    logging.getLogger().handlers[0].flush()  # 强制刷新日志
-def send_system_notification(title, message):
-    try:
-        toast(title, message, duration="short", icon={'src': 'icons/bloret.png','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
-    except Exception as e:
-        log(f"发送系统通知失败: {e}", logging.ERROR)
-def closeEvent(event):
-    for thread in threads:
-        if thread.isRunning():
-            thread.quit()  # 请求线程退出
-            thread.wait()  # 等待线程完全退出
-    event.accept()
-def check_write_permission():
-    # 检查当前目录的写入权限
-    try:
-        test_file = os.path.join(os.getcwd(), 'test_write.tmp')
-        with open(test_file, 'w') as f:
-            f.write('test')
-        os.remove(test_file)
-        print("当前目录具有写入权限")
-        return True
-    except PermissionError:
-        print("当前目录没有写入权限")
-        return False
 def check_Light_Minecraft_Download_Way():
     try:
         response = requests.get(server_ip + "api/Light-Minecraft-Download-Way")
@@ -575,6 +449,7 @@ def BL_download(version, LM_download_way_choose, parent):
     download_dialog.exec()
 
     return 0
+
 def restart():
     log('重启程序')
     # if share.isAttached():

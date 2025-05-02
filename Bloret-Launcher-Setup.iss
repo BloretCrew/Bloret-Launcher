@@ -1,6 +1,4 @@
-; 脚本由 Inno Setup 脚本向导生成。
-; 有关创建 Inno Setup 脚本文件的详细信息，请参阅帮助文档！
-
+; MyAppVersion 的值会由 Github Actions 自动修改
 #define MyAppName "Bloret Launcher"
 #define MyAppVersion "6.1"
 #define MyAppPublisher "Bloret"
@@ -59,6 +57,7 @@ Source: "output\cmcl_save.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\config.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\servers.dat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "output\restart.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\icons\*"; DestDir: "{app}\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "output\ui\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; 注意：不要在任何共享系统文件上使用 "Flags: ignoreversion"
