@@ -9,7 +9,7 @@ import sip # type: ignore
 from win32com.client import Dispatch
 import threading
 from concurrent.futures import ThreadPoolExecutor
-# 以下部分的导入是 Bloret Launcher 所有的
+# 以下导入的部分是 Bloret Launcher 所有的模块
 from modules.log import log
 import modules.safe
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
@@ -477,7 +477,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.menu.addMenu(launch_menu)
 
         self.menu.addActions([
-            Action('#️⃣  访问 BBS', triggered=lambda: self.open_BBBS_link()),
+            Action('🔡  访问 BBS', triggered=lambda: self.main_window.open_BBBS_link()),
             Action('🔄️  重启程序', triggered=lambda: restart()),
             Action('✅  显示窗口', triggered=self.main_window.show_main_window),
             Action('❎  退出程序', triggered=QApplication.quit)

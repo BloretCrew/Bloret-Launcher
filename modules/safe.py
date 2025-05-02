@@ -3,7 +3,7 @@ from qfluentwidgets import Dialog
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
 from modules.log import log
-
+from PyQt5 import uic
 def handle_exception(exc_type, exc_value, exc_traceback):
     log("未捕获的异常:", logging.CRITICAL)
     log("类型: {}".format(exc_type), logging.CRITICAL)
@@ -19,6 +19,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     else:
         print('取消')
     sys.__excepthook__(exc_type, exc_value, exc_traceback)
+    # uic.loadUi("ui/ERROR.ui")
 
 sys.excepthook = handle_exception
 
