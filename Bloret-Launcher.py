@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QSystemTrayIcon, QDialog, QApplication, QPushButton, QVBoxLayout, QWidget, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QCheckBox
-from modules.qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
+from qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon, QDesktopServices, QColor, QPalette, QPixmap
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
@@ -450,12 +450,6 @@ def BL_download(version, LM_download_way_choose, parent):
 
     return 0
 
-def restart():
-    log('重启程序')
-    # if share.isAttached():
-    #     share.detach()  # 释放共享内存
-    # os.execl(sys.executable, sys.executable, *sys.argv)
-    subprocess.Popen(["powershell", "-ExecutionPolicy", "Bypass", "-File", "restart.ps1"])
 class SystemTrayIcon(QSystemTrayIcon):
     """ 系统托盘图标 """
     def __init__(self, parent=None):
@@ -483,6 +477,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.menu.addMenu(launch_menu)
 
         self.menu.addActions([
+            Action('#️⃣  访问 BBS', triggered=lambda: self.open_BBBS_link()),
             Action('🔄️  重启程序', triggered=lambda: restart()),
             Action('✅  显示窗口', triggered=self.main_window.show_main_window),
             Action('❎  退出程序', triggered=QApplication.quit)

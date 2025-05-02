@@ -1,5 +1,5 @@
 import threading,logging,traceback,sys
-from modules.qfluentwidgets import Dialog
+from qfluentwidgets import Dialog
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
 from modules.log import log
