@@ -1,22 +1,21 @@
-from PyQt5.QtWidgets import QSystemTrayIcon, QDialog, QApplication, QPushButton, QWidget, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QCheckBox
-from qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
-from PyQt5 import uic
+from PyQt5.QtWidgets import QSystemTrayIcon, QApplication, QPushButton, QWidget, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QCheckBox
+from qfluentwidgets import MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
 from PyQt5.QtGui import QIcon, QDesktopServices, QColor, QPalette
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
 from modules.win11toast import toast, notify, update_progress
-import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,subprocess,zipfile,time,shutil
+import ctypes,re,locale,sys,logging,os,requests,base64,json,subprocess,time,shutil
 import sip # type: ignore
-from win32com.client import Dispatch
-import threading
-from concurrent.futures import ThreadPoolExecutor
-# 以下导入的部分是 Bloret Launcher 所有的模块
+# 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
 from modules.log import log
-from modules.safe import handle_exception,log_thread_safe
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
-from modules.setup_ui import setup_home_ui,setup_download_load_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui
+from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui
+from modules.customize import CustomizeRun
+from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
+from modules.links import open_BBBS_link
+from modules.BLDownload import BL_download
 
 # 全局变量
-server_ip = "http://pcfs.top:2/"
+server_ip = "http://pcfs.top:2/" # Bloret Launcher Server 服务器地址 （尾部带斜杠）
 ver_id_bloret = ['1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21']
 ver_id_main = []
 ver_id_short = []
@@ -37,427 +36,15 @@ LM_Download_Way_list = []
 LM_Download_Way_version = {}
 LM_Download_Way_minecraft = {}
 
-def check_Light_Minecraft_Download_Way():
-    try:
-        response = requests.get(server_ip + "api/Light-Minecraft-Download-Way")
-        if response.status_code == 200:
-            data = response.json()
-            LM_Download_Way = data.get("Light-Minecraft-Download-Way", {})  # 确保是字典
-
-            LM_Download_Way_list.extend(LM_Download_Way.get("download-way", []))
-            LM_Download_Way_version = LM_Download_Way.get("version", {})
-            LM_Download_Way_minecraft = LM_Download_Way.get("minecraft", {})
-            return LM_Download_Way, LM_Download_Way_list, LM_Download_Way_version, LM_Download_Way_minecraft
-            # log(f"成功获取 Light-Minecraft-Download-Way: {LM_Download_Way}，LM_Download_Way_list:{LM_Download_Way_list}，LM_Download_Way_version:{LM_Download_Way_version}，LM_Download_Way_minecraft:{LM_Download_Way_minecraft}")
-        else:
-            log("无法获取 Light-Minecraft-Download-Way", logging.ERROR)
-    except requests.RequestException as e:
-        # handle_exception(e)
-        log(f"获取 Light-Minecraft-Download-Way 时发生错误: {e}", logging.ERROR)
-
-def BL_download(version, LM_download_way_choose, parent):
-    class BLDownloadDialog(QDialog):
-        def __init__(self, version, parent=None):
-            super().__init__(parent)
-            self.version = version
-            self.setWindowTitle("Bloret Launcher")
-
-            # 检查 .minecraft 文件夹是否存在
-            minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
-            if not os.path.exists(minecraft_dir):
-                log(".minecraft 文件夹不存在")
-                uic.loadUi("ui/BL_download.ui", self)
-                # 初始化进度条控件
-                self.progress_bars = {
-                    "version": self.findChild(QProgressBar, "version"),
-                    "libraries": self.findChild(QProgressBar, "libraries"),
-                    "objects1": self.findChild(QProgressBar, "objects1"),
-                    "objects2": self.findChild(QProgressBar, "objects2"),
-                    "objects3": self.findChild(QProgressBar, "objects3"),
-                    "objects4": self.findChild(QProgressBar, "objects4"),
-                    "indexes": self.findChild(QProgressBar, "indexes")
-                }
-            else:
-                parent.log(".minecraft 文件夹已存在")
-                uic.loadUi("ui/BL_download_version.ui", self)
-                self.progress_bars = {
-                    "version": self.findChild(QProgressBar, "version")
-                }
-
-            
-
-            # 初始化 threads 属性
-            self.threads = []
-
-        def update_progress(self, key, value, message):
-            if key in self.progress_bars and self.progress_bars[key]:
-                self.progress_bars[key].setValue(value)
-            QApplication.processEvents()
-
-        def closeEvent(self, event):
-            for thread in self.threads:
-                if thread.isRunning():
-                    thread.quit()  # 请求线程退出
-                    thread.wait()  # 等待线程完全退出
-            event.accept()
-
-    class VersionDownloadThread(QThread):
-        progress_signal = pyqtSignal(str, int, str)
-        error_signal = pyqtSignal(str)
-        finished_signal = pyqtSignal()
-
-        def __init__(self, version, minecraft_dir):
-            super().__init__()
-            self.version = version
-            self.minecraft_dir = minecraft_dir
-            # self.base_url = f"https://gitee.com/detrital/minecraft/releases/download/minecraft/"
-            self.base_url = LM_Download_Way_minecraft.get(LM_download_way_choose)
-            log(f"下载链接:{self.base_url}")
-
-        def run(self):
-            try:
-                parent.log(f"开始下载版本 {self.version}，目标目录: {self.minecraft_dir}")
-
-                # 检查 .minecraft 文件夹是否存在
-                minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
-                if not os.path.exists(minecraft_dir):
-                    parent.log(".minecraft 文件夹不存在，开始下载 Minecraft 核心")
-                    success = self.BL_download_minecraft()
-                    if not success:
-                        self.error_signal.emit("下载 Minecraft 核心失败，请检查日志。")
-                        return
-                else:
-                    parent.log(".minecraft 文件夹已存在")
-
-                # 确保 .minecraft/versions 文件夹存在
-                versions_dir = os.path.join(minecraft_dir, "versions")
-                if not os.path.exists(versions_dir):
-                    os.makedirs(versions_dir)
-                    parent.log(f"创建 .minecraft/versions 文件夹: {versions_dir}")
-                else:
-                    parent.log(".minecraft/versions 文件夹已存在")
-
-                # 确保 .minecraft/versions/{version} 文件夹存在
-                version_dir = os.path.join(versions_dir, self.version)
-                if not os.path.exists(version_dir):
-                    os.makedirs(version_dir)
-                    parent.log(f"创建 .minecraft/versions/{self.version} 文件夹: {version_dir}")
-                else:
-                    parent.log(f".minecraft/versions/{self.version} 文件夹已存在")
-
-                file_name = f"{self.version}.zip"
-                file_path = os.path.join(version_dir, file_name)
-                parent.log(f"准备下载文件: {file_name} 到路径: {file_path}")
-
-                # 显示通知
-                notify(progress={
-                    'title': f'下载版本 {self.version}',
-                    'status': '正在下载... ↓',
-                    'value': '0',
-                    'valueStringOverride': '0%',
-                    'icon': os.path.join(os.getcwd(), 'bloret.ico')
-                })
-                
-                log(f"LM_download_way_choose:{LM_download_way_choose}")
-                version_download_url = LM_Download_Way_version.get(LM_download_way_choose)
-                log(f"下载链接:{version_download_url}")
-
-                response = requests.get(version_download_url + file_name, stream=True, timeout=10)
-                response.raise_for_status()
-                parent.log(f"成功获取文件: {file_name}，开始下载")
-
-                total_size = int(response.headers.get('content-length', 0))
-                downloaded_size = 0
-
-                with open(file_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                        downloaded_size += len(chunk)
-                        progress = int(downloaded_size / total_size * 100)
-                        self.progress_signal.emit("version", progress, f"下载进度: {progress}%")
-                        update_progress({'value': progress / 100, 'valueStringOverride': f'{progress}%'})
-
-                parent.log(f"文件 {file_name} 下载完成，开始解压缩")
-
-                # 解压缩文件
-                with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                    zip_ref.extractall(version_dir)
-                parent.log(f"文件 {file_name} 解压缩完成")
-
-                # 删除 .zip 文件
-                os.remove(file_path)
-                parent.log(f"删除文件: {file_path}")
-
-                self.finished_signal.emit()
-                parent.log(f"版本 {self.version} 下载和解压缩完成")
-
-                # 更新通知状态
-                update_progress({
-                    'status': '下载完成！✅',
-                    'value': 100,
-                    'valueStringOverride': f'100%'
-                })
-            except Exception as e:
-                parent.log(f"下载版本 {self.version} 时发生错误: {str(e)}", logging.ERROR)
-                self.error_signal.emit(str(e))
-            finally:
-                # 确保资源释放
-                if hasattr(self, "response"):
-                    self.response.close()
-                self.quit()
-
-
-        def ensure_minecraft_dir(self):
-            """确保 .minecraft 文件夹存在"""
-            if not os.path.exists(MINECRAFT_DIR):
-                os.makedirs(MINECRAFT_DIR)
-                log(f"创建 .minecraft 文件夹: {MINECRAFT_DIR}")
-            else:
-                log(".minecraft 文件夹已存在")
-
-        def BL_download_minecraft(self):
-            """下载 Minecraft 资源文件"""
-        
-            # 确保 .minecraft 文件夹存在
-            self.ensure_minecraft_dir()
-        
-            # 创建必要的子文件夹
-            assets_dir = os.path.join(MINECRAFT_DIR, "assets")  # 定义 assets 文件夹路径
-            objects_dir = os.path.join(assets_dir, "objects")  # 定义 objects 文件夹路径
-            indexes_dir = os.path.join(assets_dir, "indexes")  # 定义 indexes 文件夹路径
-            libraries_dir = os.path.join(MINECRAFT_DIR, "libraries")  # 定义 libraries 文件夹路径
-        
-            # 确保上述文件夹存在，如果不存在则创建
-            os.makedirs(objects_dir, exist_ok=True)  # 创建 objects 文件夹
-            os.makedirs(indexes_dir, exist_ok=True)  # 创建 indexes 文件夹
-            os.makedirs(libraries_dir, exist_ok=True)  # 创建 libraries 文件夹
-        
-            # 定义需要下载的文件及其目标路径
-            files_to_download = [
-                ("indexes.zip", indexes_dir, "indexes"),  # indexes.zip 文件下载到 indexes 文件夹
-                ("libraries.zip", libraries_dir, "libraries"),  # libraries.zip 文件下载到 libraries 文件夹
-                ("objects-01.zip", objects_dir, "objects1"),  # objects-01.zip 文件下载到 objects 文件夹
-                ("objects-02.zip", objects_dir, "objects2"),  # objects-02.zip 文件下载到 objects 文件夹
-                ("objects-03.zip", objects_dir, "objects3"),  # objects-03.zip 文件下载到 objects 文件夹
-                ("objects-04.zip", objects_dir, "objects4")  # objects-04.zip 文件下载到 objects 文件夹
-            ]
-        
-            # 使用线程锁保护日志输出，避免多线程日志混乱
-            log_lock = threading.Lock()
-        
-            def download_file(file_name, target_dir, progress_key):
-                """下载文件并支持重试"""
-                url = f"{LM_Download_Way_minecraft.get(LM_download_way_choose)}{file_name}"
-                log(f"下载链接:{url}")
-                file_path = os.path.join(target_dir, file_name)
-                max_retries = 5
-                retry_delay = 3
-            
-                log(f"开始处理文件: {file_name}, 目标路径: {file_path}")
-            
-                for attempt in range(max_retries):
-                    try:
-                        log(f"准备下载 {file_name} 到 {file_path} (尝试 {attempt + 1}/{max_retries})")
-                        response = requests.get(url, stream=True, timeout=10)
-                        response.raise_for_status()
-            
-                        total_size = int(response.headers.get('content-length', 0))
-                        downloaded_size = 0
-                        log(f"下载链接:{url}")
-            
-                        with open(file_path, 'wb') as f:
-                            for chunk in response.iter_content(chunk_size=8192):
-                                if chunk:
-                                    f.write(chunk)
-                                    downloaded_size += len(chunk)
-                                    progress = int(downloaded_size / total_size * 100)
-                                    self.progress_signal.emit(progress_key, progress, f"下载进度: {progress}%")
-                                    # log(f"文件{file_name},下载进度: {progress}%")
-            
-                        log(f"文件 {file_name} 下载完成")
-                        return True
-                    except requests.RequestException as e:
-                        log(f"下载 {file_name} 失败 (尝试 {attempt + 1}/{max_retries}): {e}", logging.ERROR)
-                        time.sleep(retry_delay)
-                    except Exception as e:
-                        log(f"下载 {file_name} 时发生未知错误: {e}", logging.ERROR)
-                        time.sleep(retry_delay)
-                    finally:
-                        if 'response' in locals():
-                            response.close()
-            
-                log(f"下载 {file_name} 失败，已达到最大重试次数", logging.ERROR)
-                return False
-            # 使用线程池并发下载文件
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                # 提交下载任务到线程池
-                futures = [executor.submit(download_file, file_name, target_dir, progress_key) for file_name, target_dir, progress_key in files_to_download]
-                for future in futures:
-                    try:
-                        future.result()  # 等待任务完成
-                    except Exception as e:
-                        log(f"下载文件时发生错误: {e}", logging.ERROR)  # 记录任务执行错误日志
-        
-            # 解压下载的文件
-            try:
-                for file_name, target_dir, _ in files_to_download:
-                    file_path = os.path.join(target_dir, file_name)  # 获取文件路径
-                    if os.path.exists(file_path):  # 检查文件是否存在
-                        with zipfile.ZipFile(file_path, 'r') as zip_ref:  # 打开 ZIP 文件
-                            zip_ref.extractall(target_dir)  # 解压文件到目标目录
-                        log(f"文件 {file_name} 解压缩完成")  # 记录解压完成日志
-                        os.remove(file_path)  # 删除 ZIP 文件
-                        log(f"删除文件: {file_path}")  # 记录删除文件日志
-                    else:
-                        log(f"文件 {file_name} 不存在，无法解压缩", logging.ERROR)  # 记录文件不存在日志
-            except Exception as e:  # 捕获解压异常
-                log(f"解压文件失败: {e}", logging.ERROR)  # 记录解压失败日志
-                return False  # 返回 False 表示解压失败
-        
-            log("所有文件下载和解压完成")  # 记录所有文件下载和解压完成日志
-            return True  # 返回 True 表示成功
-        def download_file_with_retry(self, file_name, target_dir, progress_key):
-            """下载文件并支持重试"""
-            # 构造下载 URL
-            url = f"{LM_Download_Way_version.get(LM_download_way_choose)}{file_name}"
-            log(f"下载链接:{url}")
-            # 构造文件保存路径
-            file_path = os.path.join(target_dir, file_name)
-            # 设置最大重试次数
-            max_retries = 5
-            # 设置每次重试之间的延迟时间（秒）
-            retry_delay = 3
-        
-            # 循环尝试下载文件，最多重试 max_retries 次
-            for attempt in range(max_retries):
-                try:
-                    # 记录日志，显示当前尝试次数
-                    parent.log(f"开始下载 {file_name} (尝试 {attempt + 1}/{max_retries})")
-                    # 发起 HTTP GET 请求，启用流式下载，设置超时时间为 10 秒
-                    response = requests.get(url, stream=True, timeout=10)
-                    # 检查 HTTP 响应状态码，如果不是 200 则抛出异常
-                    response.raise_for_status()
-        
-                    # 获取文件总大小（字节）
-                    total_size = int(response.headers.get('content-length', 0))
-                    # 初始化已下载大小为 0
-                    downloaded_size = 0
-        
-                    # 显示通知，初始化进度条
-                    notify(progress={
-                        'title': f'下载资源文件 {file_name}',
-                        'status': '正在下载... ↓',
-                        'value': '0',
-                        'valueStringOverride': '0%',
-                        'icon': os.path.join(os.getcwd(), 'bloret.ico')  # 确保路径有效
-                    })
-        
-                    # 打开文件并写入下载内容
-                    with open(file_path, 'wb') as f:
-                        # 分块下载文件，每次读取 8192 字节
-                        for chunk in response.iter_content(chunk_size=8192):
-                            if chunk:  # 确保 chunk 不为空
-                                f.write(chunk)  # 写入文件
-                                downloaded_size += len(chunk)  # 更新已下载大小
-                                # 计算下载进度百分比
-                                progress = int(downloaded_size / total_size * 100)
-                                # 发送进度信号，更新 UI
-                                self.progress_signal.emit(progress_key, progress, f"下载进度: {progress}%")
-                                # 更新通知的进度条
-                                update_progress({'value': progress / 100, 'valueStringOverride': f'{progress}%'})
-        
-                    # 记录日志，显示文件下载完成
-                    parent.log(f"文件 {file_name} 下载完成")
-        
-                    # 更新通知状态为下载完成
-                    update_progress({
-                        'status': '下载完成！✅',
-                        'value': 100,
-                        'valueStringOverride': f'100%'
-                    })
-        
-                    # 每个文件下载完成后间隔 3 秒
-                    time.sleep(3)
-                    return True  # 下载成功，返回 True
-                except requests.RequestException as e:
-                    # 捕获请求异常，记录日志并等待一段时间后重试
-                    parent.log(f"下载 {file_name} 失败 (尝试 {attempt + 1}/{max_retries}): {e}", logging.ERROR)
-                    time.sleep(retry_delay)
-                except Exception as e:
-                    # 捕获其他异常，记录日志并等待一段时间后重试
-                    parent.log(f"下载 {file_name} 时发生未知错误: {e}", logging.ERROR)
-                    time.sleep(retry_delay)
-                finally:
-                    # 确保 response 被正确关闭
-                    if 'response' in locals():
-                        response.close()
-        
-            # 如果达到最大重试次数仍未成功，记录日志并返回 False
-            parent.log(f"下载 {file_name} 失败，已达到最大重试次数", logging.ERROR)
-            return False
-    
-    # 创建对话框
-    download_dialog = BLDownloadDialog(version, parent)
-
-    # 创建下载线程
-    minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
-    thread = VersionDownloadThread(version, minecraft_dir)
-    thread.finished.connect(lambda t=thread: threads.remove(t) if t in threads else None)
-    threads.append(thread)
-
-    # 连接信号与槽
-    thread.progress_signal.connect(
-        lambda key, value, message: download_dialog.update_progress(key, value, message)
-    )
-    thread.error_signal.connect(
-        lambda e: (
-            parent.log(f"下载失败: {e}", logging.ERROR),
-            Dialog("下载失败", f"下载过程中发生错误: {e}").exec()
-        )
-    )
-
-    def download_finished():
-        parent.log(f"下载完成: 版本 {version}")
-        # QTimer.singleShot(0, lambda: send_system_notification("下载完成", f"版本 {version} 已成功下载"))
-
-        # 断开信号
-        thread.progress_signal.disconnect()
-        thread.error_signal.disconnect()
-        thread.finished_signal.disconnect()
-
-        # 确保线程退出
-        if thread.isRunning():
-            thread.quit()
-            thread.wait(2000)  # 等待线程完全退出
-
-        # 关闭对话框
-        QTimer.singleShot(0, download_dialog.close)
-        QTimer.singleShot(0, download_dialog.deleteLater)
-        QTimer.singleShot(0, thread.deleteLater)
-
-        # 清理线程列表
-        if thread in threads:
-            threads.remove(thread)
-
-        parent.log("下载完成处理结束")
-
-    thread.finished_signal.connect(download_finished)
-
-    # 启动线程
-    thread.start()
-
-    # 显示对话框
-    download_dialog.exec()
-
-    return 0
-
 class SystemTrayIcon(QSystemTrayIcon):
-    """ 系统托盘图标 """
+    """ 
+    系统托盘图标 
+    """
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         if parent is None:
             print("警告：SystemTrayIcon 的 parent 参数为 None")
-        self.setIcon(QIcon('icons/bloret.ico'))  # 设置托盘图标
+        self.setIcon(QIcon('bloret.ico'))  # 设置托盘图标
         self.parent = parent
         self.main_window = parent
 
@@ -478,7 +65,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.menu.addMenu(launch_menu)
 
         self.menu.addActions([
-            Action('🔡  访问 BBS', triggered=lambda: self.main_window.open_BBBS_link()),
+            Action('🔡  访问 BBS', triggered=lambda: open_BBBS_link()),
             Action('🔄️  重启程序', triggered=lambda: restart()),
             Action('✅  显示窗口', triggered=self.main_window.show_main_window),
             Action('❎  退出程序', triggered=QApplication.quit)
@@ -496,12 +83,6 @@ class SystemTrayIcon(QSystemTrayIcon):
                 self.parent.activateWindow()
             else:
                 self.parent.hide()
-class DownloadWorker(QThread):
-    finished = pyqtSignal()
-    def run(self):
-        # 模拟数据处理
-        time.sleep(5)  # 模拟数据处理耗时
-        self.finished.emit()
 class RunScriptThread(QThread):
     finished = pyqtSignal()
     error_occurred = pyqtSignal(str)
@@ -690,9 +271,9 @@ class MainWindow(FluentWindow):
         
         self.loading_dialogs = []  # 初始化 loading_dialogs 属性
         self.threads = []  # 初始化 threads 属性
-        self.handle_first_run()
-        self.check_for_updates()
-        self.check_Bloret_version()
+        handle_first_run(self)
+        check_for_updates(self)
+        check_Bloret_version(self)
         
 
         # 初始化其他属性
@@ -722,7 +303,7 @@ class MainWindow(FluentWindow):
 
         # 处理首次运行
         update_progress({'value': 70 / 100, 'valueStringOverride': '7/10', 'status': '处理首次运行'})
-        QTimer.singleShot(0, lambda: self.handle_first_run())
+        QTimer.singleShot(0, lambda: handle_first_run(self))
         
         # 隐藏启动页面
         update_progress({'value': 80 / 100, 'valueStringOverride': '8/10', 'status': '隐藏启动页面'})
@@ -786,7 +367,6 @@ class MainWindow(FluentWindow):
             self.cmcl_data = None
             self.player_name = "未登录"
             self.login_mod = "请在下方登录"
-
     def initNavigation(self):
         self.homeInterface = QWidget()
         self.downloadInterface = QWidget()
@@ -816,12 +396,13 @@ class MainWindow(FluentWindow):
         load_ui("ui/settings.ui", parent=self.settingsInterface)
         load_ui("ui/info.ui", parent=self.infoInterface)
         load_ui("ui/version.ui", parent=self.versionInterface)
-        setup_home_ui(self,self.homeInterface,config)
-        setup_download_ui(self,self.downloadInterface,LM_Download_Way_list,ver_id_bloret,config)
+        setup_home_ui(self,self.homeInterface)
+        setup_download_ui(self,self.downloadInterface,LM_Download_Way_list,ver_id_bloret)
         setup_tools_ui(self,self.toolsInterface)
-        setup_passport_ui(self,self.passportInterface,config)
-        setup_settings_ui(self,self.settingsInterface,config)
-        setup_version_ui(self,self.versionInterface,minecraft_list, customize_list)
+        setup_passport_ui(self,self.passportInterface)
+        setup_settings_ui(self,self.settingsInterface)
+        setup_version_ui(self,self.versionInterface,minecraft_list,customize_list)
+        setup_info_ui(self,self.infoInterface)
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -849,7 +430,6 @@ class MainWindow(FluentWindow):
 
         # 调用侧边栏缩放函数
         self.apply_sidebar_scaling()
-
     def apply_sidebar_scaling(self):
         base_sidebar_width = 300  # 设置一个基准宽度
         size = self.scale_factor   # 使用已有的 scale_factor 属性
@@ -955,56 +535,9 @@ class MainWindow(FluentWindow):
             log(f"读取版本列表失败: {e}", logging.ERROR)
             set_list = ["无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装"]
     def run_cmcl(self, version):
-        # self.tabBar.addTab(
-        #     routeKey={version},
-        #     text={version},
-        #     onClick=lambda: print("Click")
-        # )
-        
         log(f"minecraft_list:{minecraft_list}")
         if version not in minecraft_list:
-            # 自定义启动
-            # InfoBar.success(
-            #     title='🔄️ 正在启动 {version}',
-            #     content=f"...",
-            #     isClosable=True,
-            #     position=InfoBarPosition.TOP,
-            #     duration=5000,
-            #     parent=self
-            # )
-            # 查找 config.json 中 Customize 的 showname 是否匹配 version
-            for item in self.config.get("Customize", []):
-                if item.get("showname") == version:
-                    program_path = item.get("path")
-                    if program_path and os.path.exists(program_path):
-                        InfoBar.success(
-                            title=f'🔄️ 正在启动 {version}',
-                            content=f"...",
-                            isClosable=True,
-                            position=InfoBarPosition.TOP,
-                            duration=5000,
-                            parent=self
-                        )
-                        subprocess.Popen(program_path, shell=True)
-                        return
-                    else:
-                        InfoBar.error(
-                            title='❌ 启动失败',
-                            content=f"路径 {program_path} 不存在或无效",
-                            isClosable=True,
-                            position=InfoBarPosition.TOP,
-                            duration=5000,
-                            parent=self
-                        )
-                        return
-            InfoBar.error(
-                title='❌ 启动失败',
-                content=f"未找到与 {version} 匹配的自定义程序",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
+            CustomizeRun(self,version)
         else:
             InfoBar.success(
                 title=f'🔄️ 正在启动 {version}',
@@ -1067,7 +600,6 @@ class MainWindow(FluentWindow):
             self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
             self.update_show_text_thread.start()
             self.threads.append(self.update_show_text_thread)
-
     def update_version_combobox(self):
         home_interface = self.homeInterface
         if home_interface:
@@ -1207,8 +739,7 @@ class MainWindow(FluentWindow):
                 position=InfoBarPosition.TOP,
                 duration=5000,
                 parent=self
-            )
-        
+            )     
     def on_show_way_changed(self, widget, version_type):
         show_way = widget.findChild(ComboBox, "show_way")
         minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
@@ -1387,7 +918,7 @@ class MainWindow(FluentWindow):
             if selected_way == "Bloret Launcher":  # Bloret Launcher 方法
                 log(f"LM_Download_Way_minecraft:{LM_Download_Way_minecraft}")
                 LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
-                BL_download(choose_ver, LM_download_way_choose.currentText(), self)
+                BL_download(self, choose_ver, LM_download_way_choose.currentText(), LM_Download_Way_minecraft, LM_Download_Way_version, self)
                 self.on_download_finished(teaching_tip, download_button)
             else:  # CMCL 方法
                 if fabric_download != "不安装":
@@ -1423,7 +954,6 @@ class MainWindow(FluentWindow):
                 )
                 self.download_thread.start()
                 self.threads.append(self.download_thread)  # 将线程添加到列表中
-
     class DownloadThread(QThread):
         finished = pyqtSignal()
         error_occurred = pyqtSignal(str)
@@ -1476,7 +1006,6 @@ class MainWindow(FluentWindow):
                     toast(title, message, duration="short", icon={'src': 'bloret.ico','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
             except Exception as e:
                 log(f"发送系统通知失败: {e}", logging.ERROR)
-
     class MicrosoftLoginThread(QThread):
         finished = pyqtSignal(bool, str)
         
@@ -1518,8 +1047,6 @@ class MainWindow(FluentWindow):
                     self.finished.emit(False, f"登录失败: {error}")
             except Exception as e:
                 self.finished.emit(False, f"执行异常: {str(e)}")
-
-    # 添加 MessageBox 类
     class MessageBox(MessageBoxBase):
         def __init__(self, title, content, parent=None):
             super().__init__(parent)
@@ -1527,7 +1054,6 @@ class MainWindow(FluentWindow):
             self.viewLayout.addWidget(SubtitleLabel(content))
             self.viewLayout.addWidget(self.name_edit)
             self.widget.setMinimumWidth(300)
-
     class CustomMessageBox(MessageBoxBase):
         def __init__(self, parent=None):
             super().__init__(parent)
@@ -1603,7 +1129,6 @@ class MainWindow(FluentWindow):
                     print('确认')
                 else:
                     print('取消')
-
     def on_login_finished(self, widget, success, message):
         # 添加有效性检查
         if hasattr(self, 'login_tip') and self.login_tip and not sip.isdeleted(self.login_tip):
@@ -1627,7 +1152,6 @@ class MainWindow(FluentWindow):
                 content=message,
                 parent=self
             )
-
     def update_passport_ui(self, widget):
         # 更新UI显示
         login_way_combo = widget.findChild(ComboBox, "player_login_way")
@@ -1643,8 +1167,7 @@ class MainWindow(FluentWindow):
             # 更新玩家名称
             if name_combo:
                 name_combo.clear()
-                name_combo.addItem(self.player_name)
-                
+                name_combo.addItem(self.player_name)            
     def show_error(self, title, content):
         InfoBar.error(
             title=title,
@@ -1675,246 +1198,9 @@ class MainWindow(FluentWindow):
             parent=self
         )
         self.is_running = False  # 重置标志变量
-    def handle_first_run(self):
-        if self.config.get('first-run', True):
-            parent_dir = os.path.dirname(os.getcwd())
-            updating_folder = os.path.join(parent_dir, "updating")
-            updata_ps1_file = os.path.join(parent_dir, "updata.ps1")
-            if os.path.exists(updating_folder):
-                subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-Command", f"Remove-Item -Path '{updating_folder}' -Recurse -Force"], check=True)
-                log(f"删除文件夹: {updating_folder}")
-            if os.path.exists(updata_ps1_file):
-                os.remove(updata_ps1_file)
-                log(f"删除文件: {updata_ps1_file}")
-                def create_shortcut(self):
-                    desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-                    shortcut_path = os.path.join(desktop, 'Bloret Launcher.lnk')
-                    target = os.path.join(os.getcwd(), 'Bloret-Launcher.exe')
-                    icon = os.path.join(os.getcwd(), 'icons', 'bloret.ico')
-                    shell = Dispatch('WScript.Shell')
-                    shortcut = shell.CreateShortCut(shortcut_path)
-                    shortcut.TargetPath = target
-                    shortcut.WorkingDirectory = os.getcwd()
-                    shortcut.IconLocation = icon
-                    shortcut.save()
-                self.create_shortcut()
-            #首次启动向 http://pcfs.top:2/api/blnum 发送请求，服务器计数器+1
-            #具体可见项目 https://github.com/BloretCrew/Bloret-Launcher-Server
-            response = requests.get(server_ip + "api/blnum")
-            if response.status_code == 200:
-                data = response.json()
-                self.bl_users = data.get("user", "未知用户")
-                log(f"获取到的用户数: {self.bl_users}")
-            else:
-                self.bl_users = "未知用户"
-                log("无法获取用户数", logging.ERROR)
 
-            #首次启动显示弹窗提醒
-            # msg_box = QMessageBox(self)
-            # msg_box.setIcon(QMessageBox.Information)
-            # msg_box.setWindowTitle('欢迎')
-            # msg_box.setText("欢迎使用百络谷启动器 (＾ｰ^)ノ\n您是百络谷启动器的第 %s 位用户" % self.bl_users)
-            # msg_box.setWindowIcon(QIcon("bloret.ico"))  # 设置弹窗图标
-            # msg_box.setStandardButtons(QMessageBox.Ok)
-            # msg_box.exec()
-
-            # 使用非模态对话框
-            w = MessageBox(
-                title="欢迎使用百络谷启动器 (＾ｰ^)ノ",
-                content=f'您是百络谷启动器的第 {self.bl_users} 位用户',
-                parent=self
-            )
-            w.show()
-
-
-            # QMessageBox.information(self, "欢迎", "欢迎使用百络谷启动器 (＾ｰ^)ノ\n您是百络谷启动器的第 %s 位用户" % self.bl_users)
-            # 更新配置文件中的 first-run 值
-            self.config['first-run'] = False
-            with open('config.json', 'w', encoding='utf-8') as f:
-                json.dump(self.config, f, ensure_ascii=False, indent=4)
-
-    def check_Bloret_version(self):
-        if not config.get('localmod', False):
-            try:
-                response = requests.get(server_ip + "api/bloret-version")
-                if response.status_code == 200:
-                    data = response.json()
-                    ver_id_bloret.clear()
-                    ver_id_bloret.extend(data.get("Bloret-versions", []))
-                    log(f"成功获取 Bloret 版本列表: {ver_id_bloret}")
-                else:
-                    log("无法获取 Bloret 版本列表", logging.ERROR)
-            except requests.RequestException as e:
-                log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
-        else:
-            log("本地模式已启用，获取 Bloret 版本列表 的过程已跳过。")
-    def check_for_updates(self):
-        if not config.get('localmod', False):
-            try:
-                # 插入 socket 检查
-                # socket.setdefaulttimeout(3)
-                socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(('pcfs.top', 2))
-                BL_latest_ver, BL_update_text = self.get_latest_version()
-                log(f"最新正式版: {BL_latest_ver}")
-                BL_ver = float(self.config.get('ver', '0.0'))  # 从config.json读取当前版本
-                if BL_ver < float(BL_latest_ver):
-                    log(f"当前版本不是最新版，请更新到 {BL_latest_ver} 版本", logging.WARNING)
-
-                    # 使用非模态对话框
-                    w = MessageBox(
-                        title="当前版本不是最新版",
-                        content=f'Bloret Launcher 貌似有个新新新版本\n你似乎正在运行 {BL_ver}，但事实上，百络谷启动器 {BL_latest_ver} 来啦！按下按钮自动更新。\n这个更新... {BL_update_text}',
-                        parent=self
-                    )
-                    w.show()
-
-                    # 连接按钮点击事件以触发更新
-                    w.yesButton.clicked.connect(self.update_to_latest_version)
-            except Exception as e:
-                log(f"检查更新时发生错误: {e}", logging.ERROR)
-                
-                log("无法连接到 pcfs.top", logging.ERROR)
-                w = MessageBox(
-                    title="无法连接到 pcfs.top",
-                    content=f'您无法连接到 PCFS 服务器来检查版本更新\n这可能是由于您的网络不佳？或是 PCFS 服务出现故障？\n请检查您的网络连接，或者稍后再试。\n我们等待了 3 秒，但它只显示：{e}',
-                    parent=self
-                )
-                update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': '无法连接到服务器 ❌'})
-                w.show()
-        else:
-            log("本地模式已启用，检查更新 的过程已跳过。")
-    def update_to_latest_version(self):
-        update_script_path = os.path.join(os.getcwd(), "update.ps1")
-        try:
-            with open(update_script_path, "w", encoding="utf-8") as update_script:
-                update_script.write(
-                    "taskkill /im Bloret-Launcher.exe /f\n"
-                    "winget update Bloret.BloretLauncher\n"
-                )# 通过 winget 更新
-            log(f"创建更新脚本: {update_script_path}")
-            subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", update_script_path], check=True)
-        except Exception as e:
-            log(f"创建或运行更新脚本失败: {e}", logging.ERROR)
-            QMessageBox.critical(self, "更新失败", f"创建或运行更新脚本失败: {e}")
-    #     #url = f"http://localhost:100/zipdownload/{self.BL_latest_ver}.zip"
-    #     url = f"http://pcfs.top:2/zipdownload/latest.zip"
-    #     save_path = os.path.join(os.getcwd(), f"{self.BL_latest_ver}.zip")
-    #     updating_folder = os.path.join(os.path.dirname(os.getcwd()), "updating")
-    #     if not os.path.exists(updating_folder):
-    #         os.makedirs(updating_folder)
-    #     try:
-    #         response = requests.get(url, stream=True)
-    #         response.raise_for_status()
-    #         with open(save_path, 'wb') as file:
-    #             for chunk in response.iter_content(chunk_size=8192):
-    #                 file.write(chunk)
-    #         log(f"版本 {self.BL_latest_ver} 下载成功，保存路径: {save_path}")
-    #         # 将下载的文件移动到 updating 文件夹
-    #         new_save_path = os.path.join(updating_folder, f"{self.BL_latest_ver}.zip")
-    #         os.rename(save_path, new_save_path)
-    #         # 解压缩文件到 updating 文件夹
-    #         with zipfile.ZipFile(new_save_path, 'r') as zip_ref:
-    #             zip_ref.extractall(updating_folder)
-    #         log(f"版本 {self.BL_latest_ver} 解压缩成功，路径: {updating_folder}")
-    #         # 删除压缩包
-    #         os.remove(new_save_path)
-    #         log(f"删除压缩包: {new_save_path}")
-    #         # 移动 .minecraft 文件夹到 updating 文件夹
-    #         minecraft_folder = os.path.join(os.getcwd(), ".minecraft")
-    #         if os.path.exists(minecraft_folder):
-    #             new_minecraft_folder = os.path.join(updating_folder, ".minecraft")
-    #             os.rename(minecraft_folder, new_minecraft_folder)
-    #             log(f"移动 .minecraft 文件夹到: {new_minecraft_folder}")
-    #         # 创建 updata.ps1 文件
-    #         current_folder_name = os.path.basename(os.getcwd())
-    #         bat_file_path = os.path.join(os.path.dirname(os.getcwd()), "updata.ps1")
-    #         with open(bat_file_path, 'w', encoding='utf-8') as bat_file:
-    #             bat_file.write(f'cd "{os.path.dirname(os.getcwd())}"\n')
-    #             bat_file.write(f'taskkill /im Bloret-Launcher.exe /f\n')
-    #             bat_file.write(f'Start-Sleep -Seconds 2\n')
-    #             bat_file.write(f'Remove-Item -Path ".\\{current_folder_name}" -Recurse -Force\n')
-    #             bat_file.write(f'Move-Item -Path ".\\updating\\*" -Destination ".\\{current_folder_name}"\n')
-    #             bat_file.write(f'cd "{os.path.join(os.path.dirname(os.getcwd()), "Bloret-Launcher")}"\n')
-    #             bat_file.write(f'Start-Process -FilePath "Bloret-Launcher.exe"\n')
-    #         log(f"创建 updata.ps1 文件: {bat_file_path}")
-    #         QMessageBox.information(self, "即将安装", f"版本 {self.BL_latest_ver} 即将开始安装")
-
-    #         # 运行 updata.ps1 文件
-    #         subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", bat_file_path], check=True)
-    #         log(f"运行 updata.ps1 文件: {bat_file_path}")
-    #     except requests.RequestException as e:
-    #         log(f"下载版本 {self.BL_latest_ver} 失败: {e}", logging.ERROR)
-    #         QMessageBox.critical(self, "下载失败", f"下载版本 {self.BL_latest_ver} 失败: {e}")
-    #     except zipfile.BadZipFile as e:
-    #         log(f"解压缩版本 {self.BL最新版本} 失败: {e}", logging.ERROR)
-    #         QMessageBox.critical(self, "解压缩失败", f"解压缩版本 {self.BL最新版本} 失败: {e}")
-    #     except OSError as e:
-    #         log(f"文件操作失败: {e}", logging.ERROR)
-    #         QMessageBox.critical(self, "文件操作失败", f"文件操作失败: {e}")
-    #     except subprocess.CalledProcessError as e:
-    #         log(f"运行 updata.ps1 文件失败: {e}", logging.ERROR)
-    #         QMessageBox.critical(self, "更新失败", f"运行 updata.ps1 文件失败: {e}")
-    def toggle_show_all_versions(self, state):
-        widget = self.findChild(QWidget, "downloadWidget")  # 假设你的下载界面的QWidget对象名称为downloadWidget
-        if widget:
-            minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-            show_all_versions = widget.findChild(QCheckBox, "show_all_versions")
-            if minecraft_choose and show_all_versions:
-                self.update_minecraft_versions(widget, show_all=state)
-
-    def open_bloret_web(self):
-        QDesktopServices.openUrl(QUrl("http://pcfs.top:2"))
-        log("打开 Bloret Launcher 网页")
-    def open_github_bloret(self):
-        QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew"))
-        log("打开Bloret Github 组织页面")
-    def copy_skin_to_clipboard(self, widget):
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self.player_skin)
-        log(f"皮肤URL {self.player_skin} 已复制到剪贴板")
-    def copy_cape_to_clipboard(self, widget):
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self.player_cape)
-        log(f"披风URL {self.player_cape} 已复制到剪贴板")
-    def open_skin_url(self, widget):
-        QDesktopServices.openUrl(QUrl(self.player_skin))
-        log(f"打开皮肤URL: {self.player_skin}")
-    def open_cape_url(self, widget):
-        QDesktopServices.openUrl(QUrl(self.player_cape))
-        log(f"打开披风URL: {self.player_cape}")
-    def query_player_name(self, widget):
-        player_uuid_edit = widget.findChild(QLineEdit, "search_name_type")
-        name_result_label = widget.findChild(QLabel, "search_name")
-        if player_uuid_edit and name_result_label:
-            name_result_label.setText("查询中，请稍等...")
-            player_uuid = player_uuid_edit.text()
-            response = requests.get(f"https://sessionserver.mojang.com/session/minecraft/profile/{player_uuid}")
-            if response.status_code == 200:
-                player_data = response.json()
-                self.player_name = player_data.get("name", "未找到名称")
-                name_result_label.setText(self.player_name)
-                log(f"查询UUID {player_uuid} 的名称: {self.player_name}")
-            else:
-                name_result_label.setText("查询失败")
-                log(f"查询UUID {player_uuid} 的名称失败", logging.ERROR)
-    def copy_name_to_clipboard(self, widget):
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self.player_name)
-        log(f"名称 {self.player_name} 已复制到剪贴板")
-    def open_github_bloret_Launcher(self):
-        QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew/Bloret-Launcher"))
-        log("打开该项目的 Github 页面")
-    def open_qq_link(self):
-        QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
-        log("打开 Bloret QQ 群页面")
-    def open_BLC_qq_link(self):
-        QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/kEt8fb41wc"))
-        log("打开 BLC QQ 群页面")
-    def open_BBBS_link(self):
-        QDesktopServices.openUrl(QUrl(server_ip+"bbs/"))
-        log("打开 BBBS 页面")
     def animate_sidebar(self):
-        start_geometry = self.navigationInterface.geometry()  # 修正拼写错误
+        start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
         self.sidebar_animation.setStartValue(start_geometry)
         self.sidebar_animation.setEndValue(end_geometry)
@@ -1966,119 +1252,6 @@ class MainWindow(FluentWindow):
             self.setStyleSheet("")
             self.setPalette(self.style().standardPalette())
 
-    def Bloret_PassPort_Account_logout(self, widget):
-        self.config.update(Bloret_PassPort_UserName='未登录')
-        self.config.update(Bloret_PassPort_PassWord='')
-        self.config.update(Bloret_PassPort_Admin=False)
-        
-        open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
-        # 更新界面显示
-        Bloret_PassPort_User_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
-        Bloret_PassPort_User_UserName.setText("未登录")
-        InfoBar.success(
-            title='⏫ 已退出登录',
-            content="",
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=5000,
-            parent=self
-        )
-        log("已退出登录")
-    def Bloret_PassPort_Account_login(self, widget):
-        if not config.get('localmod', False):
-            class CustomLoginDialog(MessageBoxBase):
-                """ 自定义登录对话框 """
-                def __init__(self, parent=None):
-                    super().__init__(parent)
-                    
-                    # 用户名组件
-                    self.usernameLabel = SubtitleLabel('用户名', self)
-                    self.usernameLineEdit = LineEdit(self)
-                    self.usernameLineEdit.setPlaceholderText('请输入用户名')
-                    
-                    # 密码组件
-                    self.passwordLabel = SubtitleLabel('密码', self)
-                    self.passwordLineEdit = LineEdit(self)
-                    self.passwordLineEdit.setPlaceholderText('请输入密码')
-                    self.passwordLineEdit.setEchoMode(LineEdit.Password)
-                    
-                    # 添加到布局
-                    self.viewLayout.addWidget(self.usernameLabel)
-                    self.viewLayout.addWidget(self.usernameLineEdit)
-                    self.viewLayout.addWidget(self.passwordLabel)
-                    self.viewLayout.addWidget(self.passwordLineEdit)
-                    
-                    self.widget.setMinimumWidth(350)
-
-                def validate(self):
-                    """ 验证输入不能为空 """
-                    username = self.usernameLineEdit.text().strip()
-                    password = self.passwordLineEdit.text().strip()
-                    return bool(username and password)
-            """ 登录账户方法 """
-            # 创建并显示自定义对话框
-            dialog = CustomLoginDialog(self)
-            if dialog.exec():  # 用户点击确认
-                username = dialog.usernameLineEdit.text().strip()
-                password = dialog.passwordLineEdit.text().strip()
-
-                try:
-                    response = requests.get(
-                        f"{server_ip}api/login",
-                        params={"name": username, "password": password}
-                    )
-                    response_data = response.json()
-                    if response_data.get("status") is False:
-                        error_message = response_data.get('message', '未知错误')
-                        log(f"登录失败:{error_message}", logging.ERROR)
-                        InfoBar.error(
-                            title='❌ 登录失败',
-                            content=response_data.get("message", "未知错误"),
-                            isClosable=True,
-                            position=InfoBarPosition.TOP,
-                            duration=5000,
-                            parent=self
-                        )
-                        return
-                    elif response_data.get("status") is True:
-                        # 更新配置并记录日志
-                        self.config['Bloret_PassPort_UserName'] = username
-                        self.config['Bloret_PassPort_PassWord'] = password
-                        self.config['Bloret_PassPort_Admin'] = response_data.get("admin", False)
-                        log(f"登录成功: 用户名={username}", logging.INFO)
-                        
-                        # 更新界面显示
-                        Bloret_PassPort_User_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
-                        Bloret_PassPort_User_UserName.setText(username)
-
-                        open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
-                        InfoBar.success(
-                            title='✅ 登录成功',
-                            content="",
-                            isClosable=True,
-                            position=InfoBarPosition.TOP,
-                            duration=5000,
-                            parent=self
-                        )
-                except Exception as e:
-                    log("请求失败: %s" % str(e), logging.ERROR)
-                    InfoBar.error(
-                        title='❌ 登录失败',
-                        content=f"请求失败: {str(e)}",
-                        isClosable=True,
-                        position=InfoBarPosition.TOP,
-                        duration=5000,
-                        parent=self
-                    )
-            else:
-                log("登录对话框被取消", logging.INFO)
-        else:
-            log("本地模式已启用，无法进行 Bloret 通行证登录。")
-            w = Dialog("您已启用本地模式", "Bloret Launcher 在本地模式下无法登录 Bloret 通行证，\n因为该操作需要互联网\n如果需要登录，请到设置界面关闭本地模式。")
-            if w.exec():
-                print('确认')
-            else:
-                print('取消')
 
     def show_main_window(self):
         """显示主窗口"""
@@ -2153,25 +1326,7 @@ class MainWindow(FluentWindow):
         log(f"run.ps1 运行失败: {error}", logging.ERROR)
         self.is_running = False  # 重置标志变量
     def update_show_text(self, text):
-        self.show_text.setText(text)  # 更新show文字框的内容
-    # def se tup_download_ui(self, widget):
-    #     # 设置下载界面的UI元素
-    #     minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-    #     show_all_versions = widget.findChild(QCheckBox, "show_all_versions")
-    #     if minecraft_choose and show_all_versions:
-    #         show_all_versions.stateChanged.connect(lambda state: self.update_minecraft_versions(minecraft_choose, state == Qt.Checked))
-    #         self.update_minecraft_versions(minecraft_choose, show_all_versions.isChecked())
-    def get_minecraft_versions(self, show_all):
-        # 模拟获取 Minecraft 版本列表
-        if show_all:
-            return ["1.18.1", "1.18", "1.17.1", "1.17", "1.16.5", "1.16.4", "1.16.3", "1.16.2", "1.16.1", "1.16"]
-        else:
-            return ["1.18.1", "1.17.1", "1.16.5"]
-
-    def copy_uuid_to_clipboard(self, widget):
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self.player_uuid)
-        log(f"UUID {self.player_uuid} 已复制到剪贴板")
+        self.show_text.setText(text) 
     def download_skin(self, widget):
         if self.player_skin:
             skin_url = self.player_skin
@@ -2186,57 +1341,6 @@ class MainWindow(FluentWindow):
             with open("player_cape.png", "wb") as file:
                 file.write(cape_data)
             log(f"披风已下载到 player_cape.png")
-    def query_player_uuid(self, widget):
-        player_name_edit = widget.findChild(QLineEdit, "name2uuid_player_uuid")
-        uuid_result_label = widget.findChild(QLabel, "label_2")
-        if player_name_edit and uuid_result_label:
-            uuid_result_label.setText("查询中，请稍等...")
-            player_name = player_name_edit.text()
-            response = requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player_name}")
-            if response.status_code == 200:
-                player_data = response.json()
-                self.player_uuid = player_data.get("id", "未找到UUID")
-                uuid_result_label.setText(self.player_uuid)
-                log(f"查询玩家名称 {player_name} 的UUID: {self.player_uuid}")
-            else:
-                uuid_result_label.setText("查询失败")
-                log(f"查询玩家名称 {player_name} 的UUID失败", logging.ERROR)
-    def query_player_skin(self, widget):
-        skin_uuid_edit = widget.findChild(QLineEdit, "skin_uuid")
-        skin_result_label = widget.findChild(QLabel, "search_skin")
-        cape_result_label = widget.findChild(QLabel, "search_cape")
-        if skin_uuid_edit and skin_result_label and cape_result_label:
-            skin_result_label.setText("查询中，请稍等...")
-            cape_result_label.setText("查询中，请稍等...")
-            player_uuid = skin_uuid_edit.text()
-            response = requests.get(f"https://sessionserver.mojang.com/session/minecraft/profile/{player_uuid}")
-            if response.status_code == 200:
-                player_data = response.json()
-                properties = player_data.get("properties", [])
-                for prop in properties:
-                    if prop["name"] == "textures":
-                        textures = json.loads(base64.b64decode(prop["value"]).decode("utf-8"))
-                        self.player_skin = textures["textures"].get("SKIN", {}).get("url", "未找到皮肤")
-                        self.player_cape = textures["textures"].get("CAPE", {}).get("url", "未找到披风")
-                        skin_result_label.setText(self.player_skin[:12] + "..." if len(self.player_skin) > 12 else self.player_skin)
-                        cape_result_label.setText(self.player_cape[:12] + "..." if len(self.player_cape) > 12 else self.player_cape)
-                        log(f"查询玩家UUID {player_uuid} 的皮肤: {self.player_skin}")
-                        log(f"查询玩家UUID {player_uuid} 的披风: {self.player_cape}")
-                        break
-            else:
-                skin_result_label.setText("查询失败")
-                cape_result_label.setText("查询失败")
-                log(f"查询玩家UUID {player_uuid} 的皮肤和披风失败", logging.ERROR)
-
-    # def setlockconfig(self,widget,button,ConfigThing):
-    #     button = widget.findChild(SwitchButton, "button")
-    #     if button:
-    #         button.setChecked(self.config.get(ConfigThing, False))
-    #         button.checkedChanged.connect(lambda state: (
-    #             self.config.update("ConfigThing"=state),
-    #             open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
-    #             log(f"在首页上 显示 Minecraft 账户登录方式: {'启用' if state else '禁用'}")
-    #         ))
     def on_light_dark_changed(self, mode):
         if mode == "跟随系统":
             self.apply_theme()
@@ -2244,52 +1348,6 @@ class MainWindow(FluentWindow):
             self.apply_theme(QPalette(QColor("#2e2e2e")))
         elif mode == "浅色模式":
             self.apply_theme(QPalette(QColor("#ffffff")))
-
-    def clear_log_files(self, log_clear_button):
-        log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
-        file_num = len(os.listdir(log_folder))-1  # 减去一个正在使用的文件
-        if os.path.exists(log_folder) and os.path.isdir(log_folder):
-            for filename in os.listdir(log_folder):
-                file_path = os.path.join(log_folder, filename)
-                try:
-                    if os.path.isfile(file_path) or os.path.islink(file_path):
-                        os.unlink(file_path)
-                    elif os.path.isdir(file_path):
-                        shutil.rmtree(file_path)
-                    # InfoBar.success(
-                    #     title='🗑️ 清理成功',
-                    #     content=f"已清理 {file_path}",
-                    #     isClosable=True,
-                    #     position=InfoBarPosition.TOP,
-                    #     duration=5000,
-                    #     parent=self
-                    # )
-                except Exception as e:
-                    log(f"Failed to delete {file_path}. Reason: {e}", logging.ERROR)
-        InfoBar.success(
-            title='🗑️ 清理成功',
-            content=f"已清理 {file_num} 个文件",
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=5000,
-            parent=self
-        )
-        self.update_log_clear_button_text(log_clear_button)
-    def get_latest_version(self):
-
-        try:
-            response = requests.get(server_ip + "api/BLlatest")
-            if response.status_code == 200:
-                latest_release = response.json()
-                BL_update_text = latest_release.get("text")
-                BL_latest_ver = latest_release.get("Bloret-Launcher-latest")
-                return BL_latest_ver, BL_update_text
-            else:
-                log("查询最新版本失败", logging.ERROR)
-                return BL_latest_ver, BL_update_text
-        except requests.RequestException as e:
-            log(f"查询最新版本时发生错误: {e}", logging.ERROR)
-            return BL_latest_ver, BL_update_text
     def update_log_clear_button_text(self, button):
         log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
         if os.path.exists(log_folder) and os.path.isdir(log_folder):
@@ -2303,7 +1361,6 @@ class MainWindow(FluentWindow):
                 button.setText(f"清空 {log_file_count-1} 个日志，总计 {total_size // 1024} KB")
         else:
             button.setText("清空日志")
- 
 # 初始化配置文件
 with open('config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
@@ -2313,7 +1370,7 @@ isdarktheme = is_dark_theme()
 log(f"当前主题:{isdarktheme}")
 
 if not config.get('localmod', False):
-    LM_Download_Way,LM_Download_Way_list,LM_Download_Way_version,LM_Download_Way_minecraft=check_Light_Minecraft_Download_Way(config)
+    LM_Download_Way,LM_Download_Way_list,LM_Download_Way_version,LM_Download_Way_minecraft=check_Light_Minecraft_Download_Way(server_ip)
 else:
     log("本地模式已启用，获取 Light-Minecraft-Download-Way 的过程已跳过。")
 

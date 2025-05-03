@@ -1,0 +1,29 @@
+{
+    "minecraft-part": ".minecraft",
+    "first-run": false,
+    "ver": 6.2,
+    "size": 85,
+    "themelight": true,
+    "repeat_run": true,
+    "show_runtime_do": false,
+    "Customize": [
+        {
+            "showname": "Plain Craft Launcher 2",
+            "path": "G:/WindowsToGo/Min/Plain Craft Launcher 2.exe"
+        },
+        {
+            "showname": "绝区零",
+            "path": "G:/WindowsToGo/Windows/ZenlessZoneZero.exe"
+        },
+        {
+            "showname": "文件资源管理器",
+            "path": "C:/Windows/explorer.exe"
+        }
+    ],
+    "Bloret_PassPort_UserName": "未登录",
+    "Bloret_PassPort_PassWord": "",
+    "Bloret_PassPort_Admin": false,
+    "whenCWopen_BLopen": true,
+    "localmod": true,
+    "home_show_login_mod": true
+}

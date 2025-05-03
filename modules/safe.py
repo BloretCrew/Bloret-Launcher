@@ -28,4 +28,4 @@ def log_thread_safe(message, level=logging.INFO):
     with log_lock:
         log(message, level)
 
-log("SAFE.PY WAS WELL DONE.")
+log("SAFE.PY 的导入已完成。© Bloret Launcher")

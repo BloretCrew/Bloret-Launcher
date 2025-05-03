@@ -40,7 +40,7 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline
 OutputDir=.\output
 OutputBaseFilename=Bloret Launcher Setup
-SetupIconFile=output\icons\bloret.ico
+SetupIconFile=output\bloret.ico
 SolidCompression=yes
 WizardStyle=modern
 
@@ -58,7 +58,8 @@ Source: "output\config.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\servers.dat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\restart.ps1"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\icons\*"; DestDir: "{app}\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "output\update.ps1"; DestDir: "{app}"; Flags: ignoreversion
+; Source: "output\icons\*"; DestDir: "{app}\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "output\ui\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; 注意：不要在任何共享系统文件上使用 "Flags: ignoreversion"
 

@@ -89,7 +89,7 @@
          <property name="frameShadow">
           <enum>QFrame::Raised</enum>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_3">
+         <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
            <widget class="ListWidget" name="versions">
             <property name="minimumSize">
@@ -116,7 +116,14 @@
            </widget>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout">
+           <layout class="QVBoxLayout" name="verticalLayout">
+            <item>
+             <widget class="PushButton" name="Version_Open_File_Button">
+              <property name="text">
+               <string>打开版本文件夹</string>
+              </property>
+             </widget>
+            </item>
             <item>
              <widget class="PushButton" name="Version_Change_Name_Button">
               <property name="text">
@@ -168,12 +175,12 @@ PrimaryDropDownPushButton[hasIcon=true] {
 }
 
 PushButton:hover, ToolButton:hover, ToggleButton:hover, ToggleToolButton:hover {
-    background: rgb(255, 106, 106);
+    background: rgb(248, 76, 82);
 }
 
 PushButton:pressed, ToolButton:pressed, ToggleButton:pressed, ToggleToolButton:pressed {
-    color: rgba(0, 0, 0, 0.63);
-    background: rgba(249, 249, 249, 0.3);
+    color: white;
+    background: rgba(255, 106, 106, 0.603);
     border-bottom: 1px solid rgba(0, 0, 0, 0.073);
 }
 
@@ -465,7 +472,7 @@ PillToolButton:disabled:checked {
          <property name="frameShadow">
           <enum>QFrame::Raised</enum>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_5">
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
            <widget class="ListWidget" name="Customizes">
             <property name="minimumSize">
@@ -492,7 +499,7 @@ PillToolButton:disabled:checked {
            </widget>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <layout class="QVBoxLayout" name="verticalLayout_3">
             <item>
              <widget class="PushButton" name="Customizes_Change_Name_button">
               <property name="text">
@@ -544,12 +551,12 @@ PrimaryDropDownPushButton[hasIcon=true] {
 }
 
 PushButton:hover, ToolButton:hover, ToggleButton:hover, ToggleToolButton:hover {
-    background: rgb(255, 106, 106);
+    background: rgb(248, 76, 82);
 }
 
 PushButton:pressed, ToolButton:pressed, ToggleButton:pressed, ToggleToolButton:pressed {
-    color: rgba(0, 0, 0, 0.63);
-    background: rgba(249, 249, 249, 0.3);
+    color: white;
+    background: rgba(255, 106, 106, 0.603);
     border-bottom: 1px solid rgba(0, 0, 0, 0.073);
 }
 

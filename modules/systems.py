@@ -89,7 +89,7 @@ def restart():
     # if share.isAttached():
     #     share.detach()  # 释放共享内存
     # os.execl(sys.executable, sys.executable, *sys.argv)
-    subprocess.Popen(["powershell", "-ExecutionPolicy", "Bypass", "-File", "restart.ps1"])
+    subprocess.Popen(["restart.cmd"])
 
 
-log("SYSTEMS.PY WAS WELL DONE.")
+log("SYSTEMS.PY 的导入已完成。© Bloret Launcher")
