@@ -88,7 +88,6 @@ jobs:
       run: |
         mkdir -p ${{ env.OUTPUT_DIR }}
         cp dist/Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
-        cp -r icons/ ${{ env.OUTPUT_DIR }}/
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.json ${{ env.OUTPUT_DIR }}/
@@ -99,6 +98,7 @@ jobs:
         cp -r cmcl_save.json ${{ env.OUTPUT_DIR }}/
         cp -r restart.ps1 ${{ env.OUTPUT_DIR }}/
         cp -r update.ps1 ${{ env.OUTPUT_DIR }}/
+        cp -r bloret.ico ${{ env.OUTPUT_DIR }}/
 
     - name: 清理旧压缩包
       run: |
