@@ -2,8 +2,8 @@ import logging,requests,os,subprocess,json,socket
 from win32com.client import Dispatch
 from qfluentwidgets import MessageBox
 from modules.win11toast import update_progress
-# 以下导入的部分是 Bloret Launcher 所有的模块
-from modules.log import log
+# 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
+from modules.log import log, importlog
 from modules.safe import handle_exception
 def check_Light_Minecraft_Download_Way(server_ip): 
     ''' 
@@ -22,7 +22,7 @@ def check_Light_Minecraft_Download_Way(server_ip):
         - [x] LM_Download_Way_minecraft
     
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     try:
         response = requests.get(server_ip + "api/Light-Minecraft-Download-Way")
@@ -41,7 +41,7 @@ def check_Light_Minecraft_Download_Way(server_ip):
         # handle_exception(e,e,e)
         log(f"获取 Light-Minecraft-Download-Way 时发生错误: {e}", logging.ERROR)
 
-def handle_first_run(self):
+def handle_first_run(self,server_ip):
     if self.config.get('first-run', True):
         parent_dir = os.path.dirname(os.getcwd())
         updating_folder = os.path.join(parent_dir, "updating")
@@ -66,7 +66,7 @@ def handle_first_run(self):
             self.create_shortcut()
         #首次启动向 http://pcfs.top:2/api/blnum 发送请求，服务器计数器+1
         #具体可见项目 https://github.com/BloretCrew/Bloret-Launcher-Server
-        response = requests.get(self.server_ip + "api/blnum")
+        response = requests.get(server_ip + "api/blnum")
         if response.status_code == 200:
             data = response.json()
             self.bl_users = data.get("user", "未知用户")
@@ -99,15 +99,16 @@ def handle_first_run(self):
         with open('config.json', 'w', encoding='utf-8') as f:
             json.dump(self.config, f, ensure_ascii=False, indent=4)
 
-def check_Bloret_version(self):
+def check_Bloret_version(self,server_ip,ver_id_bloret):
     if not self.config.get('localmod', False):
         try:
-            response = requests.get(self.server_ip + "api/bloret-version")
+            response = requests.get(server_ip + "api/bloret-version")
             if response.status_code == 200:
                 data = response.json()
-                self.ver_id_bloret.clear()
-                self.ver_id_bloret.extend(data.get("Bloret-versions", []))
-                log(f"成功获取 Bloret 版本列表: {self.ver_id_bloret}")
+                ver_id_bloret.clear()
+                ver_id_bloret.extend(data.get("Bloret-versions", []))
+                log(f"成功获取 Bloret 版本列表: {ver_id_bloret}")
+                return ver_id_bloret
             else:
                 log("无法获取 Bloret 版本列表", logging.ERROR)
         except requests.RequestException as e:
@@ -115,9 +116,9 @@ def check_Bloret_version(self):
     else:
         log("本地模式已启用，获取 Bloret 版本列表 的过程已跳过。")
 
-def get_latest_version(self):
+def get_latest_version(server_ip):
     try:
-        response = requests.get(self.server_ip + "api/BLlatest")
+        response = requests.get(server_ip + "api/BLlatest")
         if response.status_code == 200:
             latest_release = response.json()
             BL_update_text = latest_release.get("text")
@@ -129,13 +130,13 @@ def get_latest_version(self):
     except requests.RequestException as e:
         log(f"查询最新版本时发生错误: {e}", logging.ERROR)
         return BL_latest_ver, BL_update_text
-def check_for_updates(self):
+def check_for_updates(self,server_ip):
     if not self.config.get('localmod', False):
         try:
             # 插入 socket 检查
             # socket.setdefaulttimeout(3)
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(('pcfs.top', 2))
-            BL_latest_ver, BL_update_text = self.get_latest_version()
+            # socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(('pcfs.top', 2))
+            BL_latest_ver, BL_update_text = get_latest_version(server_ip)
             log(f"最新正式版: {BL_latest_ver}")
             BL_ver = float(self.config.get('ver', '0.0'))  # 从config.json读取当前版本
             if BL_ver < float(BL_latest_ver):
@@ -165,4 +166,4 @@ def check_for_updates(self):
     else:
         log("本地模式已启用，检查更新 的过程已跳过。")
 
-log("BLSERVER.PY 的导入已完成。© Bloret Launcher")
+importlog("BLSERVER.PY")

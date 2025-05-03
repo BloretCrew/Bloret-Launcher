@@ -2,7 +2,7 @@ import threading,logging,traceback,sys
 from qfluentwidgets import Dialog
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
-from modules.log import log
+from modules.log import log, importlog
 def handle_exception(exc_type, exc_value, exc_traceback):
     log("未捕获的异常:", logging.CRITICAL)
     log("类型: {}".format(exc_type), logging.CRITICAL)
@@ -28,4 +28,4 @@ def log_thread_safe(message, level=logging.INFO):
     with log_lock:
         log(message, level)
 
-log("SAFE.PY 的导入已完成。© Bloret Launcher")
+importlog("SAFE.PY")

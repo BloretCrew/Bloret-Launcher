@@ -1,15 +1,15 @@
-from PyQt5.QtWidgets import QSystemTrayIcon, QApplication, QPushButton, QWidget, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QCheckBox
+from PyQt5.QtWidgets import QSystemTrayIcon, QApplication, QPushButton, QWidget, QLineEdit, QLabel, QFileDialog, QMessageBox
 from qfluentwidgets import MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
-from PyQt5.QtGui import QIcon, QDesktopServices, QColor, QPalette
-from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
+from PyQt5.QtGui import QIcon, QColor, QPalette
+from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
 from modules.win11toast import toast, notify, update_progress
-import ctypes,re,locale,sys,logging,os,requests,base64,json,subprocess,time,shutil
+import ctypes, re, locale, sys, logging, os, requests, json, subprocess, time, shutil
 import sip # type: ignore
-# 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
+# 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块，位于 modules 中
 from modules.log import log
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
 from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui
-from modules.customize import CustomizeRun
+from modules.customize import CustomizeRun,find_Customize
 from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
@@ -271,9 +271,10 @@ class MainWindow(FluentWindow):
         
         self.loading_dialogs = []  # 初始化 loading_dialogs 属性
         self.threads = []  # 初始化 threads 属性
-        handle_first_run(self)
-        check_for_updates(self)
-        check_Bloret_version(self)
+        handle_first_run(self,server_ip)
+        check_for_updates(self,server_ip)
+        global ver_id_bloret
+        ver_id_bloret = check_Bloret_version(self, server_ip, ver_id_bloret)
         
 
         # 初始化其他属性
@@ -303,7 +304,7 @@ class MainWindow(FluentWindow):
 
         # 处理首次运行
         update_progress({'value': 70 / 100, 'valueStringOverride': '7/10', 'status': '处理首次运行'})
-        QTimer.singleShot(0, lambda: handle_first_run(self))
+        QTimer.singleShot(0, lambda: handle_first_run(self,server_ip))
         
         # 隐藏启动页面
         update_progress({'value': 80 / 100, 'valueStringOverride': '8/10', 'status': '隐藏启动页面'})
@@ -399,7 +400,7 @@ class MainWindow(FluentWindow):
         setup_home_ui(self,self.homeInterface)
         setup_download_ui(self,self.downloadInterface,LM_Download_Way_list,ver_id_bloret)
         setup_tools_ui(self,self.toolsInterface)
-        setup_passport_ui(self,self.passportInterface)
+        setup_passport_ui(self,self.passportInterface,server_ip)
         setup_settings_ui(self,self.settingsInterface)
         setup_version_ui(self,self.versionInterface,minecraft_list,customize_list)
         setup_info_ui(self,self.infoInterface)
@@ -624,7 +625,7 @@ class MainWindow(FluentWindow):
     def on_download_clicked(self):
         log("下载 被点击")
         load_ui("ui/download.ui", animate=False)
-        setup_download_ui(self.content_layout.itemAt(0).widget())
+        setup_download_ui(self,self.content_layout.itemAt(0).widget(),LM_Download_Way_list,ver_id_bloret)
     def on_download_way_changed(self, widget, selected_way):
         show_way = widget.findChild(ComboBox, "show_way")
         fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
@@ -695,16 +696,6 @@ class MainWindow(FluentWindow):
                 parent=self
             )
             return
-
-        # InfoBar.success(
-        #     title='✅ 成功',
-        #     content=f"路径 {Customize_path_value} 和显示名称 {Customize_showname_value} 已成功校验",
-        #     isClosable=True,
-        #     position=InfoBarPosition.TOP,
-        #     duration=5000,
-        #     parent=self
-        # )
-
         # Save to config.json
         try:
             with open('config.json', 'r', encoding='utf-8') as file:
@@ -954,6 +945,118 @@ class MainWindow(FluentWindow):
                 )
                 self.download_thread.start()
                 self.threads.append(self.download_thread)  # 将线程添加到列表中
+    def delete_minecraft_version(self,version,versions):
+        '''
+        # 🚧TODO🚧
+
+        ***
+
+        ### 删除 `.minecraft/version/{version}` 文件夹
+        最好移到回收站
+
+        
+        ***
+        ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+        '''
+        log(f"正在删除 Minecraft 版本：{version}")
+    def Change_minecraft_version_name(self,version,versions):
+        '''
+        # 🚧TODO🚧
+
+        ***
+
+        ### 将 `.minecraft/version` 文件夹下 `{version}` 文件夹名称换成想要的文件名称并重读刷新。
+
+        
+        ***
+        ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+        '''
+        log(f"正在修改 Minecraft 版本名称：{version}")
+    def delete_Customize(self,version,Customizes):
+        '''
+        ### 删除自定义选项
+        将 配置文件中 `{version}` 对应的项目删除。
+
+        
+        ***
+        ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+        '''
+        log(f"正在删除自定义选项：{version}")
+        try:
+            isOK,item=find_Customize(self,version)
+            if isOK:
+                with open('config.json', 'r', encoding='utf-8') as file:
+                    config_data = json.load(file)
+
+                if "Customize" not in config_data:
+                    config_data["Customize"] = []
+                config_data["Customize"].remove(item)
+                with open('config.json', 'w', encoding='utf-8') as file:
+                    json.dump(config_data, file, ensure_ascii=False, indent=4)
+                self.config = config_data
+                InfoBar.success(
+                    title='✅ 成功',
+                    content=f"{version} 已成功删除",
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=5000,
+                    parent=self
+                )
+                customize_list.remove(version)
+                Customizes.clear()
+                Customizes.addItems(customize_list)
+                self.run_cmcl_list()
+            else:
+                InfoBar.error(
+                    title='❌ 删除失败',
+                    content=f"未找到与 {version} 匹配的自定义程序",
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=5000,
+                    parent=self
+                )
+            
+        except Exception as e:
+            InfoBar.error(
+                title='❌ 错误',
+                content=f"保存到 config.json 时发生错误: {e}",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+    def Change_Customize_name(self,version,Customizes):
+        '''
+        # 🚧TODO🚧
+
+        ***
+
+        ### 将配置文件中 `{version}` 项目换成想要的名称并刷新重读。
+
+        
+        ***
+        ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+        '''
+        log(f"正在修改自定义选项名称：{version}")
+        isOK,item=find_Customize(self,version)
+        if isOK:
+            with open('config.json', 'r', encoding='utf-8') as file:
+                config_data = json.load(file)
+
+            if "Customize" not in config_data:
+                config_data["Customize"] = []
+            # config_data["Customize"].remove(item)
+            # TODO : 替换掉 Customize 中的对应项
+            
+        else:
+            InfoBar.error(
+                title='❌ 修改失败',
+                content=f"未找到与 {version} 匹配的自定义程序",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
     class DownloadThread(QThread):
         finished = pyqtSignal()
         error_occurred = pyqtSignal(str)

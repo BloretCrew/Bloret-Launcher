@@ -1,7 +1,7 @@
 from modules.win11toast import toast
 import ctypes.wintypes,ctypes,logging,os,subprocess
 
-from modules.log import log
+from modules.log import log, importlog
 
 def get_system_theme_color():
     """获取系统主题颜色"""
@@ -92,4 +92,4 @@ def restart():
     subprocess.Popen(["restart.cmd"])
 
 
-log("SYSTEMS.PY 的导入已完成。© Bloret Launcher")
+importlog("SYSTEMS.PY")

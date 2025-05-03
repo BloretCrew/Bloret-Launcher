@@ -2,4 +2,4 @@
 run.ps1
 modules/__pycache__/
 build/
-dish/
+dist/

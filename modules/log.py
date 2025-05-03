@@ -2,6 +2,8 @@ import os,logging,shutil
 from datetime import datetime
 from qfluentwidgets import InfoBar, InfoBarPosition
 
+copyright = "\n© 2025 Bloret Launcher All rights reserved. \n© 2025 Bloret All rights reserved."
+
 # 创建日志文件夹
 log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
 if not os.path.exists(log_folder):
@@ -22,11 +24,13 @@ def log(message, level=logging.INFO):
     '''
     发送日志消息，输出到控制台并记录到日志文件。
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     print(message)
     logging.log(level, message)
     logging.getLogger().handlers[0].flush()  # 强制刷新日志
+def importlog(message):
+    log(f"{message} 的导入已完成。{copyright}")
 
 def clear_log_files(self, log_clear_button):
     ''' 
@@ -43,7 +47,7 @@ def clear_log_files(self, log_clear_button):
     输出 : 无
     
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
     file_num = len(os.listdir(log_folder))-1  # 减去一个正在使用的文件
@@ -76,4 +80,4 @@ def clear_log_files(self, log_clear_button):
     self.update_log_clear_button_text(log_clear_button)
     
     
-log("LOG.PY 的导入已完成。© Bloret Launcher")
+importlog("LOG.PY")

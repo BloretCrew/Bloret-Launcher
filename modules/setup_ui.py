@@ -1,11 +1,11 @@
-from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QLineEdit, QLabel
+from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QLineEdit, QLabel, QListWidget
 from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, ListWidget, InfoBarPosition, InfoBar
 from PyQt5 import uic
-from PyQt5.QtGui import QDesktopServices, QPixmap
+from PyQt5.QtGui import QDesktopServices, QPixmap, QIcon
 from PyQt5.QtCore import QUrl, Qt
 import requests,json
-# 以下导入的部分是 Bloret Launcher 所有的模块
-from modules.log import log,clear_log_files
+# 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
+from modules.log import log, importlog, clear_log_files
 from modules.Bloret_PassPort import Bloret_PassPort_Account_login,Bloret_PassPort_Account_logout
 from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_bloret_web,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
@@ -14,7 +14,7 @@ def load_ui(ui_path, parent=None, animate=True):
     ### 加载 UI 布局
     通过 .ui 文件
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     widget = uic.loadUi(ui_path)
 
@@ -31,7 +31,7 @@ def setup_home_ui(self, widget):
     '''
     设定 Bloret Launcher 主页 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     if self.config.get('localmod', False):
         InfoBar.warning(
@@ -87,7 +87,7 @@ def setup_download_load_ui(self, widget):
     ### 设定 Bloret Launcher 下载界面加载时 UI 布局和操作。
     # ⚠️ 已弃用
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     loading_label = widget.findChild(QLabel, "loading_label")
     if loading_label:
@@ -97,7 +97,7 @@ def setup_download_ui(self, widget, LM_Download_Way_list,ver_id_bloret):
     '''
     设定 Bloret Launcher 下载界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     download_way_choose = widget.findChild(ComboBox, "download_way_choose")  # 获取 download_way_choose 元素
     LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
@@ -127,10 +127,6 @@ def setup_download_ui(self, widget, LM_Download_Way_list,ver_id_bloret):
     loading_label = widget.findChild(QLabel, "label_2")
     if loading_label:
         self.setup_loading_gif(loading_label)
-    # 默认填入百络谷支持版本
-    if minecraft_choose:
-        minecraft_choose.clear()
-        minecraft_choose.addItems(ver_id_bloret)
     notification_switch = widget.findChild(SwitchButton, "Notification")
     if notification_switch:
         notification_switch.setChecked(True)  # 将Notification开关设置成开
@@ -159,7 +155,10 @@ def setup_download_ui(self, widget, LM_Download_Way_list,ver_id_bloret):
     # 默认填入百络谷支持版本的第一项
     if minecraft_choose:
         minecraft_choose.clear()
-        minecraft_choose.addItems(ver_id_bloret)
+        if not self.config.get('localmod', False):
+            minecraft_choose.addItems(ver_id_bloret)
+        else:
+            minecraft_choose.addItems(["本地模式已启用，无法下载版本"])
         vername_edit = widget.findChild(LineEdit, "vername_edit")
         if vername_edit and ver_id_bloret:
             vername_edit.setText(ver_id_bloret[0])
@@ -176,7 +175,7 @@ def setup_tools_ui(self, widget):
     '''
     设定 Bloret Launcher 小工具界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     name2uuid_button = widget.findChild(QPushButton, "name2uuid_player_Button")
     if name2uuid_button:
@@ -200,14 +199,14 @@ def setup_tools_ui(self, widget):
     if cape_copy_button:
         cape_copy_button.clicked.connect(lambda: copy_cape_to_clipboard(widget))
 
-def setup_passport_ui(self, widget):
+def setup_passport_ui(self, widget, server_ip):
     '''
     # 设定 Bloret Launcher 通行证界面 UI 布局和操作。
     包括：
      - [x] 微软登录与离线登录
      - [x] 百络谷通行证登录
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     player_name_edit = widget.findChild(QLineEdit, "player_name")
     player_name_set_button = widget.findChild(QPushButton, "player_name_set")
@@ -261,13 +260,13 @@ def setup_passport_ui(self, widget):
     if Bloret_PassPort_login:
         Bloret_PassPort_login.clicked.connect(lambda: Bloret_PassPort_Account_login(self,widget))
     if Bloret_PassPort_view_BBBS:
-        Bloret_PassPort_view_BBBS.clicked.connect(lambda: open_BBBS_link(self))
+        Bloret_PassPort_view_BBBS.clicked.connect(lambda: open_BBBS_link(server_ip))
 
 def setup_settings_ui(self, widget):
     '''
     设定 Bloret Launcher 设置界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     # 设置设置界面的UI元素
     log_clear_button = widget.findChild(QPushButton, "log_clear_button")
@@ -329,7 +328,7 @@ def setup_info_ui(self, widget):
     '''
     设定 Bloret Launcher 关于界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     github_org_button = widget.findChild(QPushButton, "pushButton_2")
     if github_org_button:
@@ -351,18 +350,26 @@ def setup_version_ui(self, widget, minecraft_list, customize_list):
     '''
     设定 Bloret Launcher 版本管理界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     # rgb(248, 76, 82)
     versions = widget.findChild(ListWidget, "versions")
     if versions:
         versions.clear()
         versions.addItems(minecraft_list)
+        versions.setSelectRightClickedRow(True)
     Version_Change_Name_Button = widget.findChild(QPushButton, "Version_Change_Name_Button")
     version_delete_button = widget.findChild(QPushButton, "version_delete_button")
-    # if Version_Change_Name_Button:
-    #     log(f"选中了：{versions}")
-
+    Version_Open_File_Button = widget.findChild(QPushButton, "Version_Open_File_Button")
+    if Version_Change_Name_Button:
+        Version_Change_Name_Button.clicked.connect(lambda: self.Change_minecraft_version_name(minecraft_list[versions.currentRow()],versions))
+    if version_delete_button:
+        version_delete_button.clicked.connect(lambda: self.delete_minecraft_version(minecraft_list[versions.currentRow()],versions))
+    if Version_Open_File_Button:
+        '''
+        # 🚧TODO🚧
+        '''
+        Version_Open_File_Button.clicked.connect(lambda: self.delete_minecraft_version(minecraft_list[versions.currentRow()],versions))
 
     Customizes = widget.findChild(ListWidget, "Customizes")
     if Customizes:
@@ -370,5 +377,10 @@ def setup_version_ui(self, widget, minecraft_list, customize_list):
         Customizes.addItems(customize_list)
     Customizes_Change_Name_button = widget.findChild(QPushButton, "Customizes_Change_Name_button")
     Customizes_delete_button = widget.findChild(QPushButton, "Customizes_delete_button")
+    if Customizes_Change_Name_button:
+        Customizes_Change_Name_button.clicked.connect(lambda:self.Change_Customize_name(customize_list[Customizes.currentRow()],Customizes))
+    if Customizes_delete_button:
+        Customizes_delete_button.clicked.connect(lambda:self.delete_Customize(customize_list[Customizes.currentRow()],Customizes))
 
-log("SETUP_UI.PY 的导入已完成。© Bloret Launcher")
+
+importlog("SETUP_UI.PY")

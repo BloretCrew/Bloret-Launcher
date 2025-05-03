@@ -325,9 +325,9 @@
               </property>
               <property name="darkColor" stdset="0">
                <color>
-                <red>185</red>
-                <green>185</green>
-                <blue>185</blue>
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
                </color>
               </property>
              </widget>

@@ -6,8 +6,8 @@ from modules.win11toast import notify, update_progress
 import logging,os,requests,zipfile,time
 import threading
 from concurrent.futures import ThreadPoolExecutor
-# 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
-from modules.log import log
+# 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块，位于 modules 中
+from modules.log import log, importlog
 
 def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft, LM_Download_Way_version, parent):
     class BLDownloadDialog(QDialog):
@@ -405,4 +405,4 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
 
     return 0
 
-log("BLDOWNLOAD.PY 的导入已完成。© Bloret Launcher")
+importlog("BLDOWNLOAD.PY")

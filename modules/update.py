@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QMessageBox
 import logging,os,subprocess
-# 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
-from modules.log import log
+# 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块，位于 modules 中
+from modules.log import log, importlog
 
 def update_to_latest_version(self):
     update_script_path = os.path.join(os.getcwd(), "update.ps1")

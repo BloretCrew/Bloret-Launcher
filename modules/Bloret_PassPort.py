@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import QLabel
 from qfluentwidgets import SubtitleLabel,MessageBoxBase,InfoBar,InfoBarPosition,Dialog, LineEdit
 import logging,requests,json
-# 以下导入的部分是 Bloret Launcher 所有的模块
-from modules.log import log
+# 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
+from modules.log import log, importlog
 
 def Bloret_PassPort_Account_login(self, widget):
     if not self.config.get('localmod', False):
@@ -36,7 +36,6 @@ def Bloret_PassPort_Account_login(self, widget):
                 password = self.passwordLineEdit.text().strip()
                 return bool(username and password)
         """ 登录账户方法 """
-        # 创建并显示自定义对话框
         dialog = CustomLoginDialog(self)
         if dialog.exec():  # 用户点击确认
             username = dialog.usernameLineEdit.text().strip()
@@ -118,4 +117,4 @@ def Bloret_PassPort_Account_logout(self, widget):
     )
     log("已退出登录")
 
-log("BLORET_PASSPORT.PY 的导入已完成。© Bloret Launcher")
+importlog("BLORET_PASSPORT.PY")
