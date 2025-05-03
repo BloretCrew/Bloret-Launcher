@@ -5,7 +5,7 @@ from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QSettings, QTh
 from modules.win11toast import toast, notify, update_progress
 import ctypes, re, locale, sys, logging, os, requests, json, subprocess, time, shutil
 import sip # type: ignore
-# 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块，位于 modules 中
+# 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
 from modules.log import log
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
 from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui
