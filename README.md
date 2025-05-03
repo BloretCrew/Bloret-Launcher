@@ -3,7 +3,7 @@
 > 如有问题，请找 @RhedarLiu
 
 <p align="center">
-  <img width="16%" align="center" src="icons/bloret.png" alt="logo">
+  <img width="16%" align="center" src="bloret.ico" alt="logo">
 </p>
   <h1 align="center">
   Bloret-Launcher

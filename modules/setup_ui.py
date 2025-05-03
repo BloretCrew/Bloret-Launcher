@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QLineEdit, QLabel
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, ListWidget
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap
 from PyQt5.QtCore import QUrl
@@ -25,9 +25,7 @@ def load_ui(ui_path, parent=None, animate=True):
         else:
             parent.layout().addWidget(widget)
 
-
-
-def setup_home_ui(self, widget):
+def setup_home_ui(self, widget, config):
     '''
     设定 Bloret Launcher 主页 UI 布局和操作。
     ***
@@ -61,10 +59,10 @@ def setup_home_ui(self, widget):
     # tabBar = widget.findChild(TabBar, "runs")
     Bloret_PassPort_Name = widget.findChild(QLabel, "Bloret_PassPort_Name")
     if Bloret_PassPort_Name:
-        Bloret_PassPort_Name.setText(f"{self.config.get('Bloret_PassPort_UserName', '未登录')}")
+        Bloret_PassPort_Name.setText(f"{config.get('Bloret_PassPort_UserName', '未登录')}")
     Minecraft_account = widget.findChild(QLabel, "Minecraft_account")
     if Minecraft_account:
-        if self.config.get('home_show_login_mod', False):
+        if config.get('home_show_login_mod', False):
             Minecraft_account.setText(f"[{self.login_mod}] {self.player_name}")
         else:
             Minecraft_account.setText(f"{self.player_name}")
@@ -187,7 +185,7 @@ def setup_tools_ui(self, widget):
     if cape_copy_button:
         cape_copy_button.clicked.connect(lambda: self.copy_cape_to_clipboard(widget))
 
-def setup_passport_ui(self, widget):
+def setup_passport_ui(self, widget, config):
     '''
     # 设定 Bloret Launcher 通行证界面 UI 布局和操作。
     包括：
@@ -242,7 +240,7 @@ def setup_passport_ui(self, widget):
     Bloret_PassPort_login = widget.findChild(QPushButton, "Bloret_PassPort_login")
     Bloret_PassPort_view_BBBS = widget.findChild(QPushButton, "Bloret_PassPort_view_BBBS")
     if Bloret_PassPort_UserName:
-        Bloret_PassPort_UserName.setText(self.config.get('Bloret_PassPort_UserName', '未登录'))
+        Bloret_PassPort_UserName.setText(config.get('Bloret_PassPort_UserName', '未登录'))
     if Bloret_PassPort_logout:
         Bloret_PassPort_logout.clicked.connect(lambda: self.Bloret_PassPort_Account_logout(widget))
     if Bloret_PassPort_login:
@@ -250,7 +248,7 @@ def setup_passport_ui(self, widget):
     if Bloret_PassPort_view_BBBS:
         Bloret_PassPort_view_BBBS.clicked.connect(lambda: self.open_BBBS_link())
 
-def setup_settings_ui(self, widget):
+def setup_settings_ui(self, widget, config):
     '''
     设定 Bloret Launcher 设置界面 UI 布局和操作。
     ***
@@ -260,7 +258,7 @@ def setup_settings_ui(self, widget):
     log_clear_button = widget.findChild(QPushButton, "log_clear_button")
     if log_clear_button:
         log_clear_button.clicked.connect(lambda: self.clear_log_files(log_clear_button))
-        self.update_log_clear_button_text(log_clear_button)  # 更新按钮文本
+        self.update_log_clear_button_text(log_clear_button)
 
     # 添加深浅色模式选择框
     light_dark_choose = widget.findChild(ComboBox, "light_dark_choose")
@@ -271,44 +269,44 @@ def setup_settings_ui(self, widget):
 
     size_choose = widget.findChild(SpinBox, "Size_Choose")
     if size_choose:
-        size_choose.setValue(self.config.get("size", 100))
+        size_choose.setValue(config.get("size", 100))
         size_choose.valueChanged.connect(lambda value: (
-            self.config.update(size=value),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+            config.update(size=value),
+            open('config.json', 'w', encoding='utf-8').write(json.dumps(config, ensure_ascii=False, indent=4))
         ))
     repeat_run_button = widget.findChild(SwitchButton, "repeat_run_button")
     if repeat_run_button:
-        repeat_run_button.setChecked(self.config.get('repeat_run', False))
+        repeat_run_button.setChecked(config.get('repeat_run', False))
         repeat_run_button.checkedChanged.connect(lambda state: (
-            self.config.update(repeat_run=state),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            config.update(repeat_run=state),
+            open('config.json', 'w', encoding='utf-8').write(json.dumps(config, ensure_ascii=False, indent=4)),
             log(f"显示软件打开过程: {'启用' if state else '禁用'}")
         ))
     show_runtime_do_button = widget.findChild(SwitchButton, "show_runtime_do_button")
     if show_runtime_do_button:
-        show_runtime_do_button.setChecked(self.config.get('show_runtime_do', False))
+        show_runtime_do_button.setChecked(config.get('show_runtime_do', False))
         show_runtime_do_button.checkedChanged.connect(lambda state: (
-            self.config.update(show_runtime_do=state),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            config.update(show_runtime_do=state),
+            open('config.json', 'w', encoding='utf-8').write(json.dumps(config, ensure_ascii=False, indent=4)),
             log(f"重复运行设置已更改为: {'启用' if state else '禁用'}")
         ))
     BL_version = widget.findChild(QLabel, "BL_version")
     if BL_version:
-        BL_version.setText(f"{self.config.get('ver', '未知')}")
+        BL_version.setText(f"{config.get('ver', '未知')}")
     localmod_button = widget.findChild(SwitchButton, "localmod_button")
     if localmod_button:
-        localmod_button.setChecked(self.config.get('localmod', False))
+        localmod_button.setChecked(config.get('localmod', False))
         localmod_button.checkedChanged.connect(lambda state: (
-            self.config.update(repeat_run=state),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            config.update(repeat_run=state),
+            open('config.json', 'w', encoding='utf-8').write(json.dumps(config, ensure_ascii=False, indent=4)),
             log(f"本地模式: {'启用' if state else '禁用'}")
         ))
     home_show_login_mod_button = widget.findChild(SwitchButton, "home_show_login_mod_button")
     if home_show_login_mod_button:
-        home_show_login_mod_button.setChecked(self.config.get('home_show_login_mod', False))
+        home_show_login_mod_button.setChecked(config.get('home_show_login_mod', False))
         home_show_login_mod_button.checkedChanged.connect(lambda state: (
-            self.config.update(home_show_login_mod=state),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            config.update(home_show_login_mod=state),
+            open('config.json', 'w', encoding='utf-8').write(json.dumps(config, ensure_ascii=False, indent=4)),
             log(f"在首页上 显示 Minecraft 账户登录方式: {'启用' if state else '禁用'}")
         ))
 
@@ -334,5 +332,27 @@ def setup_info_ui(self, widget):
     if BLC_QQ:
         BLC_QQ.clicked.connect(self.open_BLC_qq_link)
 
+def setup_version_ui(self, widget, minecraft_list, customize_list):
+    '''
+    设定 Bloret Launcher 版本管理界面 UI 布局和操作。
+    ***
+    ###### Bloret Launcher 所有
+    '''
+    versions = widget.findChild(ListWidget, "versions")
+    if versions:
+        versions.clear()
+        versions.addItems(minecraft_list)
+    Version_Change_Name_Button = widget.findChild(QPushButton, "Version_Change_Name_Button")
+    version_delete_button = widget.findChild(QPushButton, "version_delete_button")
+    # if Version_Change_Name_Button:
+    #     log(f"选中了：{versions}")
+
+
+    Customizes = widget.findChild(ListWidget, "Customizes")
+    if Customizes:
+        Customizes.clear()
+        Customizes.addItems(customize_list)
+    Customizes_Change_Name_button = widget.findChild(QPushButton, "Customizes_Change_Name_button")
+    Customizes_delete_button = widget.findChild(QPushButton, "Customizes_delete_button")
 
 log("SETUP_UI.PY WAS WELL DONE.")

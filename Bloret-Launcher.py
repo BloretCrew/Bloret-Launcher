@@ -1,7 +1,7 @@
-from PyQt5.QtWidgets import QSystemTrayIcon, QDialog, QApplication, QPushButton, QVBoxLayout, QWidget, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QCheckBox
-from qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, SwitchButton, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
+from PyQt5.QtWidgets import QSystemTrayIcon, QDialog, QApplication, QPushButton, QWidget, QLineEdit, QLabel, QFileDialog, QCheckBox, QMessageBox, QProgressBar, QCheckBox
+from qfluentwidgets import SpinBox, MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
 from PyQt5 import uic
-from PyQt5.QtGui import QIcon, QDesktopServices, QColor, QPalette, QPixmap
+from PyQt5.QtGui import QIcon, QDesktopServices, QColor, QPalette
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QUrl, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
 from modules.win11toast import toast, notify, update_progress
 import ctypes,socket,re,locale,sys,logging,os,requests,base64,json,subprocess,zipfile,time,shutil
@@ -11,9 +11,9 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 # 以下导入的部分是 Bloret Launcher 所有的模块
 from modules.log import log
-import modules.safe
+from modules.safe import handle_exception,log_thread_safe
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
-from modules.setup_ui import setup_home_ui,setup_download_load_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui
+from modules.setup_ui import setup_home_ui,setup_download_load_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui
 
 # 全局变量
 server_ip = "http://pcfs.top:2/"
@@ -28,7 +28,7 @@ BL_update_text = ""
 BL_latest_ver = 0
 threads = []
 MINECRAFT_DIR = os.path.join(os.getcwd(), ".minecraft")
-icon = {'src': 'icons/bloret.png','placement': 'appLogoOverride'}
+icon = {'src': 'bloret.ico','placement': 'appLogoOverride'}
 minecraft_list = []
 tabbar = None
 isdarktheme = False
@@ -155,7 +155,7 @@ def BL_download(version, LM_download_way_choose, parent):
                     'status': '正在下载... ↓',
                     'value': '0',
                     'valueStringOverride': '0%',
-                    'icon': os.path.join(os.getcwd(), 'icons', 'bloret.png')
+                    'icon': os.path.join(os.getcwd(), 'bloret.ico')
                 })
                 
                 log(f"LM_download_way_choose:{LM_download_way_choose}")
@@ -349,7 +349,7 @@ def BL_download(version, LM_download_way_choose, parent):
                         'status': '正在下载... ↓',
                         'value': '0',
                         'valueStringOverride': '0%',
-                        'icon': os.path.join(os.getcwd(), 'icons', 'bloret.png')  # 确保路径有效
+                        'icon': os.path.join(os.getcwd(), 'bloret.ico')  # 确保路径有效
                     })
         
                     # 打开文件并写入下载内容
@@ -600,7 +600,7 @@ class MainWindow(FluentWindow):
             setTheme(Theme.AUTO)
             
         self.setWindowTitle("Bloret Launcher")
-        icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
+        icon_path = os.path.join(os.getcwd(), 'bloret.ico')
         if os.path.exists(icon_path):
             log(f"图标路径存在: {icon_path}")
         else:
@@ -618,6 +618,12 @@ class MainWindow(FluentWindow):
                 log("检测到程序重复运行")
                 if not self.config.get('repeat_run', False):
                     log("重复运行被禁用：检测到程序已运行，退出新实例")
+                    # 显示通知
+                    notify(progress={
+                        'title': f'Bloret Launcher 已阻止了重复打开软件的操作',
+                        'body': '为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。',
+                        'icon': os.path.join(os.getcwd(), 'bloret.ico')
+                    })
                     w = Dialog("Bloret Launcher 已阻止了重复打开软件的操作", "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。")
                     if w.exec():
                         print('确认')
@@ -632,7 +638,7 @@ class MainWindow(FluentWindow):
                 'status': '正在做打开软件前的工作...',
                 'value': '0',
                 'valueStringOverride': '0%',
-                'icon': os.path.join(os.getcwd(), 'icons', 'bloret.png')
+                'icon': os.path.join(os.getcwd(), 'bloret.ico')
             })
         else:
             log("显示软件打开过程已禁用")
@@ -648,7 +654,7 @@ class MainWindow(FluentWindow):
 
         # 1. 创建启动页面
         update_progress({'value': 10 / 100, 'valueStringOverride': '1/10', 'status': '创建启动页面'})
-        icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
+        icon_path = os.path.join(os.getcwd(), 'bloret.ico')
         if os.path.exists(icon_path):
             log(f"图标路径存在: {icon_path}")
         else:
@@ -788,38 +794,34 @@ class MainWindow(FluentWindow):
         self.passportInterface = QWidget()
         self.settingsInterface = QWidget()
         self.infoInterface = QWidget()
+        self.versionInterface = QWidget()
         self.homeInterface.setObjectName("home")
         self.downloadInterface.setObjectName("download")
         self.toolsInterface.setObjectName("tools")
         self.passportInterface.setObjectName("passport")
         self.settingsInterface.setObjectName("settings")
         self.infoInterface.setObjectName("info")
-        if isdarktheme:
-            self.addSubInterface(self.homeInterface, QIcon("icons/dark/bloret.ico"), "主页")
-            self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, "下载")
-            self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, "工具")
-            self.addSubInterface(self.passportInterface, FluentIcon.FINGERPRINT, "通行证", NavigationItemPosition.BOTTOM)
-            self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, "设置", NavigationItemPosition.BOTTOM)
-            self.addSubInterface(self.infoInterface, FluentIcon.INFO, "关于", NavigationItemPosition.BOTTOM)
-        else:  
-            self.addSubInterface(self.homeInterface, QIcon("icons/bloret.ico"), "主页")
-            self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, "下载")
-            self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, "工具")
-            self.addSubInterface(self.passportInterface, FluentIcon.FINGERPRINT, "通行证", NavigationItemPosition.BOTTOM)
-            self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, "设置", NavigationItemPosition.BOTTOM)
-            self.addSubInterface(self.infoInterface, FluentIcon.INFO, "关于", NavigationItemPosition.BOTTOM)
+        self.versionInterface.setObjectName("version")
+        self.addSubInterface(self.homeInterface, QIcon("bloret.ico"), "主页")
+        self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, "下载")
+        self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, "工具")
+        self.addSubInterface(self.passportInterface, FluentIcon.FINGERPRINT, "通行证", NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, "设置", NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.infoInterface, FluentIcon.INFO, "关于", NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.versionInterface, FluentIcon.APPLICATION, "版本管理")
         load_ui("ui/home.ui", parent=self.homeInterface)
         load_ui("ui/download.ui", parent=self.downloadInterface)
         load_ui("ui/tools.ui", parent=self.toolsInterface)
         load_ui("ui/passport.ui", parent=self.passportInterface)
         load_ui("ui/settings.ui", parent=self.settingsInterface)
         load_ui("ui/info.ui", parent=self.infoInterface)
-        setup_home_ui(self,self.homeInterface)
+        load_ui("ui/version.ui", parent=self.versionInterface)
+        setup_home_ui(self,self.homeInterface,config)
         setup_download_ui(self,self.downloadInterface,LM_Download_Way_list,ver_id_bloret,config)
         setup_tools_ui(self,self.toolsInterface)
-        setup_passport_ui(self,self.passportInterface)
-        setup_settings_ui(self,self.settingsInterface)
-        setup_info_ui(self,self.infoInterface)
+        setup_passport_ui(self,self.passportInterface,config)
+        setup_settings_ui(self,self.settingsInterface,config)
+        setup_version_ui(self,self.versionInterface,minecraft_list, customize_list)
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -828,7 +830,7 @@ class MainWindow(FluentWindow):
         self.sidebar_animation.start()
     def initWindow(self):
         # self.resize(900, 700)
-        self.setWindowIcon(QIcon("icons/bloret.png"))
+        self.setWindowIcon(QIcon("bloret.ico"))
         self.setWindowTitle("Bloret Launcher")
         self.scale_factor = self.config.get('size', 90) / 100.0
         # self.resize(int(800 * self.scale_factor), int(600 * self.scale_factor))
@@ -917,7 +919,7 @@ class MainWindow(FluentWindow):
             log("show_text is None", logging.ERROR)
         self.run_cmcl_list()
     def run_cmcl_list(self):
-        global set_list,minecraft_list  # 添加全局声明
+        global set_list,minecraft_list,customize_list  # 添加全局声明
         try:
             versions_path = os.path.join(os.getcwd(), ".minecraft", "versions")
             temp_list = []  # 使用临时变量
@@ -940,7 +942,6 @@ class MainWindow(FluentWindow):
             minecraft_list = temp_list # 保留原 Minecraft 版本列表备用
             log(f"Minecraft 版本列表: {minecraft_list}")
 
-            customize_list = []
             if "Customize" in self.config:
                 customize_list = [item.get("showname") for item in self.config["Customize"]]
             log(f"Customize 列表中的 showname 值: {customize_list}")
@@ -1472,7 +1473,7 @@ class MainWindow(FluentWindow):
         def send_system_notification(self, title, message):
             try:
                 if sys.platform == "win32":
-                    toast(title, message, duration="short", icon={'src': 'icons/bloret.png','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
+                    toast(title, message, duration="short", icon={'src': 'bloret.ico','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
             except Exception as e:
                 log(f"发送系统通知失败: {e}", logging.ERROR)
 
@@ -1653,7 +1654,7 @@ class MainWindow(FluentWindow):
     def send_system_notification(self, title, message):
         try:
             if sys.platform == "win32":
-                toast(title, message, duration="short", icon={'src': 'icons/bloret.png','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
+                toast(title, message, duration="short", icon={'src': 'bloret.ico','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
             elif sys.platform == "darwin":
                 subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
             else:
@@ -1713,7 +1714,7 @@ class MainWindow(FluentWindow):
             # msg_box.setIcon(QMessageBox.Information)
             # msg_box.setWindowTitle('欢迎')
             # msg_box.setText("欢迎使用百络谷启动器 (＾ｰ^)ノ\n您是百络谷启动器的第 %s 位用户" % self.bl_users)
-            # msg_box.setWindowIcon(QIcon("icons/bloret.png"))  # 设置弹窗图标
+            # msg_box.setWindowIcon(QIcon("bloret.ico"))  # 设置弹窗图标
             # msg_box.setStandardButtons(QMessageBox.Ok)
             # msg_box.exec()
 

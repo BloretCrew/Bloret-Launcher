@@ -3,14 +3,13 @@ from qfluentwidgets import Dialog
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
 from modules.log import log
-from PyQt5 import uic
 def handle_exception(exc_type, exc_value, exc_traceback):
     log("未捕获的异常:", logging.CRITICAL)
     log("类型: {}".format(exc_type), logging.CRITICAL)
     log("信息: {}".format(exc_value), logging.CRITICAL)
     log("回溯: {}".format(traceback.format_tb(exc_traceback)), logging.CRITICAL)
     w = Dialog("Bloret Launcher 发生了一些小问题...", "类型: {}\n信息: {}\n回溯: {}\n如果您认为这是 Bloret Launcher 的问题，请提交此问题。\n按下确认按钮将以上信息复制到剪贴板".format(exc_type, exc_value, traceback.format_tb(exc_traceback)))
-    w.setWindowIcon(QIcon('icons/bloret.png'))
+    w.setWindowIcon(QIcon('bloret.ico'))
     w.setWindowTitle("Bloret Launcher")
     if w.exec():
         print('复制到剪贴板')

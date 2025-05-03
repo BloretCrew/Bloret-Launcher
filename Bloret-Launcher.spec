@@ -2,11 +2,11 @@
 
 
 a = Analysis(
-    ['G:\\Work\\git\\Bloret-Launcher/Bloret-Launcher.py'],
-    pathex=[],
+    ['Bloret-Launcher.py'],
+    pathex=['.'],
     binaries=[],
-    datas=[],
-    hiddenimports=[],
+    datas=[('bloret.ico', '.'), ('config.json', '.'), ('ui', 'ui'), ('cmcl.json', '.'), ('cmcl.exe', '.'), ('cmcl.blank.json', '.')],
+    hiddenimports=['sip', 'qfluentwidgets', 'win11toast'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -29,10 +29,11 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['bloret.ico'],
 )

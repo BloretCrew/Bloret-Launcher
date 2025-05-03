@@ -95,7 +95,7 @@
              <string/>
             </property>
             <property name="pixmap">
-             <pixmap>icon/home.png</pixmap>
+             <pixmap>bloret.ico</pixmap>
             </property>
             <property name="scaledContents">
              <bool>true</bool>

@@ -68,7 +68,7 @@ def is_dark_theme():
 
 def send_system_notification(title, message):
     try:
-        toast(title, message, duration="short", icon={'src': 'icons/bloret.png','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
+        toast(title, message, duration="short", icon={'src': 'bloret.ico','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
     except Exception as e:
         log(f"发送系统通知失败: {e}", logging.ERROR)
 def check_write_permission():
