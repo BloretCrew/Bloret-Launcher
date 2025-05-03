@@ -67,20 +67,7 @@ jobs:
         pip install -r requirements.txt
         pip install pillow
         pip install pyinstaller
-
-    - name: 将 PNG 图标转换为 ICO
-      run: |
-        python -c "
-        from PIL import Image
-        img = Image.open('bloret.ico')
-        img.save('icons/bloret.ico', format='ICO')
-        "
-
-    - name: 验证转换后的 ICO 文件路径
-      run: |
-        if (-not (Test-Path "icons/bloret.ico")) { exit 1 }
-      shell: pwsh
-
+    
     - name: 使用 PyInstaller 打包
       run: |
         pyinstaller --onefile --noconsole --icon=bloret.ico --name=Bloret-Launcher `
