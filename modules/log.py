@@ -18,6 +18,11 @@ logging.basicConfig(
 )
 
 def log(message, level=logging.INFO):
+    '''
+    发送日志消息，输出到控制台并记录到日志文件。
+    ***
+    ###### Bloret Launcher 所有
+    '''
     print(message)
     logging.log(level, message)
     logging.getLogger().handlers[0].flush()  # 强制刷新日志

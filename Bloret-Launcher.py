@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from modules.log import log
 import modules.safe
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
+from modules.setup_ui import setup_home_ui,setup_download_load_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui
 
 # 全局变量
 server_ip = "http://pcfs.top:2/"
@@ -601,9 +602,9 @@ class MainWindow(FluentWindow):
         self.setWindowTitle("Bloret Launcher")
         icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
         if os.path.exists(icon_path):
-            self.log(f"图标路径存在: {icon_path}")
+            log(f"图标路径存在: {icon_path}")
         else:
-            self.log(f"图标路径不存在: {icon_path}", logging.ERROR)
+            log(f"图标路径不存在: {icon_path}", logging.ERROR)
         self.setWindowIcon(QIcon(icon_path))
 
         # 检测是否重复运行
@@ -649,11 +650,11 @@ class MainWindow(FluentWindow):
         update_progress({'value': 10 / 100, 'valueStringOverride': '1/10', 'status': '创建启动页面'})
         icon_path = os.path.join(os.getcwd(), 'icons', 'bloret.png')
         if os.path.exists(icon_path):
-            self.log(f"图标路径存在: {icon_path}")
+            log(f"图标路径存在: {icon_path}")
         else:
-            self.log(f"图标路径不存在: {icon_path}", logging.ERROR)
+            log(f"图标路径不存在: {icon_path}", logging.ERROR)
         self.splashScreen = SplashScreen(QIcon(icon_path), self)
-        self.log("启动画面创建完成")
+        log("启动画面创建完成")
         self.splashScreen.setIconSize(QSize(102, 102))
         self.splashScreen.setWindowTitle("Bloret Launcher")
         self.splashScreen.setWindowIcon(QIcon(icon_path))
@@ -661,7 +662,7 @@ class MainWindow(FluentWindow):
         # 2. 在创建其他子页面前先显示主界面
         update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': '连接服务器'})
         self.splashScreen.show()
-        self.log("启动画面已显示")
+        log("启动画面已显示")
 
         if not isdarktheme:
             # 监听系统主题变化
@@ -719,7 +720,7 @@ class MainWindow(FluentWindow):
         
         # 隐藏启动页面
         update_progress({'value': 80 / 100, 'valueStringOverride': '8/10', 'status': '隐藏启动页面'})
-        QTimer.singleShot(3000, lambda: (self.log("隐藏启动画面"), self.splashScreen.finish()))
+        QTimer.singleShot(3000, lambda: (log("隐藏启动画面"), self.splashScreen.finish()))
 
         # 初始化需要 cmcl_data 的组件
         update_progress({'value': 90 / 100, 'valueStringOverride': '9/10', 'status': '初始化需要 cmcl_data 的组件'})
@@ -739,7 +740,7 @@ class MainWindow(FluentWindow):
         log(f"设置主页玩家名称：{player_name}，Minecraft_account:{Minecraft_account}")
         Minecraft_account.setText(f"{player_name}")
     def load_cmcl_data(self):
-        self.log(f"开始向 cmcl.json 读取数据")
+        log(f"开始向 cmcl.json 读取数据")
         try:
             with open('cmcl.json', 'r', encoding='utf-8') as file:
                 self.cmcl_data = json.load(file)
@@ -748,7 +749,7 @@ class MainWindow(FluentWindow):
             if not self.cmcl_data.get('accounts'):
                 self.player_name = "未登录"
                 self.login_mod = "请在下方登录"
-                self.log("cmcl.json 中的 accounts 列表为空")
+                log("cmcl.json 中的 accounts 列表为空")
                 return
                 
             # 添加索引越界保护
@@ -763,19 +764,19 @@ class MainWindow(FluentWindow):
                 2: "微软登录"
             }.get(self.login_mod_num, "未知登录方式")
 
-            self.log(f"读取到的 playerName: {self.player_name}")
-            self.log(f"读取到的 loginMethod: {self.login_mod}")
+            log(f"读取到的 playerName: {self.player_name}")
+            log(f"读取到的 loginMethod: {self.login_mod}")
             return self.player_name
             # self.refresh_home_minecraft_account(self.player_name)
             
         except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-            self.log(f"读取 cmcl.json 失败: {e}", logging.ERROR)
+            log(f"读取 cmcl.json 失败: {e}", logging.ERROR)
             self.cmcl_data = None
             # 设置默认值
             self.player_name = "未登录"
             self.login_mod = "请在下方登录"
         except Exception as e:
-            self.log(f"其他错误: {e}", logging.ERROR)
+            log(f"其他错误: {e}", logging.ERROR)
             self.cmcl_data = None
             self.player_name = "未登录"
             self.login_mod = "请在下方登录"
@@ -807,18 +808,18 @@ class MainWindow(FluentWindow):
             self.addSubInterface(self.passportInterface, FluentIcon.FINGERPRINT, "通行证", NavigationItemPosition.BOTTOM)
             self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, "设置", NavigationItemPosition.BOTTOM)
             self.addSubInterface(self.infoInterface, FluentIcon.INFO, "关于", NavigationItemPosition.BOTTOM)
-        self.load_ui("ui/home.ui", parent=self.homeInterface)
-        self.load_ui("ui/download.ui", parent=self.downloadInterface)
-        self.load_ui("ui/tools.ui", parent=self.toolsInterface)
-        self.load_ui("ui/passport.ui", parent=self.passportInterface)
-        self.load_ui("ui/settings.ui", parent=self.settingsInterface)
-        self.load_ui("ui/info.ui", parent=self.infoInterface)
-        self.setup_home_ui(self.homeInterface)
-        self.setup_download_ui(self.downloadInterface)
-        self.setup_tools_ui(self.toolsInterface)
-        self.setup_passport_ui(self.passportInterface)
-        self.setup_settings_ui(self.settingsInterface)
-        self.setup_info_ui(self.infoInterface)
+        load_ui("ui/home.ui", parent=self.homeInterface)
+        load_ui("ui/download.ui", parent=self.downloadInterface)
+        load_ui("ui/tools.ui", parent=self.toolsInterface)
+        load_ui("ui/passport.ui", parent=self.passportInterface)
+        load_ui("ui/settings.ui", parent=self.settingsInterface)
+        load_ui("ui/info.ui", parent=self.infoInterface)
+        setup_home_ui(self,self.homeInterface)
+        setup_download_ui(self,self.downloadInterface,LM_Download_Way_list,ver_id_bloret,config)
+        setup_tools_ui(self,self.toolsInterface)
+        setup_passport_ui(self,self.passportInterface)
+        setup_settings_ui(self,self.settingsInterface)
+        setup_info_ui(self,self.infoInterface)
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -856,11 +857,11 @@ class MainWindow(FluentWindow):
         if hasattr(self.navigationInterface, 'setCollapseWidth'):
             self.navigationInterface.setCollapseWidth(int(scaled_sidebar_width * size))
         else:
-            self.log("NavigationInterface does not support setCollapseWidth", logging.ERROR)
+            log("NavigationInterface does not support setCollapseWidth", logging.ERROR)
         if hasattr(self.navigationInterface, 'collapse'):
             self.navigationInterface.collapse(useAni=False)  # 默认收缩
         else:
-            self.log("NavigationInterface does not support collapse", logging.ERROR)
+            log("NavigationInterface does not support collapse", logging.ERROR)
 
         # 可选：设置最小展开宽度
         base_window_width = 900
@@ -875,25 +876,14 @@ class MainWindow(FluentWindow):
         # 仅在存在 Customize_icon 时更新
         if hasattr(self, 'Customize_icon') and self.Customize_icon:
             self.Customize_icon.setPixmap(self.icon.pixmap(icon_size, icon_size))
-    def load_ui(self, ui_path, parent=None, animate=True):
-        widget = uic.loadUi(ui_path)
-    
-        if parent:
-            # 强制使用布局管理（若原布局缺失）
-            if not parent.layout():
-                layout = QVBoxLayout(parent)  # 使用垂直布局
-                layout.setContentsMargins(0,0,0,0)  # 移除默认边距
-                layout.addWidget(widget)
-            else:
-                parent.layout().addWidget(widget)
     def on_home_clicked(self):
-        self.log("主页 被点击")
+        log("主页 被点击")
         self.switchTo(self.homeInterface)
     def on_download_finished(self, teaching_tip, download_button):
         if hasattr(self, 'version'):
-            self.log(f"版本 {self.version} 已成功下载")
+            log(f"版本 {self.version} 已成功下载")
         else:
-            self.log("下载完成，但版本信息缺失")
+            log("下载完成，但版本信息缺失")
 
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
@@ -914,9 +904,9 @@ class MainWindow(FluentWindow):
         if os.path.exists(src_file):
             try:
                 shutil.copy(src_file, dest_dir)
-                self.log(f"成功拷贝 {src_file} 到 {dest_dir}")
+                log(f"成功拷贝 {src_file} 到 {dest_dir}")
             except Exception as e:
-                self.log(f"拷贝 {src_file} 到 {dest_dir} 失败: {e}", logging.ERROR)
+                log(f"拷贝 {src_file} 到 {dest_dir} 失败: {e}", logging.ERROR)
         self.is_running = False  # 重置标志变量
         # 发送系统通知
         QTimer.singleShot(0, lambda: self.send_system_notification("下载完成", f"版本 {self.version} 已成功下载"))
@@ -924,25 +914,8 @@ class MainWindow(FluentWindow):
         if self.show_text is not None:
             self.show_text.setText("下载完成")
         else:
-            self.log("show_text is None", logging.ERROR)
+            log("show_text is None", logging.ERROR)
         self.run_cmcl_list()
-    def on_download_clicked(self):
-        self.log("下载 被点击")
-        self.switchTo(self.downloadInterface)
-    def on_tools_clicked(self):
-        self.log("工具 被点击")
-        self.switchTo(self.toolsInterface)
-    def on_passport_clicked(self):
-        self.log("通行证 被点击")
-        self.switchTo(self.passportInterface)  # 切换到通行证页面
-        self.setup_passport_ui(self.passportInterface)  # 调用 setup_passport_ui 方法
-        self.log("通行证页面UI加载完成")
-    def on_settings_clicked(self):
-        self.log("设置 被点击")
-        self.switchTo(self.settingsInterface)
-    def on_info_clicked(self):
-        self.log("关于 被点击")
-        self.switchTo(self.infoInterface)
     def run_cmcl_list(self):
         global set_list,minecraft_list  # 添加全局声明
         try:
@@ -955,30 +928,30 @@ class MainWindow(FluentWindow):
                 
                 if not temp_list:
                     temp_list = ["你还未安装任何版本哦，请前往下载页面安装"]
-                    self.log(f"版本目录为空: {versions_path}")
+                    log(f"版本目录为空: {versions_path}")
                 else:
-                    self.log(f"成功读取版本列表: {temp_list}")
+                    log(f"成功读取版本列表: {temp_list}")
             else:
                 temp_list = ["无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装"]
-                self.log(f"路径无效: {versions_path}", logging.ERROR)
+                log(f"路径无效: {versions_path}", logging.ERROR)
                 
             set_list = temp_list  # 最后统一赋值给全局变量
 
             minecraft_list = temp_list # 保留原 Minecraft 版本列表备用
-            self.log(f"Minecraft 版本列表: {minecraft_list}")
+            log(f"Minecraft 版本列表: {minecraft_list}")
 
             customize_list = []
             if "Customize" in self.config:
                 customize_list = [item.get("showname") for item in self.config["Customize"]]
-            self.log(f"Customize 列表中的 showname 值: {customize_list}")
+            log(f"Customize 列表中的 showname 值: {customize_list}")
             set_list = temp_list + customize_list  # 合并 customize_list 到 set_list
 
-            self.log(f"合并后的版本列表: {set_list}")
+            log(f"合并后的版本列表: {set_list}")
 
             self.update_version_combobox()  # 新增UI更新方法
             
         except Exception as e:
-            self.log(f"读取版本列表失败: {e}", logging.ERROR)
+            log(f"读取版本列表失败: {e}", logging.ERROR)
             set_list = ["无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装"]
     def run_cmcl(self, version):
         # self.tabBar.addTab(
@@ -1045,7 +1018,7 @@ class MainWindow(FluentWindow):
             if self.is_running:
                 return
             self.is_running = True
-            self.log(f"正在启动 {version}")
+            log(f"正在启动 {version}")
             if os.path.exists("run.ps1"):
                 os.remove("run.ps1")
             subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"])
@@ -1079,7 +1052,7 @@ class MainWindow(FluentWindow):
                 if teaching_tip:
                     teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
             else:
-                self.log("托盘菜单启动，不显示 TeachingTip")
+                log("托盘菜单启动，不显示 TeachingTip")
 
             # 线程
             self.run_script_thread = RunScriptThread()
@@ -1111,23 +1084,14 @@ class MainWindow(FluentWindow):
                     run_choose.setCurrentText(current_text)
                 elif unique_versions:
                     run_choose.setCurrentIndex(0)
-    def log(self, message, level=logging.INFO):
-        print(message)
-        logging.log(level, message)
     def closeEvent(self, event):
-        """ 重写关闭事件，隐藏窗口而不是退出程序 """
+        """ 隐藏窗口而不是退出程序 """
         event.ignore()  # 忽略关闭事件
         self.hide()  # 隐藏窗口
-        # self.tray_icon.showMessage(
-        #     "Bloret Launcher",
-        #     "程序已最小化到系统托盘",
-        #     QSystemTrayIcon.Information,
-        #     2000  # 提示持续时间（毫秒）
-        # )
     def on_download_clicked(self):
-        self.log("下载 被点击")
-        self.load_ui("ui/download.ui", animate=False)
-        self.setup_download_ui(self.content_layout.itemAt(0).widget())
+        log("下载 被点击")
+        load_ui("ui/download.ui", animate=False)
+        setup_download_ui(self.content_layout.itemAt(0).widget())
     def on_download_way_changed(self, widget, selected_way):
         show_way = widget.findChild(ComboBox, "show_way")
         fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
@@ -1146,80 +1110,6 @@ class MainWindow(FluentWindow):
                 fabric_choose.setEnabled(True)
             if LM_download_way_choose:
                 LM_download_way_choose.setEnabled(False)
-    def setup_download_ui(self, widget):
-        download_way_choose = widget.findChild(ComboBox, "download_way_choose")  # 获取 download_way_choose 元素
-        LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
-        download_way_F5_button = widget.findChild(QPushButton, "download_way_F5")
-        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-        show_way = widget.findChild(ComboBox, "show_way")
-        download_button = widget.findChild(QPushButton, "download")
-        if show_way:
-            show_way.clear()
-            show_way.addItems(["百络谷支持版本", "正式版本", "快照版本", "远古版本"])
-            show_way.setCurrentText("百络谷支持版本")
-            show_way.currentTextChanged.connect(lambda: self.on_show_way_changed(widget, show_way.currentText()))
-        if download_way_choose:
-            download_way_choose.clear()  # 清空下拉框
-            download_way_choose.addItem("Bloret Launcher")
-            download_way_choose.addItem("CMCL")
-            download_way_choose.currentTextChanged.connect(lambda text: self.on_download_way_changed(widget, text))
-        if LM_download_way_choose:
-            LM_download_way_choose.clear()  # 清空下拉框
-            for item in LM_Download_Way_list:
-                LM_download_way_choose.addItem(item)
-        if download_way_F5_button:
-            download_way_F5_button.clicked.connect(lambda: self.update_minecraft_versions(widget, show_way.currentText()))
-        if download_button:
-            # log(f"成功获取 Light-Minecraft-Download-Way: {LM_Download_Way}，LM_Download_Way_list:{LM_Download_Way_list}，LM_Download_Way_version:{LM_Download_Way_version}，LM_Download_Way_minecraft:{LM_Download_Way_minecraft}")
-            download_button.clicked.connect(lambda: self.start_download(widget))
-        loading_label = widget.findChild(QLabel, "label_2")
-        if loading_label:
-            self.setup_loading_gif(loading_label)
-        # 默认填入百络谷支持版本
-        if minecraft_choose:
-            minecraft_choose.clear()
-            minecraft_choose.addItems(ver_id_bloret)
-        notification_switch = widget.findChild(SwitchButton, "Notification")
-        if notification_switch:
-            notification_switch.setChecked(True)  # 将Notification开关设置成开
-
-        fabric_ver = ["不安装"]
-        if not config.get('localmod', False):
-            response = requests.get("https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader")
-            if response.status_code == 200:
-                data = response.json()
-                for item in data:
-                    fabric_ver.append(item["version"])
-        else:
-            log("本地模式已启用，获取 Minecraft 版本 的过程已跳过。")
-
-        fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
-        if fabric_choose:
-            fabric_choose.clear()
-            fabric_choose.addItems(fabric_ver)
-            fabric_choose.setCurrentText("不安装")
-
-        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-        vername_edit = widget.findChild(LineEdit, "vername_edit")
-        if minecraft_choose and vername_edit:
-            minecraft_choose.currentTextChanged.connect(vername_edit.setText)
-
-        # 默认填入百络谷支持版本的第一项
-        if minecraft_choose:
-            minecraft_choose.clear()
-            minecraft_choose.addItems(ver_id_bloret)
-            vername_edit = widget.findChild(LineEdit, "vername_edit")
-            if vername_edit and ver_id_bloret:
-                vername_edit.setText(ver_id_bloret[0])
-
-        Customize_choose = widget.findChild(QPushButton, "Customize_choose")
-        if Customize_choose:
-            Customize_choose.clicked.connect(lambda: self.on_customize_choose_clicked(widget))
-
-        Customize_add = widget.findChild(QPushButton, "Customize_add")
-        if Customize_add:
-            Customize_add.clicked.connect(lambda: self.on_customize_add_clicked(widget))
-
     def on_customize_choose_clicked(self, widget):
         Customize_path = widget.findChild(LineEdit, "Customize_path")
         Customize_showname = widget.findChild(LineEdit, "Customize_showname")
@@ -1239,7 +1129,7 @@ class MainWindow(FluentWindow):
         Customize_showname = widget.findChild(LineEdit, "Customize_showname")
         Customize_path_value = Customize_path.text()
         Customize_showname_value = Customize_showname.text()
-        self.log(f"Customize Path: {Customize_path_value}, Customize Show Name: {Customize_showname_value}")
+        log(f"Customize Path: {Customize_path_value}, Customize Show Name: {Customize_showname_value}")
         if not Customize_path_value or not Customize_showname_value:
             InfoBar.warning(
                 title='⚠️ 提示',
@@ -1373,7 +1263,7 @@ class MainWindow(FluentWindow):
         self.loading_dialogs.clear()
     def showTeachingTip(self, target_widget, folder_path):
         if sip.isdeleted(target_widget):
-            self.log(f"目标小部件已被删除，无法显示 TeachingTip", logging.ERROR)
+            log(f"目标小部件已被删除，无法显示 TeachingTip", logging.ERROR)
             return
         InfoBar.success(
             title='✅ 提示',
@@ -1414,14 +1304,14 @@ class MainWindow(FluentWindow):
                     elif version_type == "远古版本":
                         minecraft_choose.addItems(ver_id_long)
                     else:
-                        self.log("未知的版本类型", logging.ERROR)
-                    self.log(f"最新发布版本: {latest_release}")
-                    self.log(f"最新快照版本: {latest_snapshot}")
-                    self.log("Minecraft 版本列表已更新")
+                        log("未知的版本类型", logging.ERROR)
+                    log(f"最新发布版本: {latest_release}")
+                    log(f"最新快照版本: {latest_snapshot}")
+                    log("Minecraft 版本列表已更新")
                 else:
-                    self.log("无法获取 Minecraft 版本列表", logging.ERROR)
+                    log("无法获取 Minecraft 版本列表", logging.ERROR)
             except requests.exceptions.RequestException as e:
-                self.log(f"请求错误: {e}", logging.ERROR)
+                log(f"请求错误: {e}", logging.ERROR)
                 InfoBar.error(
                     title='提示',
                     content="无法连接到服务器，请检查网络连接或稍后再试。",
@@ -1431,7 +1321,7 @@ class MainWindow(FluentWindow):
                     parent=self
                 )
             except requests.exceptions.SSLError as e:
-                self.log(f"SSL 错误: {e}", logging.ERROR)
+                log(f"SSL 错误: {e}", logging.ERROR)
                 InfoBar.error(
                     title='提示',
                     content="无法连接到服务器，请检查网络连接或稍后再试。",
@@ -1467,7 +1357,7 @@ class MainWindow(FluentWindow):
             cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")
     
             if not os.path.isfile(cmcl_path):
-                self.log(f"文件 {cmcl_path} 不存在", logging.ERROR)
+                log(f"文件 {cmcl_path} 不存在", logging.ERROR)
                 QMessageBox.critical(self, "错误", f"文件 {cmcl_path} 不存在")
                 return
             
@@ -1504,7 +1394,7 @@ class MainWindow(FluentWindow):
                 else:
                     command = f"\"{cmcl_path}\" install {choose_ver} -n {vername}"
         
-                self.log(f"下载命令: {command}")
+                log(f"下载命令: {command}")
         
                 self.download_thread = self.DownloadThread(cmcl_path, command, self.log)
                 self.threads.append(self.download_thread)
@@ -1546,8 +1436,8 @@ class MainWindow(FluentWindow):
 
         def run(self):
             try:
-                self.log(f"正在下载版本 {self.version}")
-                self.log("执行命令: " + f"{self.version}")
+                log(f"正在下载版本 {self.version}")
+                log("执行命令: " + f"{self.version}")
                 process = subprocess.Popen(
                     self.version,
                     stdout=subprocess.PIPE,
@@ -1565,7 +1455,7 @@ class MainWindow(FluentWindow):
                         process.terminate()
                         return
                     self.output_received.emit(line.strip())
-                    self.log(line.strip())  # 将输出存入日志
+                    log(line.strip())  # 将输出存入日志
                 while process.poll() is None:
                     self.output_received.emit("正在下载并安装")
                     time.sleep(1)
@@ -1584,7 +1474,7 @@ class MainWindow(FluentWindow):
                 if sys.platform == "win32":
                     toast(title, message, duration="short", icon={'src': 'icons/bloret.png','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
             except Exception as e:
-                self.log(f"发送系统通知失败: {e}", logging.ERROR)
+                log(f"发送系统通知失败: {e}", logging.ERROR)
 
     class MicrosoftLoginThread(QThread):
         finished = pyqtSignal(bool, str)
@@ -1679,7 +1569,7 @@ class MainWindow(FluentWindow):
                 # 覆盖cmcl.json
                 try:
                     shutil.copyfile('cmcl.blank.json', 'cmcl.json')
-                    self.log("成功覆盖cmcl.json文件")
+                    log("成功覆盖cmcl.json文件")
                 except Exception as e:
                     self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
                     return
@@ -1723,8 +1613,7 @@ class MainWindow(FluentWindow):
         
         # 处理结果
         if success:
-            player_name = self.load_cmcl_data()
-            self.refresh_home_minecraft_account(player_name,self.homeInterface)
+            self.load_cmcl_data()
             self.update_passport_ui(widget)
             InfoBar.success(
                 title='✅ 登录成功',
@@ -1770,7 +1659,7 @@ class MainWindow(FluentWindow):
             else:
                 subprocess.run(["notify-send", title, message])
         except Exception as e:
-            self.log(f"发送系统通知失败: {e}", logging.ERROR)
+            log(f"发送系统通知失败: {e}", logging.ERROR)
     def on_download_error(self, error_message, teaching_tip, download_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
@@ -1792,10 +1681,10 @@ class MainWindow(FluentWindow):
             updata_ps1_file = os.path.join(parent_dir, "updata.ps1")
             if os.path.exists(updating_folder):
                 subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-Command", f"Remove-Item -Path '{updating_folder}' -Recurse -Force"], check=True)
-                self.log(f"删除文件夹: {updating_folder}")
+                log(f"删除文件夹: {updating_folder}")
             if os.path.exists(updata_ps1_file):
                 os.remove(updata_ps1_file)
-                self.log(f"删除文件: {updata_ps1_file}")
+                log(f"删除文件: {updata_ps1_file}")
                 def create_shortcut(self):
                     desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
                     shortcut_path = os.path.join(desktop, 'Bloret Launcher.lnk')
@@ -1814,10 +1703,10 @@ class MainWindow(FluentWindow):
             if response.status_code == 200:
                 data = response.json()
                 self.bl_users = data.get("user", "未知用户")
-                self.log(f"获取到的用户数: {self.bl_users}")
+                log(f"获取到的用户数: {self.bl_users}")
             else:
                 self.bl_users = "未知用户"
-                self.log("无法获取用户数", logging.ERROR)
+                log("无法获取用户数", logging.ERROR)
 
             #首次启动显示弹窗提醒
             # msg_box = QMessageBox(self)
@@ -1851,11 +1740,11 @@ class MainWindow(FluentWindow):
                     data = response.json()
                     ver_id_bloret.clear()
                     ver_id_bloret.extend(data.get("Bloret-versions", []))
-                    self.log(f"成功获取 Bloret 版本列表: {ver_id_bloret}")
+                    log(f"成功获取 Bloret 版本列表: {ver_id_bloret}")
                 else:
-                    self.log("无法获取 Bloret 版本列表", logging.ERROR)
+                    log("无法获取 Bloret 版本列表", logging.ERROR)
             except requests.RequestException as e:
-                self.log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
+                log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
         else:
             log("本地模式已启用，获取 Bloret 版本列表 的过程已跳过。")
     def check_for_updates(self):
@@ -1865,10 +1754,10 @@ class MainWindow(FluentWindow):
                 # socket.setdefaulttimeout(3)
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(('pcfs.top', 2))
                 BL_latest_ver, BL_update_text = self.get_latest_version()
-                self.log(f"最新正式版: {BL_latest_ver}")
+                log(f"最新正式版: {BL_latest_ver}")
                 BL_ver = float(self.config.get('ver', '0.0'))  # 从config.json读取当前版本
                 if BL_ver < float(BL_latest_ver):
-                    self.log(f"当前版本不是最新版，请更新到 {BL_latest_ver} 版本", logging.WARNING)
+                    log(f"当前版本不是最新版，请更新到 {BL_latest_ver} 版本", logging.WARNING)
 
                     # 使用非模态对话框
                     w = MessageBox(
@@ -1881,9 +1770,9 @@ class MainWindow(FluentWindow):
                     # 连接按钮点击事件以触发更新
                     w.yesButton.clicked.connect(self.update_to_latest_version)
             except Exception as e:
-                self.log(f"检查更新时发生错误: {e}", logging.ERROR)
+                log(f"检查更新时发生错误: {e}", logging.ERROR)
                 
-                self.log("无法连接到 pcfs.top", logging.ERROR)
+                log("无法连接到 pcfs.top", logging.ERROR)
                 w = MessageBox(
                     title="无法连接到 pcfs.top",
                     content=f'您无法连接到 PCFS 服务器来检查版本更新\n这可能是由于您的网络不佳？或是 PCFS 服务出现故障？\n请检查您的网络连接，或者稍后再试。\n我们等待了 3 秒，但它只显示：{e}',
@@ -1901,10 +1790,10 @@ class MainWindow(FluentWindow):
                     "taskkill /im Bloret-Launcher.exe /f\n"
                     "winget update Bloret.BloretLauncher\n"
                 )# 通过 winget 更新
-            self.log(f"创建更新脚本: {update_script_path}")
+            log(f"创建更新脚本: {update_script_path}")
             subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", update_script_path], check=True)
         except Exception as e:
-            self.log(f"创建或运行更新脚本失败: {e}", logging.ERROR)
+            log(f"创建或运行更新脚本失败: {e}", logging.ERROR)
             QMessageBox.critical(self, "更新失败", f"创建或运行更新脚本失败: {e}")
     #     #url = f"http://localhost:100/zipdownload/{self.BL_latest_ver}.zip"
     #     url = f"http://pcfs.top:2/zipdownload/latest.zip"
@@ -1918,23 +1807,23 @@ class MainWindow(FluentWindow):
     #         with open(save_path, 'wb') as file:
     #             for chunk in response.iter_content(chunk_size=8192):
     #                 file.write(chunk)
-    #         self.log(f"版本 {self.BL_latest_ver} 下载成功，保存路径: {save_path}")
+    #         log(f"版本 {self.BL_latest_ver} 下载成功，保存路径: {save_path}")
     #         # 将下载的文件移动到 updating 文件夹
     #         new_save_path = os.path.join(updating_folder, f"{self.BL_latest_ver}.zip")
     #         os.rename(save_path, new_save_path)
     #         # 解压缩文件到 updating 文件夹
     #         with zipfile.ZipFile(new_save_path, 'r') as zip_ref:
     #             zip_ref.extractall(updating_folder)
-    #         self.log(f"版本 {self.BL_latest_ver} 解压缩成功，路径: {updating_folder}")
+    #         log(f"版本 {self.BL_latest_ver} 解压缩成功，路径: {updating_folder}")
     #         # 删除压缩包
     #         os.remove(new_save_path)
-    #         self.log(f"删除压缩包: {new_save_path}")
+    #         log(f"删除压缩包: {new_save_path}")
     #         # 移动 .minecraft 文件夹到 updating 文件夹
     #         minecraft_folder = os.path.join(os.getcwd(), ".minecraft")
     #         if os.path.exists(minecraft_folder):
     #             new_minecraft_folder = os.path.join(updating_folder, ".minecraft")
     #             os.rename(minecraft_folder, new_minecraft_folder)
-    #             self.log(f"移动 .minecraft 文件夹到: {new_minecraft_folder}")
+    #             log(f"移动 .minecraft 文件夹到: {new_minecraft_folder}")
     #         # 创建 updata.ps1 文件
     #         current_folder_name = os.path.basename(os.getcwd())
     #         bat_file_path = os.path.join(os.path.dirname(os.getcwd()), "updata.ps1")
@@ -1946,23 +1835,23 @@ class MainWindow(FluentWindow):
     #             bat_file.write(f'Move-Item -Path ".\\updating\\*" -Destination ".\\{current_folder_name}"\n')
     #             bat_file.write(f'cd "{os.path.join(os.path.dirname(os.getcwd()), "Bloret-Launcher")}"\n')
     #             bat_file.write(f'Start-Process -FilePath "Bloret-Launcher.exe"\n')
-    #         self.log(f"创建 updata.ps1 文件: {bat_file_path}")
+    #         log(f"创建 updata.ps1 文件: {bat_file_path}")
     #         QMessageBox.information(self, "即将安装", f"版本 {self.BL_latest_ver} 即将开始安装")
 
     #         # 运行 updata.ps1 文件
     #         subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", bat_file_path], check=True)
-    #         self.log(f"运行 updata.ps1 文件: {bat_file_path}")
+    #         log(f"运行 updata.ps1 文件: {bat_file_path}")
     #     except requests.RequestException as e:
-    #         self.log(f"下载版本 {self.BL_latest_ver} 失败: {e}", logging.ERROR)
+    #         log(f"下载版本 {self.BL_latest_ver} 失败: {e}", logging.ERROR)
     #         QMessageBox.critical(self, "下载失败", f"下载版本 {self.BL_latest_ver} 失败: {e}")
     #     except zipfile.BadZipFile as e:
-    #         self.log(f"解压缩版本 {self.BL最新版本} 失败: {e}", logging.ERROR)
+    #         log(f"解压缩版本 {self.BL最新版本} 失败: {e}", logging.ERROR)
     #         QMessageBox.critical(self, "解压缩失败", f"解压缩版本 {self.BL最新版本} 失败: {e}")
     #     except OSError as e:
-    #         self.log(f"文件操作失败: {e}", logging.ERROR)
+    #         log(f"文件操作失败: {e}", logging.ERROR)
     #         QMessageBox.critical(self, "文件操作失败", f"文件操作失败: {e}")
     #     except subprocess.CalledProcessError as e:
-    #         self.log(f"运行 updata.ps1 文件失败: {e}", logging.ERROR)
+    #         log(f"运行 updata.ps1 文件失败: {e}", logging.ERROR)
     #         QMessageBox.critical(self, "更新失败", f"运行 updata.ps1 文件失败: {e}")
     def toggle_show_all_versions(self, state):
         widget = self.findChild(QWidget, "downloadWidget")  # 假设你的下载界面的QWidget对象名称为downloadWidget
@@ -1974,24 +1863,24 @@ class MainWindow(FluentWindow):
 
     def open_bloret_web(self):
         QDesktopServices.openUrl(QUrl("http://pcfs.top:2"))
-        self.log("打开 Bloret Launcher 网页")
+        log("打开 Bloret Launcher 网页")
     def open_github_bloret(self):
         QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew"))
-        self.log("打开Bloret Github 组织页面")
+        log("打开Bloret Github 组织页面")
     def copy_skin_to_clipboard(self, widget):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_skin)
-        self.log(f"皮肤URL {self.player_skin} 已复制到剪贴板")
+        log(f"皮肤URL {self.player_skin} 已复制到剪贴板")
     def copy_cape_to_clipboard(self, widget):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_cape)
-        self.log(f"披风URL {self.player_cape} 已复制到剪贴板")
+        log(f"披风URL {self.player_cape} 已复制到剪贴板")
     def open_skin_url(self, widget):
         QDesktopServices.openUrl(QUrl(self.player_skin))
-        self.log(f"打开皮肤URL: {self.player_skin}")
+        log(f"打开皮肤URL: {self.player_skin}")
     def open_cape_url(self, widget):
         QDesktopServices.openUrl(QUrl(self.player_cape))
-        self.log(f"打开披风URL: {self.player_cape}")
+        log(f"打开披风URL: {self.player_cape}")
     def query_player_name(self, widget):
         player_uuid_edit = widget.findChild(QLineEdit, "search_name_type")
         name_result_label = widget.findChild(QLabel, "search_name")
@@ -2003,26 +1892,26 @@ class MainWindow(FluentWindow):
                 player_data = response.json()
                 self.player_name = player_data.get("name", "未找到名称")
                 name_result_label.setText(self.player_name)
-                self.log(f"查询UUID {player_uuid} 的名称: {self.player_name}")
+                log(f"查询UUID {player_uuid} 的名称: {self.player_name}")
             else:
                 name_result_label.setText("查询失败")
-                self.log(f"查询UUID {player_uuid} 的名称失败", logging.ERROR)
+                log(f"查询UUID {player_uuid} 的名称失败", logging.ERROR)
     def copy_name_to_clipboard(self, widget):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_name)
-        self.log(f"名称 {self.player_name} 已复制到剪贴板")
+        log(f"名称 {self.player_name} 已复制到剪贴板")
     def open_github_bloret_Launcher(self):
         QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew/Bloret-Launcher"))
-        self.log("打开该项目的 Github 页面")
+        log("打开该项目的 Github 页面")
     def open_qq_link(self):
         QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
-        self.log("打开 Bloret QQ 群页面")
+        log("打开 Bloret QQ 群页面")
     def open_BLC_qq_link(self):
         QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/kEt8fb41wc"))
-        self.log("打开 BLC QQ 群页面")
+        log("打开 BLC QQ 群页面")
     def open_BBBS_link(self):
         QDesktopServices.openUrl(QUrl(server_ip+"bbs/"))
-        self.log("打开 BBBS 页面")
+        log("打开 BBBS 页面")
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()  # 修正拼写错误
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -2075,60 +1964,7 @@ class MainWindow(FluentWindow):
         else:
             self.setStyleSheet("")
             self.setPalette(self.style().standardPalette())
-    def setup_passport_ui(self, widget):
-        player_name_edit = widget.findChild(QLineEdit, "player_name")
-        player_name_set_button = widget.findChild(QPushButton, "player_name_set")
-        login_way_combo = widget.findChild(ComboBox, "player_login_way")
-        login_way_choose = widget.findChild(ComboBox, "login_way")
-        name_combo = widget.findChild(ComboBox, "playername")
-        # if player_name_edit:
-        #     player_name_edit.setText(self.player_name if self.cmcl_data else '')
-        # else:
-        #     self.log("未找到player_name输入框", logging.ERROR)
-    
-        if player_name_edit and player_name_set_button:
-            player_name_set_button.clicked.connect(lambda: self.on_player_name_set_clicked(widget))
-            self.log("已连接 player_name_set_button 点击事件")
-    
-        if self.cmcl_data:
-            self.log("成功读取 cmcl.json 数据")
-            
-            if login_way_combo:
-                login_way_choose.clear()
-                login_way_choose.addItems(["离线登录", "微软登录"])
-                login_way_choose.setCurrentText(self.login_mod)
-                login_way_choose.setCurrentIndex(0)
-    
-            if login_way_combo:
-                login_way_combo.clear()
-                login_way_combo.addItem(str(self.login_mod))
-                login_way_combo.setCurrentIndex(0)
-                self.log(f"设置 login_way_combo 当前索引为: {self.login_mod}")
-    
-            if name_combo:
-                name_combo.clear()
-                name_combo.addItem(self.player_name)
-                name_combo.setCurrentIndex(0)
-                self.log(f"设置 name_combo 当前索引为: {self.player_name}")
-        else:
-            self.log("读取 cmcl.json 失败")
-        
-        # 添加登录按钮点击事件
-        login_button = widget.findChild(QPushButton, "login")
-        if login_button:
-            login_button.clicked.connect(lambda: self.handle_login(widget))
-        Bloret_PassPort_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
-        Bloret_PassPort_logout = widget.findChild(QPushButton, "Bloret_PassPort_logout")
-        Bloret_PassPort_login = widget.findChild(QPushButton, "Bloret_PassPort_login")
-        Bloret_PassPort_view_BBBS = widget.findChild(QPushButton, "Bloret_PassPort_view_BBBS")
-        if Bloret_PassPort_UserName:
-            Bloret_PassPort_UserName.setText(self.config.get('Bloret_PassPort_UserName', '未登录'))
-        if Bloret_PassPort_logout:
-            Bloret_PassPort_logout.clicked.connect(lambda: self.Bloret_PassPort_Account_logout(widget))
-        if Bloret_PassPort_login:
-            Bloret_PassPort_login.clicked.connect(lambda: self.Bloret_PassPort_Account_login(widget))
-        if Bloret_PassPort_view_BBBS:
-            Bloret_PassPort_view_BBBS.clicked.connect(lambda: self.open_BBBS_link())
+
     def Bloret_PassPort_Account_logout(self, widget):
         self.config.update(Bloret_PassPort_UserName='未登录')
         self.config.update(Bloret_PassPort_PassWord='')
@@ -2146,7 +1982,7 @@ class MainWindow(FluentWindow):
             duration=5000,
             parent=self
         )
-        self.log("已退出登录")
+        log("已退出登录")
     def Bloret_PassPort_Account_login(self, widget):
         if not config.get('localmod', False):
             class CustomLoginDialog(MessageBoxBase):
@@ -2208,7 +2044,7 @@ class MainWindow(FluentWindow):
                         self.config['Bloret_PassPort_UserName'] = username
                         self.config['Bloret_PassPort_PassWord'] = password
                         self.config['Bloret_PassPort_Admin'] = response_data.get("admin", False)
-                        self.log(f"登录成功: 用户名={username}", logging.INFO)
+                        log(f"登录成功: 用户名={username}", logging.INFO)
                         
                         # 更新界面显示
                         Bloret_PassPort_User_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
@@ -2234,7 +2070,7 @@ class MainWindow(FluentWindow):
                         parent=self
                     )
             else:
-                self.log("登录对话框被取消", logging.INFO)
+                log("登录对话框被取消", logging.INFO)
         else:
             log("本地模式已启用，无法进行 Bloret 通行证登录。")
             w = Dialog("您已启用本地模式", "Bloret Launcher 在本地模式下无法登录 Bloret 通行证，\n因为该操作需要互联网\n如果需要登录，请到设置界面关闭本地模式。")
@@ -2249,30 +2085,6 @@ class MainWindow(FluentWindow):
         self.raise_()
         self.activateWindow()
         
-
-    # -----------------------------------------------------------
-    # 以下内容是对于UI文件中各个元素的设定
-    # -----------------------------------------------------------
-
-    def on_home_clicked(self):
-        self.log("主页 被点击")
-        self.load_ui("ui/home.ui")
-    def on_passport_clicked(self):
-        self.log("通行证 被点击")
-        self.load_ui("ui/passport.ui", parent=self.passportInterface)
-        self.setup_passport_ui(self.passportInterface)
-        self.log("通行证页面UI加载完成")
-    def on_settings_clicked(self):
-        self.log("设置 被点击")
-        self.load_ui("ui/settings.ui")
-    def on_info_clicked(self):
-        self.log("关于 被点击")
-        self.load_ui("ui/info.ui")
-    def on_tools_clicked(self):
-        self.log("工具 被点击")
-        self.load_ui("ui/tools.ui")
-    def on_button_clicked(self):
-        self.log("按钮 被点击")
     def on_player_name_set_clicked(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "player_name")
         player_name = player_name_edit.text()
@@ -2302,45 +2114,9 @@ class MainWindow(FluentWindow):
             with open('cmcl.json', 'w', encoding='utf-8') as file:
                 json.dump(data, file, ensure_ascii=False, indent=4)
 
-    def setup_home_ui(self, widget):
-        github_org_button = widget.findChild(QPushButton, "pushButton_2")
-        if github_org_button:
-            github_org_button.clicked.connect(self.open_github_bloret)
-        github_project_button = widget.findChild(QPushButton, "pushButton")
-        if github_project_button:
-            github_project_button.clicked.connect(self.open_github_bloret_Launcher)
-
-        openblweb_button = widget.findChild(QPushButton, "openblweb")
-        if openblweb_button:
-            openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("http://pcfs.top:2")))
-
-        self.run_cmcl_list()
-        run_choose = widget.findChild(ComboBox, "run_choose")
-        # if run_choose:
-        #     run_choose.addItems(set_list)
-        run_button = widget.findChild(QPushButton, "run")
-        if run_button:
-            run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText()))
-        self.show_text = widget.findChild(QLabel, "show")
-
-        # self.run_cmcl_list()  # 初始化时加载版本列表
-        # run_choose = widget.findChild(ComboBox, "run_choose")
-        # if run_choose:
-        #     run_choose.addItems(set_list)
-
-        # tabBar = widget.findChild(TabBar, "runs")
-        Bloret_PassPort_Name = widget.findChild(QLabel, "Bloret_PassPort_Name")
-        if Bloret_PassPort_Name:
-            Bloret_PassPort_Name.setText(f"{self.config.get('Bloret_PassPort_UserName', '未登录')}")
-        Minecraft_account = widget.findChild(QLabel, "Minecraft_account")
-        if Minecraft_account:
-            if self.config.get('home_show_login_mod', False):
-                Minecraft_account.setText(f"{self.player_name} ({self.login_mod})")
-            else:
-                Minecraft_account.setText(f"{self.player_name}")
     def log_output(self, output):
         if output:
-            self.log(output.strip())
+            log(output.strip())
     def on_run_script_finished(self, teaching_tip, run_button):
         if self.update_show_text_thread:
             self.update_show_text_thread.terminate()  # 停止更新线程
@@ -2373,14 +2149,10 @@ class MainWindow(FluentWindow):
             duration=5000,
             parent=self
         )
-        self.log(f"run.ps1 运行失败: {error}", logging.ERROR)
+        log(f"run.ps1 运行失败: {error}", logging.ERROR)
         self.is_running = False  # 重置标志变量
     def update_show_text(self, text):
         self.show_text.setText(text)  # 更新show文字框的内容
-    def setup_download_load_ui(self, widget):
-        loading_label = widget.findChild(QLabel, "loading_label")
-        if loading_label:
-            self.setup_loading_gif(loading_label)
     # def se tup_download_ui(self, widget):
     #     # 设置下载界面的UI元素
     #     minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
@@ -2394,46 +2166,25 @@ class MainWindow(FluentWindow):
             return ["1.18.1", "1.18", "1.17.1", "1.17", "1.16.5", "1.16.4", "1.16.3", "1.16.2", "1.16.1", "1.16"]
         else:
             return ["1.18.1", "1.17.1", "1.16.5"]
-    def setup_tools_ui(self, widget):
-        name2uuid_button = widget.findChild(QPushButton, "name2uuid_player_Button")
-        if name2uuid_button:
-            name2uuid_button.clicked.connect(lambda: self.query_player_uuid(widget))
-        search_name_button = widget.findChild(QPushButton, "search_name_button")
-        if search_name_button:
-            search_name_button.clicked.connect(lambda: self.query_player_name(widget))
-        skin_search_button = widget.findChild(QPushButton, "skin_search_button")
-        if skin_search_button:
-            skin_search_button.clicked.connect(lambda: self.query_player_skin(widget))
-        name_copy_button = widget.findChild(QPushButton, "search_name_copy")
-        if name_copy_button:
-            name_copy_button.clicked.connect(lambda: self.copy_name_to_clipboard(widget))
-        uuid_copy_button = widget.findChild(QPushButton, "pushButton_5")
-        if uuid_copy_button:
-            uuid_copy_button.clicked.connect(lambda: self.copy_uuid_to_clipboard(widget))
-        skin_copy_button = widget.findChild(QPushButton, "search_skin_copy")
-        if skin_copy_button:
-            skin_copy_button.clicked.connect(lambda: self.copy_skin_to_clipboard(widget))
-        cape_copy_button = widget.findChild(QPushButton, "search_cape_copy")
-        if cape_copy_button:
-            cape_copy_button.clicked.connect(lambda: self.copy_cape_to_clipboard(widget))
+
     def copy_uuid_to_clipboard(self, widget):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.player_uuid)
-        self.log(f"UUID {self.player_uuid} 已复制到剪贴板")
+        log(f"UUID {self.player_uuid} 已复制到剪贴板")
     def download_skin(self, widget):
         if self.player_skin:
             skin_url = self.player_skin
             skin_data = requests.get(skin_url).content
             with open("player_skin.png", "wb") as file:
                 file.write(skin_data)
-            self.log(f"皮肤已下载到 player_skin.png")
+            log(f"皮肤已下载到 player_skin.png")
     def download_cape(self, widget):
         if self.player_cape:
             cape_url = self.player_cape
             cape_data = requests.get(cape_url).content
             with open("player_cape.png", "wb") as file:
                 file.write(cape_data)
-            self.log(f"披风已下载到 player_cape.png")
+            log(f"披风已下载到 player_cape.png")
     def query_player_uuid(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "name2uuid_player_uuid")
         uuid_result_label = widget.findChild(QLabel, "label_2")
@@ -2445,10 +2196,10 @@ class MainWindow(FluentWindow):
                 player_data = response.json()
                 self.player_uuid = player_data.get("id", "未找到UUID")
                 uuid_result_label.setText(self.player_uuid)
-                self.log(f"查询玩家名称 {player_name} 的UUID: {self.player_uuid}")
+                log(f"查询玩家名称 {player_name} 的UUID: {self.player_uuid}")
             else:
                 uuid_result_label.setText("查询失败")
-                self.log(f"查询玩家名称 {player_name} 的UUID失败", logging.ERROR)
+                log(f"查询玩家名称 {player_name} 的UUID失败", logging.ERROR)
     def query_player_skin(self, widget):
         skin_uuid_edit = widget.findChild(QLineEdit, "skin_uuid")
         skin_result_label = widget.findChild(QLabel, "search_skin")
@@ -2468,69 +2219,14 @@ class MainWindow(FluentWindow):
                         self.player_cape = textures["textures"].get("CAPE", {}).get("url", "未找到披风")
                         skin_result_label.setText(self.player_skin[:12] + "..." if len(self.player_skin) > 12 else self.player_skin)
                         cape_result_label.setText(self.player_cape[:12] + "..." if len(self.player_cape) > 12 else self.player_cape)
-                        self.log(f"查询玩家UUID {player_uuid} 的皮肤: {self.player_skin}")
-                        self.log(f"查询玩家UUID {player_uuid} 的披风: {self.player_cape}")
+                        log(f"查询玩家UUID {player_uuid} 的皮肤: {self.player_skin}")
+                        log(f"查询玩家UUID {player_uuid} 的披风: {self.player_cape}")
                         break
             else:
                 skin_result_label.setText("查询失败")
                 cape_result_label.setText("查询失败")
-                self.log(f"查询玩家UUID {player_uuid} 的皮肤和披风失败", logging.ERROR)
-    def setup_settings_ui(self, widget):
-        # 设置设置界面的UI元素
-        log_clear_button = widget.findChild(QPushButton, "log_clear_button")
-        if log_clear_button:
-            log_clear_button.clicked.connect(lambda: self.clear_log_files(log_clear_button))
-            self.update_log_clear_button_text(log_clear_button)  # 更新按钮文本
+                log(f"查询玩家UUID {player_uuid} 的皮肤和披风失败", logging.ERROR)
 
-        # 添加深浅色模式选择框
-        light_dark_choose = widget.findChild(ComboBox, "light_dark_choose")
-        if light_dark_choose:
-            light_dark_choose.clear()
-            light_dark_choose.addItems(["跟随系统", "深色模式", "浅色模式"])
-            light_dark_choose.currentTextChanged.connect(self.on_light_dark_changed)
-
-        size_choose = widget.findChild(SpinBox, "Size_Choose")
-        if size_choose:
-            size_choose.setValue(self.config.get("size", 100))
-            size_choose.valueChanged.connect(lambda value: (
-                self.config.update(size=value),
-                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
-            ))
-        repeat_run_button = widget.findChild(SwitchButton, "repeat_run_button")
-        if repeat_run_button:
-            repeat_run_button.setChecked(self.config.get('repeat_run', False))
-            repeat_run_button.checkedChanged.connect(lambda state: (
-                self.config.update(repeat_run=state),
-                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
-                self.log(f"显示软件打开过程: {'启用' if state else '禁用'}")
-            ))
-        show_runtime_do_button = widget.findChild(SwitchButton, "show_runtime_do_button")
-        if show_runtime_do_button:
-            show_runtime_do_button.setChecked(self.config.get('show_runtime_do', False))
-            show_runtime_do_button.checkedChanged.connect(lambda state: (
-                self.config.update(show_runtime_do=state),
-                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
-                self.log(f"重复运行设置已更改为: {'启用' if state else '禁用'}")
-            ))
-        BL_version = widget.findChild(QLabel, "BL_version")
-        if BL_version:
-            BL_version.setText(f"{self.config.get('ver', '未知')}")
-        localmod_button = widget.findChild(SwitchButton, "localmod_button")
-        if localmod_button:
-            localmod_button.setChecked(self.config.get('localmod', False))
-            localmod_button.checkedChanged.connect(lambda state: (
-                self.config.update(repeat_run=state),
-                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
-                self.log(f"本地模式: {'启用' if state else '禁用'}")
-            ))
-        home_show_login_mod_button = widget.findChild(SwitchButton, "home_show_login_mod_button")
-        if home_show_login_mod_button:
-            home_show_login_mod_button.setChecked(self.config.get('home_show_login_mod', False))
-            home_show_login_mod_button.checkedChanged.connect(lambda state: (
-                self.config.update(home_show_login_mod=state),
-                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
-                self.log(f"在首页上 显示 Minecraft 账户登录方式: {'启用' if state else '禁用'}")
-            ))
     # def setlockconfig(self,widget,button,ConfigThing):
     #     button = widget.findChild(SwitchButton, "button")
     #     if button:
@@ -2538,7 +2234,7 @@ class MainWindow(FluentWindow):
     #         button.checkedChanged.connect(lambda state: (
     #             self.config.update("ConfigThing"=state),
     #             open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
-    #             self.log(f"在首页上 显示 Minecraft 账户登录方式: {'启用' if state else '禁用'}")
+    #             log(f"在首页上 显示 Minecraft 账户登录方式: {'启用' if state else '禁用'}")
     #         ))
     def on_light_dark_changed(self, mode):
         if mode == "跟随系统":
@@ -2568,7 +2264,7 @@ class MainWindow(FluentWindow):
                     #     parent=self
                     # )
                 except Exception as e:
-                    self.log(f"Failed to delete {file_path}. Reason: {e}", logging.ERROR)
+                    log(f"Failed to delete {file_path}. Reason: {e}", logging.ERROR)
         InfoBar.success(
             title='🗑️ 清理成功',
             content=f"已清理 {file_num} 个文件",
@@ -2588,28 +2284,11 @@ class MainWindow(FluentWindow):
                 BL_latest_ver = latest_release.get("Bloret-Launcher-latest")
                 return BL_latest_ver, BL_update_text
             else:
-                self.log("查询最新版本失败", logging.ERROR)
+                log("查询最新版本失败", logging.ERROR)
                 return BL_latest_ver, BL_update_text
         except requests.RequestException as e:
-            self.log(f"查询最新版本时发生错误: {e}", logging.ERROR)
+            log(f"查询最新版本时发生错误: {e}", logging.ERROR)
             return BL_latest_ver, BL_update_text
-    def setup_info_ui(self, widget):
-        github_org_button = widget.findChild(QPushButton, "pushButton_2")
-        if github_org_button:
-            github_org_button.clicked.connect(self.open_github_bloret)
-        github_project_button = widget.findChild(QPushButton, "button_github")
-        if github_project_button:
-            github_project_button.clicked.connect(self.open_github_bloret_Launcher)
-        qq_group_button = widget.findChild(QPushButton, "pushButton")
-        if qq_group_button:
-            qq_group_button.clicked.connect(self.open_qq_link)
-        qq_icon = widget.findChild(QLabel, "QQ_icon")
-        if qq_icon:
-            qq_icon.setPixmap(QPixmap("ui/icon/qq.png"))
-        BLC_QQ = widget.findChild(QPushButton, "BLC_QQ")
-        if BLC_QQ:
-            BLC_QQ.clicked.connect(self.open_BLC_qq_link)
-
     def update_log_clear_button_text(self, button):
         log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
         if os.path.exists(log_folder) and os.path.isdir(log_folder):
