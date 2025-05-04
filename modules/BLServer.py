@@ -38,7 +38,7 @@ def check_Light_Minecraft_Download_Way(server_ip):
         else:
             log("无法获取 Light-Minecraft-Download-Way", logging.ERROR)
     except requests.RequestException as e:
-        # handle_exception(e)
+        handle_exception(e)
         log(f"获取 Light-Minecraft-Download-Way 时发生错误: {e}", logging.ERROR)
 
 def handle_first_run(self,server_ip):
@@ -157,13 +157,13 @@ def check_for_updates(self,server_ip):
             log(f"检查更新时发生错误: {e}", logging.ERROR)
             
             log("无法连接到 pcfs.top", logging.ERROR)
-            w = MessageBox(
-                title="无法连接到 pcfs.top",
-                content=f'您无法连接到 PCFS 服务器来检查版本更新\n这可能是由于您的网络不佳？或是 PCFS 服务出现故障？\n请检查您的网络连接，或者稍后再试。\n我们等待了 3 秒，但它只显示：{e}',
-                parent=self
-            )
+            # w = MessageBox(
+            #     title="无法连接到 pcfs.top",
+            #     content=f'您无法连接到 PCFS 服务器来检查版本更新\n这可能是由于您的网络不佳？或是 PCFS 服务出现故障？\n请检查您的网络连接，或者稍后再试。\n我们等待了 3 秒，但它只显示：{e}',
+            #     parent=self
+            # )
             update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': '无法连接到服务器 ❌'})
-            w.show()
+            # w.show()
     else:
         log("本地模式已启用，检查更新 的过程已跳过。")
 

@@ -5,7 +5,7 @@ import logging,requests,json
 from modules.log import log, importlog
 from modules.safe import handle_exception
 
-def Bloret_PassPort_Account_login(self, widget, server_ip):
+def Bloret_PassPort_Account_login(self, widget, server_ip, homeInterface):
     if not self.config.get('localmod', False):
         class CustomLoginDialog(MessageBoxBase):
             """ 自定义登录对话框 """
@@ -80,6 +80,8 @@ def Bloret_PassPort_Account_login(self, widget, server_ip):
                         duration=5000,
                         parent=self
                     )
+                    Bloret_PassPort_Name = homeInterface.findChild(QLabel, "Bloret_PassPort_Name")
+                    Bloret_PassPort_Name.setText(f"{username}")
             except Exception as e:
                 handle_exception(e)
                 log("请求失败: %s" % str(e), logging.ERROR)
@@ -100,14 +102,14 @@ def Bloret_PassPort_Account_login(self, widget, server_ip):
             print('确认')
         else:
             print('取消')
-def Bloret_PassPort_Account_logout(self, widget):
+def Bloret_PassPort_Account_logout(self, homeInterface):
     self.config.update(Bloret_PassPort_UserName='未登录')
     self.config.update(Bloret_PassPort_PassWord='')
     self.config.update(Bloret_PassPort_Admin=False)
     
     open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
     # 更新界面显示
-    Bloret_PassPort_User_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
+    Bloret_PassPort_User_UserName = homeInterface.findChild(QLabel, "Bloret_PassPort_UserName")
     Bloret_PassPort_User_UserName.setText("未登录")
     InfoBar.success(
         title='⏫ 已退出登录',
@@ -117,6 +119,8 @@ def Bloret_PassPort_Account_logout(self, widget):
         duration=5000,
         parent=self
     )
+    Bloret_PassPort_Name = homeInterface.findChild(QLabel, "Bloret_PassPort_Name")
+    Bloret_PassPort_Name.setText(f"未登录")
     log("已退出登录")
 
 importlog("BLORET_PASSPORT.PY")

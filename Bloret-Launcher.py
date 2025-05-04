@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QSystemTrayIcon, QApplication, QPushButton, QWidget, QLineEdit, QLabel, QFileDialog, QMessageBox
-from qfluentwidgets import MessageBox, SubtitleLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
+from qfluentwidgets import MessageBox, SubtitleLabel, StrongBodyLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
 from PyQt5.QtGui import QIcon, QColor, QPalette
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
 from modules.win11toast import toast, notify, update_progress
@@ -406,11 +406,11 @@ class MainWindow(FluentWindow):
         load_ui("ui/info.ui", parent=self.infoInterface)
         load_ui("ui/version.ui", parent=self.versionInterface)
         setup_home_ui(self,self.homeInterface)
-        setup_download_ui(self,self.downloadInterface,LM_Download_Way_list,ver_id_bloret)
+        setup_download_ui(self,self.downloadInterface,LM_Download_Way_list,ver_id_bloret,self.homeInterface)
         setup_tools_ui(self,self.toolsInterface)
-        setup_passport_ui(self,self.passportInterface,server_ip)
+        setup_passport_ui(self,self.passportInterface,server_ip,self.homeInterface)
         setup_settings_ui(self,self.settingsInterface)
-        setup_version_ui(self,self.versionInterface,minecraft_list,customize_list)
+        setup_version_ui(self,self.versionInterface,minecraft_list,customize_list,MINECRAFT_DIR,self.homeInterface)
         setup_info_ui(self,self.infoInterface)
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
@@ -488,7 +488,7 @@ class MainWindow(FluentWindow):
                 duration=5000,
                 parent=self
             )
-        self.run_cmcl_list()
+        self.run_cmcl_list(True)
         # 拷贝 servers.dat 文件到 .minecraft 文件夹
         src_file = os.path.join(os.getcwd(), "servers.dat")
         dest_dir = os.path.join(os.getcwd(), ".minecraft")
@@ -507,8 +507,8 @@ class MainWindow(FluentWindow):
             self.show_text.setText("下载完成")
         else:
             log("show_text is None", logging.ERROR)
-        self.run_cmcl_list()
-    def run_cmcl_list(self):
+        self.run_cmcl_list(True)
+    def run_cmcl_list(self,back_set_list):
         global set_list,minecraft_list,customize_list  # 添加全局声明
         try:
             versions_path = os.path.join(os.getcwd(), ".minecraft", "versions")
@@ -540,7 +540,10 @@ class MainWindow(FluentWindow):
             log(f"合并后的版本列表: {set_list}")
 
             self.update_version_combobox()  # 新增UI更新方法
-            
+            if back_set_list:
+                return set_list
+            else:
+                return customize_list
         except Exception as e:
             handle_exception(e)
             log(f"读取版本列表失败: {e}", logging.ERROR)
@@ -635,7 +638,7 @@ class MainWindow(FluentWindow):
     def on_download_clicked(self):
         log("下载 被点击")
         load_ui("ui/download.ui", animate=False)
-        setup_download_ui(self,self.content_layout.itemAt(0).widget(),LM_Download_Way_list,ver_id_bloret)
+        setup_download_ui(self,self.content_layout.itemAt(0).widget(),LM_Download_Way_list,ver_id_bloret,self.homeInterface)
     def on_download_way_changed(self, widget, selected_way):
         show_way = widget.findChild(ComboBox, "show_way")
         fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
@@ -668,7 +671,7 @@ class MainWindow(FluentWindow):
             # else:
             #     Customize_icon.setText("无法加载图标")
             # self.showTeachingTip(Customize_showname, Customize_choose_path)
-    def on_customize_add_clicked(self, widget):
+    def on_customize_add_clicked(self, widget, homeInterface):
         Customize_path = widget.findChild(LineEdit, "Customize_path")
         Customize_showname = widget.findChild(LineEdit, "Customize_showname")
         Customize_path_value = Customize_path.text()
@@ -730,7 +733,9 @@ class MainWindow(FluentWindow):
                 duration=5000,
                 parent=self
             )
-            self.run_cmcl_list()
+            run_choose = homeInterface.findChild(ComboBox, "run_choose")
+            run_choose.clear()
+            run_choose.addItems(self.run_cmcl_list(True))
             
         except Exception as e:
             handle_exception(e)
@@ -956,262 +961,6 @@ class MainWindow(FluentWindow):
                 )
                 self.download_thread.start()
                 self.threads.append(self.download_thread)  # 将线程添加到列表中
-    def delete_minecraft_version(self,version,versions):
-        '''
-        # 🚧TODO🚧
-
-        ***
-
-        删除指定的 Minecraft 版本文件夹
-        :param version: 要删除的版本名称
-        :param versions: 版本 ComboBox 控件
-
-        ### 删除 `.minecraft/version/{version}` 文件夹
-        最好移到回收站
-
-        
-        ***
-        ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-        '''
-        log(f"正在删除 Minecraft 版本：{version}")
-        
-        # 构建版本文件夹路径
-        version_path = os.path.join(MINECRAFT_DIR, "versions", version)
-        
-        try:
-            # 检查版本文件夹是否存在
-            if os.path.exists(version_path) and os.path.isdir(version_path):
-                # 删除版本文件夹
-                send2trash.send2trash(version_path)
-                log(f"成功删除版本文件夹：{version_path}")
-                
-                # 更新全局列表
-                global set_list, minecraft_list
-                set_list.remove(version)
-                minecraft_list.remove(version)
-                
-                # 更新 UI 中的下拉列表
-                if versions and not sip.isdeleted(versions):
-                    selected_items = versions.selectedItems()
-                    if selected_items:
-                        for item in selected_items:
-                            versions.takeItem(versions.row(item))
-                    
-                    InfoBar.success(
-                        title=f'✅ 版本 {version} 已成功删除',
-                        content="如需找回，可前往系统回收站找回。",
-                        isClosable=True,
-                        position=InfoBarPosition.TOP,
-                        duration=5000,
-                        parent=self
-                    )
-                else:
-                    log("版本 ComboBox 不存在或已被删除")
-            else:
-                log(f"版本文件夹不存在：{version_path}", logging.ERROR)
-                InfoBar.warning(
-                    title='⚠️ 提示',
-                    content=f"版本 {version} 的文件夹不存在",
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
-                
-        except Exception as e:
-            handle_exception(e)
-            log(f"删除版本时发生错误: {e}", logging.ERROR)
-            InfoBar.error(
-                title='❌ 错误',
-                content=f"删除版本 {version} 时发生错误: {str(e)}",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-    def Change_minecraft_version_name(self,version,versions):
-        '''
-        # 🚧TODO🚧
-
-        ***
-
-        ### 将 `.minecraft/version` 文件夹下 `{version}` 文件夹名称换成想要的文件名称并重读刷新。
-
-        
-        ***
-        ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-        '''
-        log(f"正在修改 Minecraft 版本名称：{version}")
-        # 获取新的版本名称
-        dialog = self.MessageBox("重命名版本", f"请输入新的名称（当前名称：{version}）", self)
-        if not dialog.exec():
-            return  # 用户取消操作
-
-        new_name = dialog.name_edit.text().strip()
-        if not new_name:
-            InfoBar.warning(
-                title='⚠️ 提示',
-                content="新名称不能为空",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            return
-
-        if version == new_name:
-            InfoBar.info(
-                title='ℹ️ 提示',
-                content="新名称与原名称相同，无需更改",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            return
-
-        # 构建路径
-        old_path = os.path.join(MINECRAFT_DIR, "versions", version)
-        new_path = os.path.join(MINECRAFT_DIR, "versions", new_name)
-
-        # 检查目标是否存在
-        if os.path.exists(new_path):
-            InfoBar.error(
-                title='❌ 错误',
-                content=f"目标名称 {new_name} 已存在，请选择其他名称。",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            return
-
-        try:
-            # 重命名文件夹
-            os.rename(old_path, new_path)
-            log(f"成功将版本文件夹从 {old_path} 重命名为 {new_path}")
-
-            # 更新全局列表
-            global set_list, minecraft_list
-
-            if version in set_list:
-                set_list[set_list.index(version)] = new_name
-            if version in minecraft_list:
-                minecraft_list[minecraft_list.index(version)] = new_name
-
-            # 更新 UI 中的下拉列表
-            if versions and not sip.isdeleted(versions):
-                index = versions.findText(version)
-                if index != -1:
-                    versions.setItemText(index, new_name)
-                    InfoBar.success(
-                        title=f'✅ 成功',
-                        content=f"版本名称已从 {version} 更改为 {new_name}",
-                        isClosable=True,
-                        position=InfoBarPosition.TOP,
-                        duration=5000,
-                        parent=self
-                    )
-            else:
-                log("版本 ComboBox 不存在或已被删除")
-
-        except Exception as e:
-            handle_exception(e)
-            log(f"重命名版本时发生错误: {e}", logging.ERROR)
-            InfoBar.error(
-                title='❌ 错误',
-                content=f"重命名版本 {version} 时发生错误: {str(e)}",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-    def delete_Customize(self,version,Customizes):
-        '''
-        ### 删除自定义选项
-        将 配置文件中 `{version}` 对应的项目删除。
-
-        
-        ***
-        ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-        '''
-        log(f"正在删除自定义选项：{version}")
-        try:
-            isOK,item=find_Customize(self,version)
-            if isOK:
-                with open('config.json', 'r', encoding='utf-8') as file:
-                    config_data = json.load(file)
-
-                if "Customize" not in config_data:
-                    config_data["Customize"] = []
-                config_data["Customize"].remove(item)
-                with open('config.json', 'w', encoding='utf-8') as file:
-                    json.dump(config_data, file, ensure_ascii=False, indent=4)
-                self.config = config_data
-                InfoBar.success(
-                    title='✅ 成功',
-                    content=f"{version} 已成功删除",
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
-                customize_list.remove(version)
-                Customizes.clear()
-                Customizes.addItems(customize_list)
-                self.run_cmcl_list()
-            else:
-                InfoBar.error(
-                    title='❌ 删除失败',
-                    content=f"未找到与 {version} 匹配的自定义程序",
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
-            
-        except Exception as e:
-            handle_exception(e)
-            InfoBar.error(
-                title='❌ 错误',
-                content=f"保存到 config.json 时发生错误: {e}",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-    def Change_Customize_name(self,version,Customizes):
-        '''
-        # 🚧TODO🚧
-
-        ***
-
-        ### 将配置文件中 `{version}` 项目换成想要的名称并刷新重读。
-
-        
-        ***
-        ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-        '''
-        log(f"正在修改自定义选项名称：{version}")
-        isOK,item=find_Customize(self,version)
-        if isOK:
-            with open('config.json', 'r', encoding='utf-8') as file:
-                config_data = json.load(file)
-
-            if "Customize" not in config_data:
-                config_data["Customize"] = []
-            # config_data["Customize"].remove(item)
-            # TODO : 替换掉 Customize 中的对应项
-            
-        else:
-            InfoBar.error(
-                title='❌ 修改失败',
-                content=f"未找到与 {version} 匹配的自定义程序",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
     class DownloadThread(QThread):
         finished = pyqtSignal()
         error_occurred = pyqtSignal(str)
@@ -1312,7 +1061,8 @@ class MainWindow(FluentWindow):
         def __init__(self, title, content, parent=None):
             super().__init__(parent)
             self.name_edit = LineEdit()
-            self.viewLayout.addWidget(SubtitleLabel(content))
+            self.viewLayout.addWidget(SubtitleLabel(title))
+            self.viewLayout.addWidget(StrongBodyLabel(content))
             self.viewLayout.addWidget(self.name_edit)
             self.widget.setMinimumWidth(300)
     class CustomMessageBox(MessageBoxBase):
@@ -1666,7 +1416,7 @@ def switch_language(locale):
 
 # 检查写入权限
 if not check_write_permission():
-    w = Dialog("Bloret Launcher 无法写入文件", "...")
+    w = Dialog("Bloret Launcher 无法写入文件", "Bloret Launcher 需要在安装文件夹写入文件，但是我们在多次尝试后仍无法正常写入文件\n这可能是由于安装文件夹是只读的。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n由于没有写入权限，百络谷启动器将退出。")
     if w.exec():
         print('确认')
     else:

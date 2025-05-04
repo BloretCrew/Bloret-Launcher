@@ -7,8 +7,10 @@ import requests,json
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log, importlog, clear_log_files
 from modules.Bloret_PassPort import Bloret_PassPort_Account_login,Bloret_PassPort_Account_logout
-from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_bloret_web,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard
+from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
+from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder
+
 def load_ui(ui_path, parent=None, animate=True):
     '''
     ### 加载 UI 布局
@@ -53,22 +55,12 @@ def setup_home_ui(self, widget):
     openblweb_button = widget.findChild(QPushButton, "openblweb")
     if openblweb_button:
         openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("http://pcfs.top:2")))
-
-    self.run_cmcl_list()
+    self.run_cmcl_list(True)
     run_choose = widget.findChild(ComboBox, "run_choose")
-    # if run_choose:
-    #     run_choose.addItems(set_list)
     run_button = widget.findChild(QPushButton, "run")
     if run_button:
         run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText()))
     self.show_text = widget.findChild(QLabel, "show")
-
-    # self.run_cmcl_list()  # 初始化时加载版本列表
-    # run_choose = widget.findChild(ComboBox, "run_choose")
-    # if run_choose:
-    #     run_choose.addItems(set_list)
-
-    # tabBar = widget.findChild(TabBar, "runs")
     Bloret_PassPort_Name = widget.findChild(QLabel, "Bloret_PassPort_Name")
     if Bloret_PassPort_Name:
         Bloret_PassPort_Name.setText(f"{self.config.get('Bloret_PassPort_UserName', '未登录')}")
@@ -93,7 +85,7 @@ def setup_download_load_ui(self, widget):
     if loading_label:
         self.setup_loading_gif(loading_label)
 
-def setup_download_ui(self, widget, LM_Download_Way_list,ver_id_bloret):
+def setup_download_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInterface):
     '''
     设定 Bloret Launcher 下载界面 UI 布局和操作。
     ***
@@ -169,7 +161,7 @@ def setup_download_ui(self, widget, LM_Download_Way_list,ver_id_bloret):
 
     Customize_add = widget.findChild(QPushButton, "Customize_add")
     if Customize_add:
-        Customize_add.clicked.connect(lambda: self.on_customize_add_clicked(widget))
+        Customize_add.clicked.connect(lambda: self.on_customize_add_clicked(widget,homeInterface))
 
 def setup_tools_ui(self, widget):
     '''
@@ -199,7 +191,7 @@ def setup_tools_ui(self, widget):
     if cape_copy_button:
         cape_copy_button.clicked.connect(lambda: copy_cape_to_clipboard(self))
 
-def setup_passport_ui(self, widget, server_ip):
+def setup_passport_ui(self, widget, server_ip, homeInterface):
     '''
     # 设定 Bloret Launcher 通行证界面 UI 布局和操作。
     包括：
@@ -253,14 +245,17 @@ def setup_passport_ui(self, widget, server_ip):
     Bloret_PassPort_logout = widget.findChild(QPushButton, "Bloret_PassPort_logout")
     Bloret_PassPort_login = widget.findChild(QPushButton, "Bloret_PassPort_login")
     Bloret_PassPort_view_BBBS = widget.findChild(QPushButton, "Bloret_PassPort_view_BBBS")
+    reg_Bloret_PassPort = widget.findChild(QPushButton, "reg_Bloret_PassPort")
     if Bloret_PassPort_UserName:
         Bloret_PassPort_UserName.setText(self.config.get('Bloret_PassPort_UserName', '未登录'))
     if Bloret_PassPort_logout:
-        Bloret_PassPort_logout.clicked.connect(lambda: Bloret_PassPort_Account_logout(widget))
+        Bloret_PassPort_logout.clicked.connect(lambda: Bloret_PassPort_Account_logout(self,homeInterface))
     if Bloret_PassPort_login:
-        Bloret_PassPort_login.clicked.connect(lambda: Bloret_PassPort_Account_login(self,widget,server_ip))
+        Bloret_PassPort_login.clicked.connect(lambda: Bloret_PassPort_Account_login(self,widget,server_ip,homeInterface))
     if Bloret_PassPort_view_BBBS:
         Bloret_PassPort_view_BBBS.clicked.connect(lambda: open_BBBS_link(server_ip))
+    if reg_Bloret_PassPort:
+        reg_Bloret_PassPort.clicked.connect(lambda: open_BBBS_Reg_link(server_ip))
 
 def setup_settings_ui(self, widget):
     '''
@@ -346,7 +341,7 @@ def setup_info_ui(self, widget):
     if BLC_QQ:
         BLC_QQ.clicked.connect(open_BLC_qq_link)
 
-def setup_version_ui(self, widget, minecraft_list, customize_list):
+def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR, homeInterface):
     '''
     设定 Bloret Launcher 版本管理界面 UI 布局和操作。
     ***
@@ -362,14 +357,21 @@ def setup_version_ui(self, widget, minecraft_list, customize_list):
     version_delete_button = widget.findChild(QPushButton, "version_delete_button")
     Version_Open_File_Button = widget.findChild(QPushButton, "Version_Open_File_Button")
     if Version_Change_Name_Button:
-        Version_Change_Name_Button.clicked.connect(lambda: self.Change_minecraft_version_name(minecraft_list[versions.currentRow()],versions))
+        Version_Change_Name_Button.clicked.connect(lambda: (
+            minecraft_list := self.run_cmcl_list(True),
+            Change_minecraft_version_name(self, minecraft_list[versions.currentRow()], versions, MINECRAFT_DIR, homeInterface)
+        ))
     if version_delete_button:
-        version_delete_button.clicked.connect(lambda: self.delete_minecraft_version(minecraft_list[versions.currentRow()],versions))
+        version_delete_button.clicked.connect(lambda: (
+            minecraft_list := self.run_cmcl_list(True),
+            delete_minecraft_version(self,minecraft_list[versions.currentRow()],versions,MINECRAFT_DIR,homeInterface),
+            setup_home_ui(self,homeInterface)
+        ))
     if Version_Open_File_Button:
-        '''
-        # 🚧TODO🚧
-        '''
-        Version_Open_File_Button.clicked.connect(lambda: self.delete_minecraft_version(minecraft_list[versions.currentRow()],versions))
+        Version_Open_File_Button.clicked.connect(lambda: (
+            minecraft_list := self.run_cmcl_list(True),
+            open_minecraft_version_folder(self, minecraft_list[versions.currentRow()], MINECRAFT_DIR))
+        )
 
     Customizes = widget.findChild(ListWidget, "Customizes")
     if Customizes:
@@ -378,9 +380,17 @@ def setup_version_ui(self, widget, minecraft_list, customize_list):
     Customizes_Change_Name_button = widget.findChild(QPushButton, "Customizes_Change_Name_button")
     Customizes_delete_button = widget.findChild(QPushButton, "Customizes_delete_button")
     if Customizes_Change_Name_button:
-        Customizes_Change_Name_button.clicked.connect(lambda:self.Change_Customize_name(customize_list[Customizes.currentRow()],Customizes))
+        Customizes_Change_Name_button.clicked.connect(lambda:(
+            minecraft_list := self.run_cmcl_list(True),
+            Change_Customize_name(self,customize_list[Customizes.currentRow()],Customizes,homeInterface),
+            setup_home_ui(self,homeInterface)
+        ))
     if Customizes_delete_button:
-        Customizes_delete_button.clicked.connect(lambda:self.delete_Customize(customize_list[Customizes.currentRow()],Customizes))
+        Customizes_delete_button.clicked.connect(lambda:(
+            minecraft_list := self.run_cmcl_list(True),
+            delete_Customize(self,customize_list[Customizes.currentRow()],Customizes,customize_list,homeInterface),
+            setup_home_ui(self,homeInterface)
+        ))
 
 
 importlog("SETUP_UI.PY")

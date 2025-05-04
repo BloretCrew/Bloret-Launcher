@@ -320,6 +320,13 @@
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="PushButton" name="reg_Bloret_PassPort">
+            <property name="text">
+             <string>注册 Bloret 通行证</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>

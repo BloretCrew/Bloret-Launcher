@@ -7,15 +7,6 @@ Safe.py
  - [x] 显示错误跟踪窗口，并允许用户复制错误信息到剪贴板，并提交问题。
  - [x] 允许用户忽略警告。
 
-### 模块依赖：
- - [x] PyQt5
- - [x] logging
- - [x] traceback
- - [x] sys
- - [x] webbrowser
-
-### 模块使用：
- - [x] 在程序入口处导入模块：
 
 ***
 ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.

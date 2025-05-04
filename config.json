@@ -1,15 +1,24 @@
 {
     "minecraft-part": ".minecraft",
-    "first-run": true,
+    "first-run": false,
     "ver": 6.2,
     "size": 85,
     "themelight": true,
     "repeat_run": false,
-    "show_runtime_do": true,
-    "Customize": [],
-    "Bloret_PassPort_UserName": "\u672a\u767b\u5f55",
-    "Bloret_PassPort_PassWord": "",
-    "Bloret_PassPort_Admin": false,
+    "show_runtime_do": false,
+    "Customize": [
+        {
+            "showname": "Plain Craft Launcher 2",
+            "path": "G:/WindowsToGo/Min/Plain Craft Launcher 2.exe"
+        },
+        {
+            "showname": "绝区零dui",
+            "path": "G:/WindowsToGo/Windows/ZenlessZoneZero.exe"
+        }
+    ],
+    "Bloret_PassPort_UserName": "Detritalw",
+    "Bloret_PassPort_PassWord": "123456",
+    "Bloret_PassPort_Admin": true,
     "whenCWopen_BLopen": true,
     "localmod": false,
     "home_show_login_mod": true
