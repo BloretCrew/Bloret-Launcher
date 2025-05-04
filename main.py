@@ -44,6 +44,6 @@ class Settings(SettingsBase):
 
     def run_batch_file(self):
         try:
-            subprocess.run(os.path.join(self.PATH, 'Bloret-Launcher.exe'), check=True, cwd=self.PATH, creationflags=subprocess.CREATE_NO_WINDOW)
+            subprocess.run(os.path.join(self.PATH, 'Bloret-Launcher\Bloret-Launcher.exe'), check=True, cwd=self.PATH, creationflags=subprocess.CREATE_NO_WINDOW)
         except Exception as e:
-            logger.error(f"Failed to run Bloret-Launcher.exe: {e}")
+            logger.error(f"Failed to run Bloret-Launcher\Bloret-Launcher.exe: {e}")
