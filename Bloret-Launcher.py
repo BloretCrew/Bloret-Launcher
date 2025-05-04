@@ -7,13 +7,13 @@ import ctypes, re, locale, sys, logging, os, requests, json, subprocess, time, s
 import sip # type: ignore
 # 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
 from modules.log import log
+from modules.safe import handle_exception
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
 from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui
 from modules.customize import CustomizeRun,find_Customize
 from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
-
 # 全局变量
 server_ip = "http://pcfs.top:2/" # Bloret Launcher Server 服务器地址 （尾部带斜杠）
 ver_id_bloret = ['1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21']
@@ -322,6 +322,13 @@ class MainWindow(FluentWindow):
             json.dump(self.config, open('config.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
             if hasattr(self, 'config') else None
         ))
+        
+        # 错误报告测试
+        # try:
+        #     raise Exception("test")
+        # except Exception as e:
+        #     handle_exception(type(e), e, e.__traceback__)
+
     def refresh_home_minecraft_account(self,player_name,widget):
         Minecraft_account = widget.findChild(QLabel, "Minecraft_account")
         # if Minecraft_account:
