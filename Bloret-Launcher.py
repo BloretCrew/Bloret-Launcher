@@ -1118,6 +1118,7 @@ class MainWindow(FluentWindow):
             
         def run(self):
             # 执行微软登录命令
+            log("正在执行微软登录命令：cmcl account --login=microsoft")
             process = subprocess.Popen(["cmcl", "account", "--login=microsoft"],
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE,
@@ -1199,14 +1200,14 @@ class MainWindow(FluentWindow):
                 # 覆盖cmcl.json
                 try:
                     shutil.copyfile('cmcl.blank.json', 'cmcl.json')
-                    log("成功覆盖cmcl.json文件")
+                    log("成功覆盖 cmcl.json 文件")
                 except Exception as e:
                     self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
                     return
 
                 # 创建并启动登录线程
                 self.microsoft_login_thread = self.MicrosoftLoginThread()
-                self.microsoft_login_thread.log_method = self.log
+                self.microsoft_login_thread.log_method = log
                 self.microsoft_login_thread.finished.connect(
                     lambda success, msg: self.on_login_finished(widget, success, msg)
                 )
@@ -1262,7 +1263,7 @@ class MainWindow(FluentWindow):
         
         if self.cmcl_data:
             # 更新登录方式
-            login_method = "微软登录" if self.login_mod_num == 2 else "离线登录"
+            login_method = self.login_mod
             if login_way_combo:
                 login_way_combo.clear()
                 login_way_combo.addItem(login_method)

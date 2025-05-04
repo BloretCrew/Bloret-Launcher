@@ -2,10 +2,6 @@
   "language": "zh",
   "downloadSource": 1,
   "checkAccountBeforeStart": false,
-  "accounts": [{
-    "playerName": "Detritalw",
-    "loginMethod": 0,
-    "selected": true
-  }],
+  "accounts": [],
   "printStartupInfo": true
 }
