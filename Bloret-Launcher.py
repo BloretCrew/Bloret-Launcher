@@ -1042,6 +1042,90 @@ class MainWindow(FluentWindow):
         ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
         '''
         log(f"正在修改 Minecraft 版本名称：{version}")
+        # 获取新的版本名称
+        dialog = self.MessageBox("重命名版本", f"请输入新的名称（当前名称：{version}）", self)
+        if not dialog.exec():
+            return  # 用户取消操作
+
+        new_name = dialog.name_edit.text().strip()
+        if not new_name:
+            InfoBar.warning(
+                title='⚠️ 提示',
+                content="新名称不能为空",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+            return
+
+        if version == new_name:
+            InfoBar.info(
+                title='ℹ️ 提示',
+                content="新名称与原名称相同，无需更改",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+            return
+
+        # 构建路径
+        old_path = os.path.join(MINECRAFT_DIR, "versions", version)
+        new_path = os.path.join(MINECRAFT_DIR, "versions", new_name)
+
+        # 检查目标是否存在
+        if os.path.exists(new_path):
+            InfoBar.error(
+                title='❌ 错误',
+                content=f"目标名称 {new_name} 已存在，请选择其他名称。",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+            return
+
+        try:
+            # 重命名文件夹
+            os.rename(old_path, new_path)
+            log(f"成功将版本文件夹从 {old_path} 重命名为 {new_path}")
+
+            # 更新全局列表
+            global set_list, minecraft_list
+
+            if version in set_list:
+                set_list[set_list.index(version)] = new_name
+            if version in minecraft_list:
+                minecraft_list[minecraft_list.index(version)] = new_name
+
+            # 更新 UI 中的下拉列表
+            if versions and not sip.isdeleted(versions):
+                index = versions.findText(version)
+                if index != -1:
+                    versions.setItemText(index, new_name)
+                    InfoBar.success(
+                        title=f'✅ 成功',
+                        content=f"版本名称已从 {version} 更改为 {new_name}",
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=5000,
+                        parent=self
+                    )
+            else:
+                log("版本 ComboBox 不存在或已被删除")
+
+        except Exception as e:
+            handle_exception(e)
+            log(f"重命名版本时发生错误: {e}", logging.ERROR)
+            InfoBar.error(
+                title='❌ 错误',
+                content=f"重命名版本 {version} 时发生错误: {str(e)}",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
     def delete_Customize(self,version,Customizes):
         '''
         ### 删除自定义选项
