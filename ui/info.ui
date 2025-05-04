@@ -351,7 +351,7 @@
    <item>
     <widget class="CaptionLabel" name="CaptionLabel_2">
      <property name="text">
-      <string>Bloret</string>
+      <string>© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>

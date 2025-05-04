@@ -20,10 +20,10 @@
             "path": "C:/Windows/explorer.exe"
         }
     ],
-    "Bloret_PassPort_UserName": "未登录",
-    "Bloret_PassPort_PassWord": "",
-    "Bloret_PassPort_Admin": false,
+    "Bloret_PassPort_UserName": "Detritalw",
+    "Bloret_PassPort_PassWord": "123456",
+    "Bloret_PassPort_Admin": true,
     "whenCWopen_BLopen": true,
-    "localmod": true,
+    "localmod": false,
     "home_show_login_mod": true
 }

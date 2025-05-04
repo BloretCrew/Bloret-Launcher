@@ -258,7 +258,7 @@ def setup_passport_ui(self, widget, server_ip):
     if Bloret_PassPort_logout:
         Bloret_PassPort_logout.clicked.connect(lambda: Bloret_PassPort_Account_logout(widget))
     if Bloret_PassPort_login:
-        Bloret_PassPort_login.clicked.connect(lambda: Bloret_PassPort_Account_login(self,widget))
+        Bloret_PassPort_login.clicked.connect(lambda: Bloret_PassPort_Account_login(self,widget,server_ip))
     if Bloret_PassPort_view_BBBS:
         Bloret_PassPort_view_BBBS.clicked.connect(lambda: open_BBBS_link(server_ip))
 

@@ -4,7 +4,7 @@ import logging,requests,json
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log, importlog
 
-def Bloret_PassPort_Account_login(self, widget):
+def Bloret_PassPort_Account_login(self, widget, server_ip):
     if not self.config.get('localmod', False):
         class CustomLoginDialog(MessageBoxBase):
             """ 自定义登录对话框 """
@@ -43,7 +43,7 @@ def Bloret_PassPort_Account_login(self, widget):
 
             try:
                 response = requests.get(
-                    f"{self.server_ip}api/login",
+                    f"{server_ip}api/login",
                     params={"name": username, "password": password}
                 )
                 response_data = response.json()

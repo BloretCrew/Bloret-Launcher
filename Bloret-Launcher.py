@@ -65,7 +65,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.menu.addMenu(launch_menu)
 
         self.menu.addActions([
-            Action('🔡  访问 BBS', triggered=lambda: open_BBBS_link()),
+            Action('🔡  访问 BBS', triggered=lambda: open_BBBS_link(server_ip)),
             Action('🔄️  重启程序', triggered=lambda: restart()),
             Action('✅  显示窗口', triggered=self.main_window.show_main_window),
             Action('❎  退出程序', triggered=QApplication.quit)
