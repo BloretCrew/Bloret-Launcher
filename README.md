@@ -1,6 +1,6 @@
 > [!WARNING]
-> 本仓库因仓库所有者 @Detritalw 而参与 [百日会战计划 #20](https://github.com/BloretCrew/Bloret-Launcher/discussions/20) ，暂时停止维护，约 100 天后解除。  
-> 如有问题，请找 @RhedarLiu
+> 本仓库因仓库所有者 [@Detritalw](https://github.com/Detritalw) 而参与 [百日会战计划 #20](https://github.com/BloretCrew/Bloret-Launcher/discussions/20) ，暂时停止维护，约 100 天后解除。  
+> 如有问题，请找 [@RhedarLiu](https://github.com/RhedarLiu)
 
 <p align="center">
   <img width="16%" align="center" src="bloret.ico" alt="logo">
@@ -21,17 +21,14 @@
 > Bloret Launcher 现已加入 [Windows 包管理器 ( Windows Package Manager )](https://github.com/microsoft/winget-cli)
 > 因此，现在您可以在终端中输入以下命令快速安装 百络谷启动器
 > ```
-> winget install "Bloret Launcher"
-> ```
-> 或
-> ```
-> winget install Bloret.BloretLauncher
+> winget install Bloret.Launcher
 > ```
 
 > [!NOTE]
-> 您可以以两种方式打开百洛谷启动器
-> 1. 下载 `Bloret-Launcher-Windows.zip` ，解压后打开其中的 `Bloret-Launcher.exe`
-> 2. 下载软件源代码压缩包 `Source code (zip)` ，解压后在所在目录下运行 `python main.py`
+> 您可以以三种方式打开百洛谷启动器
+> 1. 下载 `Bloret-Launcher-Setup.exe` ，运行安装。
+> 2. 下载 `Bloret-Launcher-Windows.zip` ，解压后打开其中的 `Bloret-Launcher.exe`
+> 3. 下载软件源代码压缩包 `Source code (zip)` ，解压后在所在目录下运行 `python main.py`
 >    （使用步骤二前请先安装 Python ， 运行 `winget install python` 即可）
 
 > [!WARNING]
@@ -97,8 +94,6 @@
 
 </details>
 
-## 安装&使用
-到[这里](https://github.com/BloretCrew/Bloret-Launcher/releases)下载最新版本的压缩文件，解压到合适位置后，打开 `Bloret-Launcher.exe` 即可。
 ## 致谢以下存储库或项目
 - [PyQt5](https://www.riverbankcomputing.com/static/Docs/PyQt5/)
 - [PyQt Fluent Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)
@@ -120,7 +115,7 @@
 [Class Widgets](https://github.com/Class-Widgets) 为 Bloret Launcher 有以下值得我们致谢的点：
  - 为 Bloret Launcher 的 UI 提供了想法
  - Bloret Launcher 已加入 Class Widgets 插件广场
- - @RinLit 为本作品有写法指导
+ - [@RinLit](https://github.com/RinLit-233-shiroko) 为本作品有写法指导
  - [[not cw] 求助为什么崩溃 #392](https://github.com/orgs/Class-Widgets/discussions/392)
  - [求教如何往下拉选择框做东西进去 #338](https://github.com/orgs/Class-Widgets/discussions/338)
 </details>

@@ -61,7 +61,7 @@ with open(setup_file_path, 'r', encoding='utf-8') as setup_file:
 # 修改 MyAppVersion 的值
 for i, line in enumerate(setup_content):
     if line.startswith('#define MyAppVersion'):
-        setup_content[i] = f'#define MyAppVersion "{version_str}"\n'
+        setup_content[i] = f'#define MyAppVersion "{version_str}-Beta"\n'
         break
 
 # 保存修改后的内容
