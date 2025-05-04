@@ -2,6 +2,7 @@ from modules.win11toast import toast
 import ctypes.wintypes,ctypes,logging,os,subprocess
 
 from modules.log import log, importlog
+from modules.safe import handle_exception
 
 def get_system_theme_color():
     """获取系统主题颜色"""
@@ -34,6 +35,7 @@ def get_system_theme_color():
         blue = (accent_color & 0x0000FF)
         return f"#{red:02X}{green:02X}{blue:02X}"
     except Exception as e:
+        handle_exception(e)
         print(f"获取系统主题颜色时发生错误: {e}")
         return "#0078D7"  # 默认蓝色
 
@@ -63,6 +65,7 @@ def is_dark_theme():
         # 返回主题状态
         return value.value == 0  # 0 表示深色主题，1 表示浅色主题
     except Exception as e:
+        handle_exception(e)
         print(f"检测主题时发生错误: {e}")
         return False
 
@@ -70,6 +73,7 @@ def send_system_notification(title, message):
     try:
         toast(title, message, duration="short", icon={'src': 'bloret.ico','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
     except Exception as e:
+        handle_exception(e)
         log(f"发送系统通知失败: {e}", logging.ERROR)
 def check_write_permission():
     # 检查当前目录的写入权限

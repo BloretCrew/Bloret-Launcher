@@ -152,6 +152,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                     'valueStringOverride': f'100%'
                 })
             except Exception as e:
+                handle_exception(e)
                 log(f"下载版本 {self.version} 时发生错误: {str(e)}", logging.ERROR)
                 self.error_signal.emit(str(e))
             finally:
@@ -234,6 +235,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                         log(f"下载 {file_name} 失败 (尝试 {attempt + 1}/{max_retries}): {e}", logging.ERROR)
                         time.sleep(retry_delay)
                     except Exception as e:
+                        handle_exception(e)
                         log(f"下载 {file_name} 时发生未知错误: {e}", logging.ERROR)
                         time.sleep(retry_delay)
                     finally:
@@ -250,6 +252,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                     try:
                         future.result()  # 等待任务完成
                     except Exception as e:
+                        handle_exception(e)
                         log(f"下载文件时发生错误: {e}", logging.ERROR)  # 记录任务执行错误日志
         
             # 解压下载的文件
@@ -265,6 +268,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                     else:
                         log(f"文件 {file_name} 不存在，无法解压缩", logging.ERROR)  # 记录文件不存在日志
             except Exception as e:  # 捕获解压异常
+                handle_exception(e)
                 log(f"解压文件失败: {e}", logging.ERROR)  # 记录解压失败日志
                 return False  # 返回 False 表示解压失败
         
@@ -338,6 +342,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                     log(f"下载 {file_name} 失败 (尝试 {attempt + 1}/{max_retries}): {e}", logging.ERROR)
                     time.sleep(retry_delay)
                 except Exception as e:
+                    handle_exception(e)
                     # 捕获其他异常，记录日志并等待一段时间后重试
                     log(f"下载 {file_name} 时发生未知错误: {e}", logging.ERROR)
                     time.sleep(retry_delay)

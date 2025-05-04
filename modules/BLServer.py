@@ -4,6 +4,7 @@ from qfluentwidgets import MessageBox
 from modules.win11toast import update_progress
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log, importlog
+from modules.safe import handle_exception
 def check_Light_Minecraft_Download_Way(server_ip): 
     ''' 
     # 获取 Light Minecraft 下载方式
@@ -37,7 +38,7 @@ def check_Light_Minecraft_Download_Way(server_ip):
         else:
             log("无法获取 Light-Minecraft-Download-Way", logging.ERROR)
     except requests.RequestException as e:
-        # handle_exception(e,e,e)
+        # handle_exception(e)
         log(f"获取 Light-Minecraft-Download-Way 时发生错误: {e}", logging.ERROR)
 
 def handle_first_run(self,server_ip):
@@ -152,6 +153,7 @@ def check_for_updates(self,server_ip):
                 # 连接按钮点击事件以触发更新
                 w.yesButton.clicked.connect(self.update_to_latest_version)
         except Exception as e:
+            handle_exception(e)
             log(f"检查更新时发生错误: {e}", logging.ERROR)
             
             log("无法连接到 pcfs.top", logging.ERROR)

@@ -3,11 +3,11 @@ from qfluentwidgets import MessageBox, SubtitleLabel, MessageBoxBase, Navigation
 from PyQt5.QtGui import QIcon, QColor, QPalette
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
 from modules.win11toast import toast, notify, update_progress
-import ctypes, re, locale, sys, logging, os, requests, json, subprocess, time, shutil
+import ctypes, re, locale, sys, logging, os, requests, json, subprocess, time, shutil, send2trash
 import sip # type: ignore
 # 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
-from modules.log import log
 from modules.safe import handle_exception
+from modules.log import log
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
 from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui
 from modules.customize import CustomizeRun,find_Customize
@@ -327,7 +327,7 @@ class MainWindow(FluentWindow):
         # try:
         #     raise Exception("test")
         # except Exception as e:
-        #     handle_exception(type(e), e, e.__traceback__)
+        #     handle_exception(e)
 
     def refresh_home_minecraft_account(self,player_name,widget):
         Minecraft_account = widget.findChild(QLabel, "Minecraft_account")
@@ -371,6 +371,7 @@ class MainWindow(FluentWindow):
             self.player_name = "未登录"
             self.login_mod = "请在下方登录"
         except Exception as e:
+            handle_exception(e)
             log(f"其他错误: {e}", logging.ERROR)
             self.cmcl_data = None
             self.player_name = "未登录"
@@ -496,6 +497,7 @@ class MainWindow(FluentWindow):
                 shutil.copy(src_file, dest_dir)
                 log(f"成功拷贝 {src_file} 到 {dest_dir}")
             except Exception as e:
+                handle_exception(e)
                 log(f"拷贝 {src_file} 到 {dest_dir} 失败: {e}", logging.ERROR)
         self.is_running = False  # 重置标志变量
         # 发送系统通知
@@ -540,6 +542,7 @@ class MainWindow(FluentWindow):
             self.update_version_combobox()  # 新增UI更新方法
             
         except Exception as e:
+            handle_exception(e)
             log(f"读取版本列表失败: {e}", logging.ERROR)
             set_list = ["无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装"]
     def run_cmcl(self, version):
@@ -730,6 +733,7 @@ class MainWindow(FluentWindow):
             self.run_cmcl_list()
             
         except Exception as e:
+            handle_exception(e)
             InfoBar.error(
                 title='❌ 错误',
                 content=f"保存到 config.json 时发生错误: {e}",
@@ -958,6 +962,10 @@ class MainWindow(FluentWindow):
 
         ***
 
+        删除指定的 Minecraft 版本文件夹
+        :param version: 要删除的版本名称
+        :param versions: 版本 ComboBox 控件
+
         ### 删除 `.minecraft/version/{version}` 文件夹
         最好移到回收站
 
@@ -966,6 +974,61 @@ class MainWindow(FluentWindow):
         ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
         '''
         log(f"正在删除 Minecraft 版本：{version}")
+        
+        # 构建版本文件夹路径
+        version_path = os.path.join(MINECRAFT_DIR, "versions", version)
+        
+        try:
+            # 检查版本文件夹是否存在
+            if os.path.exists(version_path) and os.path.isdir(version_path):
+                # 删除版本文件夹
+                send2trash.send2trash(version_path)
+                log(f"成功删除版本文件夹：{version_path}")
+                
+                # 更新全局列表
+                global set_list, minecraft_list
+                set_list.remove(version)
+                minecraft_list.remove(version)
+                
+                # 更新 UI 中的下拉列表
+                if versions and not sip.isdeleted(versions):
+                    selected_items = versions.selectedItems()
+                    if selected_items:
+                        for item in selected_items:
+                            versions.takeItem(versions.row(item))
+                    
+                    InfoBar.success(
+                        title=f'✅ 版本 {version} 已成功删除',
+                        content="如需找回，可前往系统回收站找回。",
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=5000,
+                        parent=self
+                    )
+                else:
+                    log("版本 ComboBox 不存在或已被删除")
+            else:
+                log(f"版本文件夹不存在：{version_path}", logging.ERROR)
+                InfoBar.warning(
+                    title='⚠️ 提示',
+                    content=f"版本 {version} 的文件夹不存在",
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=5000,
+                    parent=self
+                )
+                
+        except Exception as e:
+            handle_exception(e)
+            log(f"删除版本时发生错误: {e}", logging.ERROR)
+            InfoBar.error(
+                title='❌ 错误',
+                content=f"删除版本 {version} 时发生错误: {str(e)}",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
     def Change_minecraft_version_name(self,version,versions):
         '''
         # 🚧TODO🚧
@@ -1024,6 +1087,7 @@ class MainWindow(FluentWindow):
                 )
             
         except Exception as e:
+            handle_exception(e)
             InfoBar.error(
                 title='❌ 错误',
                 content=f"保存到 config.json 时发生错误: {e}",
@@ -1115,6 +1179,7 @@ class MainWindow(FluentWindow):
                 if sys.platform == "win32":
                     toast(title, message, duration="short", icon={'src': 'bloret.ico','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
             except Exception as e:
+                handle_exception(e)
                 log(f"发送系统通知失败: {e}", logging.ERROR)
     class MicrosoftLoginThread(QThread):
         finished = pyqtSignal(bool, str)
@@ -1157,6 +1222,7 @@ class MainWindow(FluentWindow):
                     error = process.stderr.read()
                     self.finished.emit(False, f"登录失败: {error}")
             except Exception as e:
+                handle_exception(e)
                 self.finished.emit(False, f"执行异常: {str(e)}")
     class MessageBox(MessageBoxBase):
         def __init__(self, title, content, parent=None):
@@ -1197,6 +1263,7 @@ class MainWindow(FluentWindow):
                             lambda success, msg: self.on_login_finished(widget, success, msg))
                         self.offline_thread.start()
                 except Exception as e:
+                    handle_exception(e)
                     self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
         elif login_way_choose.currentText() == "微软登录":
             if not config.get('localmod', False):
@@ -1209,6 +1276,7 @@ class MainWindow(FluentWindow):
                     shutil.copyfile('cmcl.blank.json', 'cmcl.json')
                     log("成功覆盖 cmcl.json 文件")
                 except Exception as e:
+                    handle_exception(e)
                     self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
                     return
 
@@ -1294,6 +1362,7 @@ class MainWindow(FluentWindow):
             else:
                 subprocess.run(["notify-send", title, message])
         except Exception as e:
+            handle_exception(e)
             log(f"发送系统通知失败: {e}", logging.ERROR)
     def on_download_error(self, error_message, teaching_tip, download_button):
         if teaching_tip and not sip.isdeleted(teaching_tip):

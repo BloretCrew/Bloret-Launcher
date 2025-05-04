@@ -3,6 +3,7 @@ from qfluentwidgets import SubtitleLabel,MessageBoxBase,InfoBar,InfoBarPosition,
 import logging,requests,json
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log, importlog
+from modules.safe import handle_exception
 
 def Bloret_PassPort_Account_login(self, widget, server_ip):
     if not self.config.get('localmod', False):
@@ -80,6 +81,7 @@ def Bloret_PassPort_Account_login(self, widget, server_ip):
                         parent=self
                     )
             except Exception as e:
+                handle_exception(e)
                 log("请求失败: %s" % str(e), logging.ERROR)
                 InfoBar.error(
                     title='❌ 登录失败',

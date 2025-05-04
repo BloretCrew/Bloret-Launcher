@@ -1,9 +1,41 @@
+'''
+Safe.py
+## Bloret Launcher 错误处理模块
+
+### 模块功能：
+ - [x] 捕获未捕获的异常，并显示错误跟踪窗口。
+ - [x] 显示错误跟踪窗口，并允许用户复制错误信息到剪贴板，并提交问题。
+ - [x] 允许用户忽略警告。
+
+### 模块依赖：
+ - [x] PyQt5
+ - [x] logging
+ - [x] traceback
+ - [x] sys
+ - [x] webbrowser
+
+### 模块使用：
+ - [x] 在程序入口处导入模块：
+
+***
+###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+'''
+
 import threading,logging,traceback,sys,webbrowser
 from PyQt5.QtWidgets import QApplication
 from PyQt5.uic import loadUi
 from modules.log import log, importlog
 
-def handle_exception(exc_type, exc_value, exc_traceback):
+def handle_exception(e):
+    '''
+    ## 显示错误跟踪窗口并报告异常
+
+    ***
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    '''
+    exc_type = type(e)
+    exc_value = e
+    exc_traceback = e.__traceback__
     log("未捕获的异常:", logging.CRITICAL)
     log("类型: {}".format(exc_type), logging.CRITICAL)
     log("信息: {}".format(exc_value), logging.CRITICAL)
@@ -20,7 +52,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     # 按钮功能实现
     def copy_to_clipboard():
         clipboard = QApplication.clipboard()
-        clipboard.setText(error_widget.traceback.toPlainText())
+        clipboard.setText('Bloret Launcher 错误报告信息：\n - 类型：{}\n - 信息：{}\n - 回溯：{}'.format(exc_type, exc_value, ''.join(traceback.format_tb(exc_traceback))))
     
     def report_issue():
         webbrowser.open('https://github.com/BloretCrew/Bloret-Launcher/issues/new?template=BugReport.yml')
