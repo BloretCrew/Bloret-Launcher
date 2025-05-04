@@ -179,25 +179,25 @@ def setup_tools_ui(self, widget):
     '''
     name2uuid_button = widget.findChild(QPushButton, "name2uuid_player_Button")
     if name2uuid_button:
-        name2uuid_button.clicked.connect(lambda: query_player_uuid(widget))
+        name2uuid_button.clicked.connect(lambda: query_player_uuid(self,widget))
     search_name_button = widget.findChild(QPushButton, "search_name_button")
     if search_name_button:
-        search_name_button.clicked.connect(lambda: query_player_name(widget))
+        search_name_button.clicked.connect(lambda: query_player_name(self,widget))
     skin_search_button = widget.findChild(QPushButton, "skin_search_button")
     if skin_search_button:
-        skin_search_button.clicked.connect(lambda: query_player_skin(widget))
+        skin_search_button.clicked.connect(lambda: query_player_skin(self,widget))
     name_copy_button = widget.findChild(QPushButton, "search_name_copy")
     if name_copy_button:
-        name_copy_button.clicked.connect(lambda: copy_name_to_clipboard(widget))
+        name_copy_button.clicked.connect(lambda: copy_name_to_clipboard(self))
     uuid_copy_button = widget.findChild(QPushButton, "pushButton_5")
     if uuid_copy_button:
-        uuid_copy_button.clicked.connect(lambda: copy_uuid_to_clipboard(widget))
+        uuid_copy_button.clicked.connect(lambda: copy_uuid_to_clipboard(self))
     skin_copy_button = widget.findChild(QPushButton, "search_skin_copy")
     if skin_copy_button:
-        skin_copy_button.clicked.connect(lambda: copy_skin_to_clipboard(widget))
+        skin_copy_button.clicked.connect(lambda: copy_skin_to_clipboard(self))
     cape_copy_button = widget.findChild(QPushButton, "search_cape_copy")
     if cape_copy_button:
-        cape_copy_button.clicked.connect(lambda: copy_cape_to_clipboard(widget))
+        cape_copy_button.clicked.connect(lambda: copy_cape_to_clipboard(self))
 
 def setup_passport_ui(self, widget, server_ip):
     '''
