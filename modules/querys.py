@@ -59,3 +59,5 @@ def query_player_name(self, widget):
         else:
             name_result_label.setText("查询失败")
             log(f"查询UUID {player_uuid} 的名称失败", logging.ERROR)
+
+importlog("QUERYS.PY")
