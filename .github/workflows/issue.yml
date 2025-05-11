@@ -1,4 +1,4 @@
-name: Issue Handler
+name: Issue 处理
 
 on:
   issues:
