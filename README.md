@@ -26,6 +26,8 @@
 ![WinGet 包版本](https://img.shields.io/winget/v/Bloret.Launcher?label=WinGet%20%E5%8C%85%E7%89%88%E6%9C%AC)
 ![WinGet 包名](https://img.shields.io/badge/WinGet_%E5%8C%85%E5%90%8D-Bloret.Launcher-blue&style=social)
 
+</div>
+
 ![Show](img/show.gif)
 
 > [!NOTE]
