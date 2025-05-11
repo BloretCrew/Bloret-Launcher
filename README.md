@@ -12,8 +12,19 @@
  百络谷 Minecraft 启动器
 </p>
 
-[![将 Python 打包为 EXE](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml)
+<div align="center">
 
+[![应用程序打包](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml)
+[![提交 Winget 更新软件包](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/wingetcreate.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/wingetcreate.yml)
+[![讨论数](https://img.shields.io/github/discussions/BloretCrew/Bloret-Launcher?style=social&label=%E8%AE%A8%E8%AE%BA)](https://github.com/BloretCrew/Bloret-Launcher/discussions)
+![仓库大小](https://img.shields.io/github/repo-size/BloretCrew/Bloret-Launcher?style=social&label=%E4%BB%93%E5%BA%93%E5%A4%A7%E5%B0%8F)
+![星标数](https://img.shields.io/github/stars/BloretCrew/Bloret-Launcher?style=social&label=%E6%98%9F%E6%A0%87)  
+
+[![下载量](https://img.shields.io/github/downloads/BloretCrew/Bloret-Launcher/total?style=social&label=%E4%B8%8B%E8%BD%BD%E9%87%8F)](https://github.com/BloretCrew/Bloret-Launcher/releases)
+![最新正式版](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?label=%E6%9C%80%E6%96%B0%E6%AD%A3%E5%BC%8F%E7%89%88)
+![最新版（包括测试版）](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?include_prereleases&style=social&label=%E6%9C%80%E6%96%B0%E7%89%88)
+![WinGet 包版本](https://img.shields.io/winget/v/Bloret.Launcher?label=WinGet%20%E5%8C%85%E7%89%88%E6%9C%AC)
+![WinGet 包名](https://img.shields.io/badge/WinGet_%E5%8C%85%E5%90%8D-Bloret.Launcher-blue&style=social)
 
 ![Show](img/show.gif)
 
@@ -122,7 +133,11 @@
 
 ## 使用人数统计（实时）
 
-[![Bloret Launcher 实时新增使用人数](http://pcfs.top:2/api/BL/madeuserpic)](http://pcfs.top:2/api/BL/madeuserpic)
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="http://pcfs.top:2/api/BL/madeuserpic" />
+   <source media="(prefers-color-scheme: light)" srcset="http://pcfs.top:2/api/BL/madeuserpic" />
+   <img alt="Bloret Launcher 实时新增使用人数" src="http://pcfs.top:2/api/BL/madeuserpic" />
+ </picture>
 
 ## 星标历史
 
