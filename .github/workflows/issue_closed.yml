@@ -2,17 +2,17 @@ name: Issue 处理
 
 on:
   issues:
-    types: [labeled]
+    types: [closed]
 
 jobs:
   handle-issue:
     runs-on: windows-latest
 
     steps:
-    - name: 检查 Issue 是否被设为未计划
-      if: github.event.action == 'labeled'
+    - name: 检查 Issue 是否关闭
+      if: github.event.action == 'closed'
       run: |
-        echo "Issue has been labeled."
+        echo "Issue has been closed."
 
     - name: 在关闭的 Issue 上发表评论
       uses: actions/github-script@v6
