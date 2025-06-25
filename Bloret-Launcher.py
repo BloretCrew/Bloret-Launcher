@@ -9,7 +9,7 @@ import sip # type: ignore
 from modules.safe import handle_exception
 from modules.log import log
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
-from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui
+from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui,setup_BBS_ui
 from modules.customize import CustomizeRun
 from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
 from modules.links import open_BBBS_link
@@ -384,6 +384,7 @@ class MainWindow(FluentWindow):
         self.settingsInterface = QWidget()
         self.infoInterface = QWidget()
         self.versionInterface = QWidget()
+        self.BBSInterface = QWidget()
         self.homeInterface.setObjectName("home")
         self.downloadInterface.setObjectName("download")
         self.toolsInterface.setObjectName("tools")
@@ -391,6 +392,7 @@ class MainWindow(FluentWindow):
         self.settingsInterface.setObjectName("settings")
         self.infoInterface.setObjectName("info")
         self.versionInterface.setObjectName("version")
+        self.BBSInterface.setObjectName("BBS")
         self.addSubInterface(self.homeInterface, QIcon("bloret.ico"), "主页")
         self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, "下载")
         self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, "工具")
@@ -398,6 +400,7 @@ class MainWindow(FluentWindow):
         self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, "设置", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.infoInterface, FluentIcon.INFO, "关于", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.versionInterface, FluentIcon.APPLICATION, "版本管理")
+        self.addSubInterface(self.BBSInterface, FluentIcon.TILES, "Bloret BBS")
         load_ui("ui/home.ui", parent=self.homeInterface)
         load_ui("ui/download.ui", parent=self.downloadInterface)
         load_ui("ui/tools.ui", parent=self.toolsInterface)
@@ -405,6 +408,7 @@ class MainWindow(FluentWindow):
         load_ui("ui/settings.ui", parent=self.settingsInterface)
         load_ui("ui/info.ui", parent=self.infoInterface)
         load_ui("ui/version.ui", parent=self.versionInterface)
+        # load_ui("ui/bbs.ui", parent=self.BBSInterface)
         setup_home_ui(self,self.homeInterface)
         setup_download_ui(self,self.downloadInterface,LM_Download_Way_list,ver_id_bloret,self.homeInterface)
         setup_tools_ui(self,self.toolsInterface)
@@ -412,6 +416,7 @@ class MainWindow(FluentWindow):
         setup_settings_ui(self,self.settingsInterface)
         setup_version_ui(self,self.versionInterface,minecraft_list,customize_list,MINECRAFT_DIR,self.homeInterface)
         setup_info_ui(self,self.infoInterface)
+        setup_BBS_ui(self,self.BBSInterface,server_ip)
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())

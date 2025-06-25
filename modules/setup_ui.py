@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QLineEdit, QLabel
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, ListWidget, InfoBarPosition, InfoBar
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, ListWidget, InfoBarPosition, InfoBar, SubtitleLabel
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap
 from PyQt5.QtCore import QUrl, Qt
-import requests,json
+import requests, json, logging
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log, importlog, clear_log_files
 from modules.Bloret_PassPort import Bloret_PassPort_Account_login,Bloret_PassPort_Account_logout
@@ -392,5 +392,38 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
             setup_home_ui(self,homeInterface)
         ))
 
+
+def setup_BBS_ui(self, widget, server_ip):
+    '''
+    设定 Bloret Launcher 社区界面 UI 布局和操作。
+    ***
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    '''
+    # 从服务器获取 BBS 数据
+    try:
+        response = requests.get(f"{server_ip}/api/part")
+        response.raise_for_status()  # 检查请求是否成功
+        bbs_part = response.json()  # 存储数据到 bbs_part 变量
+    except requests.RequestException as e:
+        log(f"无法获取 BBS 数据: {e}", logging.ERROR)
+        bbs_part = {}  # 请求失败时初始化为空字典
+
+    # 获取父控件的布局，如果没有则创建 QVBoxLayout
+    layout = widget.layout()
+    if not layout:
+        layout = QVBoxLayout(widget)
+
+    # 清空现有控件（避免重复加载）
+    while layout.count():
+        child = layout.takeAt(0)
+        if child.widget():
+            child.widget().deleteLater()
+
+    # 遍历 bbs_part 的每个键作为板块标题
+    for part_title in bbs_part.keys():
+        # 创建 SubtitleLabel 并设置文本
+        subtitle_label = SubtitleLabel(part_title, parent=widget)
+        # 将标签添加到布局中
+        layout.addWidget(subtitle_label)
 
 importlog("SETUP_UI.PY")
