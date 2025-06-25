@@ -1,7 +1,3 @@
-> [!WARNING]
-> 本仓库因仓库所有者 [@Detritalw](https://github.com/Detritalw) 而参与 [百日会战计划 #20](https://github.com/BloretCrew/Bloret-Launcher/discussions/20) ，暂时停止维护，约 100 天后解除。  
-> 如有问题，请找 [@RhedarLiu](https://github.com/RhedarLiu)
-
 <p align="center">
   <img width="16%" align="center" src="bloret.ico" alt="logo">
 </p>
