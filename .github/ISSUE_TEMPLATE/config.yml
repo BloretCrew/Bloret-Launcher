@@ -3,9 +3,12 @@ contact_links:
   - name: 讨论区
     url: https://github.com/BloretCrew/Bloret-Launcher/discussions
     about: 不确定的问题或建议，可以在这里进行讨论
-  - name: QQ 群
+  - name: Bloret QQ 群
     url: https://qm.qq.com/q/Q07CSpcP6i
     about: 欢迎加入 百洛谷 QQ群
+  - name: Bloret Launcher Community
+    url: https://qm.qq.com/q/XSGZi9jd8C
+    about: Bloret Launcher 专用讨论群
   - name: CMCL 核心问题
       url: https://github.com/MrShieh-X/console-minecraft-launcher
       about: 有些问题不是 Bloret-Launcher 的问题，而是 CMCL 核心的问题，请前往 CMCL 仓库提问。
