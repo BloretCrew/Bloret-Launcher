@@ -408,7 +408,7 @@ class MainWindow(FluentWindow):
         load_ui("ui/settings.ui", parent=self.settingsInterface)
         load_ui("ui/info.ui", parent=self.infoInterface)
         load_ui("ui/version.ui", parent=self.versionInterface)
-        # load_ui("ui/bbs.ui", parent=self.BBSInterface)
+        load_ui("ui/bbs.ui", parent=self.BBSInterface)
         setup_home_ui(self,self.homeInterface)
         setup_download_ui(self,self.downloadInterface,LM_Download_Way_list,ver_id_bloret,self.homeInterface)
         setup_tools_ui(self,self.toolsInterface)

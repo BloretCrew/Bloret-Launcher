@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QLineEdit, QLabel, QWidget
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, ListWidget, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, ScrollArea
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap
 from PyQt5.QtCore import QUrl, Qt
@@ -347,51 +347,47 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
     ***
     ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
-    # rgb(248, 76, 82)
-    versions = widget.findChild(ListWidget, "versions")
-    if versions:
-        versions.clear()
-        versions.addItems(minecraft_list)
-        versions.setSelectRightClickedRow(True)
-    Version_Change_Name_Button = widget.findChild(QPushButton, "Version_Change_Name_Button")
-    version_delete_button = widget.findChild(QPushButton, "version_delete_button")
-    Version_Open_File_Button = widget.findChild(QPushButton, "Version_Open_File_Button")
-    if Version_Change_Name_Button:
-        Version_Change_Name_Button.clicked.connect(lambda: (
-            minecraft_list := self.run_cmcl_list(True),
-            Change_minecraft_version_name(self, minecraft_list[versions.currentRow()], versions, MINECRAFT_DIR, homeInterface)
-        ))
-    if version_delete_button:
-        version_delete_button.clicked.connect(lambda: (
-            minecraft_list := self.run_cmcl_list(True),
-            delete_minecraft_version(self,minecraft_list[versions.currentRow()],versions,MINECRAFT_DIR,homeInterface),
-            setup_home_ui(self,homeInterface)
-        ))
-    if Version_Open_File_Button:
-        Version_Open_File_Button.clicked.connect(lambda: (
-            minecraft_list := self.run_cmcl_list(True),
-            open_minecraft_version_folder(self, minecraft_list[versions.currentRow()], MINECRAFT_DIR))
-        )
+    minecraft_list_NUM = len(minecraft_list)
+    Minecraft_list = widget.findChild(SmoothScrollArea, "Minecraft_list")
+    log(f"minecraft_list_NUM : {minecraft_list_NUM}")
+    if minecraft_list[0] == '无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装':
+        minecraft_list_NUM = 0
+    if Minecraft_list:
+        # 创建内容容器和垂直布局
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
 
-    Customizes = widget.findChild(ListWidget, "Customizes")
-    if Customizes:
-        Customizes.clear()
-        Customizes.addItems(customize_list)
-    Customizes_Change_Name_button = widget.findChild(QPushButton, "Customizes_Change_Name_button")
-    Customizes_delete_button = widget.findChild(QPushButton, "Customizes_delete_button")
-    if Customizes_Change_Name_button:
-        Customizes_Change_Name_button.clicked.connect(lambda:(
-            minecraft_list := self.run_cmcl_list(True),
-            Change_Customize_name(self,customize_list[Customizes.currentRow()],Customizes,homeInterface),
-            setup_home_ui(self,homeInterface)
-        ))
-    if Customizes_delete_button:
-        Customizes_delete_button.clicked.connect(lambda:(
-            minecraft_list := self.run_cmcl_list(True),
-            delete_Customize(self,customize_list[Customizes.currentRow()],Customizes,customize_list,homeInterface),
-            setup_home_ui(self,homeInterface)
-        ))
+        for i in range(minecraft_list_NUM):
+            card = CardWidget(scroll_widget)
+            label = StrongBodyLabel(f"{minecraft_list[i]}", card)
+            layout = QVBoxLayout(card)
+            layout.addWidget(label)
 
+            # 添加右键菜单事件
+            def create_context_menu(pos, version_name=minecraft_list[i]):
+                menu = RoundMenu(card)
+                info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.rename_version(version_name))
+                rename_action = Action(FluentIcon.EDIT, '更名', triggered=lambda: self.rename_version(version_name))
+                delete_action = Action(FluentIcon.DELETE, '删除', triggered=lambda: self.delete_version(version_name))
+                open_folder_action = Action(FluentIcon.FOLDER, '打开文件位置', triggered=lambda: self.open_version_folder(version_name))
+
+                menu.addAction(info_action)
+                menu.addAction(rename_action)
+                menu.addAction(delete_action)
+                menu.addAction(open_folder_action)
+                
+                # 获取鼠标点击的全局坐标并弹出菜单
+                global_pos = card.mapToGlobal(pos)
+                menu.exec_(global_pos)
+
+            card.setContextMenuPolicy(Qt.CustomContextMenu)
+            card.customContextMenuRequested.connect(lambda pos, v=minecraft_list[i]: create_context_menu(pos, v))
+
+            scroll_layout.addWidget(card)
+
+        # 设置 ScrollArea 的内容
+        Minecraft_list.setWidget(scroll_widget)
+        Minecraft_list.setWidgetResizable(True)
 
 def setup_BBS_ui(self, widget, server_ip):
     '''
@@ -399,53 +395,49 @@ def setup_BBS_ui(self, widget, server_ip):
     ***
     ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
+    # 绑定 OpenBBS 按钮点击事件
+    open_bbs_button = widget.findChild(QPushButton, "OpenBBS")
+    if open_bbs_button:
+        open_bbs_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(f"{server_ip}bbs")))
+
     # 从服务器获取 BBS 数据
     try:
-        response = requests.get(f"{server_ip}/api/part")
+        response = requests.get(f"{server_ip}api/part")
         response.raise_for_status()  # 检查请求是否成功
         bbs_part = response.json()  # 存储数据到 bbs_part 变量
     except requests.RequestException as e:
         log(f"无法获取 BBS 数据: {e}", logging.ERROR)
         bbs_part = {}  # 请求失败时初始化为空字典
 
-    # 获取父控件的布局，如果没有则创建 QVBoxLayout
-    layout = widget.layout()
-    if not layout:
-        layout = QVBoxLayout(widget)
-    
-    # 清空现有控件（避免重复加载）
-    while layout.count():
-        child = layout.takeAt(0)
-        if child.widget():
-            child.widget().deleteLater()
-    
-    # 创建 ScrollArea 实例
-    scroll_area = ScrollArea(parent=widget)
+    # 找到名为 BBS_list 的 SmoothScrollArea
+    BBS_list = widget.findChild(SmoothScrollArea, "BBS_list")
+    if not BBS_list:
+        log("未找到 BBS_list SmoothScrollArea", logging.ERROR)
+        return
+
+    # 清空 BBS_list 现有内容
+    if BBS_list.widget():
+        BBS_list.widget().deleteLater()
+
+    # 创建新的内容容器和布局
     scroll_widget = QWidget()
     scroll_layout = QVBoxLayout(scroll_widget)
-    
-    # 添加顶部按钮
-    open_bbs_button = PushButton('打开 Bloret BBS')
-    open_bbs_button.setFixedHeight(70)
-    open_bbs_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("http://pcfs.top:2/bbs")))
-    scroll_layout.addWidget(open_bbs_button)
-    
+
     # 遍历 bbs_part 的每个键作为板块标题
     for part_title, posts in bbs_part.items():
         # 创建 SubtitleLabel 并设置文本
-        subtitle_label = SubtitleLabel(part_title, parent=widget)
-        # 将标签添加到布局中
+        subtitle_label = SubtitleLabel(part_title, parent=scroll_widget)
         scroll_layout.addWidget(subtitle_label)
-        
+
         # 根据帖子数量创建对应的 CardWidget
         for post in posts:
-            card_widget = CardWidget(parent=widget)
+            card_widget = CardWidget(parent=scroll_widget)
             card_layout = QVBoxLayout(card_widget)
-            
+
             # 创建 StrongBodyLabel 并设置帖子标题
             title_label = StrongBodyLabel(post['title'], parent=card_widget)
             card_layout.addWidget(title_label)
-            
+
             # 创建 BodyLabel 并设置帖子文本为 Markdown 形式显示
             text_label = BodyLabel(post.get('text', ''), parent=card_widget)
             text_label.setTextFormat(Qt.MarkdownText)
@@ -453,18 +445,16 @@ def setup_BBS_ui(self, widget, server_ip):
             if len(text_label.text()) > 30:
                 text_label.setText(text_label.text()[:50] + '...')
             card_layout.addWidget(text_label)
-            
+
             # 创建 PushButton 在浏览器中打开帖子
             open_button = PushButton('在浏览器中打开', parent=card_widget)
             open_button.clicked.connect(lambda _, pt=part_title, t=post['title']: QDesktopServices.openUrl(QUrl(f"{server_ip}bbs/{pt}/{t}")))
             card_layout.addWidget(open_button)
-            
+
             scroll_layout.addWidget(card_widget)
-    
-    scroll_area.setWidget(scroll_widget)
-    scroll_area.setWidgetResizable(True)
-    
-    # 将 ScrollArea 添加到主布局
-    layout.addWidget(scroll_area)
+
+    # 设置 scroll_widget 为 BBS_list 的内容
+    BBS_list.setWidget(scroll_widget)
+    BBS_list.setWidgetResizable(True)
     
 importlog("SETUP_UI.PY")

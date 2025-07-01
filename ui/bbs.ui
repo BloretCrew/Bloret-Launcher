@@ -43,7 +43,14 @@
    <item>
     <widget class="TitleLabel" name="TitleLabel">
      <property name="text">
-      <string>版本管理</string>
+      <string>Bloret BBS</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="PushButton" name="PushButton">
+     <property name="text">
+      <string>打开 Bloret BBS</string>
      </property>
     </widget>
    </item>
@@ -61,19 +68,12 @@
         <x>0</x>
         <y>0</y>
         <width>640</width>
-        <height>510</height>
+        <height>460</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
-        <widget class="SubtitleLabel" name="SubtitleLabel">
-         <property name="text">
-          <string>Minecraft 核心</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="SmoothScrollArea" name="Minecraft_list">
+        <widget class="SmoothScrollArea" name="BBS_list">
          <property name="widgetResizable">
           <bool>true</bool>
          </property>
@@ -83,7 +83,7 @@
             <x>0</x>
             <y>0</y>
             <width>622</width>
-            <height>459</height>
+            <height>442</height>
            </rect>
           </property>
          </widget>
@@ -97,15 +97,15 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>PushButton</class>
+   <extends>QPushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
    <class>SmoothScrollArea</class>
    <extends>QScrollArea</extends>
    <header>qfluentwidgets</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>SubtitleLabel</class>
-   <extends>QLabel</extends>
-   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
    <class>TitleLabel</class>
