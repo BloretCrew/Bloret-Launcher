@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QLineEdit, QLabel
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, ListWidget, InfoBarPosition, InfoBar, SubtitleLabel
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, ListWidget, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, ScrollArea  # 新增导入ScrollArea
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap
 from PyQt5.QtCore import QUrl, Qt
@@ -412,18 +412,48 @@ def setup_BBS_ui(self, widget, server_ip):
     layout = widget.layout()
     if not layout:
         layout = QVBoxLayout(widget)
-
+    
     # 清空现有控件（避免重复加载）
     while layout.count():
         child = layout.takeAt(0)
         if child.widget():
             child.widget().deleteLater()
-
+    
+    # 添加顶部按钮
+    open_bbs_button = PushButton('打开 Bloret BBS')
+    open_bbs_button.setFixedHeight(140)
+    open_bbs_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("http://pcfs.top:2/bbs")))
+    layout.addWidget(open_bbs_button)
+    
     # 遍历 bbs_part 的每个键作为板块标题
-    for part_title in bbs_part.keys():
+    for part_title, posts in bbs_part.items():
         # 创建 SubtitleLabel 并设置文本
         subtitle_label = SubtitleLabel(part_title, parent=widget)
         # 将标签添加到布局中
         layout.addWidget(subtitle_label)
-
+        
+        # 根据帖子数量创建对应的 CardWidget
+        for post in posts:
+            card_widget = CardWidget(parent=widget)
+            card_layout = QVBoxLayout(card_widget)
+            
+            # 创建 StrongBodyLabel 并设置帖子标题
+            title_label = StrongBodyLabel(post['title'], parent=card_widget)
+            card_layout.addWidget(title_label)
+            
+            # 创建 BodyLabel 并设置帖子文本为 Markdown 形式显示
+            text_label = BodyLabel(post.get('text', ''), parent=card_widget)
+            text_label.setTextFormat(Qt.MarkdownText)
+            text_label.setOpenExternalLinks(True)  # 允许打开外部链接
+            if len(text_label.text()) > 30:
+                text_label.setText(text_label.text()[:50] + '...')
+            card_layout.addWidget(text_label)
+            
+            # 创建 PushButton 在浏览器中打开帖子
+            open_button = PushButton('在浏览器中打开', parent=card_widget)
+            open_button.clicked.connect(lambda _, pt=part_title, t=post['title']: QDesktopServices.openUrl(QUrl(f"{server_ip}bbs/{pt}/{t}")))
+            card_layout.addWidget(open_button)
+            
+            layout.addWidget(card_widget)
+            
 importlog("SETUP_UI.PY")

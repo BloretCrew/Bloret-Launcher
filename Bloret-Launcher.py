@@ -396,7 +396,7 @@ class MainWindow(FluentWindow):
         self.addSubInterface(self.homeInterface, QIcon("bloret.ico"), "主页")
         self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, "下载")
         self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, "工具")
-        self.addSubInterface(self.passportInterface, FluentIcon.FINGERPRINT, "通行证", NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.passportInterface, FluentIcon.PEOPLE, "通行证", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, "设置", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.infoInterface, FluentIcon.INFO, "关于", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.versionInterface, FluentIcon.APPLICATION, "版本管理")
