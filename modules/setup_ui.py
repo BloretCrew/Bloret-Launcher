@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QLineEdit, QLabel
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, ListWidget, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, ScrollArea  # 新增导入ScrollArea
+from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QLineEdit, QLabel, QWidget
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, ListWidget, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, ScrollArea
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap
 from PyQt5.QtCore import QUrl, Qt
@@ -419,18 +419,23 @@ def setup_BBS_ui(self, widget, server_ip):
         if child.widget():
             child.widget().deleteLater()
     
+    # 创建 ScrollArea 实例
+    scroll_area = ScrollArea(parent=widget)
+    scroll_widget = QWidget()
+    scroll_layout = QVBoxLayout(scroll_widget)
+    
     # 添加顶部按钮
     open_bbs_button = PushButton('打开 Bloret BBS')
-    open_bbs_button.setFixedHeight(140)
+    open_bbs_button.setFixedHeight(70)
     open_bbs_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("http://pcfs.top:2/bbs")))
-    layout.addWidget(open_bbs_button)
+    scroll_layout.addWidget(open_bbs_button)
     
     # 遍历 bbs_part 的每个键作为板块标题
     for part_title, posts in bbs_part.items():
         # 创建 SubtitleLabel 并设置文本
         subtitle_label = SubtitleLabel(part_title, parent=widget)
         # 将标签添加到布局中
-        layout.addWidget(subtitle_label)
+        scroll_layout.addWidget(subtitle_label)
         
         # 根据帖子数量创建对应的 CardWidget
         for post in posts:
@@ -454,6 +459,12 @@ def setup_BBS_ui(self, widget, server_ip):
             open_button.clicked.connect(lambda _, pt=part_title, t=post['title']: QDesktopServices.openUrl(QUrl(f"{server_ip}bbs/{pt}/{t}")))
             card_layout.addWidget(open_button)
             
-            layout.addWidget(card_widget)
-            
+            scroll_layout.addWidget(card_widget)
+    
+    scroll_area.setWidget(scroll_widget)
+    scroll_area.setWidgetResizable(True)
+    
+    # 将 ScrollArea 添加到主布局
+    layout.addWidget(scroll_area)
+    
 importlog("SETUP_UI.PY")
