@@ -66,13 +66,6 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
-        <widget class="SubtitleLabel" name="SubtitleLabel">
-         <property name="text">
-          <string>Minecraft 核心</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="SmoothScrollArea" name="Minecraft_list">
          <property name="widgetResizable">
           <bool>true</bool>
@@ -83,7 +76,7 @@
             <x>0</x>
             <y>0</y>
             <width>622</width>
-            <height>459</height>
+            <height>492</height>
            </rect>
           </property>
          </widget>
@@ -101,11 +94,6 @@
    <extends>QScrollArea</extends>
    <header>qfluentwidgets</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>SubtitleLabel</class>
-   <extends>QLabel</extends>
-   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
    <class>TitleLabel</class>
