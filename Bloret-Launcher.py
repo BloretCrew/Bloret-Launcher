@@ -5,7 +5,7 @@ from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QSettings, QTh
 from modules.win11toast import toast, notify, update_progress
 import ctypes, re, locale, sys, logging, os, requests, json, subprocess, time, shutil
 import sip # type: ignore
-# 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
+# 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 文件夹中
 from modules.safe import handle_exception
 from modules.log import log
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
@@ -31,10 +31,14 @@ icon = {'src': 'bloret.ico','placement': 'appLogoOverride'}
 minecraft_list = []
 tabbar = None
 isdarktheme = False
-LM_Download_Way = {}
-LM_Download_Way_list = []
-LM_Download_Way_version = {}
-LM_Download_Way_minecraft = {}
+
+def update_download_way(data, data_list, version, minecraft):
+    global LM_Download_Way, LM_Download_Way_list, LM_Download_Way_version, LM_Download_Way_minecraft
+    LM_Download_Way = data
+    LM_Download_Way_list = data_list
+    LM_Download_Way_version = version
+    LM_Download_Way_minecraft = minecraft
+
 
 class SystemTrayIcon(QSystemTrayIcon):
     """ 
@@ -1389,7 +1393,7 @@ isdarktheme = is_dark_theme()
 log(f"当前主题:{isdarktheme}")
 
 if not config.get('localmod', False):
-    LM_Download_Way,LM_Download_Way_list,LM_Download_Way_version,LM_Download_Way_minecraft=check_Light_Minecraft_Download_Way(server_ip)
+    check_Light_Minecraft_Download_Way(server_ip, update_download_way)
 else:
     log("本地模式已启用，获取 Light-Minecraft-Download-Way 的过程已跳过。")
 

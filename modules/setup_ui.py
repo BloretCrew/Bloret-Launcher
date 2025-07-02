@@ -148,6 +148,8 @@ def setup_download_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInterfa
     if minecraft_choose:
         minecraft_choose.clear()
         if not self.config.get('localmod', False):
+            if ver_id_bloret is None:
+                ver_id_bloret = []
             minecraft_choose.addItems(ver_id_bloret)
         else:
             minecraft_choose.addItems(["本地模式已启用，无法下载版本"])
