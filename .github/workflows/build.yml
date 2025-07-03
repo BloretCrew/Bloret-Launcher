@@ -239,11 +239,16 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ env.PYTHON_VERSION }}
+    - name: 过滤掉 pywin32 依赖
+      run: |
+        grep -iv '^pywin32' requirements.txt > requirements_nopywin32.txt
+      shell: bash
     - name: 安装依赖
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements_nopywin32.txt
         pip install pillow pyinstaller
+      shell: bash
     - name: 使用 PyInstaller 打包
       run: |
         pyinstaller --onefile --windowed --name=Bloret-Launcher \
@@ -313,11 +318,16 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ env.PYTHON_VERSION }}
+    - name: 过滤掉 pywin32 依赖
+      run: |
+        grep -iv '^pywin32' requirements.txt > requirements_nopywin32.txt
+      shell: bash
     - name: 安装依赖
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements_nopywin32.txt
         pip install pillow pyinstaller
+      shell: bash
     - name: 使用 PyInstaller 打包
       run: |
         pyinstaller --onefile --windowed --name=Bloret-Launcher \
@@ -361,6 +371,34 @@ jobs:
       with:
         name: Bloret-Launcher-Linux
         path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+
+  Collect-Artifacts:
+    needs: [Build-Windows, Build-macOS, Build-Linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载 Windows 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher
+          path: output/all/windows
+      - name: 下载 macOS 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-macOS
+          path: output/all/macos
+      - name: 下载 Linux 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-Linux
+          path: output/all/linux
+      - name: 展示收集到的产物
+        run: |
+          ls -alR output/all
+      - name: 上传所有平台产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bloret-Launcher-All
+          path: output/all/
 
   # release:
   #   needs: [Build, Code-Package, Build-Setup]
