@@ -1,10 +1,9 @@
 from PyQt5 import uic
 from loguru import logger
-from datetime import datetime
-from .ClassWidgets.base import PluginBase, SettingsBase, PluginConfig  # 导入CW的基类
+from .ClassWidgets.base import SettingsBase, PluginConfig  # 导入CW的基类
 
-from PyQt5.QtWidgets import QHBoxLayout, QPushButton
-from qfluentwidgets import SwitchButton, ImageLabel, LineEdit
+from PyQt5.QtWidgets import QPushButton
+from qfluentwidgets import SwitchButton
 import subprocess, os
 import threading  # 添加导入threading模块
 
@@ -44,6 +43,7 @@ class Settings(SettingsBase):
 
     def run_batch_file(self):
         try:
-            subprocess.run(os.path.join(self.PATH, 'Bloret-Launcher\Bloret-Launcher.exe'), check=True, cwd=self.PATH, creationflags=subprocess.CREATE_NO_WINDOW)
+            exe_path = os.path.join(self.PATH, 'Bloret-Launcher', 'Bloret-Launcher.exe')
+            subprocess.run(exe_path, check=True, cwd=os.path.join(self.PATH, 'Bloret-Launcher'), creationflags=subprocess.CREATE_NO_WINDOW)
         except Exception as e:
             logger.error(f"Failed to run Bloret-Launcher\Bloret-Launcher.exe: {e}")

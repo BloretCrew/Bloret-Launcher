@@ -1,7 +1,7 @@
 {
     "name": "Bloret Launcher",
-    "description": "百络谷 Minecraft 启动器",
-    "version": "6.2",
+    "description": "Bloret Launcher 不只是 Minecraft 启动器，但也为 Minecraft 玩家提供便捷的游戏启动与管理体验。",
+    "version": "6.3",
     "plugin_ver": 1,
     "author": "Bloret / Detritalw",
     "settings": true,
@@ -9,5 +9,5 @@
     "url": "https://github.com/BloretCrew/Bloret-Launcher",
     "branch": "Class-Widgets",
 
-    "update_date": "2025/05/04"
+    "update_date": "2025/07/03"
 }
