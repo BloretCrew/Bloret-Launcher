@@ -30,8 +30,7 @@ jobs:
         git commit -m "更新 MyAppVersion 版本号和一些配置文件的默认值。"
         git push
       shell: pwsh
-
-  Build:
+  Build-Windows:
     needs: Set-Version
     runs-on: windows-latest
 
@@ -158,9 +157,8 @@ jobs:
       with:
         name: Code-Package
         path: "output/Code-Package.zip"
-
   Build-Setup:
-    needs: Build
+    needs: Build-Windows
     runs-on: windows-latest
 
     steps:
@@ -215,7 +213,154 @@ jobs:
       with:
         name: Bloret-Launcher-Setup
         path: "./output/Bloret Launcher Setup.exe"
-
+  Build-macOS:
+    needs: Set-Version
+    runs-on: macos-latest
+    env:
+      PYTHON_VERSION: '3.9'
+      OUTPUT_DIR: 'output'
+      ARTIFACT_NAME: 'Bloret-Launcher-macOS.zip'
+    steps:
+    - name: 检出最新版本
+      uses: actions/checkout@v2
+      with:
+        ref: 'Windows'
+    - name: 验证资源文件路径
+      run: |
+        ls -alh .
+        [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
+        [ -f "config.json" ] || (echo "config.json not found" && exit 1)
+        [ -d "ui" ] || (echo "ui directory not found" && exit 1)
+        [ -f "cmcl.json" ] || (echo "cmcl.json not found" && exit 1)
+        [ -f "cmcl.exe" ] || (echo "cmcl.exe not found" && exit 1)
+        [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
+      shell: bash
+    - name: 设置 Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pillow pyinstaller
+    - name: 使用 PyInstaller 打包
+      run: |
+        pyinstaller --onefile --windowed --name=Bloret-Launcher \
+          --add-data "bloret.ico:." \
+          --add-data "config.json:." \
+          --add-data "ui:ui" \
+          --add-data "cmcl.json:." \
+          --add-data "cmcl.exe:." \
+          --add-data "cmcl.blank.json:." \
+          --hidden-import=sip \
+          --hidden-import=qfluentwidgets \
+          --hidden-import=win11toast \
+          --paths=. \
+          Bloret-Launcher.py
+      shell: bash
+    - name: 创建包含其他文件夹的目录
+      run: |
+        mkdir -p ${{ env.OUTPUT_DIR }}
+        cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
+        cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp cmcl.exe ${{ env.OUTPUT_DIR }}/
+        cp cmcl.json ${{ env.OUTPUT_DIR }}/
+        cp cmcl.blank.json ${{ env.OUTPUT_DIR }}/
+        cp config.json ${{ env.OUTPUT_DIR }}/
+        cp LICENSE ${{ env.OUTPUT_DIR }}/
+        cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
+        cp cmcl_save.json ${{ env.OUTPUT_DIR }}/ || true
+        cp restart.ps1 ${{ env.OUTPUT_DIR }}/ || true
+        cp update.ps1 ${{ env.OUTPUT_DIR }}/ || true
+        cp bloret.ico ${{ env.OUTPUT_DIR }}/
+      shell: bash
+    - name: 清理旧压缩包
+      run: |
+        [ -f "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ] && rm "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+      shell: bash
+    - name: 创建压缩包
+      run: zip -r "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ${{ env.OUTPUT_DIR }}/*
+      shell: bash
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher-macOS
+        path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+  Build-Linux:
+    needs: Set-Version
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: '3.9'
+      OUTPUT_DIR: 'output'
+      ARTIFACT_NAME: 'Bloret-Launcher-Linux.zip'
+    steps:
+    - name: 检出最新版本
+      uses: actions/checkout@v2
+      with:
+        ref: 'Windows'
+    - name: 验证资源文件路径
+      run: |
+        ls -alh .
+        [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
+        [ -f "config.json" ] || (echo "config.json not found" && exit 1)
+        [ -d "ui" ] || (echo "ui directory not found" && exit 1)
+        [ -f "cmcl.json" ] || (echo "cmcl.json not found" && exit 1)
+        [ -f "cmcl.exe" ] || (echo "cmcl.exe not found" && exit 1)
+        [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
+      shell: bash
+    - name: 设置 Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pillow pyinstaller
+    - name: 使用 PyInstaller 打包
+      run: |
+        pyinstaller --onefile --windowed --name=Bloret-Launcher \
+          --add-data "bloret.ico:." \
+          --add-data "config.json:." \
+          --add-data "ui:ui" \
+          --add-data "cmcl.json:." \
+          --add-data "cmcl.exe:." \
+          --add-data "cmcl.blank.json:." \
+          --hidden-import=sip \
+          --hidden-import=qfluentwidgets \
+          --hidden-import=win11toast \
+          --paths=. \
+          Bloret-Launcher.py
+      shell: bash
+    - name: 创建包含其他文件夹的目录
+      run: |
+        mkdir -p ${{ env.OUTPUT_DIR }}
+        cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
+        cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp cmcl.exe ${{ env.OUTPUT_DIR }}/
+        cp cmcl.json ${{ env.OUTPUT_DIR }}/
+        cp cmcl.blank.json ${{ env.OUTPUT_DIR }}/
+        cp config.json ${{ env.OUTPUT_DIR }}/
+        cp LICENSE ${{ env.OUTPUT_DIR }}/
+        cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
+        cp cmcl_save.json ${{ env.OUTPUT_DIR }}/ || true
+        cp restart.ps1 ${{ env.OUTPUT_DIR }}/ || true
+        cp update.ps1 ${{ env.OUTPUT_DIR }}/ || true
+        cp bloret.ico ${{ env.OUTPUT_DIR }}/
+      shell: bash
+    - name: 清理旧压缩包
+      run: |
+        [ -f "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ] && rm "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+      shell: bash
+    - name: 创建压缩包
+      run: zip -r "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ${{ env.OUTPUT_DIR }}/*
+      shell: bash
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher-Linux
+        path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
 
   # release:
   #   needs: [Build, Code-Package, Build-Setup]
