@@ -1,3 +1,4 @@
+from turtle import home
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QLineEdit, QLabel, QWidget
 from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon
 from PyQt5 import uic
@@ -367,13 +368,13 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     layout = QVBoxLayout(card)
                     layout.addWidget(label)
 
-                    def create_context_menu(pos, version_name=minecraft_list[i]):
-                        menu = RoundMenu(card)
+                    def create_minecraft_context_menu(pos, label_now, card_now, version_name=minecraft_list[i]):
+                        menu = RoundMenu(card_now)
                         info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name))
                         launch_action = Action(FluentIcon.PLAY, '启动', triggered=lambda: self.run_cmcl(version_name))
-                        rename_action = Action(FluentIcon.EDIT, '更名', triggered=lambda: Change_minecraft_version_name(version_name))
-                        delete_action = Action(FluentIcon.DELETE, '删除', triggered=lambda: delete_minecraft_version(version_name))
-                        folder_action = Action(FluentIcon.FOLDER, '打开文件位置', triggered=lambda: open_minecraft_version_folder(version_name))
+                        rename_action = Action(FluentIcon.EDIT, '更名', triggered=lambda: Change_minecraft_version_name(self,version_name,label_now, MINECRAFT_DIR,homeInterface))
+                        delete_action = Action(FluentIcon.DELETE, '删除', triggered=lambda: delete_minecraft_version(self,version_name,label_now, card_now, MINECRAFT_DIR, homeInterface))
+                        folder_action = Action(FluentIcon.FOLDER, '打开文件位置', triggered=lambda: open_minecraft_version_folder(self,version_name,MINECRAFT_DIR))
 
                         menu.addActions([
                             info_action,
@@ -383,11 +384,11 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                             folder_action
                         ])
 
-                        global_pos = card.mapToGlobal(pos)
+                        global_pos = card_now.mapToGlobal(pos)
                         menu.exec_(global_pos)
 
                     card.setContextMenuPolicy(Qt.CustomContextMenu)
-                    card.customContextMenuRequested.connect(lambda pos, v=minecraft_list[i]: create_context_menu(pos, v))
+                    card.customContextMenuRequested.connect(lambda pos, v=minecraft_list[i], label_now=label, card_now=card: create_minecraft_context_menu(pos, label_now, card_now, v))
                     scroll_layout.addWidget(card)
 
             if customize_list_NUM != 0:
@@ -400,27 +401,25 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     layout = QVBoxLayout(card)
                     layout.addWidget(label)
 
-                    def create_context_menu(pos, version_name=customize_list[i]):
-                        menu = RoundMenu(card)
+                    def create_customize_context_menu(pos, label_now, card_now, version_name=customize_list[i]):
+                        menu = RoundMenu(card_now)
                         info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name))
                         launch_action = Action(FluentIcon.PLAY, '启动', triggered=lambda: self.run_cmcl(version_name))
-                        rename_action = Action(FluentIcon.EDIT, '更名', triggered=lambda: Change_Customize_name(version_name))
-                        delete_action = Action(FluentIcon.DELETE, '删除', triggered=lambda: delete_Customize(version_name))
-                        folder_action = Action(FluentIcon.FOLDER, '打开文件位置', triggered=lambda: open_minecraft_version_folder(version_name))
+                        rename_action = Action(FluentIcon.EDIT, '更名', triggered=lambda: Change_Customize_name(self,version_name, label_now, homeInterface))
+                        delete_action = Action(FluentIcon.DELETE, '删除', triggered=lambda: delete_Customize(self,version_name, label_now, card_now,customize_list,homeInterface))
 
                         menu.addActions([
                             info_action,
                             launch_action,
                             rename_action,
-                            delete_action,
-                            folder_action
+                            delete_action
                         ])
 
-                        global_pos = card.mapToGlobal(pos)
+                        global_pos = card_now.mapToGlobal(pos)
                         menu.exec_(global_pos)
 
                     card.setContextMenuPolicy(Qt.CustomContextMenu)
-                    card.customContextMenuRequested.connect(lambda pos, v=customize_list[i]: create_context_menu(pos, v))
+                    card.customContextMenuRequested.connect(lambda pos, v=customize_list[i], label_now=label, card_now=card: create_customize_context_menu(pos, label_now, card_now, v))
                     scroll_layout.addWidget(card)
 
         scroll_layout.addStretch(1)

@@ -6,7 +6,20 @@
     "themelight": true,
     "repeat_run": false,
     "show_runtime_do": false,
-    "Customize": [],
+    "Customize": [
+        {
+            "showname": "config",
+            "path": "G:/Work/git/Bloret-Launcher/config.json"
+        },
+        {
+            "showname": "Cursor",
+            "path": "C:/Users/0570/AppData/Local/Programs/cursor/Cursor.exe"
+        },
+        {
+            "showname": "Cursor",
+            "path": "C:/Users/0570/AppData/Local/Programs/cursor/Cursor.exe"
+        }
+    ],
     "Bloret_PassPort_UserName": "未登录",
     "Bloret_PassPort_PassWord": "",
     "Bloret_PassPort_Admin": false,

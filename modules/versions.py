@@ -67,12 +67,12 @@ def open_minecraft_version_folder(self,version,MINECRAFT_DIR):
             duration=5000,
             parent=self
         )
-def delete_minecraft_version(self,version,versions,MINECRAFT_DIR,homeInterface):
+def delete_minecraft_version(self,version,label,card,MINECRAFT_DIR,homeInterface):
     '''
 
     删除指定的 Minecraft 版本文件夹
      version 要删除的版本名称
-     versions 版本 ComboBox 控件
+     label 版本控件
      MINECRAFT_DIR Minecraft 安装目录
 
     ### 删除 `.minecraft/version/{version}` 文件夹
@@ -101,23 +101,27 @@ def delete_minecraft_version(self,version,versions,MINECRAFT_DIR,homeInterface):
             if version in minecraft_list:
                 minecraft_list.remove(version)
             
-            # 更新 UI 中的下拉列表
-            if versions and not sip.isdeleted(versions):
-                selected_items = versions.selectedItems()
-                if selected_items:
-                    for item in selected_items:
-                        versions.takeItem(versions.row(item))
-                
-                InfoBar.success(
-                    title=f'✅ 版本 {version} 已成功删除',
-                    content="如需找回，可前往系统回收站找回。",
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
-            else:
-                log("版本 ComboBox 不存在或已被删除")
+            log(f"正在更新 UI 中的版本名称：del {label.text()}")
+            # 从父布局中移除 label 控件并删除
+            parent_layout = label.parentWidget().layout()
+            if parent_layout is not None:
+                parent_layout.removeWidget(label)
+            label.deleteLater()
+            log(f"正在更新 UI 中的版本卡片：del {card}")
+            # 从父布局中移除 card 控件并删除
+            parent_layout = card.parentWidget().layout()
+            if parent_layout is not None:
+                parent_layout.removeWidget(card)
+            card.deleteLater()
+            
+            InfoBar.success(
+                title=f'✅ 版本 {version} 已成功删除',
+                content="如需找回，可前往系统回收站找回。",
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
         else:
             log(f"版本文件夹不存在：{version_path}", logging.ERROR)
             InfoBar.warning(
@@ -142,11 +146,11 @@ def delete_minecraft_version(self,version,versions,MINECRAFT_DIR,homeInterface):
             duration=5000,
             parent=self
         )
-def Change_minecraft_version_name(self,version,versions,MINECRAFT_DIR,homeInterface):
+def Change_minecraft_version_name(self,version,label,MINECRAFT_DIR,homeInterface):
     '''
     ### 将 `.minecraft/version` 文件夹下 `{version}` 文件夹名称换成想要的文件名称并重读刷新。
      version 要修改的版本名称
-     versions 版本 ComboBox 控件
+     label 版本控件
      MINECRAFT_DIR Minecraft 安装目录
 
     ***
@@ -210,26 +214,9 @@ def Change_minecraft_version_name(self,version,versions,MINECRAFT_DIR,homeInterf
         os.rename(old_path, new_path)
         log(f"成功将版本文件夹从 {old_path} 重命名为 {new_path}")
 
-        # 更新 UI 中的下拉列表
-        if versions and not sip.isdeleted(versions):
-            # QListWidget 查找匹配项
-            index = -1
-            for i in range(versions.count()):
-                if versions.item(i).text() == version:
-                    index = i
-                    break
-            if index != -1:
-                versions.item(index).setText(new_name)
-                InfoBar.success(
-                    title=f'✅ 成功',
-                    content=f"版本名称已从 {version} 更改为 {new_name}",
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
-        else:
-            log("版本控件不存在或已被删除")
+        log(f"正在更新 UI 中的版本名称：{label.text()} -> {new_name}")
+        # 修改 label 的 StrongBodyLabel 的文字为 new_name
+        label.setText(new_name)
         
         run_choose = homeInterface.findChild(ComboBox, "run_choose")
         run_choose.clear()
@@ -245,12 +232,11 @@ def Change_minecraft_version_name(self,version,versions,MINECRAFT_DIR,homeInterf
             duration=5000,
             parent=self
         )
-def delete_Customize(self,version,Customizes,customize_list,homeInterface):
+def delete_Customize(self,version,label,card,customize_list,homeInterface):
     '''
     ### 删除自定义选项
     将 配置文件中 `{version}` 对应的项目删除。
      version 要删除的自定义选项名称
-     Customizes 自定义选项 ComboBox 控件
      customize_list 自定义选项列表
     
     ***
@@ -279,8 +265,21 @@ def delete_Customize(self,version,Customizes,customize_list,homeInterface):
                 parent=self
             )
             customize_list.remove(version)
-            Customizes.clear()
-            Customizes.addItems(customize_list)
+
+            log(f"正在更新 UI 中的版本名称：del {label.text()}")
+            # 从父布局中移除 label 控件并删除
+            parent_layout = label.parentWidget().layout()
+            if parent_layout is not None:
+                parent_layout.removeWidget(label)
+            label.deleteLater()
+
+            log(f"正在更新 UI 中的版本卡片：del {card}")
+            # 从父布局中移除 card 控件并删除
+            parent_layout = card.parentWidget().layout()
+            if parent_layout is not None:
+                parent_layout.removeWidget(card)
+            card.deleteLater()
+
             self.run_cmcl_list(True)
         else:
             InfoBar.error(
@@ -304,7 +303,7 @@ def delete_Customize(self,version,Customizes,customize_list,homeInterface):
             duration=5000,
             parent=self
         )
-def Change_Customize_name(self,version,Customizes,homeInterface):
+def Change_Customize_name(self,version,label,homeInterface):
     '''
     ### 将配置文件中 `{version}` 项目换成想要的名称并刷新重读。
 
@@ -379,9 +378,9 @@ def Change_Customize_name(self,version,Customizes,homeInterface):
                 duration=5000,
                 parent=self
             )
-        customize_list = [item.get("showname") for item in config_data.get("Customize", [])]
-        Customizes.clear()
-        Customizes.addItems(customize_list)
+        log(f"正在更新 UI 中的版本名称：{label.text()} -> {new_name}")
+        # 修改 label 的 StrongBodyLabel 的文字为 new_name
+        label.setText(new_name)
         run_choose = homeInterface.findChild(ComboBox, "run_choose")
         run_choose.clear()
         run_choose.addItems(self.run_cmcl_list(True))
