@@ -282,7 +282,7 @@ jobs:
       shell: bash
     - name: 清理旧压缩包
       run: |
-        [ -f "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ] && rm "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+        [ -f "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ] && rm "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" || true
       shell: bash
     - name: 创建压缩包
       run: zip -r "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ${{ env.OUTPUT_DIR }}/*
@@ -361,7 +361,7 @@ jobs:
       shell: bash
     - name: 清理旧压缩包
       run: |
-        [ -f "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ] && rm "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+        [ -f "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ] && rm "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" || true
       shell: bash
     - name: 创建压缩包
       run: zip -r "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ${{ env.OUTPUT_DIR }}/*
