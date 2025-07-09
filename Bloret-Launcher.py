@@ -8,7 +8,7 @@ import sip # type: ignore
 # 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 文件夹中
 from modules.safe import handle_exception
 from modules.log import log
-from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart
+from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart,setup_startup_with_self_starting
 from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui,setup_BBS_ui
 from modules.customize import CustomizeRun
 from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
@@ -228,6 +228,9 @@ class MainWindow(FluentWindow):
         else:
             log("显示软件打开过程已禁用")
 
+        # 检查是否需要设置开机自启
+        if self.config.get("self-starting", False):
+            setup_startup_with_self_starting(True)
 
 
         # 设置全局编码
@@ -1434,7 +1437,12 @@ if not check_write_permission():
 
 # 创建主窗口并显示
 window = MainWindow()
-window.show()
+
+# 如果启动参数包含 --self-starting，则不显示窗口
+if '--self-starting' in sys.argv:
+    window.hide()  # 直接隐藏主窗口
+else:
+    window.show()  # 否则正常显示主窗口
 
 scale_factor = window.scale_factor
 os.environ["QT_SCALE_FACTOR"] = str(scale_factor)

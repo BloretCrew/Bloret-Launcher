@@ -4,8 +4,9 @@ from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPos
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap
 from PyQt5.QtCore import QUrl, Qt
-import requests, json, logging
+import requests, json, logging, os
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
+from modules.systems import setup_startup_with_self_starting
 from modules.log import log, importlog, clear_log_files
 from modules.Bloret_PassPort import Bloret_PassPort_Account_login,Bloret_PassPort_Account_logout
 from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard
@@ -29,6 +30,28 @@ def load_ui(ui_path, parent=None, animate=True):
             layout.addWidget(widget)
         else:
             parent.layout().addWidget(widget)
+
+def on_self_starting_changed(value):
+    """
+    当 SwitchButton 状态变化时，更新配置文件中的 self-starting 字段
+    """
+    log(f"开机自启设置为: {value}")
+    config_path = os.path.join("config.json")
+    try:
+        # 读取现有配置
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        config = {}
+    config["self-starting"] = value
+    try:
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, ensure_ascii=False, indent=4)
+        log(f"已更新配置: self-starting={value}")
+        setup_startup_with_self_starting(value) # 更新开机自启设置
+        log(f"已更新开机自启设置: {value}")
+    except Exception as e:
+        log(f"写入配置文件失败: {e}")
 
 def setup_home_ui(self, widget):
     '''
@@ -321,6 +344,13 @@ def setup_settings_ui(self, widget):
             open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
             log(f"在首页上 显示 Minecraft 账户登录方式: {'启用' if state else '禁用'}")
         ))
+    
+    Self_starting = widget.findChild(SwitchButton, "Self_starting")
+    if Self_starting:
+        Self_starting.setChecked(self.config.get("self-starting", False))
+        Self_starting.checkedChanged.connect(lambda val: on_self_starting_changed(val))
+    else:
+        log("未找到 Self_starting 控件")
 
 def setup_info_ui(self, widget):
     '''

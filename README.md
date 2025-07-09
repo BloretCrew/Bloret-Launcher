@@ -1,11 +1,11 @@
 <p align="center">
-  <img width="16%" align="center" src="bloret.ico" alt="logo">
+  <img width="16%" align="center" src="bloret.png" alt="logo">
 </p>
   <h1 align="center">
-  Bloret-Launcher
+  Bloret Launcher
 </h1>
 <p align="center">
- 百络谷 Minecraft 启动器
+ Bloret Launcher 不只是 Minecraft 启动器，但也为 Minecraft 玩家提供便捷的游戏启动与管理体验。
 </p>
 
 <div align="center">

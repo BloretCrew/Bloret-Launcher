@@ -12,5 +12,6 @@
     "Bloret_PassPort_Admin": false,
     "whenCWopen_BLopen": true,
     "localmod": false,
-    "home_show_login_mod": true
+    "home_show_login_mod": true,
+    "self-starting": false
 }

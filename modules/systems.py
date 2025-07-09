@@ -1,5 +1,6 @@
 from modules.win11toast import toast
 import ctypes.wintypes,ctypes,logging,os,subprocess
+from win32com.client import Dispatch
 
 from modules.log import log, importlog
 from modules.safe import handle_exception
@@ -95,5 +96,56 @@ def restart():
     # os.execl(sys.executable, sys.executable, *sys.argv)
     subprocess.Popen(["restart.cmd"])
 
+base_directory = os.path.dirname(os.path.abspath(__file__))
+
+def add_to_startup(file_path=f'{base_directory}/Bloret-Launcher.exe', icon_path=''):  # 注册到开机启动
+    if os.name != 'nt':
+        return
+    if file_path == "":
+        file_path = os.path.realpath(__file__)
+    else:
+        file_path = os.path.abspath(file_path)  # 将相对路径转换为绝对路径
+
+    if icon_path == "":
+        icon_path = file_path  # 如果未指定图标路径，则使用程序路径
+    else:
+        icon_path = os.path.abspath(icon_path)  # 将相对路径转换为绝对路径
+
+    # 获取启动文件夹路径
+    startup_folder = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+
+    # 快捷方式文件名（使用文件名或自定义名称）
+    name = os.path.splitext(os.path.basename(file_path))[0]  # 使用文件名作为快捷方式名称
+    shortcut_path = os.path.join(startup_folder, f'{name}.lnk')
+
+    # 创建快捷方式
+    shell = Dispatch('WScript.Shell')
+    shortcut = shell.CreateShortCut(shortcut_path)
+    shortcut.Targetpath = file_path
+    shortcut.Arguments = "--self-starting"  # 添加自启动参数
+    shortcut.WorkingDirectory = os.path.dirname(file_path)
+    shortcut.IconLocation = icon_path  # 设置图标路径
+    shortcut.save()
+
+
+def remove_from_startup(file_path=f'{base_directory}/Time-Machine.exe'):
+    log('取消注册开机启动')
+    startup_folder = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+    if file_path == "":
+        file_path = os.path.realpath(__file__)
+    else:
+        file_path = os.path.abspath(file_path)  # 将相对路径转换为绝对路径
+    name = os.path.splitext(os.path.basename(file_path))[0]  # 使用文件名作为快捷方式名称
+    shortcut_path = os.path.join(startup_folder, f'{name}.lnk')
+    if os.path.exists(shortcut_path):
+        os.remove(shortcut_path)
+
+
+def setup_startup_with_self_starting(value=True):
+    if value:
+        add_to_startup()
+    else:
+        remove_from_startup()
+    log(f"设置开机自启 {'启用' if value else '禁用'}")
 
 importlog("SYSTEMS.PY")
