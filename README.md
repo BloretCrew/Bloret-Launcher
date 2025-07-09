@@ -1,7 +1,7 @@
 <p align="center">
-  <img width="16%" align="center" src="bloret.png" alt="logo">
+  <img width="16%" align="center" src="bloret.ico" alt="logo">  
 </p>
-  <h1 align="center">
+  <h1 align="center">  
   Bloret Launcher
 </h1>
 <p align="center">
