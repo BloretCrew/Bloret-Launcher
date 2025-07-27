@@ -46,17 +46,10 @@
         <x>0</x>
         <y>0</y>
         <width>670</width>
-        <height>529</height>
+        <height>528</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
-       <item>
-        <widget class="SubtitleLabel" name="label_6">
-         <property name="text">
-          <string>查找</string>
-         </property>
-        </widget>
-       </item>
        <item>
         <widget class="CardWidget" name="CardWidget">
          <property name="minimumSize">
@@ -121,7 +114,7 @@
            </spacer>
           </item>
           <item>
-           <widget class="PushButton" name="Modrinth">
+           <widget class="PushButton" name="Open_Modrinth_Button">
             <property name="text">
              <string>打开 Modrinth</string>
             </property>
@@ -131,17 +124,34 @@
         </widget>
        </item>
        <item>
-        <spacer name="verticalSpacer">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
+        <widget class="SearchLineEdit" name="Search">
+         <property name="inputMask">
+          <string/>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
+         <property name="text">
+          <string/>
          </property>
-        </spacer>
+         <property name="placeholderText">
+          <string>在 Modrinth 上搜索</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="SmoothScrollArea" name="mod_list">
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <widget class="QWidget" name="scrollAreaWidgetContents_2">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>652</width>
+            <height>395</height>
+           </rect>
+          </property>
+         </widget>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -178,13 +188,18 @@
    <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
-   <class>SubtitleLabel</class>
+   <class>TitleLabel</class>
    <extends>QLabel</extends>
    <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
-   <class>TitleLabel</class>
-   <extends>QLabel</extends>
+   <class>LineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>SearchLineEdit</class>
+   <extends>LineEdit</extends>
    <header>qfluentwidgets</header>
   </customwidget>
  </customwidgets>

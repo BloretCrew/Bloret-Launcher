@@ -9,7 +9,7 @@ import sip # type: ignore
 from modules.safe import handle_exception
 from modules.log import log
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart,setup_startup_with_self_starting
-from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui,setup_BBS_ui
+from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui,setup_BBS_ui,setup_Mod_ui
 from modules.customize import CustomizeRun
 from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
 from modules.links import open_BBBS_link
@@ -387,43 +387,48 @@ class MainWindow(FluentWindow):
         self.homeInterface = QWidget()
         self.downloadInterface = QWidget()
         self.toolsInterface = QWidget()
+        self.versionInterface = QWidget()
+        self.BBSInterface = QWidget()
+        self.modInterface = QWidget()
         self.passportInterface = QWidget()
         self.settingsInterface = QWidget()
         self.infoInterface = QWidget()
-        self.versionInterface = QWidget()
-        self.BBSInterface = QWidget()
         self.homeInterface.setObjectName("home")
         self.downloadInterface.setObjectName("download")
         self.toolsInterface.setObjectName("tools")
+        self.versionInterface.setObjectName("version")
+        self.BBSInterface.setObjectName("BBS")
+        self.modInterface.setObjectName("mod")
         self.passportInterface.setObjectName("passport")
         self.settingsInterface.setObjectName("settings")
         self.infoInterface.setObjectName("info")
-        self.versionInterface.setObjectName("version")
-        self.BBSInterface.setObjectName("BBS")
-        self.addSubInterface(self.homeInterface, QIcon("bloret.ico"), "主页")
-        self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, "下载")
-        self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, "工具")
+        self.addSubInterface(self.homeInterface, QIcon("bloret.ico"), "主页", NavigationItemPosition.TOP)
+        self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, "下载", NavigationItemPosition.TOP)
+        self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, "工具", NavigationItemPosition.SCROLL)
+        self.addSubInterface(self.versionInterface, FluentIcon.APPLICATION, "版本管理", NavigationItemPosition.SCROLL)
+        self.addSubInterface(self.BBSInterface, FluentIcon.TILES, "Bloret BBS", NavigationItemPosition.SCROLL)
+        self.addSubInterface(self.modInterface, FluentIcon.TRANSPARENT, "Mods", NavigationItemPosition.SCROLL)
         self.addSubInterface(self.passportInterface, FluentIcon.PEOPLE, "通行证", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, "设置", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.infoInterface, FluentIcon.INFO, "关于", NavigationItemPosition.BOTTOM)
-        self.addSubInterface(self.versionInterface, FluentIcon.APPLICATION, "版本管理")
-        self.addSubInterface(self.BBSInterface, FluentIcon.TILES, "Bloret BBS")
         load_ui("ui/home.ui", parent=self.homeInterface)
         load_ui("ui/download.ui", parent=self.downloadInterface)
         load_ui("ui/tools.ui", parent=self.toolsInterface)
+        load_ui("ui/version.ui", parent=self.versionInterface)
+        load_ui("ui/bbs.ui", parent=self.BBSInterface)
+        load_ui("ui/mods.ui", parent=self.modInterface)
         load_ui("ui/passport.ui", parent=self.passportInterface)
         load_ui("ui/settings.ui", parent=self.settingsInterface)
         load_ui("ui/info.ui", parent=self.infoInterface)
-        load_ui("ui/version.ui", parent=self.versionInterface)
-        load_ui("ui/bbs.ui", parent=self.BBSInterface)
         setup_home_ui(self,self.homeInterface)
         setup_download_ui(self,self.downloadInterface,LM_Download_Way_list,ver_id_bloret,self.homeInterface)
         setup_tools_ui(self,self.toolsInterface)
+        setup_info_ui(self,self.infoInterface)
+        setup_BBS_ui(self,self.BBSInterface,server_ip)
+        setup_Mod_ui(self,self.modInterface,server_ip)
         setup_passport_ui(self,self.passportInterface,server_ip,self.homeInterface)
         setup_settings_ui(self,self.settingsInterface)
         setup_version_ui(self,self.versionInterface,minecraft_list,customize_list,MINECRAFT_DIR,self.homeInterface)
-        setup_info_ui(self,self.infoInterface)
-        setup_BBS_ui(self,self.BBSInterface,server_ip)
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -459,13 +464,6 @@ class MainWindow(FluentWindow):
         self.navigationInterface.setExpandWidth(scaled_sidebar_width)
         if hasattr(self.navigationInterface, 'setCollapseWidth'):
             self.navigationInterface.setCollapseWidth(int(scaled_sidebar_width * size))
-        else:
-            log("NavigationInterface does not support setCollapseWidth", logging.ERROR)
-        if hasattr(self.navigationInterface, 'collapse'):
-            self.navigationInterface.collapse(useAni=False)  # 默认收缩
-        else:
-            log("NavigationInterface does not support collapse", logging.ERROR)
-
         # 可选：设置最小展开宽度
         base_window_width = 900
         scaled_min_expand_width = int(base_window_width * size)

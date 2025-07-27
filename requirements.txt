@@ -6,3 +6,4 @@ pywin32
 configparser
 sip
 Send2Trash
+googletrans

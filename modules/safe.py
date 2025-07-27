@@ -17,16 +17,14 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.uic import loadUi
 from modules.log import log, importlog
 
-def handle_exception(e):
+def handle_exception(exc_type, exc_value, exc_traceback):
     '''
     ## 显示错误跟踪窗口并报告异常
 
     ***
     ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
-    exc_type = type(e)
-    exc_value = e
-    exc_traceback = e.__traceback__
+    # 参数已由系统异常钩子直接提供
     log("未捕获的异常:", logging.CRITICAL)
     log("类型: {}".format(exc_type), logging.CRITICAL)
     log("信息: {}".format(exc_value), logging.CRITICAL)

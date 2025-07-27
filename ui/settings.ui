@@ -425,7 +425,7 @@
             <item>
              <widget class="CaptionLabel" name="CaptionLabel_11">
               <property name="text">
-               <string>开机时一并打开 Time Machine, 并最小化至系统托盘</string>
+               <string>开机时一并打开 Bloret Launcher, 并最小化至系统托盘</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>

@@ -1,10 +1,10 @@
-from turtle import home
-from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QLineEdit, QLabel, QWidget
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon
+from turtle import update
+from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap
 from PyQt5.QtCore import QUrl, Qt
-import requests, json, logging, os
+import requests, json, logging, os, re
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.systems import setup_startup_with_self_starting
 from modules.log import log, importlog, clear_log_files
@@ -12,6 +12,64 @@ from modules.Bloret_PassPort import Bloret_PassPort_Account_login,Bloret_PassPor
 from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
 from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder
+from modules.modrinth import search_mods
+from PyQt5.QtCore import QThread, pyqtSignal
+from modules.win11toast import notify, update_progress
+
+
+class ModSearchThread(QThread):
+    results_ready = pyqtSignal(object)
+    ui_elements_ready = pyqtSignal(list)  # 新增信号传递预处理数据
+
+    def __init__(self, mod_list, search_term):
+        super().__init__()
+        self.mod_list = mod_list
+        self.search_term = search_term
+
+    def run(self):
+        results = search_mods(self.search_term)
+        log(f"2搜索结果: {results}")
+        self.results_ready.emit(results)
+        if results and isinstance(results, dict) and 'hits' in results and isinstance(results['hits'], list):
+            # 在子线程预处理数据（不创建控件）
+            processed = []
+            for mod in results['hits']:
+                # # 下载图片数据
+                # # 检查是否存在icon_url字段且为有效URL
+                # icon_data = None
+                # url_pattern = re.compile(r'^https?://')
+                # mod_title = mod.get('title', '未知模组') if isinstance(mod, dict) else '未知模组'
+                
+                # if isinstance(mod, dict) and 'icon_url' in mod and mod['icon_url']:
+                #     # 检查URL格式是否有效
+                #     if not url_pattern.match(mod['icon_url']):
+                #         log(f"[{mod_title}] 无效的URL格式: {mod['icon_url']}")
+                #     else:
+                #         try:
+                #             response = requests.get(mod['icon_url'], timeout=5)
+                #             if response.status_code == 200:
+                #                 icon_data = response.content
+                #             else:
+                #                 log(f"[{mod_title}] 图片下载失败: HTTP状态码 {response.status_code}，URL: {mod['icon_url']}")
+                #         except Exception as e:
+                #             log(f"[{mod_title}] 图片下载异常: {str(e)}，URL: {mod['icon_url']}")
+                # else:
+                #     log(f"[{mod_title}] 缺少有效的icon_url字段")
+                # # 如果图片下载失败，不使用任何图片
+                # if icon_data is None:
+                #     log(f"[{mod_title}] 无法加载图片，将使用默认样式")
+                # 只处理字典类型的mod
+                if isinstance(mod, dict):
+                    processed.append({
+                        "title": mod.get("title", ""),
+                        "description": mod.get("description", ""),
+                        "icon_url": mod.get("icon_url", ""),
+                        "downloads": mod.get("downloads", 0),
+                        "follows": mod.get("follows", 0),
+                        "categories": mod.get("categories", [])
+                    })
+            self.ui_elements_ready.emit(processed)  # 发送预处理数据
+
 
 def load_ui(ui_path, parent=None, animate=True):
     '''
@@ -394,7 +452,8 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
 
                 for i in range(minecraft_list_NUM):
                     card = CardWidget(scroll_widget)
-                    label = StrongBodyLabel(f"{minecraft_list[i]}", card)
+                    card.setMaximumWidth(659)  # 设置最大宽度
+                    label = StrongBodyLabel(minecraft_list[i], card)
                     layout = QVBoxLayout(card)
                     layout.addWidget(label)
 
@@ -427,6 +486,7 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
 
                 for i in range(customize_list_NUM):
                     card = CardWidget(scroll_widget)
+                    card.setMaximumWidth(659)  # 设置最大宽度
                     label = StrongBodyLabel(f"{customize_list[i]}", card)
                     layout = QVBoxLayout(card)
                     layout.addWidget(label)
@@ -525,4 +585,191 @@ def setup_BBS_ui(self, widget, server_ip):
     BBS_list.setWidget(scroll_widget)
     BBS_list.setWidgetResizable(True)
     
+def on_search_mod_clicked(mod_list, search_term=''):
+    # 显示进度条
+    if mod_list:
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        loading = IndeterminateProgressBar(start=True)
+        scroll_layout.addWidget(loading, alignment=Qt.AlignCenter)
+        mod_list.setWidget(scroll_widget)
+        mod_list.setWidgetResizable(True)
+    # 执行搜索
+    results = search_mods(search_term)
+    log(f"1搜索结果: {results}")
+    on_search_mod_finish(results, mod_list, loading)
+
+def on_search_mod_finish(results, mod_list, loading):
+    if results:
+        if mod_list:
+            notify(progress={
+                'title': '正在加载 Mod 数据...',
+                'status': '正在加载 Mod 数据...',
+                'value': '0',
+                'valueStringOverride': '0/' + str(len(results)),
+                'icon': os.path.join(os.getcwd(), 'bloret.ico')
+            })
+            scroll_widget = QWidget()
+            scroll_layout = QVBoxLayout(scroll_widget)
+            
+            i = 0
+            for mod in results:
+                update_progress({'value': i / len(results), 'valueStringOverride': f'{i + 1}/{len(results)}', 'status': f"正在加载 Mod 数据... {i + 1}/{len(results)}"})
+                i = i + 1
+                card = CardWidget()
+                card.setMaximumWidth(659)
+
+                title_label = StrongBodyLabel(mod["title"], card)
+                body_label = BodyLabel(mod["description"], card)
+                body_label.setTextFormat(Qt.MarkdownText)
+                body_label.setOpenExternalLinks(True)
+                body_label.setWordWrap(True)
+
+                icon_label = ImageLabel()
+                icon_url = mod.get('icon_url')
+                pixmap = QPixmap()
+                # 使用处理后的数据中的icon_data
+                icon_loaded = mod.get('icon_data') is not None
+                if not icon_loaded:
+                    log(f"未能加载图标: {mod.get('title', '未知mod')}，URL: {mod.get('icon_url', '未提供')}")
+                print(mod)
+                if icon_url:
+                    try:
+                        response = requests.get(icon_url, timeout=5)
+                        if response.status_code == 200:
+                            icon_loaded = pixmap.loadFromData(response.content)
+                        else:
+                            log(f"⚠️ 图片下载失败: HTTP {response.status_code}, URL: {icon_url}")
+                    except Exception as e:
+                        log(f"⚠️ 图片下载异常: {str(e)}, URL: {icon_url}")
+                else:
+                    log(f"⚠️ 图片URL不存在")
+                
+                # 如果图片加载失败，使用默认图片
+                if not icon_loaded:
+                    default_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default_icon.png')
+                    if os.path.exists(default_icon_path):
+                        pixmap.load(default_icon_path)
+                        icon_loaded = True
+                    else:
+                        log(f"⚠️ 默认图片不存在: {default_icon_path}")
+                
+                download_label = CaptionLabel(card)
+                download_label.setIcon(FluentIcon.DOWNLOAD)
+                download_label.setText(f" {mod['downloads']}")
+                follower_label = CaptionLabel(card)
+                follower_label.setIcon(FluentIcon.PEOPLE)
+                follower_label.setText(f" {mod['follows']}")
+
+                # 创建主布局
+                card_layout = QVBoxLayout(card)
+                card_layout.setContentsMargins(12, 12, 12, 12)
+                card_layout.setSpacing(8)
+
+                # 创建标题和图标水平布局
+                top_layout = QHBoxLayout()
+                top_layout.setSpacing(12)
+                
+                # 添加图标
+                if icon_loaded:
+                    icon_label.setPixmap(pixmap)
+                    icon_label.setFixedSize(64, 64)
+                    icon_label.setScaledContents(True)
+                    top_layout.addWidget(icon_label)
+                
+                # 添加标题
+                title_layout = QVBoxLayout()
+                title_layout.setSpacing(4)
+                title_layout.addWidget(title_label)
+                title_layout.addWidget(body_label)
+                title_layout.addStretch(1)
+                top_layout.addLayout(title_layout)
+                top_layout.addStretch(1)
+                
+                # 添加到主布局
+                card_layout.addLayout(top_layout)
+                
+                # 创建统计信息水平布局
+                stats_layout = QHBoxLayout()
+                stats_layout.setSpacing(16)
+                stats_layout.addWidget(download_label)
+                stats_layout.addWidget(follower_label)
+                stats_layout.addStretch(1)
+                
+                # 添加到主布局
+                card_layout.addLayout(stats_layout)
+
+                # 创建标签水平布局
+                tags_layout = QHBoxLayout()
+                tags_layout.setSpacing(8)
+                for types in mod["categories"]:
+                    type_label = CaptionLabel(types, card)
+                    tags_layout.addWidget(type_label)
+                tags_layout.addStretch(1)
+                card_layout.addLayout(tags_layout)
+
+                scroll_layout.addWidget(card)
+                log(f"正在更新 UI 中的版本卡片：add {mod['title']}")
+
+            scroll_layout.addStretch(1)
+            mod_list.setWidget(scroll_widget)
+            mod_list.setWidgetResizable(True)
+
+            # # 加载完成后删除 loading 控件
+            # if loading:
+            #     loading.setParent(None)
+            #     loading.deleteLater()
+            
+            update_progress({'value': 1, 'valueStringOverride': '✅', 'status': f"搜索完成 ✅"})
+
+        else:
+            log("未找到 mod_list SmoothScrollArea", logging.ERROR)
+            return
+    else:
+        log("未找到相关模组", logging.WARNING)
+
+def setup_Mod_ui(self, widget, server_ip):
+    '''
+    设定 Bloret Launcher 模组界面 UI 布局和操作。
+    ***
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    '''
+    # 绑定 OpenMod 按钮点击事件
+    Open_Modrinth_Button = widget.findChild(QPushButton, "Open_Modrinth_Button")
+    if Open_Modrinth_Button:
+        Open_Modrinth_Button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://modrinth.com/mods")))
+    else:
+        log("未找到 Open_Modrinth_Button 按钮", logging.ERROR)
+
+    Search = widget.findChild(SearchLineEdit, "Search")
+    mod_list = widget.findChild(SmoothScrollArea, "mod_list")
+    if Search:
+        # on_search_mod_clicked(mod_list)
+        # 获取进度条控件实例
+        loading_widget = widget.findChild(IndeterminateProgressBar, "loading")
+        Search.searchSignal.connect(lambda: start_search_mod(self, mod_list, Search.text(), loading_widget))
+    else:
+        log("未找到 Search 搜索框", logging.ERROR)
+
+def start_search_mod(self, mod_list, search_term, loading):
+    # 确保旧线程结束
+    if hasattr(mod_list, '_ui_thread') and mod_list._ui_thread.isRunning():
+        mod_list._ui_thread.quit()
+        mod_list._ui_thread.wait()
+    
+    # 创建新线程
+    mod_list._ui_thread = ModSearchThread(mod_list, search_term)
+    
+    # 连接结果信号
+    def handle_results(results):
+        # 这里可以处理搜索结果的通用逻辑
+        pass
+    mod_list._ui_thread.results_ready.connect(handle_results)
+    
+    # 连接UI元素就绪信号到结果处理函数
+    mod_list._ui_thread.ui_elements_ready.connect(lambda data: on_search_mod_finish(data, mod_list, loading))
+    
+    # 启动线程
+    mod_list._ui_thread.start()
+
 importlog("SETUP_UI.PY")
