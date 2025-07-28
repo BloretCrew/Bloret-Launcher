@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>688</width>
+    <height>590</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string>
+    @import url('https://cdn.jsdelivr.net/gh/zhiyiYo/PyQt-Fluent-Widgets@main/qfluentwidgets.qss');
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="TitleLabel" name="TitleLabel">
+     <property name="text">
+      <string>联机</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="SmoothScrollArea" name="SmoothScrollArea">
+     <property name="styleSheet">
+      <string notr="true">background: transparent; border: none</string>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="scrollAreaWidgetContents">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>670</width>
+        <height>543</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="SubtitleLabel" name="SubtitleLabel">
+         <property name="text">
+          <string>网络</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <item>
+             <widget class="StrongBodyLabel" name="StrongBodyLabel_17">
+              <property name="text">
+               <string>IPV6</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_5">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>查看您计算机的 IPV6 配置</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="150">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_10">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>165</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="StrongBodyLabel" name="ipv6_address">
+            <property name="text">
+             <string>2001:0db8:86a3:08d3:1319:8a2e:0370:7344</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="PushButton" name="GetIPV6AddressButton">
+         <property name="text">
+          <string>获取 IPV6 联机地址</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="CaptionLabel" name="CaptionLabel_11">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。</string>
+         </property>
+         <property name="textFormat">
+          <enum>Qt::MarkdownText</enum>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="lightColor" stdset="0">
+          <color alpha="150">
+           <red>0</red>
+           <green>0</green>
+           <blue>0</blue>
+          </color>
+         </property>
+         <property name="darkColor" stdset="0">
+          <color alpha="200">
+           <red>255</red>
+           <green>255</green>
+           <blue>255</blue>
+          </color>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="CaptionLabel" name="CaptionLabel_12">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>**IPV6 是您的运营商提供的一项免费服务，不额外收费。** 已拥有的用户点击上方按钮直接使用</string>
+         </property>
+         <property name="textFormat">
+          <enum>Qt::MarkdownText</enum>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="lightColor" stdset="0">
+          <color alpha="150">
+           <red>0</red>
+           <green>0</green>
+           <blue>0</blue>
+          </color>
+         </property>
+         <property name="darkColor" stdset="0">
+          <color alpha="200">
+           <red>255</red>
+           <green>255</green>
+           <blue>255</blue>
+          </color>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="SubtitleLabel" name="SubtitleLabel_2">
+         <property name="text">
+          <string>Online Client</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="CaptionLabel" name="CaptionLabel_9">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Online Client 是 Bloret 的一项开源项目，可为您提供高效的联机服务。</string>
+         </property>
+         <property name="textFormat">
+          <enum>Qt::MarkdownText</enum>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="lightColor" stdset="0">
+          <color alpha="150">
+           <red>0</red>
+           <green>0</green>
+           <blue>0</blue>
+          </color>
+         </property>
+         <property name="darkColor" stdset="0">
+          <color alpha="200">
+           <red>255</red>
+           <green>255</green>
+           <blue>255</blue>
+          </color>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="CaptionLabel" name="CaptionLabel_10">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>**在此处开启联机服务 ，对方无需安装 Bloret Launcher 就可一起参与联机。**</string>
+         </property>
+         <property name="textFormat">
+          <enum>Qt::MarkdownText</enum>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="lightColor" stdset="0">
+          <color alpha="150">
+           <red>0</red>
+           <green>0</green>
+           <blue>0</blue>
+          </color>
+         </property>
+         <property name="darkColor" stdset="0">
+          <color alpha="200">
+           <red>255</red>
+           <green>255</green>
+           <blue>255</blue>
+          </color>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="PushButton" name="PushButton">
+         <property name="text">
+          <string>开启联机服务</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget_2">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_5">
+            <item>
+             <widget class="StrongBodyLabel" name="StrongBodyLabel">
+              <property name="text">
+               <string>服务器已连接时长</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_7">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>查看您计算机的 IPV6 配置</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="150">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="StrongBodyLabel" name="StrongBodyLabel_3">
+            <property name="text">
+             <string>19 分 36 秒</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget_3">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_3">
+            <item>
+             <widget class="StrongBodyLabel" name="StrongBodyLabel_2">
+              <property name="text">
+               <string>联机地址</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_8">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>在 Minecraft 客户端中，输入本地址即可加入</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="150">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="StrongBodyLabel" name="StrongBodyLabel_4">
+            <property name="text">
+             <string>http://pcfs.top:3399</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="CaptionLabel" name="CaptionLabel_6">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>联机服务 Powered by Online Client (BloretCrew) , Server PCFS  © 2025 Bloret All rights reserved.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="lightColor" stdset="0">
+          <color alpha="150">
+           <red>0</red>
+           <green>0</green>
+           <blue>0</blue>
+          </color>
+         </property>
+         <property name="darkColor" stdset="0">
+          <color alpha="200">
+           <red>255</red>
+           <green>255</green>
+           <blue>255</blue>
+          </color>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>PushButton</class>
+   <extends>QPushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>CardWidget</class>
+   <extends>QFrame</extends>
+   <header>qfluentwidgets</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>SmoothScrollArea</class>
+   <extends>QScrollArea</extends>
+   <header>qfluentwidgets</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CaptionLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>StrongBodyLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>SubtitleLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>TitleLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

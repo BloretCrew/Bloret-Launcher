@@ -9,7 +9,7 @@ import sip # type: ignore
 from modules.safe import handle_exception
 from modules.log import log
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart,setup_startup_with_self_starting
-from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui,setup_BBS_ui,setup_Mod_ui
+from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui,setup_BBS_ui,setup_Mod_ui, setup_multiplayer_ui
 from modules.customize import CustomizeRun
 from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
 from modules.links import open_BBBS_link
@@ -410,8 +410,12 @@ class MainWindow(FluentWindow):
         self.addSubInterface(self.modInterface, FluentIcon.TRANSPARENT, "Mods", NavigationItemPosition.SCROLL)
         self.addSubInterface(self.passportInterface, FluentIcon.PEOPLE, "通行证", NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, "设置", NavigationItemPosition.BOTTOM)
+        self.multiplayerInterface = QWidget()
+        self.multiplayerInterface.setObjectName("multiplayer")
+        self.addSubInterface(self.multiplayerInterface, FluentIcon.CONNECT, "联机", NavigationItemPosition.SCROLL)
         self.addSubInterface(self.infoInterface, FluentIcon.INFO, "关于", NavigationItemPosition.BOTTOM)
         load_ui("ui/home.ui", parent=self.homeInterface)
+        load_ui("ui/client.ui", parent=self.multiplayerInterface)
         load_ui("ui/download.ui", parent=self.downloadInterface)
         load_ui("ui/tools.ui", parent=self.toolsInterface)
         load_ui("ui/version.ui", parent=self.versionInterface)
@@ -426,6 +430,7 @@ class MainWindow(FluentWindow):
         setup_info_ui(self,self.infoInterface)
         setup_BBS_ui(self,self.BBSInterface,server_ip)
         setup_Mod_ui(self,self.modInterface,server_ip)
+        setup_multiplayer_ui(self,self.multiplayerInterface)
         setup_passport_ui(self,self.passportInterface,server_ip,self.homeInterface)
         setup_settings_ui(self,self.settingsInterface)
         setup_version_ui(self,self.versionInterface,minecraft_list,customize_list,MINECRAFT_DIR,self.homeInterface)

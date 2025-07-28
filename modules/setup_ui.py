@@ -1,10 +1,9 @@
-from turtle import update
-from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy
+from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy, QApplication
 from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
 from PyQt5.QtCore import QUrl, Qt, QSize
-import requests, json, logging, os, re
+import requests, json, logging, os, socket
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.systems import setup_startup_with_self_starting
 from modules.log import log, importlog, clear_log_files
@@ -15,7 +14,7 @@ from modules.versions import delete_minecraft_version,Change_minecraft_version_n
 from modules.modrinth import search_mods, Get_Mod_File_Download_Url
 from PyQt5.QtCore import QThread, pyqtSignal
 from modules.win11toast import notify, update_progress
-
+from modules.local_client import OnlineClient
 
 class DownloadDialog(MessageBoxBase):
     """ 自定义下载对话框 """
@@ -539,6 +538,87 @@ def setup_settings_ui(self, widget):
         Self_starting.checkedChanged.connect(lambda val: on_self_starting_changed(val))
     else:
         log("未找到 Self_starting 控件")
+
+def setup_multiplayer_ui(self, widget):
+    """设定 Bloret Launcher 多人联机界面 UI 布局和操作"""
+    # 获取IPv6地址
+    ipv6_address = get_ipv6_address()
+    get_ipv6_btn = widget.findChild(QPushButton, "GetIPV6AddressButton")
+    
+    if get_ipv6_btn:
+        # 根据是否有IPv6地址设置按钮状态
+        get_ipv6_btn.setEnabled(bool(ipv6_address))
+        # 连接按钮点击事件
+        get_ipv6_btn.clicked.connect(lambda: show_ipv6_dialog(self, ipv6_address))
+
+
+def get_ipv6_address():
+    """获取本机IPv6地址"""
+    try:
+        # 获取所有网络接口的地址信息
+        for addrinfo in socket.getaddrinfo(socket.gethostname(), None):
+            ip_address = addrinfo[4][0]
+            # 检查是否为IPv6地址且不是本地回环地址
+            if ':' in ip_address and not ip_address.startswith('::') and not ip_address.startswith('fe80::'):
+                return ip_address
+        return None
+    except Exception as e:
+        log(f"获取IPv6地址失败: {str(e)}")
+        return None
+
+
+def show_ipv6_dialog(parent, ipv6_address):
+    """显示IPv6联机对话框"""
+    # 创建端口输入对话框
+    port_dialog = MessageBoxBase(parent)
+    port_dialog.setWindowTitle("IPV6 联机")
+    
+    port_label = BodyLabel("请输入您的 Minecraft 端口")
+    port_input = LineEdit()
+    port_input.setPlaceholderText("默认端口: 25565")
+    port_input.setText("25565")  # 设置默认端口
+    
+    port_dialog.viewLayout.addWidget(port_label)
+    port_dialog.viewLayout.addWidget(port_input)
+    
+    port_dialog.yesButton.setText("确认")
+    port_dialog.cancelButton.setText("取消")
+    
+    if port_dialog.exec_() == port_dialog.Yes:
+        port = port_input.text().strip()
+        if not port.isdigit():
+            InfoBar.error(
+                title='输入错误',
+                content='请输入有效的端口号',
+                parent=parent
+            )
+            return
+        
+        # 创建结果显示对话框
+        result_dialog = MessageBoxBase(parent)
+        result_dialog.setWindowTitle("IPV6 联机")
+        
+        address_label = StrongBodyLabel(f"{ipv6_address}:{port}")
+        address_label.setAlignment(Qt.AlignCenter)
+        
+        instruction_label = CaptionLabel("按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。")
+        instruction_label.setAlignment(Qt.AlignCenter)
+        
+        result_dialog.viewLayout.addWidget(address_label)
+        result_dialog.viewLayout.addWidget(instruction_label)
+        
+        result_dialog.yesButton.setText("确认")
+        result_dialog.cancelButton.hide()  # 隐藏取消按钮
+        
+        if result_dialog.exec_() == result_dialog.Yes:
+            # 复制到剪贴板
+            clipboard = QApplication.clipboard()
+            clipboard.setText(f"{ipv6_address}:{port}")
+            InfoBar.success(
+                title='复制成功',
+                content='IPV6地址和端口已复制到剪贴板',
+                parent=parent
+            )
 
 def setup_info_ui(self, widget):
     '''
