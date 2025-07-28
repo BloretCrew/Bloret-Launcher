@@ -1,9 +1,9 @@
 from turtle import update
-from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar
+from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase
 from PyQt5 import uic
-from PyQt5.QtGui import QDesktopServices, QPixmap
-from PyQt5.QtCore import QUrl, Qt
+from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
+from PyQt5.QtCore import QUrl, Qt, QSize
 import requests, json, logging, os, re
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.systems import setup_startup_with_self_starting
@@ -12,10 +12,157 @@ from modules.Bloret_PassPort import Bloret_PassPort_Account_login,Bloret_PassPor
 from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
 from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder
-from modules.modrinth import search_mods
+from modules.modrinth import search_mods, Get_Mod_File_Download_Url
 from PyQt5.QtCore import QThread, pyqtSignal
 from modules.win11toast import notify, update_progress
 
+
+class DownloadDialog(MessageBoxBase):
+    """ 自定义下载对话框 """
+
+    def __init__(self, mod_title, slug, parent=None):
+        super().__init__(parent)
+        self.mod_title = mod_title
+        self.slug = slug
+        self.game_versions = []  # 存储模组支持的游戏版本
+        
+        self.titleLabel = SubtitleLabel(mod_title)
+        self.titleLabel.setAlignment(Qt.AlignCenter)
+        
+        self.modNameLabel = StrongBodyLabel(f'选择安装 Mod 的版本')
+        
+        self.versionCombo = ComboBox()
+        self.versionCombo.setPlaceholderText('选择版本')
+        
+        # 获取模组支持的游戏版本
+        self.fetch_mod_versions()
+        
+        # 获取 .minecraft\versions 文件夹内的文件夹列表
+        versions_path = os.path.join(os.getcwd(), ".minecraft", "versions")
+        if os.path.exists(versions_path):
+            version_folders = [f for f in os.listdir(versions_path) 
+                              if os.path.isdir(os.path.join(versions_path, f))]
+            self.versionCombo.addItems(version_folders)
+        
+        if self.versionCombo.count() > 0:
+            self.versionCombo.setCurrentIndex(0)
+        else:
+            self.versionCombo.addItem("未找到任何版本")
+            
+        # 连接版本选择变化信号
+        self.versionCombo.currentTextChanged.connect(self.check_version_compatibility)
+        
+        # 创建提示标签（默认隐藏）
+        self.warningLabel = CaptionLabel("")
+        self.warningLabel.setTextColor("#cf1010", QColor(255, 28, 32))
+        self.warningLabel.hide()
+        self.downloadButton = PushButton('打开 Modrinth 详情页面')
+        self.downloadButton.clicked.connect(self.open_modrinth_page)
+        
+        # 将组件添加到布局中
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.modNameLabel)
+        self.viewLayout.addWidget(self.versionCombo)
+        self.viewLayout.addWidget(self.warningLabel)
+        self.viewLayout.addWidget(self.downloadButton)
+        
+        # 修改按钮
+        self.yesButton.setText('下载 Mod')
+        self.yesButton.clicked.connect(self.download_mod)
+        self.cancelButton.setText('取消')
+        
+        # 设置对话框的最小宽度
+        self.widget.setMinimumWidth(350)
+        
+        # 检查初始版本兼容性
+        self.check_version_compatibility(self.versionCombo.currentText())
+    
+    def open_modrinth_page(self):
+        # 这里可以添加实际的下载逻辑
+        log(f"准备下载模组: {self.mod_title} (版本: {self.versionCombo.currentText()})")
+        log(f"模组链接: https://modrinth.com/mod/{self.slug}")
+        # 打开模组页面
+        QDesktopServices.openUrl(QUrl(f"https://modrinth.com/mod/{self.slug}"))
+        self.accept()  # 关闭对话框
+        
+    def fetch_mod_versions(self):
+        """获取模组支持的游戏版本"""
+        try:
+            url = f"https://api.modrinth.com/v2/project/{self.slug}"
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                self.game_versions = data.get("game_versions", [])
+                log(f"模组 {self.mod_title} 支持的游戏版本: {self.game_versions}")
+            else:
+                log(f"获取模组信息失败，状态码: {response.status_code}")
+        except Exception as e:
+            log(f"获取模组信息时出错: {str(e)}")
+            
+    def check_version_compatibility(self, selected_version):
+        """检查所选版本是否与模组兼容"""
+        if not selected_version or selected_version == "未找到任何版本":
+            self.warningLabel.hide()
+            self.yesButton.show()  # 重新启用下载按钮
+            return
+            
+        # 检查所选版本是否在模组支持的版本列表中
+        if selected_version in self.game_versions:
+            self.warningLabel.hide()
+            self.yesButton.show()  # 启用下载按钮
+        else:
+            self.warningLabel.setText("警告：所选版本可能不兼容此模组")
+            self.warningLabel.show()
+            self.yesButton.hide()  # 禁用下载按钮
+            
+    def download_mod(self):
+        """下载选定的Mod文件"""
+        version = self.versionCombo.currentText()
+        if not version or version == "未找到任何版本":
+            log("未选择有效的版本")
+            return
+            
+        # 获取Mod下载URL
+        url = Get_Mod_File_Download_Url(self.slug, "fabric", version)
+        if not url:
+            log(f"无法获取Mod {self.mod_title} 的下载URL")
+            return
+            
+        # 创建目标目录
+        mod_dir = os.path.join(os.getcwd(), ".minecraft", "versions", version, "mods")
+        if not os.path.exists(mod_dir):
+            os.makedirs(mod_dir)
+            
+        # 获取文件名
+        filename = url.split("/")[-1]
+        file_path = os.path.join(mod_dir, filename)
+        
+        # 下载文件
+        try:
+            log(f"开始下载 {self.mod_title} 到 {file_path}")
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
+            
+            with open(file_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    
+            log(f"成功下载 {self.mod_title} 到 {file_path}")
+            InfoBar.success(
+                title='✅ 下载成功',
+                content=f"Mod {self.mod_title} 已成功下载到 {file_path}",
+                parent=self.parent(),
+                duration=5000
+            )
+            self.accept()  # 关闭对话框
+        except Exception as e:
+            log(f"下载Mod时出错: {str(e)}")
+            InfoBar.error(
+                title='❌ 下载失败',
+                content=f"下载Mod {self.mod_title} 时出错: {str(e)}",
+                parent=self.parent(),
+                duration=5000
+            )
 
 class ModSearchThread(QThread):
     results_ready = pyqtSignal(object)
@@ -34,30 +181,6 @@ class ModSearchThread(QThread):
             # 在子线程预处理数据（不创建控件）
             processed = []
             for mod in results['hits']:
-                # # 下载图片数据
-                # # 检查是否存在icon_url字段且为有效URL
-                # icon_data = None
-                # url_pattern = re.compile(r'^https?://')
-                # mod_title = mod.get('title', '未知模组') if isinstance(mod, dict) else '未知模组'
-                
-                # if isinstance(mod, dict) and 'icon_url' in mod and mod['icon_url']:
-                #     # 检查URL格式是否有效
-                #     if not url_pattern.match(mod['icon_url']):
-                #         log(f"[{mod_title}] 无效的URL格式: {mod['icon_url']}")
-                #     else:
-                #         try:
-                #             response = requests.get(mod['icon_url'], timeout=5)
-                #             if response.status_code == 200:
-                #                 icon_data = response.content
-                #             else:
-                #                 log(f"[{mod_title}] 图片下载失败: HTTP状态码 {response.status_code}，URL: {mod['icon_url']}")
-                #         except Exception as e:
-                #             log(f"[{mod_title}] 图片下载异常: {str(e)}，URL: {mod['icon_url']}")
-                # else:
-                #     log(f"[{mod_title}] 缺少有效的icon_url字段")
-                # # 如果图片下载失败，不使用任何图片
-                # if icon_data is None:
-                #     log(f"[{mod_title}] 无法加载图片，将使用默认样式")
                 # 只处理字典类型的mod
                 if isinstance(mod, dict):
                     processed.append({
@@ -66,9 +189,16 @@ class ModSearchThread(QThread):
                         "icon_url": mod.get("icon_url", ""),
                         "downloads": mod.get("downloads", 0),
                         "follows": mod.get("follows", 0),
-                        "categories": mod.get("categories", [])
+                        "categories": mod.get("categories", []),
+                        "slug": mod.get("slug", "")
                     })
             self.ui_elements_ready.emit(processed)  # 发送预处理数据
+
+
+def show_download_dialog(mod_title, slug, parent):
+    """显示下载对话框"""
+    dialog = DownloadDialog(mod_title, slug, parent)
+    dialog.exec_()
 
 
 def load_ui(ui_path, parent=None, animate=True):
@@ -585,7 +715,7 @@ def setup_BBS_ui(self, widget, server_ip):
     BBS_list.setWidget(scroll_widget)
     BBS_list.setWidgetResizable(True)
     
-def on_search_mod_clicked(mod_list, search_term=''):
+def on_search_mod_clicked(self, mod_list, search_term=''):
     # 显示进度条
     if mod_list:
         scroll_widget = QWidget()
@@ -597,11 +727,19 @@ def on_search_mod_clicked(mod_list, search_term=''):
     # 执行搜索
     results = search_mods(search_term)
     log(f"1搜索结果: {results}")
-    on_search_mod_finish(results, mod_list, loading)
+    on_search_mod_finish(self, results, mod_list, loading)
 
-def on_search_mod_finish(results, mod_list, loading):
+def on_search_mod_finish(self, results, mod_list, loading):
+    """处理模组搜索结果并更新UI
+    
+    Args:
+        results: 从Modrinth API获取的模组搜索结果
+        mod_list: SmoothScrollArea控件，用于显示模组列表
+        loading: 加载进度条控件
+    """
     if results:
         if mod_list:
+            # 显示加载进度通知
             notify(progress={
                 'title': '正在加载 Mod 数据...',
                 'status': '正在加载 Mod 数据...',
@@ -609,30 +747,48 @@ def on_search_mod_finish(results, mod_list, loading):
                 'valueStringOverride': '0/' + str(len(results)),
                 'icon': os.path.join(os.getcwd(), 'bloret.ico')
             })
+            
+            # 创建滚动区域和布局
             scroll_widget = QWidget()
             scroll_layout = QVBoxLayout(scroll_widget)
             
             i = 0
             for mod in results:
+                # 更新加载进度
                 update_progress({'value': i / len(results), 'valueStringOverride': f'{i + 1}/{len(results)}', 'status': f"正在加载 Mod 数据... {i + 1}/{len(results)}"})
                 i = i + 1
+                
+                # 创建模组卡片
                 card = CardWidget()
                 card.setMaximumWidth(659)
-
+                # 设置模组标题和描述
+                # 创建模组标题标签（使用StrongBodyLabel样式，字体加粗）
                 title_label = StrongBodyLabel(mod["title"], card)
+                # 创建模组描述标签（使用BodyLabel样式，普通字体）
                 body_label = BodyLabel(mod["description"], card)
-                body_label.setTextFormat(Qt.MarkdownText)
-                body_label.setOpenExternalLinks(True)
-                body_label.setWordWrap(True)
+                # 卡片宽度锁定 550
+                body_label.setMinimumWidth(550)
+                body_label.setMaximumWidth(550)
+                # 设置尺寸策略：水平方向可扩展，垂直方向保持首选大小
+                body_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+                # 设置文本格式为Markdown，支持Markdown语法渲染
+                body_label.setTextFormat(Qt.MarkdownText)  # 支持Markdown格式
+                # 允许点击描述中的链接打开外部浏览器
+                body_label.setOpenExternalLinks(True)  # 允许打开外部链接
+                # 启用自动换行功能，使长文本能自动换行显示
+                body_label.setWordWrap(True)  # 自动换行
 
+                # 加载模组图标
                 icon_label = ImageLabel()
+                icon_label.setBorderRadius(8, 8, 8, 8)
                 icon_url = mod.get('icon_url')
                 pixmap = QPixmap()
-                # 使用处理后的数据中的icon_data
                 icon_loaded = mod.get('icon_data') is not None
+                
                 if not icon_loaded:
                     log(f"未能加载图标: {mod.get('title', '未知mod')}，URL: {mod.get('icon_url', '未提供')}")
-                print(mod)
+                
+                # 尝试从URL下载图标
                 if icon_url:
                     try:
                         response = requests.get(icon_url, timeout=5)
@@ -645,7 +801,7 @@ def on_search_mod_finish(results, mod_list, loading):
                 else:
                     log(f"⚠️ 图片URL不存在")
                 
-                # 如果图片加载失败，使用默认图片
+                # 如果图标加载失败，使用默认图标
                 if not icon_loaded:
                     default_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default_icon.png')
                     if os.path.exists(default_icon_path):
@@ -653,20 +809,23 @@ def on_search_mod_finish(results, mod_list, loading):
                         icon_loaded = True
                     else:
                         log(f"⚠️ 默认图片不存在: {default_icon_path}")
-                
-                download_label = CaptionLabel(card)
-                download_label.setIcon(FluentIcon.DOWNLOAD)
-                download_label.setText(f" {mod['downloads']}")
-                follower_label = CaptionLabel(card)
-                follower_label.setIcon(FluentIcon.PEOPLE)
-                follower_label.setText(f" {mod['follows']}")
 
-                # 创建主布局
+                
+                
+                # 创建下载量和关注数显示
+                download_icon = IconWidget(FluentIcon.DOWNLOAD, card)
+                download_icon.setFixedSize(16, 16)
+                download_label = CaptionLabel(f"{mod['downloads']}", card)
+                follower_icon = IconWidget(FluentIcon.HEART, card)
+                follower_icon.setFixedSize(16, 16)
+                follower_label = CaptionLabel(f"{mod['follows']}", card)
+
+                # 创建卡片主布局
                 card_layout = QVBoxLayout(card)
                 card_layout.setContentsMargins(12, 12, 12, 12)
                 card_layout.setSpacing(8)
 
-                # 创建标题和图标水平布局
+                # 创建顶部布局（图标+标题）
                 top_layout = QHBoxLayout()
                 top_layout.setSpacing(12)
                 
@@ -677,49 +836,76 @@ def on_search_mod_finish(results, mod_list, loading):
                     icon_label.setScaledContents(True)
                     top_layout.addWidget(icon_label)
                 
-                # 添加标题
+                # 添加标题区域
                 title_layout = QVBoxLayout()
                 title_layout.setSpacing(4)
                 title_layout.addWidget(title_label)
                 title_layout.addWidget(body_label)
+                
+                # 创建统计信息布局
+                stats_layout = QHBoxLayout()
+                stats_layout.setSpacing(16)
+                stats_layout.addWidget(download_icon)
+                stats_layout.addWidget(download_label)
+                stats_layout.addWidget(follower_icon)
+                stats_layout.addWidget(follower_label)
+                stats_layout.addStretch(1)
+                
+                # 将统计信息添加到标题布局
+                title_layout.addLayout(stats_layout)
                 title_layout.addStretch(1)
                 top_layout.addLayout(title_layout)
                 top_layout.addStretch(1)
                 
-                # 添加到主布局
+                # 将顶部布局添加到主布局
                 card_layout.addLayout(top_layout)
-                
-                # 创建统计信息水平布局
-                stats_layout = QHBoxLayout()
-                stats_layout.setSpacing(16)
-                stats_layout.addWidget(download_label)
-                stats_layout.addWidget(follower_label)
-                stats_layout.addStretch(1)
-                
-                # 添加到主布局
-                card_layout.addLayout(stats_layout)
 
-                # 创建标签水平布局
+                # 创建标签布局（模组分类）
                 tags_layout = QHBoxLayout()
                 tags_layout.setSpacing(8)
                 for types in mod["categories"]:
                     type_label = CaptionLabel(types, card)
                     tags_layout.addWidget(type_label)
-                tags_layout.addStretch(1)
+                # 添加 Modrinth 链接按钮
+                modrinth_button = ToolButton(parent=card)
+                modrinth_button.setIcon(FluentIcon.LINK.icon())
+                modrinth_button.setFixedSize(24, 24)
+                modrinth_button.setIconSize(QSize(16, 16))
+                # modrinth_button.setStyleSheet("QPushButton { qproperty-iconAlignment: AlignCenter; }")
+                modrinth_button.setToolTip("打开 Modrinth 模组详情页面")
+                modrinth_button.clicked.connect(lambda _, slug=mod.get('slug'): QDesktopServices.openUrl(QUrl(f"https://modrinth.com/mod/{slug}")) if slug else None)
+                log(f"设定Modrinth链接按钮: https://modrinth.com/mod/{mod.get('slug')}")
+
+                # 添加 Download Mod 按钮
+                download_button = ToolButton(parent=card)
+                download_button.setIcon(FluentIcon.DOWNLOAD.icon())
+                download_button.setFixedSize(24, 24)
+                download_button.setIconSize(QSize(16, 16))
+                # modrinth_button.setStyleSheet("QPushButton { qproperty-iconAlignment: AlignCenter; }")
+                download_button.setToolTip("下载 Mod")
+                # 修改点击事件处理函数
+                download_button.clicked.connect(lambda _, mod_title=mod.get('title', '未知模组'), slug=mod.get('slug'): show_download_dialog(mod_title, slug, self))
+                log(f"设定Download Mod按钮: https://modrinth.com/mod/{mod.get('slug')}")
+
+                # 创建包含两个按钮的布局并靠右对齐
+                buttons_layout = QHBoxLayout()
+                buttons_layout.addStretch(1)  # 添加弹性空间将按钮推到右侧
+                buttons_layout.addWidget(modrinth_button)
+                buttons_layout.addWidget(download_button)
+
+                tags_layout.addLayout(buttons_layout)
                 card_layout.addLayout(tags_layout)
 
+                # 将卡片添加到滚动布局
                 scroll_layout.addWidget(card)
                 log(f"正在更新 UI 中的版本卡片：add {mod['title']}")
 
+            # 完成布局设置
             scroll_layout.addStretch(1)
             mod_list.setWidget(scroll_widget)
             mod_list.setWidgetResizable(True)
-
-            # # 加载完成后删除 loading 控件
-            # if loading:
-            #     loading.setParent(None)
-            #     loading.deleteLater()
             
+            # 更新完成通知
             update_progress({'value': 1, 'valueStringOverride': '✅', 'status': f"搜索完成 ✅"})
 
         else:
@@ -767,7 +953,7 @@ def start_search_mod(self, mod_list, search_term, loading):
     mod_list._ui_thread.results_ready.connect(handle_results)
     
     # 连接UI元素就绪信号到结果处理函数
-    mod_list._ui_thread.ui_elements_ready.connect(lambda data: on_search_mod_finish(data, mod_list, loading))
+    mod_list._ui_thread.ui_elements_ready.connect(lambda data: on_search_mod_finish(self, data, mod_list, loading))
     
     # 启动线程
     mod_list._ui_thread.start()
