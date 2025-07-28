@@ -550,7 +550,104 @@ def setup_multiplayer_ui(self, widget):
         get_ipv6_btn.setEnabled(bool(ipv6_address))
         # 连接按钮点击事件
         get_ipv6_btn.clicked.connect(lambda: show_ipv6_dialog(self, ipv6_address))
+    
+    # 设置初始状态
+    online_client_time_label = widget.findChild(QLabel, "OnlineClient_ClientTime")
+    online_client_address_label = widget.findChild(QLabel, "OnlineClient_address")
+    
+    if online_client_time_label:
+        online_client_time_label.setText("--:--")
+    
+    if online_client_address_label:
+        online_client_address_label.setText("未连接")
+    
+    # 连接StartOnlineClient按钮
+    start_online_client_btn = widget.findChild(QPushButton, "StartOnlineClient")
+    if start_online_client_btn:
+        start_online_client_btn.clicked.connect(lambda: start_online_client(self, widget))
 
+
+def start_online_client(parent, widget):
+    """启动在线客户端服务"""
+    # 创建端口输入对话框
+    port_dialog = MessageBoxBase(parent)
+    port_dialog.setWindowTitle("开启联机服务")
+    
+    port_label = BodyLabel("请输入您的 Minecraft 端口")
+    port_input = LineEdit()
+    port_input.setPlaceholderText("默认端口: 25565")
+    port_input.setText("25565")  # 设置默认端口
+    
+    port_dialog.viewLayout.addWidget(port_label)
+    port_dialog.viewLayout.addWidget(port_input)
+    
+    port_dialog.yesButton.setText("确认")
+    port_dialog.cancelButton.setText("取消")
+    
+    def handle_port_confirm():
+        port = port_input.text().strip()
+        if not port.isdigit():
+            InfoBar.error(
+                title='输入错误',
+                content='请输入有效的端口号',
+                parent=parent
+            )
+            return False
+        
+        # 调用OnlineClient函数
+        try:
+            # 将端口转换为整数再传递
+            port_int = int(port)
+            connection_address = OnlineClient(port_int)
+            
+            # 显示连接地址对话框
+            show_connection_address_dialog(parent, connection_address, port)
+            return True
+        except Exception as e:
+            InfoBar.error(
+                title='启动失败',
+                content=f'启动联机服务时出错: {str(e)}',
+                parent=parent
+            )
+            return False
+    
+    port_dialog.yesButton.clicked.connect(handle_port_confirm)
+    port_dialog.exec_()
+
+
+def show_connection_address_dialog(parent, connection_address, port):
+    """显示连接地址对话框"""
+    # 创建结果显示对话框
+    result_dialog = MessageBoxBase(parent)
+    result_dialog.setWindowTitle("联机服务已启动")
+    
+    address_label = StrongBodyLabel(connection_address)
+    address_label.setAlignment(Qt.AlignCenter)
+    
+    instruction_label = CaptionLabel("按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。")
+    instruction_label.setAlignment(Qt.AlignCenter)
+    
+    result_dialog.viewLayout.addWidget(address_label)
+    result_dialog.viewLayout.addWidget(instruction_label)
+    
+    result_dialog.yesButton.setText("确认")
+    result_dialog.cancelButton.hide()  # 隐藏取消按钮
+    
+    def handle_result_confirm():
+        # 复制到剪贴板
+        clipboard = QApplication.clipboard()
+        clipboard.setText(connection_address)
+        InfoBar.success(
+            title='复制成功',
+            content='联机地址已复制到剪贴板',
+            parent=parent
+        )
+        
+        # 更新界面上的地址和时间显示
+        # 注意：在实际应用中，这里应该启动一个定时器来更新时间
+    
+    result_dialog.yesButton.clicked.connect(handle_result_confirm)
+    result_dialog.exec_()
 
 def get_ipv6_address():
     """获取本机IPv6地址"""
@@ -584,7 +681,7 @@ def show_ipv6_dialog(parent, ipv6_address):
     port_dialog.yesButton.setText("确认")
     port_dialog.cancelButton.setText("取消")
     
-    if port_dialog.exec_() == port_dialog.Yes:
+    def handle_port_confirm():
         port = port_input.text().strip()
         if not port.isdigit():
             InfoBar.error(
@@ -598,7 +695,7 @@ def show_ipv6_dialog(parent, ipv6_address):
         result_dialog = MessageBoxBase(parent)
         result_dialog.setWindowTitle("IPV6 联机")
         
-        address_label = StrongBodyLabel(f"{ipv6_address}:{port}")
+        address_label = StrongBodyLabel(f"[{ipv6_address}]:{port}")
         address_label.setAlignment(Qt.AlignCenter)
         
         instruction_label = CaptionLabel("按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。")
@@ -610,15 +707,22 @@ def show_ipv6_dialog(parent, ipv6_address):
         result_dialog.yesButton.setText("确认")
         result_dialog.cancelButton.hide()  # 隐藏取消按钮
         
-        if result_dialog.exec_() == result_dialog.Yes:
+        def handle_result_confirm():
             # 复制到剪贴板
             clipboard = QApplication.clipboard()
-            clipboard.setText(f"{ipv6_address}:{port}")
+            clipboard.setText(f"[{ipv6_address}]:{port}")
             InfoBar.success(
                 title='复制成功',
                 content='IPV6地址和端口已复制到剪贴板',
                 parent=parent
             )
+        
+        result_dialog.yesButton.clicked.connect(handle_result_confirm)
+        result_dialog.exec_()
+    
+    port_dialog.yesButton.clicked.connect(handle_port_confirm)
+    
+    port_dialog.exec_()
 
 def setup_info_ui(self, widget):
     '''

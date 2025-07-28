@@ -277,7 +277,7 @@
         </widget>
        </item>
        <item>
-        <widget class="PushButton" name="PushButton">
+        <widget class="PushButton" name="StartOnlineClient">
          <property name="text">
           <string>开启联机服务</string>
          </property>
@@ -334,7 +334,7 @@
            </layout>
           </item>
           <item>
-           <widget class="StrongBodyLabel" name="StrongBodyLabel_3">
+           <widget class="StrongBodyLabel" name="OnlineClient_ClientTime">
             <property name="text">
              <string>19 分 36 秒</string>
             </property>
@@ -394,7 +394,7 @@
            </layout>
           </item>
           <item>
-           <widget class="StrongBodyLabel" name="StrongBodyLabel_4">
+           <widget class="StrongBodyLabel" name="OnlineClient_address">
             <property name="text">
              <string>http://pcfs.top:3399</string>
             </property>
