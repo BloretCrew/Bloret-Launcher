@@ -539,17 +539,22 @@ def setup_settings_ui(self, widget):
     else:
         log("未找到 Self_starting 控件")
 
-def setup_multiplayer_ui(self, widget):
+def setup_multiplayer_ui(self, widget, server_ip):
     """设定 Bloret Launcher 多人联机界面 UI 布局和操作"""
     # 获取IPv6地址
-    ipv6_address = get_ipv6_address()
+    ipv6_address_str = get_ipv6_address()
+    ipv6_address_label = widget.findChild(QLabel, "ipv6_address")
+
+    if ipv6_address_label:
+        ipv6_address_label.setText(ipv6_address_str or "无法获取IPv6地址")
+
     get_ipv6_btn = widget.findChild(QPushButton, "GetIPV6AddressButton")
     
     if get_ipv6_btn:
         # 根据是否有IPv6地址设置按钮状态
-        get_ipv6_btn.setEnabled(bool(ipv6_address))
+        get_ipv6_btn.setEnabled(bool(ipv6_address_str))
         # 连接按钮点击事件
-        get_ipv6_btn.clicked.connect(lambda: show_ipv6_dialog(self, ipv6_address))
+        get_ipv6_btn.clicked.connect(lambda: show_ipv6_dialog(self, ipv6_address_str))
     
     # 设置初始状态
     online_client_time_label = widget.findChild(QLabel, "OnlineClient_ClientTime")
@@ -564,10 +569,10 @@ def setup_multiplayer_ui(self, widget):
     # 连接StartOnlineClient按钮
     start_online_client_btn = widget.findChild(QPushButton, "StartOnlineClient")
     if start_online_client_btn:
-        start_online_client_btn.clicked.connect(lambda: start_online_client(self, widget))
+        start_online_client_btn.clicked.connect(lambda: start_online_client(self, server_ip))
 
 
-def start_online_client(parent, widget):
+def start_online_client(parent, server_ip):
     """启动在线客户端服务"""
     # 创建端口输入对话框
     port_dialog = MessageBoxBase(parent)
@@ -598,7 +603,7 @@ def start_online_client(parent, widget):
         try:
             # 将端口转换为整数再传递
             port_int = int(port)
-            connection_address = OnlineClient(port_int)
+            connection_address = OnlineClient(server_ip, port_int)
             
             # 显示连接地址对话框
             show_connection_address_dialog(parent, connection_address, port)

@@ -1,0 +1,12 @@
+serverAddr = "pcfs.top"
+serverPort = 7000
+[[proxies]]
+name = "11111"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 11111
+remotePort = 10001
+
+[auth]
+method = "token"
+token = "Bloret-PCFS-Token-Now-Rhedar-Detrital"

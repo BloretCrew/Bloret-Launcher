@@ -1,3 +1,4 @@
+from http import server
 from PyQt5.QtWidgets import QSystemTrayIcon, QApplication, QPushButton, QWidget, QLineEdit, QLabel, QFileDialog, QMessageBox
 from qfluentwidgets import MessageBox, SubtitleLabel, StrongBodyLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
 from PyQt5.QtGui import QIcon, QColor, QPalette
@@ -430,7 +431,7 @@ class MainWindow(FluentWindow):
         setup_info_ui(self,self.infoInterface)
         setup_BBS_ui(self,self.BBSInterface,server_ip)
         setup_Mod_ui(self,self.modInterface,server_ip)
-        setup_multiplayer_ui(self,self.multiplayerInterface)
+        setup_multiplayer_ui(self,self.multiplayerInterface, server_ip)
         setup_passport_ui(self,self.passportInterface,server_ip,self.homeInterface)
         setup_settings_ui(self,self.settingsInterface)
         setup_version_ui(self,self.versionInterface,minecraft_list,customize_list,MINECRAFT_DIR,self.homeInterface)

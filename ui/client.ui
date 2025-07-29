@@ -46,7 +46,7 @@
         <x>0</x>
         <y>0</y>
         <width>670</width>
-        <height>543</height>
+        <height>548</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -138,39 +138,6 @@
         </widget>
        </item>
        <item>
-        <widget class="CaptionLabel" name="CaptionLabel_11">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string>使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。</string>
-         </property>
-         <property name="textFormat">
-          <enum>Qt::MarkdownText</enum>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-         <property name="lightColor" stdset="0">
-          <color alpha="150">
-           <red>0</red>
-           <green>0</green>
-           <blue>0</blue>
-          </color>
-         </property>
-         <property name="darkColor" stdset="0">
-          <color alpha="200">
-           <red>255</red>
-           <green>255</green>
-           <blue>255</blue>
-          </color>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="CaptionLabel" name="CaptionLabel_12">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
@@ -179,7 +146,7 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string>**IPV6 是您的运营商提供的一项免费服务，不额外收费。** 已拥有的用户点击上方按钮直接使用</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。&lt;br/&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;IPV6 是您的运营商提供的一项免费服务，不额外收费。 &lt;/span&gt;已拥有的用户点击上方按钮直接使用。&lt;br/&gt;IPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="textFormat">
           <enum>Qt::MarkdownText</enum>
@@ -219,40 +186,7 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string>Online Client 是 Bloret 的一项开源项目，可为您提供高效的联机服务。</string>
-         </property>
-         <property name="textFormat">
-          <enum>Qt::MarkdownText</enum>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-         <property name="lightColor" stdset="0">
-          <color alpha="150">
-           <red>0</red>
-           <green>0</green>
-           <blue>0</blue>
-          </color>
-         </property>
-         <property name="darkColor" stdset="0">
-          <color alpha="200">
-           <red>255</red>
-           <green>255</green>
-           <blue>255</blue>
-          </color>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="CaptionLabel" name="CaptionLabel_10">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string>**在此处开启联机服务 ，对方无需安装 Bloret Launcher 就可一起参与联机。**</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Online Client 是 Bloret 的一项开源项目，可为您提供高效的联机服务。&lt;br/&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;在此处开启联机服务 ，对方无需安装 Bloret Launcher 就可一起参与联机。&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="textFormat">
           <enum>Qt::MarkdownText</enum>
