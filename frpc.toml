@@ -1,11 +1,11 @@
 serverAddr = "pcfs.top"
 serverPort = 7000
 [[proxies]]
-name = "11111"
+name = "25565"
 type = "tcp"
 localIP = "127.0.0.1"
-localPort = 11111
-remotePort = 10001
+localPort = 25565
+remotePort = 10009
 
 [auth]
 method = "token"

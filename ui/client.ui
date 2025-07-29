@@ -46,7 +46,7 @@
         <x>0</x>
         <y>0</y>
         <width>670</width>
-        <height>548</height>
+        <height>528</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -123,7 +123,7 @@
           <item>
            <widget class="StrongBodyLabel" name="ipv6_address">
             <property name="text">
-             <string>2001:0db8:86a3:08d3:1319:8a2e:0370:7344</string>
+             <string>------:------:------:------:------:------:------:------</string>
             </property>
            </widget>
           </item>
@@ -215,126 +215,6 @@
          <property name="text">
           <string>开启联机服务</string>
          </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="CardWidget" name="CardWidget_2">
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>70</height>
-          </size>
-         </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_3">
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_5">
-            <item>
-             <widget class="StrongBodyLabel" name="StrongBodyLabel">
-              <property name="text">
-               <string>服务器已连接时长</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="CaptionLabel" name="CaptionLabel_7">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>查看您计算机的 IPV6 配置</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-              <property name="lightColor" stdset="0">
-               <color alpha="150">
-                <red>0</red>
-                <green>0</green>
-                <blue>0</blue>
-               </color>
-              </property>
-              <property name="darkColor" stdset="0">
-               <color alpha="200">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
-               </color>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <widget class="StrongBodyLabel" name="OnlineClient_ClientTime">
-            <property name="text">
-             <string>19 分 36 秒</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="CardWidget" name="CardWidget_3">
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>70</height>
-          </size>
-         </property>
-         <layout class="QHBoxLayout" name="horizontalLayout">
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_3">
-            <item>
-             <widget class="StrongBodyLabel" name="StrongBodyLabel_2">
-              <property name="text">
-               <string>联机地址</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="CaptionLabel" name="CaptionLabel_8">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>在 Minecraft 客户端中，输入本地址即可加入</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-              <property name="lightColor" stdset="0">
-               <color alpha="150">
-                <red>0</red>
-                <green>0</green>
-                <blue>0</blue>
-               </color>
-              </property>
-              <property name="darkColor" stdset="0">
-               <color alpha="200">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
-               </color>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <widget class="StrongBodyLabel" name="OnlineClient_address">
-            <property name="text">
-             <string>http://pcfs.top:3399</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
         </widget>
        </item>
        <item>

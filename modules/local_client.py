@@ -90,6 +90,18 @@ def OnlineClient(server_ip, port):
     except requests.RequestException as e:
         log(f"网络请求失败: {str(e)}", level=logging.ERROR)
         return "网络请求失败"
+    except PermissionError as e:
+        error_msg = "权限错误：系统安全软件（如Windows Defender）可能阻止了frpc.exe的执行。请将frpc.exe添加到杀毒软件的白名单或排除列表中。"
+        log(f"{error_msg} 错误详情: {str(e)}", level=logging.ERROR)
+        return error_msg
+    except OSError as e:
+        if e.winerror == 225:  # ERROR_ACCESS_DISABLED_BY_POLICY
+            error_msg = "安全软件阻止：frpc.exe被安全软件识别为潜在威胁。请将该文件添加到杀毒软件的白名单或排除列表中。"
+            log(f"{error_msg} 错误详情: {str(e)}", level=logging.ERROR)
+            return error_msg
+        else:
+            log(f"操作系统错误: {str(e)}", level=logging.ERROR)
+            return f"操作系统错误: {str(e)}"
     except Exception as e:
         log(f"启动在线客户端时出错: {str(e)}", level=logging.ERROR)
         return f"启动失败: {str(e)}"

@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QL
 from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
-from PyQt5.QtCore import QUrl, Qt, QSize
+from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime
 import requests, json, logging, os, socket
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.systems import setup_startup_with_self_starting
@@ -543,16 +543,34 @@ def setup_multiplayer_ui(self, widget, server_ip):
     """设定 Bloret Launcher 多人联机界面 UI 布局和操作"""
     # 获取IPv6地址
     ipv6_address_str = get_ipv6_address()
+    log(f"检测到的IPv6地址: {ipv6_address_str if ipv6_address_str else '未找到可用IPv6地址'}")
+    
     ipv6_address_label = widget.findChild(QLabel, "ipv6_address")
-
     if ipv6_address_label:
-        ipv6_address_label.setText(ipv6_address_str or "无法获取IPv6地址")
+        if ipv6_address_str:
+            # 显示缩短的IPv6地址（只显示前8个字符）
+            ipv6_display = f"{ipv6_address_str[:8]}..." if len(ipv6_address_str) > 8 else ipv6_address_str
+            ipv6_address_label.setText(ipv6_display)
+        else:
+            ipv6_address_label.setText("无法获取IPv6地址")
+            log("未找到可用的IPv6地址，IPv6功能将被禁用")
 
     get_ipv6_btn = widget.findChild(QPushButton, "GetIPV6AddressButton")
-    
     if get_ipv6_btn:
         # 根据是否有IPv6地址设置按钮状态
-        get_ipv6_btn.setEnabled(bool(ipv6_address_str))
+        if ipv6_address_str:
+            get_ipv6_btn.setEnabled(True)
+            get_ipv6_btn.setToolTip("点击显示IPv6联机对话框")
+        else:
+            get_ipv6_btn.setEnabled(False)
+            get_ipv6_btn.setToolTip("未检测到IPv6地址，请确保您的网络支持IPv6")
+        
+        # 断开可能存在的重复连接
+        try:
+            get_ipv6_btn.clicked.disconnect()
+        except:
+            pass
+            
         # 连接按钮点击事件
         get_ipv6_btn.clicked.connect(lambda: show_ipv6_dialog(self, ipv6_address_str))
     
@@ -562,14 +580,28 @@ def setup_multiplayer_ui(self, widget, server_ip):
     
     if online_client_time_label:
         online_client_time_label.setText("--:--")
+        log("初始化OnlineClient_ClientTime标签")
+    else:
+        log("未找到OnlineClient_ClientTime标签")
     
     if online_client_address_label:
         online_client_address_label.setText("未连接")
+        log("初始化OnlineClient_address标签")
+    else:
+        log("未找到OnlineClient_address标签")
     
     # 连接StartOnlineClient按钮
     start_online_client_btn = widget.findChild(QPushButton, "StartOnlineClient")
     if start_online_client_btn:
+        # 断开可能存在的重复连接
+        try:
+            start_online_client_btn.clicked.disconnect()
+        except:
+            pass
         start_online_client_btn.clicked.connect(lambda: start_online_client(self, server_ip))
+        log("已连接StartOnlineClient按钮")
+    else:
+        log("未找到StartOnlineClient按钮")
 
 
 def start_online_client(parent, server_ip):
@@ -604,6 +636,23 @@ def start_online_client(parent, server_ip):
             # 将端口转换为整数再传递
             port_int = int(port)
             connection_address = OnlineClient(server_ip, port_int)
+            
+            # 检查是否返回了错误信息
+            if connection_address.startswith("权限错误：") or connection_address.startswith("安全软件阻止："):
+                InfoBar.error(
+                    title='启动失败',
+                    content=connection_address,
+                    parent=parent,
+                    duration=10000  # 显示更长时间以便用户阅读
+                )
+                return False
+            elif connection_address.startswith("启动失败:") or connection_address == "网络请求失败" or connection_address == "配置文件不存在" or connection_address == "frpc程序不存在" or connection_address == "获取连接信息失败":
+                InfoBar.error(
+                    title='启动失败',
+                    content=connection_address,
+                    parent=parent
+                )
+                return False
             
             # 显示连接地址对话框
             show_connection_address_dialog(parent, connection_address, port)
@@ -649,19 +698,111 @@ def show_connection_address_dialog(parent, connection_address, port):
         )
         
         # 更新界面上的地址和时间显示
-        # 注意：在实际应用中，这里应该启动一个定时器来更新时间
+        # 获取界面上的时间和地址标签
+        from PyQt5.QtWidgets import QLabel
+        from PyQt5.QtCore import QTimer, QDateTime
+        
+        # 通过parent.window()获取主窗口，再查找标签
+        # 这样可以确保在正确的窗口中查找组件
+        main_window = parent.window()
+        online_client_time_label = main_window.findChild(QLabel, "OnlineClient_ClientTime")
+        online_client_address_label = main_window.findChild(QLabel, "OnlineClient_address")
+        
+        if online_client_address_label:
+            online_client_address_label.setText(connection_address)
+            log(f"已更新连接地址标签: {connection_address}")
+        else:
+            # 如果通过window()找不到，尝试直接在parent中查找
+            online_client_address_label = parent.findChild(QLabel, "OnlineClient_address")
+            if online_client_address_label:
+                online_client_address_label.setText(connection_address)
+                log(f"已更新连接地址标签: {connection_address}")
+            else:
+                log("未找到OnlineClient_address标签")
+        
+        # 启动计时器更新连接时长
+        if online_client_time_label:
+            
+            # 记录开始时间
+            start_time = QDateTime.currentDateTime()
+            
+            # 创建定时器每秒更新时间显示
+            timer = QTimer()
+            timer.timeout.connect(lambda: update_connection_time(online_client_time_label, start_time))
+            timer.start(1000)  # 每秒更新一次
+            
+            # 将定时器保存到main_window对象中，以便后续可以停止它
+            main_window.online_client_timer = timer
+            main_window.online_client_start_time = start_time
+            
+            # 立即更新一次时间显示
+            update_connection_time(online_client_time_label, start_time)
+            log("已启动连接时长计时器")
+        else:
+            # 如果通过window()找不到，尝试直接在parent中查找
+            online_client_time_label = parent.findChild(QLabel, "OnlineClient_ClientTime")
+            if online_client_time_label:
+                # 记录开始时间
+                start_time = QDateTime.currentDateTime()
+                
+                # 创建定时器每秒更新时间显示
+                timer = QTimer()
+                timer.timeout.connect(lambda: update_connection_time(online_client_time_label, start_time))
+                timer.start(1000)  # 每秒更新一次
+                
+                # 将定时器保存到parent对象中，以便后续可以停止它
+                parent.online_client_timer = timer
+                parent.online_client_start_time = start_time
+                
+                # 立即更新一次时间显示
+                update_connection_time(online_client_time_label, start_time)
+                log("已启动连接时长计时器")
+            else:
+                log("未找到OnlineClient_ClientTime标签")
     
     result_dialog.yesButton.clicked.connect(handle_result_confirm)
     result_dialog.exec_()
 
+
+def update_connection_time(time_label, start_time):
+    """更新连接时长显示"""
+    from PyQt5.QtCore import QDateTime
+    
+    # 计算已连接的时间
+    current_time = QDateTime.currentDateTime()
+    elapsed = start_time.secsTo(current_time)
+    
+    # 转换为小时、分钟和秒
+    hours = elapsed // 3600
+    minutes = (elapsed % 3600) // 60
+    seconds = elapsed % 60
+    
+    # 格式化时间显示
+    time_text = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    if time_label:
+        # 确保标签存在后再更新
+        time_label.setText(time_text)
+        log(f"更新连接时长显示: {time_text}")
+    else:
+        log("未找到OnlineClient_ClientTime标签，无法更新连接时长显示")
+
+
 def get_ipv6_address():
-    """获取本机IPv6地址"""
+    """获取本机可用的IPv6地址"""
     try:
         # 获取所有网络接口的地址信息
         for addrinfo in socket.getaddrinfo(socket.gethostname(), None):
             ip_address = addrinfo[4][0]
-            # 检查是否为IPv6地址且不是本地回环地址
-            if ':' in ip_address and not ip_address.startswith('::') and not ip_address.startswith('fe80::'):
+            # 检查是否为IPv6地址且不是本地回环地址或链路本地地址
+            if ':' in ip_address and not ip_address.startswith('::1') and \
+               not ip_address.startswith('fe80::') and \
+               not ip_address.startswith('ff00::'):
+                # 尝试连接互联网以确认地址是否可达
+                s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+                s.settimeout(1)
+                # 使用 Google 的公共 DNS 服务器进行连接测试
+                s.connect(('2001:4860:4860::8888', 80))
+                s.close()
                 return ip_address
         return None
     except Exception as e:
