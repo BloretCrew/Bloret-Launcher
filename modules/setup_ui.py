@@ -618,6 +618,16 @@ def start_online_client(parent, server_ip):
     port_dialog.viewLayout.addWidget(port_label)
     port_dialog.viewLayout.addWidget(port_input)
     
+    # 添加动图
+    from PyQt5.QtWidgets import QLabel
+    from PyQt5.QtGui import QMovie
+    gif_label = QLabel()
+    movie = QMovie("ui/icon/OnlineClient.gif")
+    gif_label.setMovie(movie)
+    movie.start()
+    
+    port_dialog.viewLayout.addWidget(gif_label)
+    
     port_dialog.yesButton.setText("确认")
     port_dialog.cancelButton.setText("取消")
     
@@ -681,8 +691,17 @@ def show_connection_address_dialog(parent, connection_address, port):
     instruction_label = CaptionLabel("按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。")
     instruction_label.setAlignment(Qt.AlignCenter)
     
+    # 添加动图
+    from PyQt5.QtWidgets import QLabel
+    from PyQt5.QtGui import QMovie
+    gif_label = QLabel()
+    movie = QMovie("ui/icon/OnlineClient.gif")
+    gif_label.setMovie(movie)
+    movie.start()
+    
     result_dialog.viewLayout.addWidget(address_label)
     result_dialog.viewLayout.addWidget(instruction_label)
+    result_dialog.viewLayout.addWidget(gif_label)
     
     result_dialog.yesButton.setText("确认")
     result_dialog.cancelButton.hide()  # 隐藏取消按钮
@@ -824,6 +843,16 @@ def show_ipv6_dialog(parent, ipv6_address):
     port_dialog.viewLayout.addWidget(port_label)
     port_dialog.viewLayout.addWidget(port_input)
     
+    # 添加动图
+    from PyQt5.QtWidgets import QLabel
+    from PyQt5.QtGui import QMovie
+    gif_label = QLabel()
+    movie = QMovie("ui/icon/OnlineClient.gif")
+    gif_label.setMovie(movie)
+    movie.start()
+    
+    port_dialog.viewLayout.addWidget(gif_label)
+    
     port_dialog.yesButton.setText("确认")
     port_dialog.cancelButton.setText("取消")
     
@@ -847,8 +876,17 @@ def show_ipv6_dialog(parent, ipv6_address):
         instruction_label = CaptionLabel("按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。")
         instruction_label.setAlignment(Qt.AlignCenter)
         
+        # 添加动图
+        from PyQt5.QtWidgets import QLabel
+        from PyQt5.QtGui import QMovie
+        gif_label = QLabel()
+        movie = QMovie("ui/icon/OnlineClient.gif")
+        gif_label.setMovie(movie)
+        movie.start()
+        
         result_dialog.viewLayout.addWidget(address_label)
         result_dialog.viewLayout.addWidget(instruction_label)
+        result_dialog.viewLayout.addWidget(gif_label)
         
         result_dialog.yesButton.setText("确认")
         result_dialog.cancelButton.hide()  # 隐藏取消按钮
