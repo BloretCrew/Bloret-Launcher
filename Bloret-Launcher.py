@@ -541,7 +541,7 @@ class MainWindow(FluentWindow):
                     log(f"成功读取版本列表: {temp_list}")
             else:
                 temp_list = ["无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装"]
-                log(f"路径无效: {versions_path}", logging.ERROR)
+                log(f"路径无效: {versions_path}")
                 
             set_list = temp_list  # 最后统一赋值给全局变量
 
