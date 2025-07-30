@@ -65,12 +65,14 @@ def OnlineClient(server_ip, port):
         log("正在启动 frpc 客户端...")
         
         # 启动 frpc 进程
+        creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
         process = subprocess.Popen(
             [frpc_path, "-c", "frpc.toml"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            encoding='utf-8'
+            encoding='utf-8',
+            creationflags=creation_flags  # 隐藏控制台窗口（仅Windows）
         )
         
         # 读取并记录输出
