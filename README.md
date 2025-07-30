@@ -127,9 +127,9 @@
 ## 使用人数统计（实时）
 
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="http://pcfs.top:2/api/BL/madeuserpic" />
-   <source media="(prefers-color-scheme: light)" srcset="http://pcfs.top:2/api/BL/madeuserpic" />
-   <img alt="Bloret Launcher 实时新增使用人数" src="http://pcfs.top:2/api/BL/madeuserpic" />
+   <source media="(prefers-color-scheme: dark)" srcset="http://pcfs.eno.ink:2/api/BL/madeuserpic" />
+   <source media="(prefers-color-scheme: light)" srcset="http://pcfs.eno.ink:2/api/BL/madeuserpic" />
+   <img alt="Bloret Launcher 实时新增使用人数" src="http://pcfs.eno.ink:2/api/BL/madeuserpic" />
  </picture>
 
 ## 星标历史

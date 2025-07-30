@@ -7,7 +7,7 @@
     "welcome_user_count": "您是百络谷启动器的第 {user_count} 位用户",
     "update_available_title": "当前版本不是最新版",
     "update_available_content": "Bloret Launcher 貌似有个新新新版本\n你似乎正在运行 {current_version}，但事实上，百络谷启动器 {latest_version} 来啦！按下按钮自动更新。\n这个更新... {update_text}",
-    "update_error_title": "无法连接到 pcfs.top",
+    "update_error_title": "无法连接到 launcher.bloret.net",
     "update_error_content": "您无法连接到 PCFS 服务器来检查版本更新\n这可能是由于您的网络不佳？或是 PCFS 服务出现故障？\n请检查您的网络连接，或者稍后再试。\n我们等待了 3 秒，但它只显示：{error}",
     "run_game_title": "🔄️ 正在启动 {version}",
     "run_game_content": "正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",

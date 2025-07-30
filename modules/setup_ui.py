@@ -265,7 +265,7 @@ def setup_home_ui(self, widget):
 
     openblweb_button = widget.findChild(QPushButton, "openblweb")
     if openblweb_button:
-        openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("http://pcfs.top:2")))
+        openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://launcher.bloret.net")))
     self.run_cmcl_list(True)
     run_choose = widget.findChild(ComboBox, "run_choose")
     run_button = widget.findChild(QPushButton, "run")

@@ -24,7 +24,7 @@ def OnlineClient(server_ip, port):
         data = response.json()
         
         remote_port = data.get('port')
-        connection_address = "pcfs.top"
+        connection_address = "pcfs.eno.ink"
         
         if not remote_port or not connection_address:
             log("获取远程端口或连接地址失败", level=logging.ERROR)

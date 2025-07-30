@@ -1,4 +1,4 @@
-serverAddr = "pcfs.top"
+serverAddr = "pcfs.eno.ink"
 serverPort = 7000
 [[proxies]]
 name = "25565"

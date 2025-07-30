@@ -20,7 +20,7 @@ def open_BBBS_Reg_link(server_ip):
     QDesktopServices.openUrl(QUrl(server_ip+"bbs/reg/"))
     log("打开 BBBS 注册页面")
 def open_bloret_web():
-    QDesktopServices.openUrl(QUrl("http://pcfs.top:2"))
+    QDesktopServices.openUrl(QUrl("https://launcher.bloret.net/"))
     log("打开 Bloret Launcher 网页")
 def open_github_bloret():
     QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew"))
