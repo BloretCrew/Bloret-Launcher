@@ -7,3 +7,4 @@ configparser
 sip
 Send2Trash
 googletrans
+toml

@@ -80,6 +80,7 @@ jobs:
           --hidden-import=sip `
           --hidden-import=qfluentwidgets `
           --hidden-import=win11toast `
+          --hidden-import=toml `
           --paths=. `
           Bloret-Launcher.py
       shell: pwsh
@@ -261,6 +262,7 @@ jobs:
           --hidden-import=sip \
           --hidden-import=qfluentwidgets \
           --hidden-import=win11toast \
+          --hidden-import=toml \
           --paths=. \
           Bloret-Launcher.py
       shell: bash
@@ -340,6 +342,7 @@ jobs:
           --hidden-import=sip \
           --hidden-import=qfluentwidgets \
           --hidden-import=win11toast \
+          --hidden-import=toml \
           --paths=. \
           Bloret-Launcher.py
       shell: bash
