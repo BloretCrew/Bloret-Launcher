@@ -1,6 +1,6 @@
 ; MyAppVersion 的值会由 Github Actions 自动修改
 #define MyAppName "Bloret Launcher"
-#define MyAppVersion "7-Beta"
+#define MyAppVersion "7.1-Beta"
 #define MyAppPublisher "Bloret"
 #define MyAppURL "http://pcfs.top:2"
 #define MyAppExeName "Bloret-Launcher.exe"
