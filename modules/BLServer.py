@@ -120,7 +120,7 @@ def check_for_updates(self,server_ip):
             except Exception as e:
                 handle_exception(e)
                 log(f"检查更新时发生错误: {e}", logging.ERROR)
-                log(f"无法连接到 {server_ip}", logging.ERROR)
+                log("无法连接到 pcfs.eno.ink", logging.ERROR)
                 update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': '无法连接到服务器 ❌'})
         else:
             log("本地模式已启用，检查更新 的过程已跳过。")
