@@ -16,7 +16,7 @@ from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
 # 全局变量
-server_ip = "https://pcfs.eno.ink:2/" # Bloret Launcher Server 服务器地址 （尾部带斜杠）
+server_ip = "http://pcfs.eno.ink:2/" # Bloret Launcher Server 服务器地址 （尾部带斜杠）
 ver_id_bloret = ['1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21']
 ver_id_main = []
 ver_id_short = []
