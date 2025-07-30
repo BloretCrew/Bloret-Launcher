@@ -561,7 +561,7 @@ class MainWindow(FluentWindow):
             else:
                 return customize_list
         except Exception as e:
-            handle_exception(e)
+            # handle_exception(e)
             log(f"读取版本列表失败: {e}", logging.ERROR)
             set_list = ["无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装"]
     def run_cmcl(self, version):
