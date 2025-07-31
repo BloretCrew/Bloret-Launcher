@@ -56,6 +56,7 @@ jobs:
         if (-not (Test-Path "cmcl.blank.json")) { Write-Host "cmcl.blank.json not found"; exit 1 }
         if (-not (Test-Path "frpc.exe")) { Write-Host "frpc.exe not found"; exit 1 }
         if (-not (Test-Path "frpc.toml")) { Write-Host "frpc.toml not found"; exit 1 }
+        if (-not (Test-Path "JavaWrapper.jar")) { Write-Host "JavaWrapper.jar not found"; exit 1 }
       shell: pwsh
 
     - name: 设置 Python
@@ -81,6 +82,7 @@ jobs:
           --add-data "cmcl.blank.json;." `
           --add-data "frpc.exe;." `
           --add-data "frpc.toml;." `
+          --add-data "JavaWrapper.jar;." `
           --hidden-import=sip `
           --hidden-import=qfluentwidgets `
           --hidden-import=win11toast `
@@ -106,6 +108,7 @@ jobs:
         cp -r bloret.ico ${{ env.OUTPUT_DIR }}/
         cp -r frpc.exe ${{ env.OUTPUT_DIR }}/
         cp -r frpc.toml ${{ env.OUTPUT_DIR }}/
+        cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
 
     - name: 清理旧压缩包
       run: |
@@ -243,6 +246,7 @@ jobs:
         [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
         [ -f "frpc.exe" ] || (echo "frpc.exe not found" && exit 1)
         [ -f "frpc.toml" ] || (echo "frpc.toml not found" && exit 1)
+        [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
       shell: bash
     - name: 设置 Python
       uses: actions/setup-python@v2
@@ -269,6 +273,7 @@ jobs:
           --add-data "cmcl.blank.json:." \
           --add-data "frpc.exe:." \
           --add-data "frpc.toml:." \
+          --add-data "JavaWrapper.jar:." \
           --hidden-import=sip \
           --hidden-import=qfluentwidgets \
           --hidden-import=win11toast \
@@ -293,6 +298,7 @@ jobs:
         cp bloret.ico ${{ env.OUTPUT_DIR }}/
         cp frpc.exe ${{ env.OUTPUT_DIR }}/
         cp frpc.toml ${{ env.OUTPUT_DIR }}/
+        cp JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
       shell: bash
     - name: 清理旧压缩包
       run: |
@@ -329,6 +335,7 @@ jobs:
         [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
         [ -f "frpc.exe" ] || (echo "frpc.exe not found" && exit 1)
         [ -f "frpc.toml" ] || (echo "frpc.toml not found" && exit 1)
+        [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
       shell: bash
     - name: 设置 Python
       uses: actions/setup-python@v2
@@ -355,6 +362,7 @@ jobs:
           --add-data "cmcl.blank.json:." \
           --add-data "frpc.exe:." \
           --add-data "frpc.toml:." \
+          --add-data "JavaWrapper.jar:." \
           --hidden-import=sip \
           --hidden-import=qfluentwidgets \
           --hidden-import=win11toast \
@@ -379,6 +387,7 @@ jobs:
         cp bloret.ico ${{ env.OUTPUT_DIR }}/
         cp frpc.exe ${{ env.OUTPUT_DIR }}/
         cp frpc.toml ${{ env.OUTPUT_DIR }}/
+        cp JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
       shell: bash
     - name: 清理旧压缩包
       run: |

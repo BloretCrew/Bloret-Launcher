@@ -62,6 +62,7 @@ Source: "output\update.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\bloret.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\frpc.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\frpc.toml"; DestDir: "{app}"; Flags: ignoreversion
+Source: "output\JavaWrapper.jar"; DestDir: "{app}"; Flags: ignoreversion
 ; Source: "output\icons\*"; DestDir: "{app}\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "output\ui\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; 注意：不要在任何共享系统文件上使用 "Flags: ignoreversion"

@@ -350,23 +350,30 @@ def setup_download_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInterfa
         fabric_choose.addItems(fabric_ver)
         fabric_choose.setCurrentText("不安装")
 
-    minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
+    # 设置minecraft_choose下拉框
+    if minecraft_choose:
+        # 清空并添加版本列表
+        minecraft_choose.clear()
+        # 确保ver_id_bloret不为None且不为空
+        if ver_id_bloret is not None and len(ver_id_bloret) > 0:
+            minecraft_choose.addItems(ver_id_bloret)
+        else:
+            # 如果ver_id_bloret为空，则添加默认版本列表
+            minecraft_choose.addItems(["1.21.7", "1.21.8"])
+            
     vername_edit = widget.findChild(LineEdit, "vername_edit")
     if minecraft_choose and vername_edit:
         minecraft_choose.currentTextChanged.connect(vername_edit.setText)
 
     # 默认填入百络谷支持版本的第一项
     if minecraft_choose:
-        minecraft_choose.clear()
-        if not self.config.get('localmod', False):
-            if ver_id_bloret is None:
-                ver_id_bloret = []
-            minecraft_choose.addItems(ver_id_bloret)
-        else:
-            minecraft_choose.addItems(["本地模式已启用，无法下载版本"])
         vername_edit = widget.findChild(LineEdit, "vername_edit")
-        if vername_edit and ver_id_bloret:
+        # 只有当ver_id_bloret有效且有内容时才设置第一个版本为默认值
+        if vername_edit and ver_id_bloret is not None and len(ver_id_bloret) > 0:
             vername_edit.setText(ver_id_bloret[0])
+        # 如果ver_id_bloret为空，则设置默认值为"1.21.7"
+        elif vername_edit:
+            vername_edit.setText("1.21.7")
 
     Customize_choose = widget.findChild(QPushButton, "Customize_choose")
     if Customize_choose:
@@ -956,7 +963,7 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     layout.addWidget(label)
 
                     def create_minecraft_context_menu(pos, label_now, card_now, version_name=minecraft_list[i]):
-                        menu = RoundMenu(card_now)
+                        menu = RoundMenu()
                         info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name))
                         launch_action = Action(FluentIcon.PLAY, '启动', triggered=lambda: self.run_cmcl(version_name))
                         rename_action = Action(FluentIcon.EDIT, '更名', triggered=lambda: Change_minecraft_version_name(self,version_name,label_now, MINECRAFT_DIR,homeInterface))
@@ -990,7 +997,7 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     layout.addWidget(label)
 
                     def create_customize_context_menu(pos, label_now, card_now, version_name=customize_list[i]):
-                        menu = RoundMenu(card_now)
+                        menu = RoundMenu()
                         info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name))
                         launch_action = Action(FluentIcon.PLAY, '启动', triggered=lambda: self.run_cmcl(version_name))
                         rename_action = Action(FluentIcon.EDIT, '更名', triggered=lambda: Change_Customize_name(self,version_name, label_now, homeInterface))

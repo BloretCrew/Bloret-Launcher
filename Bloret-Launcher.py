@@ -15,14 +15,15 @@ from modules.customize import CustomizeRun
 from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
+from modules.versions import Get_Run_Script
 # 全局变量
 server_ip = "http://pcfs.eno.ink:2/" # Bloret Launcher Server 服务器地址 （尾部带斜杠）
-ver_id_bloret = ['1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21']
 ver_id_main = []
 ver_id_short = []
 ver_id = [] 
 ver_url = {}
 ver_id_long = []
+ver_id_bloret = ['1.21.7', '1.21.8']
 set_list = ["你还未安装任何版本哦，请前往下载页面安装"]
 BL_update_text = ""
 BL_latest_ver = 0
@@ -95,15 +96,16 @@ class RunScriptThread(QThread):
     last_output_received = pyqtSignal(str)  # 新增信号
     
     def run(self):
-        script_path = "run.ps1"
+        script_path = "run.bat"
         try:
             process = subprocess.Popen(
-                ["powershell", "-ExecutionPolicy", "Bypass", "-File", script_path],
+                [script_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
                 encoding='utf-8',
-                errors='replace',  # 此处统一处理解码错误
+                errors='replace',
+                shell=True,
                 creationflags=subprocess.CREATE_NO_WINDOW  # 隐藏控制台窗口
             )
             last_line = ""
@@ -155,7 +157,8 @@ class LoadMinecraftVersionsThread(QThread):
                     elif version["type"] in ["old_alpha", "old_beta"]:
                         ver_id_long.append(version["id"])
             if self.version_type == "百络谷支持版本":
-                self.versions_loaded.emit(ver_id_bloret)
+                # 直接使用固定的版本列表
+                self.versions_loaded.emit(["1.21.7", "1.21.8"])
             elif self.version_type == "正式版本":
                 self.versions_loaded.emit(ver_id_main)
             elif self.version_type == "快照版本":
@@ -583,23 +586,25 @@ class MainWindow(FluentWindow):
                 return
             self.is_running = True
             log(f"正在启动 {version}")
-            if os.path.exists("run.ps1"):
-                os.remove("run.ps1")
-            subprocess.run(["cmcl", "version", version, "--export-script-ps=run.ps1"])
+            if os.path.exists("run.bat"):
+                os.remove("run.bat")
+            script_content = Get_Run_Script(version)
+            with open("run.bat", "w", encoding="utf-8") as f:
+                f.write(script_content)
 
-            # 替换 CMCL 2.2.2 → Bloret Launcher
-            with open("run.ps1", "r+", encoding='utf-8') as f:
-                content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
-                f.seek(0)
-                f.write(content)
-                f.truncate()
+            # # 替换 CMCL 2.2.2 → Bloret Launcher
+            # with open("run.ps1", "r+", encoding='utf-8') as f:
+            #     content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
+            #     f.seek(0)
+            #     f.write(content)
+            #     f.truncate()
 
-            # 替换 CMCL → Bloret-Launcher
-            with open("run.ps1", "r+", encoding='utf-8') as f:
-                content = f.read().replace('CMCL', 'Bloret-Launcher')
-                f.seek(0)
-                f.write(content)
-                f.truncate()
+            # # 替换 CMCL → Bloret-Launcher
+            # with open("run.ps1", "r+", encoding='utf-8') as f:
+            #     content = f.read().replace('CMCL', 'Bloret-Launcher')
+            #     f.seek(0)
+            #     f.write(content)
+            #     f.truncate()
 
             run_button = self.sender()  # 获取按钮对象（可能为 None）
             if run_button is not None:
@@ -849,9 +854,16 @@ class MainWindow(FluentWindow):
                                 ver_id_short.append(version["id"])
                             elif version["type"] in ["old_alpha", "old_beta"]:
                                 ver_id_long.append(version["id"])
+            
+                    # 更新UI中的minecraft_choose下拉框
                     minecraft_choose.clear()
                     if version_type == "百络谷支持版本":
-                        minecraft_choose.addItems(ver_id_bloret)
+                        # 确保ver_id_bloret不为None且不为空
+                        if ver_id_bloret is not None and len(ver_id_bloret) > 0:
+                            minecraft_choose.addItems(ver_id_bloret)
+                        else:
+                            # 如果ver_id_bloret为空，则添加默认版本列表
+                            minecraft_choose.addItems(["1.21.7", "1.21.8"])
                     elif version_type == "正式版本":
                         minecraft_choose.addItems(ver_id_main)
                     elif version_type == "快照版本":
@@ -860,6 +872,7 @@ class MainWindow(FluentWindow):
                         minecraft_choose.addItems(ver_id_long)
                     else:
                         log("未知的版本类型", logging.ERROR)
+            
                     log(f"最新发布版本: {latest_release}")
                     log(f"最新快照版本: {latest_snapshot}")
                     log("Minecraft 版本列表已更新")
@@ -951,7 +964,7 @@ class MainWindow(FluentWindow):
         
                 log(f"下载命令: {command}")
         
-                self.download_thread = self.DownloadThread(cmcl_path, command, self.log)
+                self.download_thread = self.DownloadThread(cmcl_path, command, log)
                 self.threads.append(self.download_thread)
                 self.download_thread.output_received.connect(self.log_output)
                 self.download_thread.output_received.connect(lambda text: download_button.setText(text[:70] + '...' if len(text) > 70 else text))
@@ -1347,13 +1360,13 @@ class MainWindow(FluentWindow):
             teaching_tip.close()
         InfoBar.error(
             title='❌ 运行失败',
-            content=f"run.ps1 运行失败: {error}",
+            content=f"run.bat 运行失败: {error}",
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=5000,
             parent=self
         )
-        log(f"run.ps1 运行失败: {error}", logging.ERROR)
+        log(f"run.bat 运行失败: {error}", logging.ERROR)
         self.is_running = False  # 重置标志变量
     def update_show_text(self, text):
         self.show_text.setText(text) 
