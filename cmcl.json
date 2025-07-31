@@ -1,18 +1,7 @@
 {
-  "language-run": "zh",
   "language": "zh",
   "downloadSource": 1,
   "checkAccountBeforeStart": false,
-  "accounts": [{
-    "expiresIn": 1754022832844,
-    "loginMethod": 2,
-    "playerName": "Detritalw",
-    "id": "cf535bd4-ba05-4b3e-9c69-2a7733d6494b",
-    "accessToken": "eyJraWQiOiIwNDkxODEiLCJhbGciOiJSUzI1NiJ9.eyJ4dWlkIjoiMjUzNTQ1MDIxMzQ2OTExMSIsImFnZyI6IkFkdWx0Iiwic3ViIjoiY2Y1MzViZDQtYmEwNS00YjNlLTljNjktMmE3NzMzZDY0OTRiIiwiYXV0aCI6IlhCT1giLCJucyI6ImRlZmF1bHQiLCJyb2xlcyI6W10sImlzcyI6ImF1dGhlbnRpY2F0aW9uIiwiZmxhZ3MiOlsib3JkZXJzXzIwMjIiLCJtdWx0aXBsYXllciIsInR3b2ZhY3RvcmF1dGgiLCJtc2FtaWdyYXRpb25fc3RhZ2U0Il0sInByb2ZpbGVzIjp7Im1jIjoiZjI4MmRkYTAtNjlhOS00Nzg3LWIxMmItYWExNmExOTM5ZmM0In0sInBsYXRmb3JtIjoiUENfTEFVTkNIRVIiLCJwZmQiOlt7InR5cGUiOiJtYyIsImlkIjoiZjI4MmRkYTAtNjlhOS00Nzg3LWIxMmItYWExNmExOTM5ZmM0IiwibmFtZSI6IkRldHJpdGFsdyJ9XSwibmJmIjoxNzUzOTM2NDMyLCJleHAiOjE3NTQwMjI4MzIsImlhdCI6MTc1MzkzNjQzMn0.mBLYq__6YMu01BKrlvE0pzesKKoWQv-YoJ6CKBFvQwCTlLPIW5QZ7Vq24okzic0PacCicHBXiwrXUKziFMl3ACqEGiR33lVS2AeOI0wjKsJCrltLRPpcC6rx_rsjsf5bL-h-be_KJNi1SxvQCHSJKjnvxD2tvXdF2cbVfkj5SG3IUmDjD8e0WX-lDQ6_96lCQvTpt-i6FH25POQ7OLvFWAJqt80nTfcbGY2K9ChKrR-x1Eod9yi5pcz4kWf_Z52tcHGLzsiqkthjH63jAPY0uttmG4y-48K9TJifdsgPR5O7EM_mdBser3Yj-gJ3Jlavc2yS0zEycNG6W8IrfTMkLg",
-    "tokenType": "bearer",
-    "uuid": "f282dda069a94787b12baa16a1939fc4",
-    "selected": false,
-    "refreshToken": "M.C539_BAY.0.U.-CiEvfGsZYfWaLhrJaAjs16JMHiWP*RxF*bh!*MOM68SXJwt0AMWX8GnBkU2WXyK8Z0zyq5cg2RHHwlpq3ARjSS8sKEvZ87trxNUIkPQAnDFcoAoG9w7QIbfNgUkTSdHoGWXIKhEUydJVXNwXAHXStEuduunHVmxvk4SchVUSVMy8GcqefJx8OuZHdiLWWGQJNrYYWVIVJ98ciF!oVHNpqKOS*wXZWFKPtnzCXzoo0BljR3kyeRs9u!*aeH9QzfeeJrcIbZ6suGTY87PAFlfVD6oyukp!Icg3rEdqLFWJiw0o4oLJz1Ix5Rjgzms!QJfTlkZ0Dq5l7pyq1QGsPsCu2fpj2gLwhmG5GkDlPByEiXu69iZANauKq2DqSVMUZFfYdKLHRYN9a2ffnYDJHUMRalM$"
-  }],
+  "accounts": [],
   "printStartupInfo": true
 }
