@@ -26,6 +26,12 @@
 
 ![Show](img/show.gif)
 
+## 联机使用指南
+![](ui/icon/OnlineClient.gif)
+然后将获取到的端口输入至 Bloret Launcher 中。您将获得一个地址，让您的好友像进入服务器一样加入您的世界。
+> [!NOTE]
+> 使用 Bloret Launcher 联机，对方无需安装 Bloret Launcher。
+
 > [!NOTE]
 > Bloret Launcher 现已加入 [Windows 包管理器 ( Windows Package Manager )](https://github.com/microsoft/winget-cli)
 > 因此，现在您可以在终端中输入以下命令快速安装 百络谷启动器
