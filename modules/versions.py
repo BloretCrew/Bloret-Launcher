@@ -394,17 +394,17 @@ def Change_Customize_name(self,version,label,homeInterface):
             parent=self
         )
 
-
 def Get_Run_Script(version):
     """
     根据 cmcl.json 的内容生成启动 .minecraft 文件夹中指定版本的命令
+    支持 Fabric 加载器启动
     不使用 cmcl.exe，而是直接生成启动命令
     
     Args:
         version (str): 要启动的 Minecraft 版本号
         
     Returns:
-        str: 启动命令（PowerShell格式）
+        str: 启动命令（批处理格式）
     """
     
     # 检查 cmcl.json 文件是否存在
@@ -437,10 +437,8 @@ def Get_Run_Script(version):
     if not os.path.exists(client_jar_path):
         raise FileNotFoundError(f"客户端 JAR 文件 {client_jar_path} 不存在")
     
-    # 获取 Java 路径 (使用系统默认 Java)
-    java_path = "java"
-    if platform.system() == "Windows":
-        java_path = "javaw"  # Windows 下使用 javaw 避免显示控制台
+    # 获取 Java 路径 (使用指定的 Zulu JDK 路径)
+    java_path = r"C:\Program Files\Zulu\zulu-23\bin\java.exe"
     
     # 获取账户信息
     account_info = None
@@ -450,13 +448,13 @@ def Get_Run_Script(version):
                            cmcl_data["accounts"][0])
     
     # 设置用户名
-    username = "Player"
+    username = "Detritalw"
     if account_info:
-        username = account_info.get("playerName", "Player")
+        username = account_info.get("playerName", "Detritalw")
     
     # 构建基本启动参数
     launch_args = [
-        java_path,
+        f'"{java_path}"',  # Java路径需要用引号包围
         "-Dfile.encoding=COMPAT",
         "-Dstderr.encoding=UTF-8", 
         "-Dstdout.encoding=UTF-8",
@@ -466,25 +464,22 @@ def Get_Run_Script(version):
         "-Djdk.lang.Process.allowAmbiguousCommands=true",
         "-Dfml.ignoreInvalidMinecraftCertificates=True",
         "-Dfml.ignorePatchDiscrepancies=True",
-        "-Dlog4j2.formatMsgNoLookups=true"
+        "-Dlog4j2.formatMsgNoLookups=true",
+        "-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump"
     ]
-    
-    # 添加操作系统特定的JVM参数
-    if platform.system() == "Windows":
-        launch_args.append("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump")
     
     # 添加 Native 库路径参数
     natives_path = os.path.join(versions_dir, f"{version}-natives")
     launch_args.extend([
-        f"-Djava.library.path={natives_path}",
-        f"-Djna.tmpdir={natives_path}",
-        f"-Dorg.lwjgl.system.SharedLibraryExtractPath={natives_path}",
-        f"-Dio.netty.native.workdir={natives_path}"
+        f'-Djava.library.path="{natives_path}"',
+        f'-Djna.tmpdir="{natives_path}"',
+        f'-Dorg.lwjgl.system.SharedLibraryExtractPath="{natives_path}"',
+        f'-Dio.netty.native.workdir="{natives_path}"'
     ])
     
     # 添加启动器标识参数
     launch_args.extend([
-        "-Dminecraft.launcher.brand=Bloret Launcher",
+        "-Dminecraft.launcher.brand=PCL",
         "-Dminecraft.launcher.version=361"
     ])
     
@@ -492,6 +487,7 @@ def Get_Run_Script(version):
     classpath = []
     
     # 添加所有依赖库
+    libraries_dir = os.path.join(minecraft_dir, "libraries")
     if "libraries" in version_data:
         for lib in version_data["libraries"]:
             # 检查库是否适用于当前系统
@@ -508,87 +504,198 @@ def Get_Run_Script(version):
                             should_include = True
                             break
             
-            if should_include and "downloads" in lib and "artifact" in lib["downloads"]:
-                lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
-                if os.path.exists(lib_path):
-                    classpath.append(lib_path)
+            if should_include:
+                lib_path = None
+                if "downloads" in lib and "artifact" in lib["downloads"]:
+                    lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
+                elif "name" in lib:
+                    # 处理 Maven 风格的库名称
+                    parts = lib["name"].split(":")
+                    if len(parts) >= 3:
+                        group_id, artifact_id, version = parts[0:3]
+                        relative_path = os.path.join(
+                            group_id.replace(".", "/"),
+                            artifact_id,
+                            version,
+                            f"{artifact_id}-{version}.jar"
+                        )
+                        lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
+                
+                if lib_path and os.path.exists(lib_path):
+                    if "org.ow2.asm" not in lib.get("name", "").lower():
+                        classpath.append(lib_path)
     
-    # 添加客户端 JAR
+    # 检查是否为 Fabric 版本
+    is_fabric = "fabric" in version.lower() or any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", []))
+    
+    # 添加 Fabric 特定参数和处理
+    if is_fabric:
+        launch_args.append("-DFabricMcEmu=net.minecraft.client.main.Main")
+        
+        # 用于存储所有库
+        fabric_libs = []
+        # 跟踪已添加的ASM库
+        asm_libs = {}
+        
+        # 添加 Fabric 版本文件夹中的所有 JAR 文件
+        fabric_version_dir = os.path.join(versions_dir, version)
+        if os.path.exists(fabric_version_dir):
+            for file in os.listdir(fabric_version_dir):
+                if file.endswith('.jar') and 'fabric' in file.lower():
+                    jar_path = os.path.join(fabric_version_dir, file)
+                    fabric_libs.append(jar_path)
+        
+        # 首先添加 Fabric Loader 核心库和关键依赖
+        fabric_loader_libs = [
+            "net/fabricmc/fabric-loader",
+            "net/fabricmc/sponge-mixin",
+            "net/fabricmc/intermediary",
+            "net/fabricmc/fabric-api",
+            "net/fabricmc/fabric",
+            "net/fabricmc/tiny-mappings-parser",
+            "net/fabricmc/tiny-remapper",
+            "net/fabricmc/access-widener"
+        ]
+        
+        # 跟踪已添加的ASM库
+        asm_libs = {}  # 使用字典跟踪每个ASM模块的最高版本
+        
+        for lib in version_data.get("libraries", []):
+            lib_name = lib.get("name", "").lower()
+            lib_path = None
+            
+            # 检查是否为 Fabric 相关库或关键依赖
+            if "downloads" in lib and "artifact" in lib["downloads"]:
+                lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
+            elif "name" in lib:
+                # 处理 Maven 风格的库名称
+                parts = lib["name"].split(":")
+                if len(parts) >= 3:
+                    group_id, artifact_id, version = parts[0:3]
+                    relative_path = os.path.join(
+                        group_id.replace(".", "/"),
+                        artifact_id,
+                        version,
+                        f"{artifact_id}-{version}.jar"
+                    )
+                    lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
+            
+            if lib_path and os.path.exists(lib_path):
+                # 处理ASM库
+                if "org.ow2.asm" in lib_name:
+                    # 从库名中提取版本号和模块名
+                    parts = lib_name.split(":")
+                    if len(parts) >= 3:
+                        asm_module = parts[1]  # 例如 "asm", "asm-commons" 等
+                        version = parts[2]  # 版本号
+                        
+                        # 如果这是一个更高版本，或者这个模块还没有被记录
+                        if asm_module not in asm_libs or version > asm_libs[asm_module]["version"]:
+                            asm_libs[asm_module] = {"version": version, "path": lib_path}
+                    continue  # 跳过当前的库添加，稍后会统一添加ASM库
+                        
+                # 添加Fabric核心库
+                elif any(fabric_lib in lib_name for fabric_lib in fabric_loader_libs):
+                    if "fabric-loader" in lib_name or "intermediary" in lib_name:
+                        fabric_libs.insert(0, lib_path)  # 放在前面
+                    else:
+                        fabric_libs.append(lib_path)  # 其他的放在后面
+                # 其他 Fabric 相关库
+                elif "fabric" in lib_name or "mixin" in lib_name:
+                    fabric_libs.append(lib_path)
+                
+            # 记录找到的库
+            if lib_path and os.path.exists(lib_path):
+                log(f"已添加库: {lib_path}")
+        
+        # 按照特定顺序构建最终的类路径
+        final_classpath = []
+        
+        # 1. 添加 ASM 库（按特定顺序）
+        asm_modules_order = ["asm", "asm-commons", "asm-tree", "asm-analysis", "asm-util"]
+        for module in asm_modules_order:
+            if module in asm_libs:
+                final_classpath.append(asm_libs[module]["path"])
+                log(f"添加ASM库 {module} 版本 {asm_libs[module]['version']}")
+        
+        # 2. 添加 Fabric 核心库
+        final_classpath.extend(fabric_libs)
+        
+        # 3. 添加其他所有库
+        final_classpath.extend(classpath)
+        
+        # 更新类路径
+        classpath = final_classpath
+    
+    # 添加客户端 JAR 到 classpath
     classpath.append(client_jar_path)
     
     # 添加类路径参数
     launch_args.append("-cp")
-    launch_args.append(";".join(classpath))  # Windows 使用分号分隔
+    launch_args.append('"' + ";".join(classpath) + '"')  # Windows 使用分号分隔
     
     # 添加内存参数
     launch_args.extend([
-        "-Xmn721m",
-        "-Xmx4812m"
+        "-Xmn844m",
+        "-Xmx5632m"
     ])
     
-    # 添加模块导出参数
-    launch_args.append("--add-exports")
-    launch_args.append("cpw.mods.bootstraplauncher/cpw.mods.bootstraplauncher=ALL-UNNAMED")
-    
     # 添加自定义参数
-    launch_args.append(f"-Doolloo.jlw.tmpdir={os.path.join(os.getcwd(), 'PCL')}")
+    launch_args.append(f'-Doolloo.jlw.tmpdir="{os.path.join(os.getcwd(), "PCL")}"')
     
-    # 添加主类 JAR
-    launch_args.append("-jar")
-    launch_args.append(os.path.join(os.getcwd(), "JavaWrapper.jar"))
-    
-    # 添加主类
-    launch_args.append("net.minecraft.client.main.Main")
+    # 添加主类和参数
+    if is_fabric:
+        # Fabric 使用 KnotClient 主类而不是 -jar 参数
+        launch_args.append("net.fabricmc.loader.impl.launch.knot.KnotClient")
+    else:
+        # 原始 Minecraft 启动方式
+        launch_args.append("-jar")
+        launch_args.append(f'"{os.path.join(os.getcwd(), "JavaWrapper.jar")}"')
+        launch_args.append("net.minecraft.client.main.Main")
     
     # 添加游戏参数
     game_dir = os.path.join(minecraft_dir, "versions", version)
     assets_dir = os.path.join(minecraft_dir, "assets")
     
+    # 获取资产索引
+    asset_index = version_data.get("assetIndex", {}).get("id", version)
+    
+    # 设置 versionType
+    version_type = "fabric" if is_fabric else "PCL"
+    
     launch_args.extend([
         "--username", username,
         "--version", version,
-        "--gameDir", game_dir,
-        "--assetsDir", assets_dir,
-        "--assetIndex", str(version_data.get("assets", version)),
-        "--uuid", account_info.get("uuid", "") if account_info else "00000000000000000000000000000000",
-        "--accessToken", account_info.get("accessToken", "") if account_info else "00000000000000000000000000000000",
+        "--gameDir", f'"{game_dir}"',
+        "--assetsDir", f'"{assets_dir}"',
+        "--assetIndex", str(asset_index),
+        "--uuid", account_info.get("uuid", "f282dda069a94787b12baa16a1939fc4") if account_info else "f282dda069a94787b12baa16a1939fc4",
+        "--accessToken", account_info.get("accessToken", "eyJraFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFYksJg") if account_info else "eyJraFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFYksJg",
         "--clientId", "${clientid}",
         "--xuid", "${auth_xuid}",
         "--userType", "msa",
-        "--versionType", "Bloret Launcher",
+        "--versionType", version_type,
         "--width", "854",
         "--height", "480"
     ])
     
-    # 构建 PowerShell 命令
-    formatted_args = []
-    for arg in launch_args:
-        # 对于包含空格、特殊字符或路径的参数，用双引号包围
-        if isinstance(arg, str):
-            # Java路径不需要引号
-            if arg == java_path:
-                formatted_args.append(arg)
-            # 包含空格的参数需要引号
-            elif " " in arg and not (arg.startswith('"') and arg.endswith('"')):
-                # 转义引号内的引号
-                escaped_arg = arg.replace('"', '""') if '"' in arg else arg
-                formatted_args.append(f'"{escaped_arg}"')
-            # 路径参数需要引号
-            elif (arg.endswith(".jar") or os.sep in arg) and "=" not in arg:
-                if not (arg.startswith('"') and arg.endswith('"')):
-                    formatted_args.append(f'"{arg}"')
-                else:
-                    formatted_args.append(arg)
-            # JVM参数通常不需要额外引号
-            elif arg.startswith("-D") or arg.startswith("-X") or "=" in arg:
-                formatted_args.append(arg)
-            # 其他参数保持原样
-            else:
-                formatted_args.append(arg)
-        else:
-            formatted_args.append(str(arg))
+    # 构建命令
+    bat_command = " ".join(launch_args)
     
-    ps_command = " ".join(formatted_args)
-    
-    log(f"生成的启动命令: {ps_command}")
-    return ps_command
+    log(f"生成的启动命令: {bat_command}")
+    return bat_command
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
