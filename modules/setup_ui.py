@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy, QApplication
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
 from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime
@@ -10,8 +10,8 @@ from modules.log import log, importlog, clear_log_files
 from modules.Bloret_PassPort import Bloret_PassPort_Account_login,Bloret_PassPort_Account_logout
 from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
-from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder
-from modules.modrinth import search_mods, Get_Mod_File_Download_Url
+from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder, InstallMinecraftVersion
+from modules.modrinth import search_mods, Get_Mod_File_Download_Url, add_mrpack
 from PyQt5.QtCore import QThread, pyqtSignal
 from modules.win11toast import notify, update_progress
 from modules.local_client import OnlineClient
@@ -296,7 +296,7 @@ def setup_download_load_ui(self, widget):
     if loading_label:
         self.setup_loading_gif(loading_label)
 
-def setup_download_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInterface):
+def setup_download_old_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInterface):
     '''
     设定 Bloret Launcher 下载界面 UI 布局和操作。
     ***
@@ -382,6 +382,10 @@ def setup_download_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInterfa
     Customize_add = widget.findChild(QPushButton, "Customize_add")
     if Customize_add:
         Customize_add.clicked.connect(lambda: self.on_customize_add_clicked(widget,homeInterface))
+
+    add_mrpack_button = widget.findChild(QPushButton, "add_mrpack_button")
+    if add_mrpack_button:
+        add_mrpack_button.clicked.connect(lambda: add_mrpack(widget))
 
 def setup_tools_ui(self, widget):
     '''
@@ -1289,6 +1293,184 @@ def on_search_mod_finish(self, results, mod_list, loading):
     else:
         log("未找到相关模组", logging.WARNING)
 
+def setup_download_ui(self, widget):
+    '''
+    设定 Bloret Launcher 下载 UI 布局和操作。
+    根据 ui/download.ui 文件设置界面元素和事件处理。
+    ***
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    '''
+    # 获取配置文件中的Minecraft版本列表
+    try:
+        with open('config.json', 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            
+        # 1. 填充Minecraft版本选择框和Fabric版本选择框
+        minecraft_versions = config.get('Minecraft_Versions', [])
+        minecraft_version_choose = widget.findChild(ComboBox, 'Minecraft_version_choose')
+        fabric_version_choose = widget.findChild(ComboBox, 'Fabric_version_choose')
+        
+        if minecraft_version_choose and minecraft_versions:
+            minecraft_version_choose.addItems(minecraft_versions)
+            
+        if fabric_version_choose and minecraft_versions:
+            fabric_version_choose.addItems(minecraft_versions)
+            
+        # 2. 填充Java版本选择框
+        java_versions = config.get('Java_Versions', {})
+        java_version_choose = widget.findChild(ComboBox, 'Java_version_choose')
+        
+        if java_version_choose and java_versions:
+            # 获取每个Java版本的Windows x64下载链接
+            java_windows_x64_versions = []
+            for version, platforms in java_versions.items():
+                if 'Windows' in platforms and 'x64' in platforms['Windows']:
+                    download_url = platforms['Windows']['x64']
+                    java_windows_x64_versions.append(f"Java {version} - Windows x64")
+            
+            if java_windows_x64_versions:
+                java_version_choose.addItems(java_windows_x64_versions)
+        
+        # 3. 设置旧版下载页面按钮点击事件
+        old_download_page_button = widget.findChild(QPushButton, 'Old_download_Page')
+        if old_download_page_button:
+            # 使用MessageBoxBase创建对话框
+            def show_old_download_dialog():
+                # 创建一个对话框
+                dialog = MessageBoxBase(self)
+                dialog.setWindowTitle("旧版下载")
+                
+                # 创建内容界面
+                content_widget = QWidget()
+                content_widget.setObjectName("download_old")
+                load_ui("ui/download.old.ui", parent=content_widget)
+                
+                # 设置对话框内容
+                dialog.viewLayout.addWidget(content_widget)
+                
+                # 设置对话框大小
+                dialog.resize(800, 600)
+                
+                # 隐藏默认按钮
+                # dialog.yesButton.hide()
+                dialog.cancelButton.hide()
+                
+                # 设置UI
+                setup_download_old_ui(self, content_widget, 
+                                     self.LM_Download_Way_list if hasattr(self, 'LM_Download_Way_list') else ["1.21.8", "1.21.7"], 
+                                     self.ver_id_bloret if hasattr(self, 'ver_id_bloret') else ["1.21.8", "1.21.7"], 
+                                     self.homeInterface)
+                
+                # 显示对话框
+                dialog.exec_()
+            
+            # 连接按钮点击事件
+            old_download_page_button.clicked.connect(show_old_download_dialog)
+            
+        # 设置Minecraft版本下载按钮点击事件
+        minecraft_download_button = widget.findChild(QPushButton, 'Minecraft_version_Download')
+        if minecraft_download_button:
+            minecraft_download_button.clicked.connect(lambda: InstallMinecraftVersion(minecraft_version_choose.currentText()))
+            
+        # 设置Fabric版本下载按钮点击事件
+        fabric_download_button = widget.findChild(QPushButton, 'Fabric_version_Download')
+        if fabric_download_button:
+            fabric_download_button.clicked.connect(lambda: self.download_fabric_version(fabric_version_choose.currentText()))
+            
+        # 设置Java版本下载按钮点击事件
+        java_download_button = widget.findChild(QPushButton, 'Java_version_Download')
+        if java_download_button:
+            java_download_button.clicked.connect(lambda: self.download_java_version(java_version_choose.currentText()))
+            
+    except Exception as e:
+        log(f"设置下载UI时出错: {str(e)}", logging.ERROR)
+
+def setup_multiplayer_ui(self, widget, server_ip):
+    """设定 Bloret Launcher 多人联机界面 UI 布局和操作"""
+    # 获取IPv6地址
+    ipv6_address_str = get_ipv6_address()
+    log(f"检测到的IPv6地址: {ipv6_address_str if ipv6_address_str else '未找到可用IPv6地址'}")
+    
+    ipv6_address_label = widget.findChild(QLabel, "ipv6_address")
+    if ipv6_address_label:
+        if ipv6_address_str:
+            # 显示缩短的IPv6地址（只显示前8个字符）
+            ipv6_display = f"{ipv6_address_str[:8]}..." if len(ipv6_address_str) > 8 else ipv6_address_str
+            ipv6_address_label.setText(ipv6_display)
+        else:
+            ipv6_address_label.setText("无法获取IPv6地址")
+            log("未找到可用的IPv6地址，IPv6功能将被禁用")
+
+    get_ipv6_btn = widget.findChild(QPushButton, "GetIPV6AddressButton")
+    if get_ipv6_btn:
+        # 根据是否有IPv6地址设置按钮状态
+        if ipv6_address_str:
+            get_ipv6_btn.setEnabled(True)
+            get_ipv6_btn.setToolTip("点击显示IPv6联机对话框")
+        else:
+            get_ipv6_btn.setEnabled(False)
+            get_ipv6_btn.setToolTip("未检测到IPv6地址，请确保您的网络支持IPv6")
+        
+        # 断开可能存在的重复连接
+        try:
+            get_ipv6_btn.clicked.disconnect()
+        except:
+            pass
+            
+        # 连接按钮点击事件
+        get_ipv6_btn.clicked.connect(lambda: show_ipv6_dialog(self, ipv6_address_str))
+    
+    # 设置初始状态
+    online_client_time_label = widget.findChild(QLabel, "OnlineClient_ClientTime")
+    online_client_address_label = widget.findChild(QLabel, "OnlineClient_address")
+    
+    if online_client_time_label:
+        online_client_time_label.setText("--:--")
+        log("初始化OnlineClient_ClientTime标签")
+    else:
+        log("未找到OnlineClient_ClientTime标签")
+    
+    if online_client_address_label:
+        online_client_address_label.setText("未连接")
+        log("初始化OnlineClient_address标签")
+    else:
+        log("未找到OnlineClient_address标签")
+    
+    # 连接StartOnlineClient按钮
+    start_online_client_btn = widget.findChild(QPushButton, "StartOnlineClient")
+    if start_online_client_btn:
+        # 断开可能存在的重复连接
+        try:
+            start_online_client_btn.clicked.disconnect()
+        except:
+            pass
+        start_online_client_btn.clicked.connect(lambda: start_online_client(self, server_ip))
+        log("已连接StartOnlineClient按钮")
+    else:
+        log("未找到StartOnlineClient按钮")
+
+
+def start_search_mod(self, mod_list, search_term, loading):
+    # 确保旧线程结束
+    if hasattr(mod_list, '_ui_thread') and mod_list._ui_thread.isRunning():
+        mod_list._ui_thread.quit()
+        mod_list._ui_thread.wait()
+    
+    # 创建新线程
+    mod_list._ui_thread = ModSearchThread(mod_list, search_term)
+    
+    # 连接结果信号
+    def handle_results(results):
+        # 这里可以处理搜索结果的通用逻辑
+        pass
+    mod_list._ui_thread.results_ready.connect(handle_results)
+    
+    # 连接UI元素就绪信号到结果处理函数
+    mod_list._ui_thread.ui_elements_ready.connect(lambda data: on_search_mod_finish(self, data, mod_list, loading))
+    
+    # 启动线程
+    mod_list._ui_thread.start()
+
 def setup_Mod_ui(self, widget, server_ip):
     '''
     设定 Bloret Launcher 模组界面 UI 布局和操作。
@@ -1312,25 +1494,5 @@ def setup_Mod_ui(self, widget, server_ip):
     else:
         log("未找到 Search 搜索框", logging.ERROR)
 
-def start_search_mod(self, mod_list, search_term, loading):
-    # 确保旧线程结束
-    if hasattr(mod_list, '_ui_thread') and mod_list._ui_thread.isRunning():
-        mod_list._ui_thread.quit()
-        mod_list._ui_thread.wait()
-    
-    # 创建新线程
-    mod_list._ui_thread = ModSearchThread(mod_list, search_term)
-    
-    # 连接结果信号
-    def handle_results(results):
-        # 这里可以处理搜索结果的通用逻辑
-        pass
-    mod_list._ui_thread.results_ready.connect(handle_results)
-    
-    # 连接UI元素就绪信号到结果处理函数
-    mod_list._ui_thread.ui_elements_ready.connect(lambda data: on_search_mod_finish(self, data, mod_list, loading))
-    
-    # 启动线程
-    mod_list._ui_thread.start()
 
 importlog("SETUP_UI.PY")

@@ -2,6 +2,12 @@ import requests, logging
 from modules.log import log
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import tkinter as tk
+from tkinter import filedialog
+import subprocess
+import threading
+from qfluentwidgets import InfoBar
+from PyQt5.QtWidgets import QWidget
 
 def search_mods(search_term):
     url = f"https://api.modrinth.com/v2/search?query={search_term}&limit=10"
@@ -121,3 +127,81 @@ def Get_Mod_File_Download_Url(slug, loaders=None, game_versions=None):
     except Exception as e:
         log(f"获取下载URL异常: {str(e)}", logging.ERROR)
         return None
+
+
+def add_mrpack(parent_widget: QWidget = None):
+    log("添加 Modrinth Modpack", logging.INFO)
+    # 创建根窗口但隐藏它
+    root = tk.Tk()
+    root.withdraw()
+    
+    # 弹出文件选择对话框
+    file_path = filedialog.askopenfilename(
+        title="选择 .mrpack 文件",
+        filetypes=[("Modrinth Modpack Files", "*.mrpack")]
+    )
+    
+    # 销毁根窗口
+    root.destroy()
+    
+    # 如果用户选择了文件
+    if file_path:
+        # 创建信息栏
+        if parent_widget:
+            info_bar = InfoBar(parent=parent_widget)
+            info_bar.show()
+        
+        def run_install():
+            try:
+                # 运行 mrpack-install 命令
+                process = subprocess.Popen(
+                    ["mrpack-install.exe", file_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    universal_newlines=True
+                )
+                
+                # 实时输出日志
+                last_line = ""
+                for line in process.stdout:
+                    print(line, end='')
+                    last_line = line
+                    # 更新信息栏
+                    if parent_widget:
+                        # 这里可以根据需要更新信息栏的状态
+                        # 例如，可以根据输出内容更新信息栏的文本
+                        info_bar.setMessage(last_line.strip()[:50])  # 限制文本长度
+                
+                # 等待进程结束
+                process.wait()
+                
+                # 检查最后一条日志
+                if "Done :) Have a nice day" in last_line.strip():
+                        log("Modpack 安装成功!")
+                        if parent_widget:
+                            info_bar.setMessage("安装成功!")
+                            info_bar.setSuccess()
+                else:
+                        log("Modpack 安装失败!")
+                        if parent_widget:
+                            info_bar.setMessage("安装失败!")
+                            info_bar.setError()
+                    
+            except Exception as e:
+                    log(f"安装过程中发生错误: {str(e)}", logging.ERROR)
+                    if parent_widget:
+                        info_bar.setMessage(f"错误: {str(e)}")
+                        info_bar.setError()
+            finally:
+                    # 关闭信息栏
+                    if parent_widget:
+                        info_bar.close()
+        
+        # 在单独线程中运行安装过程
+        thread = threading.Thread(target=run_install)
+        thread.daemon = True
+        thread.start()
+    else:
+        log("未选择文件")

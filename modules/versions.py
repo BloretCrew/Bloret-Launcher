@@ -12,11 +12,15 @@ Versions.py
 ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
 '''
 from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
-import logging, os, json, send2trash, platform
+import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures
 import sip # type: ignore
+from pathlib import Path
+from modules.win11toast import notify, update_progress
 # 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
 from modules.safe import handle_exception
 from modules.log import log
+from modules.safe import handle_exception
+import sys
 from modules.customize import find_Customize
 
 # 初始化全局变量
@@ -56,8 +60,9 @@ def open_minecraft_version_folder(self,version,MINECRAFT_DIR):
                 parent=self
             )
             
-    except Exception as e:
-        handle_exception(e)
+    except Exception:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        handle_exception(exc_type, exc_value, exc_traceback)
         log(f"打开版本文件夹时发生错误: {e}", logging.ERROR)
         InfoBar.error(
             title='❌ 错误',
@@ -135,8 +140,9 @@ def delete_minecraft_version(self,version,label,card,MINECRAFT_DIR,homeInterface
         run_choose = homeInterface.findChild(ComboBox, "run_choose")
         run_choose.clear()
         run_choose.addItems(self.run_cmcl_list(True))
-    except Exception as e:
-        handle_exception(e)
+    except Exception:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        handle_exception(exc_type, exc_value, exc_traceback)
         log(f"删除版本时发生错误: {e}", logging.ERROR)
         InfoBar.error(
             title='❌ 错误',
@@ -221,8 +227,9 @@ def Change_minecraft_version_name(self,version,label,MINECRAFT_DIR,homeInterface
         run_choose = homeInterface.findChild(ComboBox, "run_choose")
         run_choose.clear()
         run_choose.addItems(self.run_cmcl_list(True))
-    except Exception as e:
-        handle_exception(e)
+    except Exception:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        handle_exception(exc_type, exc_value, exc_traceback)
         log(f"重命名版本时发生错误: {e}", logging.ERROR)
         InfoBar.error(
             title='❌ 错误',
@@ -293,8 +300,9 @@ def delete_Customize(self,version,label,card,customize_list,homeInterface):
         run_choose = homeInterface.findChild(ComboBox, "run_choose")
         run_choose.clear()
         run_choose.addItems(self.run_cmcl_list(True))
-    except Exception as e:
-        handle_exception(e)
+    except Exception:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        handle_exception(exc_type, exc_value, exc_traceback)
         InfoBar.error(
             title='❌ 错误',
             content=f"保存到 config.json 时发生错误: {e}",
@@ -438,7 +446,7 @@ def Get_Run_Script(version):
         raise FileNotFoundError(f"客户端 JAR 文件 {client_jar_path} 不存在")
     
     # 获取 Java 路径 (使用指定的 Zulu JDK 路径)
-    java_path = r"C:\Program Files\Zulu\zulu-23\bin\java.exe"
+    java_path = r"java"
     
     # 获取账户信息
     account_info = None
@@ -448,9 +456,9 @@ def Get_Run_Script(version):
                            cmcl_data["accounts"][0])
     
     # 设置用户名
-    username = "Detritalw"
+    username = "Bloret-Player"
     if account_info:
-        username = account_info.get("playerName", "Detritalw")
+        username = account_info.get("playerName", "Bloret-Player")
     
     # 构建基本启动参数
     launch_args = [
@@ -527,6 +535,20 @@ def Get_Run_Script(version):
     
     # 检查是否为 Fabric 版本
     is_fabric = "fabric" in version.lower() or any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", []))
+
+    if is_fabric:
+        log(f"检测到 Fabric 版本: {version}")
+    else:
+        log(f"检测到原版: {version}")
+    
+    # 添加内存参数
+    launch_args.extend([
+        "-Xmn844m",
+        "-Xmx5632m"
+    ])
+    
+    # 添加自定义参数
+    launch_args.append(f'-Doolloo.jlw.tmpdir="{os.path.join(os.getcwd(), "Bloret Launcher")}"')
     
     # 添加 Fabric 特定参数和处理
     if is_fabric:
@@ -634,15 +656,6 @@ def Get_Run_Script(version):
     launch_args.append("-cp")
     launch_args.append('"' + ";".join(classpath) + '"')  # Windows 使用分号分隔
     
-    # 添加内存参数
-    launch_args.extend([
-        "-Xmn844m",
-        "-Xmx5632m"
-    ])
-    
-    # 添加自定义参数
-    launch_args.append(f'-Doolloo.jlw.tmpdir="{os.path.join(os.getcwd(), "Bloret Launcher")}"')
-    
     # 添加主类和参数
     if is_fabric:
         # Fabric 使用 KnotClient 主类而不是 -jar 参数
@@ -698,6 +711,386 @@ def Get_Run_Script(version):
     
     log(f"生成的启动命令: {bat_command}")
     return bat_command
+
+def InstallMinecraftVersion(version, minecraft_dir=None):
+    from threading import Thread
+    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir))
+    thread.start()
+
+def _install_minecraft_version_threaded(version, minecraft_dir=None):
+    '''
+    下载并安装指定版本的Minecraft
+    
+    Args:
+        version (str): 要安装的Minecraft版本，例如 "1.21.8"
+        minecraft_dir (str, optional): Minecraft安装目录。如果未提供，默认为 %appdata%/Bloret-Launcher/.minecraft
+    
+    Returns:
+        bool: 安装成功返回True，失败返回False
+    
+    ***
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    '''
+    try:
+        # 创建Windows 11通知
+        notify(progress={
+            'title': 'Minecraft版本安装',
+            'status': '正在准备安装...',
+            'value': '0',
+            'valueStringOverride': '0%'
+        })
+
+        # 0. 如果minecraft_dir未提供，设置默认值
+        if minecraft_dir is None:
+            appdata = os.environ.get('APPDATA', '')
+            minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
+
+        log(f"开始安装Minecraft版本: {version}，安装目录: {minecraft_dir}")
+
+        # 确保目录存在
+        os.makedirs(minecraft_dir, exist_ok=True)
+        versions_dir = os.path.join(minecraft_dir, "versions")
+        os.makedirs(versions_dir, exist_ok=True)
+
+        # 1. 获取版本清单
+        update_progress({
+            'value': 0.1, 
+            'valueStringOverride': '10%',
+            'status': '正在获取版本清单...'
+        })
+        manifest_url = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
+        log(f"正在获取版本清单: {manifest_url}")
+
+        response = requests.get(manifest_url)
+        if response.status_code != 200:
+            log(f"获取版本清单失败: HTTP {response.status_code}", logging.ERROR)
+            return False
+
+        manifest_data = response.json()
+
+        # 2. 在清单中查找指定版本
+        update_progress({
+            'value': 0.2, 
+            'valueStringOverride': '20%',
+            'status': '正在查找指定版本...'
+        })
+        version_info = None
+        for ver in manifest_data.get("versions", []):
+            if ver.get("id") == version:
+                version_info = ver
+                break
+
+        if not version_info:
+            log(f"未找到版本 {version}", logging.ERROR)
+            return False
+
+        log(f"找到版本信息: {version_info}")
+
+        # 3. 获取版本详细信息URL并替换域名
+        update_progress({
+            'value': 0.3, 
+            'valueStringOverride': '30%',
+            'status': '正在获取版本详细信息...'
+        })
+        original_url = version_info.get("url")
+        version_info_url = original_url.replace("https://piston-meta.mojang.com/", "https://bmclapi2.bangbang93.com/")
+
+        log(f"正在获取版本详细信息: {version_info_url}")
+
+        # 4. 获取版本详细信息
+        response = requests.get(version_info_url)
+        if response.status_code != 200:
+            log(f"获取版本详细信息失败: HTTP {response.status_code}", logging.ERROR)
+            return False
+
+        version_data = response.json()
+
+        # 5. 创建版本目录
+        update_progress({
+            'value': 0.4, 
+            'valueStringOverride': '40%',
+            'status': '正在创建版本目录...'
+        })
+        version_dir = os.path.join(versions_dir, version)
+        os.makedirs(version_dir, exist_ok=True)
+
+        # 保存版本JSON文件
+        version_json_path = os.path.join(version_dir, f"{version}.json")
+        with open(version_json_path, 'w', encoding='utf-8') as f:
+            json.dump(version_data, f, ensure_ascii=False, indent=4)
+
+        log(f"已保存版本JSON文件: {version_json_path}")
+
+        # 下载客户端JAR文件
+        update_progress({
+            'value': 0.5, 
+            'valueStringOverride': '50%',
+            'status': '正在下载客户端JAR文件...'
+        })
+        if "downloads" in version_data and "client" in version_data["downloads"]:
+            client_info = version_data["downloads"]["client"]
+            client_url = client_info["url"]
+            client_url = client_url.replace("https://piston-data.mojang.com/", "https://bmclapi2.bangbang93.com/")
+
+            client_jar_path = os.path.join(version_dir, f"{version}.jar")
+            log(f"正在下载客户端JAR文件: {client_url}")
+
+            response = requests.get(client_url, stream=True)
+            if response.status_code == 200:
+                with open(client_jar_path, 'wb') as f:
+                    shutil.copyfileobj(response.raw, f)
+                log(f"已下载客户端JAR文件: {client_jar_path}")
+            else:
+                log(f"下载客户端JAR文件失败: HTTP {response.status_code}", logging.ERROR)
+                return False
+        else:
+            log("版本信息中未找到客户端下载链接", logging.ERROR)
+            return False
+
+        # 创建natives目录
+        natives_dir = os.path.join(version_dir, f"{version}-natives")
+        os.makedirs(natives_dir, exist_ok=True)
+
+        # 下载库文件
+        update_progress({
+            'value': 0.6, 
+            'valueStringOverride': '60%',
+            'status': '正在下载库文件...'
+        })
+        libraries_dir = os.path.join(minecraft_dir, "libraries")
+        os.makedirs(libraries_dir, exist_ok=True)
+
+        if "libraries" in version_data:
+            log(f"开始下载库文件，共 {len(version_data['libraries'])} 个")
+
+            def _download_single_library(lib):
+                # 检查库是否适用于当前系统
+                should_download = True
+                if "rules" in lib:
+                    should_download = False
+                    for rule in lib["rules"]:
+                        if rule.get("action") == "allow":
+                            os_rule = rule.get("os", {})
+                            if not os_rule or (os_rule.get("name", "").lower() == platform.system().lower() or
+                                              (os_rule.get("name") == "windows" and platform.system() == "Windows") or
+                                              (os_rule.get("name") == "osx" and platform.system() == "Darwin") or
+                                              (os_rule.get("name") == "linux" and platform.system() == "Linux")):
+                                should_download = True
+                                break
+
+                if should_download and "downloads" in lib:
+                    # 下载artifact
+                    if "artifact" in lib["downloads"]:
+                        artifact = lib["downloads"]["artifact"]
+                        artifact_path = os.path.join(libraries_dir, artifact["path"])
+                        artifact_dir = os.path.dirname(artifact_path)
+                        os.makedirs(artifact_dir, exist_ok=True)
+
+                        artifact_url = artifact["url"]
+                        artifact_url = artifact_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/")
+
+                        if not os.path.exists(artifact_path):
+                            log(f"正在下载库文件: {artifact_url} -> {artifact_path}")
+                            try:
+                                response = requests.get(artifact_url, proxies=None)
+                                if response.status_code == 200:
+                                    with open(artifact_path, 'wb') as f:
+                                        f.write(response.content)
+                                else:
+                                    log(f"下载库文件失败: {artifact_path}, HTTP {response.status_code}", logging.WARNING)
+                            except Exception:
+                                exc_type, exc_value, exc_traceback = sys.exc_info()
+                                handle_exception(exc_type, exc_value, exc_traceback)
+
+                    # 下载natives
+                    if "classifiers" in lib["downloads"]:
+                        classifiers = lib["downloads"]["classifiers"]
+                        native_key = None
+
+                        if platform.system() == "Windows" and "natives-windows" in classifiers:
+                            native_key = "natives-windows"
+                        elif platform.system() == "Darwin" and "natives-macos" in classifiers:
+                            native_key = "natives-macos"
+                        elif platform.system() == "Linux" and "natives-linux" in classifiers:
+                            native_key = "natives-linux"
+
+                        if native_key and native_key in classifiers:
+                            native = classifiers[native_key]
+                            native_path = os.path.join(libraries_dir, lib["downloads"]["artifact"]["path"].replace(".jar", f"-{native_key}.jar"))
+                            native_dir = os.path.dirname(native_path)
+                            os.makedirs(native_dir, exist_ok=True)
+
+                            native_url = native["url"]
+                            native_url = native_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/")
+
+                            if not os.path.exists(native_path):
+                                log(f"正在下载native库文件: {native_path}")
+                                try:
+                                    response = requests.get(native_url)
+                                    if response.status_code == 200:
+                                        with open(native_path, 'wb') as f:
+                                            f.write(response.content)
+                                    else:
+                                        log(f"下载native库文件失败: {native_path}, HTTP {response.status_code}", logging.WARNING)
+                                except Exception:
+                                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                                    handle_exception(exc_type, exc_value, exc_traceback)
+
+            # 从 config.json 读取 MaxThread
+            try:
+                with open('config.json', 'r', encoding='utf-8') as f:
+                    config_data = json.load(f)
+                max_workers = config_data.get("MaxThread", 2000) # 默认值 2000
+            except Exception:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                handle_exception(exc_type, exc_value, exc_traceback)
+                max_workers = 2000 # 读取失败时使用默认值
+
+            log(f"使用 {max_workers} 个线程下载库文件")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [executor.submit(_download_single_library, lib) for lib in version_data["libraries"]]
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        future.result() # 获取结果以捕获异常
+                    except Exception:
+                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                        handle_exception(exc_type, exc_value, exc_traceback)
+        
+        # 下载资源索引
+        if "assetIndex" in version_data:
+            asset_index = version_data["assetIndex"]
+            asset_index_url = asset_index["url"]
+            asset_index_url = asset_index_url.replace("https://piston-meta.mojang.com/", "https://bmclapi2.bangbang93.com/")
+            
+            assets_dir = os.path.join(minecraft_dir, "assets")
+            indexes_dir = os.path.join(assets_dir, "indexes")
+            objects_dir = os.path.join(assets_dir, "objects")
+            
+            os.makedirs(indexes_dir, exist_ok=True)
+            os.makedirs(objects_dir, exist_ok=True)
+            
+            asset_index_id = asset_index["id"]
+            asset_index_path = os.path.join(indexes_dir, f"{asset_index_id}.json")
+            
+            update_progress("正在下载资源索引...")
+            log(f"正在下载资源索引: {asset_index_url}")
+            response = requests.get(asset_index_url)
+            if response.status_code == 200:
+                with open(asset_index_path, 'wb') as f:
+                    f.write(response.content)
+                log(f"已下载资源索引: {asset_index_path}")
+                
+                # 读取资源索引并下载资源文件
+                with open(asset_index_path, 'r', encoding='utf-8') as f:
+                    asset_index_data = json.load(f)
+                
+                if "objects" in asset_index_data:
+                    assets_count = len(asset_index_data['objects'])
+                    update_progress(f"开始下载资源文件，共 {assets_count} 个...")
+                    log(f"开始下载资源文件，共 {assets_count} 个")
+                    
+                    # 创建多线程下载资源文件
+                    def download_asset(asset_name, asset_info):
+                        try:
+                            hash_value = asset_info["hash"]
+                            hash_prefix = hash_value[:2]
+                            object_path = os.path.join(objects_dir, hash_prefix, hash_value)
+                            
+                            # 如果文件已存在且大小正确，则跳过
+                            if os.path.exists(object_path) and os.path.getsize(object_path) == asset_info["size"]:
+                                return True
+                            
+                            # 创建目录
+                            os.makedirs(os.path.dirname(object_path), exist_ok=True)
+                            
+                            # 构建URL
+                            asset_url = f"https://bmclapi2.bangbang93.com/assets/{hash_prefix}/{hash_value}"
+                            
+                            # 下载文件
+                            response = requests.get(asset_url, stream=True)
+                            if response.status_code == 200:
+                                with open(object_path, 'wb') as f:
+                                    shutil.copyfileobj(response.raw, f)
+                                return True
+                            else:
+                                log(f"下载资源文件失败: {asset_name}, HTTP {response.status_code}", logging.WARNING)
+                                return False
+                        except Exception:
+                            exc_type, exc_value, exc_traceback = sys.exc_info()
+                            handle_exception(exc_type, exc_value, exc_traceback)
+                            return False
+                    
+                    # 使用线程池进行多线程下载
+                    from concurrent.futures import ThreadPoolExecutor
+                    
+                    # 设置最大线程数
+                    max_workers = min(32, os.cpu_count() * 4)
+                    log(f"使用 {max_workers} 个线程下载资源文件")
+                    
+                    # 创建Windows 11通知
+                    notify(progress={
+                        'title': 'Minecraft资源下载',
+                        'status': '正在下载资源文件...',
+                        'value': '0',
+                        'valueStringOverride': f'0/{assets_count} 个'
+                    })
+                    
+                    # 创建线程池
+                    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        # 提交所有下载任务
+                        future_to_asset = {executor.submit(download_asset, asset_name, asset_info): asset_name 
+                                          for asset_name, asset_info in asset_index_data["objects"].items()}
+                        
+                        # 处理完成的任务
+                        success_count = 0
+                        failed_count = 0
+                        completed_count = 0
+                        for future in concurrent.futures.as_completed(future_to_asset):
+                            asset_name = future_to_asset[future]
+                            try:
+                                success = future.result()
+                                if success:
+                                    success_count += 1
+                                else:
+                                    failed_count += 1
+                            except Exception as e:
+                                log(f"处理资源文件时发生错误: {asset_name}, {str(e)}", logging.WARNING)
+                                failed_count += 1
+                            finally:
+                                completed_count += 1
+                            update_progress(f"正在下载资源文件...", value=completed_count, valueStringOverride=f'{completed_count}/{assets_count} 个')
+                            # 每下载10个文件或达到总数的5%时更新一次通知，避免频繁更新
+                            if completed_count % 10 == 0 or completed_count % int(assets_count * 0.05) == 0 or completed_count == assets_count:
+                                update_progress({
+                                    'value': completed_count/assets_count, 
+                                    'valueStringOverride': f'{completed_count}/{assets_count} 个',
+                                    'status': f'正在下载资源文件... ({int(completed_count/assets_count*100)}%)'
+                                })
+                    
+                    # 更新通知为完成状态
+                    update_progress({
+                        'value': 1, 
+                        'valueStringOverride': f'{assets_count}/{assets_count} 个',
+                        'status': '资源文件下载完成!'
+                    })
+                    
+                    # 输出下载结果
+                    log(f"资源文件下载完成: 成功 {success_count} 个, 失败 {failed_count} 个")
+                    
+                    # 如果有失败的资源文件，记录警告
+                    if failed_count > 0:
+                        log(f"有 {failed_count} 个资源文件下载失败，但不影响游戏运行", logging.WARNING)
+            else:
+                log(f"下载资源索引失败: HTTP {response.status_code}", logging.WARNING)
+        
+        log(f"Minecraft版本 {version} 安装完成")
+        return True
+        
+    except Exception:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        handle_exception(exc_type, exc_value, exc_traceback)
+        log(f"安装Minecraft版本 {version} 时发生错误: {str(e)}", logging.ERROR)
+        return False
 
 
 

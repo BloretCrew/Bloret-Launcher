@@ -1,17 +1,39 @@
 {
     "minecraft-part": ".minecraft",
-    "first-run": true,
-    "ver": 7.4,
+    "first-run": false,
+    "ver": 7.5,
     "size": 85,
     "themelight": true,
     "repeat_run": false,
-    "show_runtime_do": true,
+    "show_runtime_do": false,
     "Customize": [],
-    "Bloret_PassPort_UserName": "\u672a\u767b\u5f55",
+    "Bloret_PassPort_UserName": "未登录",
     "Bloret_PassPort_PassWord": "",
     "Bloret_PassPort_Admin": false,
     "whenCWopen_BLopen": true,
     "localmod": false,
     "home_show_login_mod": true,
-    "self-starting": false
+    "self-starting": false,
+    "MaxThread": 2000,
+    "Minecraft_Versions": [
+        "1.21.8",
+        "1.21.7"
+    ],
+    "Java_Versions": {
+        "24": {
+            "Windows": {
+                "x64": "https://cdn.azul.com/zulu/bin/zulu24.32.13-ca-jdk24.0.2-win_x64.zip"
+            }
+        },
+        "21": {
+            "Windows": {
+                "x64": "https://cdn.azul.com/zulu/bin/zulu21.44.17-ca-jdk21.0.8-win_x64.msi"
+            }
+        },
+        "17": {
+            "Windows": {
+                "x64": "https://cdn.azul.com/zulu/bin/zulu17.60.17-ca-jdk17.0.16-win_x64.msi"
+            }
+        }
+    }
 }

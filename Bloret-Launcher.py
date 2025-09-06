@@ -10,7 +10,7 @@ import sip # type: ignore
 from modules.safe import handle_exception
 from modules.log import log
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart,setup_startup_with_self_starting
-from modules.setup_ui import setup_home_ui,setup_download_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui,setup_BBS_ui,setup_Mod_ui, setup_multiplayer_ui
+from modules.setup_ui import setup_home_ui,setup_download_old_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui,setup_BBS_ui, setup_Mod_ui, setup_multiplayer_ui, setup_download_ui
 from modules.customize import CustomizeRun
 from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
 from modules.links import open_BBBS_link
@@ -33,11 +33,11 @@ icon = {'src': 'bloret.ico','placement': 'appLogoOverride'}
 minecraft_list = []
 tabbar = None
 isdarktheme = False
+LM_Download_Way_list = ["1.21.8","1.21.7"]
 
 def update_download_way(data, data_list, version, minecraft):
     global LM_Download_Way, LM_Download_Way_list, LM_Download_Way_version, LM_Download_Way_minecraft
     LM_Download_Way = data
-    LM_Download_Way_list = data_list
     LM_Download_Way_version = version
     LM_Download_Way_minecraft = minecraft
 
@@ -429,7 +429,7 @@ class MainWindow(FluentWindow):
         load_ui("ui/settings.ui", parent=self.settingsInterface)
         load_ui("ui/info.ui", parent=self.infoInterface)
         setup_home_ui(self,self.homeInterface)
-        setup_download_ui(self,self.downloadInterface,LM_Download_Way_list,ver_id_bloret,self.homeInterface)
+        setup_download_ui(self,self.downloadInterface)
         setup_tools_ui(self,self.toolsInterface)
         setup_info_ui(self,self.infoInterface)
         setup_BBS_ui(self,self.BBSInterface,server_ip)
@@ -489,6 +489,154 @@ class MainWindow(FluentWindow):
     def on_home_clicked(self):
         log("主页 被点击")
         self.switchTo(self.homeInterface)
+    def download_minecraft_version(self, version):
+        """下载并安装Minecraft版本"""
+        if not version:
+            InfoBar.error(
+                title='❌ 错误',
+                content="请选择一个Minecraft版本",
+                parent=self,
+                duration=3000
+            )
+            return
+            
+        log(f"开始下载Minecraft版本: {version}")
+        
+        # 使用InstallMinecraftVersion函数下载版本
+        from modules.versions import InstallMinecraftVersion
+        
+        # 创建进度提示
+        teaching_tip = TeachingTip(
+            title=f"正在下载 Minecraft {version}",
+            content="下载过程可能需要几分钟，请耐心等待...",
+            parent=self,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=-1,  # 不自动关闭
+            isClosable=False
+        )
+        teaching_tip.show()
+        
+        # 创建线程下载版本
+        class DownloadThread(QThread):
+            download_finished = pyqtSignal(bool)
+            
+            def __init__(self, version, minecraft_dir):
+                super().__init__()
+                self.version = version
+                self.minecraft_dir = minecraft_dir
+                
+            def run(self):
+                result = InstallMinecraftVersion(self.version, self.minecraft_dir)
+                self.download_finished.emit(result)
+        
+        download_thread = DownloadThread(version, MINECRAFT_DIR)
+        download_thread.download_finished.connect(lambda success: self.on_minecraft_download_finished(success, version, teaching_tip))
+        download_thread.start()
+        threads.append(download_thread)  # 防止线程被垃圾回收
+    
+    def download_fabric_version(self, version):
+        """下载并安装Fabric版本"""
+        if not version:
+            InfoBar.error(
+                title='❌ 错误',
+                content="请选择一个Fabric版本",
+                parent=self,
+                duration=3000
+            )
+            return
+            
+        log(f"开始下载Fabric版本: {version}")
+        
+        # 创建进度提示
+        teaching_tip = TeachingTip(
+            title=f"正在下载 Fabric {version}",
+            content="下载过程可能需要几分钟，请耐心等待...",
+            parent=self,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=-1,  # 不自动关闭
+            isClosable=False
+        )
+        teaching_tip.show()
+        
+        # TODO: 实现Fabric版本下载逻辑
+        # 临时实现，仅显示提示
+        InfoBar.warning(
+            title='⚠️ 功能开发中',
+            content=f"Fabric {version} 下载功能正在开发中",
+            parent=self,
+            duration=3000
+        )
+        teaching_tip.close()
+    
+    def download_java_version(self, version_text):
+        """下载并安装Java版本"""
+        if not version_text:
+            InfoBar.error(
+                title='❌ 错误',
+                content="请选择一个Java版本",
+                parent=self,
+                duration=3000
+            )
+            return
+            
+        # 从选择框文本中提取版本号
+        import re
+        match = re.search(r'Java (\d+)', version_text)
+        if not match:
+            InfoBar.error(
+                title='❌ 错误',
+                content="无法解析Java版本号",
+                parent=self,
+                duration=3000
+            )
+            return
+            
+        version = match.group(1)
+        log(f"开始下载Java版本: {version}")
+        
+        # 创建进度提示
+        teaching_tip = TeachingTip(
+            title=f"正在下载 Java {version}",
+            content="下载过程可能需要几分钟，请耐心等待...",
+            parent=self,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=-1,  # 不自动关闭
+            isClosable=False
+        )
+        teaching_tip.show()
+        
+        # TODO: 实现Java版本下载逻辑
+        # 临时实现，仅显示提示
+        InfoBar.warning(
+            title='⚠️ 功能开发中',
+            content=f"Java {version} 下载功能正在开发中",
+            parent=self,
+            duration=3000
+        )
+        teaching_tip.close()
+    
+    def on_minecraft_download_finished(self, success, version, teaching_tip):
+        """Minecraft下载完成回调"""
+        if teaching_tip and not sip.isdeleted(teaching_tip):
+            teaching_tip.close()
+            
+        if success:
+            log(f"Minecraft版本 {version} 已成功下载")
+            InfoBar.success(
+                title='✅ 下载成功',
+                content=f"Minecraft版本 {version} 已成功下载并安装",
+                parent=self,
+                duration=5000
+            )
+        else:
+            log(f"Minecraft版本 {version} 下载失败")
+            InfoBar.error(
+                title='❌ 下载失败',
+                content=f"Minecraft版本 {version} 下载失败，请查看日志了解详情",
+                parent=self,
+                duration=5000
+            )
+    
     def on_download_finished(self, teaching_tip, download_button):
         if hasattr(self, 'version'):
             log(f"版本 {self.version} 已成功下载")
@@ -658,8 +806,8 @@ class MainWindow(FluentWindow):
         self.hide()  # 隐藏窗口
     def on_download_clicked(self):
         log("下载 被点击")
-        load_ui("ui/download.ui", animate=False)
-        setup_download_ui(self,self.content_layout.itemAt(0).widget(),LM_Download_Way_list,ver_id_bloret,self.homeInterface)
+        load_ui("ui/download.old.ui", animate=False)
+        setup_download_old_ui(self,self.content_layout.itemAt(0).widget(),LM_Download_Way_list,ver_id_bloret,self.homeInterface)
     def on_download_way_changed(self, widget, selected_way):
         show_way = widget.findChild(ComboBox, "show_way")
         fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
