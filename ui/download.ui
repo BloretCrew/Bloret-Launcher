@@ -238,6 +238,9 @@
           </item>
           <item>
            <widget class="PushButton" name="Fabric_version_Download">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="text">
              <string>下载并安装</string>
             </property>
@@ -294,6 +297,12 @@
                 <verstretch>0</verstretch>
                </sizepolicy>
               </property>
+              <property name="minimumSize">
+               <size>
+                <width>99</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="text">
                <string>一键下载安装 Java</string>
               </property>
@@ -332,7 +341,21 @@
            </spacer>
           </item>
           <item>
+           <widget class="StrongBodyLabel" name="StrongBodyLabel">
+            <property name="text">
+             <string>Java</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="ComboBox" name="Java_version_choose"/>
+          </item>
+          <item>
+           <widget class="StrongBodyLabel" name="StrongBodyLabel_2">
+            <property name="text">
+             <string>Windows x64</string>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="PushButton" name="Java_version_Download">
@@ -430,7 +453,7 @@
            </spacer>
           </item>
           <item>
-           <widget class="PushButton" name="Customize_Download">
+           <widget class="PushButton" name="Customize_add">
             <property name="minimumSize">
              <size>
               <width>100</width>

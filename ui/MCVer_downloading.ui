@@ -123,7 +123,7 @@
            <height>50</height>
           </size>
          </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_8">
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
           <item>
            <widget class="StrongBodyLabel" name="StrongBodyLabel_14">
             <property name="text">
@@ -151,35 +151,7 @@
             <item>
              <widget class="StrongBodyLabel" name="StrongBodyLabel_15">
               <property name="text">
-               <string>资源库文件</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="ProgressBar" name="libraries_progress"/>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_2">
-            <item>
-             <widget class="CaptionLabel" name="libraries_file_name">
-              <property name="text">
-               <string>-----</string>
-              </property>
-              <property name="lightColor" stdset="0">
-               <color alpha="200">
-                <red>0</red>
-                <green>0</green>
-                <blue>0</blue>
-               </color>
-              </property>
-              <property name="darkColor" stdset="0">
-               <color alpha="200">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
-               </color>
+               <string>库文件</string>
               </property>
              </widget>
             </item>
@@ -279,6 +251,182 @@
                </color>
               </property>
              </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <item>
+             <widget class="CaptionLabel" name="libraries_file_name">
+              <property name="text">
+               <string/>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="200">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="ProgressBar" name="libraries_progress"/>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget_11">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <item>
+             <widget class="StrongBodyLabel" name="StrongBodyLabel_17">
+              <property name="text">
+               <string>资源文件</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_3">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="libraries_file_name_3">
+              <property name="text">
+               <string>正在工作线程数:</string>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="200">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="Resources_file_working_Thread">
+              <property name="text">
+               <string>0</string>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="200">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="libraries_file_working_Thread_4">
+              <property name="text">
+               <string>/</string>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="200">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="MaxThread_2">
+              <property name="text">
+               <string>2000</string>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="200">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_4">
+            <item>
+             <widget class="CaptionLabel" name="libraries_file_name_4">
+              <property name="text">
+               <string/>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="200">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="ProgressBar" name="Resources_progress"/>
             </item>
            </layout>
           </item>

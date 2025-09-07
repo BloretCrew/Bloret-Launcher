@@ -12,6 +12,13 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Python 调试程序: Bloret-Launcher",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/Bloret-Launcher.py",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "PyInstaller 打包并运行",
             "type": "debugpy",
             "request": "launch",

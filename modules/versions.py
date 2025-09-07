@@ -12,7 +12,7 @@ Versions.py
 ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
 '''
 from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
-import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures, threading
+import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures, threading, time
 import sip # type: ignore
 from pathlib import Path
 from modules.win11toast import notify, update_progress
@@ -424,7 +424,19 @@ def Get_Run_Script(version):
         cmcl_data = json.load(f)
     
     # 获取 Minecraft 目录
-    minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
+    try:
+        with open('config.json', 'r', encoding='utf-8') as f:
+            config_data = json.load(f)
+        minecraft_dir = config_data.get('minecraft-dir', '')
+        if not minecraft_dir:
+            # 如果配置中没有指定，则使用默认路径
+            appdata = os.environ.get('APPDATA', '')
+            minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
+    except Exception:
+        # 如果读取配置文件失败，使用默认路径
+        appdata = os.environ.get('APPDATA', '')
+        minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
+    
     versions_dir = os.path.join(minecraft_dir, "versions", version)
     
     # 检查版本目录是否存在
@@ -530,8 +542,9 @@ def Get_Run_Script(version):
                         lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
                 
                 if lib_path and os.path.exists(lib_path):
-                    if "org.ow2.asm" not in lib.get("name", "").lower():
-                        classpath.append(lib_path)
+                    # 移除对 org.ow2.asm 的特殊处理，确保所有库都被添加
+                    # 原来的代码会排除 org.ow2.asm 库，但这可能导致其他依赖问题
+                    classpath.append(lib_path)
     
     # 检查是否为 Fabric 版本
     is_fabric = "fabric" in version.lower() or any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", []))
@@ -729,8 +742,9 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None):
                 with open("config.json", "r", encoding="utf-8") as f:
                     config = json.load(f)
                 max_thread_value = config.get("MaxThread", 2000)
-                if hasattr(download_dialog, 'MaxThread'):
+                if hasattr(download_dialog, 'MaxThread') and hasattr(download_dialog, 'MaxThread_2'):
                     download_dialog.MaxThread.setText(str(max_thread_value))
+                    download_dialog.MaxThread_2.setText(str(max_thread_value))
             except Exception as e:
                 log(f"设置MaxThread值时出错: {e}")
                 
@@ -745,11 +759,11 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None):
 
 def _install_minecraft_version_threaded(version, minecraft_dir=None, download_dialog=None):
     '''
-    下载并安装指定版本的Minecraft
+    下载并安装指定版本的 Minecraft
     
     Args:
-        version (str): 要安装的Minecraft版本，例如 "1.21.8"
-        minecraft_dir (str, optional): Minecraft安装目录。如果未提供，默认为 %appdata%/Bloret-Launcher/.minecraft
+        version (str): 要安装的 Minecraft 版本，例如 "1.21.8"
+        minecraft_dir (str, optional): Minecraft 安装目录。如果未提供，默认为 %appdata%/Bloret-Launcher/.minecraft
     
     Returns:
         bool: 安装成功返回True，失败返回False
@@ -760,7 +774,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
     try:
         # 创建Windows 11通知
         notify(progress={
-            'title': 'Minecraft版本安装',
+            'title': 'Minecraft 版本安装',
             'status': '正在准备安装...',
             'value': '0',
             'valueStringOverride': '0%'
@@ -771,7 +785,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             appdata = os.environ.get('APPDATA', '')
             minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
 
-        log(f"开始安装Minecraft版本: {version}，安装目录: {minecraft_dir}")
+        log(f"开始安装 Minecraft 版本: {version}，安装目录: {minecraft_dir}")
 
         # 确保目录存在
         os.makedirs(minecraft_dir, exist_ok=True)
@@ -787,7 +801,22 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         manifest_url = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
         log(f"正在获取版本清单: {manifest_url}")
 
-        response = requests.get(manifest_url, proxies=None)
+        try:
+            response = requests.get(manifest_url, proxies=None, timeout=30)
+        except requests.exceptions.ConnectionError as e:
+            log(f"网络连接错误: {e}", logging.ERROR)
+            # 尝试使用HTTP协议
+            try:
+                manifest_url = "http://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
+                log(f"尝试使用HTTP协议: {manifest_url}")
+                response = requests.get(manifest_url, proxies=None, timeout=30)
+            except requests.exceptions.ConnectionError as e2:
+                log(f"HTTP协议也失败: {e2}", logging.ERROR)
+                return False
+        except requests.exceptions.RequestException as e:
+            log(f"请求错误: {e}", logging.ERROR)
+            return False
+
         if response.status_code != 200:
             log(f"获取版本清单失败: HTTP {response.status_code}", logging.ERROR)
             return False
@@ -824,7 +853,22 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         log(f"正在获取版本详细信息: {version_info_url}")
 
         # 4. 获取版本详细信息
-        response = requests.get(version_info_url)
+        try:
+            response = requests.get(version_info_url, timeout=30)
+        except requests.exceptions.ConnectionError as e:
+            log(f"网络连接错误: {e}", logging.ERROR)
+            # 尝试使用HTTP协议
+            try:
+                version_info_url = version_info_url.replace("https://", "http://")
+                log(f"尝试使用HTTP协议: {version_info_url}")
+                response = requests.get(version_info_url, timeout=30)
+            except requests.exceptions.ConnectionError as e2:
+                log(f"HTTP协议也失败: {e2}", logging.ERROR)
+                return False
+        except requests.exceptions.RequestException as e:
+            log(f"请求错误: {e}", logging.ERROR)
+            return False
+
         if response.status_code != 200:
             log(f"获取版本详细信息失败: HTTP {response.status_code}", logging.ERROR)
             return False
@@ -851,9 +895,12 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         if download_dialog:
             try:
                 from PyQt5.QtWidgets import QCheckBox
+                # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
+                from PyQt5.QtCore import QMetaObject, Qt
                 checkbox = download_dialog.findChild(QCheckBox, "First_Step_CheckBox")
                 if checkbox:
-                    checkbox.setChecked(True)
+                    QMetaObject.invokeMethod(checkbox, "setChecked", Qt.QueuedConnection, 
+                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(bool, True))
             except Exception as e:
                 log(f"设置First_Step_CheckBox时出错: {e}")
 
@@ -871,7 +918,22 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             client_jar_path = os.path.join(version_dir, f"{version}.jar")
             log(f"正在下载客户端JAR文件: {client_url}")
 
-            response = requests.get(client_url, stream=True)
+            try:
+                response = requests.get(client_url, stream=True, timeout=30)
+            except requests.exceptions.ConnectionError as e:
+                log(f"网络连接错误: {e}", logging.ERROR)
+                # 尝试使用HTTP协议
+                try:
+                    client_url = client_url.replace("https://", "http://")
+                    log(f"尝试使用HTTP协议: {client_url}")
+                    response = requests.get(client_url, stream=True, timeout=30)
+                except requests.exceptions.ConnectionError as e2:
+                    log(f"HTTP协议也失败: {e2}", logging.ERROR)
+                    return False
+            except requests.exceptions.RequestException as e:
+                log(f"请求错误: {e}", logging.ERROR)
+                return False
+
             if response.status_code == 200:
                 total_size = int(response.headers.get('content-length', 0))
                 downloaded_size = 0
@@ -886,10 +948,13 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                             if download_dialog and total_size > 0:
                                 try:
                                     from PyQt5.QtWidgets import QProgressBar
+                                    # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
+                                    from PyQt5.QtCore import QMetaObject, Qt
                                     progress_bar = download_dialog.findChild(QProgressBar, "client_jar_progress")
                                     if progress_bar:
                                         progress_value = int((downloaded_size / total_size) * 100)
-                                        progress_bar.setValue(progress_value)
+                                        QMetaObject.invokeMethod(progress_bar, "setValue", Qt.QueuedConnection,
+                                                               __import__('PyQt5.QtCore').QtCore.Q_ARG(int, progress_value))
                                 except Exception as e:
                                     log(f"更新client_jar_progress时出错: {e}")
                 
@@ -930,9 +995,12 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                     if download_dialog:
                         try:
                             from PyQt5.QtWidgets import QLabel
+                            # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
+                            from PyQt5.QtCore import QMetaObject, Qt
                             thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
                             if thread_label:
-                                thread_label.setText(str(active_downloads))
+                                QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
+                                                       __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
                         except Exception as e:
                             log(f"更新libraries_file_working_Thread时出错: {e}")
 
@@ -960,26 +1028,54 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                             os.makedirs(artifact_dir, exist_ok=True)
 
                             artifact_url = artifact["url"]
+                            # 尝试使用BMCLAPI镜像
                             artifact_url = artifact_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/")
 
                             if not os.path.exists(artifact_path):
                                 log(f"正在下载库文件: {artifact_url} -> {artifact_path}")
-                                for attempt in range(10): # 重试10次
+                                download_success = False
+                                for attempt in range(3): # 重试3次
                                     try:
-                                        response = requests.get(artifact_url, proxies=None)
+                                        response = requests.get(artifact_url, proxies=None, timeout=30)
                                         if response.status_code == 200:
                                             with open(artifact_path, 'wb') as f:
                                                 f.write(response.content)
+                                            download_success = True
                                             break # 成功则跳出循环
                                         else:
                                             log(f"下载库文件失败: {artifact_path}, HTTP {response.status_code}", logging.WARNING)
+                                            # 如果是403错误，尝试使用原始URL
+                                            if response.status_code == 403:
+                                                original_url = artifact["url"]
+                                                log(f"尝试使用原始URL: {original_url}")
+                                                response = requests.get(original_url, proxies=None, timeout=30)
+                                                if response.status_code == 200:
+                                                    with open(artifact_path, 'wb') as f:
+                                                        f.write(response.content)
+                                                    download_success = True
+                                                    break
+                                    except requests.exceptions.ConnectionError as e:
+                                        log(f"网络连接错误，正在重试 (第 {attempt + 1} 次): {artifact_path}, 错误: {e}", logging.WARNING)
+                                        time.sleep(1) # 等待1秒后重试
                                     except requests.exceptions.RequestException as e:
-                                        log(f"下载库文件时发生网络请求错误，正在重试 (第 {attempt + 1} 次): {artifact_path}, 错误: {e}, url: {artifact_url}", logging.WARNING)
-                                        time.sleep(0.1) # 等待0.1秒后重试
+                                        log(f"下载库文件时发生网络请求错误，正在重试 (第 {attempt + 1} 次): {artifact_path}, 错误: {e}", logging.WARNING)
+                                        time.sleep(1) # 等待1秒后重试
                                     except Exception:
                                         exc_type, exc_value, exc_traceback = sys.exc_info()
                                         handle_exception(exc_type, exc_value, exc_traceback)
                                         break # 其他错误则不重试，直接跳出
+                                
+                                # 如果所有重试都失败了，尝试使用HTTP协议
+                                if not download_success:
+                                    try:
+                                        http_url = artifact_url.replace("https://", "http://")
+                                        log(f"尝试使用HTTP协议: {http_url}")
+                                        response = requests.get(http_url, proxies=None, timeout=30)
+                                        if response.status_code == 200:
+                                            with open(artifact_path, 'wb') as f:
+                                                f.write(response.content)
+                                    except Exception as e:
+                                        log(f"使用HTTP协议也失败了: {artifact_path}, 错误: {e}", logging.ERROR)
 
                         # 下载natives
                         if "classifiers" in lib["downloads"]:
@@ -1000,26 +1096,58 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                 os.makedirs(native_dir, exist_ok=True)
 
                                 native_url = native["url"]
+                                # 尝试使用BMCLAPI镜像
                                 native_url = native_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/")
 
                                 if not os.path.exists(native_path):
                                     log(f"正在下载native库文件: {native_path}")
-                                for attempt in range(3): # 重试3次
-                                    try:
-                                        response = requests.get(native_url, proxies=None)
-                                        if response.status_code == 200:
-                                            with open(native_path, 'wb') as f:
-                                                f.write(response.content)
-                                            break # 成功则跳出循环
-                                        else:
-                                            log(f"下载native库文件失败: {native_path}, HTTP {response.status_code}", logging.WARNING)
-                                    except requests.exceptions.RequestException as e:
-                                        log(f"下载native库文件时发生网络请求错误，正在重试 (第 {attempt + 1} 次): {native_path}, 错误: {e}", logging.WARNING)
-                                        time.sleep(1) # 等待1秒后重试
-                                    except Exception:
-                                        exc_type, exc_value, exc_traceback = sys.exc_info()
-                                        handle_exception(exc_type, exc_value, exc_traceback)
-                                        break # 其他错误则不重试，直接跳出
+                                    download_success = False
+                                    for attempt in range(3): # 重试3次
+                                        try:
+                                            response = requests.get(native_url, proxies=None, timeout=30)
+                                            if response.status_code == 200:
+                                                with open(native_path, 'wb') as f:
+                                                    f.write(response.content)
+                                                download_success = True
+                                                break # 成功则跳出循环
+                                            else:
+                                                log(f"下载native库文件失败: {native_path}, HTTP {response.status_code}", logging.WARNING)
+                                                # 如果是403错误，尝试使用原始URL
+                                                if response.status_code == 403:
+                                                    original_url = native["url"]
+                                                    log(f"尝试使用原始URL: {original_url}")
+                                                    response = requests.get(original_url, proxies=None, timeout=30)
+                                                    if response.status_code == 200:
+                                                        with open(native_path, 'wb') as f:
+                                                            f.write(response.content)
+                                                        download_success = True
+                                                        break
+                                        except requests.exceptions.ConnectionError as e:
+                                            log(f"网络连接错误，正在重试 (第 {attempt + 1} 次): {native_path}, 错误: {e}", logging.WARNING)
+                                            time.sleep(1) # 等待1秒后重试
+                                        except requests.exceptions.RequestException as e:
+                                            log(f"下载native库文件时发生网络请求错误，正在重试 (第 {attempt + 1} 次): {native_path}, 错误: {e}", logging.WARNING)
+                                            time.sleep(1) # 等待1秒后重试
+                                        except Exception:
+                                            exc_type, exc_value, exc_traceback = sys.exc_info()
+                                            handle_exception(exc_type, exc_value, exc_traceback)
+                                            break # 其他错误则不重试，直接跳出
+                                    
+                                    # 如果所有重试都失败了，尝试使用HTTP协议
+                                    if not download_success:
+                                        try:
+                                            http_url = native_url.replace("https://", "http://")
+                                            log(f"尝试使用HTTP协议: {http_url}")
+                                            response = requests.get(http_url, proxies=None, timeout=30)
+                                            if response.status_code == 200:
+                                                with open(native_path, 'wb') as f:
+                                                    f.write(response.content)
+                                        except Exception as e:
+                                            log(f"使用HTTP协议也失败了: {native_path}, 错误: {e}", logging.ERROR)
+                except Exception as e:
+                    log(f"处理库文件时出错: {e}", logging.ERROR)
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    handle_exception(exc_type, exc_value, exc_traceback)
                 finally:
                     # 减少活动下载计数
                     with active_downloads_lock:
@@ -1028,9 +1156,12 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                         if download_dialog:
                             try:
                                 from PyQt5.QtWidgets import QLabel
+                                # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
+                                from PyQt5.QtCore import QMetaObject, Qt
                                 thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
                                 if thread_label:
-                                    thread_label.setText(str(active_downloads))
+                                    QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
+                                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
                             except Exception as e:
                                 log(f"更新libraries_file_working_Thread时出错: {e}")
 
@@ -1053,9 +1184,12 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 if download_dialog:
                     try:
                         from PyQt5.QtWidgets import QProgressBar
+                        # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
+                        from PyQt5.QtCore import QMetaObject, Qt
                         lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
                         if lib_progress_bar:
-                            lib_progress_bar.setValue(0)
+                            QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
+                                                   __import__('PyQt5.QtCore').QtCore.Q_ARG(int, 0))
                     except Exception as e:
                         log(f"初始化libraries_progress时出错: {e}")
                 
@@ -1072,10 +1206,13 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                         if download_dialog:
                             try:
                                 from PyQt5.QtWidgets import QProgressBar
+                                # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
+                                from PyQt5.QtCore import QMetaObject, Qt
                                 lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
                                 if lib_progress_bar:
                                     progress_value = int((completed / total_libs) * 100)
-                                    lib_progress_bar.setValue(progress_value)
+                                    QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
+                                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(int, progress_value))
                             except Exception as e:
                                 log(f"更新libraries_progress时出错: {e}")
         
@@ -1095,9 +1232,25 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             asset_index_id = asset_index["id"]
             asset_index_path = os.path.join(indexes_dir, f"{asset_index_id}.json")
             
-            update_progress("正在下载资源索引...")
+            update_progress({'status': "正在下载资源索引..."})
             log(f"正在下载资源索引: {asset_index_url}")
-            response = requests.get(asset_index_url)
+            
+            try:
+                response = requests.get(asset_index_url, timeout=30)
+            except requests.exceptions.ConnectionError as e:
+                log(f"网络连接错误: {e}", logging.ERROR)
+                # 尝试使用HTTP协议
+                try:
+                    asset_index_url = asset_index_url.replace("https://", "http://")
+                    log(f"尝试使用HTTP协议: {asset_index_url}")
+                    response = requests.get(asset_index_url, timeout=30)
+                except requests.exceptions.ConnectionError as e2:
+                    log(f"HTTP协议也失败: {e2}", logging.ERROR)
+                    return False
+            except requests.exceptions.RequestException as e:
+                log(f"请求错误: {e}", logging.ERROR)
+                return False
+
             if response.status_code == 200:
                 with open(asset_index_path, 'wb') as f:
                     f.write(response.content)
@@ -1109,11 +1262,27 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 
                 if "objects" in asset_index_data:
                     assets_count = len(asset_index_data['objects'])
-                    update_progress(f"开始下载资源文件，共 {assets_count} 个...")
+                    update_progress({'status': f"开始下载资源文件，共 {assets_count} 个..."})
                     log(f"开始下载资源文件，共 {assets_count} 个")
                     
                     # 创建多线程下载资源文件
                     def download_asset(asset_name, asset_info):
+                        # 增加活动下载计数
+                        with active_downloads_lock:
+                            global active_downloads
+                            active_downloads += 1
+                            # 更新活动线程数显示
+                            if download_dialog:
+                                try:
+                                    from PyQt5.QtWidgets import QLabel
+                                    from PyQt5.QtCore import QMetaObject, Qt
+                                    thread_label = download_dialog.findChild(QLabel, "Resources_file_working_Thread")
+                                    if thread_label:
+                                        QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
+                                                               __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
+                                except Exception as e:
+                                    log(f"更新Resources_file_working_Thread时出错: {e}")
+                        
                         try:
                             hash_value = asset_info["hash"]
                             hash_prefix = hash_value[:2]
@@ -1130,7 +1299,22 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                             asset_url = f"https://bmclapi2.bangbang93.com/assets/{hash_prefix}/{hash_value}"
                             
                             # 下载文件
-                            response = requests.get(asset_url, stream=True)
+                            try:
+                                response = requests.get(asset_url, stream=True, timeout=30)
+                            except requests.exceptions.ConnectionError as e:
+                                log(f"网络连接错误: {e}", logging.WARNING)
+                                # 尝试使用HTTP协议
+                                try:
+                                    asset_url = asset_url.replace("https://", "http://")
+                                    log(f"尝试使用HTTP协议: {asset_url}")
+                                    response = requests.get(asset_url, stream=True, timeout=30)
+                                except requests.exceptions.ConnectionError as e2:
+                                    log(f"HTTP协议也失败: {e2}", logging.WARNING)
+                                    return False
+                            except requests.exceptions.RequestException as e:
+                                log(f"下载资源文件时发生网络请求错误: {asset_name}, {e}", logging.WARNING)
+                                return False
+                            
                             if response.status_code == 200:
                                 with open(object_path, 'wb') as f:
                                     shutil.copyfileobj(response.raw, f)
@@ -1142,17 +1326,43 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                             exc_type, exc_value, exc_traceback = sys.exc_info()
                             handle_exception(exc_type, exc_value, exc_traceback)
                             return False
+                        finally:
+                            # 减少活动下载计数
+                            with active_downloads_lock:
+                                active_downloads -= 1
+                                # 更新活动线程数显示
+                                if download_dialog:
+                                    try:
+                                        from PyQt5.QtWidgets import QLabel
+                                        from PyQt5.QtCore import QMetaObject, Qt
+                                        thread_label = download_dialog.findChild(QLabel, "Resources_file_working_Thread")
+                                        if thread_label:
+                                            QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
+                                                                   __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
+                                    except Exception as e:
+                                        log(f"更新Resources_file_working_Thread时出错: {e}")
                     
                     # 使用线程池进行多线程下载
                     from concurrent.futures import ThreadPoolExecutor
                     
                     # 设置最大线程数
-                    max_workers = min(32, os.cpu_count() * 4)
+                    try:
+                        with open('config.json', 'r', encoding='utf-8') as f:
+                            config_data = json.load(f)
+                        max_workers = config_data.get("MaxThread", 2000)  # 默认值 2000
+                    except Exception:
+                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                        handle_exception(exc_type, exc_value, exc_traceback)
+                        max_workers = 2000  # 读取失败时使用默认值
                     log(f"使用 {max_workers} 个线程下载资源文件")
+                    
+                    # 用于跟踪活动下载线程数的变量
+                    active_downloads = 0
+                    active_downloads_lock = threading.Lock()
                     
                     # 创建Windows 11通知
                     notify(progress={
-                        'title': 'Minecraft资源下载',
+                        'title': 'Minecraft 资源下载',
                         'status': '正在下载资源文件...',
                         'value': '0',
                         'valueStringOverride': f'0/{assets_count} 个'
@@ -1181,13 +1391,35 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                 failed_count += 1
                             finally:
                                 completed_count += 1
-                            update_progress(f"正在下载资源文件...", value=completed_count, valueStringOverride=f'{completed_count}/{assets_count} 个')
+                            
+                            # 更新资源文件下载进度条和线程数显示
+                            if download_dialog:
+                                try:
+                                    from PyQt5.QtWidgets import QProgressBar, QLabel
+                                    from PyQt5.QtCore import QMetaObject, Qt
+                                    
+                                    # 更新进度条
+                                    resources_progress_bar = download_dialog.findChild(QProgressBar, "Resources_progress")
+                                    if resources_progress_bar:
+                                        progress_value = int((completed_count / assets_count) * 100)
+                                        QMetaObject.invokeMethod(resources_progress_bar, "setValue", Qt.QueuedConnection,
+                                                               __import__('PyQt5.QtCore').QtCore.Q_ARG(int, progress_value))
+                                    
+                                    # 更新活动线程数显示
+                                    thread_label = download_dialog.findChild(QLabel, "Resources_file_working_Thread")
+                                    if thread_label:
+                                        QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
+                                                               __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
+                                except Exception as e:
+                                    log(f"更新资源文件进度时出错: {e}")
+                                    
+                            # update_progress({'status': "正在下载资源文件...", 'value': completed_count, 'valueStringOverride': f'{completed_count}/{assets_count} 个'})
                             # 每下载10个文件或达到总数的5%时更新一次通知，避免频繁更新
                             if completed_count % 10 == 0 or completed_count % int(assets_count * 0.05) == 0 or completed_count == assets_count:
                                 update_progress({
                                     'value': completed_count/assets_count, 
-                                    'valueStringOverride': f'{completed_count}/{assets_count} 个',
-                                    'status': f'正在下载资源文件... ({int(completed_count/assets_count*100)}%)'
+                                    'valueStringOverride': f'{completed_count}/{assets_count} ({int(completed_count/assets_count*100)}%)',
+                                    'status': f'正在下载资源文件...'
                                 })
                     
                     # 更新通知为完成状态
@@ -1206,9 +1438,9 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             else:
                 log(f"下载资源索引失败: HTTP {response.status_code}", logging.WARNING)
         
-        log(f"Minecraft版本 {version} 安装完成")
+        log(f"Minecraft 版本 {version} 安装完成")
         update_progress({
-            'status': f'Minecraft版本 {version} 安装完成!',
+            'status': f'Minecraft 版本 {version} 安装完成!',
             'value': 100
         })
         return True
@@ -1216,7 +1448,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
     except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         handle_exception(exc_type, exc_value, exc_traceback)
-        log(f"安装Minecraft版本 {version} 时发生错误: {str(e)}", logging.ERROR)
+        log(f"安装 Minecraft 版本 {version} 时发生错误: {str(e)}", logging.ERROR)
         return False
     finally:
         # 关闭下载对话框
@@ -1225,3 +1457,95 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 download_dialog.close()
             except Exception as e:
                 log(f"关闭下载对话框时出错: {e}")
+
+def CustomizeAdd(self):
+    '''
+    ### 添加自定义程序
+    弹出文件选择框，选择文件后将文件信息存入config中的Customize列表
+    1. 文件名称(不带后缀名) -> showname
+    2. 文件路径 -> path
+    
+    ***
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    '''
+    try:
+        from PyQt5.QtWidgets import QFileDialog
+        
+        # 弹出文件选择框选择文件
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择自定义程序文件",
+            "",
+            "可执行文件 (*.exe);;所有文件 (*)"
+        )
+        
+        # 如果用户取消选择或未选择文件
+        if not file_path:
+            return
+            
+        # 获取不带后缀的文件名
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        
+        # 读取现有配置
+        try:
+            with open('config.json', 'r', encoding='utf-8') as file:
+                config_data = json.load(file)
+        except FileNotFoundError:
+            config_data = {}
+            
+        # 确保Customize字段存在
+        if "Customize" not in config_data:
+            config_data["Customize"] = []
+            
+        # 检查是否已存在相同的路径
+        for item in config_data["Customize"]:
+            if item.get("path") == file_path:
+                InfoBar.warning(
+                    title='⚠️ 提示',
+                    content=f"文件 {file_name} 已存在于自定义程序列表中",
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=5000,
+                    parent=self
+                )
+                return
+                
+        # 添加新的自定义项
+        new_custom = {
+            "showname": file_name,
+            "path": file_path
+        }
+        
+        config_data["Customize"].append(new_custom)
+        
+        # 保存到配置文件
+        with open('config.json', 'w', encoding='utf-8') as file:
+            json.dump(config_data, file, ensure_ascii=False, indent=4)
+            
+        # 更新当前配置
+        self.config = config_data
+        
+        # 显示成功信息
+        InfoBar.success(
+            title='✅ 成功',
+            content=f"已成功添加自定义程序: {file_name}",
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=5000,
+            parent=self
+        )
+        
+        log(f"成功添加自定义程序: {file_name} ({file_path})")
+        
+    except Exception as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        handle_exception(exc_type, exc_value, exc_traceback)
+        InfoBar.error(
+            title='❌ 错误',
+            content=f"添加自定义程序时发生错误: {str(e)}",
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=5000,
+            parent=self
+        )
+        log(f"添加自定义程序时发生错误: {str(e)}", logging.ERROR)

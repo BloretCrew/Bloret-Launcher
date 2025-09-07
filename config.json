@@ -1,5 +1,6 @@
 {
     "minecraft-part": ".minecraft",
+    "minecraft-dir": "C:\\Users\\0570\\AppData\\Roaming\\Bloret-Launcher\\.minecraft",
     "first-run": false,
     "ver": 7.5,
     "size": 85,
@@ -14,7 +15,7 @@
     "localmod": false,
     "home_show_login_mod": true,
     "self-starting": false,
-    "MaxThread": 2000,
+    "MaxThread": 2050,
     "Minecraft_Versions": [
         "1.21.8",
         "1.21.7"

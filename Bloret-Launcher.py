@@ -237,6 +237,14 @@ class MainWindow(FluentWindow):
         if self.config.get("self-starting", False):
             setup_startup_with_self_starting(True)
 
+        # 检查并设置 minecraft-dir 配置
+        if not self.config.get('minecraft-dir'):
+            # 设置默认的 minecraft 目录为 %appdata%/Bloret-Launcher/.minecraft
+            default_mc_dir = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', '.minecraft')
+            self.config['minecraft-dir'] = default_mc_dir
+            # 保存配置到文件
+            with open('config.json', 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, ensure_ascii=False, indent=4)
 
         # 设置全局编码
         codec = locale.getpreferredencoding()
@@ -706,7 +714,7 @@ class MainWindow(FluentWindow):
     def run_cmcl_list(self,back_set_list):
         global set_list,minecraft_list,customize_list  # 添加全局声明
         try:
-            versions_path = os.path.join(os.getcwd(), ".minecraft", "versions")
+            versions_path = os.path.join(self.config['minecraft-dir'], "versions")
             temp_list = []  # 使用临时变量
             
             if os.path.exists(versions_path) and os.path.isdir(versions_path):

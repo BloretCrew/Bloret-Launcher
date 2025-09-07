@@ -10,11 +10,12 @@ from modules.log import log, importlog, clear_log_files
 from modules.Bloret_PassPort import Bloret_PassPort_Account_login,Bloret_PassPort_Account_logout
 from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
-from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder, InstallMinecraftVersion
+from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder, InstallMinecraftVersion, CustomizeAdd
 from modules.modrinth import search_mods, Get_Mod_File_Download_Url, add_mrpack
 from PyQt5.QtCore import QThread, pyqtSignal
 from modules.win11toast import notify, update_progress
 from modules.local_client import OnlineClient
+from modules.java import InstallJava
 
 class DownloadDialog(MessageBoxBase):
     """ 自定义下载对话框 """
@@ -507,6 +508,15 @@ def setup_settings_ui(self, widget):
             self.config.update(size=value),
             open('self.config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
         ))
+
+    MaxThread_SpinBox = widget.findChild(SpinBox, "MaxThread_SpinBox")
+    if MaxThread_SpinBox:
+        MaxThread_SpinBox.setValue(self.config.get("MaxThread", 2000))
+        MaxThread_SpinBox.valueChanged.connect(lambda value: (
+            self.config.update(MaxThread=value),
+            open('self.config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+        ))
+
     repeat_run_button = widget.findChild(SwitchButton, "repeat_run_button")
     if repeat_run_button:
         repeat_run_button.setChecked(self.config.get('repeat_run', False))
@@ -1321,15 +1331,13 @@ def setup_download_ui(self, widget):
         java_version_choose = widget.findChild(ComboBox, 'Java_version_choose')
         
         if java_version_choose and java_versions:
-            # 获取每个Java版本的Windows x64下载链接
-            java_windows_x64_versions = []
-            for version, platforms in java_versions.items():
-                if 'Windows' in platforms and 'x64' in platforms['Windows']:
-                    download_url = platforms['Windows']['x64']
-                    java_windows_x64_versions.append(f"Java {version} - Windows x64")
+            # 直接使用Java版本号填充选择框
+            java_version_items = []
+            for version in java_versions.keys():
+                java_version_items.append(version)
             
-            if java_windows_x64_versions:
-                java_version_choose.addItems(java_windows_x64_versions)
+            if java_version_items:
+                java_version_choose.addItems(java_version_items)
         
         # 3. 设置旧版下载页面按钮点击事件
         old_download_page_button = widget.findChild(QPushButton, 'Old_download_Page')
@@ -1380,7 +1388,12 @@ def setup_download_ui(self, widget):
         # 设置Java版本下载按钮点击事件
         java_download_button = widget.findChild(QPushButton, 'Java_version_Download')
         if java_download_button:
-            java_download_button.clicked.connect(lambda: self.download_java_version(java_version_choose.currentText()))
+            java_download_button.clicked.connect(lambda: InstallJava(java_version_choose.currentText()))
+
+        # 设置自定义项目按钮点击事件
+        Customize_add = widget.findChild(QPushButton, 'Customize_add')
+        if Customize_add:
+            Customize_add.clicked.connect(lambda: CustomizeAdd())
             
     except Exception as e:
         log(f"设置下载UI时出错: {str(e)}", logging.ERROR)
