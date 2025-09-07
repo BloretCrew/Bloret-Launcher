@@ -1,5 +1,6 @@
 from http import server
-from PyQt5.QtWidgets import QSystemTrayIcon, QApplication, QPushButton, QWidget, QLineEdit, QLabel, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QSystemTrayIcon, QApplication, QPushButton, QWidget, QLineEdit, QLabel, QFileDialog, QMessageBox, QDialog
+from PyQt5 import uic
 from qfluentwidgets import MessageBox, SubtitleLabel, StrongBodyLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
 from PyQt5.QtGui import QIcon, QColor, QPalette
 from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
@@ -505,32 +506,59 @@ class MainWindow(FluentWindow):
         # 使用InstallMinecraftVersion函数下载版本
         from modules.versions import InstallMinecraftVersion
         
+        from PyQt5 import uic
+        from PyQt5.QtWidgets import QDialog
+
         # 创建进度提示
-        teaching_tip = TeachingTip(
-            title=f"正在下载 Minecraft {version}",
-            content="下载过程可能需要几分钟，请耐心等待...",
-            parent=self,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=-1,  # 不自动关闭
-            isClosable=False
-        )
-        teaching_tip.show()
-        
+        # teaching_tip = TeachingTip(
+        #     title=f"正在下载 Minecraft {version}",
+        #     content="下载过程可能需要几分钟，请耐心等待...",
+        #     parent=self,
+        #     tailPosition=TeachingTipTailPosition.BOTTOM,
+        #     duration=-1,  # 不自动关闭
+        #     isClosable=False
+        # )
+        # teaching_tip.show()
+
+        # 加载UI文件
+        try:
+            self.download_dialog = QDialog(self)
+            uic.loadUi("ui/MCVer_downloading.ui", self.download_dialog)
+            self.download_dialog.setWindowTitle(f"正在下载 Minecraft {version}")
+
+            # 设置MaxThread的值
+            with open("config.json", "r", encoding="utf-8") as f:
+                config = json.load(f)
+            max_thread_value = config.get("MaxThread", 2000)
+            self.download_dialog.MaxThread.setText(str(max_thread_value))
+
+            self.download_dialog.show()
+        except Exception as e:
+            log(f"加载或显示下载弹窗时发生错误: {e}")
+            InfoBar.error(
+                title='❌ 错误',
+                content=f"无法显示下载进度弹窗: {e}",
+                parent=self,
+                duration=5000
+            )
+            return
+
         # 创建线程下载版本
         class DownloadThread(QThread):
             download_finished = pyqtSignal(bool)
-            
-            def __init__(self, version, minecraft_dir):
+
+            def __init__(self, version, minecraft_dir, download_dialog):
                 super().__init__()
                 self.version = version
                 self.minecraft_dir = minecraft_dir
-                
+                self.download_dialog = download_dialog
+
             def run(self):
-                result = InstallMinecraftVersion(self.version, self.minecraft_dir)
+                result = InstallMinecraftVersion(self.version, self.minecraft_dir, self.download_dialog)
                 self.download_finished.emit(result)
-        
-        download_thread = DownloadThread(version, MINECRAFT_DIR)
-        download_thread.download_finished.connect(lambda success: self.on_minecraft_download_finished(success, version, teaching_tip))
+
+        download_thread = DownloadThread(version, MINECRAFT_DIR, self.download_dialog)
+        download_thread.download_finished.connect(lambda success: self.on_minecraft_download_finished(success, version, self.download_dialog))
         download_thread.start()
         threads.append(download_thread)  # 防止线程被垃圾回收
     

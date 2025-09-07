@@ -12,7 +12,7 @@ Versions.py
 ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
 '''
 from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
-import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures
+import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures, threading
 import sip # type: ignore
 from pathlib import Path
 from modules.win11toast import notify, update_progress
@@ -712,12 +712,38 @@ def Get_Run_Script(version):
     log(f"生成的启动命令: {bat_command}")
     return bat_command
 
-def InstallMinecraftVersion(version, minecraft_dir=None):
+def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None):
+    # 如果没有提供下载对话框，则创建并显示一个新的
+    if download_dialog is None:
+        try:
+            from PyQt5.QtWidgets import QDialog
+            from PyQt5 import uic
+            import json
+            
+            download_dialog = QDialog()
+            uic.loadUi("ui/MCVer_downloading.ui", download_dialog)
+            download_dialog.setWindowTitle(f"正在下载 Minecraft {version}")
+            
+            # 设置MaxThread的值
+            try:
+                with open("config.json", "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                max_thread_value = config.get("MaxThread", 2000)
+                if hasattr(download_dialog, 'MaxThread'):
+                    download_dialog.MaxThread.setText(str(max_thread_value))
+            except Exception as e:
+                log(f"设置MaxThread值时出错: {e}")
+                
+            download_dialog.show()
+        except Exception as e:
+            log(f"创建下载对话框时出错: {e}")
+            download_dialog = None
+    
     from threading import Thread
-    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir))
+    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir, download_dialog))
     thread.start()
 
-def _install_minecraft_version_threaded(version, minecraft_dir=None):
+def _install_minecraft_version_threaded(version, minecraft_dir=None, download_dialog=None):
     '''
     下载并安装指定版本的Minecraft
     
@@ -761,7 +787,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None):
         manifest_url = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
         log(f"正在获取版本清单: {manifest_url}")
 
-        response = requests.get(manifest_url)
+        response = requests.get(manifest_url, proxies=None)
         if response.status_code != 200:
             log(f"获取版本清单失败: HTTP {response.status_code}", logging.ERROR)
             return False
@@ -821,6 +847,16 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None):
 
         log(f"已保存版本JSON文件: {version_json_path}")
 
+        # 设置 First_Step_CheckBox 为 true
+        if download_dialog:
+            try:
+                from PyQt5.QtWidgets import QCheckBox
+                checkbox = download_dialog.findChild(QCheckBox, "First_Step_CheckBox")
+                if checkbox:
+                    checkbox.setChecked(True)
+            except Exception as e:
+                log(f"设置First_Step_CheckBox时出错: {e}")
+
         # 下载客户端JAR文件
         update_progress({
             'value': 0.5, 
@@ -837,8 +873,26 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None):
 
             response = requests.get(client_url, stream=True)
             if response.status_code == 200:
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded_size = 0
+                
                 with open(client_jar_path, 'wb') as f:
-                    shutil.copyfileobj(response.raw, f)
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded_size += len(chunk)
+                            
+                            # 更新客户端JAR进度条
+                            if download_dialog and total_size > 0:
+                                try:
+                                    from PyQt5.QtWidgets import QProgressBar
+                                    progress_bar = download_dialog.findChild(QProgressBar, "client_jar_progress")
+                                    if progress_bar:
+                                        progress_value = int((downloaded_size / total_size) * 100)
+                                        progress_bar.setValue(progress_value)
+                                except Exception as e:
+                                    log(f"更新client_jar_progress时出错: {e}")
+                
                 log(f"已下载客户端JAR文件: {client_jar_path}")
             else:
                 log(f"下载客户端JAR文件失败: HTTP {response.status_code}", logging.ERROR)
@@ -863,78 +917,122 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None):
         if "libraries" in version_data:
             log(f"开始下载库文件，共 {len(version_data['libraries'])} 个")
 
+            # 用于跟踪活动下载线程数的变量
+            active_downloads = 0
+            active_downloads_lock = threading.Lock()
+
             def _download_single_library(lib):
-                # 检查库是否适用于当前系统
-                should_download = True
-                if "rules" in lib:
-                    should_download = False
-                    for rule in lib["rules"]:
-                        if rule.get("action") == "allow":
-                            os_rule = rule.get("os", {})
-                            if not os_rule or (os_rule.get("name", "").lower() == platform.system().lower() or
-                                              (os_rule.get("name") == "windows" and platform.system() == "Windows") or
-                                              (os_rule.get("name") == "osx" and platform.system() == "Darwin") or
-                                              (os_rule.get("name") == "linux" and platform.system() == "Linux")):
-                                should_download = True
-                                break
+                nonlocal active_downloads
+                # 增加活动下载计数
+                with active_downloads_lock:
+                    active_downloads += 1
+                    # 更新活动线程数显示
+                    if download_dialog:
+                        try:
+                            from PyQt5.QtWidgets import QLabel
+                            thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
+                            if thread_label:
+                                thread_label.setText(str(active_downloads))
+                        except Exception as e:
+                            log(f"更新libraries_file_working_Thread时出错: {e}")
 
-                if should_download and "downloads" in lib:
-                    # 下载artifact
-                    if "artifact" in lib["downloads"]:
-                        artifact = lib["downloads"]["artifact"]
-                        artifact_path = os.path.join(libraries_dir, artifact["path"])
-                        artifact_dir = os.path.dirname(artifact_path)
-                        os.makedirs(artifact_dir, exist_ok=True)
+                try:
+                    # 检查库是否适用于当前系统
+                    should_download = True
+                    if "rules" in lib:
+                        should_download = False
+                        for rule in lib["rules"]:
+                            if rule.get("action") == "allow":
+                                os_rule = rule.get("os", {})
+                                if not os_rule or (os_rule.get("name", "").lower() == platform.system().lower() or
+                                                  (os_rule.get("name") == "windows" and platform.system() == "Windows") or
+                                                  (os_rule.get("name") == "osx" and platform.system() == "Darwin") or
+                                                  (os_rule.get("name") == "linux" and platform.system() == "Linux")):
+                                    should_download = True
+                                    break
 
-                        artifact_url = artifact["url"]
-                        artifact_url = artifact_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/")
+                    if should_download and "downloads" in lib:
+                        # 下载artifact
+                        if "artifact" in lib["downloads"]:
+                            artifact = lib["downloads"]["artifact"]
+                            artifact_path = os.path.join(libraries_dir, artifact["path"])
+                            artifact_dir = os.path.dirname(artifact_path)
+                            os.makedirs(artifact_dir, exist_ok=True)
 
-                        if not os.path.exists(artifact_path):
-                            log(f"正在下载库文件: {artifact_url} -> {artifact_path}")
+                            artifact_url = artifact["url"]
+                            artifact_url = artifact_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/")
+
+                            if not os.path.exists(artifact_path):
+                                log(f"正在下载库文件: {artifact_url} -> {artifact_path}")
+                                for attempt in range(10): # 重试10次
+                                    try:
+                                        response = requests.get(artifact_url, proxies=None)
+                                        if response.status_code == 200:
+                                            with open(artifact_path, 'wb') as f:
+                                                f.write(response.content)
+                                            break # 成功则跳出循环
+                                        else:
+                                            log(f"下载库文件失败: {artifact_path}, HTTP {response.status_code}", logging.WARNING)
+                                    except requests.exceptions.RequestException as e:
+                                        log(f"下载库文件时发生网络请求错误，正在重试 (第 {attempt + 1} 次): {artifact_path}, 错误: {e}, url: {artifact_url}", logging.WARNING)
+                                        time.sleep(0.1) # 等待0.1秒后重试
+                                    except Exception:
+                                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                                        handle_exception(exc_type, exc_value, exc_traceback)
+                                        break # 其他错误则不重试，直接跳出
+
+                        # 下载natives
+                        if "classifiers" in lib["downloads"]:
+                            classifiers = lib["downloads"]["classifiers"]
+                            native_key = None
+
+                            if platform.system() == "Windows" and "natives-windows" in classifiers:
+                                native_key = "natives-windows"
+                            elif platform.system() == "Darwin" and "natives-macos" in classifiers:
+                                native_key = "natives-macos"
+                            elif platform.system() == "Linux" and "natives-linux" in classifiers:
+                                native_key = "natives-linux"
+
+                            if native_key and native_key in classifiers:
+                                native = classifiers[native_key]
+                                native_path = os.path.join(libraries_dir, lib["downloads"]["artifact"]["path"].replace(".jar", f"-{native_key}.jar"))
+                                native_dir = os.path.dirname(native_path)
+                                os.makedirs(native_dir, exist_ok=True)
+
+                                native_url = native["url"]
+                                native_url = native_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/")
+
+                                if not os.path.exists(native_path):
+                                    log(f"正在下载native库文件: {native_path}")
+                                for attempt in range(3): # 重试3次
+                                    try:
+                                        response = requests.get(native_url, proxies=None)
+                                        if response.status_code == 200:
+                                            with open(native_path, 'wb') as f:
+                                                f.write(response.content)
+                                            break # 成功则跳出循环
+                                        else:
+                                            log(f"下载native库文件失败: {native_path}, HTTP {response.status_code}", logging.WARNING)
+                                    except requests.exceptions.RequestException as e:
+                                        log(f"下载native库文件时发生网络请求错误，正在重试 (第 {attempt + 1} 次): {native_path}, 错误: {e}", logging.WARNING)
+                                        time.sleep(1) # 等待1秒后重试
+                                    except Exception:
+                                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                                        handle_exception(exc_type, exc_value, exc_traceback)
+                                        break # 其他错误则不重试，直接跳出
+                finally:
+                    # 减少活动下载计数
+                    with active_downloads_lock:
+                        active_downloads -= 1
+                        # 更新活动线程数显示
+                        if download_dialog:
                             try:
-                                response = requests.get(artifact_url, proxies=None)
-                                if response.status_code == 200:
-                                    with open(artifact_path, 'wb') as f:
-                                        f.write(response.content)
-                                else:
-                                    log(f"下载库文件失败: {artifact_path}, HTTP {response.status_code}", logging.WARNING)
-                            except Exception:
-                                exc_type, exc_value, exc_traceback = sys.exc_info()
-                                handle_exception(exc_type, exc_value, exc_traceback)
-
-                    # 下载natives
-                    if "classifiers" in lib["downloads"]:
-                        classifiers = lib["downloads"]["classifiers"]
-                        native_key = None
-
-                        if platform.system() == "Windows" and "natives-windows" in classifiers:
-                            native_key = "natives-windows"
-                        elif platform.system() == "Darwin" and "natives-macos" in classifiers:
-                            native_key = "natives-macos"
-                        elif platform.system() == "Linux" and "natives-linux" in classifiers:
-                            native_key = "natives-linux"
-
-                        if native_key and native_key in classifiers:
-                            native = classifiers[native_key]
-                            native_path = os.path.join(libraries_dir, lib["downloads"]["artifact"]["path"].replace(".jar", f"-{native_key}.jar"))
-                            native_dir = os.path.dirname(native_path)
-                            os.makedirs(native_dir, exist_ok=True)
-
-                            native_url = native["url"]
-                            native_url = native_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/")
-
-                            if not os.path.exists(native_path):
-                                log(f"正在下载native库文件: {native_path}")
-                                try:
-                                    response = requests.get(native_url)
-                                    if response.status_code == 200:
-                                        with open(native_path, 'wb') as f:
-                                            f.write(response.content)
-                                    else:
-                                        log(f"下载native库文件失败: {native_path}, HTTP {response.status_code}", logging.WARNING)
-                                except Exception:
-                                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                                    handle_exception(exc_type, exc_value, exc_traceback)
+                                from PyQt5.QtWidgets import QLabel
+                                thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
+                                if thread_label:
+                                    thread_label.setText(str(active_downloads))
+                            except Exception as e:
+                                log(f"更新libraries_file_working_Thread时出错: {e}")
 
             # 从 config.json 读取 MaxThread
             try:
@@ -949,12 +1047,37 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None):
             log(f"使用 {max_workers} 个线程下载库文件")
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = [executor.submit(_download_single_library, lib) for lib in version_data["libraries"]]
+                total_libs = len(futures)
+                
+                # 更新库文件进度条
+                if download_dialog:
+                    try:
+                        from PyQt5.QtWidgets import QProgressBar
+                        lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
+                        if lib_progress_bar:
+                            lib_progress_bar.setValue(0)
+                    except Exception as e:
+                        log(f"初始化libraries_progress时出错: {e}")
+                
+                completed = 0
                 for future in concurrent.futures.as_completed(futures):
                     try:
                         future.result() # 获取结果以捕获异常
                     except Exception:
                         exc_type, exc_value, exc_traceback = sys.exc_info()
                         handle_exception(exc_type, exc_value, exc_traceback)
+                    finally:
+                        completed += 1
+                        # 更新库文件进度条
+                        if download_dialog:
+                            try:
+                                from PyQt5.QtWidgets import QProgressBar
+                                lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
+                                if lib_progress_bar:
+                                    progress_value = int((completed / total_libs) * 100)
+                                    lib_progress_bar.setValue(progress_value)
+                            except Exception as e:
+                                log(f"更新libraries_progress时出错: {e}")
         
         # 下载资源索引
         if "assetIndex" in version_data:
@@ -1084,25 +1207,21 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None):
                 log(f"下载资源索引失败: HTTP {response.status_code}", logging.WARNING)
         
         log(f"Minecraft版本 {version} 安装完成")
+        update_progress({
+            'status': f'Minecraft版本 {version} 安装完成!',
+            'value': 100
+        })
         return True
         
-    except Exception:
+    except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         handle_exception(exc_type, exc_value, exc_traceback)
         log(f"安装Minecraft版本 {version} 时发生错误: {str(e)}", logging.ERROR)
         return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    finally:
+        # 关闭下载对话框
+        if download_dialog:
+            try:
+                download_dialog.close()
+            except Exception as e:
+                log(f"关闭下载对话框时出错: {e}")

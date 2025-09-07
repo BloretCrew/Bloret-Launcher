@@ -77,8 +77,8 @@ def log(message, level=logging.INFO):
     print(message)
     logging.log(level, message)
     logging.getLogger().handlers[0].flush()  # 强制刷新日志
-    if level == logging.ERROR:
-        handle_exception(Exception(message))  # 如果是错误级别，调用异常处理函数
+    # if level == logging.ERROR:
+    #     handle_exception(Exception(message))  # 如果是错误级别，调用异常处理函数
 def importlog(message):
     log(f"{message} 的导入已完成。{copyright}")
 
