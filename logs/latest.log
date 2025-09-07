@@ -1,0 +1,58 @@
+[16:21:19] [Datafixer Bootstrap/INFO]: 269 Datafixer optimizations took 1308 milliseconds
+[16:21:27] [Render thread/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[16:21:27] [Render thread/INFO]: Setting user: Bloret-Player
+[16:21:27] [Render thread/INFO]: [STDERR]: [LWJGL] [ThreadLocalUtil] Unsupported JNI version detected, this may result in a crash. Please inform LWJGL developers.
+[16:21:27] [Render thread/INFO]: Backend library: LWJGL version 3.3.3+5
+[16:21:27] [Render thread/WARN]: Detected unexpected shutdown during last game startup: resetting fullscreen mode
+[16:21:28] [Render thread/INFO]: Using optional rendering extensions: GL_ARB_buffer_storage, GL_KHR_debug, GL_ARB_vertex_attrib_binding, GL_ARB_direct_state_access
+[16:21:29] [Render thread/INFO]: Reloading ResourceManager: vanilla
+[16:21:29] [Worker-Main-2/INFO]: Found unifont_pua-16.0.03.hex, loading
+[16:21:29] [Worker-Main-1/INFO]: Found unifont_all_no_pua-16.0.03.hex, loading
+[16:21:29] [Render thread/ERROR]: Reported exception thrown!
+aa: Rendering overlay
+	at gxb.a(SourceFile:545) ~[1.21.8.jar:?]
+	at fue.c(SourceFile:1361) ~[1.21.8.jar:?]
+	at fue.f(SourceFile:947) [1.21.8.jar:?]
+	at net.minecraft.client.main.Main.main(SourceFile:265) [1.21.8.jar:?]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104) ~[?:?]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565) ~[?:?]
+	at oolloo.jlw.Wrapper.invokeMain(Wrapper.java:112) [JavaWrapper.jar:?]
+	at oolloo.jlw.Wrapper.main(Wrapper.java:105) [JavaWrapper.jar:?]
+Caused by: java.io.UncheckedIOException: java.nio.file.NoSuchFileException: C:\Users\0570\AppData\Roaming\Bloret-Launcher\.minecraft\assets\objects\89\89e4e7c845d442d308a6194488de8bd3397f0791
+	at hru.b(SourceFile:186) ~[1.21.8.jar:?]
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1814) ~[?:?]
+	at axu.b(SourceFile:52) ~[1.21.8.jar:?]
+	at java.base/java.util.concurrent.ForkJoinTask$RunnableExecuteAction.compute(ForkJoinTask.java:1735) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinTask$RunnableExecuteAction.compute(ForkJoinTask.java:1726) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinTask$InterruptibleTask.exec(ForkJoinTask.java:1650) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:507) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(ForkJoinPool.java:1394) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1970) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:187) ~[?:?]
+Caused by: java.nio.file.NoSuchFileException: C:\Users\0570\AppData\Roaming\Bloret-Launcher\.minecraft\assets\objects\89\89e4e7c845d442d308a6194488de8bd3397f0791
+	at java.base/sun.nio.fs.WindowsException.translateToIOException(WindowsException.java:85) ~[?:?]
+	at java.base/sun.nio.fs.WindowsException.rethrowAsIOException(WindowsException.java:103) ~[?:?]
+	at java.base/sun.nio.fs.WindowsException.rethrowAsIOException(WindowsException.java:108) ~[?:?]
+	at java.base/sun.nio.fs.WindowsFileSystemProvider.newByteChannel(WindowsFileSystemProvider.java:231) ~[?:?]
+	at java.base/java.nio.file.Files.newByteChannel(Files.java:357) ~[?:?]
+	at awk.newByteChannel(SourceFile:68) ~[1.21.8.jar:?]
+	at java.base/java.nio.file.Files.newByteChannel(Files.java:357) ~[?:?]
+	at java.base/java.nio.file.Files.newByteChannel(Files.java:399) ~[?:?]
+	at java.base/java.nio.file.spi.FileSystemProvider.newInputStream(FileSystemProvider.java:371) ~[?:?]
+	at java.base/java.nio.file.Files.newInputStream(Files.java:154) ~[?:?]
+	at axg.a(SourceFile:13) ~[1.21.8.jar:?]
+	at axm.d(SourceFile:48) ~[1.21.8.jar:?]
+	at hrt.a(SourceFile:22) ~[1.21.8.jar:?]
+	at hrd.a(SourceFile:25) ~[1.21.8.jar:?]
+	at hru.a(SourceFile:172) ~[1.21.8.jar:?]
+	at hru.b(SourceFile:184) ~[1.21.8.jar:?]
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1814) ~[?:?]
+	at axu.b(SourceFile:52) ~[1.21.8.jar:?]
+	at java.base/java.util.concurrent.ForkJoinTask$RunnableExecuteAction.compute(ForkJoinTask.java:1735) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinTask$RunnableExecuteAction.compute(ForkJoinTask.java:1726) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinTask$InterruptibleTask.exec(ForkJoinTask.java:1650) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:507) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(ForkJoinPool.java:1394) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1970) ~[?:?]
+	at java.base/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:187) ~[?:?]
+[16:21:30] [Render thread/ERROR]: Negative index in crash report handler (10/13)

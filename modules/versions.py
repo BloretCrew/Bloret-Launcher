@@ -402,6 +402,153 @@ def Change_Customize_name(self,version,label,homeInterface):
             parent=self
         )
 
+
+class LibraryDownloader:
+    def __init__(self, missing_libraries, max_workers=2000):
+        self.missing_libraries = missing_libraries
+        self.max_workers = max_workers
+        self.completed_count = 0
+        self.total_count = len(missing_libraries)
+        self.lock = threading.Lock()
+        self.completed_event = threading.Event()
+        
+    def download_single_library(self, lib_item):
+        lib, lib_path = lib_item
+        try:
+            # 确保目录存在
+            os.makedirs(os.path.dirname(lib_path), exist_ok=True)
+            
+            # 下载库文件
+            if "downloads" in lib and "artifact" in lib["downloads"]:
+                artifact = lib["downloads"]["artifact"]
+                artifact_url = artifact["url"]
+                # 尝试使用BMCLAPI镜像
+                artifact_url = artifact_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/")
+                
+                log(f"正在下载库文件: {artifact_url} -> {lib_path}")
+                response = requests.get(artifact_url, proxies=None, timeout=30)
+                if response.status_code == 200:
+                    with open(lib_path, 'wb') as f:
+                        f.write(response.content)
+                    log(f"成功下载库文件: {lib_path}")
+                else:
+                    # 如果是403错误，尝试使用原始URL
+                    if response.status_code == 403:
+                        original_url = artifact["url"]
+                        log(f"尝试使用原始URL: {original_url}")
+                        response = requests.get(original_url, proxies=None, timeout=30)
+                        if response.status_code == 200:
+                            with open(lib_path, 'wb') as f:
+                                f.write(response.content)
+                            log(f"成功下载库文件: {lib_path}")
+                        else:
+                            # 如果原始URL也失败，尝试其他镜像源
+                            mirror_urls = [
+                                original_url,  # 官方源
+                                original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/"),  # BMCLAPI镜像
+                            ]
+                            
+                            downloaded = False
+                            for mirror_url in mirror_urls:
+                                try:
+                                    log(f"尝试镜像源: {mirror_url}")
+                                    mirror_response = requests.get(mirror_url, proxies=None, timeout=30)
+                                    if mirror_response.status_code == 200:
+                                        with open(lib_path, 'wb') as f:
+                                            f.write(mirror_response.content)
+                                        log(f"通过镜像源成功下载库文件: {lib_path}")
+                                        downloaded = True
+                                        break
+                                except Exception as e:
+                                    log(f"镜像源下载失败 {mirror_url}: {str(e)}", logging.WARNING)
+                                    continue
+                            
+                            if not downloaded:
+                                log(f"所有镜像源都下载失败: {lib_path}", logging.ERROR)
+            elif "name" in lib:
+                # 处理 Maven 风格的库名称
+                parts = lib["name"].split(":")
+                if len(parts) >= 3:
+                    group_id, artifact_id, version = parts[0:3]
+                    # 构建下载URL
+                    download_url = f"https://bmclapi2.bangbang93.com/maven/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar"
+                    log(f"正在下载库文件: {download_url} -> {lib_path}")
+                    response = requests.get(download_url, proxies=None, timeout=30)
+                    if response.status_code == 200:
+                        with open(lib_path, 'wb') as f:
+                            f.write(response.content)
+                        log(f"成功下载库文件: {lib_path}")
+                    else:
+                        # 尝试其他镜像源
+                        mirror_urls = [
+                            f"https://libraries.minecraft.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar",  # 官方源
+                            f"https://bmclapi2.bangbang93.com/maven/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar",  # BMCLAPI镜像
+                        ]
+                        
+                        downloaded = False
+                        for mirror_url in mirror_urls:
+                            try:
+                                log(f"尝试镜像源: {mirror_url}")
+                                mirror_response = requests.get(mirror_url, proxies=None, timeout=30)
+                                if mirror_response.status_code == 200:
+                                    with open(lib_path, 'wb') as f:
+                                        f.write(mirror_response.content)
+                                    log(f"通过镜像源成功下载库文件: {lib_path}")
+                                    downloaded = True
+                                    break
+                            except Exception as e:
+                                log(f"镜像源下载失败 {mirror_url}: {str(e)}", logging.WARNING)
+                                continue
+                        
+                        if not downloaded:
+                            log(f"所有镜像源都下载失败: {lib_path}", logging.ERROR)
+            
+            # 更新完成计数
+            with self.lock:
+                self.completed_count += 1
+                
+            # 更新进度通知
+            notify(progress={
+                'title': 'Minecraft 库文件补全',
+                'status': f'正在下载: {os.path.basename(lib_path)}',
+                'value': self.completed_count / self.total_count,
+                'valueStringOverride': f'{self.completed_count}/{self.total_count}'
+            })
+        except Exception as e:
+            log(f"下载库文件失败 {lib_path}: {str(e)}", logging.WARNING)
+            # 更新完成计数（即使失败也计数）
+            with self.lock:
+                self.completed_count += 1
+    
+    def download_libraries(self):
+        # 显示初始通知
+        notify(progress={
+            'title': 'Minecraft 库文件补全',
+            'status': '正在补全缺失的库文件...',
+            'value': 0,
+            'valueStringOverride': f'0/{self.total_count}'
+        })
+        
+        log(f"使用 {self.max_workers} 个线程下载库文件")
+        
+        # 使用线程池并发下载
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = [executor.submit(self.download_single_library, lib_item) for lib_item in self.missing_libraries]
+            # 等待所有下载完成
+            concurrent.futures.wait(futures)
+        
+        # 显示完成通知
+        notify(progress={
+            'title': 'Minecraft 库文件补全完成',
+            'status': f'已完成: {self.completed_count}/{self.total_count} 个文件',
+            'value': 1,
+            'valueStringOverride': f'{self.completed_count}/{self.total_count}'
+        })
+        
+        # 设置完成事件
+        self.completed_event.set()
+
+
 def Get_Run_Script(version):
     """
     根据 cmcl.json 的内容生成启动 .minecraft 文件夹中指定版本的命令
@@ -427,7 +574,7 @@ def Get_Run_Script(version):
     try:
         with open('config.json', 'r', encoding='utf-8') as f:
             config_data = json.load(f)
-        minecraft_dir = config_data.get('minecraft-dir', '')
+        minecraft_dir = config_data.get('minecraft_dir', '')
         if not minecraft_dir:
             # 如果配置中没有指定，则使用默认路径
             appdata = os.environ.get('APPDATA', '')
@@ -475,6 +622,23 @@ def Get_Run_Script(version):
     # 构建基本启动参数
     launch_args = [
         f'"{java_path}"',  # Java路径需要用引号包围
+        "--enable-native-access=ALL-UNNAMED",  # 解决Java警告
+        "--add-opens", "java.base/java.lang=ALL-UNNAMED",  # 抑制弃用警告
+        "--add-opens", "java.base/java.util=ALL-UNNAMED",  # 抑制弃用警告
+        "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED",  # 抑制更多警告
+        "--add-opens", "java.base/sun.misc=ALL-UNNAMED",   # 抑制sun.misc警告
+        "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",  # 抑制jdk.internal.misc警告
+        "--add-opens", "java.base/jdk.internal.ref=ALL-UNNAMED",   # 抑制jdk.internal.ref警告
+        "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",  # 导出sun.nio.ch包
+        "--add-exports", "java.base/sun.misc=ALL-UNNAMED",   # 导出sun.misc包
+        "--add-exports", "java.base/jdk.internal.misc=ALL-UNNAMED",  # 导出jdk.internal.misc包
+        "--add-exports", "java.base/jdk.internal.ref=ALL-UNNAMED",   # 导出jdk.internal.ref包
+        "-Dio.netty.tryReflectionSetAccessible=true",  # 解决Netty反射问题
+        "-Dio.netty.native.skipTryReflectionSetAccessible=true",  # 跳过Netty反射检查
+        "-Dsun.misc.unsafe.throwException=false",  # 禁用sun.misc.Unsafe异常
+        "-Djdk.attach.allowAttachSelf=true",  # 允许自我附加
+        "-Djdk.module.IllegalAccess.silent=true",  # 静默非法访问
+        "-Dlog4j2.formatMsgNoLookups=true",
         "-Dfile.encoding=COMPAT",
         "-Dstderr.encoding=UTF-8", 
         "-Dstdout.encoding=UTF-8",
@@ -484,8 +648,29 @@ def Get_Run_Script(version):
         "-Djdk.lang.Process.allowAmbiguousCommands=true",
         "-Dfml.ignoreInvalidMinecraftCertificates=True",
         "-Dfml.ignorePatchDiscrepancies=True",
-        "-Dlog4j2.formatMsgNoLookups=true",
-        "-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump"
+        "-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump",
+        "-Dsun.misc.URLClassPath.disableJarChecking=true",  # 禁用JAR检查
+        "-Djava.rmi.server.useCodebaseOnly=true",  # 仅使用代码库
+        "-Dcom.sun.management.jmxremote.local.only=true",  # 仅限本地JMX远程
+        "-Dcom.sun.management.jmxremote.authenticate=false",  # 禁用JMX身份验证
+        "-Dcom.sun.management.jmxremote.ssl=false",  # 禁用JMX SSL
+        "-XX:-OmitStackTraceInFastThrow",  # 不省略快速抛出的堆栈跟踪
+        "-Djna.nosys=true",  # 禁用系统级JNA库
+        "-Djnidispatch.preserve=true",  # 保留JNI分发
+        "-Dorg.lwjgl.util.Debug=false",  # 禁用LWJGL调试
+        "-Dorg.lwjgl.util.noload=true",  # 不加载LWJGL库
+        "-Djava.awt.headless=false",  # 非headless模式
+        "-Dsun.java2d.noddraw=true",  # 禁用DirectDraw
+        "-Dsun.java2d.d3d=false",  # 禁用Direct3D
+        "-Dsun.java2d.opengl=false",  # 禁用OpenGL
+        "-Dsun.java2d.pmoffscreen=false",  # 禁用离屏渲染
+        "-Dsun.java2d.accthreshold=0",  # 禁用硬件加速
+        "-XX:ErrorFile=./hs_err_pid%p.log",  # 错误日志文件
+        "-XX:+UnlockExperimentalVMOptions",  # 解锁实验性选项
+        "-XX:+UseG1GC",  # 使用G1垃圾收集器
+        "-XX:+UseCompressedOops",  # 使用压缩对象指针
+        "-XX:+OptimizeStringConcat",  # 优化字符串连接
+        "-XX:+UseStringDeduplication"  # 启用字符串去重
     ]
     
     # 添加 Native 库路径参数
@@ -508,6 +693,7 @@ def Get_Run_Script(version):
     
     # 添加所有依赖库
     libraries_dir = os.path.join(minecraft_dir, "libraries")
+    missing_libraries = []
     if "libraries" in version_data:
         for lib in version_data["libraries"]:
             # 检查库是否适用于当前系统
@@ -541,10 +727,13 @@ def Get_Run_Script(version):
                         )
                         lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
                 
-                if lib_path and os.path.exists(lib_path):
-                    # 移除对 org.ow2.asm 的特殊处理，确保所有库都被添加
-                    # 原来的代码会排除 org.ow2.asm 库，但这可能导致其他依赖问题
-                    classpath.append(lib_path)
+                if lib_path:
+                    # 检查库文件是否存在
+                    if os.path.exists(lib_path):
+                        classpath.append(lib_path)
+                    else:
+                        # 记录缺失的库文件
+                        missing_libraries.append((lib, lib_path))
     
     # 检查是否为 Fabric 版本
     is_fabric = "fabric" in version.lower() or any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", []))
@@ -615,7 +804,13 @@ def Get_Run_Script(version):
                     )
                     lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
             
-            if lib_path and os.path.exists(lib_path):
+            if lib_path:
+                # 检查库文件是否存在
+                if not os.path.exists(lib_path):
+                    # 记录缺失的库文件
+                    missing_libraries.append((lib, lib_path))
+                    continue
+                    
                 # 处理ASM库
                 if "org.ow2.asm" in lib_name:
                     # 从库名中提取版本号和模块名
@@ -664,6 +859,36 @@ def Get_Run_Script(version):
     
     # 添加客户端 JAR 到 classpath
     classpath.append(client_jar_path)
+    if not os.path.exists(client_jar_path):
+        missing_libraries.append(({"name": f"{version}.jar", "downloads": {"artifact": {"path": f"{version}/{version}.jar"}}}, client_jar_path))
+    
+    # 检查是否有缺失的库文件并尝试下载
+    if missing_libraries:
+        log(f"发现 {len(missing_libraries)} 个缺失的库文件，正在尝试下载...")
+        
+        # 从 config.json 读取 MaxThread
+        try:
+            with open('config.json', 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+            max_workers = config_data.get("MaxThread", 2000)  # 默认值 2000
+        except Exception:
+            max_workers = 2000  # 读取失败时使用默认值
+        
+        # 创建下载器并启动下载线程
+        downloader = LibraryDownloader(missing_libraries, max_workers)
+        download_thread = threading.Thread(target=downloader.download_libraries)
+        download_thread.daemon = True
+        download_thread.start()
+        
+        # 等待下载完成
+        downloader.completed_event.wait()
+        
+        # 重新检查库文件并添加到类路径中
+        # 这一步确保即使之前缺失的库文件现在也已下载并添加到类路径中
+        for lib, lib_path in missing_libraries:
+            if os.path.exists(lib_path) and lib_path not in classpath:
+                classpath.append(lib_path)
+                log(f"添加之前缺失但现已下载的库: {lib_path}")
     
     # 添加类路径参数
     launch_args.append("-cp")
@@ -676,12 +901,22 @@ def Get_Run_Script(version):
     else:
         # 原始 Minecraft 启动方式
         launch_args.append("-jar")
-        launch_args.append(f'"{os.path.join(os.getcwd(), "JavaWrapper.jar")}"')
+        java_wrapper_path = os.path.join(os.getcwd(), "JavaWrapper.jar")
+        if not os.path.exists(java_wrapper_path):
+            raise FileNotFoundError(f"JavaWrapper.jar 文件不存在: {java_wrapper_path}")
+        launch_args.append(f'"{java_wrapper_path}"')
         launch_args.append("net.minecraft.client.main.Main")
     
     # 添加游戏参数
     game_dir = os.path.join(minecraft_dir, "versions", version)
     assets_dir = os.path.join(minecraft_dir, "assets")
+    
+    # 检查游戏目录和资产目录是否存在
+    if not os.path.exists(game_dir):
+        raise FileNotFoundError(f"游戏目录不存在: {game_dir}")
+    
+    if not os.path.exists(assets_dir):
+        raise FileNotFoundError(f"资产目录不存在: {assets_dir}")
     
     # 获取资产索引
     asset_index = version_data.get("assetIndex", {}).get("id", version)
@@ -739,7 +974,8 @@ def Get_Run_Script(version):
         ])
     
     # 构建命令
-    bat_command = " ".join(launch_args)
+    # 通过过滤特定警告来减少stderr输出
+    bat_command = " ".join(launch_args) + " 2>&1 | findstr /v /i \"sun.misc.not.in.java.base A.terminally.deprecated.method.in.sun.misc.Unsafe.has.been.called sun.misc.Unsafe::objectFieldOffset.has.been.called.by org.joml.MemUtil\""
     
     log(f"生成的启动命令: {bat_command}")
     return bat_command
