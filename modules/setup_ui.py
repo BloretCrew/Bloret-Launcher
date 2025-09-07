@@ -1393,7 +1393,7 @@ def setup_download_ui(self, widget):
         # 设置自定义项目按钮点击事件
         Customize_add = widget.findChild(QPushButton, 'Customize_add')
         if Customize_add:
-            Customize_add.clicked.connect(lambda: CustomizeAdd())
+            Customize_add.clicked.connect(lambda: CustomizeAdd(self))
             
     except Exception as e:
         log(f"设置下载UI时出错: {str(e)}", logging.ERROR)

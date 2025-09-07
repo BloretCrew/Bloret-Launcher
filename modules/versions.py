@@ -689,35 +689,54 @@ def Get_Run_Script(version):
     # 设置 versionType
     version_type = "Bloret-Launcher"
     
-    # 检查账户信息相关字段
-    missing_fields = []
-    if not account_info:
-        missing_fields.append("账户信息")
-    else:
-        if not account_info.get("uuid"):
-            missing_fields.append("UUID")
-        if not account_info.get("accessToken"):
-            missing_fields.append("AccessToken")
-        # 你可以根据需要继续检查其他字段
+    # 检查登录方式并设置相应参数
+    login_method = account_info.get("loginMethod", 0) if account_info else 0
+    
+    # 根据登录方式设置启动参数
+    if login_method == 0:  # 离线登录
+        launch_args.extend([
+            "--username", username,
+            "--version", version,
+            "--gameDir", f'"{game_dir}"',
+            "--assetsDir", f'"{assets_dir}"',
+            "--assetIndex", str(asset_index),
+            "--uuid", "00000000000000000000000000000000",
+            "--accessToken", "00000000000000000000000000000000",
+            "--userType", "legacy",
+            "--versionType", version_type,
+            "--width", "854",
+            "--height", "480"
+        ])
+    elif login_method == 2:  # 微软登录
+        # 检查账户信息相关字段
+        missing_fields = []
+        if not account_info:
+            missing_fields.append("账户信息")
+        else:
+            if not account_info.get("uuid"):
+                missing_fields.append("UUID")
+            if not account_info.get("accessToken"):
+                missing_fields.append("AccessToken")
+            # 你可以根据需要继续检查其他字段
 
-    if missing_fields:
-        raise ValueError(f"缺少必要的启动参数: {', '.join(missing_fields)}，请先登录或完善账户信息。")
-
-    launch_args.extend([
-        "--username", username,
-        "--version", version,
-        "--gameDir", f'"{game_dir}"',
-        "--assetsDir", f'"{assets_dir}"',
-        "--assetIndex", str(asset_index),
-        "--uuid", account_info.get("uuid"),
-        "--accessToken", account_info.get("accessToken"),
-        "--clientId", account_info.get("clientId", ""),
-        "--xuid", account_info.get("xuid", ""),
-        "--userType", account_info.get("userType", "msa"),
-        "--versionType", version_type,
-        "--width", "854",
-        "--height", "480"
-    ])
+        if missing_fields:
+            raise ValueError(f"缺少必要的启动参数: {', '.join(missing_fields)}，请先登录或完善账户信息。")
+            
+        launch_args.extend([
+            "--username", username,
+            "--version", version,
+            "--gameDir", f'"{game_dir}"',
+            "--assetsDir", f'"{assets_dir}"',
+            "--assetIndex", str(asset_index),
+            "--uuid", account_info.get("uuid"),
+            "--accessToken", account_info.get("accessToken"),
+            "--clientId", account_info.get("clientId", ""),
+            "--xuid", account_info.get("xuid", ""),
+            "--userType", account_info.get("userType", "msa"),
+            "--versionType", version_type,
+            "--width", "854",
+            "--height", "480"
+        ])
     
     # 构建命令
     bat_command = " ".join(launch_args)
