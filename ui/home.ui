@@ -41,7 +41,7 @@
     <number>0</number>
    </property>
    <item>
-    <widget class="TitleLabel" name="TitleLabel">
+    <widget class="TitleLabel" name="Bloret_Launcher_Title">
      <property name="text">
       <string>Bloret Launcher</string>
      </property>
@@ -61,7 +61,7 @@
         <x>0</x>
         <y>0</y>
         <width>714</width>
-        <height>576</height>
+        <height>597</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -102,7 +102,7 @@
              </widget>
             </item>
             <item>
-             <widget class="StrongBodyLabel" name="label">
+             <widget class="StrongBodyLabel" name="WelcomeToUseBL">
               <property name="minimumSize">
                <size>
                 <width>0</width>
@@ -161,7 +161,7 @@
         </widget>
        </item>
        <item>
-        <widget class="SubtitleLabel" name="label_4">
+        <widget class="SubtitleLabel" name="Info_title">
          <property name="text">
           <string>信息</string>
          </property>
@@ -245,7 +245,7 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_6">
             <item>
-             <widget class="StrongBodyLabel" name="label_5">
+             <widget class="StrongBodyLabel" name="Welcome_text">
               <property name="maximumSize">
                <size>
                 <width>16777210</width>
@@ -285,7 +285,7 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_8">
             <item>
-             <widget class="CaptionLabel" name="CaptionLabel_6">
+             <widget class="CaptionLabel" name="WillUseAccount_Top">
               <property name="text">
                <string>将使用</string>
               </property>
@@ -333,7 +333,7 @@
              </widget>
             </item>
             <item>
-             <widget class="CaptionLabel" name="CaptionLabel">
+             <widget class="CaptionLabel" name="WillUseAccount_Down">
               <property name="text">
                <string>来登录 Minecraft</string>
               </property>
@@ -453,12 +453,6 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>ElevatedCardWidget</class>
-   <extends>SimpleCardWidget</extends>
-   <header>qfluentwidgets</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>SimpleCardWidget</class>
    <extends>CardWidget</extends>
    <header>qfluentwidgets</header>
@@ -489,6 +483,12 @@
    <class>TitleLabel</class>
    <extends>QLabel</extends>
    <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>ElevatedCardWidget</class>
+   <extends>SimpleCardWidget</extends>
+   <header>qfluentwidgets</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

@@ -1,0 +1,269 @@
+{
+    "widgets":{
+        "home":{
+            "Labels":{
+                "Bloret_Launcher_Title":"BloretLauncher",
+                "WelcomeToUseBL":"欢迎使用百络谷 Minecraft 启动器。\n如发现任何 Bug 或有建议等，请到 Github 上提交 Issue\n也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。",
+                "Info_title":"信息",
+                "show":"欢迎使用百络谷 Minecraft 启动器",
+                "Welcome_text":"您好,",
+                "WillUseAccount_Top":"将使用",
+                "WillUseAccount_Down":"来登录 Minecraft"
+            },
+            "buttons":{
+                "pushButton_2": "Bloret Github 组织页面",
+                "pushButton": "该项目的 Github 页面",
+                "run": "启动"
+            }
+        },
+        "BBS":{
+            "Labels":{
+                "TitleLabel":"Bloret BBS"
+            }
+        },
+        "BL_download_version":{
+            "TitleLabel":"Bloret Launcher - Minecraft 核心下载与安装",
+            "SubtitleLabel_2":"下载 Minecraft 版本核心",
+            "StrongBodyLabel_5":"核心文件"
+        },
+        "BL_download":{
+            
+        },
+        "client":{
+            "Client_title":"联机",
+            "Internet_Subtitle":"网络",
+            "Internet_IPV6_Setting_text":"查看您计算机的 IPV6 配置"
+        },
+        "download_load":{
+            "TitleLabel": "下载",
+            "Labels": {
+                "label": "我们已经在加载了...",
+                "label_4": "这可能需要一定时间，请耐心等待\n待加载完成，我们立刻显示选项\n我们通过调用绝大多数启动器使用的BMCLAPI来加载\n因此加载快慢与BMCLAPI加载快慢和您的网络有关\n若长时间加载不出或未响应，请检查网络，如果网络良好，可能是BMCLAPI问题"
+            }
+        },
+        "download.old":{
+            "TitleLabel": "下载",
+            "SubtitleLabel_2": "Minecraft 核心下载",
+            "Labels": {
+                "StrongBodyLabel_9": "选择下载核心",
+                "CaptionLabel_3": "Bloret Launcher 核心由百络谷自行研发，但可选项较少\nCMCL 核心可提供更多版本",
+                "CaptionLabel_2": "警告：Bloret Launcher 核心为实验性功能",
+                "Fabric_2": "Light Minecraft 下载源",
+                "Fabric_text_5": "使用 Bloret Launcher 核心时可用。\n如果下载速度过慢或失败，请尝试切换下载源。",
+                "StrongBodyLabel_6": "选择版本",
+                "CaptionLabel_4": "Bloret Launcher 核心使用 Light Minecraft 协议\n暂时仅支持百络谷支持版本进行下载。\n若要下载其他版本，请在上方选择 CMCL 核心。",
+                "vername": "名称",
+                "vername_text": "你想让这个新下载的版本叫什么？",
+                "Fabric": "Fabric",
+                "Fabric_text": "选择 Fabric 模组加载器，有了它，\n你将可以安装自己的 Mod，拓展更多 Minecraft 功能\n请注意，百络谷服务器不支持服务端 Mod，\n您只能添加客户端 Mod\n百络谷服务器使用 Forge 可能会出现问题。",
+                "CaptionLabel": "推荐选择位于列表最上方的最新版本\n使用以前的版本可能会导致不稳定",
+                "StrongBodyLabel_8": "下载完成后通过 Windows 通知来通知我",
+                "SubtitleLabel_3": "导入",
+                "StrongBodyLabel_3": "导入 .mrpack 文件",
+                "Fabric_text_6": "Modrinth 模组包格式（.mrpack）是一种简单的格式，可以让你存储模组包。",
+                "SubtitleLabel": "自定义",
+                "Fabric_text_3": "Bloret Launcher 不一定启动 Minecraft ，它还可以启动更多。（可能需要重新启动程序后生效）",
+                "StrongBodyLabel": "选择应用程序",
+                "Fabric_text_2": "选择你要自定义启动的程序",
+                "StrongBodyLabel_2": "显示名称",
+                "Fabric_text_4": "设定该应用程序显示在百络谷启动器内的名称"
+            },
+            "buttons": {
+                "download": "开始下载并安装",
+                "add_mrpack_button": "导入 .mrpack 文件",
+                "Customize_choose": "选择应用程序",
+                "Customize_add": "添加到百络谷启动器"
+            },
+            "ComboBox": {
+                "download_way_choose": "",
+                "LM_download_way_choose": "",
+                "show_way": "",
+                "minecraft_choose": "",
+                "Fabric_choose": ""
+            },
+            "LineEdit": {
+                "vername_edit": "",
+                "Customize_path": "应用程序路径",
+                "Customize_showname": "应用程序显示名称"
+            },
+            "SwitchButton": {
+                "Notification": ""
+            }
+        },
+        "download":{
+            "TitleLabel": "下载",
+            "Labels": {
+                "StrongBodyLabel_22": "原版 Minecraft",
+                "CaptionLabel_12": "一键下载安装原版 Minecraft",
+                "StrongBodyLabel_23": "Minecraft + Fabric",
+                "CaptionLabel_13": "可以添加 Mod 的 Minecraft 版本",
+                "StrongBodyLabel_24": "Java",
+                "CaptionLabel_14": "一键下载安装 Java",
+                "StrongBodyLabel": "Java",
+                "StrongBodyLabel_2": "Windows x64",
+                "StrongBodyLabel_25": "自定义程序",
+                "CaptionLabel_15": "添加自定义启动项",
+                "StrongBodyLabel_26": "旧版安装页面",
+                "CaptionLabel_16": "以前 Bloret Launcher 安装版本的页面\n可以前往此处安装其他版本"
+            },
+            "buttons": {
+                "Minecraft_version_Download": "下载并安装",
+                "Fabric_version_Download": "下载并安装",
+                "Java_version_Download": "下载并安装",
+                "Customize_add": "添加",
+                "Old_download_Page": "前往"
+            },
+            "ComboBox": {
+                "Minecraft_version_choose": "",
+                "Fabric_version_choose": "",
+                "Java_version_choose": ""
+            }
+        },
+        "ERROR":{
+            "TitleLabel": "Bloret Launcher 错误跟踪窗口",
+            "Labels": {
+                "StrongBodyLabel_4": "Bloret Launcher 发生了一些小问题...",
+                "CaptionLabel_5": "如果您认为这是 Bloret Launcher 的问题，请提交此问题。",
+                "StrongBodyLabel": "类型",
+                "StrongBodyLabel_2": "信息",
+                "StrongBodyLabel_3": "回溯信息"
+            },
+            "buttons": {
+                "PushButton": "🔠 复制到剪贴板",
+                "PushButton_2": "ℹ️ 反馈问题",
+                "PushButton_3": "⏫ 忽略警告"
+            },
+            "LineEdit": {
+                "type": "",
+                "value": ""
+            },
+            "PlainTextEdit": {
+                "traceback": ""
+            }
+        },
+        "forum":{
+            
+        },
+        "info":{
+            "TitleLabel": "关于",
+            "SubtitleLabel": "Bloret Launcher",
+            "Labels": {
+                "CaptionLabel_3": "Bloret Launcher 不只是 Minecraft 启动器，但也为 Minecraft 玩家提供便捷的游戏启动与管理体验。",
+                "StrongBodyLabel_11": "QQ",
+                "StrongBodyLabel_12": "Github",
+                "CaptionLabel_2": "© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved."
+            },
+            "buttons": {
+                "pushButton": "Bloret",
+                "BLC_QQ": "Bloret Software Community",
+                "pushButton_2": "Bloret Github 组织页面",
+                "button_github": "此项目的 Github"
+            }
+        },
+        "MCVer_downloading":{
+            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
+            "SubtitleLabel_2": "准备工作",
+            "SubtitleLabel": "下载 Minecraft 资源",
+            "Labels": {
+                "StrongBodyLabel_16": "获取版本清单和版本详细信息",
+                "StrongBodyLabel_14": "客户端核心文件",
+                "StrongBodyLabel_15": "库文件",
+                "libraries_file_name_2": "正在工作线程数:",
+                "libraries_file_working_Thread": "0",
+                "libraries_file_working_Thread_2": "/",
+                "MaxThread": "2000",
+                "libraries_file_name": "",
+                "StrongBodyLabel_17": "资源文件",
+                "libraries_file_name_3": "正在工作线程数:",
+                "Resources_file_working_Thread": "0",
+                "libraries_file_working_Thread_4": "/",
+                "MaxThread_2": "2000",
+                "libraries_file_name_4": "",
+                "CaptionLabel": "Minecraft 下载源由 bangbang93 / BMCLAPI 提供"
+            },
+            "CheckBox": {
+                "First_Step_CheckBox": ""
+            }
+        },
+        "mods":{
+            "TitleLabel": "Mods",
+            "Labels": {
+                "StrongBodyLabel_17": "找到你想要的 Mod",
+                "CaptionLabel_5": "Modrinth 提供了数千万 Mod 供您选择"
+            },
+            "buttons": {
+                "Open_Modrinth_Button": "打开 Modrinth"
+            },
+            "SearchLineEdit": {
+                "Search": "在 Modrinth 上搜索"
+            }
+        },
+        "passport_notdone_account":{
+            "TitleLabel": "通行证",
+            "SubtitleLabel": {
+                "label_3": "百络谷通行证",
+                "label_5": "离线登录 / 微软登录"
+            },
+            "Labels": {
+                "label": "当前登录方式：",
+                "label_2": "当前登录：",
+                "label_4": "当前登录：",
+                "CaptionLabel_2": "使用百络谷通行证进入 Bloret 时，无需再次输入密码。"
+            },
+            "buttons": {
+                "pushButton": "退出登录",
+                "pushButton_5": "多账户设置",
+                "pushButton_6": "注册新账户",
+                "pushButton_2": "登录新账户",
+                "pushButton_7": "多账户设置",
+                "pushButton_8": "注册新账户",
+                "pushButton_3": "添加 / 登录新账户",
+                "pushButton_9": "多账户设置"
+            },
+            "ComboBox": {
+                "comboBox_3": ["百络谷通行证", "离线登录", "微软登录"],
+                "comboBox_4": ["Detrital"],
+                "comboBox_5": ["Detrital"]
+            }
+        },
+        "passport.old":{
+            
+        },
+        "passport":{
+            
+        },
+        "settings":{
+            
+        },
+        "tools":{
+            "TitleLabel": "小工具",
+            "SubtitleLabel": "Minecraft 数据查询",
+            "Labels": {
+                "name2uuid_text": "查询玩家UUID",
+                "label_2": "查询的结果将显示在这里",
+                "StrongBodyLabel_20": "查询玩家名字",
+                "search_name": "查询的结果将显示在这里",
+                "label_7": "获取玩家的皮肤和披风",
+                "search_skin": "皮肤的查询的结果",
+                "search_cape": "披风的查询的结果"
+            },
+            "buttons": {
+                "name2uuid_player_Button": "查询",
+                "pushButton_5": "复制到剪贴板",
+                "search_name_button": "查询",
+                "search_name_copy": "复制到剪贴板",
+                "skin_search_button": "查询",
+                "search_skin_copy": "复制到剪贴板",
+                "search_cape_copy": "复制到剪贴板"
+            },
+            "LineEdit": {
+                "name2uuid_player_uuid": "玩家名称（正版）",
+                "search_name_type": "玩家UUID",
+                "skin_uuid": "玩家UUID，注意不是名字，如果没有，请到上面获取。"
+            }
+        },
+        "version":{
+            "TitleLabel": "版本管理"
+        }
+    }
+}
