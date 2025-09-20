@@ -2,7 +2,7 @@
     "widgets":{
         "home":{
             "Labels":{
-                "Bloret_Launcher_Title":"BloretLauncher",
+                "Bloret_Launcher_Title":"Bloret Launcher",
                 "WelcomeToUseBL":"Bloret Minecraft 런처를 사용해 주셔서 감사합니다.\n버그를 발견하거나 제안이 있으시면 Github에 Issue를 제출해 주세요.\n또한 Github 페이지에서 Pull request를 요청하여 Bloret 런처에 기여해 주시기 바랍니다.",
                 "Info_title":"정보",
                 "show":"Bloret Minecraft 런처를 사용해 주셔서 감사합니다",

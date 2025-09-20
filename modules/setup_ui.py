@@ -505,13 +505,45 @@ def setup_settings_ui(self, widget):
     language_choose = widget.findChild(ComboBox, "language_Choose")
     if language_choose:
         language_choose.clear()
-        language_choose.addItems(["zh-cn", "en-GB"])
-        language_choose.setCurrentText(self.config.get("language", "zh-cn"))
-        language_choose.currentTextChanged.connect(lambda language: (
-            self.config.update(language=language),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
-            log(f"语言设置已更改为: {language}")
-        ))
+        # 从Default.json文件中读取语言列表
+        try:
+            with open(os.path.join('lang', 'Default.json'), 'r', encoding='utf-8') as f:
+                default_lang_data = json.load(f)
+            # 提取语言项并显示name值
+            language_items = []
+            language_map = {}  # 用于存储显示名称到语言代码的映射
+            for lang_code, lang_info in default_lang_data.get('lang', {}).items():
+                display_name = lang_info.get('name', lang_code)
+                language_items.append(display_name)
+                language_map[display_name] = lang_code
+            
+            language_choose.addItems(language_items)
+            
+            # 设置当前选中项
+            current_lang_code = self.config.get("language", "zh-cn")
+            current_lang_name = default_lang_data.get('lang', {}).get(current_lang_code, {}).get('name', current_lang_code)
+            language_choose.setCurrentText(current_lang_name)
+            
+            # 连接更改事件
+            def on_language_changed(display_name):
+                # 获取语言代码
+                lang_code = language_map.get(display_name, display_name)
+                self.config.update(language=lang_code)
+                with open('config.json', 'w', encoding='utf-8') as f:
+                    json.dump(self.config, f, ensure_ascii=False, indent=4)
+                log(f"语言设置已更改为: {lang_code}")
+            
+            language_choose.currentTextChanged.connect(on_language_changed)
+        except Exception as e:
+            log(f"读取语言配置文件失败: {e}")
+            # 出错时使用原有逻辑
+            language_choose.addItems(["zh-cn", "en-GB"])
+            language_choose.setCurrentText(self.config.get("language", "zh-cn"))
+            language_choose.currentTextChanged.connect(lambda language: (
+                self.config.update(language=language),
+                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+                log(f"语言设置已更改为: {language}")
+            ))
 
     size_choose = widget.findChild(SpinBox, "Size_Choose")
     if size_choose:

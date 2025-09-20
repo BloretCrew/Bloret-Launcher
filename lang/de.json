@@ -2,7 +2,7 @@
     "widgets":{
         "home":{
             "Labels":{
-                "Bloret_Launcher_Title":"BloretLauncher",
+                "Bloret_Launcher_Title":"Bloret Launcher",
                 "WelcomeToUseBL":"Willkommen beim Bloret Minecraft Launcher.\nFalls Sie Fehler finden oder Vorschläge haben, senden Sie bitte ein Issue auf Github.\nSie sind auch herzlich eingeladen, eine Pull-Anfrage auf der Github-Seite zu stellen, um zum Bloret Launcher beizutragen.",
                 "Info_title":"Information",
                 "show":"Willkommen beim Bloret Minecraft Launcher",
