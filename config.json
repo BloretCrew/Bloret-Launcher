@@ -47,5 +47,6 @@
         }
     },
     "minecraft_dir": "",
-    "Java_Path": "C:\\Program Files\\Zulu\\zulu-23\\bin\\java.exe"
+    "Java_Path": "C:\\Program Files\\Zulu\\zulu-23\\bin\\java.exe",
+    "language": "zh-cn"
 }
