@@ -17,6 +17,7 @@ from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
 from modules.versions import Get_Run_Script
+from modules.i18n import i18n_widgets
 # 全局变量
 server_ip = "http://pcfs.eno.ink:2/" # Bloret Launcher Server 服务器地址 （尾部带斜杠）
 ver_id_main = []
@@ -437,6 +438,7 @@ class MainWindow(FluentWindow):
         load_ui("ui/passport.ui", parent=self.passportInterface)
         load_ui("ui/settings.ui", parent=self.settingsInterface)
         load_ui("ui/info.ui", parent=self.infoInterface)
+        i18n_widgets(self)
         setup_home_ui(self,self.homeInterface)
         setup_download_ui(self,self.downloadInterface)
         setup_tools_ui(self,self.toolsInterface)
@@ -1595,6 +1597,19 @@ with open('config.json', 'r', encoding='utf-8') as f:
 # 获取系统深浅色主题
 isdarktheme = is_dark_theme()
 log(f"当前主题:{isdarktheme}")
+
+# 添加语言切换功能
+def switch_language(locale):
+    global translator
+    app.removeTranslator(translator)  # 移除当前翻译器
+    translator = FluentTranslator(locale)
+    app.installTranslator(translator)
+    window.retranslateUi()  # 重新翻译 UI
+
+# 设置语言
+language = config.get('language', 'zh-cn')
+if language != 'zh-cn':
+    switch_language(QLocale(language))
 
 if not config.get('localmod', False):
     check_Light_Minecraft_Download_Way(server_ip, update_download_way)

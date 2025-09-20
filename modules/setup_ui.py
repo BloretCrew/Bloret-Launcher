@@ -501,6 +501,18 @@ def setup_settings_ui(self, widget):
         light_dark_choose.addItems(["跟随系统", "深色模式", "浅色模式"])
         light_dark_choose.currentTextChanged.connect(self.on_light_dark_changed)
 
+    # 添加语言选择框
+    language_choose = widget.findChild(ComboBox, "language_Choose")
+    if language_choose:
+        language_choose.clear()
+        language_choose.addItems(["zh-cn", "en-GB"])
+        language_choose.setCurrentText(self.config.get("language", "zh-cn"))
+        language_choose.currentTextChanged.connect(lambda language: (
+            self.config.update(language=language),
+            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            log(f"语言设置已更改为: {language}")
+        ))
+
     size_choose = widget.findChild(SpinBox, "Size_Choose")
     if size_choose:
         size_choose.setValue(self.config.get("size", 100))

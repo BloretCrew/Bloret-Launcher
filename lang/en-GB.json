@@ -366,7 +366,14 @@
                 }
             },
             "ComboBox": {
-                "light_dark_choose": ""
+                "light_dark_choose": "",
+                "language_Choose": ["zh-cn", "en-GB"]
+            },
+            "StrongBodyLabel": {
+                "language_Setting_Title": "Language / language"
+            },
+            "CaptionLabel": {
+                "language_Setting_Tip_Text": "Adjust language settings"
             }
         },
         "tools":{

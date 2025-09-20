@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>695</width>
-    <height>950</height>
+    <height>912</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -45,8 +45,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>677</width>
-        <height>1017</height>
+        <width>671</width>
+        <height>1184</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -323,6 +323,75 @@
         </widget>
        </item>
        <item>
+        <widget class="CardWidget" name="CardWidget_8">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_11">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_14">
+            <item>
+             <widget class="StrongBodyLabel" name="language_Setting_Title">
+              <property name="text">
+               <string>语言 / language</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="language_Setting_Tip_Text">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>调整语言设置</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="150">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_16">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>165</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="ComboBox" name="language_Choose"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="CardWidget" name="frame_9">
          <property name="minimumSize">
           <size>
@@ -567,17 +636,17 @@
            </spacer>
           </item>
           <item>
-           <widget class="SwitchButton" name="Self_starting">
-            <property name="checked">
+           <widget class="SwitchButton" name="Self_starting" native="true">
+            <property name="checked" stdset="0">
              <bool>false</bool>
             </property>
-            <property name="text">
+            <property name="text" stdset="0">
              <string>关闭</string>
             </property>
-            <property name="onText">
+            <property name="onText" stdset="0">
              <string>打开</string>
             </property>
-            <property name="offText">
+            <property name="offText" stdset="0">
              <string>关闭</string>
             </property>
            </widget>
@@ -649,20 +718,20 @@
            </spacer>
           </item>
           <item>
-           <widget class="SwitchButton" name="repeat_run_button">
-            <property name="spacing">
+           <widget class="SwitchButton" name="repeat_run_button" native="true">
+            <property name="spacing" stdset="0">
              <number>12</number>
             </property>
-            <property name="checked">
+            <property name="checked" stdset="0">
              <bool>false</bool>
             </property>
-            <property name="text">
+            <property name="text" stdset="0">
              <string>禁止</string>
             </property>
-            <property name="onText">
+            <property name="onText" stdset="0">
              <string>允许</string>
             </property>
-            <property name="offText">
+            <property name="offText" stdset="0">
              <string>禁止</string>
             </property>
            </widget>
@@ -734,20 +803,20 @@
            </spacer>
           </item>
           <item>
-           <widget class="SwitchButton" name="show_runtime_do_button">
-            <property name="spacing">
+           <widget class="SwitchButton" name="show_runtime_do_button" native="true">
+            <property name="spacing" stdset="0">
              <number>12</number>
             </property>
-            <property name="checked">
+            <property name="checked" stdset="0">
              <bool>true</bool>
             </property>
-            <property name="text">
+            <property name="text" stdset="0">
              <string>显示</string>
             </property>
-            <property name="onText">
+            <property name="onText" stdset="0">
              <string>显示</string>
             </property>
-            <property name="offText">
+            <property name="offText" stdset="0">
              <string>不显示</string>
             </property>
            </widget>
@@ -819,20 +888,20 @@
            </spacer>
           </item>
           <item>
-           <widget class="SwitchButton" name="home_show_login_mod_button">
-            <property name="spacing">
+           <widget class="SwitchButton" name="home_show_login_mod_button" native="true">
+            <property name="spacing" stdset="0">
              <number>12</number>
             </property>
-            <property name="checked">
+            <property name="checked" stdset="0">
              <bool>false</bool>
             </property>
-            <property name="text">
+            <property name="text" stdset="0">
              <string>隐藏</string>
             </property>
-            <property name="onText">
+            <property name="onText" stdset="0">
              <string>展示</string>
             </property>
-            <property name="offText">
+            <property name="offText" stdset="0">
              <string>隐藏</string>
             </property>
            </widget>
@@ -904,20 +973,20 @@
            </spacer>
           </item>
           <item>
-           <widget class="SwitchButton" name="localmod_button">
-            <property name="spacing">
+           <widget class="SwitchButton" name="localmod_button" native="true">
+            <property name="spacing" stdset="0">
              <number>12</number>
             </property>
-            <property name="checked">
+            <property name="checked" stdset="0">
              <bool>false</bool>
             </property>
-            <property name="text">
+            <property name="text" stdset="0">
              <string>关闭</string>
             </property>
-            <property name="onText">
+            <property name="onText" stdset="0">
              <string>启用</string>
             </property>
-            <property name="offText">
+            <property name="offText" stdset="0">
              <string>关闭</string>
             </property>
            </widget>

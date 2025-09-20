@@ -51,6 +51,7 @@ jobs:
         if (-not (Test-Path "bloret.ico")) { Write-Host "bloret.ico not found"; exit 1 }
         if (-not (Test-Path "config.json")) { Write-Host "config.json not found"; exit 1 }
         if (-not (Test-Path "ui")) { Write-Host "ui directory not found"; exit 1 }
+        if (-not (Test-Path "lang")) { Write-Host "lang directory not found"; exit 1 }
         if (-not (Test-Path "cmcl.json")) { Write-Host "cmcl.json not found"; exit 1 }
         if (-not (Test-Path "cmcl.exe")) { Write-Host "cmcl.exe not found"; exit 1 }
         if (-not (Test-Path "cmcl.blank.json")) { Write-Host "cmcl.blank.json not found"; exit 1 }
@@ -77,6 +78,7 @@ jobs:
           --add-data "bloret.ico;." `
           --add-data "config.json;." `
           --add-data "ui;ui" `
+          --add-data "lang;lang" `
           --add-data "cmcl.json;." `
           --add-data "cmcl.exe;." `
           --add-data "cmcl.blank.json;." `
@@ -96,6 +98,7 @@ jobs:
         mkdir -p ${{ env.OUTPUT_DIR }}
         cp dist/Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp -r lang/ ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.json ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.blank.json ${{ env.OUTPUT_DIR }}/
@@ -241,6 +244,7 @@ jobs:
         [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
         [ -f "config.json" ] || (echo "config.json not found" && exit 1)
         [ -d "ui" ] || (echo "ui directory not found" && exit 1)
+        [ -d "lang" ] || (echo "lang directory not found" && exit 1)
         [ -f "cmcl.json" ] || (echo "cmcl.json not found" && exit 1)
         [ -f "cmcl.exe" ] || (echo "cmcl.exe not found" && exit 1)
         [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
@@ -268,6 +272,7 @@ jobs:
           --add-data "bloret.ico:." \
           --add-data "config.json:." \
           --add-data "ui:ui" \
+          --add-data "lang:lang" \
           --add-data "cmcl.json:." \
           --add-data "cmcl.exe:." \
           --add-data "cmcl.blank.json:." \
@@ -281,11 +286,13 @@ jobs:
           --paths=. \
           Bloret-Launcher.py
       shell: bash
+
     - name: 创建包含其他文件夹的目录
       run: |
         mkdir -p ${{ env.OUTPUT_DIR }}
         cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp -r lang/ ${{ env.OUTPUT_DIR }}/
         cp cmcl.exe ${{ env.OUTPUT_DIR }}/
         cp cmcl.json ${{ env.OUTPUT_DIR }}/
         cp cmcl.blank.json ${{ env.OUTPUT_DIR }}/
@@ -330,6 +337,7 @@ jobs:
         [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
         [ -f "config.json" ] || (echo "config.json not found" && exit 1)
         [ -d "ui" ] || (echo "ui directory not found" && exit 1)
+        [ -d "lang" ] || (echo "lang directory not found" && exit 1)
         [ -f "cmcl.json" ] || (echo "cmcl.json not found" && exit 1)
         [ -f "cmcl.exe" ] || (echo "cmcl.exe not found" && exit 1)
         [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
@@ -357,6 +365,7 @@ jobs:
           --add-data "bloret.ico:." \
           --add-data "config.json:." \
           --add-data "ui:ui" \
+          --add-data "lang:lang" \
           --add-data "cmcl.json:." \
           --add-data "cmcl.exe:." \
           --add-data "cmcl.blank.json:." \
@@ -375,6 +384,7 @@ jobs:
         mkdir -p ${{ env.OUTPUT_DIR }}
         cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp -r lang/ ${{ env.OUTPUT_DIR }}/
         cp cmcl.exe ${{ env.OUTPUT_DIR }}/
         cp cmcl.json ${{ env.OUTPUT_DIR }}/
         cp cmcl.blank.json ${{ env.OUTPUT_DIR }}/
