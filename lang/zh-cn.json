@@ -27,12 +27,43 @@
             "StrongBodyLabel_5":"核心文件"
         },
         "BL_download":{
-            
+            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
+            "SubtitleLabel_2": "下载 Minecraft 版本核心",
+            "SubtitleLabel": "下载 .minecraft 资源",
+            "Labels": {
+                "StrongBodyLabel_5": "核心文件",
+                "StrongBodyLabel_12": "资源库文件 libraries",
+                "StrongBodyLabel_13": "63.1 MB",
+                "StrongBodyLabel_14": "指标文件 indexes",
+                "StrongBodyLabel_15": "379 KB",
+                "StrongBodyLabel_6": "对象文件 objects",
+                "StrongBodyLabel": "1",
+                "StrongBodyLabel_7": "99.9 MB",
+                "StrongBodyLabel_2": "2",
+                "StrongBodyLabel_8": "85.5 MB",
+                "StrongBodyLabel_3": "3",
+                "StrongBodyLabel_9": "92.5 MB",
+                "StrongBodyLabel_4": "4",
+                "StrongBodyLabel_10": "42.5 MB",
+                "CaptionLabel": "右侧大小数据为前期估算，可能不是真实数据。可能更小或更大。"
+            }
         },
         "client":{
-            "Client_title":"联机",
-            "Internet_Subtitle":"网络",
-            "Internet_IPV6_Setting_text":"查看您计算机的 IPV6 配置"
+            "TitleLabel":"联机",
+            "SubtitleLabel":"网络",
+            "Labels": {
+                "StrongBodyLabel_17": "IPV6",
+                "CaptionLabel_5": "查看您计算机的 IPV6 配置",
+                "ipv6_address": "------:------:------:------:------:------:------:------",
+                "CaptionLabel_12": "<html><head/><body><p>使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。<br/><span style=\" font-weight:700;\">IPV6 是您的运营商提供的一项免费服务，不额外收费。 </span>已拥有的用户点击上方按钮直接使用。<br/>IPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。</p></body></html>",
+                "SubtitleLabel_2": "Online Client",
+                "CaptionLabel_9": "<html><head/><body><p>Online Client 是 Bloret 的一项开源项目，可为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方无需安装 Bloret Launcher 就可一起参与联机。</span></p></body></html>",
+                "CaptionLabel_6": "联机服务 Powered by Online Client (BloretCrew) , Server PCFS  © 2025 Bloret All rights reserved."
+            },
+            "buttons": {
+                "GetIPV6AddressButton": "获取 IPV6 联机地址",
+                "StartOnlineClient": "开启联机服务"
+            }
         },
         "download_load":{
             "TitleLabel": "下载",
@@ -142,7 +173,12 @@
             }
         },
         "forum":{
-            
+            "TitleLabel": "Bloret BBS",
+            "SubtitleLabel": "板块1",
+            "Labels": {
+                "title1": "标题1",
+                "text1": "文本1"
+            }
         },
         "info":{
             "TitleLabel": "关于",
@@ -227,13 +263,111 @@
             }
         },
         "passport.old":{
-            
+            "TitleLabel": "通行证",
+            "SubtitleLabel": "离线登录",
+            "Labels": {
+                "label_2": "账户名",
+                "CaptionLabel_3": "请记得单击设定，否则更改不会生效",
+                "CaptionLabel_2": "未来将添加对账户的更多管理，百络谷通行证和微软登录等。"
+            },
+            "buttons": {
+                "player_name_set": "设定"
+            },
+            "LineEdit": {
+                "player_name": ""
+            }
         },
         "passport":{
-            
+            "TitleLabel": "通行证",
+            "SubtitleLabel": {
+                "label_3": "Minecraft 账户",
+                "SubtitleLabel": "Bloret 通行证"
+            },
+            "Labels": {
+                "label_4": "目前登录",
+                "CaptionLabel_4": "您目前登录的账户",
+                "label_2": "选择登录方式",
+                "CaptionLabel_3": "请记得单击设定，否则更改不会生效",
+                "Bloret_PassPort_UserName": "未登录",
+                "CaptionLabel_5": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。"
+            },
+            "buttons": {
+                "login": "重新登录",
+                "Bloret_PassPort_view_BBBS": "访问 Bloret BBS",
+                "Bloret_PassPort_login": "重新登录",
+                "Bloret_PassPort_logout": "退出登录",
+                "reg_Bloret_PassPort": "注册 Bloret 通行证"
+            },
+            "ComboBox": {
+                "player_login_way": "",
+                "playername": "",
+                "login_way": ""
+            }
         },
         "settings":{
-            
+            "TitleLabel": "设置",
+            "SubtitleLabel": {
+                "label_7": "下载",
+                "label_6": "界面",
+                "label_5": "外观",
+                "label": "日志",
+                "SubtitleLabel": "行为"
+            },
+            "Labels": {
+                "StrongBodyLabel_15": "当前版本",
+                "BL_version": "未知",
+                "StrongBodyLabel_22": "最大线程数",
+                "CaptionLabel_12": "下载文件时允许同时下载文件的最大数量\n该数字越大,下载速度越快,但会占用计算机更多性能。",
+                "StrongBodyLabel_17": "缩放",
+                "CaptionLabel_5": "默认启动的窗口大小(重新启动程序后生效)",
+                "StrongBodyLabel_16": "主题",
+                "CaptionLabel_4": "眼睛舒服了",
+                "log_clear_text": "清空日志",
+                "log_clear_subtext": "清空 log 文件夹",
+                "label_3": "开机自启动",
+                "CaptionLabel_11": "开机时一并打开 Bloret Launcher, 并最小化至系统托盘",
+                "StrongBodyLabel_18": "重复启动程序",
+                "CaptionLabel_6": "防止 Bloret Launcher 占满您的计算机",
+                "StrongBodyLabel_19": "显示软件打开过程",
+                "CaptionLabel_7": "在软件打开前以通知的形式显示软件在做什么",
+                "StrongBodyLabel_21": "在首页上 显示 Minecraft 账户登录方式",
+                "CaptionLabel_10": "展示你为微软登录或是离线登录",
+                "StrongBodyLabel_20": "本地模式",
+                "CaptionLabel_8": "不连接一部分的互联网，不允许使用 PCFS 服务。",
+                "CaptionLabel_9": "设置界面大部分内容需要重启程序后生效。"
+            },
+            "buttons": {
+                "log_clear_button": "清空日志"
+            },
+            "SpinBox": {
+                "MaxThread_SpinBox": " 个",
+                "Size_Choose": " %"
+            },
+            "SwitchButton": {
+                "Self_starting": {
+                    "onText": "打开",
+                    "offText": "关闭"
+                },
+                "repeat_run_button": {
+                    "onText": "允许",
+                    "offText": "禁止"
+                },
+                "show_runtime_do_button": {
+                    "onText": "显示",
+                    "offText": "不显示"
+                },
+                "home_show_login_mod_button": {
+                    "onText": "展示",
+                    "offText": "隐藏"
+                },
+                "localmod_button": {
+                    "onText": "启用",
+                    "offText": "关闭"
+                }
+            },
+            "ComboBox": {
+                "light_dark_choose": ""
+            }
         },
         "tools":{
             "TitleLabel": "小工具",
