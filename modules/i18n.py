@@ -179,16 +179,16 @@ def i18n_label_widget_label(widget, widget_name):
                 if label and isinstance(translation_key, str):
                     label.setText(i18n(f"{widget_path}.{control_type}.{sub_label}"))
 
-def i18n_widgets(self):
-    i18n_label_widget_label(self.homeInterface, "home")
-    i18n_label_widget_label(self.multiplayerInterface, "client")
-    i18n_label_widget_label(self.downloadInterface, "download")
-    i18n_label_widget_label(self.toolsInterface, "tools")
-    i18n_label_widget_label(self.versionInterface, "version")
-    i18n_label_widget_label(self.BBSInterface, "bbs")
-    i18n_label_widget_label(self.modInterface, "mods")
-    i18n_label_widget_label(self.passportInterface, "passport")
-    i18n_label_widget_label(self.settingsInterface, "settings")
-    i18n_label_widget_label(self.infoInterface, "info")
+    def i18n_widgets(self):
+        i18n_label_widget_label(self.homeInterface, "home")
+        i18n_label_widget_label(self.multiplayerInterface, "client")
+        i18n_label_widget_label(self.downloadInterface, "download")
+        i18n_label_widget_label(self.toolsInterface, "tools")
+        i18n_label_widget_label(self.versionInterface, "version")
+        i18n_label_widget_label(self.BBSInterface, "bbs")
+        i18n_label_widget_label(self.modInterface, "mods")
+        i18n_label_widget_label(self.passportInterface, "passport")
+        i18n_label_widget_label(self.settingsInterface, "settings")
+        i18n_label_widget_label(self.infoInterface, "info")
     
     return True

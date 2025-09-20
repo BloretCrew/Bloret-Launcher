@@ -1599,17 +1599,17 @@ isdarktheme = is_dark_theme()
 log(f"当前主题:{isdarktheme}")
 
 # 添加语言切换功能
-def switch_language(locale):
-    global translator
-    app.removeTranslator(translator)  # 移除当前翻译器
-    translator = FluentTranslator(locale)
-    app.installTranslator(translator)
-    window.retranslateUi()  # 重新翻译 UI
+# def switch_language(locale):
+#     global translator
+#     app.removeTranslator(translator)  # 移除当前翻译器
+#     translator = FluentTranslator(locale)
+#     app.installTranslator(translator)
+#     window.retranslateUi()  # 重新翻译 UI
 
 # 设置语言
-language = config.get('language', 'zh-cn')
-if language != 'zh-cn':
-    switch_language(QLocale(language))
+# language = config.get('language', 'zh-cn')
+# if language != 'zh-cn':
+#     switch_language(QLocale(language))
 
 if not config.get('localmod', False):
     check_Light_Minecraft_Download_Way(server_ip, update_download_way)
@@ -1626,20 +1626,20 @@ QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 # 创建 QApplication 实例
 app = QApplication(["Bloret Launcher"])
 
-# 初始化 FluentTranslator
-translator = FluentTranslator()
-app.installTranslator(translator)
+# # 初始化 FluentTranslator
+# translator = FluentTranslator()
+# app.installTranslator(translator)
 
 # 默认语言跟随系统语言
-current_locale = QLocale.system()
+# current_locale = QLocale.system()
 
-# 添加语言切换功能
-def switch_language(locale):
-    global translator
-    app.removeTranslator(translator)  # 移除当前翻译器
-    translator = FluentTranslator(locale)
-    app.installTranslator(translator)
-    window.retranslateUi()  # 重新翻译 UI
+# # 添加语言切换功能
+# def switch_language(locale):
+#     global translator
+#     app.removeTranslator(translator)  # 移除当前翻译器
+#     translator = FluentTranslator(locale)
+#     app.installTranslator(translator)
+#     window.retranslateUi()  # 重新翻译 UI
 
 
 # 检查写入权限
