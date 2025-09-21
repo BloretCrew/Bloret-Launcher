@@ -194,4 +194,15 @@ def i18n_widgets(self):
     return True
 
 def i18nText(key):
-    return lang_data["texts"][key]
+    # Handle case where key might be a list with a single string element
+    if isinstance(key, list):
+        if len(key) == 1 and isinstance(key[0], str):
+            key = key[0]
+        else:
+            return key  # Return the list as is if it's not a single string
+    
+    # Original functionality
+    try:
+        return lang_data["texts"][key]
+    except KeyError:
+        return key  # Return the key itself if not found in lang_data
