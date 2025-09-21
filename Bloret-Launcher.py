@@ -17,7 +17,7 @@ from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
 from modules.versions import Get_Run_Script
-from modules.i18n import i18n_widgets
+from modules.i18n import i18n_widgets, i18nText
 # 全局变量
 server_ip = "http://pcfs.eno.ink:2/" # Bloret Launcher Server 服务器地址 （尾部带斜杠）
 ver_id_main = []
@@ -26,7 +26,7 @@ ver_id = []
 ver_url = {}
 ver_id_long = []
 ver_id_bloret = ['1.21.7', '1.21.8']
-set_list = ["你还未安装任何版本哦，请前往下载页面安装"]
+set_list = i18nText(["你还未安装任何版本哦，请前往下载页面安装"])
 BL_update_text = ""
 BL_latest_ver = 0
 threads = []
@@ -51,7 +51,7 @@ class SystemTrayIcon(QSystemTrayIcon):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         if parent is None:
-            print("警告：SystemTrayIcon 的 parent 参数为 None")
+            print(i18nText("警告：SystemTrayIcon 的 parent 参数为 None"))
         self.setIcon(QIcon('bloret.ico'))  # 设置托盘图标
         self.parent = parent
         self.main_window = parent
@@ -60,7 +60,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.menu = SystemTrayMenu(parent=parent)
 
         # 添加二级菜单
-        launch_menu = SystemTrayMenu("🔼  启动版本", self.menu)
+        launch_menu = SystemTrayMenu(i18nText("🔼  启动版本"), self.menu)
         print("set_list:", set_list)  # 打印 set_list 的内容以调试
 
         for version in set_list:
@@ -73,10 +73,10 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.menu.addMenu(launch_menu)
 
         self.menu.addActions([
-            Action('🔡  访问 BBS', triggered=lambda: open_BBBS_link(server_ip)),
-            Action('🔄️  重启程序', triggered=lambda: restart()),
-            Action('✅  显示窗口', triggered=self.main_window.show_main_window),
-            Action('❎  退出程序', triggered=QApplication.quit)
+            Action(i18nText('🔡  访问 BBS'), triggered=lambda: open_BBBS_link(server_ip)),
+            Action(i18nText('🔄️  重启程序'), triggered=lambda: restart()),
+            Action(i18nText('✅  显示窗口'), triggered=self.main_window.show_main_window),
+            Action(i18nText('❎  退出程序'), triggered=QApplication.quit)
         ])
         self.setContextMenu(self.menu)
 
@@ -158,17 +158,17 @@ class LoadMinecraftVersionsThread(QThread):
                         ver_id_short.append(version["id"])
                     elif version["type"] in ["old_alpha", "old_beta"]:
                         ver_id_long.append(version["id"])
-            if self.version_type == "百络谷支持版本":
+            if self.version_type == i18nText("百络谷支持版本"):
                 # 直接使用固定的版本列表
                 self.versions_loaded.emit(["1.21.7", "1.21.8"])
-            elif self.version_type == "正式版本":
+            elif self.version_type == i18nText("正式版本"):
                 self.versions_loaded.emit(ver_id_main)
-            elif self.version_type == "快照版本":
+            elif self.version_type == i18nText("快照版本"):
                 self.versions_loaded.emit(ver_id_short)
-            elif self.version_type == "远古版本":
+            elif self.version_type == i18nText("远古版本"):
                 self.versions_loaded.emit(ver_id_long)
             else:
-                self.error_occurred.emit("未知的版本类型")
+                self.error_occurred.emit(i18nText("未知的版本类型"))
         except requests.RequestException as e:
             self.error_occurred.emit(f"请求错误: {e}")
         except requests.exceptions.SSLError as e:
@@ -183,7 +183,16 @@ class MainWindow(FluentWindow):
 
         # 获取系统主题颜色
         theme_color = get_system_theme_color()
-        log(f"系统主题颜色: {theme_color}")
+        log(i18nText("图标路径不存在: ") + str(icon_path), logging.ERROR)
+        try:
+            send_system_notification(title, message, icon_path)
+        except Exception as e:
+            log(i18nText("发送系统通知失败: ") + str(e), logging.ERROR)
+
+        log(i18nText("加载或显示下载弹窗时发生错误: ") + str(e))
+        log(i18nText("请求错误: ") + str(e))
+        log(i18nText("图标路径存在: ") + str(icon_path))
+        log(i18nText("系统主题颜色: ") + str(theme_color))
         setThemeColor(theme_color)
 
         if(isdarktheme):
@@ -202,31 +211,38 @@ class MainWindow(FluentWindow):
         if sys.platform == "win32":
             mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\BloretLauncherMutex")
             if mutex == 0:
-                log("创建互斥体失败")
+                log(i18nText("检测到程序重复运行"))
+        log(i18nText("主页 被点击"))
+        log(i18nText("下载 被点击"))
+
+        log(i18nText("启动画面已显示"))
+        log(i18nText("启动画面创建完成"))
+        if (pthread_mutex_init(&mutex, NULL) != 0) {
+                log(i18nText("创建互斥体失败"))
                 sys.exit(1)
             error = ctypes.windll.kernel32.GetLastError()
             if error == 183:  # ERROR_ALREADY_EXISTS
                 log("检测到程序重复运行")
                 if not self.config.get('repeat_run', False):
-                    log("重复运行被禁用：检测到程序已运行，退出新实例")
+                    log(i18nText("重复运行被禁用：检测到程序已运行，退出新实例"))
                     # 显示通知
                     notify(progress={
-                        'title': f'Bloret Launcher 已阻止了重复打开软件的操作',
-                        'body': '为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。',
+                        'title': i18nText('Bloret Launcher 已阻止了重复打开软件的操作'),
+                        'body': i18nText('为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。'),
                         'icon': os.path.join(os.getcwd(), 'bloret.ico')
                     })
-                    w = Dialog("Bloret Launcher 已阻止了重复打开软件的操作", "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。")
+                    w = Dialog(i18nText("Bloret Launcher 已阻止了重复打开软件的操作", "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。"))
                     if w.exec():
                         print('确认')
                     ctypes.windll.kernel32.CloseHandle(mutex)
                     sys.exit(0)
 
         if self.config.get('show_runtime_do', False):
-            log("显示软件打开过程已启用")
+            log(i18nText("显示软件打开过程已禁用"))
             # 显示通知
             notify(progress={
-                'title': '正在启动 Bloret Launcher',
-                'status': '正在做打开软件前的工作...',
+                'title': i18nText('正在启动 Bloret Launcher'),
+                'status': i18nText('正在做打开软件前的工作...'),
                 'value': '0',
                 'valueStringOverride': '0%',
                 'icon': os.path.join(os.getcwd(), 'bloret.ico')
@@ -255,7 +271,7 @@ class MainWindow(FluentWindow):
             sys.stderr.reconfigure(encoding='utf-8')
 
         # 1. 创建启动页面
-        update_progress({'value': 10 / 100, 'valueStringOverride': '1/10', 'status': '创建启动页面'})
+        update_progress({'value': 10 / 100, 'valueStringOverride': '1/10', 'status': i18nText('创建启动页面')})
         icon_path = os.path.join(os.getcwd(), 'bloret.ico')
         if os.path.exists(icon_path):
             log(f"图标路径存在: {icon_path}")
@@ -329,7 +345,7 @@ class MainWindow(FluentWindow):
         
         # 隐藏启动页面
         update_progress({'value': 80 / 100, 'valueStringOverride': '8/10', 'status': '隐藏启动页面'})
-        QTimer.singleShot(3000, lambda: (log("隐藏启动画面"), self.splashScreen.finish()))
+        QTimer.singleShot(3000, lambda: (log(i18nText("隐藏启动画面")), self.splashScreen.finish()))
 
         # 初始化需要 cmcl_data 的组件
         update_progress({'value': 90 / 100, 'valueStringOverride': '9/10', 'status': '初始化需要 cmcl_data 的组件'})
@@ -511,7 +527,8 @@ class MainWindow(FluentWindow):
             )
             return
             
-        log(f"开始下载Minecraft版本: {version}")
+        log(i18nText("开始下载Fabric版本: ") + str(version))
+        log(i18nText("开始下载Minecraft版本: ") + str(version))
         
         # 使用InstallMinecraftVersion函数下载版本
         from modules.versions import InstallMinecraftVersion
@@ -577,7 +594,7 @@ class MainWindow(FluentWindow):
         if not version:
             InfoBar.error(
                 title='❌ 错误',
-                content="请选择一个Fabric版本",
+                content=i18nText("无法解析Java版本号"),
                 parent=self,
                 duration=3000
             )
@@ -587,8 +604,8 @@ class MainWindow(FluentWindow):
         
         # 创建进度提示
         teaching_tip = TeachingTip(
-            title=f"正在下载 Fabric {version}",
-            content="下载过程可能需要几分钟，请耐心等待...",
+            title=i18nText("正在下载 Fabric ") + str(version),
+            content=i18nText("下载过程可能需要几分钟，请耐心等待..."),
             parent=self,
             tailPosition=TeachingTipTailPosition.BOTTOM,
             duration=-1,  # 不自动关闭
@@ -600,7 +617,7 @@ class MainWindow(FluentWindow):
         # 临时实现，仅显示提示
         InfoBar.warning(
             title='⚠️ 功能开发中',
-            content=f"Fabric {version} 下载功能正在开发中",
+            content=i18nText("Java ") + str(version) + i18nText(" 功能正在开发中"),
             parent=self,
             duration=3000
         )
@@ -630,12 +647,12 @@ class MainWindow(FluentWindow):
             return
             
         version = match.group(1)
-        log(f"开始下载Java版本: {version}")
+        log(i18nText("开始下载Java版本: ") + str(version))
         
         # 创建进度提示
         teaching_tip = TeachingTip(
-            title=f"正在下载 Java {version}",
-            content="下载过程可能需要几分钟，请耐心等待...",
+            title=i18nText("正在下载 Java ") + str(version),
+            content=i18nText("下载过程可能需要几分钟，请耐心等待..."),
             parent=self,
             tailPosition=TeachingTipTailPosition.BOTTOM,
             duration=-1,  # 不自动关闭
@@ -659,18 +676,18 @@ class MainWindow(FluentWindow):
             teaching_tip.close()
             
         if success:
-            log(f"Minecraft版本 {version} 已成功下载")
+            log(i18nText("Minecraft版本 ") + str(version) + i18nText(" 已成功下载"))
             InfoBar.success(
                 title='✅ 下载成功',
-                content=f"Minecraft版本 {version} 已成功下载并安装",
+                content=i18nText("Minecraft版本 ") + str(version) + i18nText(" 已成功下载并安装"),
                 parent=self,
                 duration=5000
             )
         else:
-            log(f"Minecraft版本 {version} 下载失败")
+            log(i18nText("Minecraft版本 ") + str(version) + i18nText(" 下载失败"))
             InfoBar.error(
                 title='❌ 下载失败',
-                content=f"Minecraft版本 {version} 下载失败，请查看日志了解详情",
+                content=i18nText("Minecraft版本 ") + str(version) + i18nText(" 下载失败，请查看日志了解详情"),
                 parent=self,
                 duration=5000
             )
@@ -679,14 +696,14 @@ class MainWindow(FluentWindow):
         if hasattr(self, 'version'):
             log(f"版本 {self.version} 已成功下载")
         else:
-            log("下载完成，但版本信息缺失")
+            log(i18nText("下载完成，但版本信息缺失"))
 
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()
         if download_button:
             InfoBar.success(
                 title='✅ 下载完成',
-                content=f"版本 {self.version if hasattr(self, 'version') else '未知'} 已成功下载\n前往主页就可以启动了！",
+                content=i18nText("版本 ") + str(self.version if hasattr(self, 'version') else i18nText('未知')) + i18nText(" 已成功下载\\n前往主页就可以启动了！"),
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -700,18 +717,18 @@ class MainWindow(FluentWindow):
         if os.path.exists(src_file):
             try:
                 shutil.copy(src_file, dest_dir)
-                log(f"成功拷贝 {src_file} 到 {dest_dir}")
+                log(i18nText("成功拷贝 ") + str(src_file) + i18nText(" 到 ") + str(dest_dir))
             except Exception as e:
                 handle_exception(e)
-                log(f"拷贝 {src_file} 到 {dest_dir} 失败: {e}", logging.ERROR)
+                self.show_error(i18nText("文件操作失败"), i18nText("无法覆盖cmcl.json: ") + str(e))
         self.is_running = False  # 重置标志变量
         # 发送系统通知
         QTimer.singleShot(0, lambda: self.send_system_notification("下载完成", f"版本 {self.version} 已成功下载"))
         # 检查 NoneType 错误
         if self.show_text is not None:
-            self.show_text.setText("下载完成")
+            self.show_text.setText(i18nText("下载完成"))
         else:
-            log("show_text is None", logging.ERROR)
+            log(i18nText("show_text is None"), logging.ERROR)
         self.run_cmcl_list(True)
     def run_cmcl_list(self,back_set_list):
         global set_list,minecraft_list,customize_list  # 添加全局声明
@@ -751,16 +768,16 @@ class MainWindow(FluentWindow):
                 return customize_list
         except Exception as e:
             # handle_exception(e)
-            log(f"读取版本列表失败: {e}", logging.ERROR)
-            set_list = ["无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装"]
+            log(i18nText("读取版本列表失败: ") + str(e), logging.ERROR)
+            set_list = [i18nText("无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装")]
     def run_cmcl(self, version):
-        log(f"minecraft_list:{minecraft_list}")
+        log(i18nText("minecraft_list:") + str(minecraft_list))
         if version not in minecraft_list:
             CustomizeRun(self,version)
         else:
             InfoBar.success(
                 title=f'🔄️ 正在启动 {version}',
-                content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
+                content=i18nText("正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！"),
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -807,7 +824,7 @@ class MainWindow(FluentWindow):
                 if teaching_tip:
                     teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
             else:
-                log("托盘菜单启动，不显示 TeachingTip")
+                log(i18nText("托盘菜单启动，不显示 TeachingTip"))
 
             # 线程
             self.run_script_thread = RunScriptThread()
@@ -1057,13 +1074,13 @@ class MainWindow(FluentWindow):
                     elif version_type == "远古版本":
                         minecraft_choose.addItems(ver_id_long)
                     else:
-                        log("未知的版本类型", logging.ERROR)
+                        log(i18nText("未知的版本类型"), logging.ERROR)
             
                     log(f"最新发布版本: {latest_release}")
                     log(f"最新快照版本: {latest_snapshot}")
                     log("Minecraft 版本列表已更新")
                 else:
-                    log("无法获取 Minecraft 版本列表", logging.ERROR)
+                    log(i18nText("无法获取 Minecraft 版本列表"), logging.ERROR)
             except requests.exceptions.RequestException as e:
                 log(f"请求错误: {e}", logging.ERROR)
                 InfoBar.error(
@@ -1097,22 +1114,22 @@ class MainWindow(FluentWindow):
         if vername_edit:
             vername = vername_edit.text().strip()
             pattern = r'^(?!^(PRN|AUX|NUL|CON|COM[1-9]|LPT[1-9])$)[^\\/:*?"<>|\x00-\x1F\u4e00-\u9fff]+$'
-            if not re.match(pattern, vername):
-                msg = MessageBox(
-                    title="非法名称",
-                    content="名称包含非法字符或中文，请遵循以下规则：\n1. 不能包含 \\ / : * ? \" < > |\n2. 不能包含中文\n3. 不能使用系统保留名称",
-                    parent=self
-                )
-                msg.exec()
-                return
+        if not re.match(pattern, vername):
+            msg = MessageBox(
+                title=i18nText("非法名称"),
+                content=i18nText("名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称"),
+                parent=self
+            )
+            msg.exec()
+            return
     
         if minecraft_choose and download_button and fabric_choose:
             cmcl_save_path = os.path.join(os.getcwd(), "cmcl_save.json")
             cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")
     
             if not os.path.isfile(cmcl_path):
-                log(f"文件 {cmcl_path} 不存在", logging.ERROR)
-                QMessageBox.critical(self, "错误", f"文件 {cmcl_path} 不存在")
+                log(i18nText("文件 ") + str(cmcl_path) + i18nText(" 不存在"), logging.ERROR)
+                QMessageBox.critical(self, i18nText("错误"), i18nText("文件 ") + str(cmcl_path) + i18nText(" 不存在"))
                 return
             
             choose_ver = minecraft_choose.currentText()
@@ -1121,7 +1138,7 @@ class MainWindow(FluentWindow):
     
             InfoBar.success(
                 title='⬇️ 正在下载',
-                content=f"正在下载你所选的版本...",
+                content=i18nText("正在下载你所选的版本..."),
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -1129,7 +1146,7 @@ class MainWindow(FluentWindow):
                 parent=self
             )
     
-            download_button.setText("已经开始下载...下载状态将会显示在这里")
+            download_button.setText(i18nText("已经开始下载...下载状态将会显示在这里"))
     
             download_way_choose = widget.findChild(ComboBox, "download_way_choose")
             selected_way = download_way_choose.currentText()
@@ -1138,12 +1155,12 @@ class MainWindow(FluentWindow):
             teaching_tip = None
     
             if selected_way == "Bloret Launcher":  # Bloret Launcher 方法
-                log(f"LM_Download_Way_minecraft:{LM_Download_Way_minecraft}")
+                log(i18nText("LM_Download_Way_minecraft:") + str(LM_Download_Way_minecraft))
                 LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
                 BL_download(self, choose_ver, LM_download_way_choose.currentText(), LM_Download_Way_minecraft, LM_Download_Way_version, self)
                 self.on_download_finished(teaching_tip, download_button)
             else:  # CMCL 方法
-                if fabric_download != "不安装":
+        if fabric_download != "不安装":
                     command = f"\"{cmcl_path}\" install {choose_ver} -n {vername} --fabric={fabric_download}"
                 else:
                     command = f"\"{cmcl_path}\" install {choose_ver} -n {vername}"
@@ -1189,8 +1206,8 @@ class MainWindow(FluentWindow):
 
         def run(self):
             try:
-                log(f"正在下载版本 {self.version}")
-                log("执行命令: " + f"{self.version}")
+            log(i18nText("正在启动 ") + str(version))
+                log(i18nText("执行命令: ") + f"{self.version}")
                 process = subprocess.Popen(
                     self.version,
                     stdout=subprocess.PIPE,
@@ -1238,7 +1255,7 @@ class MainWindow(FluentWindow):
             
         def run(self):
             # 执行微软登录命令
-            log("正在执行微软登录命令：cmcl account --login=microsoft")
+            log(i18nText("正在执行微软登录命令：cmcl account --login=microsoft"))
             process = subprocess.Popen(["cmcl", "account", "--login=microsoft"],
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE,
@@ -1248,10 +1265,10 @@ class MainWindow(FluentWindow):
             process.wait()
             
             if process.returncode == 0:
-                self.finished.emit(True, "登录成功")
+                self.finished.emit(True, i18nText("离线登录成功"))
             else:
                 error = process.stderr.read()
-                self.finished.emit(False, f"登录失败: {error}")
+                self.finished.emit(False, i18nText("登录失败: ") + str(error))
     class OfflineLoginThread(QThread):
         finished = pyqtSignal(bool, str)
         
@@ -1283,10 +1300,10 @@ class MainWindow(FluentWindow):
     class CustomMessageBox(MessageBoxBase):
         def __init__(self, parent=None):
             super().__init__(parent)
-            self.titleLabel = SubtitleLabel('离线登录')
+            self.titleLabel = SubtitleLabel(i18nText('离线登录'))
             self.usernameLineEdit = LineEdit()
 
-            self.usernameLineEdit.setPlaceholderText('请输入玩家名称')
+            self.usernameLineEdit.setPlaceholderText(i18nText('请输入玩家名称'))
             self.usernameLineEdit.setClearButtonEnabled(True)
 
             self.viewLayout.addWidget(self.titleLabel)
@@ -1323,7 +1340,7 @@ class MainWindow(FluentWindow):
                 # 覆盖cmcl.json
                 try:
                     shutil.copyfile('cmcl.blank.json', 'cmcl.json')
-                    log("成功覆盖 cmcl.json 文件")
+                    log(i18nText("成功覆盖 cmcl.json 文件"))
                 except Exception as e:
                     handle_exception(e)
                     self.show_error("文件操作失败", f"无法覆盖cmcl.json: {str(e)}")
@@ -1351,12 +1368,12 @@ class MainWindow(FluentWindow):
                 self.microsoft_login_thread.start()
             
             else:
-                log("本地模式已启用，无法使用微软登录。")
-                w = Dialog("您已启用本地模式", "Bloret Launcher 在本地模式下无法进行微软登录，\n因为该操作需要互联网\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。")
+                log(i18nText("本地模式已启用，无法使用微软登录。"))
+                w = Dialog(i18nText("您已启用本地模式"), i18nText("Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。"))
                 if w.exec():
-                    print('确认')
+                    print(i18nText('确认'))
                 else:
-                    print('取消')
+                    print(i18nText('取消'))
     def on_login_finished(self, widget, success, message):
         # 添加有效性检查
         if hasattr(self, 'login_tip') and self.login_tip and not sip.isdeleted(self.login_tip):

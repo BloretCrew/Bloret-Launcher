@@ -192,3 +192,6 @@ def i18n_widgets(self):
     i18n_label_widget_label(self.infoInterface, "info")
     
     return True
+
+def i18nText(key):
+    return lang_data["texts"][key]
