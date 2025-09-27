@@ -4,7 +4,6 @@ from qfluentwidgets import InfoBar, InfoBarPosition
 import logging,traceback,sys,webbrowser
 from PyQt5.QtWidgets import QApplication
 from PyQt5.uic import loadUi
-from modules.i18n import i18nText
 
 copyright = "\n© 2025 Bloret Launcher All rights reserved. \n© 2025 Bloret All rights reserved."
 
