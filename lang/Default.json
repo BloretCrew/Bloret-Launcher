@@ -1,34 +1,156 @@
 {
     "lang":{
-        "zh-cn":{
-            "name": "简体中文",
-            "flag": "🇨🇳",
-            "file": "zh-cn.json"
+        "af-ZA": {
+            "name": "Afrikaans",
+            "file": "af-ZA.json"
         },
-        "de":{
+        "ar-SA": {
+            "name": "العربية",
+            "file": "ar-SA.json"
+        },
+        "ca-ES": {
+            "name": "Català",
+            "file": "ca-ES.json"
+        },
+        "cs-CZ": {
+            "name": "Čeština",
+            "file": "cs-CZ.json"
+        },
+        "da-DK": {
+            "name": "Dansk",
+            "file": "da-DK.json"
+        },
+        "de": {
             "name": "Deutsch",
-            "flag": "🇩🇪",
             "file": "de.json"
         },
-        "en-GB":{
+        "de-DE": {
+            "name": "Deutsch (Deutschland)",
+            "file": "de-DE.json"
+        },
+        "el-GR": {
+            "name": "Ελληνικά",
+            "file": "el-GR.json"
+        },
+        "en-CN": {
+            "name": "English (China)",
+            "file": "en-CN.json"
+        },
+        "en-GB": {
             "name": "English",
-            "flag": "🇬🇧",
             "file": "en-GB.json"
         },
-        "fr":{
+        "en-US": {
+            "name": "English (United States)",
+            "file": "en-US.json"
+        },
+        "es-ES": {
+            "name": "Español",
+            "file": "es-ES.json"
+        },
+        "fi-FI": {
+            "name": "Suomi",
+            "file": "fi-FI.json"
+        },
+        "fr": {
             "name": "Français",
-            "flag": "🇫🇷",
             "file": "fr.json"
         },
-        "ja":{
+        "fr-FR": {
+            "name": "Français (France)",
+            "file": "fr-FR.json"
+        },
+        "gt-ZH": {
+            "name": "梗体中文",
+            "file": "gt-ZH.json"
+        },
+        "he-IL": {
+            "name": "עברית",
+            "file": "he-IL.json"
+        },
+        "hu-HU": {
+            "name": "Magyar",
+            "file": "hu-HU.json"
+        },
+        "it-IT": {
+            "name": "Italiano",
+            "file": "it-IT.json"
+        },
+        "ja": {
             "name": "日本語",
-            "flag": "🇯🇵",
             "file": "ja.json"
         },
-        "ko":{
+        "ja-JP": {
+            "name": "日本語 (日本)",
+            "file": "ja-JP.json"
+        },
+        "ko": {
             "name": "한국어",
-            "flag": "🇰🇷",
             "file": "ko.json"
+        },
+        "ko-KR": {
+            "name": "한국어 (대한민국)",
+            "file": "ko-KR.json"
+        },
+        "nl-NL": {
+            "name": "Nederlands",
+            "file": "nl-NL.json"
+        },
+        "no-NO": {
+            "name": "Norsk",
+            "file": "no-NO.json"
+        },
+        "pl-PL": {
+            "name": "Polski",
+            "file": "pl-PL.json"
+        },
+        "pt-BR": {
+            "name": "Português (Brasil)",
+            "file": "pt-BR.json"
+        },
+        "pt-PT": {
+            "name": "Português",
+            "file": "pt-PT.json"
+        },
+        "ro-RO": {
+            "name": "Română",
+            "file": "ro-RO.json"
+        },
+        "ru-RU": {
+            "name": "Русский",
+            "file": "ru-RU.json"
+        },
+        "sr-SP": {
+            "name": "Српски",
+            "file": "sr-SP.json"
+        },
+        "sv-SE": {
+            "name": "Svenska",
+            "file": "sv-SE.json"
+        },
+        "tr-TR": {
+            "name": "Türkçe",
+            "file": "tr-TR.json"
+        },
+        "uk-UA": {
+            "name": "Українська",
+            "file": "uk-UA.json"
+        },
+        "vi-VN": {
+            "name": "Tiếng Việt",
+            "file": "vi-VN.json"
+        },
+        "zh-cn": {
+            "name": "简体中文",
+            "file": "zh-cn.json"
+        },
+        "zh-TW": {
+            "name": "繁體中文",
+            "file": "zh-TW.json"
+        },
+        "zh-wy": {
+            "name": "文言文",
+            "file": "zh-wy.json"
         }
     }
 }

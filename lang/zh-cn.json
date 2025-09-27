@@ -1,32 +1,32 @@
 {
-    "widgets":{
-        "home":{
-            "Labels":{
-                "Bloret_Launcher_Title":"Bloret Launcher",
-                "WelcomeToUseBL":"欢迎使用百络谷 Minecraft 启动器。\n如发现任何 Bug 或有建议等，请到 Github 上提交 Issue\n也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。",
-                "Info_title":"信息",
-                "show":"欢迎使用百络谷 Minecraft 启动器",
-                "Welcome_text":"您好,",
-                "WillUseAccount_Top":"将使用",
-                "WillUseAccount_Down":"来登录 Minecraft"
+    "widgets": {
+        "home": {
+            "Labels": {
+                "Bloret_Launcher_Title": "Bloret Launcher",
+                "WelcomeToUseBL": "欢迎使用百络谷 Minecraft 启动器。\n如发现任何 Bug 或有建议等，请到 Github 上提交 Issue\n也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。",
+                "Info_title": "信息",
+                "show": "欢迎使用百络谷 Minecraft 启动器",
+                "Welcome_text": "您好,",
+                "WillUseAccount_Top": "将使用",
+                "WillUseAccount_Down": "来登录 Minecraft"
             },
-            "buttons":{
+            "buttons": {
                 "pushButton_2": "Bloret Github 组织页面",
                 "pushButton": "该项目的 Github 页面",
                 "run": "启动"
             }
         },
-        "BBS":{
-            "Labels":{
-                "TitleLabel":"Bloret BBS"
+        "BBS": {
+            "Labels": {
+                "TitleLabel": "Bloret BBS"
             }
         },
-        "BL_download_version":{
-            "TitleLabel":"Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2":"下载 Minecraft 版本核心",
-            "StrongBodyLabel_5":"核心文件"
+        "BL_download_version": {
+            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
+            "SubtitleLabel_2": "下载 Minecraft 版本核心",
+            "StrongBodyLabel_5": "核心文件"
         },
-        "BL_download":{
+        "BL_download": {
             "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
             "SubtitleLabel_2": "下载 Minecraft 版本核心",
             "SubtitleLabel": "下载 .minecraft 资源",
@@ -48,9 +48,9 @@
                 "CaptionLabel": "右侧大小数据为前期估算，可能不是真实数据。可能更小或更大。"
             }
         },
-        "client":{
-            "TitleLabel":"联机",
-            "SubtitleLabel":"网络",
+        "client": {
+            "TitleLabel": "联机",
+            "SubtitleLabel": "网络",
             "Labels": {
                 "StrongBodyLabel_17": "IPV6",
                 "CaptionLabel_5": "查看您计算机的 IPV6 配置",
@@ -65,14 +65,14 @@
                 "StartOnlineClient": "开启联机服务"
             }
         },
-        "download_load":{
+        "download_load": {
             "TitleLabel": "下载",
             "Labels": {
                 "label": "我们已经在加载了...",
                 "label_4": "这可能需要一定时间，请耐心等待\n待加载完成，我们立刻显示选项\n我们通过调用绝大多数启动器使用的BMCLAPI来加载\n因此加载快慢与BMCLAPI加载快慢和您的网络有关\n若长时间加载不出或未响应，请检查网络，如果网络良好，可能是BMCLAPI问题"
             }
         },
-        "download.old":{
+        "download.old": {
             "TitleLabel": "下载",
             "SubtitleLabel_2": "Minecraft 核心下载",
             "Labels": {
@@ -121,7 +121,7 @@
                 "Notification": ""
             }
         },
-        "download":{
+        "download": {
             "TitleLabel": "下载",
             "Labels": {
                 "StrongBodyLabel_22": "原版 Minecraft",
@@ -150,7 +150,7 @@
                 "Java_version_choose": ""
             }
         },
-        "ERROR":{
+        "ERROR": {
             "TitleLabel": "Bloret Launcher 错误跟踪窗口",
             "Labels": {
                 "StrongBodyLabel_4": "Bloret Launcher 发生了一些小问题...",
@@ -172,7 +172,7 @@
                 "traceback": ""
             }
         },
-        "forum":{
+        "forum": {
             "TitleLabel": "Bloret BBS",
             "SubtitleLabel": "板块1",
             "Labels": {
@@ -180,7 +180,7 @@
                 "text1": "文本1"
             }
         },
-        "info":{
+        "info": {
             "TitleLabel": "关于",
             "SubtitleLabel": "Bloret Launcher",
             "Labels": {
@@ -196,7 +196,7 @@
                 "button_github": "此项目的 Github"
             }
         },
-        "MCVer_downloading":{
+        "MCVer_downloading": {
             "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
             "SubtitleLabel_2": "准备工作",
             "SubtitleLabel": "下载 Minecraft 资源",
@@ -221,7 +221,7 @@
                 "First_Step_CheckBox": ""
             }
         },
-        "mods":{
+        "mods": {
             "TitleLabel": "Mods",
             "Labels": {
                 "StrongBodyLabel_17": "找到你想要的 Mod",
@@ -234,7 +234,7 @@
                 "Search": "在 Modrinth 上搜索"
             }
         },
-        "passport_notdone_account":{
+        "passport_notdone_account": {
             "TitleLabel": "通行证",
             "SubtitleLabel": {
                 "label_3": "百络谷通行证",
@@ -257,12 +257,20 @@
                 "pushButton_9": "多账户设置"
             },
             "ComboBox": {
-                "comboBox_3": ["百络谷通行证", "离线登录", "微软登录"],
-                "comboBox_4": ["Detrital"],
-                "comboBox_5": ["Detrital"]
+                "comboBox_3": [
+                    "百络谷通行证",
+                    "离线登录",
+                    "微软登录"
+                ],
+                "comboBox_4": [
+                    "Detrital"
+                ],
+                "comboBox_5": [
+                    "Detrital"
+                ]
             }
         },
-        "passport.old":{
+        "passport.old": {
             "TitleLabel": "通行证",
             "SubtitleLabel": "离线登录",
             "Labels": {
@@ -277,7 +285,7 @@
                 "player_name": ""
             }
         },
-        "passport":{
+        "passport": {
             "TitleLabel": "通行证",
             "SubtitleLabel": {
                 "label_3": "Minecraft 账户",
@@ -304,7 +312,7 @@
                 "login_way": ""
             }
         },
-        "settings":{
+        "settings": {
             "TitleLabel": "设置",
             "SubtitleLabel": {
                 "label_7": "下载",
@@ -367,7 +375,10 @@
             },
             "ComboBox": {
                 "light_dark_choose": "",
-                "language_Choose": ["zh-cn", "en-GB"]
+                "language_Choose": [
+                    "zh-cn",
+                    "en-GB"
+                ]
             },
             "StrongBodyLabel": {
                 "language_Setting_Title": "语言 / language"
@@ -376,7 +387,7 @@
                 "language_Setting_Tip_Text": "调整语言设置"
             }
         },
-        "tools":{
+        "tools": {
             "TitleLabel": "小工具",
             "SubtitleLabel": "Minecraft 数据查询",
             "Labels": {
@@ -403,11 +414,11 @@
                 "skin_uuid": "玩家UUID，注意不是名字，如果没有，请到上面获取。"
             }
         },
-        "version":{
+        "version": {
             "TitleLabel": "版本管理"
         }
     },
-    "texts":{
+    "texts": {
         "你还未安装任何版本哦，请前往下载页面安装": "你还未安装任何版本哦，请前往下载页面安装",
         "🔼  启动版本": "🔼  启动版本",
         "🔡  访问 BBS": "🔡  访问 BBS",
@@ -497,6 +508,94 @@
         "minecraft_list:": "minecraft_list:",
         "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！": "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！",
         "替换 CMCL 2.2.2 → Bloret Launcher": "替换 CMCL 2.2.2 → Bloret Launcher",
-        "替换 CMCL → Bloret-Launcher": "替换 CMCL → Bloret-Launcher"
+        "替换 CMCL → Bloret-Launcher": "替换 CMCL → Bloret-Launcher",
+        "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\\n如需重复打开，请到设置中勾选允许重复运行。": "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\\n如需重复打开，请到设置中勾选允许重复运行。",
+        "连接服务器": "连接服务器",
+        "初始化侧边栏动画": "初始化侧边栏动画",
+        "初始化淡入动画": "初始化淡入动画",
+        "初始化其他属性": "初始化其他属性",
+        "处理首次运行": "处理首次运行",
+        "隐藏启动页面": "隐藏启动页面",
+        "初始化需要 cmcl_data 的组件": "初始化需要 cmcl_data 的组件",
+        "显示窗口": "显示窗口",
+        "未登录": "未登录",
+        "请在下方登录": "请在下方登录",
+        "cmcl.json 中的 accounts 列表为空": "cmcl.json 中的 accounts 列表为空",
+        "微软登录": "微软登录",
+        "未知登录方式": "未知登录方式",
+        "主页": "主页",
+        "下载": "下载",
+        "工具": "工具",
+        "版本管理": "版本管理",
+        "通行证": "通行证",
+        "设置": "设置",
+        "联机": "联机",
+        "关于": "关于",
+        "❌ 错误": "❌ 错误",
+        "请选择一个Minecraft版本": "请选择一个Minecraft版本",
+        "⚠️ 功能开发中": "⚠️ 功能开发中",
+        "✅ 下载成功": "✅ 下载成功",
+        "❌ 下载失败": "❌ 下载失败",
+        "✅ 下载完成": "✅ 下载完成",
+        "选择文件": "选择文件",
+        "所有文件 (*.*)": "所有文件 (*.*)",
+        "⚠️ 提示": "⚠️ 提示",
+        "路径或显示名称不能为空": "路径或显示名称不能为空",
+        "指定的路径不存在，请重新选择": "指定的路径不存在，请重新选择",
+        "指定的路径不是文件，请重新选择": "指定的路径不是文件，请重新选择",
+        "✅ 成功": "✅ 成功",
+        "⏱️ 正在加载": "⏱️ 正在加载",
+        "错误": "错误",
+        "✅ 提示": "✅ 提示",
+        "Minecraft 版本列表已更新": "Minecraft 版本列表已更新",
+        "提示": "提示",
+        "无法连接到服务器，请检查网络连接或稍后再试。": "无法连接到服务器，请检查网络连接或稍后再试。",
+        "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\": "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\",
+        "⬇️ 正在下载": "⬇️ 正在下载",
+        "不安装": "不安装",
+        "✅ 正在下载": "✅ 正在下载",
+        "正在下载并安装": "正在下载并安装",
+        "文件操作失败": "文件操作失败",
+        "⏱️ 正在登录微软账户": "⏱️ 正在登录微软账户",
+        "请按照浏览器中的提示完成登录...": "请按照浏览器中的提示完成登录...",
+        "取消": "取消",
+        "✅ 登录成功": "✅ 登录成功",
+        "❎ 登录失败": "❎ 登录失败",
+        "❎ 提示": "❎ 提示",
+        "请填写值后设定": "请填写值后设定",
+        "名称不能包含中文": "名称不能包含中文",
+        "⏹️ 游戏结束": "⏹️ 游戏结束",
+        "Minecraft 已结束\\n如果您认为是异常退出，请查看 log 文件夹中的最后一份日志文件\\n并前往本项目的 Github 或 百络谷QQ群 询问": "Minecraft 已结束\\n如果您认为是异常退出，请查看 log 文件夹中的最后一份日志文件\\n并前往本项目的 Github 或 百络谷QQ群 询问",
+        "❌ 运行失败": "❌ 运行失败",
+        "跟随系统": "跟随系统",
+        "深色模式": "深色模式",
+        "浅色模式": "浅色模式",
+        "没有日志可以清空了": "没有日志可以清空了",
+        "清空日志": "清空日志",
+        "本地模式已启用，获取 Light-Minecraft-Download-Way 的过程已跳过。": "本地模式已启用，获取 Light-Minecraft-Download-Way 的过程已跳过。",
+        "Bloret Launcher 无法写入文件": "Bloret Launcher 无法写入文件",
+        "Bloret Launcher 需要在安装文件夹写入文件，但是我们在多次尝试后仍无法正常写入文件\\n这可能是由于安装文件夹是只读的。\\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\\n由于没有写入权限，百络谷启动器将退出。": "Bloret Launcher 需要在安装文件夹写入文件，但是我们在多次尝试后仍无法正常写入文件\\n这可能是由于安装文件夹是只读的。\\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\\n由于没有写入权限，百络谷启动器将退出。",
+        ".minecraft 文件夹不存在": ".minecraft 文件夹不存在",
+        ".minecraft 文件夹已存在": ".minecraft 文件夹已存在",
+        ".minecraft 文件夹不存在，开始下载 Minecraft 核心": ".minecraft 文件夹不存在，开始下载 Minecraft 核心",
+        "下载 Minecraft 核心失败，请检查日志。": "下载 Minecraft 核心失败，请检查日志。",
+        ".minecraft/versions 文件夹已存在": ".minecraft/versions 文件夹已存在",
+        "正在下载... ↓": "正在下载... ↓",
+        "下载完成！✅": "下载完成！✅",
+        "所有文件下载和解压完成": "所有文件下载和解压完成",
+        "下载失败": "下载失败",
+        "下载完成处理结束": "下载完成处理结束",
+        "用户名": "用户名",
+        "请输入用户名": "请输入用户名",
+        "密码": "密码",
+        "请输入密码": "请输入密码",
+        "未知错误": "未知错误",
+        "❌ 登录失败": "❌ 登录失败",
+        "请求失败: %s": "请求失败: %s",
+        "登录对话框被取消": "登录对话框被取消",
+        "本地模式已启用，无法进行 Bloret 通行证登录。": "本地模式已启用，无法进行 Bloret 通行证登录。",
+        "Bloret Launcher 在本地模式下无法登录 Bloret 通行证，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。": "Bloret Launcher 在本地模式下无法登录 Bloret 通行证，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。",
+        "⏫ 已退出登录": "⏫ 已退出登录",
+        "已退出登录": "已退出登录"
     }
 }

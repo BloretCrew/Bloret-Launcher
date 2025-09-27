@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块，位于 modules 中
 from modules.safe import handle_exception
 from modules.log import log, importlog
+from modules.i18n import i18nText
 
 def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft, LM_Download_Way_version, parent):
     class BLDownloadDialog(QDialog):
@@ -20,7 +21,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
             # 检查 .minecraft 文件夹是否存在
             minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
             if not os.path.exists(minecraft_dir):
-                log(".minecraft 文件夹不存在")
+                log(i18nText(".minecraft 文件夹不存在"))
                 uic.loadUi("ui/BL_download.ui", self)
                 # 初始化进度条控件
                 self.progress_bars = {
@@ -33,7 +34,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                     "indexes": self.findChild(QProgressBar, "indexes")
                 }
             else:
-                log(".minecraft 文件夹已存在")
+                log(i18nText(".minecraft 文件夹已存在"))
                 uic.loadUi("ui/BL_download_version.ui", self)
                 self.progress_bars = {
                     "version": self.findChild(QProgressBar, "version")
@@ -76,13 +77,13 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                 # 检查 .minecraft 文件夹是否存在
                 minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
                 if not os.path.exists(minecraft_dir):
-                    log(".minecraft 文件夹不存在，开始下载 Minecraft 核心")
+                    log(i18nText(".minecraft 文件夹不存在，开始下载 Minecraft 核心"))
                     success = self.BL_download_minecraft()
                     if not success:
-                        self.error_signal.emit("下载 Minecraft 核心失败，请检查日志。")
+                        self.error_signal.emit(i18nText("下载 Minecraft 核心失败，请检查日志。"))
                         return
                 else:
-                    log(".minecraft 文件夹已存在")
+                    log(i18nText(".minecraft 文件夹已存在"))
 
                 # 确保 .minecraft/versions 文件夹存在
                 versions_dir = os.path.join(minecraft_dir, "versions")
@@ -90,7 +91,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                     os.makedirs(versions_dir)
                     log(f"创建 .minecraft/versions 文件夹: {versions_dir}")
                 else:
-                    log(".minecraft/versions 文件夹已存在")
+                    log(i18nText(".minecraft/versions 文件夹已存在"))
 
                 # 确保 .minecraft/versions/{version} 文件夹存在
                 version_dir = os.path.join(versions_dir, self.version)
@@ -107,7 +108,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                 # 显示通知
                 notify(progress={
                     'title': f'下载版本 {self.version}',
-                    'status': '正在下载... ↓',
+                    'status': i18nText('正在下载... ↓'),
                     'value': '0',
                     'valueStringOverride': '0%',
                     'icon': os.path.join(os.getcwd(), 'bloret.ico')
@@ -148,7 +149,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
 
                 # 更新通知状态
                 update_progress({
-                    'status': '下载完成！✅',
+                    'status': i18nText('下载完成！✅'),
                     'value': 100,
                     'valueStringOverride': f'100%'
                 })
@@ -169,7 +170,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                 os.makedirs(self.MINECRAFT_DIR)
                 log(f"创建 .minecraft 文件夹: {self.MINECRAFT_DIR}")
             else:
-                log(".minecraft 文件夹已存在")
+                log(i18nText(".minecraft 文件夹已存在"))
 
         def BL_download_minecraft(self):
             """下载 Minecraft 资源文件"""
@@ -273,7 +274,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                 log(f"解压文件失败: {e}", logging.ERROR)  # 记录解压失败日志
                 return False  # 返回 False 表示解压失败
         
-            log("所有文件下载和解压完成")  # 记录所有文件下载和解压完成日志
+            log(i18nText("所有文件下载和解压完成"))  # 记录所有文件下载和解压完成日志
             return True  # 返回 True 表示成功
         def download_file_with_retry(self, file_name, target_dir, progress_key):
             """下载文件并支持重试"""
@@ -305,7 +306,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                     # 显示通知，初始化进度条
                     notify(progress={
                         'title': f'下载资源文件 {file_name}',
-                        'status': '正在下载... ↓',
+                        'status': i18nText('正在下载... ↓'),
                         'value': '0',
                         'valueStringOverride': '0%',
                         'icon': os.path.join(os.getcwd(), 'bloret.ico')  # 确保路径有效
@@ -330,7 +331,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
         
                     # 更新通知状态为下载完成
                     update_progress({
-                        'status': '下载完成！✅',
+                        'status': i18nText('下载完成！✅'),
                         'value': 100,
                         'valueStringOverride': f'100%'
                     })
@@ -372,7 +373,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
     thread.error_signal.connect(
         lambda e: (
             log(f"下载失败: {e}", logging.ERROR),
-            Dialog("下载失败", f"下载过程中发生错误: {e}").exec()
+            Dialog(i18nText("下载失败"), f"下载过程中发生错误: {e}").exec()
         )
     )
 
@@ -399,7 +400,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
         if thread in self.threads:
             self.threads.remove(thread)
 
-        log("下载完成处理结束")
+        log(i18nText("下载完成处理结束"))
 
     thread.finished_signal.connect(download_finished)
 

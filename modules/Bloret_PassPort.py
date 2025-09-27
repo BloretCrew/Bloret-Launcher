@@ -4,6 +4,7 @@ import logging,requests,json
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log, importlog
 from modules.safe import handle_exception
+from modules.i18n import i18nText
 
 def Bloret_PassPort_Account_login(self, widget, server_ip, homeInterface):
     if not self.config.get('localmod', False):
@@ -13,14 +14,14 @@ def Bloret_PassPort_Account_login(self, widget, server_ip, homeInterface):
                 super().__init__(parent)
                 
                 # 用户名组件
-                self.usernameLabel = SubtitleLabel('用户名', self)
+                self.usernameLabel = SubtitleLabel(i18nText('用户名'), self)
                 self.usernameLineEdit = LineEdit(self)
-                self.usernameLineEdit.setPlaceholderText('请输入用户名')
+                self.usernameLineEdit.setPlaceholderText(i18nText('请输入用户名'))
                 
                 # 密码组件
-                self.passwordLabel = SubtitleLabel('密码', self)
+                self.passwordLabel = SubtitleLabel(i18nText('密码'), self)
                 self.passwordLineEdit = LineEdit(self)
-                self.passwordLineEdit.setPlaceholderText('请输入密码')
+                self.passwordLineEdit.setPlaceholderText(i18nText('请输入密码'))
                 self.passwordLineEdit.setEchoMode(LineEdit.Password)
                 
                 # 添加到布局
@@ -49,11 +50,11 @@ def Bloret_PassPort_Account_login(self, widget, server_ip, homeInterface):
                 )
                 response_data = response.json()
                 if response_data.get("status") is False:
-                    error_message = response_data.get('message', '未知错误')
+                    error_message = response_data.get('message', i18nText('未知错误'))
                     log(f"登录失败:{error_message}", logging.ERROR)
                     InfoBar.error(
-                        title='❌ 登录失败',
-                        content=response_data.get("message", "未知错误"),
+                        title=i18nText('❌ 登录失败'),
+                        content=response_data.get("message", i18nText("未知错误")),
                         isClosable=True,
                         position=InfoBarPosition.TOP,
                         duration=5000,
@@ -73,7 +74,7 @@ def Bloret_PassPort_Account_login(self, widget, server_ip, homeInterface):
 
                     open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
                     InfoBar.success(
-                        title='✅ 登录成功',
+                        title=i18nText('✅ 登录成功'),
                         content="",
                         isClosable=True,
                         position=InfoBarPosition.TOP,
@@ -84,9 +85,9 @@ def Bloret_PassPort_Account_login(self, widget, server_ip, homeInterface):
                     Bloret_PassPort_Name.setText(f"{username}")
             except Exception as e:
                 handle_exception(e)
-                log("请求失败: %s" % str(e), logging.ERROR)
+                log(i18nText("请求失败: %s") % str(e), logging.ERROR)
                 InfoBar.error(
-                    title='❌ 登录失败',
+                    title=i18nText('❌ 登录失败'),
                     content=f"请求失败: {str(e)}",
                     isClosable=True,
                     position=InfoBarPosition.TOP,
@@ -94,25 +95,25 @@ def Bloret_PassPort_Account_login(self, widget, server_ip, homeInterface):
                     parent=self
                 )
         else:
-            log("登录对话框被取消", logging.INFO)
+            log(i18nText("登录对话框被取消"), logging.INFO)
     else:
-        log("本地模式已启用，无法进行 Bloret 通行证登录。")
-        w = Dialog("您已启用本地模式", "Bloret Launcher 在本地模式下无法登录 Bloret 通行证，\n因为该操作需要互联网\n如果需要登录，请到设置界面关闭本地模式。")
+        log(i18nText("本地模式已启用，无法进行 Bloret 通行证登录。"))
+        w = Dialog(i18nText("您已启用本地模式"), i18nText("Bloret Launcher 在本地模式下无法登录 Bloret 通行证，\n因为该操作需要互联网\n如果需要登录，请到设置界面关闭本地模式。"))
         if w.exec():
-            print('确认')
+            print(i18nText('确认'))
         else:
-            print('取消')
+            print(i18nText('取消'))
 def Bloret_PassPort_Account_logout(self, homeInterface):
-    self.config.update(Bloret_PassPort_UserName='未登录')
+    self.config.update(Bloret_PassPort_UserName=i18nText('未登录'))
     self.config.update(Bloret_PassPort_PassWord='')
     self.config.update(Bloret_PassPort_Admin=False)
     
     open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
     # 更新界面显示
     Bloret_PassPort_User_UserName = homeInterface.findChild(QLabel, "Bloret_PassPort_UserName")
-    Bloret_PassPort_User_UserName.setText("未登录")
+    Bloret_PassPort_User_UserName.setText(i18nText("未登录"))
     InfoBar.success(
-        title='⏫ 已退出登录',
+        title=i18nText('⏫ 已退出登录'),
         content="",
         isClosable=True,
         position=InfoBarPosition.TOP,
@@ -121,6 +122,6 @@ def Bloret_PassPort_Account_logout(self, homeInterface):
     )
     Bloret_PassPort_Name = homeInterface.findChild(QLabel, "Bloret_PassPort_Name")
     Bloret_PassPort_Name.setText(f"未登录")
-    log("已退出登录")
+    log(i18nText("已退出登录"))
 
 importlog("BLORET_PASSPORT.PY")
