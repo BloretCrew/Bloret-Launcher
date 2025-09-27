@@ -1,5 +1,4 @@
 import sys
-from modules.i18n import i18nText
 if sys.platform == "win32": # 仅限 Windows 平台
     from modules.safe import handle_exception
     import asyncio
