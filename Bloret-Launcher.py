@@ -725,12 +725,14 @@ class MainWindow(FluentWindow):
                             if os.path.isdir(os.path.join(versions_path, d))]
                 
                 if not temp_list:
-                    temp_list = [i18nText("你还未安装任何版本哦，请前往下载页面安装")]
+                    temp_list = []
+                    temp_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
                     log(f"版本目录为空: {versions_path}")
                 else:
                     log(f"成功读取版本列表: {temp_list}")
             else:
-                temp_list = [i18nText("无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装")]
+                temp_list = []
+                temp_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
                 log(f"路径无效: {versions_path}")
                 
             set_list = temp_list  # 最后统一赋值给全局变量
@@ -753,7 +755,8 @@ class MainWindow(FluentWindow):
         except Exception as e:
             # handle_exception(e)
             log(f"读取版本列表失败: {e}", logging.ERROR)
-            set_list = [i18nText("无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装")]
+            set_list = []
+            set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
     def run_cmcl(self, version):
         log(f"minecraft_list:{minecraft_list}")
         if version not in minecraft_list:
