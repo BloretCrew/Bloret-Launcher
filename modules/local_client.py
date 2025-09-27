@@ -4,6 +4,7 @@ import subprocess
 import os
 from modules.log import log
 import logging
+from modules.i18n import i18nText
 
 def OnlineClient(server_ip, port):
     """

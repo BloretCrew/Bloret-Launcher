@@ -2,6 +2,7 @@ import logging,requests,os,subprocess,json
 from win32com.client import Dispatch
 from qfluentwidgets import MessageBox
 from modules.win11toast import update_progress
+from modules.i18n import i18nText
 import threading
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log, importlog

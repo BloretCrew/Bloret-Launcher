@@ -1,6 +1,7 @@
 from qfluentwidgets import InfoBar, InfoBarPosition
 import os,subprocess,json
 from modules.log import log, importlog
+from modules.i18n import i18nText
 
 def CustomizeRun(self,version):
     ''' 

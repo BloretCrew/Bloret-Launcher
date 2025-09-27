@@ -16,6 +16,7 @@ import threading,logging,traceback,sys,webbrowser
 from PyQt5.QtWidgets import QApplication
 from PyQt5.uic import loadUi
 from modules.log import log, importlog
+from modules.i18n import i18nText
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     '''

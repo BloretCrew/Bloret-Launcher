@@ -22,6 +22,7 @@ from modules.log import log
 from modules.safe import handle_exception
 import sys
 from modules.customize import find_Customize
+from modules.i18n import i18nText
 
 # 初始化全局变量
 set_list = []

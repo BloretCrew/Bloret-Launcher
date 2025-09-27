@@ -16,6 +16,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from modules.win11toast import notify, update_progress
 from modules.local_client import OnlineClient
 from modules.java import InstallJava
+from modules.i18n import i18nText
 
 class DownloadDialog(MessageBoxBase):
     """ 自定义下载对话框 """

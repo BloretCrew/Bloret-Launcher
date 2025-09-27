@@ -4,6 +4,7 @@ from win32com.client import Dispatch
 
 from modules.log import log, importlog
 from modules.safe import handle_exception
+from modules.i18n import i18nText
 
 def get_system_theme_color():
     """获取系统主题颜色"""

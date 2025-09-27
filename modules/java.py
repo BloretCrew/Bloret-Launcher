@@ -5,6 +5,7 @@ import subprocess
 from modules.win11toast import toast, update_progress, notify
 from threading import Thread
 from modules.log import log
+from modules.i18n import i18nText
 
 def InstallJava(Java_Version):
     # 创建新线程执行Java安装

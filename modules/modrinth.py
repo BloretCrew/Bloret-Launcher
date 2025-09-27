@@ -8,6 +8,7 @@ import subprocess
 import threading
 from qfluentwidgets import InfoBar
 from PyQt5.QtWidgets import QWidget
+from modules.i18n import i18nText
 
 def search_mods(search_term):
     url = f"https://api.modrinth.com/v2/search?query={search_term}&limit=10"
