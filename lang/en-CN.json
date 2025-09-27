@@ -3,17 +3,17 @@
         "home": {
             "Labels": {
                 "Bloret_Launcher_Title": "Bloret Launcher",
-                "WelcomeToUseBL": "欢迎使用百络谷 Minecraft 启动器。\n如发现任何 Bug 或有建议等，请到 Github 上提交 Issue\n也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。",
-                "Info_title": "信息",
-                "show": "欢迎使用百络谷 Minecraft 启动器",
-                "Welcome_text": "您好,",
-                "WillUseAccount_Top": "将使用",
-                "WillUseAccount_Down": "来登录 Minecraft"
+                "WelcomeToUseBL": "Welcome to use Bloret Minecraft Launcher.\nIf you find ang bugs or suggestions, please send issues on github.\nAlso welcome you go to Github page to send Pull request, to help Bloret Launcher making.",
+                "Info_title": "information",
+                "show": "Welcome to Bloret Minecraft launcher",
+                "Welcome_text": "Hello,",
+                "WillUseAccount_Top": "To be used",
+                "WillUseAccount_Down": "to sign Minecraft"
             },
             "buttons": {
-                "pushButton_2": "Bloret Github 组织页面",
-                "pushButton": "该项目的 Github 页面",
-                "run": "启动"
+                "pushButton_2": "Bloret Github organize page",
+                "pushButton": "Github page for this project",
+                "run": "run"
             }
         },
         "BBS": {
@@ -22,13 +22,13 @@
             }
         },
         "BL_download_version": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "StrongBodyLabel_5": "核心文件"
+            "TitleLabel": "Bloret Launcher - Minecraft Core download and install",
+            "SubtitleLabel_2": "download Minecraft Version Core",
+            "StrongBodyLabel_5": "Core file"
         },
         "BL_download": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
+            "TitleLabel": "Bloret Launcher - Minecraft Core download and install",
+            "SubtitleLabel_2": "download Minecraft Version Core",
             "SubtitleLabel": "下载 .minecraft 资源",
             "Labels": {
                 "StrongBodyLabel_5": "核心文件",
