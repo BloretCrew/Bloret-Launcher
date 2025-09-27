@@ -2,58 +2,58 @@
     "widgets": {
         "home": {
             "Labels": {
-                "Bloret_Launcher_Title": "Bloret Launcher",
-                "WelcomeToUseBL": "欢迎使用百络谷 Minecraft 启动器。\n如发现任何 Bug 或有建议等，请到 Github 上提交 Issue\n也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。",
-                "Info_title": "信息",
-                "show": "欢迎使用百络谷 Minecraft 启动器",
-                "Welcome_text": "您好,",
-                "WillUseAccount_Top": "将使用",
-                "WillUseAccount_Down": "来登录 Minecraft"
+                "Bloret_Launcher_Title": "百絡啓者",
+                "WelcomeToUseBL": "恭迎君使百絡啓者！\n若見漏洞，或有言諫，可至 Github 以書 Issue。\n亦可至 Github 取 Pull request ，以資獻力。",
+                "Info_title": "資",
+                "show": "恭迎君使百絡啓者！",
+                "Welcome_text": "恭迎，",
+                "WillUseAccount_Top": "將以",
+                "WillUseAccount_Down": "登簿礦藝。"
             },
             "buttons": {
-                "pushButton_2": "Bloret Github 组织页面",
-                "pushButton": "该项目的 Github 页面",
-                "run": "启动"
+                "pushButton_2": "百絡 Github 組頁",
+                "pushButton": "該項之 Github 頁",
+                "run": "啓"
             }
         },
         "BBS": {
             "Labels": {
-                "TitleLabel": "Bloret BBS"
+                "TitleLabel": "百絡論壇"
             }
         },
         "BL_download_version": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "StrongBodyLabel_5": "核心文件"
+            "TitleLabel": "百絡啓者 - 載裝礦藝核心",
+            "SubtitleLabel_2": "下載礦藝核心",
+            "StrongBodyLabel_5": "核心"
         },
         "BL_download": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "SubtitleLabel": "下载 .minecraft 资源",
+            "TitleLabel": "百絡啓者 - 載裝礦藝核心",
+            "SubtitleLabel_2": "下載礦藝核心",
+            "SubtitleLabel": "下載 .minecraft",
             "Labels": {
-                "StrongBodyLabel_5": "核心文件",
-                "StrongBodyLabel_12": "资源库文件 libraries",
-                "StrongBodyLabel_13": "63.1 MB",
-                "StrongBodyLabel_14": "指标文件 indexes",
-                "StrongBodyLabel_15": "379 KB",
-                "StrongBodyLabel_6": "对象文件 objects",
-                "StrongBodyLabel": "1",
-                "StrongBodyLabel_7": "99.9 MB",
-                "StrongBodyLabel_2": "2",
-                "StrongBodyLabel_8": "85.5 MB",
-                "StrongBodyLabel_3": "3",
-                "StrongBodyLabel_9": "92.5 MB",
-                "StrongBodyLabel_4": "4",
-                "StrongBodyLabel_10": "42.5 MB",
-                "CaptionLabel": "右侧大小数据为前期估算，可能不是真实数据。可能更小或更大。"
+                "StrongBodyLabel_5": "核心",
+                "StrongBodyLabel_12": "資庫文檔 libraries",
+                "StrongBodyLabel_13": "六十三又十分之一兆字節",
+                "StrongBodyLabel_14": "指標文檔 indexes",
+                "StrongBodyLabel_15": "三百七十九千字節",
+                "StrongBodyLabel_6": "對象文檔 objects",
+                "StrongBodyLabel": "其一",
+                "StrongBodyLabel_7": "九十九又十分之九兆字節",
+                "StrongBodyLabel_2": "其二",
+                "StrongBodyLabel_8": "八十五又二分之一兆字節",
+                "StrongBodyLabel_3": "其三",
+                "StrongBodyLabel_9": "九十二又二分之一兆字節",
+                "StrongBodyLabel_4": "其四",
+                "StrongBodyLabel_10": "四十二又二分之一兆字節",
+                "CaptionLabel": "所列之數，僅爲預測，未必悉准。"
             }
         },
         "client": {
-            "TitleLabel": "联机",
-            "SubtitleLabel": "网络",
+            "TitleLabel": "聯",
+            "SubtitleLabel": "網路",
             "Labels": {
-                "StrongBodyLabel_17": "IPV6",
-                "CaptionLabel_5": "查看您计算机的 IPV6 配置",
+                "StrongBodyLabel_17": "網協其六",
+                "CaptionLabel_5": "見君網協其六之设",
                 "ipv6_address": "------:------:------:------:------:------:------:------",
                 "CaptionLabel_12": "<html><head/><body><p>使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。<br/><span style=\" font-weight:700;\">IPV6 是您的运营商提供的一项免费服务，不额外收费。 </span>已拥有的用户点击上方按钮直接使用。<br/>IPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。</p></body></html>",
                 "SubtitleLabel_2": "Online Client",
