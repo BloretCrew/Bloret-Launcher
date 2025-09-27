@@ -2,28 +2,28 @@
     "widgets": {
         "home": {
             "Labels": {
-                "Bloret_Launcher_Title": "Bloret Launcher",
+                "Bloret_Launcher_Title": "菠萝谷启动器",
                 "WelcomeToUseBL": "欢迎使用百络谷 Minecraft 启动器。\n如发现任何 Bug 或有建议等，请到 Github 上提交 Issue\n也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。",
-                "Info_title": "信息",
-                "show": "欢迎使用百络谷 Minecraft 启动器",
-                "Welcome_text": "您好,",
-                "WillUseAccount_Top": "将使用",
-                "WillUseAccount_Down": "来登录 Minecraft"
+                "Info_title": "讯号",
+                "show": "欢迎使用菠萝谷麦恩克拉夫特启动器",
+                "Welcome_text": "👋",
+                "WillUseAccount_Top": "我要用",
+                "WillUseAccount_Down": "来登录麦恩克拉夫特"
             },
             "buttons": {
-                "pushButton_2": "Bloret Github 组织页面",
-                "pushButton": "该项目的 Github 页面",
-                "run": "启动"
+                "pushButton_2": "菠萝谷盖特哈勃组织页面",
+                "pushButton": "菠萝谷启动器盖特哈勃组织页面",
+                "run": "启动！"
             }
         },
         "BBS": {
             "Labels": {
-                "TitleLabel": "Bloret BBS"
+                "TitleLabel": "菠萝谷帖子"
             }
         },
         "BL_download_version": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
+            "TitleLabel": "菠萝谷启动器 - 让我玩麦恩克拉夫特！",
+            "SubtitleLabel_2": "让我玩麦恩克拉夫特",
             "StrongBodyLabel_5": "核心文件"
         },
         "BL_download": {
