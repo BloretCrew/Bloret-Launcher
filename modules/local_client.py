@@ -28,8 +28,8 @@ def OnlineClient(server_ip, port):
         connection_address = "pcfs.eno.ink"
         
         if not remote_port or not connection_address:
-            log("获取远程端口或连接地址失败", level=logging.ERROR)
-            return "获取连接信息失败"
+            log(i18nText("获取远程端口或连接地址失败"), level=logging.ERROR)
+            return i18nText("获取连接信息失败")
             
         log(f"获取到远程端口: {remote_port}")
         log(f"连接地址: {connection_address}:{remote_port}")
@@ -37,8 +37,8 @@ def OnlineClient(server_ip, port):
         # 2. 读取 frpc.toml 文件
         frpc_config_path = os.path.join(os.getcwd(), "frpc.toml")
         if not os.path.exists(frpc_config_path):
-            log("frpc.toml 文件不存在", level=logging.ERROR)
-            return "配置文件不存在"
+            log(i18nText("frpc.toml 文件不存在"), level=logging.ERROR)
+            return i18nText("配置文件不存在")
             
         with open(frpc_config_path, 'r', encoding='utf-8') as f:
             frpc_config = toml.load(f)
@@ -60,10 +60,10 @@ def OnlineClient(server_ip, port):
         # 5. 运行 frpc -c frpc.toml
         frpc_path = os.path.join(os.getcwd(), "frpc.exe")
         if not os.path.exists(frpc_path):
-            log("frpc.exe 文件不存在", level=logging.ERROR)
-            return "frpc程序不存在"
+            log(i18nText("frpc.exe 文件不存在"), level=logging.ERROR)
+            return i18nText("frpc程序不存在")
             
-        log("正在启动 frpc 客户端...")
+        log(i18nText("正在启动 frpc 客户端..."))
         
         # 启动 frpc 进程
         creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
@@ -85,21 +85,21 @@ def OnlineClient(server_ip, port):
                 log(f"frpc stderr: {stderr}")
         except subprocess.TimeoutExpired:
             # 进程正常运行，超时是预期行为
-            log("frpc 客户端已在后台运行")
+            log(i18nText("frpc 客户端已在后台运行"))
             
-        log("在线客户端服务启动成功")
+        log(i18nText("在线客户端服务启动成功"))
         return f"{connection_address}:{remote_port}"
         
     except requests.RequestException as e:
         log(f"网络请求失败: {str(e)}", level=logging.ERROR)
-        return "网络请求失败"
+        return i18nText("网络请求失败")
     except PermissionError as e:
-        error_msg = "权限错误：系统安全软件（如Windows Defender）可能阻止了frpc.exe的执行。请将frpc.exe添加到杀毒软件的白名单或排除列表中。"
+        error_msg = i18nText("权限错误：系统安全软件（如Windows Defender）可能阻止了frpc.exe的执行。请将frpc.exe添加到杀毒软件的白名单或排除列表中。")
         log(f"{error_msg} 错误详情: {str(e)}", level=logging.ERROR)
         return error_msg
     except OSError as e:
         if e.winerror == 225:  # ERROR_ACCESS_DISABLED_BY_POLICY
-            error_msg = "安全软件阻止：frpc.exe被安全软件识别为潜在威胁。请将该文件添加到杀毒软件的白名单或排除列表中。"
+            error_msg = i18nText("安全软件阻止：frpc.exe被安全软件识别为潜在威胁。请将该文件添加到杀毒软件的白名单或排除列表中。")
             log(f"{error_msg} 错误详情: {str(e)}", level=logging.ERROR)
             return error_msg
         else:

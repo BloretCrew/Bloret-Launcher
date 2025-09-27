@@ -26,10 +26,10 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     # 参数已由系统异常钩子直接提供
-    log("未捕获的异常:", logging.CRITICAL)
-    log("类型: {}".format(exc_type), logging.CRITICAL)
-    log("信息: {}".format(exc_value), logging.CRITICAL)
-    log("回溯: {}".format(traceback.format_tb(exc_traceback)), logging.CRITICAL)
+    log(i18nText("未捕获的异常:"), logging.CRITICAL)
+    log(i18nText("类型: {}").format(exc_type), logging.CRITICAL)
+    log(i18nText("信息: {}").format(exc_value), logging.CRITICAL)
+    log(i18nText("回溯: {}").format(traceback.format_tb(exc_traceback)), logging.CRITICAL)
     
     # 加载 ERROR.ui 文件
     error_widget = loadUi("ui/ERROR.ui")
@@ -42,7 +42,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     # 按钮功能实现
     def copy_to_clipboard():
         clipboard = QApplication.clipboard()
-        clipboard.setText('Bloret Launcher 错误报告信息：\n - 类型：{}\n - 信息：{}\n - 回溯：{}'.format(exc_type, exc_value, ''.join(traceback.format_tb(exc_traceback))))
+        clipboard.setText(i18nText('Bloret Launcher 错误报告信息：\n - 类型：{}\n - 信息：{}\n - 回溯：{}').format(exc_type, exc_value, ''.join(traceback.format_tb(exc_traceback))))
     
     def report_issue():
         webbrowser.open('https://github.com/BloretCrew/Bloret-Launcher/issues/new?template=BugReport.yml')

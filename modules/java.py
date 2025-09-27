@@ -23,7 +23,7 @@ def _install_java_thread(Java_Version):
         log(f"正在加载配置文件: {config_path}")
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
-        log("配置文件加载成功。")
+        log(i18nText("配置文件加载成功。"))
         
         java_versions = config.get("Java_Versions", {})
         
@@ -33,7 +33,7 @@ def _install_java_thread(Java_Version):
         version_data = java_versions.get(version_key)
         if not version_data:
             log(f"错误: 未找到 Java {Java_Version} 的下载信息。")
-            toast('错误', f'未找到 Java {Java_Version} 的下载信息。')
+            toast(i18nText('错误'), f'未找到 Java {Java_Version} 的下载信息。')
             return
         log(f"已找到 Java {Java_Version} 的下载信息。")
 
@@ -41,7 +41,7 @@ def _install_java_thread(Java_Version):
         download_url = version_data.get("Windows", {}).get("x64")
         if not download_url:
             log(f"错误: 未找到 Java {Java_Version} 的 Windows x64 下载地址。")
-            toast('错误', f'未找到 Java {Java_Version} 的 Windows x64 下载地址。')
+            toast(i18nText('错误'), f'未找到 Java {Java_Version} 的 Windows x64 下载地址。')
             return
         log(f"已获取 Java {Java_Version} 的下载地址: {download_url}")
 
@@ -52,7 +52,7 @@ def _install_java_thread(Java_Version):
         # 初始化进度通知
         notify(progress={
             'title': f'正在下载 Java {Java_Version}...',
-            'status': '正在下载...',
+            'status': i18nText('正在下载...'),
             'value': '0',
             'valueStringOverride': '0%'
         })
@@ -95,7 +95,7 @@ def _install_java_thread(Java_Version):
         
         notify(progress={
             'title': f'正在安装 Java {Java_Version}...',
-            'status': '正在安装...',
+            'status': i18nText('正在安装...'),
             'value': '0',
             'valueStringOverride': '0%'
         })
@@ -135,20 +135,20 @@ def _install_java_thread(Java_Version):
                 log(f"Java {Java_Version} MSI 安装成功。")
                 update_progress({
                     'value': 1,
-                    'valueStringOverride': '安装完成',
+                    'valueStringOverride': i18nText('安装完成'),
                     'status': f'Java {Java_Version} 安装成功'
                 })
                 # time.sleep(1)  # 等待通知显示
-                toast('安装成功', f'Java {Java_Version} 安装成功。')
+                toast(i18nText('安装成功'), f'Java {Java_Version} 安装成功。')
             else:
                 log(f"错误: Java {Java_Version} MSI 安装失败，返回码: {process.returncode}")
                 update_progress({
                     'value': 1,
-                    'valueStringOverride': '安装失败',
+                    'valueStringOverride': i18nText('安装失败'),
                     'status': f'Java {Java_Version} 安装失败，错误码: {process.returncode}'
                 })
                 # time.sleep(1)  # 等待通知显示
-                toast('安装失败', f'Java {Java_Version} 安装失败，错误码: {process.returncode}。')
+                toast(i18nText('安装失败'), f'Java {Java_Version} 安装失败，错误码: {process.returncode}。')
             
         elif download_path.endswith('.zip') or download_path.endswith('.tar.gz'):
             log(f"检测到压缩包: {download_path}")
@@ -168,29 +168,29 @@ def _install_java_thread(Java_Version):
                 log(f"Java {Java_Version} 压缩包解压成功到 {extract_dir}。")
                 update_progress({
                     'value': 1,
-                    'valueStringOverride': '解压完成',
+                    'valueStringOverride': i18nText('解压完成'),
                     'status': f'Java {Java_Version} 解压完成'
                 })
                 time.sleep(1)  # 等待通知显示
-                toast('安装成功', f'Java {Java_Version} 安装成功。')
+                toast(i18nText('安装成功'), f'Java {Java_Version} 安装成功。')
             except Exception as e:
                 log(f"错误: Java {Java_Version} 压缩包解压失败: {e}")
                 update_progress({
                     'value': 1,
-                    'valueStringOverride': '解压失败',
+                    'valueStringOverride': i18nText('解压失败'),
                     'status': f'Java {Java_Version} 解压失败'
                 })
                 time.sleep(1)  # 等待通知显示
-                toast('安装失败', f'Java {Java_Version} 解压失败。')
+                toast(i18nText('安装失败'), f'Java {Java_Version} 解压失败。')
         else:
             log(f"错误: 不支持的 Java 安装包格式: {file_name}")
             update_progress({
                 'value': 1,
-                'valueStringOverride': '格式错误',
+                'valueStringOverride': i18nText('格式错误'),
                 'status': f'不支持的格式: {file_name}'
             })
             time.sleep(1)  # 等待通知显示
-            toast('错误', f'不支持的 Java 安装包格式: {file_name}')
+            toast(i18nText('错误'), f'不支持的 Java 安装包格式: {file_name}')
             return
 
         # 更新配置文件中的Java路径
@@ -199,7 +199,7 @@ def _install_java_thread(Java_Version):
             # 对于MSI安装，通常Java会安装到Program Files，需要查找实际路径
             # 简化处理，假设安装成功后Java在系统PATH中或通过其他方式找到
             # 实际应用中需要更复杂的逻辑来查找Java安装路径
-            log("MSI 安装，尝试查找 Java 路径...")
+            log(i18nText("MSI 安装，尝试查找 Java 路径..."))
             # 这是一个简化的示例，实际需要根据Java版本和系统环境查找
             # 例如，可以通过注册表或特定目录查找java.exe
             java_home = os.environ.get('JAVA_HOME')
@@ -207,7 +207,7 @@ def _install_java_thread(Java_Version):
                 java_path = os.path.join(java_home, 'bin', 'java.exe')
                 log(f"从 JAVA_HOME 获取到 Java 路径: {java_path}")
             else:
-                log("未找到 JAVA_HOME 环境变量，尝试在常见路径查找。")
+                log(i18nText("未找到 JAVA_HOME 环境变量，尝试在常见路径查找。"))
                 # 尝试在Program Files中查找
                 program_files = os.environ.get('ProgramFiles')
                 if program_files:
@@ -216,7 +216,7 @@ def _install_java_thread(Java_Version):
                         java_path = potential_path
                         log(f"在 Program Files 中找到 Java 路径: {java_path}")
             if not java_path:
-                log("警告: 无法自动确定 MSI 安装的 Java 路径，可能需要手动配置。")
+                log(i18nText("警告: 无法自动确定 MSI 安装的 Java 路径，可能需要手动配置。"))
 
         elif download_path.endswith('.zip') or download_path.endswith('.tar.gz'):
             # 对于压缩包安装，Java路径就是解压目录下的bin/java.exe
@@ -229,29 +229,29 @@ def _install_java_thread(Java_Version):
                 json.dump(config, f, indent=4, ensure_ascii=False)
             log(f"配置文件中 Java_Path 已更新为: {java_path}")
         else:
-            log("警告: 未能确定 Java 路径，配置文件未更新 Java_Path。")
+            log(i18nText("警告: 未能确定 Java 路径，配置文件未更新 Java_Path。"))
 
         # 清理下载的文件
         try:
             os.remove(download_path)
             log(f"已删除下载的安装文件: {download_path}")
-            toast('清理完成', '安装文件已删除。', duration='short')
+            toast(i18nText('清理完成'), i18nText('安装文件已删除。'), duration='short')
         except Exception as e:
             log(f"清理提醒: 无法删除安装文件 {download_path}: {e}")
-            toast('清理提醒', f'无法删除安装文件: {e}', duration='short')
+            toast(i18nText('清理提醒'), f'无法删除安装文件: {e}', duration='short')
 
     except requests.exceptions.RequestException as e:
         log(f"错误: 下载 Java {Java_Version} 失败: {e}")
-        toast('下载失败', f'下载 Java {Java_Version} 失败: {e}')
+        toast(i18nText('下载失败'), f'下载 Java {Java_Version} 失败: {e}')
     except json.JSONDecodeError as e:
         log(f"错误: config.json 解析失败: {e}")
-        toast('错误', f'配置文件读取失败: {e}')
+        toast(i18nText('错误'), f'配置文件读取失败: {e}')
     except FileNotFoundError as e:
         log(f"错误: 文件未找到: {e}")
-        toast('错误', f'文件操作失败: {e}')
+        toast(i18nText('错误'), f'文件操作失败: {e}')
     except subprocess.CalledProcessError as e:
         log(f"错误: Java {Java_Version} 安装失败: {e}")
-        toast('安装失败', f'Java {Java_Version} 安装失败: {e}')
+        toast(i18nText('安装失败'), f'Java {Java_Version} 安装失败: {e}')
     except Exception as e:
         log(f"发生未知错误: {e}")
-        toast('错误', f'发生未知错误: {e}')
+        toast(i18nText('错误'), f'发生未知错误: {e}')

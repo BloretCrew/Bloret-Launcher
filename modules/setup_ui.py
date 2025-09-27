@@ -33,7 +33,7 @@ class DownloadDialog(MessageBoxBase):
         self.modNameLabel = StrongBodyLabel(f'选择安装 Mod 的版本')
         
         self.versionCombo = ComboBox()
-        self.versionCombo.setPlaceholderText('选择版本')
+        self.versionCombo.setPlaceholderText(i18nText('选择版本'))
         
         # 获取模组支持的游戏版本
         self.fetch_mod_versions()
@@ -48,7 +48,7 @@ class DownloadDialog(MessageBoxBase):
         if self.versionCombo.count() > 0:
             self.versionCombo.setCurrentIndex(0)
         else:
-            self.versionCombo.addItem("未找到任何版本")
+            self.versionCombo.addItem(i18nText("未找到任何版本"))
             
         # 连接版本选择变化信号
         self.versionCombo.currentTextChanged.connect(self.check_version_compatibility)
@@ -57,7 +57,7 @@ class DownloadDialog(MessageBoxBase):
         self.warningLabel = CaptionLabel("")
         self.warningLabel.setTextColor("#cf1010", QColor(255, 28, 32))
         self.warningLabel.hide()
-        self.downloadButton = PushButton('打开 Modrinth 详情页面')
+        self.downloadButton = PushButton(i18nText('打开 Modrinth 详情页面'))
         self.downloadButton.clicked.connect(self.open_modrinth_page)
         
         # 将组件添加到布局中
@@ -68,9 +68,9 @@ class DownloadDialog(MessageBoxBase):
         self.viewLayout.addWidget(self.downloadButton)
         
         # 修改按钮
-        self.yesButton.setText('下载 Mod')
+        self.yesButton.setText(i18nText('下载 Mod'))
         self.yesButton.clicked.connect(self.download_mod)
-        self.cancelButton.setText('取消')
+        self.cancelButton.setText(i18nText('取消'))
         
         # 设置对话框的最小宽度
         self.widget.setMinimumWidth(350)
@@ -102,7 +102,7 @@ class DownloadDialog(MessageBoxBase):
             
     def check_version_compatibility(self, selected_version):
         """检查所选版本是否与模组兼容"""
-        if not selected_version or selected_version == "未找到任何版本":
+        if not selected_version or selected_version == i18nText("未找到任何版本"):
             self.warningLabel.hide()
             self.yesButton.show()  # 重新启用下载按钮
             return
@@ -112,15 +112,15 @@ class DownloadDialog(MessageBoxBase):
             self.warningLabel.hide()
             self.yesButton.show()  # 启用下载按钮
         else:
-            self.warningLabel.setText("警告：所选版本可能不兼容此模组")
+            self.warningLabel.setText(i18nText("警告：所选版本可能不兼容此模组"))
             self.warningLabel.show()
             self.yesButton.hide()  # 禁用下载按钮
             
     def download_mod(self):
         """下载选定的Mod文件"""
         version = self.versionCombo.currentText()
-        if not version or version == "未找到任何版本":
-            log("未选择有效的版本")
+        if not version or version == i18nText("未找到任何版本"):
+            log(i18nText("未选择有效的版本"))
             return
             
         # 获取Mod下载URL
@@ -150,7 +150,7 @@ class DownloadDialog(MessageBoxBase):
                     
             log(f"成功下载 {self.mod_title} 到 {file_path}")
             InfoBar.success(
-                title='✅ 下载成功',
+                title=i18nText('✅ 下载成功'),
                 content=f"Mod {self.mod_title} 已成功下载到 {file_path}",
                 parent=self.parent(),
                 duration=5000
@@ -159,7 +159,7 @@ class DownloadDialog(MessageBoxBase):
         except Exception as e:
             log(f"下载Mod时出错: {str(e)}")
             InfoBar.error(
-                title='❌ 下载失败',
+                title=i18nText('❌ 下载失败'),
                 content=f"下载Mod {self.mod_title} 时出错: {str(e)}",
                 parent=self.parent(),
                 duration=5000
@@ -250,7 +250,7 @@ def setup_home_ui(self, widget):
     '''
     if self.config.get('localmod', False):
         InfoBar.warning(
-            title='⚠️ 本地模式已开启',
+            title=i18nText('⚠️ 本地模式已开启'),
             content=f"您已启用本地模式\n本地模式下 Bloret Launcher 不会访问一部分的网络，包括 Bloret Launcher Server 服务。\n\n这意味着什么？\n您将无法获取到 Bloret Launcher 的最新版本\n您将无法下载除 Bloret 支持版本外的版本\n您将无法使用微软登录和百络谷通行证登录等\n\n如果需要以上服务，请到设置界面关闭本地模式。",
             orient=Qt.Horizontal,
             isClosable=True,
@@ -280,8 +280,8 @@ def setup_home_ui(self, widget):
     Minecraft_account = widget.findChild(QLabel, "Minecraft_account")
     if Minecraft_account:
         if self.config.get('home_show_login_mod', False):
-            if self.login_mod == "请在下方登录":
-                Minecraft_account.setText("无档案(请到通行证页面登录)")
+            if self.login_mod == i18nText("请在下方登录"):
+                Minecraft_account.setText(i18nText("无档案(请到通行证页面登录)"))
             else:
                 Minecraft_account.setText(f"[{self.login_mod}] {self.player_name}")
         else:
@@ -312,8 +312,8 @@ def setup_download_old_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInt
     download_button = widget.findChild(QPushButton, "download")
     if show_way:
         show_way.clear()
-        show_way.addItems(["百络谷支持版本", "正式版本", "快照版本", "远古版本"])
-        show_way.setCurrentText("百络谷支持版本")
+        show_way.addItems([i18nText("百络谷支持版本"), i18nText("正式版本"), i18nText("快照版本"), i18nText("远古版本")])
+        show_way.setCurrentText(i18nText("百络谷支持版本"))
         show_way.currentTextChanged.connect(lambda: self.on_show_way_changed(widget, show_way.currentText()))
     if download_way_choose:
         download_way_choose.clear()  # 清空下拉框
@@ -336,7 +336,7 @@ def setup_download_old_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInt
     if notification_switch:
         notification_switch.setChecked(True)  # 将Notification开关设置成开
 
-    fabric_ver = ["不安装"]
+    fabric_ver = [i18nText("不安装")]
     if not self.config.get('localmod', False):
         response = requests.get("https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader")
         if response.status_code == 200:
@@ -344,13 +344,13 @@ def setup_download_old_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInt
             for item in data:
                 fabric_ver.append(item["version"])
     else:
-        log("本地模式已启用，获取 Minecraft 版本 的过程已跳过。")
+        log(i18nText("本地模式已启用，获取 Minecraft 版本 的过程已跳过。"))
 
     fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
     if fabric_choose:
         fabric_choose.clear()
         fabric_choose.addItems(fabric_ver)
-        fabric_choose.setCurrentText("不安装")
+        fabric_choose.setCurrentText(i18nText("不安装"))
 
     # 设置minecraft_choose下拉框
     if minecraft_choose:
@@ -438,14 +438,14 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
 
     if player_name_edit and player_name_set_button:
         player_name_set_button.clicked.connect(lambda: self.on_player_name_set_clicked(widget))
-        log("已连接 player_name_set_button 点击事件")
+        log(i18nText("已连接 player_name_set_button 点击事件"))
 
     if self.cmcl_data:
-        log("成功读取 cmcl.json 数据")
+        log(i18nText("成功读取 cmcl.json 数据"))
         
         if login_way_combo:
             login_way_choose.clear()
-            login_way_choose.addItems(["离线登录", "微软登录"])
+            login_way_choose.addItems([i18nText("离线登录"), i18nText("微软登录")])
             login_way_choose.setCurrentText(self.login_mod)
             login_way_choose.setCurrentIndex(0)
 
@@ -461,7 +461,7 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
             name_combo.setCurrentIndex(0)
             log(f"设置 name_combo 当前索引为: {self.player_name}")
     else:
-        log("读取 cmcl.json 失败")
+        log(i18nText("读取 cmcl.json 失败"))
     
     # 添加登录按钮点击事件
     login_button = widget.findChild(QPushButton, "login")
@@ -473,7 +473,7 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
     Bloret_PassPort_view_BBBS = widget.findChild(QPushButton, "Bloret_PassPort_view_BBBS")
     reg_Bloret_PassPort = widget.findChild(QPushButton, "reg_Bloret_PassPort")
     if Bloret_PassPort_UserName:
-        Bloret_PassPort_UserName.setText(self.config.get('Bloret_PassPort_UserName', '未登录'))
+        Bloret_PassPort_UserName.setText(self.config.get('Bloret_PassPort_UserName', i18nText('未登录')))
     if Bloret_PassPort_logout:
         Bloret_PassPort_logout.clicked.connect(lambda: Bloret_PassPort_Account_logout(self,homeInterface))
     if Bloret_PassPort_login:
@@ -499,7 +499,7 @@ def setup_settings_ui(self, widget):
     light_dark_choose = widget.findChild(ComboBox, "light_dark_choose")
     if light_dark_choose:
         light_dark_choose.clear()
-        light_dark_choose.addItems(["跟随系统", "深色模式", "浅色模式"])
+        light_dark_choose.addItems([i18nText("跟随系统"), i18nText("深色模式"), i18nText("浅色模式")])
         light_dark_choose.currentTextChanged.connect(self.on_light_dark_changed)
 
     # 添加语言选择框
@@ -603,7 +603,7 @@ def setup_settings_ui(self, widget):
         Self_starting.setChecked(self.config.get("self-starting", False))
         Self_starting.checkedChanged.connect(lambda val: on_self_starting_changed(val))
     else:
-        log("未找到 Self_starting 控件")
+        log(i18nText("未找到 Self_starting 控件"))
 
 def setup_multiplayer_ui(self, widget, server_ip):
     """设定 Bloret Launcher 多人联机界面 UI 布局和操作"""
@@ -618,18 +618,18 @@ def setup_multiplayer_ui(self, widget, server_ip):
             ipv6_display = f"{ipv6_address_str[:8]}..." if len(ipv6_address_str) > 8 else ipv6_address_str
             ipv6_address_label.setText(ipv6_display)
         else:
-            ipv6_address_label.setText("无法获取IPv6地址")
-            log("未找到可用的IPv6地址，IPv6功能将被禁用")
+            ipv6_address_label.setText(i18nText("无法获取IPv6地址"))
+            log(i18nText("未找到可用的IPv6地址，IPv6功能将被禁用"))
 
     get_ipv6_btn = widget.findChild(QPushButton, "GetIPV6AddressButton")
     if get_ipv6_btn:
         # 根据是否有IPv6地址设置按钮状态
         if ipv6_address_str:
             get_ipv6_btn.setEnabled(True)
-            get_ipv6_btn.setToolTip("点击显示IPv6联机对话框")
+            get_ipv6_btn.setToolTip(i18nText("点击显示IPv6联机对话框"))
         else:
             get_ipv6_btn.setEnabled(False)
-            get_ipv6_btn.setToolTip("未检测到IPv6地址，请确保您的网络支持IPv6")
+            get_ipv6_btn.setToolTip(i18nText("未检测到IPv6地址，请确保您的网络支持IPv6"))
         
         # 断开可能存在的重复连接
         try:
@@ -646,15 +646,15 @@ def setup_multiplayer_ui(self, widget, server_ip):
     
     if online_client_time_label:
         online_client_time_label.setText("--:--")
-        log("初始化OnlineClient_ClientTime标签")
+        log(i18nText("初始化OnlineClient_ClientTime标签"))
     else:
-        log("未找到OnlineClient_ClientTime标签")
+        log(i18nText("未找到OnlineClient_ClientTime标签"))
     
     if online_client_address_label:
-        online_client_address_label.setText("未连接")
-        log("初始化OnlineClient_address标签")
+        online_client_address_label.setText(i18nText("未连接"))
+        log(i18nText("初始化OnlineClient_address标签"))
     else:
-        log("未找到OnlineClient_address标签")
+        log(i18nText("未找到OnlineClient_address标签"))
     
     # 连接StartOnlineClient按钮
     start_online_client_btn = widget.findChild(QPushButton, "StartOnlineClient")
@@ -665,20 +665,20 @@ def setup_multiplayer_ui(self, widget, server_ip):
         except:
             pass
         start_online_client_btn.clicked.connect(lambda: start_online_client(self, server_ip))
-        log("已连接StartOnlineClient按钮")
+        log(i18nText("已连接StartOnlineClient按钮"))
     else:
-        log("未找到StartOnlineClient按钮")
+        log(i18nText("未找到StartOnlineClient按钮"))
 
 
 def start_online_client(parent, server_ip):
     """启动在线客户端服务"""
     # 创建端口输入对话框
     port_dialog = MessageBoxBase(parent)
-    port_dialog.setWindowTitle("开启联机服务")
+    port_dialog.setWindowTitle(i18nText("开启联机服务"))
     
-    port_label = BodyLabel("请输入您的 Minecraft 端口")
+    port_label = BodyLabel(i18nText("请输入您的 Minecraft 端口"))
     port_input = LineEdit()
-    port_input.setPlaceholderText("默认端口: 25565")
+    port_input.setPlaceholderText(i18nText("默认端口: 25565"))
     port_input.setText("25565")  # 设置默认端口
     
     port_dialog.viewLayout.addWidget(port_label)
@@ -694,15 +694,15 @@ def start_online_client(parent, server_ip):
     
     port_dialog.viewLayout.addWidget(gif_label)
     
-    port_dialog.yesButton.setText("确认")
-    port_dialog.cancelButton.setText("取消")
+    port_dialog.yesButton.setText(i18nText("确认"))
+    port_dialog.cancelButton.setText(i18nText("取消"))
     
     def handle_port_confirm():
         port = port_input.text().strip()
         if not port.isdigit():
             InfoBar.error(
-                title='输入错误',
-                content='请输入有效的端口号',
+                title=i18nText('输入错误'),
+                content=i18nText('请输入有效的端口号'),
                 parent=parent
             )
             return False
@@ -714,17 +714,17 @@ def start_online_client(parent, server_ip):
             connection_address = OnlineClient(server_ip, port_int)
             
             # 检查是否返回了错误信息
-            if connection_address.startswith("权限错误：") or connection_address.startswith("安全软件阻止："):
+            if connection_address.startswith(i18nText("权限错误：")) or connection_address.startswith(i18nText("安全软件阻止：")):
                 InfoBar.error(
-                    title='启动失败',
+                    title=i18nText('启动失败'),
                     content=connection_address,
                     parent=parent,
                     duration=10000  # 显示更长时间以便用户阅读
                 )
                 return False
-            elif connection_address.startswith("启动失败:") or connection_address == "网络请求失败" or connection_address == "配置文件不存在" or connection_address == "frpc程序不存在" or connection_address == "获取连接信息失败":
+            elif connection_address.startswith(i18nText("启动失败:")) or connection_address == i18nText("网络请求失败") or connection_address == i18nText("配置文件不存在") or connection_address == i18nText("frpc程序不存在") or connection_address == i18nText("获取连接信息失败"):
                 InfoBar.error(
-                    title='启动失败',
+                    title=i18nText('启动失败'),
                     content=connection_address,
                     parent=parent
                 )
@@ -735,7 +735,7 @@ def start_online_client(parent, server_ip):
             return True
         except Exception as e:
             InfoBar.error(
-                title='启动失败',
+                title=i18nText('启动失败'),
                 content=f'启动联机服务时出错: {str(e)}',
                 parent=parent
             )
@@ -749,12 +749,12 @@ def show_connection_address_dialog(parent, connection_address, port):
     """显示连接地址对话框"""
     # 创建结果显示对话框
     result_dialog = MessageBoxBase(parent)
-    result_dialog.setWindowTitle("联机服务已启动")
+    result_dialog.setWindowTitle(i18nText("联机服务已启动"))
     
     address_label = StrongBodyLabel(connection_address)
     address_label.setAlignment(Qt.AlignCenter)
     
-    instruction_label = CaptionLabel("按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。")
+    instruction_label = CaptionLabel(i18nText("按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。"))
     instruction_label.setAlignment(Qt.AlignCenter)
     
     # 添加动图
@@ -769,7 +769,7 @@ def show_connection_address_dialog(parent, connection_address, port):
     result_dialog.viewLayout.addWidget(instruction_label)
     result_dialog.viewLayout.addWidget(gif_label)
     
-    result_dialog.yesButton.setText("确认")
+    result_dialog.yesButton.setText(i18nText("确认"))
     result_dialog.cancelButton.hide()  # 隐藏取消按钮
     
     def handle_result_confirm():
@@ -777,8 +777,8 @@ def show_connection_address_dialog(parent, connection_address, port):
         clipboard = QApplication.clipboard()
         clipboard.setText(connection_address)
         InfoBar.success(
-            title='复制成功',
-            content='联机地址已复制到剪贴板',
+            title=i18nText('复制成功'),
+            content=i18nText('联机地址已复制到剪贴板'),
             parent=parent
         )
         
@@ -803,7 +803,7 @@ def show_connection_address_dialog(parent, connection_address, port):
                 online_client_address_label.setText(connection_address)
                 log(f"已更新连接地址标签: {connection_address}")
             else:
-                log("未找到OnlineClient_address标签")
+                log(i18nText("未找到OnlineClient_address标签"))
         
         # 启动计时器更新连接时长
         if online_client_time_label:
@@ -822,7 +822,7 @@ def show_connection_address_dialog(parent, connection_address, port):
             
             # 立即更新一次时间显示
             update_connection_time(online_client_time_label, start_time)
-            log("已启动连接时长计时器")
+            log(i18nText("已启动连接时长计时器"))
         else:
             # 如果通过window()找不到，尝试直接在parent中查找
             online_client_time_label = parent.findChild(QLabel, "OnlineClient_ClientTime")
@@ -841,9 +841,9 @@ def show_connection_address_dialog(parent, connection_address, port):
                 
                 # 立即更新一次时间显示
                 update_connection_time(online_client_time_label, start_time)
-                log("已启动连接时长计时器")
+                log(i18nText("已启动连接时长计时器"))
             else:
-                log("未找到OnlineClient_ClientTime标签")
+                log(i18nText("未找到OnlineClient_ClientTime标签"))
     
     result_dialog.yesButton.clicked.connect(handle_result_confirm)
     result_dialog.exec_()
@@ -869,7 +869,7 @@ def update_connection_time(time_label, start_time):
         time_label.setText(time_text)
         log(f"更新连接时长显示: {time_text}")
     else:
-        log("未找到OnlineClient_ClientTime标签，无法更新连接时长显示")
+        log(i18nText("未找到OnlineClient_ClientTime标签，无法更新连接时长显示"))
 
 
 def get_ipv6_address():
@@ -899,11 +899,11 @@ def show_ipv6_dialog(parent, ipv6_address):
     """显示IPv6联机对话框"""
     # 创建端口输入对话框
     port_dialog = MessageBoxBase(parent)
-    port_dialog.setWindowTitle("IPV6 联机")
+    port_dialog.setWindowTitle(i18nText("IPV6 联机"))
     
-    port_label = BodyLabel("请输入您的 Minecraft 端口")
+    port_label = BodyLabel(i18nText("请输入您的 Minecraft 端口"))
     port_input = LineEdit()
-    port_input.setPlaceholderText("默认端口: 25565")
+    port_input.setPlaceholderText(i18nText("默认端口: 25565"))
     port_input.setText("25565")  # 设置默认端口
     
     port_dialog.viewLayout.addWidget(port_label)
@@ -919,27 +919,27 @@ def show_ipv6_dialog(parent, ipv6_address):
     
     port_dialog.viewLayout.addWidget(gif_label)
     
-    port_dialog.yesButton.setText("确认")
-    port_dialog.cancelButton.setText("取消")
+    port_dialog.yesButton.setText(i18nText("确认"))
+    port_dialog.cancelButton.setText(i18nText("取消"))
     
     def handle_port_confirm():
         port = port_input.text().strip()
         if not port.isdigit():
             InfoBar.error(
-                title='输入错误',
-                content='请输入有效的端口号',
+                title=i18nText('输入错误'),
+                content=i18nText('请输入有效的端口号'),
                 parent=parent
             )
             return
         
         # 创建结果显示对话框
         result_dialog = MessageBoxBase(parent)
-        result_dialog.setWindowTitle("IPV6 联机")
+        result_dialog.setWindowTitle(i18nText("IPV6 联机"))
         
         address_label = StrongBodyLabel(f"[{ipv6_address}]:{port}")
         address_label.setAlignment(Qt.AlignCenter)
         
-        instruction_label = CaptionLabel("按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。")
+        instruction_label = CaptionLabel(i18nText("按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。"))
         instruction_label.setAlignment(Qt.AlignCenter)
         
         # 添加动图
@@ -954,7 +954,7 @@ def show_ipv6_dialog(parent, ipv6_address):
         result_dialog.viewLayout.addWidget(instruction_label)
         result_dialog.viewLayout.addWidget(gif_label)
         
-        result_dialog.yesButton.setText("确认")
+        result_dialog.yesButton.setText(i18nText("确认"))
         result_dialog.cancelButton.hide()  # 隐藏取消按钮
         
         def handle_result_confirm():
@@ -962,8 +962,8 @@ def show_ipv6_dialog(parent, ipv6_address):
             clipboard = QApplication.clipboard()
             clipboard.setText(f"[{ipv6_address}]:{port}")
             InfoBar.success(
-                title='复制成功',
-                content='IPV6地址和端口已复制到剪贴板',
+                title=i18nText('复制成功'),
+                content=i18nText('IPV6地址和端口已复制到剪贴板'),
                 parent=parent
             )
         
@@ -1011,7 +1011,7 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
 
         if minecraft_list_NUM != 0 or customize_list_NUM != 0:
             if minecraft_list_NUM != 0:
-                title_label = SubtitleLabel("Minecraft 核心", parent=scroll_widget)
+                title_label = SubtitleLabel(i18nText("Minecraft 核心"), parent=scroll_widget)
                 scroll_layout.addWidget(title_label)
 
                 for i in range(minecraft_list_NUM):
@@ -1024,10 +1024,10 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     def create_minecraft_context_menu(pos, label_now, card_now, version_name=minecraft_list[i]):
                         menu = RoundMenu()
                         info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name))
-                        launch_action = Action(FluentIcon.PLAY, '启动', triggered=lambda: self.run_cmcl(version_name))
-                        rename_action = Action(FluentIcon.EDIT, '更名', triggered=lambda: Change_minecraft_version_name(self,version_name,label_now, MINECRAFT_DIR,homeInterface))
-                        delete_action = Action(FluentIcon.DELETE, '删除', triggered=lambda: delete_minecraft_version(self,version_name,label_now, card_now, MINECRAFT_DIR, homeInterface))
-                        folder_action = Action(FluentIcon.FOLDER, '打开文件位置', triggered=lambda: open_minecraft_version_folder(self,version_name,MINECRAFT_DIR))
+                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name))
+                        rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_minecraft_version_name(self,version_name,label_now, MINECRAFT_DIR,homeInterface))
+                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_minecraft_version(self,version_name,label_now, card_now, MINECRAFT_DIR, homeInterface))
+                        folder_action = Action(FluentIcon.FOLDER, i18nText('打开文件位置'), triggered=lambda: open_minecraft_version_folder(self,version_name,MINECRAFT_DIR))
 
                         menu.addActions([
                             info_action,
@@ -1045,7 +1045,7 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     scroll_layout.addWidget(card)
 
             if customize_list_NUM != 0:
-                title_label_custom = SubtitleLabel("自定义启动", parent=scroll_widget)
+                title_label_custom = SubtitleLabel(i18nText("自定义启动"), parent=scroll_widget)
                 scroll_layout.addWidget(title_label_custom)
 
                 for i in range(customize_list_NUM):
@@ -1058,9 +1058,9 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     def create_customize_context_menu(pos, label_now, card_now, version_name=customize_list[i]):
                         menu = RoundMenu()
                         info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name))
-                        launch_action = Action(FluentIcon.PLAY, '启动', triggered=lambda: self.run_cmcl(version_name))
-                        rename_action = Action(FluentIcon.EDIT, '更名', triggered=lambda: Change_Customize_name(self,version_name, label_now, homeInterface))
-                        delete_action = Action(FluentIcon.DELETE, '删除', triggered=lambda: delete_Customize(self,version_name, label_now, card_now,customize_list,homeInterface))
+                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name))
+                        rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_Customize_name(self,version_name, label_now, homeInterface))
+                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_Customize(self,version_name, label_now, card_now,customize_list,homeInterface))
 
                         menu.addActions([
                             info_action,
@@ -1104,7 +1104,7 @@ def setup_BBS_ui(self, widget, server_ip):
     # 找到名为 BBS_list 的 SmoothScrollArea
     BBS_list = widget.findChild(SmoothScrollArea, "BBS_list")
     if not BBS_list:
-        log("未找到 BBS_list SmoothScrollArea", logging.ERROR)
+        log(i18nText("未找到 BBS_list SmoothScrollArea"), logging.ERROR)
         return
 
     # 清空 BBS_list 现有内容
@@ -1139,7 +1139,7 @@ def setup_BBS_ui(self, widget, server_ip):
             card_layout.addWidget(text_label)
 
             # 创建 PushButton 在浏览器中打开帖子
-            open_button = PushButton('在浏览器中打开', parent=card_widget)
+            open_button = PushButton(i18nText('在浏览器中打开'), parent=card_widget)
             open_button.clicked.connect(lambda _, pt=part_title, t=post['title']: QDesktopServices.openUrl(QUrl(f"{server_ip}bbs/{pt}/{t}")))
             card_layout.addWidget(open_button)
 
@@ -1175,8 +1175,8 @@ def on_search_mod_finish(self, results, mod_list, loading):
         if mod_list:
             # 显示加载进度通知
             notify(progress={
-                'title': '正在加载 Mod 数据...',
-                'status': '正在加载 Mod 数据...',
+                'title': i18nText('正在加载 Mod 数据...'),
+                'status': i18nText('正在加载 Mod 数据...'),
                 'value': '0',
                 'valueStringOverride': '0/' + str(len(results)),
                 'icon': os.path.join(os.getcwd(), 'bloret.ico')
@@ -1306,7 +1306,7 @@ def on_search_mod_finish(self, results, mod_list, loading):
                 modrinth_button.setFixedSize(24, 24)
                 modrinth_button.setIconSize(QSize(16, 16))
                 # modrinth_button.setStyleSheet("QPushButton { qproperty-iconAlignment: AlignCenter; }")
-                modrinth_button.setToolTip("打开 Modrinth 模组详情页面")
+                modrinth_button.setToolTip(i18nText("打开 Modrinth 模组详情页面"))
                 modrinth_button.clicked.connect(lambda _, slug=mod.get('slug'): QDesktopServices.openUrl(QUrl(f"https://modrinth.com/mod/{slug}")) if slug else None)
                 log(f"设定Modrinth链接按钮: https://modrinth.com/mod/{mod.get('slug')}")
 
@@ -1316,9 +1316,9 @@ def on_search_mod_finish(self, results, mod_list, loading):
                 download_button.setFixedSize(24, 24)
                 download_button.setIconSize(QSize(16, 16))
                 # modrinth_button.setStyleSheet("QPushButton { qproperty-iconAlignment: AlignCenter; }")
-                download_button.setToolTip("下载 Mod")
+                download_button.setToolTip(i18nText("下载 Mod"))
                 # 修改点击事件处理函数
-                download_button.clicked.connect(lambda _, mod_title=mod.get('title', '未知模组'), slug=mod.get('slug'): show_download_dialog(mod_title, slug, self))
+                download_button.clicked.connect(lambda _, mod_title=mod.get('title', i18nText('未知模组')), slug=mod.get('slug'): show_download_dialog(mod_title, slug, self))
                 log(f"设定Download Mod按钮: https://modrinth.com/mod/{mod.get('slug')}")
 
                 # 创建包含两个按钮的布局并靠右对齐
@@ -1343,10 +1343,10 @@ def on_search_mod_finish(self, results, mod_list, loading):
             update_progress({'value': 1, 'valueStringOverride': '✅', 'status': f"搜索完成 ✅"})
 
         else:
-            log("未找到 mod_list SmoothScrollArea", logging.ERROR)
+            log(i18nText("未找到 mod_list SmoothScrollArea"), logging.ERROR)
             return
     else:
-        log("未找到相关模组", logging.WARNING)
+        log(i18nText("未找到相关模组"), logging.WARNING)
 
 def setup_download_ui(self, widget):
     '''
@@ -1391,7 +1391,7 @@ def setup_download_ui(self, widget):
             def show_old_download_dialog():
                 # 创建一个对话框
                 dialog = MessageBoxBase(self)
-                dialog.setWindowTitle("旧版下载")
+                dialog.setWindowTitle(i18nText("旧版下载"))
                 
                 # 创建内容界面
                 content_widget = QWidget()
@@ -1456,18 +1456,18 @@ def setup_multiplayer_ui(self, widget, server_ip):
             ipv6_display = f"{ipv6_address_str[:8]}..." if len(ipv6_address_str) > 8 else ipv6_address_str
             ipv6_address_label.setText(ipv6_display)
         else:
-            ipv6_address_label.setText("无法获取IPv6地址")
-            log("未找到可用的IPv6地址，IPv6功能将被禁用")
+            ipv6_address_label.setText(i18nText("无法获取IPv6地址"))
+            log(i18nText("未找到可用的IPv6地址，IPv6功能将被禁用"))
 
     get_ipv6_btn = widget.findChild(QPushButton, "GetIPV6AddressButton")
     if get_ipv6_btn:
         # 根据是否有IPv6地址设置按钮状态
         if ipv6_address_str:
             get_ipv6_btn.setEnabled(True)
-            get_ipv6_btn.setToolTip("点击显示IPv6联机对话框")
+            get_ipv6_btn.setToolTip(i18nText("点击显示IPv6联机对话框"))
         else:
             get_ipv6_btn.setEnabled(False)
-            get_ipv6_btn.setToolTip("未检测到IPv6地址，请确保您的网络支持IPv6")
+            get_ipv6_btn.setToolTip(i18nText("未检测到IPv6地址，请确保您的网络支持IPv6"))
         
         # 断开可能存在的重复连接
         try:
@@ -1484,15 +1484,15 @@ def setup_multiplayer_ui(self, widget, server_ip):
     
     if online_client_time_label:
         online_client_time_label.setText("--:--")
-        log("初始化OnlineClient_ClientTime标签")
+        log(i18nText("初始化OnlineClient_ClientTime标签"))
     else:
-        log("未找到OnlineClient_ClientTime标签")
+        log(i18nText("未找到OnlineClient_ClientTime标签"))
     
     if online_client_address_label:
-        online_client_address_label.setText("未连接")
-        log("初始化OnlineClient_address标签")
+        online_client_address_label.setText(i18nText("未连接"))
+        log(i18nText("初始化OnlineClient_address标签"))
     else:
-        log("未找到OnlineClient_address标签")
+        log(i18nText("未找到OnlineClient_address标签"))
     
     # 连接StartOnlineClient按钮
     start_online_client_btn = widget.findChild(QPushButton, "StartOnlineClient")
@@ -1503,9 +1503,9 @@ def setup_multiplayer_ui(self, widget, server_ip):
         except:
             pass
         start_online_client_btn.clicked.connect(lambda: start_online_client(self, server_ip))
-        log("已连接StartOnlineClient按钮")
+        log(i18nText("已连接StartOnlineClient按钮"))
     else:
-        log("未找到StartOnlineClient按钮")
+        log(i18nText("未找到StartOnlineClient按钮"))
 
 
 def start_search_mod(self, mod_list, search_term, loading):
@@ -1540,7 +1540,7 @@ def setup_Mod_ui(self, widget, server_ip):
     if Open_Modrinth_Button:
         Open_Modrinth_Button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://modrinth.com/mods")))
     else:
-        log("未找到 Open_Modrinth_Button 按钮", logging.ERROR)
+        log(i18nText("未找到 Open_Modrinth_Button 按钮"), logging.ERROR)
 
     Search = widget.findChild(SearchLineEdit, "Search")
     mod_list = widget.findChild(SmoothScrollArea, "mod_list")
@@ -1550,7 +1550,7 @@ def setup_Mod_ui(self, widget, server_ip):
         loading_widget = widget.findChild(IndeterminateProgressBar, "loading")
         Search.searchSignal.connect(lambda: start_search_mod(self, mod_list, Search.text(), loading_widget))
     else:
-        log("未找到 Search 搜索框", logging.ERROR)
+        log(i18nText("未找到 Search 搜索框"), logging.ERROR)
 
 
 importlog("SETUP_UI.PY")

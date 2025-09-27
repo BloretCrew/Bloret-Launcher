@@ -16,14 +16,14 @@ def get_system_theme_color():
         # 打开注册表键
         hkey = ctypes.wintypes.HKEY()
         if ctypes.windll.advapi32.RegOpenKeyExW(0x80000001, reg_path, 0, 0x20019, ctypes.byref(hkey)) != 0:
-            print("无法打开注册表键")
+            print(i18nText("无法打开注册表键"))
             return "#0078D7"  # 默认蓝色
 
         # 读取键值
         value = ctypes.c_uint()
         size = ctypes.c_uint(4)
         if ctypes.windll.advapi32.RegQueryValueExW(hkey, reg_key, 0, None, ctypes.byref(value), ctypes.byref(size)) != 0:
-            print("无法读取注册表键值")
+            print(i18nText("无法读取注册表键值"))
             ctypes.windll.advapi32.RegCloseKey(hkey)
             return "#0078D7"  # 默认蓝色
 
@@ -50,14 +50,14 @@ def is_dark_theme():
         # 打开注册表键
         hkey = ctypes.wintypes.HKEY()
         if ctypes.windll.advapi32.RegOpenKeyExW(0x80000001, reg_path, 0, 0x20019, ctypes.byref(hkey)) != 0:
-            print("无法打开注册表键")
+            print(i18nText("无法打开注册表键"))
             return False
         
         # 读取键值
         value = ctypes.c_int()
         size = ctypes.c_uint(4)
         if ctypes.windll.advapi32.RegQueryValueExW(hkey, reg_key, 0, None, ctypes.byref(value), ctypes.byref(size)) != 0:
-            print("无法读取注册表键值")
+            print(i18nText("无法读取注册表键值"))
             ctypes.windll.advapi32.RegCloseKey(hkey)
             return False
         
@@ -84,14 +84,14 @@ def check_write_permission():
         with open(test_file, 'w') as f:
             f.write('test')
         os.remove(test_file)
-        print("当前目录具有写入权限")
+        print(i18nText("当前目录具有写入权限"))
         return True
     except PermissionError:
-        print("当前目录没有写入权限")
+        print(i18nText("当前目录没有写入权限"))
         return False
 
 def restart():
-    log('重启程序')
+    log(i18nText('重启程序'))
     # if share.isAttached():
     #     share.detach()  # 释放共享内存
     # os.execl(sys.executable, sys.executable, *sys.argv)
@@ -130,7 +130,7 @@ def add_to_startup(file_path=f'{base_directory}/Bloret-Launcher.exe', icon_path=
 
 
 def remove_from_startup(file_path=f'{base_directory}/Time-Machine.exe'):
-    log('取消注册开机启动')
+    log(i18nText('取消注册开机启动'))
     startup_folder = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
     if file_path == "":
         file_path = os.path.realpath(__file__)

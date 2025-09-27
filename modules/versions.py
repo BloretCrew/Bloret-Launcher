@@ -53,7 +53,7 @@ def open_minecraft_version_folder(self,version,MINECRAFT_DIR):
         else:
             log(f"版本文件夹不存在：{version_path}", logging.ERROR)
             InfoBar.warning(
-                title='⚠️ 提示',
+                title=i18nText('⚠️ 提示'),
                 content=f"版本 {version} 的文件夹不存在",
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -66,7 +66,7 @@ def open_minecraft_version_folder(self,version,MINECRAFT_DIR):
         handle_exception(exc_type, exc_value, exc_traceback)
         log(f"打开版本文件夹时发生错误: {e}", logging.ERROR)
         InfoBar.error(
-            title='❌ 错误',
+            title=i18nText('❌ 错误'),
             content=f"打开版本 {version} 文件夹时发生错误: {str(e)}",
             isClosable=True,
             position=InfoBarPosition.TOP,
@@ -122,7 +122,7 @@ def delete_minecraft_version(self,version,label,card,MINECRAFT_DIR,homeInterface
             
             InfoBar.success(
                 title=f'✅ 版本 {version} 已成功删除',
-                content="如需找回，可前往系统回收站找回。",
+                content=i18nText("如需找回，可前往系统回收站找回。"),
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=5000,
@@ -131,7 +131,7 @@ def delete_minecraft_version(self,version,label,card,MINECRAFT_DIR,homeInterface
         else:
             log(f"版本文件夹不存在：{version_path}", logging.ERROR)
             InfoBar.warning(
-                title='⚠️ 提示',
+                title=i18nText('⚠️ 提示'),
                 content=f"版本 {version} 的文件夹不存在",
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -146,7 +146,7 @@ def delete_minecraft_version(self,version,label,card,MINECRAFT_DIR,homeInterface
         handle_exception(exc_type, exc_value, exc_traceback)
         log(f"删除版本时发生错误: {e}", logging.ERROR)
         InfoBar.error(
-            title='❌ 错误',
+            title=i18nText('❌ 错误'),
             content=f"删除版本 {version} 时发生错误: {str(e)}",
             isClosable=True,
             position=InfoBarPosition.TOP,
@@ -165,15 +165,15 @@ def Change_minecraft_version_name(self,version,label,MINECRAFT_DIR,homeInterface
     '''
     log(f"正在修改 Minecraft 版本名称：{version}")
     # 获取新的版本名称
-    dialog = self.MessageBox("请输入新的名称", f"（当前名称：{version}）", self)
+    dialog = self.MessageBox(i18nText("请输入新的名称"), f"（当前名称：{version}）", self)
     if not dialog.exec():
         return  # 用户取消操作
 
     new_name = dialog.name_edit.text().strip()
     if not new_name:
         InfoBar.warning(
-            title='⚠️ 提示',
-            content="新名称不能为空",
+            title=i18nText('⚠️ 提示'),
+            content=i18nText("新名称不能为空"),
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=5000,
@@ -183,8 +183,8 @@ def Change_minecraft_version_name(self,version,label,MINECRAFT_DIR,homeInterface
 
     if version == new_name:
         InfoBar.info(
-            title='ℹ️ 提示',
-            content="新名称与原名称相同，无需更改",
+            title=i18nText('ℹ️ 提示'),
+            content=i18nText("新名称与原名称相同，无需更改"),
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=5000,
@@ -199,7 +199,7 @@ def Change_minecraft_version_name(self,version,label,MINECRAFT_DIR,homeInterface
     # 检查目标是否存在
     if os.path.exists(new_path):
         InfoBar.error(
-            title='❌ 错误',
+            title=i18nText('❌ 错误'),
             content=f"目标名称 {new_name} 已存在，请选择其他名称。",
             isClosable=True,
             position=InfoBarPosition.TOP,
@@ -233,7 +233,7 @@ def Change_minecraft_version_name(self,version,label,MINECRAFT_DIR,homeInterface
         handle_exception(exc_type, exc_value, exc_traceback)
         log(f"重命名版本时发生错误: {e}", logging.ERROR)
         InfoBar.error(
-            title='❌ 错误',
+            title=i18nText('❌ 错误'),
             content=f"重命名版本 {version} 时发生错误: {str(e)}",
             isClosable=True,
             position=InfoBarPosition.TOP,
@@ -265,7 +265,7 @@ def delete_Customize(self,version,label,card,customize_list,homeInterface):
                 json.dump(config_data, file, ensure_ascii=False, indent=4)
             self.config = config_data
             InfoBar.success(
-                title='✅ 成功',
+                title=i18nText('✅ 成功'),
                 content=f"{version} 已成功删除",
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -291,7 +291,7 @@ def delete_Customize(self,version,label,card,customize_list,homeInterface):
             self.run_cmcl_list(True)
         else:
             InfoBar.error(
-                title='❌ 删除失败',
+                title=i18nText('❌ 删除失败'),
                 content=f"未找到与 {version} 匹配的自定义程序",
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -305,7 +305,7 @@ def delete_Customize(self,version,label,card,customize_list,homeInterface):
         exc_type, exc_value, exc_traceback = sys.exc_info()
         handle_exception(exc_type, exc_value, exc_traceback)
         InfoBar.error(
-            title='❌ 错误',
+            title=i18nText('❌ 错误'),
             content=f"保存到 config.json 时发生错误: {e}",
             isClosable=True,
             position=InfoBarPosition.TOP,
@@ -327,14 +327,14 @@ def Change_Customize_name(self,version,label,homeInterface):
 
         if "Customize" not in config_data:
             config_data["Customize"] = []
-        dialog = self.MessageBox("请输入新的名称", f"（当前名称：{version}）", self)
+        dialog = self.MessageBox(i18nText("请输入新的名称"), f"（当前名称：{version}）", self)
         if not dialog.exec():
             return  # 用户取消操作
         new_name = dialog.name_edit.text().strip()
         if not new_name or new_name.strip() == "":
             InfoBar.warning(
-                title='⚠️ 提示',
-                content="新名称不能为空",
+                title=i18nText('⚠️ 提示'),
+                content=i18nText("新名称不能为空"),
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=5000,
@@ -343,8 +343,8 @@ def Change_Customize_name(self,version,label,homeInterface):
             return
         if version == new_name:
             InfoBar.info(
-                title='ℹ️ 提示',
-                content="新名称与原名称相同，无需更改",
+                title=i18nText('ℹ️ 提示'),
+                content=i18nText("新名称与原名称相同，无需更改"),
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=5000,
@@ -366,9 +366,9 @@ def Change_Customize_name(self,version,label,homeInterface):
                     is_found = True
                     break
             if not is_found:
-                handle_exception(ValueError("尝试修改的项目不存在于自定义列表中"))
+                handle_exception(ValueError(i18nText("尝试修改的项目不存在于自定义列表中")))
                 InfoBar.error(
-                    title='❌ 错误',
+                    title=i18nText('❌ 错误'),
                     content=f"尝试修改的项目 {item} 不存在于自定义列表中",
                     isClosable=True,
                     position=InfoBarPosition.TOP,
@@ -395,7 +395,7 @@ def Change_Customize_name(self,version,label,homeInterface):
         run_choose.addItems(self.run_cmcl_list(True))
     else:
         InfoBar.error(
-            title='❌ 修改失败',
+            title=i18nText('❌ 修改失败'),
             content=f"未找到与 {version} 匹配的自定义程序",
             isClosable=True,
             position=InfoBarPosition.TOP,
@@ -510,7 +510,7 @@ class LibraryDownloader:
                 
             # 更新进度通知
             notify(progress={
-                'title': 'Minecraft 库文件补全',
+                'title': i18nText('Minecraft 库文件补全'),
                 'status': f'正在下载: {os.path.basename(lib_path)}',
                 'value': self.completed_count / self.total_count,
                 'valueStringOverride': f'{self.completed_count}/{self.total_count}'
@@ -524,8 +524,8 @@ class LibraryDownloader:
     def download_libraries(self):
         # 显示初始通知
         notify(progress={
-            'title': 'Minecraft 库文件补全',
-            'status': '正在补全缺失的库文件...',
+            'title': i18nText('Minecraft 库文件补全'),
+            'status': i18nText('正在补全缺失的库文件...'),
             'value': 0,
             'valueStringOverride': f'0/{self.total_count}'
         })
@@ -540,7 +540,7 @@ class LibraryDownloader:
         
         # 显示完成通知
         notify(progress={
-            'title': 'Minecraft 库文件补全完成',
+            'title': i18nText('Minecraft 库文件补全完成'),
             'status': f'已完成: {self.completed_count}/{self.total_count} 个文件',
             'value': 1,
             'valueStringOverride': f'{self.completed_count}/{self.total_count}'
@@ -565,7 +565,7 @@ def Get_Run_Script(version):
     
     # 检查 cmcl.json 文件是否存在
     if not os.path.exists('cmcl.json'):
-        raise FileNotFoundError("cmcl.json 文件不存在")
+        raise FileNotFoundError(i18nText("cmcl.json 文件不存在"))
     
     # 读取 cmcl.json 配置
     with open('cmcl.json', 'r', encoding='utf-8') as f:
@@ -947,7 +947,7 @@ def Get_Run_Script(version):
         # 检查账户信息相关字段
         missing_fields = []
         if not account_info:
-            missing_fields.append("账户信息")
+            missing_fields.append(i18nText("账户信息"))
         else:
             if not account_info.get("uuid"):
                 missing_fields.append("UUID")
@@ -1030,8 +1030,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
     try:
         # 创建Windows 11通知
         notify(progress={
-            'title': 'Minecraft 版本安装',
-            'status': '正在准备安装...',
+            'title': i18nText('Minecraft 版本安装'),
+            'status': i18nText('正在准备安装...'),
             'value': '0',
             'valueStringOverride': '0%'
         })
@@ -1052,7 +1052,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         update_progress({
             'value': 0.1, 
             'valueStringOverride': '10%',
-            'status': '正在获取版本清单...'
+            'status': i18nText('正在获取版本清单...')
         })
         manifest_url = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
         log(f"正在获取版本清单: {manifest_url}")
@@ -1083,7 +1083,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         update_progress({
             'value': 0.2, 
             'valueStringOverride': '20%',
-            'status': '正在查找指定版本...'
+            'status': i18nText('正在查找指定版本...')
         })
         version_info = None
         for ver in manifest_data.get("versions", []):
@@ -1101,7 +1101,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         update_progress({
             'value': 0.3, 
             'valueStringOverride': '30%',
-            'status': '正在获取版本详细信息...'
+            'status': i18nText('正在获取版本详细信息...')
         })
         original_url = version_info.get("url")
         version_info_url = original_url.replace("https://piston-meta.mojang.com/", "https://bmclapi2.bangbang93.com/")
@@ -1135,7 +1135,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         update_progress({
             'value': 0.4, 
             'valueStringOverride': '40%',
-            'status': '正在创建版本目录...'
+            'status': i18nText('正在创建版本目录...')
         })
         version_dir = os.path.join(versions_dir, version)
         os.makedirs(version_dir, exist_ok=True)
@@ -1164,7 +1164,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         update_progress({
             'value': 0.5, 
             'valueStringOverride': '50%',
-            'status': '正在下载客户端JAR文件...'
+            'status': i18nText('正在下载客户端JAR文件...')
         })
         if "downloads" in version_data and "client" in version_data["downloads"]:
             client_info = version_data["downloads"]["client"]
@@ -1219,7 +1219,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 log(f"下载客户端JAR文件失败: HTTP {response.status_code}", logging.ERROR)
                 return False
         else:
-            log("版本信息中未找到客户端下载链接", logging.ERROR)
+            log(i18nText("版本信息中未找到客户端下载链接"), logging.ERROR)
             return False
 
         # 创建natives目录
@@ -1230,7 +1230,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         update_progress({
             'value': 0.6, 
             'valueStringOverride': '60%',
-            'status': '正在下载库文件...'
+            'status': i18nText('正在下载库文件...')
         })
         libraries_dir = os.path.join(minecraft_dir, "libraries")
         os.makedirs(libraries_dir, exist_ok=True)
@@ -1488,7 +1488,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             asset_index_id = asset_index["id"]
             asset_index_path = os.path.join(indexes_dir, f"{asset_index_id}.json")
             
-            update_progress({'status': "正在下载资源索引..."})
+            update_progress({'status': i18nText("正在下载资源索引...")})
             log(f"正在下载资源索引: {asset_index_url}")
             
             try:
@@ -1618,8 +1618,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                     
                     # 创建Windows 11通知
                     notify(progress={
-                        'title': 'Minecraft 资源下载',
-                        'status': '正在下载资源文件...',
+                        'title': i18nText('Minecraft 资源下载'),
+                        'status': i18nText('正在下载资源文件...'),
                         'value': '0',
                         'valueStringOverride': f'0/{assets_count} 个'
                     })
@@ -1682,7 +1682,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                     update_progress({
                         'value': 1, 
                         'valueStringOverride': f'{assets_count}/{assets_count} 个',
-                        'status': '资源文件下载完成!'
+                        'status': i18nText('资源文件下载完成!')
                     })
                     
                     # 输出下载结果
@@ -1730,9 +1730,9 @@ def CustomizeAdd(self):
         # 弹出文件选择框选择文件
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "选择自定义程序文件",
+            i18nText("选择自定义程序文件"),
             "",
-            "可执行文件 (*.exe);;所有文件 (*)"
+            i18nText("可执行文件 (*.exe);;所有文件 (*)")
         )
         
         # 如果用户取消选择或未选择文件
@@ -1757,7 +1757,7 @@ def CustomizeAdd(self):
         for item in config_data["Customize"]:
             if item.get("path") == file_path:
                 InfoBar.warning(
-                    title='⚠️ 提示',
+                    title=i18nText('⚠️ 提示'),
                     content=f"文件 {file_name} 已存在于自定义程序列表中",
                     isClosable=True,
                     position=InfoBarPosition.TOP,
@@ -1783,7 +1783,7 @@ def CustomizeAdd(self):
         
         # 显示成功信息
         InfoBar.success(
-            title='✅ 成功',
+            title=i18nText('✅ 成功'),
             content=f"已成功添加自定义程序: {file_name}",
             isClosable=True,
             position=InfoBarPosition.TOP,
@@ -1797,7 +1797,7 @@ def CustomizeAdd(self):
         exc_type, exc_value, exc_traceback = sys.exc_info()
         handle_exception(exc_type, exc_value, exc_traceback)
         InfoBar.error(
-            title='❌ 错误',
+            title=i18nText('❌ 错误'),
             content=f"添加自定义程序时发生错误: {str(e)}",
             isClosable=True,
             position=InfoBarPosition.TOP,

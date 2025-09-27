@@ -7,25 +7,25 @@ from modules.i18n import i18nText
 
 def open_github_bloret_Launcher():
     QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew/Bloret-Launcher"))
-    log("打开该项目的 Github 页面")
+    log(i18nText("打开该项目的 Github 页面"))
 def open_qq_link():
     QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/iGw0GwUCiI"))
-    log("打开 Bloret QQ 群页面")
+    log(i18nText("打开 Bloret QQ 群页面"))
 def open_BLC_qq_link():
     QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/kEt8fb41wc"))
-    log("打开 BLC QQ 群页面")
+    log(i18nText("打开 BLC QQ 群页面"))
 def open_BBBS_link(server_ip):
     QDesktopServices.openUrl(QUrl(server_ip+"bbs/"))
-    log("打开 BBBS 页面")
+    log(i18nText("打开 BBBS 页面"))
 def open_BBBS_Reg_link(server_ip):
     QDesktopServices.openUrl(QUrl(server_ip+"bbs/reg/"))
-    log("打开 BBBS 注册页面")
+    log(i18nText("打开 BBBS 注册页面"))
 def open_bloret_web():
     QDesktopServices.openUrl(QUrl("https://launcher.bloret.net/"))
-    log("打开 Bloret Launcher 网页")
+    log(i18nText("打开 Bloret Launcher 网页"))
 def open_github_bloret():
     QDesktopServices.openUrl(QUrl("https://github.com/BloretCrew"))
-    log("打开 Bloret Github 组织页面")
+    log(i18nText("打开 Bloret Github 组织页面"))
 def copy_skin_to_clipboard(self):
     clipboard = QApplication.clipboard()
     clipboard.setText(self.player_skin)

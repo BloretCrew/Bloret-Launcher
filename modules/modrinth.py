@@ -131,14 +131,14 @@ def Get_Mod_File_Download_Url(slug, loaders=None, game_versions=None):
 
 
 def add_mrpack(parent_widget: QWidget = None):
-    log("添加 Modrinth Modpack", logging.INFO)
+    log(i18nText("添加 Modrinth Modpack"), logging.INFO)
     # 创建根窗口但隐藏它
     root = tk.Tk()
     root.withdraw()
     
     # 弹出文件选择对话框
     file_path = filedialog.askopenfilename(
-        title="选择 .mrpack 文件",
+        title=i18nText("选择 .mrpack 文件"),
         filetypes=[("Modrinth Modpack Files", "*.mrpack")]
     )
     
@@ -180,14 +180,14 @@ def add_mrpack(parent_widget: QWidget = None):
                 
                 # 检查最后一条日志
                 if "Done :) Have a nice day" in last_line.strip():
-                        log("Modpack 安装成功!")
+                        log(i18nText("Modpack 安装成功!"))
                         if parent_widget:
-                            info_bar.setMessage("安装成功!")
+                            info_bar.setMessage(i18nText("安装成功!"))
                             info_bar.setSuccess()
                 else:
-                        log("Modpack 安装失败!")
+                        log(i18nText("Modpack 安装失败!"))
                         if parent_widget:
-                            info_bar.setMessage("安装失败!")
+                            info_bar.setMessage(i18nText("安装失败!"))
                             info_bar.setError()
                     
             except Exception as e:
@@ -205,4 +205,4 @@ def add_mrpack(parent_widget: QWidget = None):
         thread.daemon = True
         thread.start()
     else:
-        log("未选择文件")
+        log(i18nText("未选择文件"))

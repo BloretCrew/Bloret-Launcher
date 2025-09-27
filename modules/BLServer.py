@@ -51,13 +51,13 @@ def handle_first_run(self,server_ip):
             response = requests.get(server_ip + "api/blnum")
             if response.status_code == 200:
                 data = response.json()
-                self.bl_users = data.get("user", "未知用户")
+                self.bl_users = data.get("user", i18nText("未知用户"))
                 log(f"获取到的用户数: {self.bl_users}")
             else:
-                self.bl_users = "未知用户"
-                log("无法获取用户数", logging.ERROR)
+                self.bl_users = i18nText("未知用户")
+                log(i18nText("无法获取用户数"), logging.ERROR)
             w = MessageBox(
-                title="欢迎使用百络谷启动器 (＾ｰ^)ノ",
+                title=i18nText("欢迎使用百络谷启动器 (＾ｰ^)ノ"),
                 content=f'您是百络谷启动器的第 {self.bl_users} 位用户',
                 parent=self
             )
@@ -80,11 +80,11 @@ def check_Bloret_version(self,server_ip,ver_id_bloret):
                     log(f"成功获取 Bloret 版本列表: {ver_id_bloret}")
                     return ver_id_bloret
                 else:
-                    log("无法获取 Bloret 版本列表", logging.ERROR)
+                    log(i18nText("无法获取 Bloret 版本列表"), logging.ERROR)
             except requests.RequestException as e:
                 log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
         else:
-            log("本地模式已启用，获取 Bloret 版本列表 的过程已跳过。")
+            log(i18nText("本地模式已启用，获取 Bloret 版本列表 的过程已跳过。"))
     t = threading.Thread(target=_inner, args=(self, server_ip, ver_id_bloret))
     t.start()
 
@@ -97,7 +97,7 @@ def get_latest_version(server_ip):
             BL_latest_ver = latest_release.get("Bloret-Launcher-latest")
             return BL_latest_ver, BL_update_text
         else:
-            log("查询最新版本失败", logging.ERROR)
+            log(i18nText("查询最新版本失败"), logging.ERROR)
             return BL_latest_ver, BL_update_text
     except requests.RequestException as e:
         log(f"查询最新版本时发生错误: {e}", logging.ERROR)
@@ -112,7 +112,7 @@ def check_for_updates(self,server_ip):
                 if BL_ver < float(BL_latest_ver):
                     log(f"当前版本不是最新版，请更新到 {BL_latest_ver} 版本", logging.WARNING)
                     w = MessageBox(
-                        title="当前版本不是最新版",
+                        title=i18nText("当前版本不是最新版"),
                         content=f'Bloret Launcher 貌似有个新新新版本\n你似乎正在运行 {BL_ver}，但事实上，百络谷启动器 {BL_latest_ver} 来啦！按下按钮自动更新。\n这个更新... {BL_update_text}',
                         parent=self
                     )
@@ -121,10 +121,10 @@ def check_for_updates(self,server_ip):
             except Exception as e:
                 handle_exception(e)
                 log(f"检查更新时发生错误: {e}", logging.ERROR)
-                log("无法连接到 pcfs.eno.ink", logging.ERROR)
-                update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': '无法连接到服务器 ❌'})
+                log(i18nText("无法连接到 pcfs.eno.ink"), logging.ERROR)
+                update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': i18nText('无法连接到服务器 ❌')})
         else:
-            log("本地模式已启用，检查更新 的过程已跳过。")
+            log(i18nText("本地模式已启用，检查更新 的过程已跳过。"))
     t = threading.Thread(target=_inner, args=(self, server_ip))
     t.start()
 

@@ -30,7 +30,7 @@ def CustomizeRun(self,version):
                 return
             else:
                 InfoBar.error(
-                    title='❌ 启动失败',
+                    title=i18nText('❌ 启动失败'),
                     content=f"路径 {program_path} 不存在或无效",
                     isClosable=True,
                     position=InfoBarPosition.TOP,
@@ -39,7 +39,7 @@ def CustomizeRun(self,version):
                 )
                 return
     InfoBar.error(
-        title='❌ 启动失败',
+        title=i18nText('❌ 启动失败'),
         content=f"未找到与 {version} 匹配的自定义程序",
         isClosable=True,
         position=InfoBarPosition.TOP,

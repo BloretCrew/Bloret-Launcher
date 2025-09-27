@@ -18,7 +18,7 @@ def update_to_latest_version(self):
     except Exception as e:
         handle_exception(e)
         log(f"创建或运行更新脚本失败: {e}", logging.ERROR)
-        QMessageBox.critical(self, "更新失败", f"创建或运行更新脚本失败: {e}")
+        QMessageBox.critical(self, i18nText("更新失败"), f"创建或运行更新脚本失败: {e}")
 
 
 importlog("uUPDATE.PY")
