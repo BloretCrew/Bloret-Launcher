@@ -64,10 +64,10 @@ def open_minecraft_version_folder(self,version,MINECRAFT_DIR):
     except Exception:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         handle_exception(exc_type, exc_value, exc_traceback)
-        log(f"打开版本文件夹时发生错误: {e}", logging.ERROR)
+        log(f"打开版本文件夹时发生错误: {Exception}", logging.ERROR)
         InfoBar.error(
             title=i18nText('❌ 错误'),
-            content=f"打开版本 {version} 文件夹时发生错误: {str(e)}",
+            content=f"打开版本 {version} 文件夹时发生错误: {str(Exception)}",
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=5000,
@@ -144,10 +144,10 @@ def delete_minecraft_version(self,version,label,card,MINECRAFT_DIR,homeInterface
     except Exception:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         handle_exception(exc_type, exc_value, exc_traceback)
-        log(f"删除版本时发生错误: {e}", logging.ERROR)
+        log(f"删除版本时发生错误: {Exception}", logging.ERROR)
         InfoBar.error(
             title=i18nText('❌ 错误'),
-            content=f"删除版本 {version} 时发生错误: {str(e)}",
+            content=f"删除版本 {version} 时发生错误: {str(Exception)}",
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=5000,
@@ -231,10 +231,10 @@ def Change_minecraft_version_name(self,version,label,MINECRAFT_DIR,homeInterface
     except Exception:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         handle_exception(exc_type, exc_value, exc_traceback)
-        log(f"重命名版本时发生错误: {e}", logging.ERROR)
+        log(f"重命名版本时发生错误: {Exception}", logging.ERROR)
         InfoBar.error(
             title=i18nText('❌ 错误'),
-            content=f"重命名版本 {version} 时发生错误: {str(e)}",
+            content=f"重命名版本 {version} 时发生错误: {str(Exception)}",
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=5000,
@@ -306,7 +306,7 @@ def delete_Customize(self,version,label,card,customize_list,homeInterface):
         handle_exception(exc_type, exc_value, exc_traceback)
         InfoBar.error(
             title=i18nText('❌ 错误'),
-            content=f"保存到 config.json 时发生错误: {e}",
+            content=f"保存到 config.json 时发生错误: {Exception}",
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=5000,

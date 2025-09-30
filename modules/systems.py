@@ -5,6 +5,7 @@ from win32com.client import Dispatch
 from modules.log import log, importlog
 from modules.safe import handle_exception
 from modules.i18n import i18nText
+import sys
 
 def get_system_theme_color():
     """获取系统主题颜色"""
@@ -92,10 +93,7 @@ def check_write_permission():
 
 def restart():
     log(i18nText('重启程序'))
-    # if share.isAttached():
-    #     share.detach()  # 释放共享内存
-    # os.execl(sys.executable, sys.executable, *sys.argv)
-    subprocess.Popen(["restart.cmd"])
+    os.execl(sys.executable, sys.executable, *sys.argv)
 
 base_directory = os.path.dirname(os.path.abspath(__file__))
 

@@ -2,6 +2,7 @@ import json
 import os
 import requests
 import subprocess
+import time
 from modules.win11toast import toast, update_progress, notify
 from threading import Thread
 from modules.log import log
