@@ -2,18 +2,18 @@
     "widgets": {
         "home": {
             "Labels": {
-                "Bloret_Launcher_Title": "Bloret Launcher",
-                "WelcomeToUseBL": "欢迎使用百络谷 Minecraft 启动器。\n如发现任何 Bug 或有建议等，请到 Github 上提交 Issue\n也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。",
-                "Info_title": "信息",
-                "show": "欢迎使用百络谷 Minecraft 启动器",
-                "Welcome_text": "您好,",
-                "WillUseAccount_Top": "将使用",
-                "WillUseAccount_Down": "来登录 Minecraft"
+                "Bloret_Launcher_Title": "Bloret Лаунчер",
+                "WelcomeToUseBL": "Ласкаво просимо до використання Bloret Minecraft Лаунчера.\nЯкщо ви знайдете помилки або маєте пропозиції, будь ласка, надішліть проблему на Github\nВи також можете надіслати запит на витяг на сторінці Github, щоб зробити внесок у Bloret Лаунчер.",
+                "Info_title": "Інформація",
+                "show": "Ласкаво просимо до використання Bloret Minecraft Лаунчера",
+                "Welcome_text": "Привіт,",
+                "WillUseAccount_Top": "Буде використовувати",
+                "WillUseAccount_Down": "для входу в Minecraft"
             },
             "buttons": {
-                "pushButton_2": "Bloret Github 组织页面",
-                "pushButton": "该项目的 Github 页面",
-                "run": "启动"
+                "pushButton_2": "Сторінка організації Bloret на Github",
+                "pushButton": "Сторінка цього проекту на Github",
+                "run": "Запустити"
             }
         },
         "BBS": {
@@ -22,88 +22,88 @@
             }
         },
         "BL_download_version": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "StrongBodyLabel_5": "核心文件"
+            "TitleLabel": "Bloret Лаунчер - Завантаження та встановлення ядра Minecraft",
+            "SubtitleLabel_2": "Завантажити ядро версії Minecraft",
+            "StrongBodyLabel_5": "Файли ядра"
         },
         "BL_download": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "SubtitleLabel": "下载 .minecraft 资源",
+            "TitleLabel": "Bloret Лаунчер - Завантаження та встановлення ядра Minecraft",
+            "SubtitleLabel_2": "Завантажити ядро версії Minecraft",
+            "SubtitleLabel": "Завантажити ресурси .minecraft",
             "Labels": {
-                "StrongBodyLabel_5": "核心文件",
-                "StrongBodyLabel_12": "资源库文件 libraries",
-                "StrongBodyLabel_13": "63.1 MB",
-                "StrongBodyLabel_14": "指标文件 indexes",
-                "StrongBodyLabel_15": "379 KB",
-                "StrongBodyLabel_6": "对象文件 objects",
+                "StrongBodyLabel_5": "Файли ядра",
+                "StrongBodyLabel_12": "Файли бібліотек libraries",
+                "StrongBodyLabel_13": "63,1 МБ",
+                "StrongBodyLabel_14": "Файли індексів indexes",
+                "StrongBodyLabel_15": "379 КБ",
+                "StrongBodyLabel_6": "Файли об'єктів objects",
                 "StrongBodyLabel": "1",
-                "StrongBodyLabel_7": "99.9 MB",
+                "StrongBodyLabel_7": "99,9 МБ",
                 "StrongBodyLabel_2": "2",
-                "StrongBodyLabel_8": "85.5 MB",
+                "StrongBodyLabel_8": "85,5 МБ",
                 "StrongBodyLabel_3": "3",
-                "StrongBodyLabel_9": "92.5 MB",
+                "StrongBodyLabel_9": "92,5 МБ",
                 "StrongBodyLabel_4": "4",
-                "StrongBodyLabel_10": "42.5 MB",
-                "CaptionLabel": "右侧大小数据为前期估算，可能不是真实数据。可能更小或更大。"
+                "StrongBodyLabel_10": "42,5 МБ",
+                "CaptionLabel": "Дані про розмір праворуч є попередніми оцінками і можуть не бути справжніми даними. Вони можуть бути меншими або більшими."
             }
         },
         "client": {
-            "TitleLabel": "联机",
-            "SubtitleLabel": "网络",
+            "TitleLabel": "Онлайн",
+            "SubtitleLabel": "Мережа",
             "Labels": {
                 "StrongBodyLabel_17": "IPV6",
-                "CaptionLabel_5": "查看您计算机的 IPV6 配置",
+                "CaptionLabel_5": "Перегляньте конфігурацію IPV6 вашого комп'ютера",
                 "ipv6_address": "------:------:------:------:------:------:------:------",
-                "CaptionLabel_12": "<html><head/><body><p>使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。<br/><span style=\" font-weight:700;\">IPV6 是您的运营商提供的一项免费服务，不额外收费。 </span>已拥有的用户点击上方按钮直接使用。<br/>IPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。</p></body></html>",
-                "SubtitleLabel_2": "Online Client",
-                "CaptionLabel_9": "<html><head/><body><p>Online Client 是 Bloret 的一项开源项目，可为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方无需安装 Bloret Launcher 就可一起参与联机。</span></p></body></html>",
-                "CaptionLabel_6": "联机服务 Powered by Online Client (BloretCrew) , Server PCFS  © 2025 Bloret All rights reserved."
+                "CaptionLabel_12": "<html><head/><body><p>Використовуючи IPV6 для онлайн-гри, ви можете грати з іншими без відкриття Bloret Лаунчера.<br/><span style=\" font-weight:700;\">IPV6 - це безкоштовний сервіс, наданий вашим оператором, без додаткової плати. </span>Користувачі, які вже мають його, можуть напряму натиснути на кнопку вище, щоб використовувати його.<br/>Онлайн-гра через IPV6 може бути нестабільною, якщо ви шукаєте стабільність, рекомендується використовувати Онлайн-клієнт нижче для онлайн-гри.</p></body></html>",
+                "SubtitleLabel_2": "Онлайн-клієнт",
+                "CaptionLabel_9": "<html><head/><body><p>Онлайн-клієнт - це проект з відкритим вихідним кодом від Bloret, який може надати вам ефективні онлайн-сервіси.<br/><span style=\" font-weight:700;\">Запустіть онлайн-сервіс тут, щоб інша сторона могла брати участь в онлайн-грі без встановлення Bloret Лаунчера.</span></p></body></html>",
+                "CaptionLabel_6": "Онлайн-сервіс, наданий онлайн-клієнтом (BloretCrew), Сервер PCFS © 2025 Bloret Всі права захищені."
             },
             "buttons": {
-                "GetIPV6AddressButton": "获取 IPV6 联机地址",
-                "StartOnlineClient": "开启联机服务"
+                "GetIPV6AddressButton": "Отримати онлайн-адресу IPV6",
+                "StartOnlineClient": "Запустити онлайн-сервіс"
             }
         },
         "download_load": {
-            "TitleLabel": "下载",
+            "TitleLabel": "Завантаження",
             "Labels": {
-                "label": "我们已经在加载了...",
-                "label_4": "这可能需要一定时间，请耐心等待\n待加载完成，我们立刻显示选项\n我们通过调用绝大多数启动器使用的BMCLAPI来加载\n因此加载快慢与BMCLAPI加载快慢和您的网络有关\n若长时间加载不出或未响应，请检查网络，如果网络良好，可能是BMCLAPI问题"
+                "label": "Ми вже завантажуємо...",
+                "label_4": "Це може зайняти деякий час, будь ласка, наберіться терпіння\nЯк тільки завантаження буде завершено, ми негайно покажемо опції\nМи завантажуємо через BMCLAPI, використовуваний більшістю лаунчерів\nТому швидкість завантаження залежить від швидкості завантаження BMCLAPI та вашої мережі\nЯкщо завантаження триває довго або не відповідає, перевірте мережу. Якщо мережа добра, можливо, це проблема BMCLAPI"
             }
         },
         "download.old": {
-            "TitleLabel": "下载",
-            "SubtitleLabel_2": "Minecraft 核心下载",
+            "TitleLabel": "Завантаження",
+            "SubtitleLabel_2": "Завантаження ядра Minecraft",
             "Labels": {
-                "StrongBodyLabel_9": "选择下载核心",
-                "CaptionLabel_3": "Bloret Launcher 核心由百络谷自行研发，但可选项较少\nCMCL 核心可提供更多版本",
-                "CaptionLabel_2": "警告：Bloret Launcher 核心为实验性功能",
-                "Fabric_2": "Light Minecraft 下载源",
-                "Fabric_text_5": "使用 Bloret Launcher 核心时可用。\n如果下载速度过慢或失败，请尝试切换下载源。",
-                "StrongBodyLabel_6": "选择版本",
-                "CaptionLabel_4": "Bloret Launcher 核心使用 Light Minecraft 协议\n暂时仅支持百络谷支持版本进行下载。\n若要下载其他版本，请在上方选择 CMCL 核心。",
-                "vername": "名称",
-                "vername_text": "你想让这个新下载的版本叫什么？",
+                "StrongBodyLabel_9": "Виберіть ядро для завантаження",
+                "CaptionLabel_3": "Ядро Bloret Лаунчера розроблене самостійно Bloret, але має менше опцій\nЯдро CMCL може надати більше версій",
+                "CaptionLabel_2": "Попередження: Ядро Bloret Лаунчера - це експериментальна функція",
+                "Fabric_2": "Джерело завантаження Light Minecraft",
+                "Fabric_text_5": "Доступно при використанні ядра Bloret Лаунчера.\nЯкщо швидкість завантаження занадто повільна або не вдається, спробуйте змінити джерело завантаження.",
+                "StrongBodyLabel_6": "Виберіть версію",
+                "CaptionLabel_4": "Ядро Bloret Лаунчера використовує протокол Light Minecraft\nНаразі підтримує лише завантаження версій, підтримуваних Bloret.\nДля завантаження інших версій виберіть ядро CMCL вище.",
+                "vername": "Ім'я",
+                "vername_text": "Як би ви хотіли назвати цю нову завантажену версію?",
                 "Fabric": "Fabric",
-                "Fabric_text": "选择 Fabric 模组加载器，有了它，\n你将可以安装自己的 Mod，拓展更多 Minecraft 功能\n请注意，百络谷服务器不支持服务端 Mod，\n您只能添加客户端 Mod\n百络谷服务器使用 Forge 可能会出现问题。",
-                "CaptionLabel": "推荐选择位于列表最上方的最新版本\n使用以前的版本可能会导致不稳定",
-                "StrongBodyLabel_8": "下载完成后通过 Windows 通知来通知我",
-                "SubtitleLabel_3": "导入",
-                "StrongBodyLabel_3": "导入 .mrpack 文件",
-                "Fabric_text_6": "Modrinth 模组包格式（.mrpack）是一种简单的格式，可以让你存储模组包。",
-                "SubtitleLabel": "自定义",
-                "Fabric_text_3": "Bloret Launcher 不一定启动 Minecraft ，它还可以启动更多。（可能需要重新启动程序后生效）",
-                "StrongBodyLabel": "选择应用程序",
-                "Fabric_text_2": "选择你要自定义启动的程序",
-                "StrongBodyLabel_2": "显示名称",
-                "Fabric_text_4": "设定该应用程序显示在百络谷启动器内的名称"
+                "Fabric_text": "Виберіть завантажувач модів Fabric, з ним\nви можете встановити власні моди для подальшого розширення функцій Minecraft\nЗверніть увагу, що сервери Bloret не підтримують моди на стороні сервера,\nви можете додавати лише моди на стороні клієнта\nСервери Bloret, які використовують Forge, можуть викликати проблеми.",
+                "CaptionLabel": "Рекомендується вибрати останню версію у верхній частині списку\nВикористання попередніх версій може викликати нестабільність",
+                "StrongBodyLabel_8": "Повідомити мене через сповіщення Windows по завершенню завантаження",
+                "SubtitleLabel_3": "Імпорт",
+                "StrongBodyLabel_3": "Імпортувати файл .mrpack",
+                "Fabric_text_6": "Формат пакету модів Modrinth (.mrpack) - це простий формат, який дозволяє зберігати пакети модів.",
+                "SubtitleLabel": "Налаштувати",
+                "Fabric_text_3": "Bloret Лаунчер не обов'язково запускає Minecraft, він може запустити більше. (Може знадобитися перезапуск програми для набуття чинності)",
+                "StrongBodyLabel": "Виберіть додаток",
+                "Fabric_text_2": "Виберіть програму, яку хочете запустити налаштовано",
+                "StrongBodyLabel_2": "Відображуване ім'я",
+                "Fabric_text_4": "Встановіть ім'я цього додатка, як воно відображається в лаунчері Bloret"
             },
             "buttons": {
-                "download": "开始下载并安装",
-                "add_mrpack_button": "导入 .mrpack 文件",
-                "Customize_choose": "选择应用程序",
-                "Customize_add": "添加到百络谷启动器"
+                "download": "Почати завантаження та встановлення",
+                "add_mrpack_button": "Імпортувати файл .mrpack",
+                "Customize_choose": "Виберіть додаток",
+                "Customize_add": "Додати до лаунчера Bloret"
             },
             "ComboBox": {
                 "download_way_choose": "",
@@ -114,35 +114,35 @@
             },
             "LineEdit": {
                 "vername_edit": "",
-                "Customize_path": "应用程序路径",
-                "Customize_showname": "应用程序显示名称"
+                "Customize_path": "Шлях до додатка",
+                "Customize_showname": "Відображуване ім'я додатка"
             },
             "SwitchButton": {
                 "Notification": ""
             }
         },
         "download": {
-            "TitleLabel": "下载",
+            "TitleLabel": "Завантаження",
             "Labels": {
-                "StrongBodyLabel_22": "原版 Minecraft",
-                "CaptionLabel_12": "一键下载安装原版 Minecraft",
+                "StrongBodyLabel_22": "Ванільний Minecraft",
+                "CaptionLabel_12": "Завантажте та встановіть ванільний Minecraft одним кліком",
                 "StrongBodyLabel_23": "Minecraft + Fabric",
-                "CaptionLabel_13": "可以添加 Mod 的 Minecraft 版本",
+                "CaptionLabel_13": "Версія Minecraft, до якої можна додати моди",
                 "StrongBodyLabel_24": "Java",
-                "CaptionLabel_14": "一键下载安装 Java",
+                "CaptionLabel_14": "Завантажте та встановіть Java одним кліком",
                 "StrongBodyLabel": "Java",
                 "StrongBodyLabel_2": "Windows x64",
-                "StrongBodyLabel_25": "自定义程序",
-                "CaptionLabel_15": "添加自定义启动项",
-                "StrongBodyLabel_26": "旧版安装页面",
-                "CaptionLabel_16": "以前 Bloret Launcher 安装版本的页面\n可以前往此处安装其他版本"
+                "StrongBodyLabel_25": "Користувацька програма",
+                "CaptionLabel_15": "Додати користувацький елемент запуску",
+                "StrongBodyLabel_26": "Стара сторінка встановлення",
+                "CaptionLabel_16": "Сторінка для попередніх версій встановлення Bloret Лаунчера\nВи можете перейти сюди, щоб встановити інші версії"
             },
             "buttons": {
-                "Minecraft_version_Download": "下载并安装",
-                "Fabric_version_Download": "下载并安装",
-                "Java_version_Download": "下载并安装",
-                "Customize_add": "添加",
-                "Old_download_Page": "前往"
+                "Minecraft_version_Download": "Завантажити та встановити",
+                "Fabric_version_Download": "Завантажити та встановити",
+                "Java_version_Download": "Завантажити та встановити",
+                "Customize_add": "Додати",
+                "Old_download_Page": "Перейти до"
             },
             "ComboBox": {
                 "Minecraft_version_choose": "",
@@ -151,18 +151,18 @@
             }
         },
         "ERROR": {
-            "TitleLabel": "Bloret Launcher 错误跟踪窗口",
+            "TitleLabel": "Вікно відстеження помилок Bloret Лаунчера",
             "Labels": {
-                "StrongBodyLabel_4": "Bloret Launcher 发生了一些小问题...",
-                "CaptionLabel_5": "如果您认为这是 Bloret Launcher 的问题，请提交此问题。",
-                "StrongBodyLabel": "类型",
-                "StrongBodyLabel_2": "信息",
-                "StrongBodyLabel_3": "回溯信息"
+                "StrongBodyLabel_4": "Bloret Лаунчер зіткнувся з деякими невеликими проблемами...",
+                "CaptionLabel_5": "Якщо ви вважаєте, що це проблема Bloret Лаунчера, будь ласка, надішліть цю проблему.",
+                "StrongBodyLabel": "Тип",
+                "StrongBodyLabel_2": "Інформація",
+                "StrongBodyLabel_3": "Інформація відстеження"
             },
             "buttons": {
-                "PushButton": "🔠 复制到剪贴板",
-                "PushButton_2": "ℹ️ 反馈问题",
-                "PushButton_3": "⏫ 忽略警告"
+                "PushButton": "🔠 Копіювати в буфер обміну",
+                "PushButton_2": "ℹ️ Повідомити про проблему",
+                "PushButton_3": "⏫ Ігнорувати попередження"
             },
             "LineEdit": {
                 "type": "",
@@ -174,93 +174,93 @@
         },
         "forum": {
             "TitleLabel": "Bloret BBS",
-            "SubtitleLabel": "板块1",
+            "SubtitleLabel": "Розділ 1",
             "Labels": {
-                "title1": "标题1",
-                "text1": "文本1"
+                "title1": "Заголовок 1",
+                "text1": "Текст 1"
             }
         },
         "info": {
-            "TitleLabel": "关于",
-            "SubtitleLabel": "Bloret Launcher",
+            "TitleLabel": "Про програму",
+            "SubtitleLabel": "Bloret Лаунчер",
             "Labels": {
-                "CaptionLabel_3": "Bloret Launcher 不只是 Minecraft 启动器，但也为 Minecraft 玩家提供便捷的游戏启动与管理体验。",
+                "CaptionLabel_3": "Bloret Лаунчер - це не просто лаунчер для Minecraft, але й забезпечує зручний досвід запуску та управління іграми для гравців Minecraft.",
                 "StrongBodyLabel_11": "QQ",
                 "StrongBodyLabel_12": "Github",
-                "CaptionLabel_2": "© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved."
+                "CaptionLabel_2": "© 2025 Bloret Лаунчер Всі права захищені. © 2025 Bloret Всі права захищені."
             },
             "buttons": {
                 "pushButton": "Bloret",
-                "BLC_QQ": "Bloret Software Community",
-                "pushButton_2": "Bloret Github 组织页面",
-                "button_github": "此项目的 Github"
+                "BLC_QQ": "Спільнота програмного забезпечення Bloret",
+                "pushButton_2": "Сторінка організації Bloret на Github",
+                "button_github": "Github цього проекту"
             }
         },
         "MCVer_downloading": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "准备工作",
-            "SubtitleLabel": "下载 Minecraft 资源",
+            "TitleLabel": "Bloret Лаунчер - Завантаження та встановлення ядра Minecraft",
+            "SubtitleLabel_2": "Підготовка",
+            "SubtitleLabel": "Завантажити ресурси Minecraft",
             "Labels": {
-                "StrongBodyLabel_16": "获取版本清单和版本详细信息",
-                "StrongBodyLabel_14": "客户端核心文件",
-                "StrongBodyLabel_15": "库文件",
-                "libraries_file_name_2": "正在工作线程数:",
+                "StrongBodyLabel_16": "Отримати список версій та деталі версії",
+                "StrongBodyLabel_14": "Файли ядра клієнта",
+                "StrongBodyLabel_15": "Файли бібліотек",
+                "libraries_file_name_2": "Кількість робочих потоків:",
                 "libraries_file_working_Thread": "0",
                 "libraries_file_working_Thread_2": "/",
                 "MaxThread": "2000",
                 "libraries_file_name": "",
-                "StrongBodyLabel_17": "资源文件",
-                "libraries_file_name_3": "正在工作线程数:",
+                "StrongBodyLabel_17": "Файли ресурсів",
+                "libraries_file_name_3": "Кількість робочих потоків:",
                 "Resources_file_working_Thread": "0",
                 "libraries_file_working_Thread_4": "/",
                 "MaxThread_2": "2000",
                 "libraries_file_name_4": "",
-                "CaptionLabel": "Minecraft 下载源由 bangbang93 / BMCLAPI 提供"
+                "CaptionLabel": "Джерело завантаження Minecraft, надане bangbang93 / BMCLAPI"
             },
             "CheckBox": {
                 "First_Step_CheckBox": ""
             }
         },
         "mods": {
-            "TitleLabel": "Mods",
+            "TitleLabel": "Моди",
             "Labels": {
-                "StrongBodyLabel_17": "找到你想要的 Mod",
-                "CaptionLabel_5": "Modrinth 提供了数千万 Mod 供您选择"
+                "StrongBodyLabel_17": "Знайдіть потрібний мод",
+                "CaptionLabel_5": "Modrinth пропонує десятки мільйонів модів на вибір"
             },
             "buttons": {
-                "Open_Modrinth_Button": "打开 Modrinth"
+                "Open_Modrinth_Button": "Відкрити Modrinth"
             },
             "SearchLineEdit": {
-                "Search": "在 Modrinth 上搜索"
+                "Search": "Пошук на Modrinth"
             }
         },
         "passport_notdone_account": {
-            "TitleLabel": "通行证",
+            "TitleLabel": "Паспорт",
             "SubtitleLabel": {
-                "label_3": "百络谷通行证",
-                "label_5": "离线登录 / 微软登录"
+                "label_3": "Паспорт Bloret",
+                "label_5": "Офлайн вхід / Вхід через Microsoft"
             },
             "Labels": {
-                "label": "当前登录方式：",
-                "label_2": "当前登录：",
-                "label_4": "当前登录：",
-                "CaptionLabel_2": "使用百络谷通行证进入 Bloret 时，无需再次输入密码。"
+                "label": "Поточний метод входу:",
+                "label_2": "Поточний вхід:",
+                "label_4": "Поточний вхід:",
+                "CaptionLabel_2": "При доступі до Bloret з паспортом Bloret вам не потрібно вводити пароль знову."
             },
             "buttons": {
-                "pushButton": "退出登录",
-                "pushButton_5": "多账户设置",
-                "pushButton_6": "注册新账户",
-                "pushButton_2": "登录新账户",
-                "pushButton_7": "多账户设置",
-                "pushButton_8": "注册新账户",
-                "pushButton_3": "添加 / 登录新账户",
-                "pushButton_9": "多账户设置"
+                "pushButton": "Вийти",
+                "pushButton_5": "Налаштування кількох облікових записів",
+                "pushButton_6": "Зареєструвати новий обліковий запис",
+                "pushButton_2": "Увійти в новий обліковий запис",
+                "pushButton_7": "Налаштування кількох облікових записів",
+                "pushButton_8": "Зареєструвати новий обліковий запис",
+                "pushButton_3": "Додати / Увійти в новий обліковий запис",
+                "pushButton_9": "Налаштування кількох облікових записів"
             },
             "ComboBox": {
                 "comboBox_3": [
-                    "百络谷通行证",
-                    "离线登录",
-                    "微软登录"
+                    "Паспорт Bloret",
+                    "Офлайн вхід",
+                    "Вхід через Microsoft"
                 ],
                 "comboBox_4": [
                     "Detrital"
@@ -271,40 +271,40 @@
             }
         },
         "passport.old": {
-            "TitleLabel": "通行证",
-            "SubtitleLabel": "离线登录",
+            "TitleLabel": "Паспорт",
+            "SubtitleLabel": "Офлайн вхід",
             "Labels": {
-                "label_2": "账户名",
-                "CaptionLabel_3": "请记得单击设定，否则更改不会生效",
-                "CaptionLabel_2": "未来将添加对账户的更多管理，百络谷通行证和微软登录等。"
+                "label_2": "Ім'я облікового запису",
+                "CaptionLabel_3": "Не забудьте натиснути Встановити, інакше зміни не набудуть чинності",
+                "CaptionLabel_2": "У майбутньому буде додано більше управління обліковими записами, таке як паспорт Bloret та вхід через Microsoft тощо."
             },
             "buttons": {
-                "player_name_set": "设定"
+                "player_name_set": "Встановити"
             },
             "LineEdit": {
                 "player_name": ""
             }
         },
         "passport": {
-            "TitleLabel": "通行证",
+            "TitleLabel": "Паспорт",
             "SubtitleLabel": {
-                "label_3": "Minecraft 账户",
-                "SubtitleLabel": "Bloret 通行证"
+                "label_3": "Обліковий запис Minecraft",
+                "SubtitleLabel": "Паспорт Bloret"
             },
             "Labels": {
-                "label_4": "目前登录",
-                "CaptionLabel_4": "您目前登录的账户",
-                "label_2": "选择登录方式",
-                "CaptionLabel_3": "请记得单击设定，否则更改不会生效",
-                "Bloret_PassPort_UserName": "未登录",
-                "CaptionLabel_5": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。"
+                "label_4": "Поточний вхід",
+                "CaptionLabel_4": "Ваш поточний підключений обліковий запис",
+                "label_2": "Виберіть метод входу",
+                "CaptionLabel_3": "Не забудьте натиснути Встановити, інакше зміни не набудуть чинності",
+                "Bloret_PassPort_UserName": "Не увійшли",
+                "CaptionLabel_5": "Використовуючи паспорт Bloret, ви можете користуватися майже всіма сервісами Bloret."
             },
             "buttons": {
-                "login": "重新登录",
-                "Bloret_PassPort_view_BBBS": "访问 Bloret BBS",
-                "Bloret_PassPort_login": "重新登录",
-                "Bloret_PassPort_logout": "退出登录",
-                "reg_Bloret_PassPort": "注册 Bloret 通行证"
+                "login": "Увійти знову",
+                "Bloret_PassPort_view_BBBS": "Відвідати Bloret BBS",
+                "Bloret_PassPort_login": "Увійти знову",
+                "Bloret_PassPort_logout": "Вийти",
+                "reg_Bloret_PassPort": "Зареєструвати паспорт Bloret"
             },
             "ComboBox": {
                 "player_login_way": "",
@@ -313,64 +313,64 @@
             }
         },
         "settings": {
-            "TitleLabel": "设置",
+            "TitleLabel": "Налаштування",
             "SubtitleLabel": {
-                "label_7": "下载",
-                "label_6": "界面",
-                "label_5": "外观",
-                "label": "日志",
-                "SubtitleLabel": "行为"
+                "label_7": "Завантаження",
+                "label_6": "Інтерфейс",
+                "label_5": "Зовнішній вигляд",
+                "label": "Журнали",
+                "SubtitleLabel": "Поведінка"
             },
             "Labels": {
-                "StrongBodyLabel_15": "当前版本",
-                "BL_version": "未知",
-                "StrongBodyLabel_22": "最大线程数",
-                "CaptionLabel_12": "下载文件时允许同时下载文件的最大数量\n该数字越大,下载速度越快,但会占用计算机更多性能。",
-                "StrongBodyLabel_17": "缩放",
-                "CaptionLabel_5": "默认启动的窗口大小(重新启动程序后生效)",
-                "StrongBodyLabel_16": "主题",
-                "CaptionLabel_4": "眼睛舒服了",
-                "log_clear_text": "清空日志",
-                "log_clear_subtext": "清空 log 文件夹",
-                "label_3": "开机自启动",
-                "CaptionLabel_11": "开机时一并打开 Bloret Launcher, 并最小化至系统托盘",
-                "StrongBodyLabel_18": "重复启动程序",
-                "CaptionLabel_6": "防止 Bloret Launcher 占满您的计算机",
-                "StrongBodyLabel_19": "显示软件打开过程",
-                "CaptionLabel_7": "在软件打开前以通知的形式显示软件在做什么",
-                "StrongBodyLabel_21": "在首页上 显示 Minecraft 账户登录方式",
-                "CaptionLabel_10": "展示你为微软登录或是离线登录",
-                "StrongBodyLabel_20": "本地模式",
-                "CaptionLabel_8": "不连接一部分的互联网，不允许使用 PCFS 服务。",
-                "CaptionLabel_9": "设置界面大部分内容需要重启程序后生效。"
+                "StrongBodyLabel_15": "Поточна версія",
+                "BL_version": "Невідома",
+                "StrongBodyLabel_22": "Максимальна кількість потоків",
+                "CaptionLabel_12": "Максимальна кількість файлів, дозволених для одночасного завантаження при завантаженні файлів\nЧим вище число, тим швидша швидкість завантаження, але це займе більше продуктивності комп'ютера.",
+                "StrongBodyLabel_17": "Масштабування",
+                "CaptionLabel_5": "Розмір вікна за замовчуванням при запуску (набуває чинності після перезапуску програми)",
+                "StrongBodyLabel_16": "Тема",
+                "CaptionLabel_4": "Зручно для очей",
+                "log_clear_text": "Очистити журнали",
+                "log_clear_subtext": "Очистити папку журналів",
+                "label_3": "Автозапуск при увімкненні",
+                "CaptionLabel_11": "Відкрити Bloret Лаунчер при увімкненні та згорнути в системний трей",
+                "StrongBodyLabel_18": "Перезапуск програми",
+                "CaptionLabel_6": "Запобігти заповненню вашого комп'ютера Bloret Лаунчером",
+                "StrongBodyLabel_19": "Показати процес відкриття програмного забезпечення",
+                "CaptionLabel_7": "Показати, що програмне забезпечення робить у формі сповіщень перед відкриттям програмного забезпечення",
+                "StrongBodyLabel_21": "Показати метод входу в обліковий запис Minecraft на головній сторінці",
+                "CaptionLabel_10": "Показати, чи ви входите через Microsoft або офлайн вхід",
+                "StrongBodyLabel_20": "Локальний режим",
+                "CaptionLabel_8": "Не підключатися до частини інтернету, не дозволяти використання сервісів PCFS.",
+                "CaptionLabel_9": "Більшість вмісту інтерфейсу налаштувань вимагає перезапуску програми для набуття чинності."
             },
             "buttons": {
-                "log_clear_button": "清空日志"
+                "log_clear_button": "Очистити журнали"
             },
             "SpinBox": {
-                "MaxThread_SpinBox": " 个",
+                "MaxThread_SpinBox": " шт.",
                 "Size_Choose": " %"
             },
             "SwitchButton": {
                 "Self_starting": {
-                    "onText": "打开",
-                    "offText": "关闭"
+                    "onText": "Відкрити",
+                    "offText": "Закрити"
                 },
                 "repeat_run_button": {
-                    "onText": "允许",
-                    "offText": "禁止"
+                    "onText": "Дозволити",
+                    "offText": "Заборонити"
                 },
                 "show_runtime_do_button": {
-                    "onText": "显示",
-                    "offText": "不显示"
+                    "onText": "Показати",
+                    "offText": "Не показувати"
                 },
                 "home_show_login_mod_button": {
-                    "onText": "展示",
-                    "offText": "隐藏"
+                    "onText": "Показати",
+                    "offText": "Приховати"
                 },
                 "localmod_button": {
-                    "onText": "启用",
-                    "offText": "关闭"
+                    "onText": "Увімкнути",
+                    "offText": "Вимкнути"
                 }
             },
             "ComboBox": {
@@ -381,133 +381,133 @@
                 ]
             },
             "StrongBodyLabel": {
-                "language_Setting_Title": "语言 / language"
+                "language_Setting_Title": "Мова / language"
             },
             "CaptionLabel": {
-                "language_Setting_Tip_Text": "调整语言设置"
+                "language_Setting_Tip_Text": "Налаштувати мовні параметри"
             }
         },
         "tools": {
-            "TitleLabel": "小工具",
-            "SubtitleLabel": "Minecraft 数据查询",
+            "TitleLabel": "Інструменти",
+            "SubtitleLabel": "Запит даних Minecraft",
             "Labels": {
-                "name2uuid_text": "查询玩家UUID",
-                "label_2": "查询的结果将显示在这里",
-                "StrongBodyLabel_20": "查询玩家名字",
-                "search_name": "查询的结果将显示在这里",
-                "label_7": "获取玩家的皮肤和披风",
-                "search_skin": "皮肤的查询的结果",
-                "search_cape": "披风的查询的结果"
+                "name2uuid_text": "Запит UUID гравця",
+                "label_2": "Результати запиту будуть показані тут",
+                "StrongBodyLabel_20": "Запит імені гравця",
+                "search_name": "Результати запиту будуть показані тут",
+                "label_7": "Отримати скін та плащ гравця",
+                "search_skin": "Результати запиту скіна",
+                "search_cape": "Результати запиту плаща"
             },
             "buttons": {
-                "name2uuid_player_Button": "查询",
-                "pushButton_5": "复制到剪贴板",
-                "search_name_button": "查询",
-                "search_name_copy": "复制到剪贴板",
-                "skin_search_button": "查询",
-                "search_skin_copy": "复制到剪贴板",
-                "search_cape_copy": "复制到剪贴板"
+                "name2uuid_player_Button": "Запит",
+                "pushButton_5": "Копіювати в буфер обміну",
+                "search_name_button": "Запит",
+                "search_name_copy": "Копіювати в буфер обміну",
+                "skin_search_button": "Запит",
+                "search_skin_copy": "Копіювати в буфер обміну",
+                "search_cape_copy": "Копіювати в буфер обміну"
             },
             "LineEdit": {
-                "name2uuid_player_uuid": "玩家名称（正版）",
-                "search_name_type": "玩家UUID",
-                "skin_uuid": "玩家UUID，注意不是名字，如果没有，请到上面获取。"
+                "name2uuid_player_uuid": "Ім'я гравця (оригінал)",
+                "search_name_type": "UUID гравця",
+                "skin_uuid": "UUID гравця, увага, це не ім'я, якщо його немає, отримайте вище."
             }
         },
         "version": {
-            "TitleLabel": "版本管理"
+            "TitleLabel": "Управління версіями"
         }
     },
     "texts": {
-        "你还未安装任何版本哦，请前往下载页面安装": "你还未安装任何版本哦，请前往下载页面安装",
-        "🔼  启动版本": "🔼  启动版本",
-        "🔡  访问 BBS": "🔡  访问 BBS",
-        "🔄️  重启程序": "🔄️  重启程序",
-        "✅  显示窗口": "✅  显示窗口",
-        "❎  退出程序": "❎  退出程序",
-        "百络谷支持版本": "百络谷支持版本",
-        "正式版本": "正式版本",
-        "快照版本": "快照版本",
-        "远古版本": "远古版本",
-        "未知的版本类型": "未知的版本类型",
-        "Bloret Launcher 已阻止了重复打开软件的操作": "Bloret Launcher 已阻止了重复打开软件的操作",
-        "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。": "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。",
-        "正在启动 Bloret Launcher": "正在启动 Bloret Launcher",
-        "正在做打开软件前的工作...": "正在做打开软件前的工作...",
-        "警告：SystemTrayIcon 的 parent 参数为 None": "警告：SystemTrayIcon 的 parent 参数为 None",
-        "创建互斥体失败": "创建互斥体失败",
-        "检测到程序重复运行": "检测到程序重复运行",
-        "重复运行被禁用：检测到程序已运行，退出新实例": "重复运行被禁用：检测到程序已运行，退出新实例",
-        "显示软件打开过程已启用": "显示软件打开过程已启用",
-        "显示软件打开过程已禁用": "显示软件打开过程已禁用",
-        "启动画面创建完成": "启动画面创建完成",
-        "启动画面已显示": "启动画面已显示",
-        "隐藏启动画面": "隐藏启动画面",
-        "主页 被点击": "主页 被点击",
-        "下载完成，但版本信息缺失": "下载完成，但版本信息缺失",
-        "托盘菜单启动，不显示 TeachingTip": "托盘菜单启动，不显示 TeachingTip",
-        "下载 被点击": "下载 被点击",
-        "无法获取 Minecraft 版本列表": "无法获取 Minecraft 版本列表",
-        "执行命令: ": "执行命令: ",
-        "正在执行微软登录命令：cmcl account --login=microsoft": "正在执行微软登录命令：cmcl account --login=microsoft",
-        "成功覆盖 cmcl.json 文件": "成功覆盖 cmcl.json 文件",
-        "本地模式已启用，无法使用微软登录。": "本地模式已启用，无法使用微软登录。",
-        "您已启用本地模式": "您已启用本地模式",
-        "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。": "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。",
-        "确认": "确认",
-        "创建启动页面": "创建启动页面",
-        "图标路径存在: ": "图标路径存在: ",
-        "图标路径不存在: ": "图标路径不存在: ",
-        "系统主题颜色: ": "系统主题颜色: ",
-        "请求错误: ": "请求错误: ",
-        "开始下载Minecraft版本: ": "开始下载Minecraft版本: ",
-        "加载或显示下载弹窗时发生错误: ": "加载或显示下载弹窗时发生错误: ",
-        "无法显示下载进度弹窗: ": "无法显示下载进度弹窗: ",
-        "开始下载Fabric版本: ": "开始下载Fabric版本: ",
-        "下载过程可能需要几分钟，请耐心等待...": "下载过程可能需要几分钟，请耐心等待...",
-        "正在启动 ": "正在启动 ",
-        "请稍等": "请稍等",
-        "已经开始下载...下载状态将会显示在这里": "已经开始下载...下载状态将会显示在这里",
-        "LM_Download_Way_minecraft:": "LM_Download_Way_minecraft:",
-        "正在下载你所选的版本...": "正在下载你所选的版本...",
-        "正在下载版本 ": "正在下载版本 ",
-        "该名称已存在，请更换一个名称。": "该名称已存在，请更换一个名称。",
-        "该版本已下载过。": "该版本已下载过。",
-        "登录成功": "登录成功",
-        "登录失败: ": "登录失败: ",
-        "离线登录成功": "离线登录成功",
-        "执行异常: ": "执行异常: ",
-        "发送系统通知失败: ": "发送系统通知失败: ",
-        "非法名称": "非法名称",
-        "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称": "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称",
-        "离线登录": "离线登录",
-        "请输入玩家名称": "请输入玩家名称",
-        "文件 ": "文件 ",
-        " 不存在": " 不存在",
-        "请选择一个Fabric版本": "请选择一个Fabric版本",
+        "你还未安装任何版本哦，请前往下载页面安装": "Ви ще не встановили жодної версії, будь ласка, перейдіть на сторінку завантаження для встановлення",
+        "🔼  启动版本": "🔼 Запустити версію",
+        "🔡  访问 BBS": "🔡 Відвідати BBS",
+        "🔄️  重启程序": "🔄️ Перезапустити програму",
+        "✅  显示窗口": "✅ Показати вікно",
+        "❎  退出程序": "❎ Вийти з програми",
+        "百络谷支持版本": "Версії, підтримувані Bloret",
+        "正式版本": "Офіційні версії",
+        "快照版本": "Знімки версій",
+        "远古版本": "Стародавні версії",
+        "未知的版本类型": "Невідомий тип версії",
+        "Bloret Launcher 已阻止了重复打开软件的操作": "Bloret Лаунчер заблокував операції повторного відкриття програмного забезпечення",
+        "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。": "Щоб запобігти заповненню вашого комп'ютера Bloret Лаунчером, ми заблокували повторне відкриття Bloret Лаунчера\nЯкщо вам потрібне повторне відкриття, перейдіть у налаштування та встановіть прапорець дозволити повторний запуск.",
+        "正在启动 Bloret Launcher": "Запуск Bloret Лаунчера",
+        "正在做打开软件前的工作...": "Виконання роботи перед відкриттям програмного забезпечення...",
+        "警告：SystemTrayIcon 的 parent 参数为 None": "Попередження: параметр parent SystemTrayIcon дорівнює None",
+        "创建互斥体失败": "Не вдалося створити м'ютекс",
+        "检测到程序重复运行": "Виявлено повторний запуск програми",
+        "重复运行被禁用：检测到程序已运行，退出新实例": "Повторний запуск вимкнено: виявлено, що програма вже запущена, вихід з нового екземпляра",
+        "显示软件打开过程已启用": "Відображення процесу відкриття програмного забезпечення увімкнено",
+        "显示软件打开过程已禁用": "Відображення процесу відкриття програмного забезпечення вимкнено",
+        "启动画面创建完成": "Створення заставки завершено",
+        "启动画面已显示": "Заставка відображена",
+        "隐藏启动画面": "Приховати заставку",
+        "主页 被点击": "Головна сторінка натиснута",
+        "下载完成，但版本信息缺失": "Завантаження завершено, але інформація про версію відсутня",
+        "托盘菜单启动，不显示 TeachingTip": "Меню в треї запущено, TeachingTip не відображається",
+        "下载 被点击": "Завантаження натиснуто",
+        "无法获取 Minecraft 版本列表": "Не вдалося отримати список версій Minecraft",
+        "执行命令: ": "Виконати команду: ",
+        "正在执行微软登录命令：cmcl account --login=microsoft": "Виконання команди входу через Microsoft: cmcl account --login=microsoft",
+        "成功覆盖 cmcl.json 文件": "Файл cmcl.json успішно перезаписано",
+        "本地模式已启用，无法使用微软登录。": "Локальний режим увімкнено, неможливо використовувати вхід через Microsoft.",
+        "您已启用本地模式": "Ви увімкнули локальний режим",
+        "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。": "Bloret Лаунчер не може виконати вхід через Microsoft у локальному режимі,\\nоскільки ця операція вимагає інтернет\\nЯкщо вам потрібен вхід, перейдіть у інтерфейс налаштувань, щоб вимкнути локальний режим. Або використовуйте офлайн вхід.",
+        "确认": "Підтвердити",
+        "创建启动页面": "Створити сторінку запуску",
+        "图标路径存在: ": "Шлях до іконки існує: ",
+        "图标路径不存在: ": "Шлях до іконки не існує: ",
+        "系统主题颜色: ": "Колір теми системи: ",
+        "请求错误: ": "Помилка запиту: ",
+        "开始下载Minecraft版本: ": "Почати завантаження версії Minecraft: ",
+        "加载或显示下载弹窗时发生错误: ": "Сталася помилка при завантаженні або відображенні спливаючого вікна завантаження: ",
+        "无法显示下载进度弹窗: ": "Не вдалося відобразити спливаюче вікно прогресу завантаження: ",
+        "开始下载Fabric版本: ": "Почати завантаження версії Fabric: ",
+        "下载过程可能需要几分钟，请耐心等待...": "Процес завантаження може зайняти кілька хвилин, будь ласка, наберіться терпіння...",
+        "正在启动 ": "Запуск ",
+        "请稍等": "Будь ласка, зачекайте",
+        "已经开始下载...下载状态将会显示在这里": "Завантаження вже почалося... Статус завантаження буде відображено тут",
+        "LM_Download_Way_minecraft:": "LM_Спосіб_Завантаження_minecraft:",
+        "正在下载你所选的版本...": "Завантаження вибраної версії...",
+        "正在下载版本 ": "Завантаження версії ",
+        "该名称已存在，请更换一个名称。": "Це ім'я вже існує, будь ласка, змініть ім'я.",
+        "该版本已下载过。": "Ця версія вже була завантажена.",
+        "登录成功": "Вхід виконано успішно",
+        "登录失败: ": "Помилка входу: ",
+        "离线登录成功": "Офлайн вхід виконано успішно",
+        "执行异常: ": "Виняток виконання: ",
+        "发送系统通知失败: ": "Не вдалося надіслати системне сповіщення: ",
+        "非法名称": "Недопустиме ім'я",
+        "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称": "Ім'я містить недопустимі символи або китайські символи, будь ласка, дотримуйтесь наступних правил:\\n1. Не може містити \\\\ / : * ? \\\" < > |\\n2. Не може містити китайські символи\\n3. Не може використовувати зарезервовані системою імена",
+        "离线登录": "Офлайн вхід",
+        "请输入玩家名称": "Будь ласка, введіть ім'я гравця",
+        "文件 ": "Файл ",
+        " 不存在": " не існує",
+        "请选择一个Fabric版本": "Будь ласка, виберіть версію Fabric",
         "Fabric ": "Fabric ",
-        " 功能正在开发中": " 功能正在开发中",
-        "请选择一个Java版本": "请选择一个Java版本",
-        "无法解析Java版本号": "无法解析Java版本号",
-        "正在下载 Java ": "正在下载 Java ",
-        "Minecraft版本 ": "Minecraft版本 ",
-        " 已成功下载": " 已成功下载",
-        " 已成功下载并安装": " 已成功下载并安装",
-        " 下载失败": " 下载失败",
-        " 下载失败，请查看日志了解详情": " 下载失败，请查看日志了解详情",
-        "版本 ": "版本 ",
-        " 已成功下载\\n前往主页就可以启动了！": " 已成功下载\\n前往主页就可以启动了！",
-        "成功拷贝 ": "成功拷贝 ",
-        " 到 ": " 到 ",
-        "拷贝 ": "拷贝 ",
-        " 失败: ": " 失败: ",
-        "下载完成": "下载完成",
-        "show_text is None": "show_text is None",
-        "读取版本列表失败: ": "读取版本列表失败: ",
-        "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装": "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装",
-        "minecraft_list:": "minecraft_list:",
-        "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！": "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！",
-        "替换 CMCL 2.2.2 → Bloret Launcher": "替换 CMCL 2.2.2 → Bloret Launcher",
-        "替换 CMCL → Bloret-Launcher": "替换 CMCL → Bloret-Launcher"
+        " 功能正在开发中": " функція в розробці",
+        "请选择一个Java版本": "Будь ласка, виберіть версію Java",
+        "无法解析Java版本号": "Не вдалося розібрати номер версії Java",
+        "正在下载 Java ": "Завантаження Java ",
+        "Minecraft版本 ": "Версія Minecraft ",
+        " 已成功下载": " успішно завантажена",
+        " 已成功下载并安装": " успішно завантажена та встановлена",
+        " 下载失败": " завантаження не вдалося",
+        " 下载失败，请查看日志了解详情": " завантаження не вдалося, будь ласка, перевірте журнал для отримання детальної інформації",
+        "版本 ": "Версія ",
+        " 已成功下载\\n前往主页就可以启动了！": " успішно завантажена\\nПерейдіть на головну сторінку, щоб запустити!",
+        "成功拷贝 ": "Успішне копіювання ",
+        " 到 ": " до ",
+        "拷贝 ": "Копіювати ",
+        " 失败: ": " не вдалося: ",
+        "下载完成": "Завантаження завершено",
+        "show_text is None": "show_text дорівнює None",
+        "读取版本列表失败: ": "Не вдалося прочитати список версій: ",
+        "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装": "Не вдалося отримати список версій, можливо, ви ще не встановили жодної версії, будь ласка, перейдіть на сторінку завантаження для встановлення",
+        "minecraft_list:": "список_minecraft:",
+        "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！": "Обробка файлів Minecraft та запуск...\\nВи скоро побачите появу вікна Minecraft!",
+        "替换 CMCL 2.2.2 → Bloret Launcher": "Замінити CMCL 2.2.2 → Bloret Лаунчер",
+        "替换 CMCL → Bloret-Launcher": "Замінити CMCL → Bloret-Лаунчер"
     }
 }

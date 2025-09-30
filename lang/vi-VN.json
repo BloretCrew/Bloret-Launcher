@@ -2,108 +2,108 @@
     "widgets": {
         "home": {
             "Labels": {
-                "Bloret_Launcher_Title": "Bloret Launcher",
-                "WelcomeToUseBL": "欢迎使用百络谷 Minecraft 启动器。\n如发现任何 Bug 或有建议等，请到 Github 上提交 Issue\n也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。",
-                "Info_title": "信息",
-                "show": "欢迎使用百络谷 Minecraft 启动器",
-                "Welcome_text": "您好,",
-                "WillUseAccount_Top": "将使用",
-                "WillUseAccount_Down": "来登录 Minecraft"
+                "Bloret_Launcher_Title": "Trình khởi chạy Bloret",
+                "WelcomeToUseBL": "Chào mừng bạn sử dụng Trình khởi chạy Bloret Minecraft.\nNếu bạn tìm thấy lỗi hoặc có đề xuất, vui lòng gửi vấn đề trên Github\nBạn cũng có thể gửi yêu cầu kéo trên trang Github để đóng góp cho Trình khởi chạy Bloret.",
+                "Info_title": "Thông tin",
+                "show": "Chào mừng bạn sử dụng Trình khởi chạy Bloret Minecraft",
+                "Welcome_text": "Xin chào,",
+                "WillUseAccount_Top": "Sẽ sử dụng",
+                "WillUseAccount_Down": "để đăng nhập Minecraft"
             },
             "buttons": {
-                "pushButton_2": "Bloret Github 组织页面",
-                "pushButton": "该项目的 Github 页面",
-                "run": "启动"
+                "pushButton_2": "Trang tổ chức Bloret trên Github",
+                "pushButton": "Trang dự án này trên Github",
+                "run": "Khởi chạy"
             }
         },
         "BBS": {
             "Labels": {
-                "TitleLabel": "Bloret BBS"
+                "TitleLabel": "Diễn đàn Bloret"
             }
         },
         "BL_download_version": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "StrongBodyLabel_5": "核心文件"
+            "TitleLabel": "Trình khởi chạy Bloret - Tải xuống và cài đặt lõi Minecraft",
+            "SubtitleLabel_2": "Tải xuống lõi phiên bản Minecraft",
+            "StrongBodyLabel_5": "Các tệp lõi"
         },
         "BL_download": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "SubtitleLabel": "下载 .minecraft 资源",
+            "TitleLabel": "Trình khởi chạy Bloret - Tải xuống và cài đặt lõi Minecraft",
+            "SubtitleLabel_2": "Tải xuống lõi phiên bản Minecraft",
+            "SubtitleLabel": "Tải xuống tài nguyên .minecraft",
             "Labels": {
-                "StrongBodyLabel_5": "核心文件",
-                "StrongBodyLabel_12": "资源库文件 libraries",
-                "StrongBodyLabel_13": "63.1 MB",
-                "StrongBodyLabel_14": "指标文件 indexes",
+                "StrongBodyLabel_5": "Các tệp lõi",
+                "StrongBodyLabel_12": "Các tệp thư viện libraries",
+                "StrongBodyLabel_13": "63,1 MB",
+                "StrongBodyLabel_14": "Các tệp chỉ mục indexes",
                 "StrongBodyLabel_15": "379 KB",
-                "StrongBodyLabel_6": "对象文件 objects",
+                "StrongBodyLabel_6": "Các tệp đối tượng objects",
                 "StrongBodyLabel": "1",
-                "StrongBodyLabel_7": "99.9 MB",
+                "StrongBodyLabel_7": "99,9 MB",
                 "StrongBodyLabel_2": "2",
-                "StrongBodyLabel_8": "85.5 MB",
+                "StrongBodyLabel_8": "85,5 MB",
                 "StrongBodyLabel_3": "3",
-                "StrongBodyLabel_9": "92.5 MB",
+                "StrongBodyLabel_9": "92,5 MB",
                 "StrongBodyLabel_4": "4",
-                "StrongBodyLabel_10": "42.5 MB",
-                "CaptionLabel": "右侧大小数据为前期估算，可能不是真实数据。可能更小或更大。"
+                "StrongBodyLabel_10": "42,5 MB",
+                "CaptionLabel": "Dữ liệu kích thước bên phải là ước tính sơ bộ và có thể không phải là dữ liệu thực tế. Có thể nhỏ hơn hoặc lớn hơn."
             }
         },
         "client": {
-            "TitleLabel": "联机",
-            "SubtitleLabel": "网络",
+            "TitleLabel": "Trực tuyến",
+            "SubtitleLabel": "Mạng",
             "Labels": {
                 "StrongBodyLabel_17": "IPV6",
-                "CaptionLabel_5": "查看您计算机的 IPV6 配置",
+                "CaptionLabel_5": "Xem cấu hình IPV6 của máy tính bạn",
                 "ipv6_address": "------:------:------:------:------:------:------:------",
-                "CaptionLabel_12": "<html><head/><body><p>使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。<br/><span style=\" font-weight:700;\">IPV6 是您的运营商提供的一项免费服务，不额外收费。 </span>已拥有的用户点击上方按钮直接使用。<br/>IPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。</p></body></html>",
-                "SubtitleLabel_2": "Online Client",
-                "CaptionLabel_9": "<html><head/><body><p>Online Client 是 Bloret 的一项开源项目，可为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方无需安装 Bloret Launcher 就可一起参与联机。</span></p></body></html>",
-                "CaptionLabel_6": "联机服务 Powered by Online Client (BloretCrew) , Server PCFS  © 2025 Bloret All rights reserved."
+                "CaptionLabel_12": "<html><head/><body><p>Sử dụng IPV6 để chơi trực tuyến, bạn có thể chơi với người khác mà không cần mở Trình khởi chạy Bloret.<br/><span style=\" font-weight:700;\">IPV6 là dịch vụ miễn phí do nhà cung cấp của bạn cung cấp, không có chi phí bổ sung. </span>Người dùng đã có thể nhấp trực tiếp vào nút trên để sử dụng.<br/>Chơi trực tuyến qua IPV6 có thể không ổn định, nếu bạn tìm kiếm sự ổn định, chúng tôi khuyên bạn nên sử dụng Trình khách trực tuyến bên dưới để chơi trực tuyến.</p></body></html>",
+                "SubtitleLabel_2": "Trình khách trực tuyến",
+                "CaptionLabel_9": "<html><head/><body><p>Trình khách trực tuyến là một dự án mã nguồn mở của Bloret có thể cung cấp cho bạn các dịch vụ trực tuyến hiệu quả.<br/><span style=\" font-weight:700;\">Khởi động dịch vụ trực tuyến ở đây, để bên kia có thể tham gia chơi trực tuyến mà không cần cài đặt Trình khởi chạy Bloret.</span></p></body></html>",
+                "CaptionLabel_6": "Dịch vụ trực tuyến do Trình khách trực tuyến (BloretCrew) cung cấp, Máy chủ PCFS © 2025 Bloret Tất cả các quyền được bảo lưu."
             },
             "buttons": {
-                "GetIPV6AddressButton": "获取 IPV6 联机地址",
-                "StartOnlineClient": "开启联机服务"
+                "GetIPV6AddressButton": "Nhận địa chỉ trực tuyến IPV6",
+                "StartOnlineClient": "Khởi động dịch vụ trực tuyến"
             }
         },
         "download_load": {
-            "TitleLabel": "下载",
+            "TitleLabel": "Tải xuống",
             "Labels": {
-                "label": "我们已经在加载了...",
-                "label_4": "这可能需要一定时间，请耐心等待\n待加载完成，我们立刻显示选项\n我们通过调用绝大多数启动器使用的BMCLAPI来加载\n因此加载快慢与BMCLAPI加载快慢和您的网络有关\n若长时间加载不出或未响应，请检查网络，如果网络良好，可能是BMCLAPI问题"
+                "label": "Chúng tôi đang tải...",
+                "label_4": "Điều này có thể mất một thời gian, vui lòng kiên nhẫn\nKhi tải xong, chúng tôi sẽ hiển thị các tùy chọn ngay lập tức\nChúng tôi tải thông qua BMCLAPI được sử dụng bởi hầu hết các trình khởi chạy\nDo đó, tốc độ tải phụ thuộc vào tốc độ tải của BMCLAPI và mạng của bạn\nNếu tải quá lâu hoặc không phản hồi, hãy kiểm tra mạng. Nếu mạng tốt, có thể là vấn đề của BMCLAPI"
             }
         },
         "download.old": {
-            "TitleLabel": "下载",
-            "SubtitleLabel_2": "Minecraft 核心下载",
+            "TitleLabel": "Tải xuống",
+            "SubtitleLabel_2": "Tải xuống Lõi Minecraft",
             "Labels": {
-                "StrongBodyLabel_9": "选择下载核心",
-                "CaptionLabel_3": "Bloret Launcher 核心由百络谷自行研发，但可选项较少\nCMCL 核心可提供更多版本",
-                "CaptionLabel_2": "警告：Bloret Launcher 核心为实验性功能",
-                "Fabric_2": "Light Minecraft 下载源",
-                "Fabric_text_5": "使用 Bloret Launcher 核心时可用。\n如果下载速度过慢或失败，请尝试切换下载源。",
-                "StrongBodyLabel_6": "选择版本",
-                "CaptionLabel_4": "Bloret Launcher 核心使用 Light Minecraft 协议\n暂时仅支持百络谷支持版本进行下载。\n若要下载其他版本，请在上方选择 CMCL 核心。",
-                "vername": "名称",
-                "vername_text": "你想让这个新下载的版本叫什么？",
+                "StrongBodyLabel_9": "Chọn lõi để tải xuống",
+                "CaptionLabel_3": "Lõi Trình khởi chạy Bloret được phát triển độc lập bởi Bloret, nhưng có ít tùy chọn hơn\nLõi CMCL có thể cung cấp nhiều phiên bản hơn",
+                "CaptionLabel_2": "Cảnh báo: Lõi Trình khởi chạy Bloret là một chức năng thử nghiệm",
+                "Fabric_2": "Nguồn tải xuống Light Minecraft",
+                "Fabric_text_5": "Có sẵn khi sử dụng lõi Trình khởi chạy Bloret.\nNếu tốc độ tải xuống quá chậm hoặc thất bại, hãy thử thay đổi nguồn tải xuống.",
+                "StrongBodyLabel_6": "Chọn phiên bản",
+                "CaptionLabel_4": "Lõi Trình khởi chạy Bloret sử dụng giao thức Light Minecraft\nHiện tại chỉ hỗ trợ tải xuống các phiên bản được Bloret hỗ trợ.\nĐể tải xuống các phiên bản khác, chọn lõi CMCL ở trên.",
+                "vername": "Tên",
+                "vername_text": "Bạn muốn đặt tên cho phiên bản mới tải xuống này như thế nào?",
                 "Fabric": "Fabric",
-                "Fabric_text": "选择 Fabric 模组加载器，有了它，\n你将可以安装自己的 Mod，拓展更多 Minecraft 功能\n请注意，百络谷服务器不支持服务端 Mod，\n您只能添加客户端 Mod\n百络谷服务器使用 Forge 可能会出现问题。",
-                "CaptionLabel": "推荐选择位于列表最上方的最新版本\n使用以前的版本可能会导致不稳定",
-                "StrongBodyLabel_8": "下载完成后通过 Windows 通知来通知我",
-                "SubtitleLabel_3": "导入",
-                "StrongBodyLabel_3": "导入 .mrpack 文件",
-                "Fabric_text_6": "Modrinth 模组包格式（.mrpack）是一种简单的格式，可以让你存储模组包。",
-                "SubtitleLabel": "自定义",
-                "Fabric_text_3": "Bloret Launcher 不一定启动 Minecraft ，它还可以启动更多。（可能需要重新启动程序后生效）",
-                "StrongBodyLabel": "选择应用程序",
-                "Fabric_text_2": "选择你要自定义启动的程序",
-                "StrongBodyLabel_2": "显示名称",
-                "Fabric_text_4": "设定该应用程序显示在百络谷启动器内的名称"
+                "Fabric_text": "Chọn trình tải mod Fabric, với nó\nbạn có thể cài đặt các mod riêng của mình để mở rộng thêm chức năng của Minecraft\nLưu ý rằng các máy chủ Bloret không hỗ trợ mod phía máy chủ,\nbạn chỉ có thể thêm mod phía máy khách\nCác máy chủ Bloret sử dụng Forge có thể gây ra sự cố.",
+                "CaptionLabel": "Khuyến nghị chọn phiên bản mới nhất ở đầu danh sách\nSử dụng các phiên bản trước đó có thể gây ra sự không ổn định",
+                "StrongBodyLabel_8": "Thông báo cho tôi qua thông báo Windows khi tải xuống xong",
+                "SubtitleLabel_3": "Nhập khẩu",
+                "StrongBodyLabel_3": "Nhập tệp .mrpack",
+                "Fabric_text_6": "Định dạng gói mod Modrinth (.mrpack) là một định dạng đơn giản cho phép bạn lưu trữ các gói mod.",
+                "SubtitleLabel": "Tùy chỉnh",
+                "Fabric_text_3": "Trình khởi chạy Bloret không nhất thiết khởi động Minecraft, có thể khởi động nhiều thứ hơn. (Có thể cần khởi động lại chương trình để có hiệu lực)",
+                "StrongBodyLabel": "Chọn ứng dụng",
+                "Fabric_text_2": "Chọn chương trình bạn muốn khởi động tùy chỉnh",
+                "StrongBodyLabel_2": "Tên hiển thị",
+                "Fabric_text_4": "Đặt tên của ứng dụng này như hiển thị trong trình khởi chạy Bloret"
             },
             "buttons": {
-                "download": "开始下载并安装",
-                "add_mrpack_button": "导入 .mrpack 文件",
-                "Customize_choose": "选择应用程序",
-                "Customize_add": "添加到百络谷启动器"
+                "download": "Bắt đầu tải xuống và cài đặt",
+                "add_mrpack_button": "Nhập tệp .mrpack",
+                "Customize_choose": "Chọn ứng dụng",
+                "Customize_add": "Thêm vào trình khởi chạy Bloret"
             },
             "ComboBox": {
                 "download_way_choose": "",
@@ -114,35 +114,35 @@
             },
             "LineEdit": {
                 "vername_edit": "",
-                "Customize_path": "应用程序路径",
-                "Customize_showname": "应用程序显示名称"
+                "Customize_path": "Đường dẫn ứng dụng",
+                "Customize_showname": "Tên hiển thị ứng dụng"
             },
             "SwitchButton": {
                 "Notification": ""
             }
         },
         "download": {
-            "TitleLabel": "下载",
+            "TitleLabel": "Tải xuống",
             "Labels": {
-                "StrongBodyLabel_22": "原版 Minecraft",
-                "CaptionLabel_12": "一键下载安装原版 Minecraft",
+                "StrongBodyLabel_22": "Minecraft Vanilla",
+                "CaptionLabel_12": "Tải xuống và cài đặt Minecraft Vanilla bằng một cú nhấp chuột",
                 "StrongBodyLabel_23": "Minecraft + Fabric",
-                "CaptionLabel_13": "可以添加 Mod 的 Minecraft 版本",
+                "CaptionLabel_13": "Phiên bản Minecraft mà bạn có thể thêm mod",
                 "StrongBodyLabel_24": "Java",
-                "CaptionLabel_14": "一键下载安装 Java",
+                "CaptionLabel_14": "Tải xuống và cài đặt Java bằng một cú nhấp chuột",
                 "StrongBodyLabel": "Java",
                 "StrongBodyLabel_2": "Windows x64",
-                "StrongBodyLabel_25": "自定义程序",
-                "CaptionLabel_15": "添加自定义启动项",
-                "StrongBodyLabel_26": "旧版安装页面",
-                "CaptionLabel_16": "以前 Bloret Launcher 安装版本的页面\n可以前往此处安装其他版本"
+                "StrongBodyLabel_25": "Chương trình tùy chỉnh",
+                "CaptionLabel_15": "Thêm mục khởi động tùy chỉnh",
+                "StrongBodyLabel_26": "Trang cài đặt cũ",
+                "CaptionLabel_16": "Trang cho các phiên bản cài đặt trước của Trình khởi chạy Bloret\nBạn có thể đến đây để cài đặt các phiên bản khác"
             },
             "buttons": {
-                "Minecraft_version_Download": "下载并安装",
-                "Fabric_version_Download": "下载并安装",
-                "Java_version_Download": "下载并安装",
-                "Customize_add": "添加",
-                "Old_download_Page": "前往"
+                "Minecraft_version_Download": "Tải xuống và cài đặt",
+                "Fabric_version_Download": "Tải xuống và cài đặt",
+                "Java_version_Download": "Tải xuống và cài đặt",
+                "Customize_add": "Thêm",
+                "Old_download_Page": "Đi đến"
             },
             "ComboBox": {
                 "Minecraft_version_choose": "",
@@ -151,18 +151,18 @@
             }
         },
         "ERROR": {
-            "TitleLabel": "Bloret Launcher 错误跟踪窗口",
+            "TitleLabel": "Cửa sổ theo dõi lỗi Trình khởi chạy Bloret",
             "Labels": {
-                "StrongBodyLabel_4": "Bloret Launcher 发生了一些小问题...",
-                "CaptionLabel_5": "如果您认为这是 Bloret Launcher 的问题，请提交此问题。",
-                "StrongBodyLabel": "类型",
-                "StrongBodyLabel_2": "信息",
-                "StrongBodyLabel_3": "回溯信息"
+                "StrongBodyLabel_4": "Trình khởi chạy Bloret đã gặp một số vấn đề nhỏ...",
+                "CaptionLabel_5": "Nếu bạn cho rằng đây là vấn đề của Trình khởi chạy Bloret, vui lòng gửi vấn đề này.",
+                "StrongBodyLabel": "Loại",
+                "StrongBodyLabel_2": "Thông tin",
+                "StrongBodyLabel_3": "Thông tin theo dõi"
             },
             "buttons": {
-                "PushButton": "🔠 复制到剪贴板",
-                "PushButton_2": "ℹ️ 反馈问题",
-                "PushButton_3": "⏫ 忽略警告"
+                "PushButton": "🔠 Sao chép vào clipboard",
+                "PushButton_2": "ℹ️ Báo cáo vấn đề",
+                "PushButton_3": "⏫ Bỏ qua cảnh báo"
             },
             "LineEdit": {
                 "type": "",
@@ -173,94 +173,94 @@
             }
         },
         "forum": {
-            "TitleLabel": "Bloret BBS",
-            "SubtitleLabel": "板块1",
+            "TitleLabel": "Diễn đàn Bloret",
+            "SubtitleLabel": "Phần 1",
             "Labels": {
-                "title1": "标题1",
-                "text1": "文本1"
+                "title1": "Tiêu đề 1",
+                "text1": "Văn bản 1"
             }
         },
         "info": {
-            "TitleLabel": "关于",
-            "SubtitleLabel": "Bloret Launcher",
+            "TitleLabel": "Giới thiệu",
+            "SubtitleLabel": "Trình khởi chạy Bloret",
             "Labels": {
-                "CaptionLabel_3": "Bloret Launcher 不只是 Minecraft 启动器，但也为 Minecraft 玩家提供便捷的游戏启动与管理体验。",
+                "CaptionLabel_3": "Trình khởi chạy Bloret không chỉ là trình khởi chạy Minecraft, mà còn cung cấp trải nghiệm khởi động và quản lý trò chơi thuận tiện cho người chơi Minecraft.",
                 "StrongBodyLabel_11": "QQ",
                 "StrongBodyLabel_12": "Github",
-                "CaptionLabel_2": "© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved."
+                "CaptionLabel_2": "© 2025 Trình khởi chạy Bloret Tất cả các quyền được bảo lưu. © 2025 Bloret Tất cả các quyền được bảo lưu."
             },
             "buttons": {
                 "pushButton": "Bloret",
-                "BLC_QQ": "Bloret Software Community",
-                "pushButton_2": "Bloret Github 组织页面",
-                "button_github": "此项目的 Github"
+                "BLC_QQ": "Cộng đồng Phần mềm Bloret",
+                "pushButton_2": "Trang tổ chức Bloret trên Github",
+                "button_github": "Github của dự án này"
             }
         },
         "MCVer_downloading": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "准备工作",
-            "SubtitleLabel": "下载 Minecraft 资源",
+            "TitleLabel": "Trình khởi chạy Bloret - Tải xuống và cài đặt lõi Minecraft",
+            "SubtitleLabel_2": "Chuẩn bị",
+            "SubtitleLabel": "Tải xuống tài nguyên Minecraft",
             "Labels": {
-                "StrongBodyLabel_16": "获取版本清单和版本详细信息",
-                "StrongBodyLabel_14": "客户端核心文件",
-                "StrongBodyLabel_15": "库文件",
-                "libraries_file_name_2": "正在工作线程数:",
+                "StrongBodyLabel_16": "Nhận danh sách phiên bản và chi tiết phiên bản",
+                "StrongBodyLabel_14": "Các tệp lõi máy khách",
+                "StrongBodyLabel_15": "Các tệp thư viện",
+                "libraries_file_name_2": "Số luồng làm việc:",
                 "libraries_file_working_Thread": "0",
                 "libraries_file_working_Thread_2": "/",
                 "MaxThread": "2000",
                 "libraries_file_name": "",
-                "StrongBodyLabel_17": "资源文件",
-                "libraries_file_name_3": "正在工作线程数:",
+                "StrongBodyLabel_17": "Các tệp tài nguyên",
+                "libraries_file_name_3": "Số luồng làm việc:",
                 "Resources_file_working_Thread": "0",
                 "libraries_file_working_Thread_4": "/",
                 "MaxThread_2": "2000",
                 "libraries_file_name_4": "",
-                "CaptionLabel": "Minecraft 下载源由 bangbang93 / BMCLAPI 提供"
+                "CaptionLabel": "Nguồn tải xuống Minecraft do bangbang93 / BMCLAPI cung cấp"
             },
             "CheckBox": {
                 "First_Step_CheckBox": ""
             }
         },
         "mods": {
-            "TitleLabel": "Mods",
+            "TitleLabel": "Mod",
             "Labels": {
-                "StrongBodyLabel_17": "找到你想要的 Mod",
-                "CaptionLabel_5": "Modrinth 提供了数千万 Mod 供您选择"
+                "StrongBodyLabel_17": "Tìm mod bạn muốn",
+                "CaptionLabel_5": "Modrinth cung cấp hàng chục triệu mod để lựa chọn"
             },
             "buttons": {
-                "Open_Modrinth_Button": "打开 Modrinth"
+                "Open_Modrinth_Button": "Mở Modrinth"
             },
             "SearchLineEdit": {
-                "Search": "在 Modrinth 上搜索"
+                "Search": "Tìm kiếm trên Modrinth"
             }
         },
         "passport_notdone_account": {
-            "TitleLabel": "通行证",
+            "TitleLabel": "Hộ chiếu",
             "SubtitleLabel": {
-                "label_3": "百络谷通行证",
-                "label_5": "离线登录 / 微软登录"
+                "label_3": "Hộ chiếu Bloret",
+                "label_5": "Đăng nhập ngoại tuyến / Đăng nhập Microsoft"
             },
             "Labels": {
-                "label": "当前登录方式：",
-                "label_2": "当前登录：",
-                "label_4": "当前登录：",
-                "CaptionLabel_2": "使用百络谷通行证进入 Bloret 时，无需再次输入密码。"
+                "label": "Phương thức đăng nhập hiện tại:",
+                "label_2": "Hiện đang đăng nhập:",
+                "label_4": "Hiện đang đăng nhập:",
+                "CaptionLabel_2": "Khi truy cập Bloret bằng hộ chiếu Bloret, bạn không cần nhập lại mật khẩu."
             },
             "buttons": {
-                "pushButton": "退出登录",
-                "pushButton_5": "多账户设置",
-                "pushButton_6": "注册新账户",
-                "pushButton_2": "登录新账户",
-                "pushButton_7": "多账户设置",
-                "pushButton_8": "注册新账户",
-                "pushButton_3": "添加 / 登录新账户",
-                "pushButton_9": "多账户设置"
+                "pushButton": "Đăng xuất",
+                "pushButton_5": "Cài đặt nhiều tài khoản",
+                "pushButton_6": "Đăng ký tài khoản mới",
+                "pushButton_2": "Đăng nhập tài khoản mới",
+                "pushButton_7": "Cài đặt nhiều tài khoản",
+                "pushButton_8": "Đăng ký tài khoản mới",
+                "pushButton_3": "Thêm / Đăng nhập tài khoản mới",
+                "pushButton_9": "Cài đặt nhiều tài khoản"
             },
             "ComboBox": {
                 "comboBox_3": [
-                    "百络谷通行证",
-                    "离线登录",
-                    "微软登录"
+                    "Hộ chiếu Bloret",
+                    "Đăng nhập ngoại tuyến",
+                    "Đăng nhập Microsoft"
                 ],
                 "comboBox_4": [
                     "Detrital"
@@ -271,40 +271,40 @@
             }
         },
         "passport.old": {
-            "TitleLabel": "通行证",
-            "SubtitleLabel": "离线登录",
+            "TitleLabel": "Hộ chiếu",
+            "SubtitleLabel": "Đăng nhập ngoại tuyến",
             "Labels": {
-                "label_2": "账户名",
-                "CaptionLabel_3": "请记得单击设定，否则更改不会生效",
-                "CaptionLabel_2": "未来将添加对账户的更多管理，百络谷通行证和微软登录等。"
+                "label_2": "Tên tài khoản",
+                "CaptionLabel_3": "Nhớ nhấp vào Đặt, nếu không các thay đổi sẽ không có hiệu lực",
+                "CaptionLabel_2": "Trong tương lai, sẽ thêm nhiều quản lý tài khoản hơn, như hộ chiếu Bloret và đăng nhập Microsoft, v.v."
             },
             "buttons": {
-                "player_name_set": "设定"
+                "player_name_set": "Đặt"
             },
             "LineEdit": {
                 "player_name": ""
             }
         },
         "passport": {
-            "TitleLabel": "通行证",
+            "TitleLabel": "Hộ chiếu",
             "SubtitleLabel": {
-                "label_3": "Minecraft 账户",
-                "SubtitleLabel": "Bloret 通行证"
+                "label_3": "Tài khoản Minecraft",
+                "SubtitleLabel": "Hộ chiếu Bloret"
             },
             "Labels": {
-                "label_4": "目前登录",
-                "CaptionLabel_4": "您目前登录的账户",
-                "label_2": "选择登录方式",
-                "CaptionLabel_3": "请记得单击设定，否则更改不会生效",
-                "Bloret_PassPort_UserName": "未登录",
-                "CaptionLabel_5": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。"
+                "label_4": "Hiện đang đăng nhập",
+                "CaptionLabel_4": "Tài khoản hiện đang kết nối của bạn",
+                "label_2": "Chọn phương thức đăng nhập",
+                "CaptionLabel_3": "Nhớ nhấp vào Đặt, nếu không các thay đổi sẽ không có hiệu lực",
+                "Bloret_PassPort_UserName": "Chưa đăng nhập",
+                "CaptionLabel_5": "Sử dụng hộ chiếu Bloret, bạn có thể tận hưởng hầu hết các dịch vụ của Bloret."
             },
             "buttons": {
-                "login": "重新登录",
-                "Bloret_PassPort_view_BBBS": "访问 Bloret BBS",
-                "Bloret_PassPort_login": "重新登录",
-                "Bloret_PassPort_logout": "退出登录",
-                "reg_Bloret_PassPort": "注册 Bloret 通行证"
+                "login": "Đăng nhập lại",
+                "Bloret_PassPort_view_BBBS": "Truy cập Diễn đàn Bloret",
+                "Bloret_PassPort_login": "Đăng nhập lại",
+                "Bloret_PassPort_logout": "Đăng xuất",
+                "reg_Bloret_PassPort": "Đăng ký hộ chiếu Bloret"
             },
             "ComboBox": {
                 "player_login_way": "",
@@ -313,64 +313,64 @@
             }
         },
         "settings": {
-            "TitleLabel": "设置",
+            "TitleLabel": "Cài đặt",
             "SubtitleLabel": {
-                "label_7": "下载",
-                "label_6": "界面",
-                "label_5": "外观",
-                "label": "日志",
-                "SubtitleLabel": "行为"
+                "label_7": "Tải xuống",
+                "label_6": "Giao diện",
+                "label_5": "Giao diện",
+                "label": "Nhật ký",
+                "SubtitleLabel": "Hành vi"
             },
             "Labels": {
-                "StrongBodyLabel_15": "当前版本",
-                "BL_version": "未知",
-                "StrongBodyLabel_22": "最大线程数",
-                "CaptionLabel_12": "下载文件时允许同时下载文件的最大数量\n该数字越大,下载速度越快,但会占用计算机更多性能。",
-                "StrongBodyLabel_17": "缩放",
-                "CaptionLabel_5": "默认启动的窗口大小(重新启动程序后生效)",
-                "StrongBodyLabel_16": "主题",
-                "CaptionLabel_4": "眼睛舒服了",
-                "log_clear_text": "清空日志",
-                "log_clear_subtext": "清空 log 文件夹",
-                "label_3": "开机自启动",
-                "CaptionLabel_11": "开机时一并打开 Bloret Launcher, 并最小化至系统托盘",
-                "StrongBodyLabel_18": "重复启动程序",
-                "CaptionLabel_6": "防止 Bloret Launcher 占满您的计算机",
-                "StrongBodyLabel_19": "显示软件打开过程",
-                "CaptionLabel_7": "在软件打开前以通知的形式显示软件在做什么",
-                "StrongBodyLabel_21": "在首页上 显示 Minecraft 账户登录方式",
-                "CaptionLabel_10": "展示你为微软登录或是离线登录",
-                "StrongBodyLabel_20": "本地模式",
-                "CaptionLabel_8": "不连接一部分的互联网，不允许使用 PCFS 服务。",
-                "CaptionLabel_9": "设置界面大部分内容需要重启程序后生效。"
+                "StrongBodyLabel_15": "Phiên bản hiện tại",
+                "BL_version": "Không xác định",
+                "StrongBodyLabel_22": "Số luồng tối đa",
+                "CaptionLabel_12": "Số tệp tối đa được phép tải xuống đồng thời khi tải tệp\nSố càng cao, tốc độ tải xuống càng nhanh, nhưng sẽ chiếm nhiều hiệu suất máy tính hơn.",
+                "StrongBodyLabel_17": "Thu phóng",
+                "CaptionLabel_5": "Kích thước cửa sổ mặc định khi khởi động (có hiệu lực sau khi khởi động lại chương trình)",
+                "StrongBodyLabel_16": "Chủ đề",
+                "CaptionLabel_4": "Thoải mái cho mắt",
+                "log_clear_text": "Xóa nhật ký",
+                "log_clear_subtext": "Dọn sạch thư mục nhật ký",
+                "label_3": "Tự động khởi động khi bật máy",
+                "CaptionLabel_11": "Mở Trình khởi chạy Bloret khi bật máy và thu nhỏ vào khay hệ thống",
+                "StrongBodyLabel_18": "Khởi động lại chương trình",
+                "CaptionLabel_6": "Ngăn Trình khởi chạy Bloret chiếm đầy máy tính của bạn",
+                "StrongBodyLabel_19": "Hiển thị quá trình mở phần mềm",
+                "CaptionLabel_7": "Hiển thị những gì phần mềm đang làm dưới dạng thông báo trước khi mở phần mềm",
+                "StrongBodyLabel_21": "Hiển thị phương thức đăng nhập tài khoản Minecraft trên trang chủ",
+                "CaptionLabel_10": "Hiển thị bạn đang đăng nhập Microsoft hay đăng nhập ngoại tuyến",
+                "StrongBodyLabel_20": "Chế độ cục bộ",
+                "CaptionLabel_8": "Không kết nối với phần internet, không cho phép sử dụng dịch vụ PCFS.",
+                "CaptionLabel_9": "Hầu hết nội dung giao diện cài đặt yêu cầu khởi động lại chương trình để có hiệu lực."
             },
             "buttons": {
-                "log_clear_button": "清空日志"
+                "log_clear_button": "Xóa nhật ký"
             },
             "SpinBox": {
-                "MaxThread_SpinBox": " 个",
+                "MaxThread_SpinBox": " mục",
                 "Size_Choose": " %"
             },
             "SwitchButton": {
                 "Self_starting": {
-                    "onText": "打开",
-                    "offText": "关闭"
+                    "onText": "Mở",
+                    "offText": "Đóng"
                 },
                 "repeat_run_button": {
-                    "onText": "允许",
-                    "offText": "禁止"
+                    "onText": "Cho phép",
+                    "offText": "Cấm"
                 },
                 "show_runtime_do_button": {
-                    "onText": "显示",
-                    "offText": "不显示"
+                    "onText": "Hiển thị",
+                    "offText": "Không hiển thị"
                 },
                 "home_show_login_mod_button": {
-                    "onText": "展示",
-                    "offText": "隐藏"
+                    "onText": "Hiển thị",
+                    "offText": "Ẩn"
                 },
                 "localmod_button": {
-                    "onText": "启用",
-                    "offText": "关闭"
+                    "onText": "Bật",
+                    "offText": "Tắt"
                 }
             },
             "ComboBox": {
@@ -381,133 +381,133 @@
                 ]
             },
             "StrongBodyLabel": {
-                "language_Setting_Title": "语言 / language"
+                "language_Setting_Title": "Ngôn ngữ / language"
             },
             "CaptionLabel": {
-                "language_Setting_Tip_Text": "调整语言设置"
+                "language_Setting_Tip_Text": "Điều chỉnh cài đặt ngôn ngữ"
             }
         },
         "tools": {
-            "TitleLabel": "小工具",
-            "SubtitleLabel": "Minecraft 数据查询",
+            "TitleLabel": "Công cụ",
+            "SubtitleLabel": "Truy vấn dữ liệu Minecraft",
             "Labels": {
-                "name2uuid_text": "查询玩家UUID",
-                "label_2": "查询的结果将显示在这里",
-                "StrongBodyLabel_20": "查询玩家名字",
-                "search_name": "查询的结果将显示在这里",
-                "label_7": "获取玩家的皮肤和披风",
-                "search_skin": "皮肤的查询的结果",
-                "search_cape": "披风的查询的结果"
+                "name2uuid_text": "Truy vấn UUID người chơi",
+                "label_2": "Kết quả truy vấn sẽ được hiển thị ở đây",
+                "StrongBodyLabel_20": "Truy vấn tên người chơi",
+                "search_name": "Kết quả truy vấn sẽ được hiển thị ở đây",
+                "label_7": "Nhận skin và áo choàng của người chơi",
+                "search_skin": "Kết quả truy vấn skin",
+                "search_cape": "Kết quả truy vấn áo choàng"
             },
             "buttons": {
-                "name2uuid_player_Button": "查询",
-                "pushButton_5": "复制到剪贴板",
-                "search_name_button": "查询",
-                "search_name_copy": "复制到剪贴板",
-                "skin_search_button": "查询",
-                "search_skin_copy": "复制到剪贴板",
-                "search_cape_copy": "复制到剪贴板"
+                "name2uuid_player_Button": "Truy vấn",
+                "pushButton_5": "Sao chép vào clipboard",
+                "search_name_button": "Truy vấn",
+                "search_name_copy": "Sao chép vào clipboard",
+                "skin_search_button": "Truy vấn",
+                "search_skin_copy": "Sao chép vào clipboard",
+                "search_cape_copy": "Sao chép vào clipboard"
             },
             "LineEdit": {
-                "name2uuid_player_uuid": "玩家名称（正版）",
-                "search_name_type": "玩家UUID",
-                "skin_uuid": "玩家UUID，注意不是名字，如果没有，请到上面获取。"
+                "name2uuid_player_uuid": "Tên người chơi (gốc)",
+                "search_name_type": "UUID người chơi",
+                "skin_uuid": "UUID người chơi, lưu ý đây không phải là tên, nếu không có, hãy lấy ở trên."
             }
         },
         "version": {
-            "TitleLabel": "版本管理"
+            "TitleLabel": "Quản lý phiên bản"
         }
     },
     "texts": {
-        "你还未安装任何版本哦，请前往下载页面安装": "你还未安装任何版本哦，请前往下载页面安装",
-        "🔼  启动版本": "🔼  启动版本",
-        "🔡  访问 BBS": "🔡  访问 BBS",
-        "🔄️  重启程序": "🔄️  重启程序",
-        "✅  显示窗口": "✅  显示窗口",
-        "❎  退出程序": "❎  退出程序",
-        "百络谷支持版本": "百络谷支持版本",
-        "正式版本": "正式版本",
-        "快照版本": "快照版本",
-        "远古版本": "远古版本",
-        "未知的版本类型": "未知的版本类型",
-        "Bloret Launcher 已阻止了重复打开软件的操作": "Bloret Launcher 已阻止了重复打开软件的操作",
-        "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。": "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。",
-        "正在启动 Bloret Launcher": "正在启动 Bloret Launcher",
-        "正在做打开软件前的工作...": "正在做打开软件前的工作...",
-        "警告：SystemTrayIcon 的 parent 参数为 None": "警告：SystemTrayIcon 的 parent 参数为 None",
-        "创建互斥体失败": "创建互斥体失败",
-        "检测到程序重复运行": "检测到程序重复运行",
-        "重复运行被禁用：检测到程序已运行，退出新实例": "重复运行被禁用：检测到程序已运行，退出新实例",
-        "显示软件打开过程已启用": "显示软件打开过程已启用",
-        "显示软件打开过程已禁用": "显示软件打开过程已禁用",
-        "启动画面创建完成": "启动画面创建完成",
-        "启动画面已显示": "启动画面已显示",
-        "隐藏启动画面": "隐藏启动画面",
-        "主页 被点击": "主页 被点击",
-        "下载完成，但版本信息缺失": "下载完成，但版本信息缺失",
-        "托盘菜单启动，不显示 TeachingTip": "托盘菜单启动，不显示 TeachingTip",
-        "下载 被点击": "下载 被点击",
-        "无法获取 Minecraft 版本列表": "无法获取 Minecraft 版本列表",
-        "执行命令: ": "执行命令: ",
-        "正在执行微软登录命令：cmcl account --login=microsoft": "正在执行微软登录命令：cmcl account --login=microsoft",
-        "成功覆盖 cmcl.json 文件": "成功覆盖 cmcl.json 文件",
-        "本地模式已启用，无法使用微软登录。": "本地模式已启用，无法使用微软登录。",
-        "您已启用本地模式": "您已启用本地模式",
-        "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。": "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。",
-        "确认": "确认",
-        "创建启动页面": "创建启动页面",
-        "图标路径存在: ": "图标路径存在: ",
-        "图标路径不存在: ": "图标路径不存在: ",
-        "系统主题颜色: ": "系统主题颜色: ",
-        "请求错误: ": "请求错误: ",
-        "开始下载Minecraft版本: ": "开始下载Minecraft版本: ",
-        "加载或显示下载弹窗时发生错误: ": "加载或显示下载弹窗时发生错误: ",
-        "无法显示下载进度弹窗: ": "无法显示下载进度弹窗: ",
-        "开始下载Fabric版本: ": "开始下载Fabric版本: ",
-        "下载过程可能需要几分钟，请耐心等待...": "下载过程可能需要几分钟，请耐心等待...",
-        "正在启动 ": "正在启动 ",
-        "请稍等": "请稍等",
-        "已经开始下载...下载状态将会显示在这里": "已经开始下载...下载状态将会显示在这里",
-        "LM_Download_Way_minecraft:": "LM_Download_Way_minecraft:",
-        "正在下载你所选的版本...": "正在下载你所选的版本...",
-        "正在下载版本 ": "正在下载版本 ",
-        "该名称已存在，请更换一个名称。": "该名称已存在，请更换一个名称。",
-        "该版本已下载过。": "该版本已下载过。",
-        "登录成功": "登录成功",
-        "登录失败: ": "登录失败: ",
-        "离线登录成功": "离线登录成功",
-        "执行异常: ": "执行异常: ",
-        "发送系统通知失败: ": "发送系统通知失败: ",
-        "非法名称": "非法名称",
-        "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称": "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称",
-        "离线登录": "离线登录",
-        "请输入玩家名称": "请输入玩家名称",
-        "文件 ": "文件 ",
-        " 不存在": " 不存在",
-        "请选择一个Fabric版本": "请选择一个Fabric版本",
+        "你还未安装任何版本哦，请前往下载页面安装": "Bạn chưa cài đặt bất kỳ phiên bản nào, vui lòng đến trang tải xuống để cài đặt",
+        "🔼  启动版本": "🔼 Khởi động phiên bản",
+        "🔡  访问 BBS": "🔡 Truy cập Diễn đàn",
+        "🔄️  重启程序": "🔄️ Khởi động lại chương trình",
+        "✅  显示窗口": "✅ Hiển thị cửa sổ",
+        "❎  退出程序": "❎ Thoát chương trình",
+        "百络谷支持版本": "Các phiên bản được Bloret hỗ trợ",
+        "正式版本": "Phiên bản chính thức",
+        "快照版本": "Phiên bản snapshot",
+        "远古版本": "Phiên bản cổ xưa",
+        "未知的版本类型": "Loại phiên bản không xác định",
+        "Bloret Launcher 已阻止了重复打开软件的操作": "Trình khởi chạy Bloret đã chặn các thao tác mở phần mềm lặp lại",
+        "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。": "Để ngăn Trình khởi chạy Bloret chiếm đầy máy tính của bạn, chúng tôi đã chặn bạn mở Trình khởi chạy Bloret lặp lại\nNếu cần mở lặp lại, hãy đến cài đặt và đánh dấu cho phép chạy lặp lại.",
+        "正在启动 Bloret Launcher": "Đang khởi động Trình khởi chạy Bloret",
+        "正在做打开软件前的工作...": "Đang thực hiện công việc trước khi mở phần mềm...",
+        "警告：SystemTrayIcon 的 parent 参数为 None": "Cảnh báo: Tham số parent của SystemTrayIcon là None",
+        "创建互斥体失败": "Tạo mutex thất bại",
+        "检测到程序重复运行": "Phát hiện chương trình chạy lặp lại",
+        "重复运行被禁用：检测到程序已运行，退出新实例": "Chạy lặp lại bị vô hiệu hóa: Phát hiện chương trình đã chạy, thoát khỏi phiên bản mới",
+        "显示软件打开过程已启用": "Hiển thị quá trình mở phần mềm đã được bật",
+        "显示软件打开过程已禁用": "Hiển thị quá trình mở phần mềm đã bị tắt",
+        "启动画面创建完成": "Tạo màn hình khởi động hoàn tất",
+        "启动画面已显示": "Màn hình khởi động đã được hiển thị",
+        "隐藏启动画面": "Ẩn màn hình khởi động",
+        "主页 被点击": "Trang chủ đã được nhấp",
+        "下载完成，但版本信息缺失": "Tải xuống hoàn tất, nhưng thiếu thông tin phiên bản",
+        "托盘菜单启动，不显示 TeachingTip": "Menu khay đã khởi động, không hiển thị TeachingTip",
+        "下载 被点击": "Tải xuống đã được nhấp",
+        "无法获取 Minecraft 版本列表": "Không thể lấy danh sách phiên bản Minecraft",
+        "执行命令: ": "Thực thi lệnh: ",
+        "正在执行微软登录命令：cmcl account --login=microsoft": "Đang thực thi lệnh đăng nhập Microsoft: cmcl account --login=microsoft",
+        "成功覆盖 cmcl.json 文件": "Ghi đè tệp cmcl.json thành công",
+        "本地模式已启用，无法使用微软登录。": "Chế độ cục bộ đã được bật, không thể sử dụng đăng nhập Microsoft.",
+        "您已启用本地模式": "Bạn đã bật chế độ cục bộ",
+        "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。": "Trình khởi chạy Bloret không thể thực hiện đăng nhập Microsoft ở chế độ cục bộ,\\nvì thao tác này cần internet\\nNếu cần đăng nhập, hãy đến giao diện cài đặt để tắt chế độ cục bộ. Hoặc sử dụng đăng nhập ngoại tuyến.",
+        "确认": "Xác nhận",
+        "创建启动页面": "Tạo trang khởi động",
+        "图标路径存在: ": "Đường dẫn biểu tượng tồn tại: ",
+        "图标路径不存在: ": "Đường dẫn biểu tượng không tồn tại: ",
+        "系统主题颜色: ": "Màu chủ đề hệ thống: ",
+        "请求错误: ": "Lỗi yêu cầu: ",
+        "开始下载Minecraft版本: ": "Bắt đầu tải xuống phiên bản Minecraft: ",
+        "加载或显示下载弹窗时发生错误: ": "Đã xảy ra lỗi khi tải hoặc hiển thị cửa sổ bật lên tải xuống: ",
+        "无法显示下载进度弹窗: ": "Không thể hiển thị cửa sổ bật lên tiến độ tải xuống: ",
+        "开始下载Fabric版本: ": "Bắt đầu tải xuống phiên bản Fabric: ",
+        "下载过程可能需要几分钟，请耐心等待...": "Quá trình tải xuống có thể mất vài phút, vui lòng kiên nhẫn chờ đợi...",
+        "正在启动 ": "Đang khởi động ",
+        "请稍等": "Vui lòng chờ",
+        "已经开始下载...下载状态将会显示在这里": "Đã bắt đầu tải xuống... Trạng thái tải xuống sẽ được hiển thị ở đây",
+        "LM_Download_Way_minecraft:": "LM_Cách_Tải_xuống_minecraft:",
+        "正在下载你所选的版本...": "Đang tải xuống phiên bản bạn đã chọn...",
+        "正在下载版本 ": "Đang tải xuống phiên bản ",
+        "该名称已存在，请更换一个名称。": "Tên này đã tồn tại, vui lòng thay đổi tên khác.",
+        "该版本已下载过。": "Phiên bản này đã được tải xuống.",
+        "登录成功": "Đăng nhập thành công",
+        "登录失败: ": "Đăng nhập thất bại: ",
+        "离线登录成功": "Đăng nhập ngoại tuyến thành công",
+        "执行异常: ": "Thực thi ngoại lệ: ",
+        "发送系统通知失败: ": "Gửi thông báo hệ thống thất bại: ",
+        "非法名称": "Tên không hợp lệ",
+        "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称": "Tên chứa ký tự không hợp lệ hoặc tiếng Trung, vui lòng tuân theo các quy tắc sau:\\n1. Không được chứa \\\\ / : * ? \\\" < > |\\n2. Không được chứa tiếng Trung\\n3. Không được sử dụng tên được hệ thống bảo lưu",
+        "离线登录": "Đăng nhập ngoại tuyến",
+        "请输入玩家名称": "Vui lòng nhập tên người chơi",
+        "文件 ": "Tệp ",
+        " 不存在": " không tồn tại",
+        "请选择一个Fabric版本": "Vui lòng chọn một phiên bản Fabric",
         "Fabric ": "Fabric ",
-        " 功能正在开发中": " 功能正在开发中",
-        "请选择一个Java版本": "请选择一个Java版本",
-        "无法解析Java版本号": "无法解析Java版本号",
-        "正在下载 Java ": "正在下载 Java ",
-        "Minecraft版本 ": "Minecraft版本 ",
-        " 已成功下载": " 已成功下载",
-        " 已成功下载并安装": " 已成功下载并安装",
-        " 下载失败": " 下载失败",
-        " 下载失败，请查看日志了解详情": " 下载失败，请查看日志了解详情",
-        "版本 ": "版本 ",
-        " 已成功下载\\n前往主页就可以启动了！": " 已成功下载\\n前往主页就可以启动了！",
-        "成功拷贝 ": "成功拷贝 ",
-        " 到 ": " 到 ",
-        "拷贝 ": "拷贝 ",
-        " 失败: ": " 失败: ",
-        "下载完成": "下载完成",
-        "show_text is None": "show_text is None",
-        "读取版本列表失败: ": "读取版本列表失败: ",
-        "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装": "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装",
-        "minecraft_list:": "minecraft_list:",
-        "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！": "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！",
-        "替换 CMCL 2.2.2 → Bloret Launcher": "替换 CMCL 2.2.2 → Bloret Launcher",
-        "替换 CMCL → Bloret-Launcher": "替换 CMCL → Bloret-Launcher"
+        " 功能正在开发中": " chức năng đang được phát triển",
+        "请选择一个Java版本": "Vui lòng chọn một phiên bản Java",
+        "无法解析Java版本号": "Không thể phân tích số phiên bản Java",
+        "正在下载 Java ": "Đang tải xuống Java ",
+        "Minecraft版本 ": "Phiên bản Minecraft ",
+        " 已成功下载": " đã tải xuống thành công",
+        " 已成功下载并安装": " đã tải xuống và cài đặt thành công",
+        " 下载失败": " tải xuống thất bại",
+        " 下载失败，请查看日志了解详情": " tải xuống thất bại, vui lòng kiểm tra nhật ký để biết chi tiết",
+        "版本 ": "Phiên bản ",
+        " 已成功下载\\n前往主页就可以启动了！": " đã tải xuống thành công\\nĐi đến trang chủ để có thể khởi động!",
+        "成功拷贝 ": "Sao chép thành công ",
+        " 到 ": " đến ",
+        "拷贝 ": "Sao chép ",
+        " 失败: ": " thất bại: ",
+        "下载完成": "Tải xuống hoàn tất",
+        "show_text is None": "show_text là None",
+        "读取版本列表失败: ": "Đọc danh sách phiên bản thất bại: ",
+        "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装": "Không thể lấy danh sách phiên bản, có thể bạn chưa cài đặt bất kỳ phiên bản nào, vui lòng đến trang tải xuống để cài đặt",
+        "minecraft_list:": "danh_sách_minecraft:",
+        "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！": "Đang xử lý tệp Minecraft và khởi động...\\nBạn sẽ sớm thấy cửa sổ Minecraft xuất hiện!",
+        "替换 CMCL 2.2.2 → Bloret Launcher": "Thay thế CMCL 2.2.2 → Trình khởi chạy Bloret",
+        "替换 CMCL → Bloret-Launcher": "Thay thế CMCL → Trình khởi chạy Bloret"
     }
 }

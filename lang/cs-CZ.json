@@ -3,17 +3,17 @@
         "home": {
             "Labels": {
                 "Bloret_Launcher_Title": "Bloret Launcher",
-                "WelcomeToUseBL": "欢迎使用百络谷 Minecraft 启动器。\n如发现任何 Bug 或有建议等，请到 Github 上提交 Issue\n也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。",
-                "Info_title": "信息",
-                "show": "欢迎使用百络谷 Minecraft 启动器",
-                "Welcome_text": "您好,",
-                "WillUseAccount_Top": "将使用",
-                "WillUseAccount_Down": "来登录 Minecraft"
+                "WelcomeToUseBL": "Vítejte ve spouštěči Bloret Launcher pro Minecraft.\nPokud najdete nějaké chyby nebo budete mít návrhy, nahlaste problém na Githubu\nMůžete také vytvořit požadavek na stažení na stránce Github a přispět tak ke spouštěči Bloret Launcher.",
+                "Info_title": "Informace",
+                "show": "Vítejte ve spouštěči Bloret Launcher pro Minecraft",
+                "Welcome_text": "Dobrý den,",
+                "WillUseAccount_Top": "Použije",
+                "WillUseAccount_Down": "k přihlášení do Minecraftu"
             },
             "buttons": {
-                "pushButton_2": "Bloret Github 组织页面",
-                "pushButton": "该项目的 Github 页面",
-                "run": "启动"
+                "pushButton_2": "Stránka organizace Bloret na Githubu",
+                "pushButton": "Github stránka tohoto projektu",
+                "run": "Spustit"
             }
         },
         "BBS": {
@@ -22,21 +22,21 @@
             }
         },
         "BL_download_version": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "StrongBodyLabel_5": "核心文件"
+            "TitleLabel": "Bloret Launcher - Stahování a instalace jádra Minecraftu",
+            "SubtitleLabel_2": "Stáhnout verzi jádra Minecraftu",
+            "StrongBodyLabel_5": "Soubory jádra"
         },
         "BL_download": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "SubtitleLabel": "下载 .minecraft 资源",
+            "TitleLabel": "Bloret Launcher - Stahování a instalace jádra Minecraftu",
+            "SubtitleLabel_2": "Stáhnout verzi jádra Minecraftu",
+            "SubtitleLabel": "Stáhnout zdroje .minecraft",
             "Labels": {
-                "StrongBodyLabel_5": "核心文件",
-                "StrongBodyLabel_12": "资源库文件 libraries",
+                "StrongBodyLabel_5": "Soubory jádra",
+                "StrongBodyLabel_12": "Soubory knihoven libraries",
                 "StrongBodyLabel_13": "63.1 MB",
-                "StrongBodyLabel_14": "指标文件 indexes",
+                "StrongBodyLabel_14": "Soubory indexů indexes",
                 "StrongBodyLabel_15": "379 KB",
-                "StrongBodyLabel_6": "对象文件 objects",
+                "StrongBodyLabel_6": "Soubory objektů objects",
                 "StrongBodyLabel": "1",
                 "StrongBodyLabel_7": "99.9 MB",
                 "StrongBodyLabel_2": "2",
@@ -45,65 +45,65 @@
                 "StrongBodyLabel_9": "92.5 MB",
                 "StrongBodyLabel_4": "4",
                 "StrongBodyLabel_10": "42.5 MB",
-                "CaptionLabel": "右侧大小数据为前期估算，可能不是真实数据。可能更小或更大。"
+                "CaptionLabel": "Údaje o velikosti napravo jsou předběžný odhad a nemusí být skutečnými daty. Může být menší nebo větší."
             }
         },
         "client": {
-            "TitleLabel": "联机",
-            "SubtitleLabel": "网络",
+            "TitleLabel": "Online hra",
+            "SubtitleLabel": "Síť",
             "Labels": {
                 "StrongBodyLabel_17": "IPV6",
-                "CaptionLabel_5": "查看您计算机的 IPV6 配置",
+                "CaptionLabel_5": "Zobrazit konfiguraci IPV6 vašeho počítače",
                 "ipv6_address": "------:------:------:------:------:------:------:------",
-                "CaptionLabel_12": "<html><head/><body><p>使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。<br/><span style=\" font-weight:700;\">IPV6 是您的运营商提供的一项免费服务，不额外收费。 </span>已拥有的用户点击上方按钮直接使用。<br/>IPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。</p></body></html>",
-                "SubtitleLabel_2": "Online Client",
-                "CaptionLabel_9": "<html><head/><body><p>Online Client 是 Bloret 的一项开源项目，可为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方无需安装 Bloret Launcher 就可一起参与联机。</span></p></body></html>",
-                "CaptionLabel_6": "联机服务 Powered by Online Client (BloretCrew) , Server PCFS  © 2025 Bloret All rights reserved."
+                "CaptionLabel_12": "<html><head/><body><p>Použitím IPV6 pro online hraní můžete hrát s ostatními lidmi bez otevření Bloret Launcheru.<br/><span style=\" font-weight:700;\">IPV6 je bezplatná služba poskytovaná vaším operátorem, bez dalších poplatků. </span>Uživatelé, kteří ji již mají, mohou kliknout na tlačítko výše a použít ji přímo.<br/>Online hraní přes IPV6 nemusí být stabilní, pokud hledáte stabilitu, doporučujeme použít Online klient níže.</p></body></html>",
+                "SubtitleLabel_2": "Online klient",
+                "CaptionLabel_9": "<html><head/><body><p>Online klient je open-source projekt Bloretu, který vám může poskytnout efektivní online služby.<br/><span style=\" font-weight:700;\">Spusťte zde online službu a druhá strana se může připojit k online hře bez instalace Bloret Launcheru.</span></p></body></html>",
+                "CaptionLabel_6": "Online služba poháněná Online klientem (BloretCrew), Server PCFS © 2025 Bloret Všechna práva vyhrazena."
             },
             "buttons": {
-                "GetIPV6AddressButton": "获取 IPV6 联机地址",
-                "StartOnlineClient": "开启联机服务"
+                "GetIPV6AddressButton": "Získat online adresu IPV6",
+                "StartOnlineClient": "Spustit online službu"
             }
         },
         "download_load": {
-            "TitleLabel": "下载",
+            "TitleLabel": "Stáhnout",
             "Labels": {
-                "label": "我们已经在加载了...",
-                "label_4": "这可能需要一定时间，请耐心等待\n待加载完成，我们立刻显示选项\n我们通过调用绝大多数启动器使用的BMCLAPI来加载\n因此加载快慢与BMCLAPI加载快慢和您的网络有关\n若长时间加载不出或未响应，请检查网络，如果网络良好，可能是BMCLAPI问题"
+                "label": "Již načítáme...",
+                "label_4": "To může chvíli trvat, prosím buďte trpěliví\nPo dokončení načítání okamžitě zobrazíme možnosti\nNačítáme prostřednictvím BMCLAPI používaného většinou spouštěčů\nRychlost načítání proto závisí na rychlosti načítání BMCLAPI a vaší sítě\nPokud se načítání dlouho nezobrazuje nebo nereaguje, zkontrolujte síť. Pokud je síť v pořádku, může jít o problém BMCLAPI"
             }
         },
         "download.old": {
-            "TitleLabel": "下载",
-            "SubtitleLabel_2": "Minecraft 核心下载",
+            "TitleLabel": "Stáhnout",
+            "SubtitleLabel_2": "Stahování jádra Minecraftu",
             "Labels": {
-                "StrongBodyLabel_9": "选择下载核心",
-                "CaptionLabel_3": "Bloret Launcher 核心由百络谷自行研发，但可选项较少\nCMCL 核心可提供更多版本",
-                "CaptionLabel_2": "警告：Bloret Launcher 核心为实验性功能",
-                "Fabric_2": "Light Minecraft 下载源",
-                "Fabric_text_5": "使用 Bloret Launcher 核心时可用。\n如果下载速度过慢或失败，请尝试切换下载源。",
-                "StrongBodyLabel_6": "选择版本",
-                "CaptionLabel_4": "Bloret Launcher 核心使用 Light Minecraft 协议\n暂时仅支持百络谷支持版本进行下载。\n若要下载其他版本，请在上方选择 CMCL 核心。",
-                "vername": "名称",
-                "vername_text": "你想让这个新下载的版本叫什么？",
+                "StrongBodyLabel_9": "Vybrat jádro pro stahování",
+                "CaptionLabel_3": "Jádro Bloret Launcheru je vyvinuto nezávisle Bloretem, ale má méně možností\nJádro CMCL může poskytnout více verzí",
+                "CaptionLabel_2": "Varování: Jádro Bloret Launcheru je experimentální funkce",
+                "Fabric_2": "Zdroj stahování Light Minecraft",
+                "Fabric_text_5": "Dostupné při použití jádra Bloret Launcheru.\nPokud je rychlost stahování příliš pomalá nebo selže, zkuste změnit zdroje stahování.",
+                "StrongBodyLabel_6": "Vybrat verzi",
+                "CaptionLabel_4": "Jádro Bloret Launcheru používá protokol Light Minecraft\nDočasně podporuje pouze stahování verzí podporovaných Bloretem.\nChcete-li stáhnout jiné verze, vyberte jádro CMCL výše.",
+                "vername": "Název",
+                "vername_text": "Jak chcete pojmenovat tuto nově staženou verzi?",
                 "Fabric": "Fabric",
-                "Fabric_text": "选择 Fabric 模组加载器，有了它，\n你将可以安装自己的 Mod，拓展更多 Minecraft 功能\n请注意，百络谷服务器不支持服务端 Mod，\n您只能添加客户端 Mod\n百络谷服务器使用 Forge 可能会出现问题。",
-                "CaptionLabel": "推荐选择位于列表最上方的最新版本\n使用以前的版本可能会导致不稳定",
-                "StrongBodyLabel_8": "下载完成后通过 Windows 通知来通知我",
-                "SubtitleLabel_3": "导入",
-                "StrongBodyLabel_3": "导入 .mrpack 文件",
-                "Fabric_text_6": "Modrinth 模组包格式（.mrpack）是一种简单的格式，可以让你存储模组包。",
-                "SubtitleLabel": "自定义",
-                "Fabric_text_3": "Bloret Launcher 不一定启动 Minecraft ，它还可以启动更多。（可能需要重新启动程序后生效）",
-                "StrongBodyLabel": "选择应用程序",
-                "Fabric_text_2": "选择你要自定义启动的程序",
-                "StrongBodyLabel_2": "显示名称",
-                "Fabric_text_4": "设定该应用程序显示在百络谷启动器内的名称"
+                "Fabric_text": "Vyberte zavaděč modů Fabric, s ním\nbudete moci instalovat vlastní mody a rozšiřovat funkce Minecraftu\nUpozorňujeme, že servery Bloret nepodporují mody na straně serveru,\nmůžete přidávat pouze mody na straně klienta\nServery Bloret používající Forge mohou mít problémy.",
+                "CaptionLabel": "Doporučujeme vybrat nejnovější verzi v horní části seznamu\nPoužití starších verzí může způsobit nestabilitu",
+                "StrongBodyLabel_8": "Upozornit mě pomocí oznámení Windows po dokončení stahování",
+                "SubtitleLabel_3": "Importovat",
+                "StrongBodyLabel_3": "Importovat soubor .mrpack",
+                "Fabric_text_6": "Formát modpacku Modrinth (.mrpack) je jednoduchý formát, který vám umožňuje ukládat modpacky.",
+                "SubtitleLabel": "Přizpůsobit",
+                "Fabric_text_3": "Bloret Launcher nemusí nutně spouštět Minecraft, může spouštět více věcí. (Může být nutný restart programu pro projevení efektu)",
+                "StrongBodyLabel": "Vybrat aplikaci",
+                "Fabric_text_2": "Vyberte program, který chcete spustit vlastním způsobem",
+                "StrongBodyLabel_2": "Zobrazovaný název",
+                "Fabric_text_4": "Nastavte název této aplikace zobrazený ve spouštěči Bloret"
             },
             "buttons": {
-                "download": "开始下载并安装",
-                "add_mrpack_button": "导入 .mrpack 文件",
-                "Customize_choose": "选择应用程序",
-                "Customize_add": "添加到百络谷启动器"
+                "download": "Začít stahovat a instalovat",
+                "add_mrpack_button": "Importovat soubor .mrpack",
+                "Customize_choose": "Vybrat aplikaci",
+                "Customize_add": "Přidat do spouštěče Bloret"
             },
             "ComboBox": {
                 "download_way_choose": "",
@@ -114,35 +114,35 @@
             },
             "LineEdit": {
                 "vername_edit": "",
-                "Customize_path": "应用程序路径",
-                "Customize_showname": "应用程序显示名称"
+                "Customize_path": "Cesta aplikace",
+                "Customize_showname": "Zobrazovaný název aplikace"
             },
             "SwitchButton": {
                 "Notification": ""
             }
         },
         "download": {
-            "TitleLabel": "下载",
+            "TitleLabel": "Stáhnout",
             "Labels": {
-                "StrongBodyLabel_22": "原版 Minecraft",
-                "CaptionLabel_12": "一键下载安装原版 Minecraft",
+                "StrongBodyLabel_22": "Vanilla Minecraft",
+                "CaptionLabel_12": "Stáhnout a nainstalovat Vanilla Minecraft jedním kliknutím",
                 "StrongBodyLabel_23": "Minecraft + Fabric",
-                "CaptionLabel_13": "可以添加 Mod 的 Minecraft 版本",
+                "CaptionLabel_13": "Verze Minecraftu, ke které lze přidat mody",
                 "StrongBodyLabel_24": "Java",
-                "CaptionLabel_14": "一键下载安装 Java",
+                "CaptionLabel_14": "Stáhnout a nainstalovat Java jedním kliknutím",
                 "StrongBodyLabel": "Java",
                 "StrongBodyLabel_2": "Windows x64",
-                "StrongBodyLabel_25": "自定义程序",
-                "CaptionLabel_15": "添加自定义启动项",
-                "StrongBodyLabel_26": "旧版安装页面",
-                "CaptionLabel_16": "以前 Bloret Launcher 安装版本的页面\n可以前往此处安装其他版本"
+                "StrongBodyLabel_25": "Vlastní program",
+                "CaptionLabel_15": "Přidat vlastní položku spuštění",
+                "StrongBodyLabel_26": "Stará stránka instalace",
+                "CaptionLabel_16": "Stránka předchozích verzí instalace Bloret Launcheru\nMůžete sem přejít a nainstalovat jiné verze"
             },
             "buttons": {
-                "Minecraft_version_Download": "下载并安装",
-                "Fabric_version_Download": "下载并安装",
-                "Java_version_Download": "下载并安装",
-                "Customize_add": "添加",
-                "Old_download_Page": "前往"
+                "Minecraft_version_Download": "Stáhnout a nainstalovat",
+                "Fabric_version_Download": "Stáhnout a nainstalovat",
+                "Java_version_Download": "Stáhnout a nainstalovat",
+                "Customize_add": "Přidat",
+                "Old_download_Page": "Přejít na"
             },
             "ComboBox": {
                 "Minecraft_version_choose": "",
@@ -151,18 +151,18 @@
             }
         },
         "ERROR": {
-            "TitleLabel": "Bloret Launcher 错误跟踪窗口",
+            "TitleLabel": "Okno sledování chyb Bloret Launcheru",
             "Labels": {
-                "StrongBodyLabel_4": "Bloret Launcher 发生了一些小问题...",
-                "CaptionLabel_5": "如果您认为这是 Bloret Launcher 的问题，请提交此问题。",
-                "StrongBodyLabel": "类型",
-                "StrongBodyLabel_2": "信息",
-                "StrongBodyLabel_3": "回溯信息"
+                "StrongBodyLabel_4": "Bloret Launcher narazil na několik malých problémů...",
+                "CaptionLabel_5": "Pokud si myslíte, že jde o problém Bloret Launcheru, nahlaste tento problém.",
+                "StrongBodyLabel": "Typ",
+                "StrongBodyLabel_2": "Informace",
+                "StrongBodyLabel_3": "Informace o sledování"
             },
             "buttons": {
-                "PushButton": "🔠 复制到剪贴板",
-                "PushButton_2": "ℹ️ 反馈问题",
-                "PushButton_3": "⏫ 忽略警告"
+                "PushButton": "🔠 Kopírovat do schránky",
+                "PushButton_2": "ℹ️ Nahlásit problém",
+                "PushButton_3": "⏫ Ignorovat varování"
             },
             "LineEdit": {
                 "type": "",
@@ -174,93 +174,93 @@
         },
         "forum": {
             "TitleLabel": "Bloret BBS",
-            "SubtitleLabel": "板块1",
+            "SubtitleLabel": "Sekce 1",
             "Labels": {
-                "title1": "标题1",
-                "text1": "文本1"
+                "title1": "Název 1",
+                "text1": "Text 1"
             }
         },
         "info": {
-            "TitleLabel": "关于",
+            "TitleLabel": "O aplikaci",
             "SubtitleLabel": "Bloret Launcher",
             "Labels": {
-                "CaptionLabel_3": "Bloret Launcher 不只是 Minecraft 启动器，但也为 Minecraft 玩家提供便捷的游戏启动与管理体验。",
+                "CaptionLabel_3": "Bloret Launcher není jen spouštěčem Minecraftu, ale také poskytuje hráčům Minecraftu pohodlný zážitek ze spouštění a správy her.",
                 "StrongBodyLabel_11": "QQ",
                 "StrongBodyLabel_12": "Github",
-                "CaptionLabel_2": "© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved."
+                "CaptionLabel_2": "© 2025 Bloret Launcher Všechna práva vyhrazena. © 2025 Bloret Všechna práva vyhrazena."
             },
             "buttons": {
                 "pushButton": "Bloret",
-                "BLC_QQ": "Bloret Software Community",
-                "pushButton_2": "Bloret Github 组织页面",
-                "button_github": "此项目的 Github"
+                "BLC_QQ": "Komunita softwaru Bloret",
+                "pushButton_2": "Stránka organizace Bloret na Githubu",
+                "button_github": "Github tohoto projektu"
             }
         },
         "MCVer_downloading": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "准备工作",
-            "SubtitleLabel": "下载 Minecraft 资源",
+            "TitleLabel": "Bloret Launcher - Stahování a instalace jádra Minecraftu",
+            "SubtitleLabel_2": "Příprava",
+            "SubtitleLabel": "Stáhnout zdroje Minecraftu",
             "Labels": {
-                "StrongBodyLabel_16": "获取版本清单和版本详细信息",
-                "StrongBodyLabel_14": "客户端核心文件",
-                "StrongBodyLabel_15": "库文件",
-                "libraries_file_name_2": "正在工作线程数:",
+                "StrongBodyLabel_16": "Získat seznam verzí a podrobnosti o verzi",
+                "StrongBodyLabel_14": "Soubory jádra klienta",
+                "StrongBodyLabel_15": "Soubory knihoven",
+                "libraries_file_name_2": "Počet pracovních vláken:",
                 "libraries_file_working_Thread": "0",
                 "libraries_file_working_Thread_2": "/",
                 "MaxThread": "2000",
                 "libraries_file_name": "",
-                "StrongBodyLabel_17": "资源文件",
-                "libraries_file_name_3": "正在工作线程数:",
+                "StrongBodyLabel_17": "Soubory zdrojů",
+                "libraries_file_name_3": "Počet pracovních vláken:",
                 "Resources_file_working_Thread": "0",
                 "libraries_file_working_Thread_4": "/",
                 "MaxThread_2": "2000",
                 "libraries_file_name_4": "",
-                "CaptionLabel": "Minecraft 下载源由 bangbang93 / BMCLAPI 提供"
+                "CaptionLabel": "Zdroj stahování Minecraftu poskytnutý bangbang93 / BMCLAPI"
             },
             "CheckBox": {
                 "First_Step_CheckBox": ""
             }
         },
         "mods": {
-            "TitleLabel": "Mods",
+            "TitleLabel": "Mody",
             "Labels": {
-                "StrongBodyLabel_17": "找到你想要的 Mod",
-                "CaptionLabel_5": "Modrinth 提供了数千万 Mod 供您选择"
+                "StrongBodyLabel_17": "Najděte mod, který chcete",
+                "CaptionLabel_5": "Modrinth nabízí desítky milionů modů k výběru"
             },
             "buttons": {
-                "Open_Modrinth_Button": "打开 Modrinth"
+                "Open_Modrinth_Button": "Otevřít Modrinth"
             },
             "SearchLineEdit": {
-                "Search": "在 Modrinth 上搜索"
+                "Search": "Hledat na Modrinth"
             }
         },
         "passport_notdone_account": {
-            "TitleLabel": "通行证",
+            "TitleLabel": "Průkaz",
             "SubtitleLabel": {
-                "label_3": "百络谷通行证",
-                "label_5": "离线登录 / 微软登录"
+                "label_3": "Průkaz Bloret",
+                "label_5": "Offline přihlášení / Přihlášení Microsoft"
             },
             "Labels": {
-                "label": "当前登录方式：",
-                "label_2": "当前登录：",
-                "label_4": "当前登录：",
-                "CaptionLabel_2": "使用百络谷通行证进入 Bloret 时，无需再次输入密码。"
+                "label": "Aktuální metoda přihlášení:",
+                "label_2": "Aktuálně přihlášen:",
+                "label_4": "Aktuálně přihlášen:",
+                "CaptionLabel_2": "Když vstoupíte do Bloretu s průkazem Bloret, nemusíte znovu zadávat heslo."
             },
             "buttons": {
-                "pushButton": "退出登录",
-                "pushButton_5": "多账户设置",
-                "pushButton_6": "注册新账户",
-                "pushButton_2": "登录新账户",
-                "pushButton_7": "多账户设置",
-                "pushButton_8": "注册新账户",
-                "pushButton_3": "添加 / 登录新账户",
-                "pushButton_9": "多账户设置"
+                "pushButton": "Odhlásit se",
+                "pushButton_5": "Nastavení více účtů",
+                "pushButton_6": "Registrovat nový účet",
+                "pushButton_2": "Přihlásit se novým účtem",
+                "pushButton_7": "Nastavení více účtů",
+                "pushButton_8": "Registrovat nový účet",
+                "pushButton_3": "Přidat / Přihlásit se novým účtem",
+                "pushButton_9": "Nastavení více účtů"
             },
             "ComboBox": {
                 "comboBox_3": [
-                    "百络谷通行证",
-                    "离线登录",
-                    "微软登录"
+                    "Průkaz Bloret",
+                    "Offline přihlášení",
+                    "Přihlášení Microsoft"
                 ],
                 "comboBox_4": [
                     "Detrital"
@@ -271,40 +271,40 @@
             }
         },
         "passport.old": {
-            "TitleLabel": "通行证",
-            "SubtitleLabel": "离线登录",
+            "TitleLabel": "Průkaz",
+            "SubtitleLabel": "Offline přihlášení",
             "Labels": {
-                "label_2": "账户名",
-                "CaptionLabel_3": "请记得单击设定，否则更改不会生效",
-                "CaptionLabel_2": "未来将添加对账户的更多管理，百络谷通行证和微软登录等。"
+                "label_2": "Název účtu",
+                "CaptionLabel_3": "Nezapomeňte kliknout na Nastavit, jinak se změny neprojeví",
+                "CaptionLabel_2": "V budoucnu bude přidána další správa účtů, jako je průkaz Bloret a přihlášení Microsoft."
             },
             "buttons": {
-                "player_name_set": "设定"
+                "player_name_set": "Nastavit"
             },
             "LineEdit": {
                 "player_name": ""
             }
         },
         "passport": {
-            "TitleLabel": "通行证",
+            "TitleLabel": "Průkaz",
             "SubtitleLabel": {
-                "label_3": "Minecraft 账户",
-                "SubtitleLabel": "Bloret 通行证"
+                "label_3": "Účet Minecraftu",
+                "SubtitleLabel": "Průkaz Bloret"
             },
             "Labels": {
-                "label_4": "目前登录",
-                "CaptionLabel_4": "您目前登录的账户",
-                "label_2": "选择登录方式",
-                "CaptionLabel_3": "请记得单击设定，否则更改不会生效",
-                "Bloret_PassPort_UserName": "未登录",
-                "CaptionLabel_5": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。"
+                "label_4": "Aktuálně přihlášen",
+                "CaptionLabel_4": "Váš aktuálně přihlášený účet",
+                "label_2": "Vybrat metodu přihlášení",
+                "CaptionLabel_3": "Nezapomeňte kliknout na Nastavit, jinak se změny neprojeví",
+                "Bloret_PassPort_UserName": "Nepřihlášen",
+                "CaptionLabel_5": "Použitím průkazu Bloret můžete využívat téměř všechny služby Bloret."
             },
             "buttons": {
-                "login": "重新登录",
-                "Bloret_PassPort_view_BBBS": "访问 Bloret BBS",
-                "Bloret_PassPort_login": "重新登录",
-                "Bloret_PassPort_logout": "退出登录",
-                "reg_Bloret_PassPort": "注册 Bloret 通行证"
+                "login": "Znovu se přihlásit",
+                "Bloret_PassPort_view_BBBS": "Navštívit Bloret BBS",
+                "Bloret_PassPort_login": "Znovu se přihlásit",
+                "Bloret_PassPort_logout": "Odhlásit se",
+                "reg_Bloret_PassPort": "Registrovat průkaz Bloret"
             },
             "ComboBox": {
                 "player_login_way": "",
@@ -313,64 +313,64 @@
             }
         },
         "settings": {
-            "TitleLabel": "设置",
+            "TitleLabel": "Nastavení",
             "SubtitleLabel": {
-                "label_7": "下载",
-                "label_6": "界面",
-                "label_5": "外观",
-                "label": "日志",
-                "SubtitleLabel": "行为"
+                "label_7": "Stáhnout",
+                "label_6": "Rozhraní",
+                "label_5": "Vzhled",
+                "label": "Protokoly",
+                "SubtitleLabel": "Chování"
             },
             "Labels": {
-                "StrongBodyLabel_15": "当前版本",
-                "BL_version": "未知",
-                "StrongBodyLabel_22": "最大线程数",
-                "CaptionLabel_12": "下载文件时允许同时下载文件的最大数量\n该数字越大,下载速度越快,但会占用计算机更多性能。",
-                "StrongBodyLabel_17": "缩放",
-                "CaptionLabel_5": "默认启动的窗口大小(重新启动程序后生效)",
-                "StrongBodyLabel_16": "主题",
-                "CaptionLabel_4": "眼睛舒服了",
-                "log_clear_text": "清空日志",
-                "log_clear_subtext": "清空 log 文件夹",
-                "label_3": "开机自启动",
-                "CaptionLabel_11": "开机时一并打开 Bloret Launcher, 并最小化至系统托盘",
-                "StrongBodyLabel_18": "重复启动程序",
-                "CaptionLabel_6": "防止 Bloret Launcher 占满您的计算机",
-                "StrongBodyLabel_19": "显示软件打开过程",
-                "CaptionLabel_7": "在软件打开前以通知的形式显示软件在做什么",
-                "StrongBodyLabel_21": "在首页上 显示 Minecraft 账户登录方式",
-                "CaptionLabel_10": "展示你为微软登录或是离线登录",
-                "StrongBodyLabel_20": "本地模式",
-                "CaptionLabel_8": "不连接一部分的互联网，不允许使用 PCFS 服务。",
-                "CaptionLabel_9": "设置界面大部分内容需要重启程序后生效。"
+                "StrongBodyLabel_15": "Aktuální verze",
+                "BL_version": "Neznámá",
+                "StrongBodyLabel_22": "Maximální počet vláken",
+                "CaptionLabel_12": "Maximální počet souborů povolených ke stažení současně při stahování souborů\nČím vyšší číslo, tím rychlejší rychlost stahování, ale zabere více výkonu počítače.",
+                "StrongBodyLabel_17": "Zvětšení",
+                "CaptionLabel_5": "Výchozí velikost okna při spuštění (projeví se po restartu programu)",
+                "StrongBodyLabel_16": "Motiv",
+                "CaptionLabel_4": "Pohodlné pro vaše oči",
+                "log_clear_text": "Vymazat protokoly",
+                "log_clear_subtext": "Vymazat složku protokolů",
+                "label_3": "Automatické spuštění při startu",
+                "CaptionLabel_11": "Otevřít Bloret Launcher při startu a minimalizovat do systémové lišty",
+                "StrongBodyLabel_18": "Duplicitní spuštění programu",
+                "CaptionLabel_6": "Zabránit zaplnění počítače Bloret Launcherem",
+                "StrongBodyLabel_19": "Zobrazit proces otevírání softwaru",
+                "CaptionLabel_7": "Zobrazit, co software dělá ve formě oznámení před otevřením softwaru",
+                "StrongBodyLabel_21": "Zobrazit metodu přihlášení k účtu Minecraftu na domovské stránce",
+                "CaptionLabel_10": "Zobrazit, zda jste přihlášeni přes Microsoft nebo offline",
+                "StrongBodyLabel_20": "Místní režim",
+                "CaptionLabel_8": "Nepřipojovat se k části internetu, nepovolit použití služeb PCFS.",
+                "CaptionLabel_9": "Většina obsahu rozhraní nastavení vyžaduje restart programu pro projevení efektu."
             },
             "buttons": {
-                "log_clear_button": "清空日志"
+                "log_clear_button": "Vymazat protokoly"
             },
             "SpinBox": {
-                "MaxThread_SpinBox": " 个",
+                "MaxThread_SpinBox": " kusů",
                 "Size_Choose": " %"
             },
             "SwitchButton": {
                 "Self_starting": {
-                    "onText": "打开",
-                    "offText": "关闭"
+                    "onText": "Zapnuto",
+                    "offText": "Vypnuto"
                 },
                 "repeat_run_button": {
-                    "onText": "允许",
-                    "offText": "禁止"
+                    "onText": "Povolit",
+                    "offText": "Zakázat"
                 },
                 "show_runtime_do_button": {
-                    "onText": "显示",
-                    "offText": "不显示"
+                    "onText": "Zobrazit",
+                    "offText": "Skrýt"
                 },
                 "home_show_login_mod_button": {
-                    "onText": "展示",
-                    "offText": "隐藏"
+                    "onText": "Zobrazit",
+                    "offText": "Skrýt"
                 },
                 "localmod_button": {
-                    "onText": "启用",
-                    "offText": "关闭"
+                    "onText": "Aktivovat",
+                    "offText": "Deaktivovat"
                 }
             },
             "ComboBox": {
@@ -381,133 +381,134 @@
                 ]
             },
             "StrongBodyLabel": {
-                "language_Setting_Title": "语言 / language"
+                "language_Setting_Title": "Jazyk / language"
             },
             "CaptionLabel": {
-                "language_Setting_Tip_Text": "调整语言设置"
+                "language_Setting_Tip_Text": "Upravit nastavení jazyka"
             }
         },
         "tools": {
-            "TitleLabel": "小工具",
-            "SubtitleLabel": "Minecraft 数据查询",
+            "TitleLabel": "Nástroje",
+            "SubtitleLabel": "Dotaz na data Minecraftu",
             "Labels": {
-                "name2uuid_text": "查询玩家UUID",
-                "label_2": "查询的结果将显示在这里",
-                "StrongBodyLabel_20": "查询玩家名字",
-                "search_name": "查询的结果将显示在这里",
-                "label_7": "获取玩家的皮肤和披风",
-                "search_skin": "皮肤的查询的结果",
-                "search_cape": "披风的查询的结果"
+                "name2uuid_text": "Dotaz na UUID hráče",
+                "label_2": "Výsledky dotazu budou zobrazeny zde",
+                "StrongBodyLabel_20": "Dotaz na jméno hráče",
+                "search_name": "Výsledky dotazu budou zobrazeny zde",
+                "label_7": "Získat skin a plášť hráče",
+                "search_skin": "Výsledky dotazu na skin",
+                "search_cape": "Výsledky dotazu na plášť"
             },
             "buttons": {
-                "name2uuid_player_Button": "查询",
-                "pushButton_5": "复制到剪贴板",
-                "search_name_button": "查询",
-                "search_name_copy": "复制到剪贴板",
-                "skin_search_button": "查询",
-                "search_skin_copy": "复制到剪贴板",
-                "search_cape_copy": "复制到剪贴板"
+                "name2uuid_player_Button": "Dotaz",
+                "pushButton_5": "Kopírovat do schránky",
+                "search_name_button": "Dotaz",
+                "search_name_copy": "Kopírovat do schránky",
+                "skin_search_button": "Dotaz",
+                "search_skin_copy": "Kopírovat do schránky",
+                "search_cape_copy": "Kopírovat do schránky"
             },
             "LineEdit": {
-                "name2uuid_player_uuid": "玩家名称（正版）",
-                "search_name_type": "玩家UUID",
-                "skin_uuid": "玩家UUID，注意不是名字，如果没有，请到上面获取。"
+                "name2uuid_player_uuid": "Jméno hráče (originál)",
+                "search_name_type": "UUID hráče",
+                "skin_uuid": "UUID hráče, pozor, že to není jméno, pokud není k dispozici, získejte jej výše."
             }
         },
         "version": {
-            "TitleLabel": "版本管理"
+            "TitleLabel": "Správa verzí"
         }
     },
     "texts": {
-        "你还未安装任何版本哦，请前往下载页面安装": "你还未安装任何版本哦，请前往下载页面安装",
-        "🔼  启动版本": "🔼  启动版本",
-        "🔡  访问 BBS": "🔡  访问 BBS",
-        "🔄️  重启程序": "🔄️  重启程序",
-        "✅  显示窗口": "✅  显示窗口",
-        "❎  退出程序": "❎  退出程序",
-        "百络谷支持版本": "百络谷支持版本",
-        "正式版本": "正式版本",
-        "快照版本": "快照版本",
-        "远古版本": "远古版本",
-        "未知的版本类型": "未知的版本类型",
-        "Bloret Launcher 已阻止了重复打开软件的操作": "Bloret Launcher 已阻止了重复打开软件的操作",
-        "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。": "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。",
-        "正在启动 Bloret Launcher": "正在启动 Bloret Launcher",
-        "正在做打开软件前的工作...": "正在做打开软件前的工作...",
-        "警告：SystemTrayIcon 的 parent 参数为 None": "警告：SystemTrayIcon 的 parent 参数为 None",
-        "创建互斥体失败": "创建互斥体失败",
-        "检测到程序重复运行": "检测到程序重复运行",
-        "重复运行被禁用：检测到程序已运行，退出新实例": "重复运行被禁用：检测到程序已运行，退出新实例",
-        "显示软件打开过程已启用": "显示软件打开过程已启用",
-        "显示软件打开过程已禁用": "显示软件打开过程已禁用",
-        "启动画面创建完成": "启动画面创建完成",
-        "启动画面已显示": "启动画面已显示",
-        "隐藏启动画面": "隐藏启动画面",
-        "主页 被点击": "主页 被点击",
-        "下载完成，但版本信息缺失": "下载完成，但版本信息缺失",
-        "托盘菜单启动，不显示 TeachingTip": "托盘菜单启动，不显示 TeachingTip",
-        "下载 被点击": "下载 被点击",
-        "无法获取 Minecraft 版本列表": "无法获取 Minecraft 版本列表",
-        "执行命令: ": "执行命令: ",
-        "正在执行微软登录命令：cmcl account --login=microsoft": "正在执行微软登录命令：cmcl account --login=microsoft",
-        "成功覆盖 cmcl.json 文件": "成功覆盖 cmcl.json 文件",
-        "本地模式已启用，无法使用微软登录。": "本地模式已启用，无法使用微软登录。",
-        "您已启用本地模式": "您已启用本地模式",
-        "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。": "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。",
-        "确认": "确认",
-        "创建启动页面": "创建启动页面",
-        "图标路径存在: ": "图标路径存在: ",
-        "图标路径不存在: ": "图标路径不存在: ",
-        "系统主题颜色: ": "系统主题颜色: ",
-        "请求错误: ": "请求错误: ",
-        "开始下载Minecraft版本: ": "开始下载Minecraft版本: ",
-        "加载或显示下载弹窗时发生错误: ": "加载或显示下载弹窗时发生错误: ",
-        "无法显示下载进度弹窗: ": "无法显示下载进度弹窗: ",
-        "开始下载Fabric版本: ": "开始下载Fabric版本: ",
-        "下载过程可能需要几分钟，请耐心等待...": "下载过程可能需要几分钟，请耐心等待...",
-        "正在启动 ": "正在启动 ",
-        "请稍等": "请稍等",
-        "已经开始下载...下载状态将会显示在这里": "已经开始下载...下载状态将会显示在这里",
-        "LM_Download_Way_minecraft:": "LM_Download_Way_minecraft:",
-        "正在下载你所选的版本...": "正在下载你所选的版本...",
-        "正在下载版本 ": "正在下载版本 ",
-        "该名称已存在，请更换一个名称。": "该名称已存在，请更换一个名称。",
-        "该版本已下载过。": "该版本已下载过。",
-        "登录成功": "登录成功",
-        "登录失败: ": "登录失败: ",
-        "离线登录成功": "离线登录成功",
-        "执行异常: ": "执行异常: ",
-        "发送系统通知失败: ": "发送系统通知失败: ",
-        "非法名称": "非法名称",
-        "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称": "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称",
-        "离线登录": "离线登录",
-        "请输入玩家名称": "请输入玩家名称",
-        "文件 ": "文件 ",
-        " 不存在": " 不存在",
-        "请选择一个Fabric版本": "请选择一个Fabric版本",
+        "你还未安装任何版本哦，请前往下载页面安装": "Ještě jste nenainstalovali žádnou verzi, přejděte na stránku stahování a nainstalujte",
+        "🔼  启动版本": "🔼 Spustit verzi",
+        "🔡  访问 BBS": "🔡 Navštívit BBS",
+        "🔄️  重启程序": "🔄️ Restartovat program",
+        "✅  显示窗口": "✅ Zobrazit okno",
+        "❎  退出程序": "❎ Ukončit program",
+        "百络谷支持版本": "Verze podporované Bloretem",
+        "正式版本": "Oficiální verze",
+        "快照版本": "Snapshot verze",
+        "远古版本": "Starobylé verze",
+        "未知的版本类型": "Neznámý typ verze",
+        "Bloret Launcher 已阻止了重复打开软件的操作": "Bloret Launcher zablokoval operace opakovaného otevírání softwaru",
+        "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。": "Abychom zabránili zaplnění vašeho počítače Bloret Launcherem, zablokovali jsme opakované otevírání Bloret Launcheru\nPokud potřebujete opakované otevření, přejděte do nastavení a zaškrtněte povolení opakovaného spuštění.",
+        "正在启动 Bloret Launcher": "Spouštění Bloret Launcheru",
+        "正在做打开软件前的工作...": "Provádění práce před otevřením softwaru...",
+        "警告：SystemTrayIcon 的 parent 参数为 None": "Varování: Parametr rodiče SystemTrayIcon je None",
+        "创建互斥体失败": "Vytvoření mutexu selhalo",
+        "检测到程序重复运行": "Detekováno opakované spuštění programu",
+        "重复运行被禁用：检测到程序已运行，退出新实例": "Opakované spuštění zakázáno: Detekováno běžící program, ukončení nové instance",
+        "显示软件打开过程已启用": "Zobrazení procesu otevírání softwaru povoleno",
+        "显示软件打开过程已禁用": "Zobrazení procesu otevírání softwaru zakázáno",
+        "启动画面创建完成": "Vytvoření úvodní obrazovky dokončeno",
+        "启动画面已显示": "Úvodní obrazovka zobrazena",
+        "隐藏启动画面": "Skrýt úvodní obrazovku",
+        "主页 被点击": "Domovská stránka kliknuta",
+        "下载完成，但版本信息缺失": "Stahování dokončeno, ale chybí informace o verzi",
+        "托盘菜单启动，不显示 TeachingTip": "Spuštěno menu systémové lišty, TeachingTip se nezobrazuje",
+        "下载 被点击": "Stáhnout kliknuto",
+        "无法获取 Minecraft 版本列表": "Nelze získat seznam verzí Minecraftu",
+        "执行命令: ": "Provést příkaz: ",
+        "正在执行微软登录命令：cmcl account --login=microsoft": "Provádění příkazu přihlášení Microsoft: cmcl account --login=microsoft",
+        "成功覆盖 cmcl.json 文件": "Úspěšné přepsání souboru cmcl.json",
+        "本地模式已启用，无法使用微软登录。": "Místní režim povolen, nelze použít přihlášení Microsoft.",
+        "您已启用本地模式": "Povolili jste místní režim",
+        "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。": "Bloret Launcher nemůže provést přihlášení Microsoft v místním režimu,\\nprotože tato operace vyžaduje internet\\nPokud potřebujete přihlášení, přejděte do rozhraní nastavení a vypněte místní režim. Nebo použijte offline přihlášení.",
+        "确认": "Potvrdit",
+        "创建启动页面": "Vytvořit stránku spuštění",
+        "图标路径存在: ": "Cesta ikony existuje: ",
+        "图标路径不存在: ": "Cesta ikony neexistuje: ",
+        "系统主题颜色: ": "Barva systémového motivu: ",
+        "请求错误: ": "Chyba požadavku: ",
+        "开始下载Minecraft版本: ": "Začít stahovat verzi Minecraftu: ",
+        "加载或显示下载弹窗时发生错误: ": "Při načítání nebo zobrazení vyskakovacího okna stahování došlo k chybě: ",
+        "无法显示下载进度弹窗: ": "Nelze zobrazit vyskakovací okno průběhu stahování: ",
+        "开始下载Fabric版本: ": "Začít stahovat verzi Fabric: ",
+        "下载过程可能需要几分钟，请耐心等待...": "Proces stahování může trvat několik minut, prosím buďte trpěliví...",
+        "正在启动 ": "Spouštění ",
+        "请稍等": "Prosím čekejte",
+        "已经开始下载...下载状态将会显示在这里": "Stahování již začalo... stav stahování bude zobrazen zde",
+        "LM_Download_Way_minecraft:": "LM_Způsob_stahování_minecraft:",
+        "正在下载你所选的版本...": "Stahování vybrané verze...",
+        "正在下载版本 ": "Stahování verze ",
+        "该名称已存在，请更换一个名称。": "Tento název již existuje, prosím změňte název.",
+        "该版本已下载过。": "Tato verze již byla stažena.",
+        "登录成功": "Přihlášení úspěšné",
+        "登录失败: ": "Přihlášení selhalo: ",
+        "离线登录成功": "Offline přihlášení úspěšné",
+        "执行异常: ": "Výjimka při provádění: ",
+        "发送系统通知失败: ": "Odeslání systémového oznámení selhalo: ",
+        "非法名称": "Neplatný název",
+        "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称": "Název obsahuje neplatné znaky nebo čínštinu, dodržujte následující pravidla:\\n1. Nesmí obsahovat \\\\ / : * ? \\\" < > |\\n2. Nesmí obsahovat čínštinu\\n3. Nelze použít systémem rezervované názvy",
+        "离线登录": "Offline přihlášení",
+        "请输入玩家名称": "Prosím zadejte jméno hráče",
+        "文件 ": "Soubor ",
+        " 不存在": " neexistuje",
+        "请选择一个Fabric版本": "Prosím vyberte verzi Fabric",
         "Fabric ": "Fabric ",
-        " 功能正在开发中": " 功能正在开发中",
-        "请选择一个Java版本": "请选择一个Java版本",
-        "无法解析Java版本号": "无法解析Java版本号",
-        "正在下载 Java ": "正在下载 Java ",
-        "Minecraft版本 ": "Minecraft版本 ",
-        " 已成功下载": " 已成功下载",
-        " 已成功下载并安装": " 已成功下载并安装",
-        " 下载失败": " 下载失败",
-        " 下载失败，请查看日志了解详情": " 下载失败，请查看日志了解详情",
-        "版本 ": "版本 ",
-        " 已成功下载\\n前往主页就可以启动了！": " 已成功下载\\n前往主页就可以启动了！",
-        "成功拷贝 ": "成功拷贝 ",
-        " 到 ": " 到 ",
-        "拷贝 ": "拷贝 ",
-        " 失败: ": " 失败: ",
-        "下载完成": "下载完成",
-        "show_text is None": "show_text is None",
-        "读取版本列表失败: ": "读取版本列表失败: ",
-        "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装": "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装",
-        "minecraft_list:": "minecraft_list:",
-        "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！": "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！",
-        "替换 CMCL 2.2.2 → Bloret Launcher": "替换 CMCL 2.2.2 → Bloret Launcher",
-        "替换 CMCL → Bloret-Launcher": "替换 CMCL → Bloret-Launcher"
+        " 功能正在开发中": " funkce se vyvíjí",
+        "请选择一个Java版本": "Prosím vyberte verzi Java",
+        "无法解析Java版本号": "Nelze analyzovat číslo verze Java",
+        "正在下载 Java ": "Stahování Java ",
+        "Minecraft版本 ": "Verze Minecraftu ",
+        " 已成功下载": " úspěšně stažena",
+        " 已成功下载并安装": " úspěšně stažena a nainstalována",
+        " 下载失败": " stahování selhalo",
+        " 下载失败，请查看日志了解详情": " stahování selhalo, pro podrobnosti si prohlédněte protokol",
+        "版本 ": "Verze ",
+        " 已成功下载\\n前往主页就可以启动了！": " úspěšně stažena\\nPřejděte na domovskou stránku a můžete spustit!",
+        "成功拷贝 ": "Úspěšné kopírování ",
+        " 到 ": " do ",
+        "拷贝 ": "Kopírovat ",
+        " 失败: ": " selhalo: ",
+        "下载完成": "Stahování dokončeno",
+        "show_text is None": "show_text je None",
+        "读取版本列表失败: ": "Načtení seznamu verzí selhalo: ",
+        "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装": "Nelze získat seznam verzí, možná jste ještě nenainstalovali žádnou verzi, přejděte na stránku stahování a nainstalujte",
+        "minecraft_list:": "seznam_minecraft:",
+        "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！": "Zpracování souborů Minecraftu a spouštění...\\nBrzy uvidíte okno Minecraftu!",
+        "替换 CMCL 2.2.2 → Bloret Launcher": "Nahradit CMCL 2.2.2 → Bloret Launcher",
+        "替换 CMCL → Bloret-Launcher": "Nahradit CMCL → Bloret-Launcher",
+        "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\\n如需重复打开，请到设置中勾选允许重复运行。": "Abychom zabránili zaplnění vašeho počítače Bloret Launcherem, zablokovali jsme opakované otevírání Bloret Launcheru\\nPokud potřebujete opakované otevření, přejděte do nastavení a zaškrtněte povolení opakovaného spuštění."
     }
 }

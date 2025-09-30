@@ -3,17 +3,17 @@
         "home": {
             "Labels": {
                 "Bloret_Launcher_Title": "Bloret Launcher",
-                "WelcomeToUseBL": "欢迎使用百络谷 Minecraft 启动器。\n如发现任何 Bug 或有建议等，请到 Github 上提交 Issue\n也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。",
-                "Info_title": "信息",
-                "show": "欢迎使用百络谷 Minecraft 启动器",
-                "Welcome_text": "您好,",
-                "WillUseAccount_Top": "将使用",
-                "WillUseAccount_Down": "来登录 Minecraft"
+                "WelcomeToUseBL": "Üdvözöljük a Bloret Minecraft Launcherben.\nHa bármilyen hibát észlel, vagy javaslata van, kérjük, küldjön egy problémát a Githubon.\nKérdem, húzza be a lekérési kérelmet a Github oldalán, hogy hozzájáruljon a Bloret Launcherhez.",
+                "Info_title": "Információ",
+                "show": "Üdvözöljük a Bloret Minecraft Launcherben",
+                "Welcome_text": "Helló,",
+                "WillUseAccount_Top": "Használja a",
+                "WillUseAccount_Down": "bejelentkezéshez a Minecraftba"
             },
             "buttons": {
-                "pushButton_2": "Bloret Github 组织页面",
-                "pushButton": "该项目的 Github 页面",
-                "run": "启动"
+                "pushButton_2": "Bloret Github szervezeti oldal",
+                "pushButton": "Ennek a projektnek a Github oldala",
+                "run": "Indítás"
             }
         },
         "BBS": {
@@ -22,88 +22,88 @@
             }
         },
         "BL_download_version": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "StrongBodyLabel_5": "核心文件"
+            "TitleLabel": "Bloret Launcher - Minecraft Core letöltés és telepítés",
+            "SubtitleLabel_2": "Minecraft verzió core letöltése",
+            "StrongBodyLabel_5": "Core fájlok"
         },
         "BL_download": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "SubtitleLabel": "下载 .minecraft 资源",
+            "TitleLabel": "Bloret Launcher - Minecraft Core letöltés és telepítés",
+            "SubtitleLabel_2": "Minecraft verzió core letöltése",
+            "SubtitleLabel": "Töltse le a .minecraft erőforrásokat",
             "Labels": {
-                "StrongBodyLabel_5": "核心文件",
-                "StrongBodyLabel_12": "资源库文件 libraries",
-                "StrongBodyLabel_13": "63.1 MB",
-                "StrongBodyLabel_14": "指标文件 indexes",
+                "StrongBodyLabel_5": "Core fájlok",
+                "StrongBodyLabel_12": "libraries könyvtárfájlok",
+                "StrongBodyLabel_13": "63,1 MB",
+                "StrongBodyLabel_14": "indexes indexfájlok",
                 "StrongBodyLabel_15": "379 KB",
-                "StrongBodyLabel_6": "对象文件 objects",
+                "StrongBodyLabel_6": "objects objektumfájlok",
                 "StrongBodyLabel": "1",
-                "StrongBodyLabel_7": "99.9 MB",
+                "StrongBodyLabel_7": "99,9 MB",
                 "StrongBodyLabel_2": "2",
-                "StrongBodyLabel_8": "85.5 MB",
+                "StrongBodyLabel_8": "85,5 MB",
                 "StrongBodyLabel_3": "3",
-                "StrongBodyLabel_9": "92.5 MB",
+                "StrongBodyLabel_9": "92,5 MB",
                 "StrongBodyLabel_4": "4",
-                "StrongBodyLabel_10": "42.5 MB",
-                "CaptionLabel": "右侧大小数据为前期估算，可能不是真实数据。可能更小或更大。"
+                "StrongBodyLabel_10": "42,5 MB",
+                "CaptionLabel": "A jobb oldali méretadatok előzetes becslések, és nem biztos, hogy valós adatok. Lehet kisebb vagy nagyobb."
             }
         },
         "client": {
-            "TitleLabel": "联机",
-            "SubtitleLabel": "网络",
+            "TitleLabel": "Online",
+            "SubtitleLabel": "Hálózat",
             "Labels": {
                 "StrongBodyLabel_17": "IPV6",
-                "CaptionLabel_5": "查看您计算机的 IPV6 配置",
+                "CaptionLabel_5": "Tekintse meg számítógépe IPV6 konfigurációját",
                 "ipv6_address": "------:------:------:------:------:------:------:------",
-                "CaptionLabel_12": "<html><head/><body><p>使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。<br/><span style=\" font-weight:700;\">IPV6 是您的运营商提供的一项免费服务，不额外收费。 </span>已拥有的用户点击上方按钮直接使用。<br/>IPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。</p></body></html>",
+                "CaptionLabel_12": "<html><head/><body><p>Az IPV6 használata online játékhoz lehetővé teszi, hogy másokkal játszhasson anélkül, hogy meg kellene nyitnia a Bloret Launchert.<br/><span style=\" font-weight:700;\">Az IPV6 az Ön szolgáltatója által biztosított ingyenes szolgáltatás, nem jár érte külön díj. </span>A már meglévő felhasználók a fenti gombra kattintva közvetlenül használhatják.<br/>Az IPV6 online játék lehet, hogy nem stabil, ha stabilitást keres, javasoljuk, hogy használja az alábbi Online Clientet online játékhoz.</p></body></html>",
                 "SubtitleLabel_2": "Online Client",
-                "CaptionLabel_9": "<html><head/><body><p>Online Client 是 Bloret 的一项开源项目，可为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方无需安装 Bloret Launcher 就可一起参与联机。</span></p></body></html>",
-                "CaptionLabel_6": "联机服务 Powered by Online Client (BloretCrew) , Server PCFS  © 2025 Bloret All rights reserved."
+                "CaptionLabel_9": "<html><head/><body><p>Az Online Client egy Bloret nyílt forráskódú projekt, amely hatékony online szolgáltatást biztosíthat Önnek.<br/><span style=\" font-weight:700;\">Itt indítsa el az online szolgáltatást, így a másik fél anélkül csatlakozhat az online játékhoz, hogy telepítenie kellene a Bloret Launchert.</span></p></body></html>",
+                "CaptionLabel_6": "Online szolgáltatás az Online Client (BloretCrew) által működtetve, Server PCFS © 2025 Bloret Minden jog fenntartva."
             },
             "buttons": {
-                "GetIPV6AddressButton": "获取 IPV6 联机地址",
-                "StartOnlineClient": "开启联机服务"
+                "GetIPV6AddressButton": "Szerezze be az IPV6 online címet",
+                "StartOnlineClient": "Indítsa el az online szolgáltatást"
             }
         },
         "download_load": {
-            "TitleLabel": "下载",
+            "TitleLabel": "Letöltés",
             "Labels": {
-                "label": "我们已经在加载了...",
-                "label_4": "这可能需要一定时间，请耐心等待\n待加载完成，我们立刻显示选项\n我们通过调用绝大多数启动器使用的BMCLAPI来加载\n因此加载快慢与BMCLAPI加载快慢和您的网络有关\n若长时间加载不出或未响应，请检查网络，如果网络良好，可能是BMCLAPI问题"
+                "label": "Már töltünk...",
+                "label_4": "Ez eltarthat egy ideig, kérjük, legyen türelemmel\nAmint a betöltés befejeződött, azonnal megjelenítjük az opciókat\nA legtöbb launcher által használt BMCLAPI-n keresztül töltünk be\nEzért a betöltés gyorsasága a BMCLAPI betöltési sebességétől és a hálózatától függ\nHa hosszú ideig nem tölt be vagy nem válaszol, ellenőrizze a hálózatot, ha a hálózat jó, akkor lehet, hogy a BMCLAPI probléma"
             }
         },
         "download.old": {
-            "TitleLabel": "下载",
-            "SubtitleLabel_2": "Minecraft 核心下载",
+            "TitleLabel": "Letöltés",
+            "SubtitleLabel_2": "Minecraft Core letöltés",
             "Labels": {
-                "StrongBodyLabel_9": "选择下载核心",
-                "CaptionLabel_3": "Bloret Launcher 核心由百络谷自行研发，但可选项较少\nCMCL 核心可提供更多版本",
-                "CaptionLabel_2": "警告：Bloret Launcher 核心为实验性功能",
-                "Fabric_2": "Light Minecraft 下载源",
-                "Fabric_text_5": "使用 Bloret Launcher 核心时可用。\n如果下载速度过慢或失败，请尝试切换下载源。",
-                "StrongBodyLabel_6": "选择版本",
-                "CaptionLabel_4": "Bloret Launcher 核心使用 Light Minecraft 协议\n暂时仅支持百络谷支持版本进行下载。\n若要下载其他版本，请在上方选择 CMCL 核心。",
-                "vername": "名称",
-                "vername_text": "你想让这个新下载的版本叫什么？",
+                "StrongBodyLabel_9": "Válassza ki a letöltendő core-t",
+                "CaptionLabel_3": "A Bloret Launcher core-t a Bloret önállóan fejlesztette ki, de kevesebb a választási lehetőség\nA CMCL core több verziót biztosíthat",
+                "CaptionLabel_2": "Figyelmeztetés: A Bloret Launcher core egy kísérleti funkció",
+                "Fabric_2": "Light Minecraft letöltési forrás",
+                "Fabric_text_5": "A Bloret Launcher core használatakor elérhető.\nHa a letöltés túl lassú vagy sikertelen, próbálja megváltoztatni a letöltési forrást.",
+                "StrongBodyLabel_6": "Válasszon verziót",
+                "CaptionLabel_4": "A Bloret Launcher core a Light Minecraft protokollt használja\nJelenleg csak a Bloret által támogatott verziók letöltését támogatja.\nMás verziók letöltéséhez válassza a CMCL core-t fent.",
+                "vername": "Név",
+                "vername_text": "Hogy szeretné nevezni az újonnan letöltött verziót?",
                 "Fabric": "Fabric",
-                "Fabric_text": "选择 Fabric 模组加载器，有了它，\n你将可以安装自己的 Mod，拓展更多 Minecraft 功能\n请注意，百络谷服务器不支持服务端 Mod，\n您只能添加客户端 Mod\n百络谷服务器使用 Forge 可能会出现问题。",
-                "CaptionLabel": "推荐选择位于列表最上方的最新版本\n使用以前的版本可能会导致不稳定",
-                "StrongBodyLabel_8": "下载完成后通过 Windows 通知来通知我",
-                "SubtitleLabel_3": "导入",
-                "StrongBodyLabel_3": "导入 .mrpack 文件",
-                "Fabric_text_6": "Modrinth 模组包格式（.mrpack）是一种简单的格式，可以让你存储模组包。",
-                "SubtitleLabel": "自定义",
-                "Fabric_text_3": "Bloret Launcher 不一定启动 Minecraft ，它还可以启动更多。（可能需要重新启动程序后生效）",
-                "StrongBodyLabel": "选择应用程序",
-                "Fabric_text_2": "选择你要自定义启动的程序",
-                "StrongBodyLabel_2": "显示名称",
-                "Fabric_text_4": "设定该应用程序显示在百络谷启动器内的名称"
+                "Fabric_text": "Válassza ki a Fabric mod loader-t, vele\ntelepítheti saját modjait, hogy tovább bővítse a Minecraft funkcióit\nKérjük, vegye figyelembe, hogy a Bloret szerverek nem támogatják a szerver oldali modokat,\ncsak kliens oldali modokat adhat hozzá\nA Forge-t használó Bloret szerverek problémákat okozhatnak.",
+                "CaptionLabel": "Ajánlott a lista tetején lévő legújabb verziót választani\nA korábbi verziók használata instabilitást okozhat",
+                "StrongBodyLabel_8": "Értesítsen engem Windows értesítésekkel, amikor a letöltés befejeződött",
+                "SubtitleLabel_3": "Importálás",
+                "StrongBodyLabel_3": "Importálja az .mrpack fájlt",
+                "Fabric_text_6": "A Modrinth mod csomag formátum (.mrpack) egy egyszerű formátum, amely lehetővé teszi mod csomagok tárolását.",
+                "SubtitleLabel": "Egyéni",
+                "Fabric_text_3": "A Bloret Launcher nem feltétlenül a Minecraftot indítja el, hanem több mindent is elindíthat. (A program újraindítása szükséges lehet az érvényesítéshez)",
+                "StrongBodyLabel": "Válasszon alkalmazást",
+                "Fabric_text_2": "Válassza ki az egyéni indításhoz használni kívánt programot",
+                "StrongBodyLabel_2": "Megjelenítési név",
+                "Fabric_text_4": "Állítsa be az alkalmazás nevét, ahogy a Bloret launcherben megjelenik"
             },
             "buttons": {
-                "download": "开始下载并安装",
-                "add_mrpack_button": "导入 .mrpack 文件",
-                "Customize_choose": "选择应用程序",
-                "Customize_add": "添加到百络谷启动器"
+                "download": "Kezdje el a letöltést és telepítést",
+                "add_mrpack_button": "Importálja az .mrpack fájlt",
+                "Customize_choose": "Válasszon alkalmazást",
+                "Customize_add": "Adja hozzá a Bloret launcherhez"
             },
             "ComboBox": {
                 "download_way_choose": "",
@@ -114,35 +114,35 @@
             },
             "LineEdit": {
                 "vername_edit": "",
-                "Customize_path": "应用程序路径",
-                "Customize_showname": "应用程序显示名称"
+                "Customize_path": "Alkalmazás elérési útja",
+                "Customize_showname": "Alkalmazás megjelenítési neve"
             },
             "SwitchButton": {
                 "Notification": ""
             }
         },
         "download": {
-            "TitleLabel": "下载",
+            "TitleLabel": "Letöltés",
             "Labels": {
-                "StrongBodyLabel_22": "原版 Minecraft",
-                "CaptionLabel_12": "一键下载安装原版 Minecraft",
+                "StrongBodyLabel_22": "Vanilla Minecraft",
+                "CaptionLabel_12": "Egy kattintással töltse le és telepítse a Vanilla Minecraftot",
                 "StrongBodyLabel_23": "Minecraft + Fabric",
-                "CaptionLabel_13": "可以添加 Mod 的 Minecraft 版本",
+                "CaptionLabel_13": "Modokat hozzá lehet adni a Minecraft verzióhoz",
                 "StrongBodyLabel_24": "Java",
-                "CaptionLabel_14": "一键下载安装 Java",
+                "CaptionLabel_14": "Egy kattintással töltse le és telepítse a Javát",
                 "StrongBodyLabel": "Java",
                 "StrongBodyLabel_2": "Windows x64",
-                "StrongBodyLabel_25": "自定义程序",
-                "CaptionLabel_15": "添加自定义启动项",
-                "StrongBodyLabel_26": "旧版安装页面",
-                "CaptionLabel_16": "以前 Bloret Launcher 安装版本的页面\n可以前往此处安装其他版本"
+                "StrongBodyLabel_25": "Egyéni program",
+                "CaptionLabel_15": "Egyéni indítási elem hozzáadása",
+                "StrongBodyLabel_26": "Régi telepítési oldal",
+                "CaptionLabel_16": "A Bloret Launcher korábbi verzióinak telepítési oldala\nIde léphet más verziók telepítéséhez"
             },
             "buttons": {
-                "Minecraft_version_Download": "下载并安装",
-                "Fabric_version_Download": "下载并安装",
-                "Java_version_Download": "下载并安装",
-                "Customize_add": "添加",
-                "Old_download_Page": "前往"
+                "Minecraft_version_Download": "Letöltés és telepítés",
+                "Fabric_version_Download": "Letöltés és telepítés",
+                "Java_version_Download": "Letöltés és telepítés",
+                "Customize_add": "Hozzáadás",
+                "Old_download_Page": "Menjen"
             },
             "ComboBox": {
                 "Minecraft_version_choose": "",
@@ -151,18 +151,18 @@
             }
         },
         "ERROR": {
-            "TitleLabel": "Bloret Launcher 错误跟踪窗口",
+            "TitleLabel": "Bloret Launcher hibakövetési ablak",
             "Labels": {
-                "StrongBodyLabel_4": "Bloret Launcher 发生了一些小问题...",
-                "CaptionLabel_5": "如果您认为这是 Bloret Launcher 的问题，请提交此问题。",
-                "StrongBodyLabel": "类型",
-                "StrongBodyLabel_2": "信息",
-                "StrongBodyLabel_3": "回溯信息"
+                "StrongBodyLabel_4": "A Bloret Launcherrel kis problémák merültek fel...",
+                "CaptionLabel_5": "Ha úgy gondolja, hogy ez a Bloret Launcher problémája, kérjük, küldje el ezt a problémát.",
+                "StrongBodyLabel": "Típus",
+                "StrongBodyLabel_2": "Információ",
+                "StrongBodyLabel_3": "Visszakövetési információ"
             },
             "buttons": {
-                "PushButton": "🔠 复制到剪贴板",
-                "PushButton_2": "ℹ️ 反馈问题",
-                "PushButton_3": "⏫ 忽略警告"
+                "PushButton": "🔠 Másolás vágólapra",
+                "PushButton_2": "ℹ️ Probléma visszajelzés",
+                "PushButton_3": "⏫ Figyelmeztetés figyelmen kívül hagyása"
             },
             "LineEdit": {
                 "type": "",
@@ -174,93 +174,93 @@
         },
         "forum": {
             "TitleLabel": "Bloret BBS",
-            "SubtitleLabel": "板块1",
+            "SubtitleLabel": "1. szekció",
             "Labels": {
-                "title1": "标题1",
-                "text1": "文本1"
+                "title1": "Cím1",
+                "text1": "Szöveg1"
             }
         },
         "info": {
-            "TitleLabel": "关于",
+            "TitleLabel": "Rólunk",
             "SubtitleLabel": "Bloret Launcher",
             "Labels": {
-                "CaptionLabel_3": "Bloret Launcher 不只是 Minecraft 启动器，但也为 Minecraft 玩家提供便捷的游戏启动与管理体验。",
+                "CaptionLabel_3": "A Bloret Launcher nemcsak Minecraft launcher, hanem kényelmes játék indítási és kezelési élményt is nyújt a Minecraft játékosoknak.",
                 "StrongBodyLabel_11": "QQ",
                 "StrongBodyLabel_12": "Github",
-                "CaptionLabel_2": "© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved."
+                "CaptionLabel_2": "© 2025 Bloret Launcher Minden jog fenntartva. © 2025 Bloret Minden jog fenntartva."
             },
             "buttons": {
                 "pushButton": "Bloret",
-                "BLC_QQ": "Bloret Software Community",
-                "pushButton_2": "Bloret Github 组织页面",
-                "button_github": "此项目的 Github"
+                "BLC_QQ": "Bloret Szoftver Közösség",
+                "pushButton_2": "Bloret Github szervezeti oldal",
+                "button_github": "Ennek a projektnek a Githubja"
             }
         },
         "MCVer_downloading": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
-            "SubtitleLabel_2": "准备工作",
-            "SubtitleLabel": "下载 Minecraft 资源",
+            "TitleLabel": "Bloret Launcher - Minecraft Core letöltés és telepítés",
+            "SubtitleLabel_2": "Előkészítés",
+            "SubtitleLabel": "Minecraft erőforrások letöltése",
             "Labels": {
-                "StrongBodyLabel_16": "获取版本清单和版本详细信息",
-                "StrongBodyLabel_14": "客户端核心文件",
-                "StrongBodyLabel_15": "库文件",
-                "libraries_file_name_2": "正在工作线程数:",
+                "StrongBodyLabel_16": "Verziólista és verzió részletes információinak lekérése",
+                "StrongBodyLabel_14": "Kliens core fájlok",
+                "StrongBodyLabel_15": "Könyvtárfájlok",
+                "libraries_file_name_2": "Dolgozó szálak száma:",
                 "libraries_file_working_Thread": "0",
                 "libraries_file_working_Thread_2": "/",
                 "MaxThread": "2000",
                 "libraries_file_name": "",
-                "StrongBodyLabel_17": "资源文件",
-                "libraries_file_name_3": "正在工作线程数:",
+                "StrongBodyLabel_17": "Erőforrásfájlok",
+                "libraries_file_name_3": "Dolgozó szálak száma:",
                 "Resources_file_working_Thread": "0",
                 "libraries_file_working_Thread_4": "/",
                 "MaxThread_2": "2000",
                 "libraries_file_name_4": "",
-                "CaptionLabel": "Minecraft 下载源由 bangbang93 / BMCLAPI 提供"
+                "CaptionLabel": "A Minecraft letöltési forrás a bangbang93 / BMCLAPI által biztosított"
             },
             "CheckBox": {
                 "First_Step_CheckBox": ""
             }
         },
         "mods": {
-            "TitleLabel": "Mods",
+            "TitleLabel": "Modok",
             "Labels": {
-                "StrongBodyLabel_17": "找到你想要的 Mod",
-                "CaptionLabel_5": "Modrinth 提供了数千万 Mod 供您选择"
+                "StrongBodyLabel_17": "Keresse meg a kívánt modot",
+                "CaptionLabel_5": "A Modrinth több millió modot kínál választásra"
             },
             "buttons": {
-                "Open_Modrinth_Button": "打开 Modrinth"
+                "Open_Modrinth_Button": "Nyissa meg a Modrinthot"
             },
             "SearchLineEdit": {
-                "Search": "在 Modrinth 上搜索"
+                "Search": "Keresés a Modrinth-on"
             }
         },
         "passport_notdone_account": {
-            "TitleLabel": "通行证",
+            "TitleLabel": "Jegy",
             "SubtitleLabel": {
-                "label_3": "百络谷通行证",
-                "label_5": "离线登录 / 微软登录"
+                "label_3": "Bloret jegy",
+                "label_5": "Offline bejelentkezés / Microsoft bejelentkezés"
             },
             "Labels": {
-                "label": "当前登录方式：",
-                "label_2": "当前登录：",
-                "label_4": "当前登录：",
-                "CaptionLabel_2": "使用百络谷通行证进入 Bloret 时，无需再次输入密码。"
+                "label": "Jelenlegi bejelentkezési mód:",
+                "label_2": "Jelenleg bejelentkezve:",
+                "label_4": "Jelenleg bejelentkezve:",
+                "CaptionLabel_2": "A Bloret jeggyel történő Bloret-be való belépéskor nem kell újra megadnia jelszavát."
             },
             "buttons": {
-                "pushButton": "退出登录",
-                "pushButton_5": "多账户设置",
-                "pushButton_6": "注册新账户",
-                "pushButton_2": "登录新账户",
-                "pushButton_7": "多账户设置",
-                "pushButton_8": "注册新账户",
-                "pushButton_3": "添加 / 登录新账户",
-                "pushButton_9": "多账户设置"
+                "pushButton": "Kijelentkezés",
+                "pushButton_5": "Több fiók beállítása",
+                "pushButton_6": "Új fiók regisztrálása",
+                "pushButton_2": "Bejelentkezés új fiókba",
+                "pushButton_7": "Több fiók beállítása",
+                "pushButton_8": "Új fiók regisztrálása",
+                "pushButton_3": "Új fiók hozzáadása / bejelentkezés",
+                "pushButton_9": "Több fiók beállítása"
             },
             "ComboBox": {
                 "comboBox_3": [
-                    "百络谷通行证",
-                    "离线登录",
-                    "微软登录"
+                    "Bloret jegy",
+                    "Offline bejelentkezés",
+                    "Microsoft bejelentkezés"
                 ],
                 "comboBox_4": [
                     "Detrital"
@@ -271,40 +271,40 @@
             }
         },
         "passport.old": {
-            "TitleLabel": "通行证",
-            "SubtitleLabel": "离线登录",
+            "TitleLabel": "Jegy",
+            "SubtitleLabel": "Offline bejelentkezés",
             "Labels": {
-                "label_2": "账户名",
-                "CaptionLabel_3": "请记得单击设定，否则更改不会生效",
-                "CaptionLabel_2": "未来将添加对账户的更多管理，百络谷通行证和微软登录等。"
+                "label_2": "Fióknév",
+                "CaptionLabel_3": "Ne felejtsen kattintani a beállításra, különben a változtatások nem lépnek életbe",
+                "CaptionLabel_2": "A jövőben további fiókkezelési lehetőségek kerülnek hozzáadásra, például Bloret jegy és Microsoft bejelentkezés stb."
             },
             "buttons": {
-                "player_name_set": "设定"
+                "player_name_set": "Beállítás"
             },
             "LineEdit": {
                 "player_name": ""
             }
         },
         "passport": {
-            "TitleLabel": "通行证",
+            "TitleLabel": "Jegy",
             "SubtitleLabel": {
-                "label_3": "Minecraft 账户",
-                "SubtitleLabel": "Bloret 通行证"
+                "label_3": "Minecraft fiók",
+                "SubtitleLabel": "Bloret jegy"
             },
             "Labels": {
-                "label_4": "目前登录",
-                "CaptionLabel_4": "您目前登录的账户",
-                "label_2": "选择登录方式",
-                "CaptionLabel_3": "请记得单击设定，否则更改不会生效",
-                "Bloret_PassPort_UserName": "未登录",
-                "CaptionLabel_5": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。"
+                "label_4": "Jelenleg bejelentkezve",
+                "CaptionLabel_4": "Az Ön jelenleg bejelentkezett fiókja",
+                "label_2": "Válassza ki a bejelentkezési módot",
+                "CaptionLabel_3": "Ne felejtsen kattintani a beállításra, különben a változtatások nem lépnek életbe",
+                "Bloret_PassPort_UserName": "Nincs bejelentkezve",
+                "CaptionLabel_5": "A Bloret jegy használatával élvezheti szinte az összes Bloret szolgáltatást."
             },
             "buttons": {
-                "login": "重新登录",
-                "Bloret_PassPort_view_BBBS": "访问 Bloret BBS",
-                "Bloret_PassPort_login": "重新登录",
-                "Bloret_PassPort_logout": "退出登录",
-                "reg_Bloret_PassPort": "注册 Bloret 通行证"
+                "login": "Bejelentkezés újra",
+                "Bloret_PassPort_view_BBBS": "Látogasson el a Bloret BBS-re",
+                "Bloret_PassPort_login": "Bejelentkezés újra",
+                "Bloret_PassPort_logout": "Kijelentkezés",
+                "reg_Bloret_PassPort": "Regisztráljon Bloret jegyet"
             },
             "ComboBox": {
                 "player_login_way": "",
@@ -313,64 +313,64 @@
             }
         },
         "settings": {
-            "TitleLabel": "设置",
+            "TitleLabel": "Beállítások",
             "SubtitleLabel": {
-                "label_7": "下载",
-                "label_6": "界面",
-                "label_5": "外观",
-                "label": "日志",
-                "SubtitleLabel": "行为"
+                "label_7": "Letöltés",
+                "label_6": "Felület",
+                "label_5": "Kinézet",
+                "label": "Naplók",
+                "SubtitleLabel": "Viselkedés"
             },
             "Labels": {
-                "StrongBodyLabel_15": "当前版本",
-                "BL_version": "未知",
-                "StrongBodyLabel_22": "最大线程数",
-                "CaptionLabel_12": "下载文件时允许同时下载文件的最大数量\n该数字越大,下载速度越快,但会占用计算机更多性能。",
-                "StrongBodyLabel_17": "缩放",
-                "CaptionLabel_5": "默认启动的窗口大小(重新启动程序后生效)",
-                "StrongBodyLabel_16": "主题",
-                "CaptionLabel_4": "眼睛舒服了",
-                "log_clear_text": "清空日志",
-                "log_clear_subtext": "清空 log 文件夹",
-                "label_3": "开机自启动",
-                "CaptionLabel_11": "开机时一并打开 Bloret Launcher, 并最小化至系统托盘",
-                "StrongBodyLabel_18": "重复启动程序",
-                "CaptionLabel_6": "防止 Bloret Launcher 占满您的计算机",
-                "StrongBodyLabel_19": "显示软件打开过程",
-                "CaptionLabel_7": "在软件打开前以通知的形式显示软件在做什么",
-                "StrongBodyLabel_21": "在首页上 显示 Minecraft 账户登录方式",
-                "CaptionLabel_10": "展示你为微软登录或是离线登录",
-                "StrongBodyLabel_20": "本地模式",
-                "CaptionLabel_8": "不连接一部分的互联网，不允许使用 PCFS 服务。",
-                "CaptionLabel_9": "设置界面大部分内容需要重启程序后生效。"
+                "StrongBodyLabel_15": "Aktuális verzió",
+                "BL_version": "Ismeretlen",
+                "StrongBodyLabel_22": "Maximális szálak száma",
+                "CaptionLabel_12": "A fájlok letöltése során egyszerre engedélyezett letölthető fájlok maximális száma\nMinél nagyobb a szám, annál gyorsabb a letöltés, de több számítógép-teljesítményt foglal el.",
+                "StrongBodyLabel_17": "Nagyítás",
+                "CaptionLabel_5": "Alapértelmezett indítási ablakméret (a program újraindítása után lép életbe)",
+                "StrongBodyLabel_16": "Téma",
+                "CaptionLabel_4": "A szem kényelmes",
+                "log_clear_text": "Naplók törlése",
+                "log_clear_subtext": "Törölje a log mappát",
+                "label_3": "Automatikus indítás rendszerindításkor",
+                "CaptionLabel_11": "Indítsa el a Bloret Launchert rendszerindításkor, és minimalizálja a rendszertálcára",
+                "StrongBodyLabel_18": "Program ismételt indítása",
+                "CaptionLabel_6": "A Bloret Launcher ne töltse meg a számítógépét",
+                "StrongBodyLabel_19": "Mutassa meg a szoftverindítási folyamatot",
+                "CaptionLabel_7": "A szoftver megnyitása előtt értesítések formájában jelenítse meg, hogy mit csinál a szoftver",
+                "StrongBodyLabel_21": "Mutasd meg a Minecraft fiók bejelentkezési módját a főoldalon",
+                "CaptionLabel_10": "Mutassa meg, hogy Microsoft bejelentkezés vagy offline bejelentkezés",
+                "StrongBodyLabel_20": "Helyi mód",
+                "CaptionLabel_8": "Ne kapcsolódjon az internet egy részéhez, ne engedje a PCFS szolgáltatások használatát.",
+                "CaptionLabel_9": "A beállítások felületének nagy része a program újraindítása után lép életbe."
             },
             "buttons": {
-                "log_clear_button": "清空日志"
+                "log_clear_button": "Naplók törlése"
             },
             "SpinBox": {
-                "MaxThread_SpinBox": " 个",
+                "MaxThread_SpinBox": " db",
                 "Size_Choose": " %"
             },
             "SwitchButton": {
                 "Self_starting": {
-                    "onText": "打开",
-                    "offText": "关闭"
+                    "onText": "Megnyitás",
+                    "offText": "Bezárás"
                 },
                 "repeat_run_button": {
-                    "onText": "允许",
-                    "offText": "禁止"
+                    "onText": "Engedélyezés",
+                    "offText": "Letiltás"
                 },
                 "show_runtime_do_button": {
-                    "onText": "显示",
-                    "offText": "不显示"
+                    "onText": "Megjelenítés",
+                    "offText": "Ne jelenítse meg"
                 },
                 "home_show_login_mod_button": {
-                    "onText": "展示",
-                    "offText": "隐藏"
+                    "onText": "Megjelenítés",
+                    "offText": "Elrejtés"
                 },
                 "localmod_button": {
-                    "onText": "启用",
-                    "offText": "关闭"
+                    "onText": "Engedélyezés",
+                    "offText": "Kikapcsolás"
                 }
             },
             "ComboBox": {
@@ -381,133 +381,133 @@
                 ]
             },
             "StrongBodyLabel": {
-                "language_Setting_Title": "语言 / language"
+                "language_Setting_Title": "Nyelv / language"
             },
             "CaptionLabel": {
-                "language_Setting_Tip_Text": "调整语言设置"
+                "language_Setting_Tip_Text": "Nyelvi beállítások módosítása"
             }
         },
         "tools": {
-            "TitleLabel": "小工具",
-            "SubtitleLabel": "Minecraft 数据查询",
+            "TitleLabel": "Eszközök",
+            "SubtitleLabel": "Minecraft adatlekérdezés",
             "Labels": {
-                "name2uuid_text": "查询玩家UUID",
-                "label_2": "查询的结果将显示在这里",
-                "StrongBodyLabel_20": "查询玩家名字",
-                "search_name": "查询的结果将显示在这里",
-                "label_7": "获取玩家的皮肤和披风",
-                "search_skin": "皮肤的查询的结果",
-                "search_cape": "披风的查询的结果"
+                "name2uuid_text": "Játékos UUID lekérdezése",
+                "label_2": "A lekérdezés eredménye itt jelenik meg",
+                "StrongBodyLabel_20": "Játékos név lekérdezése",
+                "search_name": "A lekérdezés eredménye itt jelenik meg",
+                "label_7": "Szerezze meg a játékos skinjét és köntösét",
+                "search_skin": "Skin lekérdezés eredménye",
+                "search_cape": "Köntös lekérdezés eredménye"
             },
             "buttons": {
-                "name2uuid_player_Button": "查询",
-                "pushButton_5": "复制到剪贴板",
-                "search_name_button": "查询",
-                "search_name_copy": "复制到剪贴板",
-                "skin_search_button": "查询",
-                "search_skin_copy": "复制到剪贴板",
-                "search_cape_copy": "复制到剪贴板"
+                "name2uuid_player_Button": "Lekérdezés",
+                "pushButton_5": "Másolás vágólapra",
+                "search_name_button": "Lekérdezés",
+                "search_name_copy": "Másolás vágólapra",
+                "skin_search_button": "Lekérdezés",
+                "search_skin_copy": "Másolás vágólapra",
+                "search_cape_copy": "Másolás vágólapra"
             },
             "LineEdit": {
-                "name2uuid_player_uuid": "玩家名称（正版）",
-                "search_name_type": "玩家UUID",
-                "skin_uuid": "玩家UUID，注意不是名字，如果没有，请到上面获取。"
+                "name2uuid_player_uuid": "Játékos neve (eredeti)",
+                "search_name_type": "Játékos UUID",
+                "skin_uuid": "Játékos UUID, figyeljen, ez nem a név, ha nincs, kérje le fent."
             }
         },
         "version": {
-            "TitleLabel": "版本管理"
+            "TitleLabel": "Verziókezelés"
         }
     },
     "texts": {
-        "你还未安装任何版本哦，请前往下载页面安装": "你还未安装任何版本哦，请前往下载页面安装",
-        "🔼  启动版本": "🔼  启动版本",
-        "🔡  访问 BBS": "🔡  访问 BBS",
-        "🔄️  重启程序": "🔄️  重启程序",
-        "✅  显示窗口": "✅  显示窗口",
-        "❎  退出程序": "❎  退出程序",
-        "百络谷支持版本": "百络谷支持版本",
-        "正式版本": "正式版本",
-        "快照版本": "快照版本",
-        "远古版本": "远古版本",
-        "未知的版本类型": "未知的版本类型",
-        "Bloret Launcher 已阻止了重复打开软件的操作": "Bloret Launcher 已阻止了重复打开软件的操作",
-        "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。": "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。",
-        "正在启动 Bloret Launcher": "正在启动 Bloret Launcher",
-        "正在做打开软件前的工作...": "正在做打开软件前的工作...",
-        "警告：SystemTrayIcon 的 parent 参数为 None": "警告：SystemTrayIcon 的 parent 参数为 None",
-        "创建互斥体失败": "创建互斥体失败",
-        "检测到程序重复运行": "检测到程序重复运行",
-        "重复运行被禁用：检测到程序已运行，退出新实例": "重复运行被禁用：检测到程序已运行，退出新实例",
-        "显示软件打开过程已启用": "显示软件打开过程已启用",
-        "显示软件打开过程已禁用": "显示软件打开过程已禁用",
-        "启动画面创建完成": "启动画面创建完成",
-        "启动画面已显示": "启动画面已显示",
-        "隐藏启动画面": "隐藏启动画面",
-        "主页 被点击": "主页 被点击",
-        "下载完成，但版本信息缺失": "下载完成，但版本信息缺失",
-        "托盘菜单启动，不显示 TeachingTip": "托盘菜单启动，不显示 TeachingTip",
-        "下载 被点击": "下载 被点击",
-        "无法获取 Minecraft 版本列表": "无法获取 Minecraft 版本列表",
-        "执行命令: ": "执行命令: ",
-        "正在执行微软登录命令：cmcl account --login=microsoft": "正在执行微软登录命令：cmcl account --login=microsoft",
-        "成功覆盖 cmcl.json 文件": "成功覆盖 cmcl.json 文件",
-        "本地模式已启用，无法使用微软登录。": "本地模式已启用，无法使用微软登录。",
-        "您已启用本地模式": "您已启用本地模式",
-        "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。": "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。",
-        "确认": "确认",
-        "创建启动页面": "创建启动页面",
-        "图标路径存在: ": "图标路径存在: ",
-        "图标路径不存在: ": "图标路径不存在: ",
-        "系统主题颜色: ": "系统主题颜色: ",
-        "请求错误: ": "请求错误: ",
-        "开始下载Minecraft版本: ": "开始下载Minecraft版本: ",
-        "加载或显示下载弹窗时发生错误: ": "加载或显示下载弹窗时发生错误: ",
-        "无法显示下载进度弹窗: ": "无法显示下载进度弹窗: ",
-        "开始下载Fabric版本: ": "开始下载Fabric版本: ",
-        "下载过程可能需要几分钟，请耐心等待...": "下载过程可能需要几分钟，请耐心等待...",
-        "正在启动 ": "正在启动 ",
-        "请稍等": "请稍等",
-        "已经开始下载...下载状态将会显示在这里": "已经开始下载...下载状态将会显示在这里",
-        "LM_Download_Way_minecraft:": "LM_Download_Way_minecraft:",
-        "正在下载你所选的版本...": "正在下载你所选的版本...",
-        "正在下载版本 ": "正在下载版本 ",
-        "该名称已存在，请更换一个名称。": "该名称已存在，请更换一个名称。",
-        "该版本已下载过。": "该版本已下载过。",
-        "登录成功": "登录成功",
-        "登录失败: ": "登录失败: ",
-        "离线登录成功": "离线登录成功",
-        "执行异常: ": "执行异常: ",
-        "发送系统通知失败: ": "发送系统通知失败: ",
-        "非法名称": "非法名称",
-        "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称": "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称",
-        "离线登录": "离线登录",
-        "请输入玩家名称": "请输入玩家名称",
-        "文件 ": "文件 ",
-        " 不存在": " 不存在",
-        "请选择一个Fabric版本": "请选择一个Fabric版本",
+        "你还未安装任何版本哦，请前往下载页面安装": "Még nem telepítettél egyetlen verziót sem, kérjük, látogass el a letöltési oldalra a telepítéshez",
+        "🔼  启动版本": "🔼 Verzió indítása",
+        "🔡  访问 BBS": "🔡 Látogasson el a BBS-re",
+        "🔄️  重启程序": "🔄️ Program újraindítása",
+        "✅  显示窗口": "✅ Ablak megjelenítése",
+        "❎  退出程序": "❎ Kilépés a programból",
+        "百络谷支持版本": "Bloret által támogatott verziók",
+        "正式版本": "Hivatalos verziók",
+        "快照版本": "Snapshot verziók",
+        "远古版本": "Ősi verziók",
+        "未知的版本类型": "Ismeretlen verziótípus",
+        "Bloret Launcher 已阻止了重复打开软件的操作": "A Bloret Launcher blokkolta a szoftver ismételt megnyitásának műveletét",
+        "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。": "Annak érdekében, hogy megakadályozzuk a Bloret Launchert a számítógép teljes elfoglalásában, blokkoltuk az ismételt Bloret Launcher megnyitását\nHa ismételt megnyitásra van szüksége, kérjük, menjen a beállításokhoz, és jelölje be az ismételt futtatás engedélyezését.",
+        "正在启动 Bloret Launcher": "Bloret Launcher indítása",
+        "正在做打开软件前的工作...": "Munka a szoftver megnyitása előtt...",
+        "警告：SystemTrayIcon 的 parent 参数为 None": "Figyelmeztetés: A SystemTrayIcon szülő paramétere None",
+        "创建互斥体失败": "Mutex létrehozása sikertelen",
+        "检测到程序重复运行": "Program ismételt futtatása észlelve",
+        "重复运行被禁用：检测到程序已运行，退出新实例": "Ismételt futtatás letiltva: Program már fut, kilépés az új példányból",
+        "显示软件打开过程已启用": "A szoftver megnyitási folyamatának megjelenítése engedélyezve",
+        "显示软件打开过程已禁用": "A szoftver megnyitási folyamatának megjelenítése letiltva",
+        "启动画面创建完成": "Indítóképernyő létrehozása befejezve",
+        "启动画面已显示": "Indítóképernyő megjelenítve",
+        "隐藏启动画面": "Indítóképernyő elrejtése",
+        "主页 被点击": "Főoldal kattintva",
+        "下载完成，但版本信息缺失": "Letöltés befejezve, de a verzióinformáció hiányzik",
+        "托盘菜单启动，不显示 TeachingTip": "Tálca menü indítva, TeachingTip nem jelenik meg",
+        "下载 被点击": "Letöltés kattintva",
+        "无法获取 Minecraft 版本列表": "Nem sikerült lekérni a Minecraft verziólistát",
+        "执行命令: ": "Parancs végrehajtása: ",
+        "正在执行微软登录命令：cmcl account --login=microsoft": "Microsoft bejelentkezési parancs végrehajtása: cmcl account --login=microsoft",
+        "成功覆盖 cmcl.json 文件": "cmcl.json fájl sikeresen felülírva",
+        "本地模式已启用，无法使用微软登录。": "Helyi mód engedélyezve, Microsoft bejelentkezés nem használható.",
+        "您已启用本地模式": "Engedélyezte a helyi módot",
+        "Bloret Launcher 在本地模式下无法进行微软登录，\\n因为该操作需要互联网\\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。": "A Bloret Launcher helyi módban nem tud Microsoft bejelentkezést végezni,\\nmert ez a művelet internetet igényel\\nHa be kell jelentkeznie, kérjük, menjen a beállításokhoz a helyi mód kikapcsolásához. Vagy használjon offline bejelentkezést.",
+        "确认": "Megerősítés",
+        "创建启动页面": "Indítási oldal létrehozása",
+        "图标路径存在: ": "Ikon elérési út létezik: ",
+        "图标路径不存在: ": "Ikon elérési út nem létezik: ",
+        "系统主题颜色: ": "Rendszer téma színe: ",
+        "请求错误: ": "Kérés hiba: ",
+        "开始下载Minecraft版本: ": "Minecraft verzió letöltésének megkezdése: ",
+        "加载或显示下载弹窗时发生错误: ": "Hiba történt a letöltési felugró ablak betöltése vagy megjelenítése közben: ",
+        "无法显示下载进度弹窗: ": "Nem sikerült megjeleníteni a letöltési folyamat felugró ablakát: ",
+        "开始下载Fabric版本: ": "Fabric verzió letöltésének megkezdése: ",
+        "下载过程可能需要几分钟，请耐心等待...": "A letöltési folyamat eltarthat néhány percig, kérjük, legyen türelemmel...",
+        "正在启动 ": "Indítás ",
+        "请稍等": "Kérem várjon",
+        "已经开始下载...下载状态将会显示在这里": "A letöltés megkezdődött... A letöltési állapot itt fog megjelenni",
+        "LM_Download_Way_minecraft:": "LM_Letöltési_Mód_minecraft:",
+        "正在下载你所选的版本...": "A kiválasztott verzió letöltése folyamatban...",
+        "正在下载版本 ": "Verzió letöltése ",
+        "该名称已存在，请更换一个名称。": "Ez a név már létezik, kérjük, cserélje le egy másik névre.",
+        "该版本已下载过。": "Ez a verzió már le lett töltve.",
+        "登录成功": "Bejelentkezés sikeres",
+        "登录失败: ": "Bejelentkezés sikertelen: ",
+        "离线登录成功": "Offline bejelentkezés sikeres",
+        "执行异常: ": "Végrehajtási kivétel: ",
+        "发送系统通知失败: ": "Rendszerértesítés küldése sikertelen: ",
+        "非法名称": "Illegális név",
+        "名称包含非法字符或中文，请遵循以下规则：\\n1. 不能包含 \\\\ / : * ? \\\" < > |\\n2. 不能包含中文\\n3. 不能使用系统保留名称": "A név illegális karaktereket vagy kínai karaktereket tartalmaz, kérjük, kövesse az alábbi szabályokat:\\n1. Nem tartalmazhat \\\\ / : * ? \\\" < > |\\n2. Nem tartalmazhat kínai karaktereket\\n3. Nem használhat rendszer által fenntartott neveket",
+        "离线登录": "Offline bejelentkezés",
+        "请输入玩家名称": "Kérjük, adja meg a játékos nevét",
+        "文件 ": "Fájl ",
+        " 不存在": " nem létezik",
+        "请选择一个Fabric版本": "Kérjük, válasszon egy Fabric verziót",
         "Fabric ": "Fabric ",
-        " 功能正在开发中": " 功能正在开发中",
-        "请选择一个Java版本": "请选择一个Java版本",
-        "无法解析Java版本号": "无法解析Java版本号",
-        "正在下载 Java ": "正在下载 Java ",
-        "Minecraft版本 ": "Minecraft版本 ",
-        " 已成功下载": " 已成功下载",
-        " 已成功下载并安装": " 已成功下载并安装",
-        " 下载失败": " 下载失败",
-        " 下载失败，请查看日志了解详情": " 下载失败，请查看日志了解详情",
-        "版本 ": "版本 ",
-        " 已成功下载\\n前往主页就可以启动了！": " 已成功下载\\n前往主页就可以启动了！",
-        "成功拷贝 ": "成功拷贝 ",
-        " 到 ": " 到 ",
-        "拷贝 ": "拷贝 ",
-        " 失败: ": " 失败: ",
-        "下载完成": "下载完成",
-        "show_text is None": "show_text is None",
-        "读取版本列表失败: ": "读取版本列表失败: ",
-        "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装": "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装",
-        "minecraft_list:": "minecraft_list:",
-        "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！": "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！",
-        "替换 CMCL 2.2.2 → Bloret Launcher": "替换 CMCL 2.2.2 → Bloret Launcher",
-        "替换 CMCL → Bloret-Launcher": "替换 CMCL → Bloret-Launcher"
+        " 功能正在开发中": " funkció fejlesztés alatt áll",
+        "请选择一个Java版本": "Kérjük, válasszon egy Java verziót",
+        "无法解析Java版本号": "Nem sikerült elemezni a Java verziószámot",
+        "正在下载 Java ": "Java letöltése ",
+        "Minecraft版本 ": "Minecraft verzió ",
+        " 已成功下载": " sikeresen letöltve",
+        " 已成功下载并安装": " sikeresen letöltve és telepítve",
+        " 下载失败": " letöltés sikertelen",
+        " 下载失败，请查看日志了解详情": " letöltés sikertelen, kérjük, ellenőrizze a naplót a részletekért",
+        "版本 ": "Verzió ",
+        " 已成功下载\\n前往主页就可以启动了！": " sikeresen letöltve\\nMenjen a főoldalra az indításhoz!",
+        "成功拷贝 ": "Sikeres másolás ",
+        " 到 ": " ide: ",
+        "拷贝 ": "Másolás ",
+        " 失败: ": " sikertelen: ",
+        "下载完成": "Letöltés befejezve",
+        "show_text is None": "show_text értéke None",
+        "读取版本列表失败: ": "Verziólista olvasása sikertelen: ",
+        "无法获取版本列表，可能是你还未安装任何版本，请前往下载页面安装": "Nem sikerült lekérni a verziólistát, lehet, hogy még nem telepítettél semmilyen verziót, kérjük, látogass el a letöltési oldalra a telepítéshez",
+        "minecraft_list:": "minecraft_lista:",
+        "正在处理 Minecraft 文件和启动...\\n您马上就能见到 Minecraft 窗口出现了！": "Minecraft fájlok feldolgozása és indítása...\\nHamarosan látni fogja a Minecraft ablak megjelenését!",
+        "替换 CMCL 2.2.2 → Bloret Launcher": "CMCL 2.2.2 → Bloret Launcher cseréje",
+        "替换 CMCL → Bloret-Launcher": "CMCL → Bloret-Launcher cseréje"
     }
 }
