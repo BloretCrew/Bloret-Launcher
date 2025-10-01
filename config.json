@@ -6,7 +6,12 @@
     "themelight": true,
     "repeat_run": false,
     "show_runtime_do": false,
-    "Customize": [],
+    "Customize": [
+        {
+            "showname": "PCL",
+            "path": "C:\\Users\\0570\\AppData\\Roaming\\Bloret-Launcher\\Plugin\\PCL\\main.exe"
+        }
+    ],
     "Bloret_PassPort_UserName": "未登录",
     "Bloret_PassPort_PassWord": "",
     "Bloret_PassPort_Admin": false,
@@ -48,5 +53,5 @@
     },
     "minecraft_dir": "C:\\Users\\0570\\AppData\\Roaming\\Bloret-Launcher\\.minecraft",
     "Java_Path": "C:\\Program Files\\Zulu\\zulu-23\\bin\\java.exe",
-    "language": "zh-cn"
+    "language": "gt-ZH"
 }

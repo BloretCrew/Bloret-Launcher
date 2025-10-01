@@ -829,10 +829,11 @@ def Get_Run_Script(version):
     else:
         log(f"检测到原版: {version}")
     
-    # 添加内存参数
+    # 添加内存参数 (根据PCL中的默认设置)
+    # PCL中默认分配内存为854x480，这里设置合理的内存参数
     launch_args.extend([
-        "-Xmn844m",
-        "-Xmx5632m"
+        "-Xmn192m",  # 年轻代内存
+        "-Xmx4096m"  # 最大堆内存，设置为4GB
     ])
     
     # 添加自定义参数
@@ -908,6 +909,9 @@ def Get_Run_Script(version):
                         # 如果这是一个更高版本，或者这个模块还没有被记录
                         if asm_module not in asm_libs or version > asm_libs[asm_module]["version"]:
                             asm_libs[asm_module] = {"version": version, "path": lib_path}
+                            log(f"记录ASM库 {asm_module} 版本 {version}")
+                        else:
+                            log(f"跳过较低版本的ASM库 {asm_module} 版本 {version}，已有版本 {asm_libs[asm_module]['version']}")
                     continue  # 跳过当前的库添加，稍后会统一添加ASM库
                         
                 # 添加Fabric核心库
@@ -927,18 +931,33 @@ def Get_Run_Script(version):
         # 按照特定顺序构建最终的类路径
         final_classpath = []
         
-        # 1. 添加 ASM 库（按特定顺序）
+        # 1. 添加 ASM 库（按特定顺序，只添加最高版本）
         asm_modules_order = ["asm", "asm-commons", "asm-tree", "asm-analysis", "asm-util"]
         for module in asm_modules_order:
             if module in asm_libs:
                 final_classpath.append(asm_libs[module]["path"])
-                log(f"添加ASM库 {module} 版本 {asm_libs[module]['version']}")
+                log(f"添加ASM库 {module} 版本 {asm_libs[module]['version']}，路径: {asm_libs[module]['path']}")
         
         # 2. 添加 Fabric 核心库
         final_classpath.extend(fabric_libs)
         
-        # 3. 添加其他所有库
-        final_classpath.extend(classpath)
+        # 3. 添加其他所有库（排除已添加的ASM库）
+        # 创建已添加ASM库路径的集合，用于过滤
+        added_asm_paths = set()
+        for module in asm_libs:
+            added_asm_paths.add(asm_libs[module]["path"].lower())
+        
+        # 过滤掉已添加的ASM库
+        filtered_classpath = []
+        for lib_path in classpath:
+            # 检查是否为ASM库
+            if "org/ow2/asm" in lib_path.lower() or "/asm-" in lib_path.lower():
+                if lib_path.lower() not in added_asm_paths:
+                    log(f"跳过重复的ASM库: {lib_path}")
+                    continue
+            filtered_classpath.append(lib_path)
+        
+        final_classpath.extend(filtered_classpath)
         
         # 更新类路径
         classpath = final_classpath
@@ -956,9 +975,9 @@ def Get_Run_Script(version):
         try:
             with open('config.json', 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
-            max_workers = config_data.get("MaxThread", 2000)  # 默认值 2000
+            max_workers = config_data.get("MaxThread", 64)  # 默认值改为64，避免资源耗尽
         except Exception:
-            max_workers = 2000  # 读取失败时使用默认值
+            max_workers = 64  # 读取失败时使用默认值
         
         # 创建下载器并启动下载线程
         downloader = LibraryDownloader(missing_libraries, max_workers)
@@ -994,7 +1013,20 @@ def Get_Run_Script(version):
         launch_args.append("net.minecraft.client.main.Main")
     
     # 添加游戏参数
-    game_dir = os.path.join(minecraft_dir, "versions", version)
+    # 对于Fabric版本，需要使用实际的游戏版本号而不是Fabric加载器版本号
+    actual_game_version = version
+    game_dir_version = version  # 用于构建game_dir的版本
+    
+    if is_fabric and "-fabric-" in version.lower():
+        # 对于Fabric版本，目录结构为 .minecraft/versions/实际版本-fabric-加载器版本/实际版本-fabric-加载器版本.json
+        # 但游戏目录应该是 .minecraft/versions/实际版本-fabric-加载器版本/实际版本.json
+        # 我们需要从版本名称中提取实际的游戏版本
+        # 例如: 1.21.8-fabric-0.17.2 应该对应游戏版本 1.21.8
+        actual_game_version = version.split("-fabric-")[0]
+        game_dir_version = version  # game_dir仍然使用完整版本名作为目录名
+    
+    # 游戏目录应该是主 .minecraft 目录，而不是版本特定目录
+    game_dir = minecraft_dir
     assets_dir = os.path.join(minecraft_dir, "assets")
     
     # 检查游戏目录和资产目录是否存在
@@ -1015,7 +1047,7 @@ def Get_Run_Script(version):
     
     # 在日志中以列表形式记录启动信息
     log("启动信息:")
-    log(f"- Minecraft 版本: {version}")
+    log(f"- Minecraft 版本: {version}")  # 使用完整版本名而不是解析后的版本
     log(f"- 登录方式: {'离线登录' if login_method == 0 else '微软登录' if login_method == 2 else '未知'}")
     log(f"- 登录名称: {username}")
     if account_info:
@@ -1026,9 +1058,9 @@ def Get_Run_Script(version):
     if login_method == 0:  # 离线登录
         launch_args.extend([
             "--username", username,
-            "--version", version,
-            "--gameDir", f'"{game_dir}"',
-            "--assetsDir", f'"{assets_dir}"',
+            "--version", version,  # 使用完整版本名而不是解析后的版本
+            "--gameDir", game_dir,  # 不要在路径外额外添加引号
+            "--assetsDir", assets_dir,  # 不要在路径外额外添加引号
             "--assetIndex", str(asset_index),
             "--uuid", "00000000000000000000000000000000",
             "--accessToken", "00000000000000000000000000000000",
@@ -1054,9 +1086,9 @@ def Get_Run_Script(version):
             
         launch_args.extend([
             "--username", username,
-            "--version", version,
-            "--gameDir", f'"{game_dir}"',
-            "--assetsDir", f'"{assets_dir}"',
+            "--version", version,  # 使用完整版本名而不是解析后的版本
+            "--gameDir", game_dir,  # 不要在路径外额外添加引号
+            "--assetsDir", assets_dir,  # 不要在路径外额外添加引号
             "--assetIndex", str(asset_index),
             "--uuid", account_info.get("uuid"),
             "--accessToken", account_info.get("accessToken"),
@@ -1069,8 +1101,8 @@ def Get_Run_Script(version):
         ])
     
     # 构建命令
-    # 通过过滤特定警告来减少stderr输出
-    bat_command = " ".join(launch_args) + " 2>&1 | findstr /v /i \"sun.misc.not.in.java.base A.terminally.deprecated.method.in.sun.misc.Unsafe.has.been.called sun.misc.Unsafe::objectFieldOffset.has.been.called.by org.joml.MemUtil\""
+    # 不添加过滤器，避免被Minecraft误认为是游戏参数
+    bat_command = " ".join(launch_args)
     
     log(f"生成的启动命令: {bat_command}")
     return bat_command
