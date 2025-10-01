@@ -194,15 +194,28 @@ def i18n_widgets(self):
     return True
 
 def i18nText(key):
-    # Handle case where key might be a list with a single string element
+    """
+    根据键值从语言数据中获取对应的国际化文本
+    
+    Args:
+        key: 用于查找对应文本的键值，可以是字符串或列表
+        
+    Returns:
+        对应的国际化文本字符串，如果找不到则返回原始键值
+    """
+    # 处理键值可能是包含单个字符串元素的列表的情况
     if isinstance(key, list):
+        # 如果列表只包含一个字符串元素，则使用该字符串作为键值
         if len(key) == 1 and isinstance(key[0], str):
             key = key[0]
         else:
-            return key  # Return the list as is if it's not a single string
+            # 如果列表包含多个元素或元素不是字符串，则直接返回原列表
+            return key  
     
-    # Original functionality
+    # 原始功能：从语言数据中获取对应文本
     try:
+        # 尝试从语言数据中获取对应键值的文本
         return lang_data["texts"][key]
     except KeyError:
-        return key  # Return the key itself if not found in lang_data
+        # 如果在语言数据中找不到对应键值，则返回原始键值
+        return key

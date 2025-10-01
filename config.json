@@ -1,20 +1,20 @@
 {
     "minecraft-part": ".minecraft",
-    "first-run": true,
+    "first-run": false,
     "ver": 8,
-    "size": 85,
+    "size": 88,
     "themelight": true,
     "repeat_run": false,
-    "show_runtime_do": true,
+    "show_runtime_do": false,
     "Customize": [],
-    "Bloret_PassPort_UserName": "\u672a\u767b\u5f55",
+    "Bloret_PassPort_UserName": "未登录",
     "Bloret_PassPort_PassWord": "",
     "Bloret_PassPort_Admin": false,
     "whenCWopen_BLopen": true,
     "localmod": false,
     "home_show_login_mod": true,
     "self-starting": false,
-    "MaxThread": 2000,
+    "MaxThread": 64,
     "Minecraft_Versions": [
         "1.21.8",
         "1.21.7"
@@ -46,7 +46,7 @@
             }
         }
     },
-    "minecraft_dir": "",
+    "minecraft_dir": "C:\\Users\\0570\\AppData\\Roaming\\Bloret-Launcher\\.minecraft",
     "Java_Path": "C:\\Program Files\\Zulu\\zulu-23\\bin\\java.exe",
-    "language": "zh-wy"
+    "language": "zh-cn"
 }

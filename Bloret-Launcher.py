@@ -762,6 +762,33 @@ class MainWindow(FluentWindow):
         if version not in minecraft_list:
             CustomizeRun(self,version)
         else:
+            # 检查 cmcl.json 中是否有账户信息
+            try:
+                with open('cmcl.json', 'r', encoding='utf-8') as f:
+                    cmcl_data = json.load(f)
+                
+                # 如果 accounts 字段为空或不存在，提示用户登录
+                if not cmcl_data.get('accounts'):
+                    msg_box = MessageBox(
+                        i18nText('您当前尚未登录'),
+                        i18nText('Minecraft 还不知道您是谁，无法启动。请先登录，确认以转到通行证页面。'),
+                        self
+                    )
+                    if msg_box.exec_():
+                        # 切换到通行证页面
+                        self.switchTo(self.passportInterface)
+                    return
+            except Exception as e:
+                handle_exception(e)
+                log(f"检查账户信息时出错: {e}", logging.ERROR)
+                InfoBar.error(
+                    title=i18nText('❌ 错误'),
+                    content=i18nText('检查账户信息时发生错误'),
+                    parent=self,
+                    duration=3000
+                )
+                return
+            
             InfoBar.success(
                 title=f'🔄️ 正在启动 {version}',
                 content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
@@ -781,20 +808,6 @@ class MainWindow(FluentWindow):
             script_content = Get_Run_Script(version)
             with open("run.bat", "w", encoding="utf-8") as f:
                 f.write(script_content)
-
-            # # 替换 CMCL 2.2.2 → Bloret Launcher
-            # with open("run.ps1", "r+", encoding='utf-8') as f:
-            #     content = f.read().replace('CMCL 2.2.2', 'Bloret Launcher')
-            #     f.seek(0)
-            #     f.write(content)
-            #     f.truncate()
-
-            # # 替换 CMCL → Bloret-Launcher
-            # with open("run.ps1", "r+", encoding='utf-8') as f:
-            #     content = f.read().replace('CMCL', 'Bloret-Launcher')
-            #     f.seek(0)
-            #     f.write(content)
-            #     f.truncate()
 
             run_button = self.sender()  # 获取按钮对象（可能为 None）
             if run_button is not None:

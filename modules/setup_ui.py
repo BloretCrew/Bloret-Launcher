@@ -559,7 +559,7 @@ def setup_settings_ui(self, widget):
         MaxThread_SpinBox.setValue(self.config.get("MaxThread", 2000))
         MaxThread_SpinBox.valueChanged.connect(lambda value: (
             self.config.update(MaxThread=value),
-            open('self.config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
         ))
 
     repeat_run_button = widget.findChild(SwitchButton, "repeat_run_button")
