@@ -1,0 +1,485 @@
+body {
+    background-image: url('https://api.imlazy.ink/img'); /* 背景图片地址 */
+    background-size: cover; /* 图片覆盖整个页面 */
+    background-position: center; /* 居中显示图片 */
+    background-repeat: no-repeat; /* 禁止重复 */
+    background-attachment: fixed; /* 固定背景图，滚动时保持静止 */
+    font-family: Arial, sans-serif;
+    display: flex;
+}
+/* 修改侧边栏样式应用 Apple Liquid Glass 风格同时保留原有布局与交互 */
+.sidebar {
+    background-color: rgba(255, 255, 255, 0.35); /* 半透明背景色 */
+    border-radius: 18px; /* 圆角 */
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.18), 0 1.5px 8px 0 rgba(255,255,255,0.25) inset; /* 内外阴影 */
+    border: 1.5px solid rgba(255, 255, 255, 0.45); /* 边框 */
+    backdrop-filter: blur(18px) saturate(180%); /* 高斯模糊效果 */
+    -webkit-backdrop-filter: blur(18px) saturate(180%); /* Safari 兼容性前缀 */
+
+    /* 布局与交互相关的原有属性 */
+    width: 20ch;
+    min-width: 20ch;
+    padding: 20px;
+    transition: transform 0.2s ease, margin 0.3s ease;
+    position: fixed;
+    height: 100%;
+    overflow-y: auto;
+    z-index: 1000;
+}
+.sidebar.hidden {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+.sidebar a {
+    display: block;
+    margin-bottom: 10px;
+    color: #333;
+    text-decoration: none;
+}
+.sidebar a:hover {
+    color: #007BFF;
+}
+/* 修改顶栏样式应用 Apple Liquid Glass 风格 */
+.navbar {
+    position: fixed; /* 改为固定定位 */
+    top: 0; /* 固定在顶部 */
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(255,255,255,0.35); /* 新增背景色 */
+    color: black; /* 更改为黑色文字以适应浅色背景 */
+    padding: 10px 20px;
+    border-radius: 18px; /* 圆角 */
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.18), 0 1.5px 8px 0 rgba(255,255,255,0.25) inset; /* 内外阴影 */
+    border: 1.5px solid rgba(255,255,255,0.45); /* 边框 */
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    z-index: 2147483646;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+    width: calc(100% - 20ch);
+}
+
+/* 当侧边栏显示时调整顶栏左边距 */
+.sidebar:not(.hidden) + .main-content .navbar {
+    margin-left: 20ch; /* 根据侧边栏宽度调整左边距 */
+}
+
+/* 修改主要内容样式 */
+.main-content {
+    flex-grow: 1;
+    padding: 20px;
+    transition: margin-left 0.3s ease;
+    margin-top: 60px; /* 添加顶部间距，避免被顶栏遮挡 */
+}
+
+/* 确保帖子容器跟随顶栏一起移动 */
+.section {
+    transition: margin-left 0.3s ease;
+    margin-top: 20px; /* 添加顶部间距，确保在顶栏下方显示 */
+}
+
+.sidebar:not(.hidden) + .main-content .section {
+    margin-left: 20ch;
+}
+/* 顶栏按钮样式调整以匹配帖子卡片的放大按钮 */
+.navbar .btn {
+    background-color: rgba(255, 255, 255, 0.35); /* 半透明背景色 */
+    border: 1.5px solid rgba(255, 255, 255, 0.45); /* 边框 */
+    box-shadow: 0 4px 10px rgba(31, 38, 135, 0.2), 0 2px 12px 0 rgba(255, 255, 255, 0.2) inset; /* 内外阴影 */
+    backdrop-filter: blur(14px) saturate(180%); /* 高斯模糊效果 */
+    -webkit-backdrop-filter: blur(14px) saturate(180%); /* Safari 兼容性前缀 */
+    border-radius: 8px; /* 圆角 */
+    padding: 6px 12px;
+    font-size: 14px;
+    color: black; /* 文字颜色 */
+    transition: box-shadow 0.18s, border 0.18s, background 0.18s;
+}
+
+/* 悬停效果 */
+.navbar .btn:hover {
+    background-color: rgba(255, 255, 255, 0.55); /* 更亮的背景色 */
+    border: 1.5px solid rgba(255, 255, 255, 0.65); /* 更明显的边框 */
+    box-shadow: 0 6px 20px rgba(31, 38, 135, 0.35), 0 3px 16px 0 rgba(255, 255, 255, 0.35) inset; /* 更强的阴影 */
+}
+
+.navbar a {
+    color: black; /* 将文本颜色从白色改为黑色 */
+    text-decoration: none;
+    margin: 0 10px;
+}
+.navbar img {
+    height: 30px;
+}
+
+#sections {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px; /* 设置服务器卡片之间的间距 */
+}
+
+/* 修改帖子容器样式以适应登录和用户信息卡片 */
+.post {
+    background: rgba(255,255,255,0.35);
+    border-radius: 18px;
+    box-shadow: 0 12px 48px rgba(31, 38, 135, 0.3), 0 2px 16px 0 rgba(255, 255, 255, 0.4) inset;
+    border: 1.5px solid rgba(255,255,255,0.45);
+    padding: 18px 18px 14px 18px;
+    margin: 20px auto; /* 居中显示卡片 */
+    width: calc(100% - 40px);
+    max-width: 600px;
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    transition: box-shadow 0.18s, border 0.18s;
+    overflow: visible;
+    animation: fadeIn 0.5s ease-in;
+    flex: 1 1 calc(33.33% - 40px);
+    max-width: calc(33.33% - 40px);
+    position: relative;
+}
+
+/* 用户信息卡片特殊样式 */
+.user-info-card {
+    background: rgba(255,255,255,0.35);
+    border-radius: 18px;
+    box-shadow: 0 12px 48px rgba(31, 38, 135, 0.3), 0 2px 16px 0 rgba(255, 255, 255, 0.4) inset;
+    border: 1.5px solid rgba(255,255,255,0.45);
+    padding: 18px 18px 14px 18px;
+    margin: 20px auto;
+    min-width: 200px; /* 设置最小宽度以避免过窄 */
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    transition: box-shadow 0.18s, border 0.18s;
+    overflow: visible;
+    animation: fadeIn 0.5s ease-in;
+}
+
+/* 帖子标题 */
+.post-title {
+    font-size: 1.2em;
+    margin-bottom: 10px;
+    text-align: left;
+    font-weight: normal;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #fff;
+}
+
+.post-tags {
+    color: #666;
+    padding: 5px 10px;
+    background-color: #f0f0f0;
+    border-radius: 20px;
+    font-size: 0.9em;
+}
+
+.post-tags-container {
+    padding: 0 18px 10px 18px;
+}
+
+/* 帖子内容样式 */
+.post-content {
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+/* 帖子发布时间样式 */
+.post-time {
+    font-size: 0.9em;
+    color: #ccc;
+    margin-left: auto;
+}
+
+/* 帖子作者样式 */
+.post-author {
+    font-size: 0.9em;
+    color: #ccc;
+    margin-right: 10px;
+}
+
+.post-content-truncated {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.section {
+    margin-bottom: 20px;
+}
+.section-title {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+    text-align: left;
+    font-weight: normal;
+    color: #fff;
+}
+.sidebar-tabs {
+    display: flex;
+    margin-bottom: 10px;
+}
+.sidebar-tab {
+    cursor: pointer;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    background-color: #f4f4f4;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+.sidebar-tab:hover {
+    background-color: #e0e0e0;
+    border-color: #bbb;
+}
+.sidebar-tab.active {
+    background-color: #fff;
+    border-bottom: 2px solid #fff;
+    border-top: 2px solid #007BFF;
+    border-left: 2px solid #007BFF;
+    border-right: 2px solid #007BFF;
+}
+.sidebar-content {
+    display: none;
+}
+.sidebar-content.active {
+    display: block;
+}
+.sidebar-links li {
+    margin-left: 20px; /* 增加缩进 */
+}
+.modal-enter {
+    opacity: 0;
+    transform: scale(0.9);
+}
+.modal-enter-active {
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+/* 新增 Fluent Design 按钮样式 */
+.pushButton {
+    background-color: #CFCFCF;
+    color: black; /* 字体颜色改为黑色 */
+    border: none;
+    border-radius: 4px; /* 圆角 */
+    padding: 6px 12px; /* 减少内边距，使按钮更小 */
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.1s ease; /* 平滑过渡 */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* 阴影 */
+}
+
+.pushButton:hover {
+    background-color: #B5B5B5; /* 悬停时颜色加深 */
+}
+
+.pushButton:active {
+    transform: translateY(1px); /* 点击时轻微下移 */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* 阴影变浅 */
+}
+
+.pushButton.primary {
+    background-color: #CFCFCF; /* 主要按钮颜色 */
+    color: black; /* 字体颜色改为黑色 */
+}
+
+.pushButton.secondary {
+    background-color: #CFCFCF; /* 次要按钮颜色改为与主要按钮一致 */
+    color: black; /* 字体颜色改为黑色 */
+}
+
+.pushButton.secondary:hover {
+    background-color: #B5B5B5; /* 次要按钮悬停颜色改为与主要按钮一致 */
+}
+
+.pushButton.secondary:active {
+    background-color: #B5B5B5; /* 次要按钮点击颜色改为与主要按钮一致 */
+}
+
+
+/* 气泡菜单样式 - Apple Liquid Glass 风格 */
+.bubble-menu {
+    background: rgba(255,255,255,0.35);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.18), 0 1.5px 8px 0 rgba(255,255,255,0.25) inset;
+    padding: 10px 0 6px 0;
+    min-width: 140px;
+    border: 1.5px solid rgba(255,255,255,0.45);
+    position: absolute;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    overflow: visible;
+}
+
+.bubble-arrow {
+    position: absolute;
+    top: -10px;
+    left: 38px;
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 12px solid rgba(255,255,255,0.35);
+    filter: drop-shadow(0 2px 8px rgba(31,38,135,0.08));
+    z-index: 1;
+    pointer-events: none;
+}
+
+.bubble-arrow::after {
+    content: '';
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 0;
+    height: 0;
+    border-left: 11px solid transparent;
+    border-right: 11px solid transparent;
+    border-bottom: 11px solid rgba(255,255,255,0.55);
+    filter: blur(1px);
+    z-index: 2;
+}
+
+.bubble-menu .block {
+    border-radius: 10px;
+    margin: 0 10px;
+}
+
+.bubble-menu .block:hover {
+    background: rgba(255,255,255,0.18);
+}
+
+.bubble-menu a {
+    text-align: center; /* 文字水平居中 */
+    padding: 8px 12px;    /* 可以适当增加内边距 */
+}
+
+/* 版权信息样式 */
+.sidebar-footer {
+    margin-top: auto; /* 将版权信息固定在侧边栏底部 */
+    text-align: center;
+    font-size: 0.8em;
+    color: #888; /* 默认灰色 */
+    padding: 10px 0;
+    cursor: default;
+    -webkit-user-select: none; /* Safari 兼容性前缀 */
+    user-select: none;
+    position: relative; /* 确保可以定位伪元素 */
+}
+
+.sidebar-footer span {
+    display: inline-block; /* 确保每个字符单独应用动画 */
+    color: #888; /* 默认颜色 */
+    animation: none; /* 默认无动画 */
+}
+
+.sidebar-footer:hover span {
+    animation: colorFade 0.75s ease-in-out forwards; /* 动画速度加快一倍 */
+}
+
+.sidebar-footer:hover {
+    animation: none; /* 禁止伪元素动画 */
+}
+
+.sidebar-footer span:nth-child(1) { animation-delay: 0s; }
+.sidebar-footer span:nth-child(2) { animation-delay: 0.05s; }
+.sidebar-footer span:nth-child(3) { animation-delay: 0.1s; }
+.sidebar-footer span:nth-child(4) { animation-delay: 0.15s; }
+.sidebar-footer span:nth-child(5) { animation-delay: 0.2s; }
+.sidebar-footer span:nth-child(6) { animation-delay: 0.25s; }
+.sidebar-footer span:nth-child(7) { animation-delay: 0.3s; }
+.sidebar-footer span:nth-child(8) { animation-delay: 0.35s; }
+.sidebar-footer span:nth-child(9) { animation-delay: 0.4s; }
+.sidebar-footer span:nth-child(10) { animation-delay: 0.45s; }
+.sidebar-footer span:nth-child(11) { animation-delay: 0.5s; }
+.sidebar-footer span:nth-child(12) { animation-delay: 0.55s; }
+.sidebar-footer span:nth-child(13) { animation-delay: 0.6s; }
+.sidebar-footer span:nth-child(14) { animation-delay: 0.65s; }
+.sidebar-footer span:nth-child(15) { animation-delay: 0.7s; }
+.sidebar-footer span:nth-child(16) { animation-delay: 0.75s; }
+.sidebar-footer span:nth-child(17) { animation-delay: 0.8s; }
+.sidebar-footer span:nth-child(18) { animation-delay: 0.85s; }
+.sidebar-footer span:nth-child(19) { animation-delay: 0.9s; }
+.sidebar-footer span:nth-child(20) { animation-delay: 0.95s; }
+.sidebar-footer span:nth-child(21) { animation-delay: 1s; }
+.sidebar-footer span:nth-child(22) { animation-delay: 1.05s; }
+.sidebar-footer span:nth-child(23) { animation-delay: 1.1s; }
+.sidebar-footer span:nth-child(24) { animation-delay: 1.15s; }
+.sidebar-footer span:nth-child(25) { animation-delay: 1.2s; }
+.sidebar-footer span:nth-child(26) { animation-delay: 1.25s; }
+.sidebar-footer span:nth-child(27) { animation-delay: 1.3s; }
+.sidebar-footer span:nth-child(28) { animation-delay: 1.35s; }
+.sidebar-footer span:nth-child(29) { animation-delay: 1.4s; }
+.sidebar-footer span:nth-child(30) { animation-delay: 1.45s; }
+.sidebar-footer span:nth-child(31) { animation-delay: 1.5s; }
+.sidebar-footer span:nth-child(32) { animation-delay: 1.55s; }
+.sidebar-footer span:nth-child(33) { animation-delay: 1.6s; }
+.sidebar-footer span:nth-child(34) { animation-delay: 1.65s; }
+
+@keyframes colorFade {
+    0%, 100% {
+        color: #888; /* 起始和结束为灰色 */
+    }
+    50% {
+        color: #000; /* 中间变为黑色 */
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.post-view-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 32px;
+    height: 32px;
+    background: rgba(255,255,255,0.85); /* 提高不透明度 */
+    border: 1.5px solid rgba(255,255,255,0.85); /* 提高边框不透明度 */
+    box-shadow: 0 4px 10px rgba(31, 38, 135, 0.2), 0 2px 12px 0 rgba(255, 255, 255, 0.2) inset;
+    backdrop-filter: blur(14px) saturate(180%);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    cursor: pointer;
+    transition: box-shadow 0.18s, border 0.18s, background 0.18s;
+    border-radius: 8px;
+    padding: 0;
+}
+.post-view-btn:hover {
+    background: rgba(255,255,255,0.95); /* 悬停时更高的不透明度 */
+    border: 1.5px solid rgba(255,255,255,0.95);
+    box-shadow: 0 6px 20px rgba(31, 38, 135, 0.35), 0 3px 16px 0 rgba(255, 255, 255, 0.35) inset;
+}
+.post-view-btn img {
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+}
+/* 新增图表标题时间样式 */
+.chart-title-time {
+    color: #fff; /* 设置文本颜色为白色 */
+}
+#version-info {
+    color: #fff; /* 设置文本颜色为白色 */
+}
+
+/* 当屏幕宽度小于768px时，服务器卡片垂直堆叠 */
+@media (max-width: 768px) {
+    #sections {
+        flex-direction: column;
+    }
+
+    .post {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+}

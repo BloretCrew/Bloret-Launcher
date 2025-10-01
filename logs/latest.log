@@ -1,91 +1,164 @@
-[16:17:06] [Datafixer Bootstrap/INFO]: 269 Datafixer optimizations took 783 milliseconds
-[16:17:14] [main/INFO]: Completely ignored arguments: [2>&1, |, findstr, /v, /i, sun.misc.not.in.java.base A.terminally.deprecated.method.in.sun.misc.Unsafe.has.been.called sun.misc.Unsafe::objectFieldOffset.has.been.called.by org.joml.MemUtil]
-[16:17:15] [Render thread/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
-[16:17:15] [Render thread/INFO]: Setting user: Detritalw
-[16:17:15] [Render thread/INFO]: [STDERR]: [LWJGL] [ThreadLocalUtil] Unsupported JNI version detected, this may result in a crash. Please inform LWJGL developers.
-[16:17:15] [Render thread/INFO]: Backend library: LWJGL version 3.3.3+5
-[16:17:16] [Render thread/INFO]: Using optional rendering extensions: GL_ARB_buffer_storage, GL_KHR_debug, GL_ARB_vertex_attrib_binding, GL_ARB_direct_state_access
-[16:17:16] [Render thread/INFO]: Reloading ResourceManager: vanilla
-[16:17:17] [Worker-Main-5/INFO]: Found unifont_all_no_pua-16.0.03.hex, loading
-[16:17:17] [Worker-Main-3/INFO]: Found unifont_pua-16.0.03.hex, loading
-[16:17:17] [Worker-Main-5/INFO]: Found unifont_jp_patch-16.0.03.hex, loading
-[16:17:19] [Render thread/INFO]: OpenAL initialized on device OpenAL Soft on 扬声器/听筒 (Realtek(R) Audio)
-[16:17:19] [Render thread/INFO]: Sound engine started
-[16:17:19] [Render thread/INFO]: Created: 1024x512x4 minecraft:textures/atlas/blocks.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 2048x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
-[16:17:19] [Render thread/INFO]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
-[16:17:33] [Render thread/INFO]: Connecting to bloret.net, 25565
-[16:17:37] [Render thread/INFO]: Connecting to bloret.net, 25565
-[16:17:39] [Render thread/INFO]: Connecting to bloret.net, 25565
-[16:19:06] [Render thread/INFO]: Connecting to bloret.net, 25565
-[16:19:12] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 2 reached during a single frame. New capacity will be 4.
-[16:19:14] [Render thread/INFO]: Loaded 1407 recipes
-[16:19:14] [Render thread/INFO]: Loaded 1520 advancements
-[16:19:15] [Server thread/INFO]: Starting integrated minecraft server version 1.21.8
-[16:19:15] [Server thread/INFO]: Generating keypair
-[16:19:22] [Server thread/INFO]: Preparing start region for dimension minecraft:overworld
-[16:19:22] [Render thread/INFO]: 准备生成区域中：2%
-[16:19:22] [Render thread/INFO]: 准备生成区域中：2%
-[16:19:23] [Render thread/INFO]: 准备生成区域中：2%
-[16:19:23] [Render thread/INFO]: 准备生成区域中：2%
-[16:19:24] [Render thread/INFO]: 准备生成区域中：2%
-[16:19:24] [Render thread/INFO]: 准备生成区域中：18%
-[16:19:25] [Render thread/INFO]: 准备生成区域中：18%
-[16:19:25] [Render thread/INFO]: 准备生成区域中：18%
-[16:19:26] [Render thread/INFO]: 准备生成区域中：51%
-[16:19:26] [Render thread/INFO]: 准备生成区域中：51%
-[16:19:27] [Render thread/INFO]: 准备生成区域中：51%
-[16:19:27] [Render thread/INFO]: 准备生成区域中：57%
-[16:19:27] [Render thread/INFO]: Time elapsed: 5634 ms
-[16:19:27] [Server thread/INFO]: Changing view distance to 12, from 10
-[16:19:27] [Server thread/INFO]: Changing simulation distance to 12, from 0
-[16:19:29] [Server thread/INFO]: Detritalw[local:E:a1280b3a] logged in with entity id 6 at (-8.5, 78.0, 4.5)
-[16:19:29] [Server thread/INFO]: Detritalw加入了游戏
-[16:19:29] [Render thread/INFO]: Loaded 2 advancements
-[16:19:30] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 4 reached during a single frame. New capacity will be 8.
-[16:19:31] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 8 reached during a single frame. New capacity will be 16.
-[16:19:31] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 16 reached during a single frame. New capacity will be 32.
-[16:19:31] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 32 reached during a single frame. New capacity will be 64.
-[16:19:31] [Server thread/INFO]: Saving and pausing game...
-[16:19:31] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 64 reached during a single frame. New capacity will be 128.
-[16:19:31] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:overworld
-[16:19:31] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:the_nether
-[16:19:31] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:the_end
-[16:19:32] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 128 reached during a single frame. New capacity will be 256.
-[16:19:33] [Server thread/INFO]: Saving and pausing game...
-[16:19:34] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:overworld
-[16:19:34] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:the_nether
-[16:19:34] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:the_end
-[16:19:35] [Server thread/INFO]: [Not Secure] <Detritalw> wa
-[16:19:35] [Render thread/INFO]: [System] [CHAT] <Detritalw> wa
-[16:19:36] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 256 reached during a single frame. New capacity will be 512.
-[16:19:39] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 512 reached during a single frame. New capacity will be 1024.
-[16:19:51] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 1024 reached during a single frame. New capacity will be 2048.
-[16:19:52] [Server thread/INFO]: Saving and pausing game...
-[16:19:52] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:overworld
-[16:19:52] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:the_nether
-[16:19:52] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:the_end
-[16:19:53] [Server thread/INFO]: Detritalw lost connection: 连接中断
-[16:19:53] [Server thread/INFO]: Detritalw退出了游戏
-[16:19:53] [Server thread/INFO]: Stopping singleplayer server as player logged out
-[16:19:53] [Server thread/INFO]: Stopping server
-[16:19:53] [Server thread/INFO]: Saving players
-[16:19:53] [Server thread/INFO]: Saving worlds
-[16:19:53] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:overworld
-[16:19:57] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:the_nether
-[16:19:57] [Server thread/INFO]: Saving chunks for level 'ServerLevel[新的世界]'/minecraft:the_end
-[16:19:57] [Server thread/INFO]: ThreadedAnvilChunkStorage (新的世界): All chunks are saved
-[16:19:57] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
-[16:19:57] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
-[16:19:57] [Server thread/INFO]: ThreadedAnvilChunkStorage: All dimensions are saved
-[16:20:25] [Render thread/INFO]: Stopping!
+[16:22:31] [Datafixer Bootstrap/INFO]: 269 Datafixer optimizations took 1381 milliseconds
+[16:22:38] [main/INFO]: Completely ignored arguments: [2>&1, |, findstr, /v, /i, sun.misc.not.in.java.base A.terminally.deprecated.method.in.sun.misc.Unsafe.has.been.called sun.misc.Unsafe::objectFieldOffset.has.been.called.by org.joml.MemUtil]
+[16:22:38] [Render thread/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[16:22:38] [Render thread/INFO]: Setting user: Detritalw
+[16:22:39] [Render thread/INFO]: [STDERR]: [LWJGL] [ThreadLocalUtil] Unsupported JNI version detected, this may result in a crash. Please inform LWJGL developers.
+[16:22:39] [Render thread/INFO]: Backend library: LWJGL version 3.3.3+5
+[16:22:40] [Render thread/INFO]: Using optional rendering extensions: GL_ARB_buffer_storage, GL_KHR_debug, GL_ARB_vertex_attrib_binding, GL_ARB_direct_state_access
+[16:22:40] [Render thread/INFO]: Reloading ResourceManager: vanilla
+[16:22:40] [Worker-Main-6/INFO]: Found unifont_pua-16.0.03.hex, loading
+[16:22:40] [Worker-Main-7/INFO]: Found unifont_all_no_pua-16.0.03.hex, loading
+[16:22:41] [Worker-Main-7/INFO]: Found unifont_jp_patch-16.0.03.hex, loading
+[16:22:42] [Render thread/INFO]: OpenAL initialized on device OpenAL Soft on 扬声器/听筒 (Realtek(R) Audio)
+[16:22:42] [Render thread/INFO]: Sound engine started
+[16:22:43] [Render thread/INFO]: Created: 1024x512x4 minecraft:textures/atlas/blocks.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 2048x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
+[16:22:43] [Render thread/INFO]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
+[16:22:46] [Render thread/INFO]: Connecting to bloret.net, 25565
+[16:22:49] [Render thread/WARN]: Ignoring player info update for unknown player f282dda0-69a9-4787-b12b-aa16a1939fc4 ([UPDATE_DISPLAY_NAME])
+[16:22:49] [Render thread/WARN]: Ignoring player info update for unknown player 76b8dc25-ae60-4092-a216-c5e6df4bd0b6 ([UPDATE_DISPLAY_NAME])
+[16:22:49] [Render thread/WARN]: Ignoring player info update for unknown player 95ac1499-ae1f-4f80-a850-6820b04813d7 ([UPDATE_DISPLAY_NAME])
+[16:22:49] [Render thread/WARN]: Ignoring player info update for unknown player db13b1ac-a453-31a1-b49f-a2ea5a46eab9 ([UPDATE_DISPLAY_NAME])
+[16:22:49] [Render thread/WARN]: Ignoring player info update for unknown player b077b4c9-e4ea-4f8b-912e-ed33dd0186ab ([UPDATE_DISPLAY_NAME])
+[16:22:49] [Render thread/WARN]: Ignoring player info update for unknown player da6acd29-f8d4-3f6c-837e-d8b51b15bb7f ([UPDATE_DISPLAY_NAME])
+[16:22:49] [Render thread/INFO]: [System] [CHAT] [+] Detritalw 加入了技艺生存
+[16:22:49] [Render thread/INFO]: Loaded 791 advancements
+[16:22:49] [Render thread/INFO]: [System] [CHAT] [签到] 你今天还没有签到! [点击此处打开签到界面]
+[16:22:49] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 2 reached during a single frame. New capacity will be 4.
+[16:22:49] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 4 reached during a single frame. New capacity will be 8.
+[16:22:50] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 8 reached during a single frame. New capacity will be 16.
+[16:22:50] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 16 reached during a single frame. New capacity will be 32.
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\ub001)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\uf800)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\ub009)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\ub003)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\ub002)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\uf813)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\uf801)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\ub01d)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 百 (\u767e)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 络 (\u7edc)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 等 (\u7b49)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 级 (\u7ea7)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character : (\u003a)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character   (\u0020)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 8 (\u0038)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\uf832)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\ub006)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\ub005)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\ub004)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\uf80e)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\ub01a)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 金 (\u91d1)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 币 (\u5e01)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 5 (\u0035)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 6 (\u0036)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 7 (\u0037)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character . (\u002e)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 9 (\u0039)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character ? (\ub017)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 琅 (\u7405)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 1 (\u0031)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 0 (\u0030)
+[16:22:50] [Render thread/WARN]: Couldn't find glyph for character 4 (\u0034)
+[16:22:50] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 32 reached during a single frame. New capacity will be 64.
+[16:22:50] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 64 reached during a single frame. New capacity will be 128.
+[16:22:50] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 128 reached during a single frame. New capacity will be 256.
+[16:22:51] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 256 reached during a single frame. New capacity will be 512.
+[16:22:51] [Download-2/WARN]: Existing file C:\Users\0570\AppData\Roaming\Bloret-Launcher\.minecraft\versions\1.21.8\downloads\ab66f096-217f-3c02-9edb-710ae7ea0824\9c8dfa60147464071ba55a7ac7aff695d4372de2 not found or had mismatched hash
+[16:22:53] [Render thread/INFO]: Resizing Dynamic Transforms UBO, capacity limit of 512 reached during a single frame. New capacity will be 1024.
+[16:22:54] [Render thread/INFO]: Reloading ResourceManager: vanilla, server/00000000/ab66f096-217f-3c02-9edb-710ae7ea0824
+[16:22:54] [Render thread/INFO]: [System] [CHAT] ? EllisGuo: 刚才有可能被吞了一部分刷怪空间
+[16:22:54] [Worker-Main-6/INFO]: Found unifont_pua-16.0.03.hex, loading
+[16:22:54] [Render thread/WARN]: Couldn't find glyph for character ? (\ub602)
+[16:22:54] [Worker-Main-7/INFO]: Found unifont_all_no_pua-16.0.03.hex, loading
+[16:22:54] [Worker-Main-6/INFO]: Found unifont_all_no_pua-16.0.03.hex, loading
+[16:22:54] [Worker-Main-7/INFO]: Found unifont_jp_patch-16.0.03.hex, loading
+[16:22:57] [Worker-Main-7/WARN]: Texture 7ludbbesh:obf/q/o/e/m/a/6/y/r/s/.../i/f/8/8/s/c/w/. with size 13x12 limits mip level from 4 to 0
+[16:22:57] [Worker-Main-7/WARN]: minecraft:textures/atlas/blocks.png: dropping miplevel from 4 to 0, because of minimum power of two: 1
+[16:22:58] [Render thread/INFO]: OpenAL initialized on device OpenAL Soft on 扬声器/听筒 (Realtek(R) Audio)
+[16:22:58] [Render thread/INFO]: Sound engine started
+[16:22:59] [Render thread/INFO]: Created: 2048x1024x0 minecraft:textures/atlas/blocks.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 2048x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
+[16:22:59] [Render thread/INFO]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
+[16:23:04] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.wood.step
+[16:23:05] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 哇哇哇
+[16:23:07] [Render thread/INFO]: [System] [CHAT] [签到] 你打开了签到菜单。
+[16:23:08] [Render thread/INFO]: [System] [CHAT] [签到] 每日签到奖励已领取。
+[16:23:08] [Render thread/INFO]: [System] [CHAT] ????????????????????????????????????????
+[16:23:08] [Render thread/INFO]: [System] [CHAT] 
+[16:23:08] [Render thread/INFO]: [System] [CHAT]   [签到] 今日签到已完成!
+[16:23:08] [Render thread/INFO]: [System] [CHAT] 
+[16:23:08] [Render thread/INFO]: [System] [CHAT]   # 您已连续签到 2 天
+[16:23:08] [Render thread/INFO]: [System] [CHAT]   # 您今天是全服第 32 个签到的玩家
+[16:23:08] [Render thread/INFO]: [System] [CHAT] 
+[16:23:08] [Render thread/INFO]: [System] [CHAT] ????????????????????????????????????????
+[16:23:08] [Render thread/INFO]: [System] [CHAT] [络琅] 您获得了 20 络琅。
+[16:23:08] [Render thread/INFO]: [System] [CHAT]                                 \n \n  百络等级提升！[ 8 -> 9 ]\n \n  等级奖励：\n    + 50 ?\n    + 30 ?\n \n                                
+[16:23:09] [Render thread/INFO]: [System] [CHAT] ? EllisGuo: 哇哇哇
+[16:23:10] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.wood.hit
+[16:23:14] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 知道吗
+[16:23:17] [Render thread/INFO]: [System] [CHAT] ? EllisGuo: 知道吗
+[16:23:17] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 我现在在
+[16:23:19] [Render thread/INFO]: [System] [CHAT] ? Detritalw: use
+[16:23:22] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.metal.fall
+[16:23:22] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.metal.step
+[16:23:28] [Render thread/INFO]: [System] [CHAT] ? Detritalw: BL 自己安装的 Minecraft
+[16:23:34] [Render thread/INFO]: [System] [CHAT] ? Detritalw: + BL 自己生成的启动命令
+[16:23:35] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.grass.fall
+[16:23:35] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.grass.step
+[16:23:37] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 进入的 Bloret
+[16:23:40] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 太好了
+[16:23:42] [Render thread/INFO]: [System] [CHAT] ? EllisGuo: 谁做的，你做的吗
+[16:23:43] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.grass.break
+[16:23:43] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 测试成功
+[16:23:47] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 恶意
+[16:23:50] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 当然
+[16:23:50] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.bamboo_wood.step
+[16:23:53] [Render thread/INFO]: [System] [CHAT] ? EllisGuo: 你真棒
+[16:23:58] [Render thread/INFO]: [System] [CHAT] ? EllisGuo: 我以后也用你的
+[16:23:59] [Render thread/INFO]: [System] [CHAT] ? Detritalw: [https://launcher.bloret.net/]
+[16:24:01] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.grass.hit
+[16:24:13] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 我在做 Bloret Launcher 8
+[16:24:29] [Render thread/INFO]: [System] [CHAT] ? EllisGuo: 快让徐皮皮拉人去
+[16:24:50] [Render thread/INFO]: [System] [CHAT] ? EllisGuo: 让大家都用你的launcher
+[16:25:12] [Render thread/INFO]: [System] [CHAT] ? EllisGuo: 你看现在国庆，就几个人在线呜呜
+[16:25:16] [Render thread/INFO]: [System] [CHAT] 你没有 elytra-使用鞘翅 权限。
+[16:25:17] [Render thread/INFO]: [System] [CHAT] ? Detritalw: dbq
+[16:25:24] [Render thread/INFO]: [System] [CHAT] [artland] (6): Jack_526923, user_0225, Detritalw, jackrobot1, electronicpairs, EllisGuo
+[16:25:24] [Render thread/INFO]: [System] [CHAT] [joycraft-bay] (7): 114poplar, Aurora_Light233, Helloshutiao, MCBig_mountain, zzzzzzcv, 11150527, Star_Chevreuse
+[16:25:24] [Render thread/INFO]: [System] [CHAT] 共有 13 名玩家已连接至此代理服务器。
+[16:25:25] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.bamboo_wood.hit
+[16:25:28] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 13 人
+[16:25:28] [Render thread/INFO]: [System] [CHAT] ? EllisGuo: 还有三个是机器人挂机
+[16:25:41] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.wooden_door.open
+[16:25:43] [Render thread/WARN]: Unable to play empty soundEvent: minecraft:block.wooden_door.close
+[16:26:18] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 原审
+[16:26:25] [Render thread/INFO]: [System] [CHAT] ? EllisGuo: 都怪米哈游
+[16:26:29] [Render thread/INFO]: [System] [CHAT] ? Detritalw: 我继续去写了
+[16:26:30] [Render thread/INFO]: [System] [CHAT] ? Detritalw: DBQ
+[16:26:33] [Render thread/INFO]: Stopping!
+[16:26:33] [Render thread/INFO]: Reloading ResourceManager: vanilla
+[16:26:33] [Worker-Main-2/INFO]: Found unifont_all_no_pua-16.0.03.hex, loading
+[16:26:33] [Worker-Main-4/INFO]: Found unifont_pua-16.0.03.hex, loading
+[16:26:34] [Worker-Main-2/INFO]: Found unifont_jp_patch-16.0.03.hex, loading

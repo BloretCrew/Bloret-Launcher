@@ -8,6 +8,7 @@ from modules.win11toast import toast, notify, update_progress
 import ctypes, re, locale, sys, logging, os, requests, json, subprocess, time, shutil
 import sip # type: ignore
 # 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 文件夹中
+import modules.web
 from modules.safe import handle_exception
 from modules.log import log
 from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart,setup_startup_with_self_starting
@@ -18,6 +19,7 @@ from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
 from modules.versions import Get_Run_Script
 from modules.i18n import i18n_widgets, i18nText
+# from modules.plugin import setup_window
 # 全局变量
 server_ip = "http://pcfs.eno.ink:2/" # Bloret Launcher Server 服务器地址 （尾部带斜杠）
 ver_id_main = []
@@ -31,12 +33,18 @@ set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面
 BL_update_text = ""
 BL_latest_ver = 0
 threads = []
-MINECRAFT_DIR = os.path.join(os.getcwd(), ".minecraft")
 icon = {'src': 'bloret.ico','placement': 'appLogoOverride'}
 minecraft_list = []
 tabbar = None
 isdarktheme = False
 LM_Download_Way_list = ["1.21.8","1.21.7"]
+
+# 读取 config.json 配置
+with open("config.json", "r", encoding="utf-8") as f:
+    config = json.load(f)
+
+# 从配置中获取 minecraft_dir
+MINECRAFT_DIR = config["minecraft_dir"]
 
 def update_download_way(data, data_list, version, minecraft):
     global LM_Download_Way, LM_Download_Way_list, LM_Download_Way_version, LM_Download_Way_minecraft
@@ -254,6 +262,9 @@ class MainWindow(FluentWindow):
             sys.stdout.reconfigure(encoding='utf-8')
         if sys.stderr:
             sys.stderr.reconfigure(encoding='utf-8')
+
+        # # 为 Plugin.py 设置 Window 参数
+        # setup_window(window)
 
         # 1. 创建启动页面
         update_progress({'value': 10 / 100, 'valueStringOverride': '1/10', 'status': i18nText('创建启动页面')})
