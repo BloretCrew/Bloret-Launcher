@@ -58,7 +58,7 @@
                 "CaptionLabel_12": "<html><head/><body><p>使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。<br/><span style=\" font-weight:700;\">IPV6 是您的运营商提供的一项免费服务，不额外收费。 </span>已拥有的用户点击上方按钮直接使用。<br/>IPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。</p></body></html>",
                 "SubtitleLabel_2": "Online Client",
                 "CaptionLabel_9": "<html><head/><body><p>Online Client 是 Bloret 的一项开源项目，可为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方无需安装 Bloret Launcher 就可一起参与联机。</span></p></body></html>",
-                "CaptionLabel_6": "联机服务 Powered by Online Client (BloretCrew) , Server PCFS  © 2025 Bloret All rights reserved."
+                "CaptionLabel_6": "聯機服務 Powered by Online Client (BloretCrew) , Server PCFS  © 2025 Bloret All rights reserved."
             },
             "buttons": {
                 "GetIPV6AddressButton": "获取 IPV6 联机地址",
@@ -69,7 +69,7 @@
             "TitleLabel": "下载",
             "Labels": {
                 "label": "我们已经在加载了...",
-                "label_4": "这可能需要一定时间，请耐心等待\n待加载完成，我们立刻显示选项\n我们通过调用绝大多数启动器使用的BMCLAPI来加载\n因此加载快慢与BMCLAPI加载快慢和您的网络有关\n若长时间加载不出或未响应，请检查网络，如果网络良好，可能是BMCLAPI问题"
+                "label_4": "這可能需要一定時間，請耐心等待\n待載入完成，我們立即顯示選項\n我們通過調用絕大多數啟動器使用的BMCLAPI來加載\n因此載入快慢與BMCLAPI載入快慢及您的網路有關\n若長時間加載不出或未響應，請檢查網絡，若網絡良好，可能是BMCLAPI問題"
             }
         },
         "download.old": {
@@ -79,7 +79,7 @@
                 "StrongBodyLabel_9": "选择下载核心",
                 "CaptionLabel_3": "Bloret Launcher 核心由百络谷自行研发，但可选项较少\nCMCL 核心可提供更多版本",
                 "CaptionLabel_2": "警告：Bloret Launcher 核心为实验性功能",
-                "Fabric_2": "Light Minecraft 下载源",
+                "Fabric_2": "Light Minecraft 下載源",
                 "Fabric_text_5": "使用 Bloret Launcher 核心时可用。\n如果下载速度过慢或失败，请尝试切换下载源。",
                 "StrongBodyLabel_6": "选择版本",
                 "CaptionLabel_4": "Bloret Launcher 核心使用 Light Minecraft 协议\n暂时仅支持百络谷支持版本进行下载。\n若要下载其他版本，请在上方选择 CMCL 核心。",
