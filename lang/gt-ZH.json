@@ -3,7 +3,7 @@
         "home": {
             "Labels": {
                 "Bloret_Launcher_Title": "菠萝谷启动器",
-                "WelcomeToUseBL": "欢迎使用百络谷 Minecraft 启动器。\n如发现任何 Bug 或有建议等，请到 Github 上提交 Issue\n也欢迎您前往 Github 页面拉取 Pull request 请求，为百络谷启动器做贡献。",
+                "WelcomeToUseBL": "您好，欢迎您来百络谷启动器！\n如果你在本启动器中找到了任何虫子，请就地掐头去尾然后用来补充蛋白质。\n当然，如果你向提点建议，那我建议你还是憋着。",
                 "Info_title": "讯号",
                 "show": "欢迎使用菠萝谷麦恩克拉夫特启动器",
                 "Welcome_text": "👋",
@@ -24,10 +24,10 @@
         "BL_download_version": {
             "TitleLabel": "菠萝谷启动器 - 让我玩麦恩克拉夫特！",
             "SubtitleLabel_2": "让我玩麦恩克拉夫特",
-            "StrongBodyLabel_5": "核心文件"
+            "StrongBodyLabel_5": "巧克力螺"
         },
         "BL_download": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下载与安装",
+            "TitleLabel": "Bloret Launcher - 下载麦恩喀拉伏特的こころ",
             "SubtitleLabel_2": "下载 Minecraft 版本核心",
             "SubtitleLabel": "下载 .minecraft 资源",
             "Labels": {
