@@ -6,17 +6,18 @@ from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime
 import requests, json, logging, os, socket
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.systems import setup_startup_with_self_starting
-from modules.log import log, importlog, clear_log_files
+from modules.log import log, clear_log_files
 from modules.Bloret_PassPort import Bloret_PassPort_Account_login,Bloret_PassPort_Account_logout
 from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
-from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder, InstallMinecraftVersion, CustomizeAdd
+from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder, InstallMinecraftVersion
 from modules.modrinth import search_mods, Get_Mod_File_Download_Url, add_mrpack
 from PyQt5.QtCore import QThread, pyqtSignal
 from modules.win11toast import notify, update_progress
 from modules.local_client import OnlineClient
 from modules.java import InstallJava
 from modules.i18n import i18nText
+from modules.customize import CustomizeAdd
 
 class DownloadDialog(MessageBoxBase):
     """ 自定义下载对话框 """
@@ -1423,12 +1424,12 @@ def setup_download_ui(self, widget):
         # 设置Minecraft版本下载按钮点击事件
         minecraft_download_button = widget.findChild(QPushButton, 'Minecraft_version_Download')
         if minecraft_download_button:
-            minecraft_download_button.clicked.connect(lambda: InstallMinecraftVersion(minecraft_version_choose.currentText()))
+            minecraft_download_button.clicked.connect(lambda: InstallMinecraftVersion(minecraft_version_choose.currentText(),None,None,False))
             
         # 设置Fabric版本下载按钮点击事件
         fabric_download_button = widget.findChild(QPushButton, 'Fabric_version_Download')
         if fabric_download_button:
-            fabric_download_button.clicked.connect(lambda: self.download_fabric_version(fabric_version_choose.currentText()))
+            fabric_download_button.clicked.connect(lambda: InstallMinecraftVersion(fabric_version_choose.currentText(),None,None,True))
             
         # 设置Java版本下载按钮点击事件
         java_download_button = widget.findChild(QPushButton, 'Java_version_Download')
@@ -1553,4 +1554,3 @@ def setup_Mod_ui(self, widget, server_ip):
         log(i18nText("未找到 Search 搜索框"), logging.ERROR)
 
 
-importlog("SETUP_UI.PY")

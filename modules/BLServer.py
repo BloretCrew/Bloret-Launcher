@@ -7,7 +7,7 @@ import threading
 import sys
 import traceback
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
-from modules.log import log, importlog
+from modules.log import log
 from modules.safe import handle_exception
 
 def check_Light_Minecraft_Download_Way(server_ip, callback=None):
@@ -25,7 +25,7 @@ def check_Light_Minecraft_Download_Way(server_ip, callback=None):
         except Exception as e:
             handle_exception(type(e), e, e.__traceback__)
             pass
-    threading.Thread(target=_inner).start()
+    threading.Thread(target=_inner, daemon=True).start()
 
 def handle_first_run(self,server_ip):
     def _inner(self, server_ip):
@@ -50,7 +50,7 @@ def handle_first_run(self,server_ip):
         shortcut.WorkingDirectory = os.getcwd()
         shortcut.IconLocation = icon
         shortcut.save()
-    t = threading.Thread(target=_inner, args=(self, server_ip))
+    t = threading.Thread(target=_inner, args=(self, server_ip), daemon=True)
     t.start()
 
 def check_Bloret_version(self,server_ip,ver_id_bloret):
@@ -70,7 +70,7 @@ def check_Bloret_version(self,server_ip,ver_id_bloret):
                 log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
         else:
             log(i18nText("本地模式已启用，获取 Bloret 版本列表 的过程已跳过。"))
-    t = threading.Thread(target=_inner, args=(self, server_ip, ver_id_bloret))
+    t = threading.Thread(target=_inner, args=(self, server_ip, ver_id_bloret), daemon=True)
     t.start()
 
 def get_latest_version(server_ip):
@@ -117,7 +117,6 @@ def check_for_updates(self,server_ip):
                 update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': i18nText('无法连接到服务器 ❌')})
         else:
             log(i18nText("本地模式已启用，检查更新 的过程已跳过。"))
-    t = threading.Thread(target=_inner, args=(self, server_ip))
+    t = threading.Thread(target=_inner, args=(self, server_ip), daemon=True)
     t.start()
 
-importlog("BLSERVER.PY")

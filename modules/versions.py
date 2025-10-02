@@ -490,16 +490,80 @@ def Change_Customize_name(self,version,label,homeInterface):
 
 
 class LibraryDownloader:
-    def __init__(self, missing_libraries, max_workers=2000):
+    def __init__(self, missing_libraries, max_workers=64):
         self.missing_libraries = missing_libraries
         self.max_workers = max_workers
         self.completed_count = 0
         self.total_count = len(missing_libraries)
+        self._active_downloads = 0
+        self._active_downloads_lock = threading.Lock()
         self.lock = threading.Lock()
         self.completed_event = threading.Event()
+        self._paused = False
+        self._pause_cond = threading.Condition(self.lock)
+
+    @property
+    def is_paused(self):
+        with self.lock:
+            return self._paused
+
+    def pause(self):
+        with self.lock:
+            self._paused = True
+            log("下载已暂停")
+
+    def resume(self):
+        with self.lock:
+            self._paused = False
+            self._pause_cond.notify_all()
+            log("下载已恢复")
         
-    def download_single_library(self, lib_item):
+    def download_single_library(self, lib_item, download_dialog=None):
+        with self.lock:
+            while self._paused:
+                self._pause_cond.wait()
         lib, lib_path = lib_item
+
+        # 如果文件已存在且大小匹配，则跳过下载
+        if os.path.exists(lib_path):
+            expected_size = lib.get("downloads", {}).get("artifact", {}).get("size")
+            if expected_size is not None:
+                actual_size = os.path.getsize(lib_path)
+                if actual_size == expected_size:
+                    log(f"库文件已存在且大小匹配，跳过下载: {lib_path}")
+                    # 增加完成计数
+                    with self.lock:
+                        self.completed_count += 1
+                    # 减少活动下载计数
+                    with self._active_downloads_lock:
+                        self._active_downloads -= 1
+                    return True # 成功跳过
+                else:
+                    log(f"库文件已存在但大小不匹配，重新下载: {lib_path} (预期: {expected_size}, 实际: {actual_size})")
+            else:
+                log(f"库文件已存在，但未提供预期大小，跳过下载: {lib_path}")
+                # 增加完成计数
+                with self.lock:
+                    self.completed_count += 1
+                # 减少活动下载计数
+                with self._active_downloads_lock:
+                    self._active_downloads -= 1
+                return True # 成功跳过
+
+        # 增加活动下载计数
+        with self._active_downloads_lock:
+            self._active_downloads += 1
+            if download_dialog:
+                try:
+                    from PyQt5.QtWidgets import QLabel
+                    from PyQt5.QtCore import QMetaObject, Qt
+                    thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
+                    if thread_label:
+                        QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
+                                               __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(self._active_downloads)))
+                except Exception as e:
+                    log(f"更新libraries_file_working_Thread时出错: {e}")
+
         try:
             # 确保目录存在
             os.makedirs(os.path.dirname(lib_path), exist_ok=True)
@@ -507,133 +571,215 @@ class LibraryDownloader:
             # 下载库文件
             if "downloads" in lib and "artifact" in lib["downloads"]:
                 artifact = lib["downloads"]["artifact"]
-                artifact_url = artifact["url"]
-                # 尝试使用BMCLAPI镜像
-                artifact_url = artifact_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/")
+                original_url = artifact["url"]
                 
-                log(f"正在下载库文件: {artifact_url} -> {lib_path}")
-                response = requests.get(artifact_url, proxies=None, timeout=30)
-                if response.status_code == 200:
-                    with open(lib_path, 'wb') as f:
-                        f.write(response.content)
-                    log(f"成功下载库文件: {lib_path}")
-                else:
-                    # 如果是403错误，尝试使用原始URL
-                    if response.status_code == 403:
-                        original_url = artifact["url"]
-                        log(f"尝试使用原始URL: {original_url}")
-                        response = requests.get(original_url, proxies=None, timeout=30)
-                        if response.status_code == 200:
-                            with open(lib_path, 'wb') as f:
-                                f.write(response.content)
-                            log(f"成功下载库文件: {lib_path}")
-                        else:
-                            # 如果原始URL也失败，尝试其他镜像源
-                            mirror_urls = [
-                                original_url,  # 官方源
-                                original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/"),  # BMCLAPI镜像
-                            ]
-                            
-                            downloaded = False
-                            for mirror_url in mirror_urls:
-                                try:
-                                    log(f"尝试镜像源: {mirror_url}")
-                                    mirror_response = requests.get(mirror_url, proxies=None, timeout=30)
-                                    if mirror_response.status_code == 200:
-                                        with open(lib_path, 'wb') as f:
-                                            f.write(mirror_response.content)
-                                        log(f"通过镜像源成功下载库文件: {lib_path}")
-                                        downloaded = True
-                                        break
-                                except Exception as e:
-                                    log(f"镜像源下载失败 {mirror_url}: {str(e)}", logging.WARNING)
-                                    continue
-                            
-                            if not downloaded:
-                                log(f"所有镜像源都下载失败: {lib_path}", logging.ERROR)
+                candidate_urls = []
+                # 优先添加原始 URL
+                candidate_urls.append(original_url)
+                
+                # 如果原始 URL 是 Minecraft 官方库，添加 BMCLAPI 镜像
+                if "libraries.minecraft.net" in original_url:
+                    candidate_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/"))
+                # 如果原始 URL 是 Fabric Maven 库，添加 BMCLAPI 镜像
+                elif "maven.fabricmc.net" in original_url:
+                    candidate_urls.append(original_url.replace("https://maven.fabricmc.net/", "https://bmclapi2.bangbang93.com/maven/"))
+
+                downloaded = False
+                for url_to_try in candidate_urls:
+                    for attempt in range(3): # 尝试3次
+                        try:
+                            log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
+                            response = requests.get(url_to_try, proxies=None, timeout=30)
+                            if response.status_code == 200:
+                                with open(lib_path, 'wb') as f:
+                                    f.write(response.content)
+                                log(f"成功下载库文件: {lib_path}")
+                                downloaded = True
+                                break # 成功下载，跳出重试循环
+                            else:
+                                log(f"下载失败 (HTTP {response.status_code}) (尝试 {attempt + 1}/3): {url_to_try}", logging.WARNING)
+                        except requests.exceptions.RequestException as e:
+                            log(f"下载异常 (尝试 {attempt + 1}/3) {url_to_try}: {str(e)}", logging.WARNING)
+                        except Exception as e:
+                            log(f"未知下载错误 (尝试 {attempt + 1}/3) {url_to_try}: {str(e)}", logging.WARNING)
+                        time.sleep(1) # 等待1秒后重试
+                    if downloaded: # 如果已下载，跳出URL循环
+                        break
+                
+                if not downloaded:
+                    log(f"所有镜像源和重试都下载失败: {lib_path}", logging.ERROR)
+                    return False
             elif "name" in lib:
                 # 处理 Maven 风格的库名称
                 parts = lib["name"].split(":")
                 if len(parts) >= 3:
                     group_id, artifact_id, version = parts[0:3]
-                    # 构建下载URL
-                    download_url = f"https://bmclapi2.bangbang93.com/maven/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar"
-                    log(f"正在下载库文件: {download_url} -> {lib_path}")
-                    response = requests.get(download_url, proxies=None, timeout=30)
-                    if response.status_code == 200:
-                        with open(lib_path, 'wb') as f:
-                            f.write(response.content)
-                        log(f"成功下载库文件: {lib_path}")
-                    else:
-                        # 尝试其他镜像源
-                        mirror_urls = [
-                            f"https://libraries.minecraft.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar",  # 官方源
-                            f"https://bmclapi2.bangbang93.com/maven/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar",  # BMCLAPI镜像
-                        ]
-                        
-                        downloaded = False
-                        for mirror_url in mirror_urls:
+                    
+                    candidate_urls = [
+                        f"https://maven.fabricmc.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar", # Fabric Maven
+                        f"https://bmclapi2.bangbang93.com/maven/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar",  # BMCLAPI镜像
+                        f"https://libraries.minecraft.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar",  # 官方源
+                    ]
+
+                    downloaded = False
+                    for url_to_try in candidate_urls:
+                        for attempt in range(3): # 尝试3次
                             try:
-                                log(f"尝试镜像源: {mirror_url}")
-                                mirror_response = requests.get(mirror_url, proxies=None, timeout=30)
-                                if mirror_response.status_code == 200:
+                                log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
+                                response = requests.get(url_to_try, proxies=None, timeout=30)
+                                if response.status_code == 200:
                                     with open(lib_path, 'wb') as f:
-                                        f.write(mirror_response.content)
-                                    log(f"通过镜像源成功下载库文件: {lib_path}")
+                                        f.write(response.content)
+                                    log(f"成功下载库文件: {lib_path}")
                                     downloaded = True
-                                    break
+                                    break # 成功下载，跳出重试循环
+                                else:
+                                    log(f"下载失败 (HTTP {response.status_code}) (尝试 {attempt + 1}/3): {url_to_try}", logging.WARNING)
+                            except requests.exceptions.RequestException as e:
+                                log(f"下载异常 (尝试 {attempt + 1}/3) {url_to_try}: {str(e)}", logging.WARNING)
                             except Exception as e:
-                                log(f"镜像源下载失败 {mirror_url}: {str(e)}", logging.WARNING)
-                                continue
-                        
-                        if not downloaded:
-                            log(f"所有镜像源都下载失败: {lib_path}", logging.ERROR)
+                                log(f"未知下载错误 (尝试 {attempt + 1}/3) {url_to_try}: {str(e)}", logging.WARNING)
+                            time.sleep(1) # 等待1秒后重试
+                        if downloaded: # 如果已下载，跳出URL循环
+                            break
+                    
+                    if not downloaded:
+                        log(f"所有镜像源和重试都下载失败: {lib_path}", logging.ERROR)
+                        return False
             
             # 更新完成计数
             with self.lock:
                 self.completed_count += 1
-                
-            # 更新进度通知
-            notify(progress={
-                'title': i18nText('Minecraft 库文件补全'),
-                'status': f'正在下载: {os.path.basename(lib_path)}',
-                'value': self.completed_count / self.total_count,
-                'valueStringOverride': f'{self.completed_count}/{self.total_count}'
-            })
+                if download_dialog:
+                    try:
+                        from PyQt5.QtWidgets import QProgressBar, QLabel
+                        from PyQt5.QtCore import QMetaObject, Qt
+                        lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
+                        if lib_progress_bar:
+                            progress_value = int((self.completed_count / self.total_count) * 100)
+                            QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
+                                                   __import__('PyQt5.QtCore').QtCore.Q_ARG(int, progress_value))
+                    except Exception as e:
+                        log(f"更新libraries_progress时出错: {e}")
+            return True # 成功下载
         except Exception as e:
             log(f"下载库文件失败 {lib_path}: {str(e)}", logging.WARNING)
             # 更新完成计数（即使失败也计数）
             with self.lock:
                 self.completed_count += 1
+        finally:
+            # 减少活动下载计数
+            with self._active_downloads_lock:
+                self._active_downloads -= 1
+                if download_dialog:
+                    try:
+                        from PyQt5.QtWidgets import QLabel
+                        from PyQt5.QtCore import QMetaObject, Qt
+                        thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
+                        if thread_label:
+                            QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
+                                                   __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(self._active_downloads)))
+                    except Exception as e:
+                        log(f"更新libraries_file_working_Thread时出错: {e}")
     
-    def download_libraries(self):
-        # 显示初始通知
-        notify(progress={
-            'title': i18nText('Minecraft 库文件补全'),
-            'status': i18nText('正在补全缺失的库文件...'),
-            'value': 0,
-            'valueStringOverride': f'0/{self.total_count}'
-        })
+    def download_libraries(self, download_dialog=None):
+        if download_dialog:
+            try:
+                from PyQt5.QtWidgets import QProgressBar, QLabel
+                from PyQt5.QtCore import QMetaObject, Qt
+                lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
+                thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
+                if lib_progress_bar:
+                    QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
+                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(int, 0))
+                if thread_label:
+                    QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
+                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(str, "0"))
+            except Exception as e:
+                log(f"初始化libraries_progress或libraries_file_working_Thread时出错: {e}")
         
         log(f"使用 {self.max_workers} 个线程下载库文件")
         
         # 使用线程池并发下载
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = [executor.submit(self.download_single_library, lib_item) for lib_item in self.missing_libraries]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="LibraryDownloader") as executor:
+            futures = [executor.submit(self.download_single_library, lib_item, download_dialog) for lib_item in self.missing_libraries]
             # 等待所有下载完成
             concurrent.futures.wait(futures)
         
+        all_downloads_successful = True
+        for future in futures:
+            if not future.result():
+                all_downloads_successful = False
+                break
+
+        if not all_downloads_successful:
+            log("Fabric Loader 库文件下载失败", logging.ERROR)
+            # 这里可以添加更多的错误处理逻辑，例如抛出异常或返回错误状态
+            return False
+
         # 显示完成通知
-        notify(progress={
-            'title': i18nText('Minecraft 库文件补全完成'),
-            'status': f'已完成: {self.completed_count}/{self.total_count} 个文件',
-            'value': 1,
-            'valueStringOverride': f'{self.completed_count}/{self.total_count}'
-        })
+        if download_dialog:
+            try:
+                from PyQt5.QtWidgets import QProgressBar, QLabel
+                from PyQt5.QtCore import QMetaObject, Qt
+                lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
+                thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
+                if lib_progress_bar:
+                    QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
+                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(int, 100))
+                if thread_label:
+                    QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
+                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(str, "0"))
+            except Exception as e:
+                log(f"更新libraries_progress或libraries_file_working_Thread时出错: {e}")
         
         # 设置完成事件
         self.completed_event.set()
 
+    def download_file(self, url, file_path):
+        """
+        下载单个文件的辅助函数
+        """
+        try:
+            # 确保目录存在
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            
+            log(f"正在下载文件: {url} -> {file_path}")
+            response = requests.get(url, timeout=30)
+            if response.status_code == 200:
+                with open(file_path, 'wb') as f:
+                    f.write(response.content)
+                log(f"成功下载文件: {file_path}")
+                return True
+            else:
+                log(f"下载文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
+                return False
+        except Exception as e:
+            log(f"下载文件失败 {url}: {str(e)}", logging.ERROR)
+            return False
+
+# 添加全局的download_file函数，供Fabric Loader安装使用
+def download_file(url, file_path):
+    """
+    全局下载单个文件的辅助函数，供Fabric Loader安装使用
+    """
+    try:
+        # 确保目录存在
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
+        log(f"正在下载文件: {url} -> {file_path}")
+        response = requests.get(url, timeout=30)
+        if response.status_code == 200:
+            with open(file_path, 'wb') as f:
+                f.write(response.content)
+            log(f"成功下载文件: {file_path}")
+            return True
+        else:
+            log(f"下载文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
+            return False
+    except Exception as e:
+        log(f"下载文件失败 {url}: {str(e)}", logging.ERROR)
+        return False
 
 def Get_Run_Script(version):
     """
@@ -923,7 +1069,6 @@ def Get_Run_Script(version):
                 # 其他 Fabric 相关库
                 elif "fabric" in lib_name or "mixin" in lib_name:
                     fabric_libs.append(lib_path)
-                
             # 记录找到的库
             if lib_path and os.path.exists(lib_path):
                 log(f"已添加库: {lib_path}")
@@ -1107,7 +1252,7 @@ def Get_Run_Script(version):
     log(f"生成的启动命令: {bat_command}")
     return bat_command
 
-def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None):
+def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False):
     # 如果没有提供下载对话框，则创建并显示一个新的
     if download_dialog is None:
         try:
@@ -1117,8 +1262,15 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None):
             
             download_dialog = QDialog()
             uic.loadUi("ui/MCVer_downloading.ui", download_dialog)
-            download_dialog.setWindowTitle(f"正在下载 Minecraft {version}")
-            
+            title_text = f"正在下载 Minecraft {version}"
+            if Fabric_Loader:
+                title_text += " 和 Fabric Loader"
+            download_dialog.setWindowTitle(title_text)
+
+            # 连接暂停按钮
+            if hasattr(download_dialog, 'pause_button'):
+                download_dialog.pause_button.clicked.connect(lambda: toggle_pause_download(download_dialog))
+
             # 设置MaxThread的值
             try:
                 with open("config.json", "r", encoding="utf-8") as f:
@@ -1136,16 +1288,28 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None):
             download_dialog = None
     
     from threading import Thread
-    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir, download_dialog))
+    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir, download_dialog, Fabric_Loader))
     thread.start()
 
-def _install_minecraft_version_threaded(version, minecraft_dir=None, download_dialog=None):
+def toggle_pause_download(download_dialog):
+    if hasattr(download_dialog, 'downloader') and download_dialog.downloader is not None:
+        downloader = download_dialog.downloader
+        if downloader.is_paused:
+            downloader.resume()
+            download_dialog.pause_button.setText(i18nText("暂停"))
+        else:
+            downloader.pause()
+            download_dialog.pause_button.setText(i18nText("恢复下载"))
+
+def _install_minecraft_version_threaded(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False):
     '''
-    下载并安装指定版本的 Minecraft
+    下载并安装指定版本的 Minecraft，可选安装 Fabric Loader
     
     Args:
         version (str): 要安装的 Minecraft 版本，例如 "1.21.8"
         minecraft_dir (str, optional): Minecraft 安装目录。如果未提供，默认为 %appdata%/Bloret-Launcher/.minecraft
+        download_dialog (QDialog, optional): 下载进度对话框
+        Fabric_Loader (bool, optional): 是否安装 Fabric Loader，默认为 False
     
     Returns:
         bool: 安装成功返回True，失败返回False
@@ -1180,6 +1344,12 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             'valueStringOverride': '10%',
             'status': i18nText('正在获取版本清单...')
         })
+
+        # 创建 LibraryDownloader 实例
+        # 假设 missing_libraries 在后续步骤中获取
+        # 这里先创建一个空的，后续再更新
+
+
         
         # 定义版本清单URL列表，使用PCL风格的镜像源处理
         manifest_urls = dl_source_launcher_or_meta_get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
@@ -1434,6 +1604,32 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             log(i18nText("版本信息中未找到客户端下载链接"), logging.ERROR)
             return False
 
+        # 加载 config.json 文件
+        with open("config.json", "r", encoding="utf-8") as f:
+            config = json.load(f)
+        # 创建 LibraryDownloader 实例
+        max_thread_value = config.get("MaxThread", 2000)
+        # 处理主版本库文件
+        processed_libraries = []
+        if "libraries" in version_data:
+            for lib in version_data["libraries"]:
+                if "name" in lib:
+                    parts = lib["name"].split(":")
+                    if len(parts) == 3:
+                        group = parts[0].replace(".", "/")
+                        artifact = parts[1]
+                        version_lib = parts[2]
+                        lib_filename = f"{artifact}-{version_lib}.jar"
+                        lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
+                        processed_libraries.append((lib, lib_path))
+                    else:
+                        log(f"无法解析库名称: {lib["name"]}", logging.WARNING)
+                else:
+                    log(f"库缺少 'name' 字段: {lib}", logging.WARNING)
+
+        if download_dialog is not None and processed_libraries:
+            download_dialog.downloader = LibraryDownloader(processed_libraries, max_workers=max_thread_value)
+
         # 创建natives目录
         natives_dir = os.path.join(version_dir, f"{version}-natives")
         os.makedirs(natives_dir, exist_ok=True)
@@ -1447,278 +1643,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         libraries_dir = os.path.join(minecraft_dir, "libraries")
         os.makedirs(libraries_dir, exist_ok=True)
 
-        if "libraries" in version_data:
-            log(f"开始下载库文件，共 {len(version_data['libraries'])} 个")
-
-            # 用于跟踪活动下载线程数的变量
-            active_downloads = 0
-            active_downloads_lock = threading.Lock()
-
-            def _download_single_library(lib):
-                nonlocal active_downloads
-                # 增加活动下载计数
-                with active_downloads_lock:
-                    active_downloads += 1
-                    # 更新活动线程数显示
-                    if download_dialog:
-                        try:
-                            from PyQt5.QtWidgets import QLabel
-                            # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                            from PyQt5.QtCore import QMetaObject, Qt
-                            thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
-                            if thread_label:
-                                QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                                       __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
-                        except Exception as e:
-                            log(f"更新libraries_file_working_Thread时出错: {e}")
-
-                try:
-                    # 检查库是否适用于当前系统
-                    should_download = True
-                    if "rules" in lib:
-                        should_download = False
-                        for rule in lib["rules"]:
-                            if rule.get("action") == "allow":
-                                os_rule = rule.get("os", {})
-                                if not os_rule or (os_rule.get("name", "").lower() == platform.system().lower() or
-                                                  (os_rule.get("name") == "windows" and platform.system() == "Windows") or
-                                                  (os_rule.get("name") == "osx" and platform.system() == "Darwin") or
-                                                  (os_rule.get("name") == "linux" and platform.system() == "Linux")):
-                                    should_download = True
-                                    break
-
-                    if should_download and "downloads" in lib:
-                        # 下载artifact
-                        if "artifact" in lib["downloads"]:
-                            artifact = lib["downloads"]["artifact"]
-                            artifact_path = os.path.join(libraries_dir, artifact["path"])
-                            artifact_dir = os.path.dirname(artifact_path)
-                            os.makedirs(artifact_dir, exist_ok=True)
-
-                            artifact_url = artifact["url"]
-                            # 使用PCL风格的镜像源处理
-                            artifact_urls = dl_source_library_get(artifact_url)
-
-                            if not os.path.exists(artifact_path):
-                                log(f"正在下载库文件: {artifact_urls} -> {artifact_path}")
-                                download_success = False
-                                for attempt in range(3): # 重试3次
-                                    for url in artifact_urls:
-                                        try:
-                                            log(f"正在下载库文件: {url}")
-                                            response = requests.get(url, proxies=None, timeout=30)
-                                            if response.status_code == 200:
-                                                with open(artifact_path, 'wb') as f:
-                                                    f.write(response.content)
-                                                download_success = True
-                                                break # 成功则跳出循环
-                                            else:
-                                                log(f"下载库文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
-                                                # 如果是403错误，尝试使用原始URL
-                                                if response.status_code == 403:
-                                                    original_url = artifact["url"]
-                                                    log(f"尝试使用原始URL: {original_url}")
-                                                    response = requests.get(original_url, proxies=None, timeout=30)
-                                                    if response.status_code == 200:
-                                                        with open(artifact_path, 'wb') as f:
-                                                            f.write(response.content)
-                                                        download_success = True
-                                                        break
-                                        except requests.exceptions.ConnectionError as e:
-                                            log(f"网络连接错误，正在重试 (第 {attempt + 1} 次): {url}, 错误: {e}", logging.WARNING)
-                                            # 尝试使用HTTP协议
-                                            try:
-                                                http_url = url.replace("https://", "http://")
-                                                log(f"尝试使用HTTP协议: {http_url}")
-                                                with requests.Session() as session:
-                                                    response = session.get(http_url, stream=True, timeout=30)
-                                                    if response.status_code == 200:
-                                                        with open(artifact_path, 'wb') as f:
-                                                            for chunk in response.iter_content(chunk_size=8192):
-                                                                if chunk:
-                                                                    f.write(chunk)
-                                                        download_success = True
-                                                        break
-                                            except requests.exceptions.ConnectionError as e2:
-                                                log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
-                                            except requests.exceptions.RequestException as e:
-                                                log(f"下载库文件时发生网络请求错误，正在重试 (第 {attempt + 1} 次): {url}, 错误: {e}", logging.WARNING)
-                                        
-                                        if download_success:
-                                            break
-                                    
-                                    if download_success:
-                                        break
-                                    
-                                    # 等待1秒后重试
-                                    time.sleep(1)
-                                
-                                if not download_success:
-                                    log(f"所有库文件URL都下载失败: {artifact_path}", logging.ERROR)
-
-                        # 下载natives
-                        if "classifiers" in lib["downloads"]:
-                            classifiers = lib["downloads"]["classifiers"]
-                            native_key = None
-
-                            if platform.system() == "Windows" and "natives-windows" in classifiers:
-                                native_key = "natives-windows"
-                            elif platform.system() == "Darwin" and "natives-macos" in classifiers:
-                                native_key = "natives-macos"
-                            elif platform.system() == "Linux" and "natives-linux" in classifiers:
-                                native_key = "natives-linux"
-
-                            if native_key and native_key in classifiers:
-                                native = classifiers[native_key]
-                                native_path = os.path.join(libraries_dir, lib["downloads"]["artifact"]["path"].replace(".jar", f"-{native_key}.jar"))
-                                native_dir = os.path.dirname(native_path)
-                                os.makedirs(native_dir, exist_ok=True)
-
-                                native_url = native["url"]
-                                # 使用PCL风格的镜像源处理
-                                native_urls = dl_source_library_get(native_url)
-
-                                if not os.path.exists(native_path):
-                                    log(f"正在下载native库文件: {native_urls}")
-                                    download_success = False
-                                    for attempt in range(3): # 重试3次
-                                        for url in native_urls:
-                                            try:
-                                                log(f"正在下载native库文件: {url}")
-                                                # 使用Session来更好地管理连接
-                                                with requests.Session() as session:
-                                                    response = session.get(url, stream=True, timeout=30)
-                                                    if response.status_code == 200:
-                                                        with open(native_path, 'wb') as f:
-                                                            # 使用固定大小的块进行流式写入，避免内存占用过高
-                                                            for chunk in response.iter_content(chunk_size=8192):
-                                                                if chunk:
-                                                                    f.write(chunk)
-                                                        download_success = True
-                                                        break # 成功则跳出循环
-                                                    else:
-                                                        log(f"下载native库文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
-                                                        # 如果是403错误，尝试使用原始URL
-                                                        if response.status_code == 403:
-                                                            original_url = native["url"]
-                                                            log(f"尝试使用原始URL: {original_url}")
-                                                            with requests.Session() as session:
-                                                                response = session.get(original_url, stream=True, timeout=30)
-                                                                if response.status_code == 200:
-                                                                    with open(native_path, 'wb') as f:
-                                                                        for chunk in response.iter_content(chunk_size=8192):
-                                                                            if chunk:
-                                                                                f.write(chunk)
-                                                                    download_success = True
-                                                                    break
-                                            except requests.exceptions.ConnectionError as e:
-                                                log(f"网络连接错误，正在重试 (第 {attempt + 1} 次): {url}, 错误: {e}", logging.WARNING)
-                                                # 尝试使用HTTP协议
-                                                try:
-                                                    http_url = url.replace("https://", "http://")
-                                                    log(f"尝试使用HTTP协议: {http_url}")
-                                                    with requests.Session() as session:
-                                                        response = session.get(http_url, stream=True, timeout=30)
-                                                        if response.status_code == 200:
-                                                            with open(native_path, 'wb') as f:
-                                                                for chunk in response.iter_content(chunk_size=8192):
-                                                                    if chunk:
-                                                                        f.write(chunk)
-                                                            download_success = True
-                                                            break
-                                                except requests.exceptions.ConnectionError as e2:
-                                                    log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
-                                            except requests.exceptions.RequestException as e:
-                                                log(f"下载native库文件时发生网络请求错误，正在重试 (第 {attempt + 1} 次): {url}, 错误: {e}", logging.WARNING)
-                                            
-                                            if download_success:
-                                                break
-                                        
-                                        if download_success:
-                                            break
-                                        
-                                        # 等待1秒后重试
-                                        time.sleep(1)
-                                    
-                                    if not download_success:
-                                        log(f"所有native库文件URL都下载失败: {native_path}", logging.ERROR)
-                except Exception as e:
-                    log(f"处理库文件时出错: {e}", logging.ERROR)
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    handle_exception(exc_type, exc_value, exc_traceback)
-                finally:
-                    # 减少活动下载计数
-                    with active_downloads_lock:
-                        active_downloads -= 1
-                        # 更新活动线程数显示
-                        if download_dialog:
-                            try:
-                                from PyQt5.QtWidgets import QLabel
-                                # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                                from PyQt5.QtCore import QMetaObject, Qt
-                                thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
-                                if thread_label:
-                                    QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
-                            except Exception as e:
-                                log(f"更新libraries_file_working_Thread时出错: {e}")
-
-            # 从 config.json 读取 MaxThread
-            try:
-                with open('config.json', 'r', encoding='utf-8') as f:
-                    config_data = json.load(f)
-                max_workers = config_data.get("MaxThread", 64)
-            except Exception:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                handle_exception(exc_type, exc_value, exc_traceback)
-                max_workers = 64 # 读取失败时使用默认值64
-
-            log(f"使用 {max_workers} 个线程下载库文件")
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(_download_single_library, lib) for lib in version_data["libraries"]]
-                total_libs = len(futures)
-                
-                # 更新库文件进度条
-                if download_dialog:
-                    try:
-                        from PyQt5.QtWidgets import QProgressBar
-                        # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                        from PyQt5.QtCore import QMetaObject, Qt
-                        lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
-                        if lib_progress_bar:
-                            QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
-                                                   __import__('PyQt5.QtCore').QtCore.Q_ARG(int, 0))
-                    except Exception as e:
-                        log(f"初始化libraries_progress时出错: {e}")
-                
-                completed = 0
-                for future in concurrent.futures.as_completed(futures):
-                    try:
-                        future.result() # 获取结果以捕获异常
-                    except Exception:
-                        exc_type, exc_value, exc_traceback = sys.exc_info()
-                        handle_exception(exc_type, exc_value, exc_traceback)
-                    finally:
-                        completed += 1
-                        # 更新库文件进度条
-                        if download_dialog:
-                            try:
-                                from PyQt5.QtWidgets import QProgressBar
-                                # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                                from PyQt5.QtCore import QMetaObject, Qt
-                                lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
-                                if lib_progress_bar:
-                                    progress_value = int((completed / total_libs) * 100)
-                                    QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
-                                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(int, progress_value))
-                            except Exception as e:
-                                log(f"更新libraries_progress时出错: {e}")
-                
-                # 等待所有任务完成
-                try:
-                    concurrent.futures.wait(futures, timeout=30)
-                except Exception as e:
-                    log(f"等待库文件下载完成时出错: {e}")
+        if download_dialog is not None and download_dialog.downloader is not None:
+            download_dialog.downloader.download_libraries(download_dialog)
         
         # 下载资源索引，使用PCL风格的镜像源处理
         if "assetIndex" in version_data:
@@ -1909,7 +1835,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 })
                 
                 # 创建线程池
-                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="AssetsDownloader") as executor:
                     # 提交所有下载任务
                     future_to_asset = {executor.submit(download_asset, asset_name, asset_info): asset_name 
                                       for asset_name, asset_info in asset_index_data["objects"].items()}
@@ -1982,10 +1908,187 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 if failed_count > 0:
                     log(f"有 {failed_count} 个资源文件下载失败，但不影响游戏运行", logging.WARNING)
         
+        # 如果需要安装Fabric Loader
+        if Fabric_Loader:
+            log(f"开始安装 Fabric Loader 到 Minecraft {version}")
+            update_progress({
+                'status': f'正在安装 Fabric Loader...',
+                'value': 0.9,
+                'valueStringOverride': '90%'
+            })
+            
+            # 获取最新的Fabric Loader版本
+            try:
+                # 获取Fabric Loader版本列表
+                fabric_api_url = "https://meta.fabricmc.net/v2/versions/loader/" + version
+                log(f"正在获取Fabric Loader版本列表: {fabric_api_url}")
+                
+                fabric_response = requests.get(fabric_api_url, timeout=30)
+                if fabric_response.status_code != 200:
+                    log(f"获取Fabric Loader版本列表失败: HTTP {fabric_response.status_code}", logging.ERROR)
+                    raise Exception(f"获取Fabric Loader版本列表失败: HTTP {fabric_response.status_code}")
+                
+                fabric_versions = fabric_response.json()
+                if not fabric_versions:
+                    log(f"未找到适用于 Minecraft {version} 的 Fabric Loader 版本", logging.ERROR)
+                    raise Exception(f"未找到适用于 Minecraft {version} 的 Fabric Loader 版本")
+                
+                # 获取最新版本
+                latest_fabric = fabric_versions[0]
+                loader_version = latest_fabric["loader"]["version"]
+                
+                log(f"找到最新的 Fabric Loader 版本: {loader_version}")
+                
+                # 构建Fabric版本的安装路径
+                fabric_version_id = f"{version}-fabric-{loader_version}"
+                fabric_version_dir = os.path.join(versions_dir, fabric_version_id)
+                os.makedirs(fabric_version_dir, exist_ok=True)
+                
+                # 获取Fabric安装JSON
+                fabric_json_url = f"https://meta.fabricmc.net/v2/versions/loader/{version}/{loader_version}/profile/json"
+                log(f"正在获取Fabric安装JSON: {fabric_json_url}")
+
+                fabric_json_response = requests.get(fabric_json_url, timeout=30)
+                if fabric_json_response.status_code != 200:
+                    log(f"获取Fabric安装JSON失败: HTTP {fabric_json_response.status_code}", logging.ERROR)
+                    raise Exception(f"获取Fabric安装JSON失败: HTTP {fabric_json_response.status_code}")
+
+                fabric_json_data = fabric_json_response.json()
+                fabric_json_path = os.path.join(fabric_version_dir, f"{fabric_version_id}.json")
+                with open(fabric_json_path, 'w', encoding='utf-8') as f:
+                    json.dump(fabric_json_data, f, ensure_ascii=False, indent=4)
+                log(f"已保存Fabric安装JSON: {fabric_json_path}")
+
+                # 下载Fabric Loader所需的库文件
+                update_progress({
+                    'status': f'正在下载 Fabric Loader 库文件...',
+                    'value': 0.92,
+                    'valueStringOverride': '92%'
+                })
+                log(f"开始下载 Fabric Loader 库文件...")
+
+                fabric_libraries = fabric_json_data.get("libraries", [])
+                
+                processed_fabric_libraries = []
+                for lib in fabric_libraries:
+                    if "name" in lib:
+                        parts = lib["name"].split(":")
+                        if len(parts) == 3:
+                            group = parts[0].replace(".", "/")
+                            artifact = parts[1]
+                            version_lib = parts[2]
+                            lib_filename = f"{artifact}-{version_lib}.jar"
+                            lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
+                            processed_fabric_libraries.append((lib, lib_path))
+                        else:
+                            log(f"无法解析库名称: {lib["name"]}", logging.WARNING)
+                    else:
+                        log(f"库缺少 'name' 字段: {lib}", logging.WARNING)
+
+                if processed_fabric_libraries:
+                    library_downloader = LibraryDownloader(
+                        processed_fabric_libraries,
+                        max_workers=max_thread_value
+                    )
+                    if not library_downloader.download_libraries(download_dialog=download_dialog):
+                        log("Fabric Loader 库文件下载失败", logging.ERROR)
+                        raise Exception("Fabric Loader 库文件下载失败")
+                    log("Fabric Loader 库文件下载完成")
+                else:
+                    log("未找到 Fabric Loader 库文件", logging.WARNING)
+
+                # 修改版本隔离文件
+                # 复制原始版本JSON文件
+                original_version_json_path = os.path.join(version_dir, f"{version}.json")
+                shutil.copy(original_version_json_path, fabric_version_dir)
+
+                # 修改Fabric版本JSON文件
+                fabric_json_data["id"] = fabric_version_id
+                fabric_json_data["inheritsFrom"] = version
+                fabric_json_data["jar"] = version
+
+                with open(fabric_json_path, 'w', encoding='utf-8') as f:
+                    json.dump(fabric_json_data, f, ensure_ascii=False, indent=4)
+                log(f"已修改Fabric版本JSON文件: {fabric_json_path}")
+
+                update_progress({
+                    'status': f'Fabric Loader 安装完成!',
+                    'value': 1,
+                    'valueStringOverride': '100%'
+                })
+                log(f"Fabric Loader 安装完成到 {fabric_version_id}")
+                
+                fabric_json_response = requests.get(fabric_json_url, timeout=30)
+                if fabric_json_response.status_code != 200:
+                    log(f"获取Fabric安装JSON失败: HTTP {fabric_json_response.status_code}", logging.ERROR)
+                    raise Exception(f"获取Fabric安装JSON失败: HTTP {fabric_json_response.status_code}")
+                
+                fabric_json = fabric_json_response.json()
+                
+                # 保存Fabric版本JSON
+                fabric_json_path = os.path.join(fabric_version_dir, f"{fabric_version_id}.json")
+                with open(fabric_json_path, 'w', encoding='utf-8') as f:
+                    json.dump(fabric_json, f, ensure_ascii=False, indent=4)
+                
+                log(f"已保存Fabric版本JSON: {fabric_json_path}")
+                
+                # 下载Fabric所需的库文件
+                update_progress({
+                    'status': f'正在下载Fabric库文件...',
+                    'value': 0.95,
+                    'valueStringOverride': '95%'
+                })
+                
+                # 获取Fabric所需的库文件列表
+                libraries = fabric_json.get("libraries", [])
+                log(f"Fabric需要下载 {len(libraries)} 个库文件")
+                
+                # 下载库文件
+                with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                    future_to_lib = {}
+                    for lib in libraries:
+                        if "downloads" in lib and "artifact" in lib["downloads"]:
+                            artifact = lib["downloads"]["artifact"]
+                            lib_path = os.path.join(minecraft_dir, "libraries", artifact["path"])
+                            lib_url = artifact["url"]
+                            
+                            # 确保目录存在
+                            os.makedirs(os.path.dirname(lib_path), exist_ok=True)
+                            
+                            # 如果文件不存在或大小不匹配，则下载
+                            if not os.path.exists(lib_path) or os.path.getsize(lib_path) != artifact.get("size", 0):
+                                # 使用全局函数替换类方法调用
+                                future_to_lib[executor.submit(download_file, lib_url, lib_path)] = lib_path
+                    
+                    # 等待所有库文件下载完成
+                    for future in concurrent.futures.as_completed(future_to_lib):
+                        lib_path = future_to_lib[future]
+                        try:
+                            future.result()
+                            log(f"成功下载库文件: {lib_path}")
+                        except Exception as e:
+                            log(f"下载库文件失败: {lib_path}, {e}", logging.ERROR)
+                
+                log(f"Fabric Loader {loader_version} 安装完成")
+                update_progress({
+                    'status': f'Fabric Loader {loader_version} 安装完成!',
+                    'value': 1.0,
+                    'valueStringOverride': '100%'
+                })
+                
+            except Exception as e:
+                log(f"安装 Fabric Loader 失败: {e}", logging.ERROR)
+                # 即使Fabric安装失败，原版Minecraft仍然安装成功
+                update_progress({
+                    'status': f'Minecraft 版本 {version} 安装完成，但 Fabric Loader 安装失败!',
+                    'value': 1.0
+                })
+                return True
+        
         log(f"Minecraft 版本 {version} 安装完成")
         update_progress({
             'status': f'Minecraft 版本 {version} 安装完成!',
-            'value': 100
+            'value': 1.0
         })
         return True
         
@@ -2001,185 +2104,3 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 download_dialog.close()
             except Exception as e:
                 log(f"关闭下载对话框时出错: {e}")
-
-def CustomizeAdd(self):
-    '''
-    ### 添加自定义程序
-    弹出文件选择框，选择文件后将文件信息存入config中的Customize列表
-    1. 文件名称(不带后缀名) -> showname
-    2. 文件路径 -> path
-    
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-    '''
-    try:
-        from PyQt5.QtWidgets import QFileDialog
-        
-        # 弹出文件选择框选择文件
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            i18nText("选择自定义程序文件"),
-            "",
-            i18nText("可执行文件 (*.exe);;所有文件 (*)")
-        )
-        
-        # 如果用户取消选择或未选择文件
-        if not file_path:
-            return
-            
-        # 获取不带后缀的文件名
-        file_name = os.path.splitext(os.path.basename(file_path))[0]
-        
-        # 读取现有配置
-        try:
-            with open('config.json', 'r', encoding='utf-8') as file:
-                config_data = json.load(file)
-        except FileNotFoundError:
-            config_data = {}
-            
-        # 确保Customize字段存在
-        if "Customize" not in config_data:
-            config_data["Customize"] = []
-            
-        # 检查是否已存在相同的路径
-        for item in config_data["Customize"]:
-            if item.get("path") == file_path:
-                InfoBar.warning(
-                    title=i18nText('⚠️ 提示'),
-                    content=f"文件 {file_name} 已存在于自定义程序列表中",
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
-                return
-                
-        # 添加新的自定义项
-        new_custom = {
-            "showname": file_name,
-            "path": file_path
-        }
-        
-        config_data["Customize"].append(new_custom)
-        
-        # 保存到配置文件
-        with open('config.json', 'w', encoding='utf-8') as file:
-            json.dump(config_data, file, ensure_ascii=False, indent=4)
-            
-        # 更新当前配置
-        self.config = config_data
-        
-        # 显示成功信息
-        InfoBar.success(
-            title=i18nText('✅ 成功'),
-            content=f"已成功添加自定义程序: {file_name}",
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=5000,
-            parent=self
-        )
-        
-        log(f"成功添加自定义程序: {file_name} ({file_path})")
-        
-    except Exception as e:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        handle_exception(exc_type, exc_value, exc_traceback)
-        InfoBar.error(
-            title=i18nText('❌ 错误'),
-            content=f"添加自定义程序时发生错误: {str(e)}",
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=5000,
-            parent=self
-        )
-        log(f"添加自定义程序时发生错误: {str(e)}", logging.ERROR)
-
-def CustomizeAppAdd(file_path, file_name):
-    '''
-    ### 添加自定义程序（通过指定路径）
-    与CustomizeAdd功能一致，但不弹出文件选择框和InfoBar
-    直接将指定路径的文件信息存入config中的Customize列表
-    1. 文件名称(不带后缀名) -> showname
-    2. 文件路径 -> path
-    
-    参数:
-        file_path (str): 要添加的自定义程序的完整文件路径
-        
-    返回:
-        bool: 添加成功返回True，失败或已存在返回False
-        
-    异常处理:
-        任何异常都会被捕获并记录到日志中，不会导致程序崩溃
-        
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-    '''
-    try:
-        log(f"开始添加自定义程序: {file_path}， {file_name}")
-        
-        # 检查文件路径是否为空
-        if not file_path:
-            log("文件路径为空，无法添加自定义程序")
-            return False
-            
-        # 获取不带后缀的文件名
-        # file_name = os.path.splitext(os.path.basename(file_path))[0]
-        # log(f"提取文件名: {file_name}")
-        
-        # 读取现有配置
-        log("正在读取现有配置文件 config.json")
-        try:
-            with open('config.json', 'r', encoding='utf-8') as file:
-                config_data = json.load(file)
-            log("成功读取配置文件")
-        except FileNotFoundError:
-            config_data = {}
-            log("配置文件不存在，将创建新的配置")
-        except json.JSONDecodeError as e:
-            log(f"配置文件格式错误: {e}", logging.ERROR)
-            return False
-            
-        # 确保Customize字段存在
-        if "Customize" not in config_data:
-            config_data["Customize"] = []
-            log("初始化 Customize 字段")
-        else:
-            log(f"当前已有 {len(config_data['Customize'])} 个自定义程序")
-            
-        # 检查是否已存在相同的路径
-        log("检查是否已存在相同的程序路径")
-        for item in config_data["Customize"]:
-            if item.get("path") == file_path:
-                log(f"文件 {file_name} 已存在于自定义程序列表中，路径: {file_path}")
-                return False
-                
-        # 添加新的自定义项
-        new_custom = {
-            "showname": file_name,           # 显示名称为不带后缀的文件名
-            "path": file_path                # 完整的文件路径
-        }
-        
-        config_data["Customize"].append(new_custom)
-        log(f"已将新程序添加到内存中的配置列表，当前共有 {len(config_data['Customize'])} 个程序")
-        
-        # 保存到配置文件
-        log("正在将配置保存到 config.json")
-        try:
-            with open('config.json', 'w', encoding='utf-8') as file:
-                json.dump(config_data, file, ensure_ascii=False, indent=4)
-            log("配置文件保存成功")
-        except Exception as e:
-            log(f"保存配置文件时发生错误: {e}", logging.ERROR)
-            return False
-            
-        # # 更新当前配置
-        # self.config = config_data
-        
-        log(f"成功添加自定义程序: {file_name} ({file_path})")
-        return True
-        
-    except Exception as e:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        handle_exception(exc_type, exc_value, exc_traceback)
-        log(f"添加自定义程序时发生错误: {str(e)}", logging.ERROR)
-        return False

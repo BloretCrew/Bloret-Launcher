@@ -2,7 +2,7 @@ from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QUrl
 from PyQt5.QtWidgets import QApplication
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块，位于 modules 中
-from modules.log import log, importlog
+from modules.log import log
 from modules.i18n import i18nText
 
 def open_github_bloret_Launcher():
@@ -49,4 +49,3 @@ def copy_name_to_clipboard(self):
     clipboard.setText(self.player_name)
     log(f"名称 {self.player_name} 已复制到剪贴板")
 
-importlog("LINK.PY")

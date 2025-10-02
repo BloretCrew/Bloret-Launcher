@@ -15,7 +15,7 @@ Safe.py
 import threading,logging,traceback,sys,webbrowser
 from PyQt5.QtWidgets import QApplication
 from PyQt5.uic import loadUi
-from modules.log import log, importlog
+from modules.log import log
 from modules.i18n import i18nText
 
 def handle_exception(exc_type, exc_value, exc_traceback):
@@ -78,4 +78,3 @@ def log_thread_safe(message, level=logging.INFO):
     with log_lock:
         log(message, level)
 
-importlog("SAFE.PY")

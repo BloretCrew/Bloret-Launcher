@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QMessageBox
 import logging,os,subprocess
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块，位于 modules 中
-from modules.log import log, importlog
+from modules.log import log
 from modules.safe import handle_exception
 from modules.i18n import i18nText
 
@@ -21,4 +21,3 @@ def update_to_latest_version(self):
         QMessageBox.critical(self, i18nText("更新失败"), f"创建或运行更新脚本失败: {e}")
 
 
-importlog("uUPDATE.PY")

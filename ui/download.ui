@@ -239,7 +239,7 @@
           <item>
            <widget class="PushButton" name="Fabric_version_Download">
             <property name="enabled">
-             <bool>false</bool>
+             <bool>true</bool>
             </property>
             <property name="text">
              <string>下载并安装</string>

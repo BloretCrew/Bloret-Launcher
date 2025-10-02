@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QApplication
 import time
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from modules.versions import CustomizeAppAdd
+from modules.customize import CustomizeAppAdd
 
 def install_plugin_from_zip(zip_url, plugin_name):
     '''

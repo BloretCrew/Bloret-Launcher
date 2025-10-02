@@ -2,7 +2,7 @@ from modules.win11toast import toast
 import ctypes.wintypes,ctypes,logging,os,subprocess
 from win32com.client import Dispatch
 
-from modules.log import log, importlog
+from modules.log import log
 from modules.safe import handle_exception
 from modules.i18n import i18nText
 import sys
@@ -147,4 +147,3 @@ def setup_startup_with_self_starting(value=True):
         remove_from_startup()
     log(f"设置开机自启 {'启用' if value else '禁用'}")
 
-importlog("SYSTEMS.PY")

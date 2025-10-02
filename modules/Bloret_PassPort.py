@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QLabel
 from qfluentwidgets import SubtitleLabel,MessageBoxBase,InfoBar,InfoBarPosition,Dialog, LineEdit
 import logging,requests,json
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
-from modules.log import log, importlog
+from modules.log import log
 from modules.safe import handle_exception
 from modules.i18n import i18nText
 
@@ -124,4 +124,3 @@ def Bloret_PassPort_Account_logout(self, homeInterface):
     Bloret_PassPort_Name.setText(f"未登录")
     log(i18nText("已退出登录"))
 
-importlog("BLORET_PASSPORT.PY")
