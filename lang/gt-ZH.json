@@ -28,12 +28,12 @@
         },
         "BL_download": {
             "TitleLabel": "Bloret Launcher - 下载麦恩喀拉伏特的こころ",
-            "SubtitleLabel_2": "下载 Minecraft 版本核心",
-            "SubtitleLabel": "下载 .minecraft 资源",
+            "SubtitleLabel_2": "把麦恩克拉夫特搞来！",
+            "SubtitleLabel": "搞来麦恩克拉夫特资源",
             "Labels": {
-                "StrongBodyLabel_5": "核心文件",
+                "StrongBodyLabel_5": "重！点！",
                 "StrongBodyLabel_12": "资源库文件 libraries",
-                "StrongBodyLabel_13": "63.1 MB",
+                "StrongBodyLabel_13": "刘时闪电益 MB",
                 "StrongBodyLabel_14": "指标文件 indexes",
                 "StrongBodyLabel_15": "379 KB",
                 "StrongBodyLabel_6": "对象文件 objects",
@@ -52,16 +52,16 @@
             "TitleLabel": "联机",
             "SubtitleLabel": "网络",
             "Labels": {
-                "StrongBodyLabel_17": "IPV6",
-                "CaptionLabel_5": "查看您计算机的 IPV6 配置",
-                "ipv6_address": "------:------:------:------:------:------:------:------",
+                "StrongBodyLabel_17": "超级高级的网络协议",
+                "CaptionLabel_5": "看看你电脑的超级高级的网络协议",
+                "ipv6_address": "------:------:这是莫斯电码吗:------:------",
                 "CaptionLabel_12": "<html><head/><body><p>使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。<br/><span style=\" font-weight:700;\">IPV6 是您的运营商提供的一项免费服务，不额外收费。 </span>已拥有的用户点击上方按钮直接使用。<br/>IPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。</p></body></html>",
-                "SubtitleLabel_2": "Online Client",
+                "SubtitleLabel_2": "在线上连",
                 "CaptionLabel_9": "<html><head/><body><p>Online Client 是 Bloret 的一项开源项目，可为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方无需安装 Bloret Launcher 就可一起参与联机。</span></p></body></html>",
                 "CaptionLabel_6": "联机服务 Powered by Online Client (BloretCrew) , Server PCFS  © 2025 Bloret All rights reserved."
             },
             "buttons": {
-                "GetIPV6AddressButton": "获取 IPV6 联机地址",
+                "GetIPV6AddressButton": "给我超级高级的网络协议弄来的联机地址！",
                 "StartOnlineClient": "开启联机服务"
             }
         },
