@@ -106,7 +106,6 @@ jobs:
         cp -r LICENSE ${{ env.OUTPUT_DIR }}/
         cp -r servers.dat ${{ env.OUTPUT_DIR }}/
         cp -r cmcl_save.json ${{ env.OUTPUT_DIR }}/
-        cp -r update.ps1 ${{ env.OUTPUT_DIR }}/
         cp -r bloret.ico ${{ env.OUTPUT_DIR }}/
         cp -r frpc.exe ${{ env.OUTPUT_DIR }}/
         cp -r frpc.toml ${{ env.OUTPUT_DIR }}/
@@ -299,7 +298,6 @@ jobs:
         cp LICENSE ${{ env.OUTPUT_DIR }}/
         cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
         cp cmcl_save.json ${{ env.OUTPUT_DIR }}/ || true
-        cp update.ps1 ${{ env.OUTPUT_DIR }}/ || true
         cp bloret.ico ${{ env.OUTPUT_DIR }}/
         cp frpc.exe ${{ env.OUTPUT_DIR }}/
         cp frpc.toml ${{ env.OUTPUT_DIR }}/
@@ -390,7 +388,6 @@ jobs:
         cp LICENSE ${{ env.OUTPUT_DIR }}/
         cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
         cp cmcl_save.json ${{ env.OUTPUT_DIR }}/ || true
-        cp update.ps1 ${{ env.OUTPUT_DIR }}/ || true
         cp bloret.ico ${{ env.OUTPUT_DIR }}/
         cp frpc.exe ${{ env.OUTPUT_DIR }}/
         cp frpc.toml ${{ env.OUTPUT_DIR }}/

@@ -1002,6 +1002,15 @@ def Get_Run_Script(version):
                     jar_path = os.path.join(fabric_version_dir, file)
                     fabric_libs.append(jar_path)
         
+        # 添加 mods 目录中的所有 JAR 文件 (Fabric mods)
+        mods_dir = os.path.join(minecraft_dir, "versions", version, "mods")
+        if os.path.exists(mods_dir):
+            for file in os.listdir(mods_dir):
+                if file.endswith('.jar'):
+                    mod_path = os.path.join(mods_dir, file)
+                    fabric_libs.append(mod_path)
+                    log(f"添加Fabric mod到类路径: {mod_path}")
+        
         # 首先添加 Fabric Loader 核心库和关键依赖
         fabric_loader_libs = [
             "net/fabricmc/fabric-loader",

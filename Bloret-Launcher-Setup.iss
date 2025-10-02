@@ -57,7 +57,6 @@ Source: "output\cmcl_save.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\config.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\servers.dat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\update.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\bloret.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\frpc.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\frpc.toml"; DestDir: "{app}"; Flags: ignoreversion
