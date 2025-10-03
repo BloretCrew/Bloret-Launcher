@@ -7,4 +7,5 @@ configparser
 sip
 Send2Trash
 googletrans
+winsdk
 toml
