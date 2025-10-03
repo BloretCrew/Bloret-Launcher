@@ -6,20 +6,15 @@
     "themelight": true,
     "repeat_run": false,
     "show_runtime_do": true,
-    "Customize": [
-        {
-            "showname": "PCL",
-            "path": "C:\\Users\\0570\\AppData\\Roaming\\Bloret-Launcher\\Plugin\\PCL\\main.exe"
-        }
-    ],
-    "Bloret_PassPort_UserName": "未登录",
+    "Customize": [],
+    "Bloret_PassPort_UserName": "\u672a\u767b\u5f55",
     "Bloret_PassPort_PassWord": "",
     "Bloret_PassPort_Admin": false,
     "whenCWopen_BLopen": true,
     "localmod": false,
     "home_show_login_mod": true,
     "self-starting": false,
-    "MaxThread": 64,
+    "MaxThread": 2000,
     "Minecraft_Versions": [
         "1.21.8",
         "1.21.7"
@@ -51,7 +46,7 @@
             }
         }
     },
-    "minecraft_dir": "C:\\Users\\0570\\AppData\\Roaming\\Bloret-Launcher\\.minecraft",
+    "minecraft_dir": "",
     "Java_Path": "C:\\Program Files\\Zulu\\zulu-23\\bin\\java.exe",
     "language": "gt-ZH"
 }

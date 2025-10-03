@@ -89,6 +89,7 @@ jobs:
           --hidden-import=qfluentwidgets `
           --hidden-import=win11toast `
           --hidden-import=toml `
+          --hidden-import=winsdk `
           --paths=. `
           Bloret-Launcher.py
       shell: pwsh
