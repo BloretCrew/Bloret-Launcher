@@ -781,14 +781,14 @@ def download_file(url, file_path):
         log(f"下载文件失败 {url}: {str(e)}", logging.ERROR)
         return False
 
-def Get_Run_Script(version):
+def Get_Run_Script(mc_version):
     """
     根据 cmcl.json 的内容生成启动 .minecraft 文件夹中指定版本的命令
     支持 Fabric 加载器启动
     不使用 cmcl.exe，而是直接生成启动命令
     
     Args:
-        version (str): 要启动的 Minecraft 版本号
+        mc_version (str): 要启动的 Minecraft 版本号
         
     Returns:
         str: 启动命令（批处理格式）
@@ -816,14 +816,14 @@ def Get_Run_Script(version):
         appdata = os.environ.get('APPDATA', '')
         minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
     
-    versions_dir = os.path.join(minecraft_dir, "versions", version)
+    versions_dir = os.path.join(minecraft_dir, "versions", mc_version)
     
     # 检查版本目录是否存在
     if not os.path.exists(versions_dir):
-        raise FileNotFoundError(f"版本 {version} 不存在于 {versions_dir}")
+        raise FileNotFoundError(f"版本 {mc_version} 不存在于 {versions_dir}")
     
     # 获取版本 JSON 文件路径
-    version_json_path = os.path.join(versions_dir, f"{version}.json")
+    version_json_path = os.path.join(versions_dir, f"{mc_version}.json")
     if not os.path.exists(version_json_path):
         raise FileNotFoundError(f"版本配置文件 {version_json_path} 不存在")
     
@@ -832,7 +832,7 @@ def Get_Run_Script(version):
         version_data = json.load(f)
     
     # 获取客户端 JAR 文件路径
-    client_jar_path = os.path.join(versions_dir, f"{version}.jar")
+    client_jar_path = os.path.join(versions_dir, f"{mc_version}.jar")
     if not os.path.exists(client_jar_path):
         raise FileNotFoundError(f"客户端 JAR 文件 {client_jar_path} 不存在")
     
@@ -871,7 +871,8 @@ def Get_Run_Script(version):
         "-Djdk.attach.allowAttachSelf=true",  # 允许自我附加
         "-Djdk.module.IllegalAccess.silent=true",  # 静默非法访问
         "-Dlog4j2.formatMsgNoLookups=true",
-        "-Dfile.encoding=COMPAT",
+        "-Dfile.encoding=UTF-8",
+        "-Dsun.jnu.encoding=UTF-8",
         "-Dstderr.encoding=UTF-8", 
         "-Dstdout.encoding=UTF-8",
         "-XX:+UseG1GC",
@@ -906,7 +907,7 @@ def Get_Run_Script(version):
     ]
     
     # 添加 Native 库路径参数
-    natives_path = os.path.join(versions_dir, f"{version}-natives")
+    natives_path = os.path.join(versions_dir, f"{mc_version}-natives")
     launch_args.extend([
         f'-Djava.library.path="{natives_path}"',
         f'-Djna.tmpdir="{natives_path}"',
@@ -950,12 +951,12 @@ def Get_Run_Script(version):
                     # 处理 Maven 风格的库名称
                     parts = lib["name"].split(":")
                     if len(parts) >= 3:
-                        group_id, artifact_id, version = parts[0:3]
+                        group_id, artifact_id, lib_version = parts[0:3]
                         relative_path = os.path.join(
                             group_id.replace(".", "/"),
                             artifact_id,
-                            version,
-                            f"{artifact_id}-{version}.jar"
+                            lib_version,
+                            f"{artifact_id}-{lib_version}.jar"
                         )
                         lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
                 
@@ -968,12 +969,12 @@ def Get_Run_Script(version):
                         missing_libraries.append((lib, lib_path))
     
     # 检查是否为 Fabric 版本
-    is_fabric = "fabric" in version.lower() or any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", []))
+    is_fabric = "fabric" in mc_version.lower() or any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", []))
 
     if is_fabric:
-        log(f"检测到 Fabric 版本: {version}")
+        log(f"检测到 Fabric 版本: {mc_version}")
     else:
-        log(f"检测到原版: {version}")
+        log(f"检测到原版: {mc_version}")
     
     # 添加内存参数 (根据PCL中的默认设置)
     # PCL中默认分配内存为854x480，这里设置合理的内存参数
@@ -995,7 +996,7 @@ def Get_Run_Script(version):
         asm_libs = {}
         
         # 添加 Fabric 版本文件夹中的所有 JAR 文件
-        fabric_version_dir = os.path.join(versions_dir, version)
+        fabric_version_dir = os.path.join(versions_dir, mc_version)
         if os.path.exists(fabric_version_dir):
             for file in os.listdir(fabric_version_dir):
                 if file.endswith('.jar') and 'fabric' in file.lower():
@@ -1003,13 +1004,11 @@ def Get_Run_Script(version):
                     fabric_libs.append(jar_path)
         
         # 添加 mods 目录中的所有 JAR 文件 (Fabric mods)
-        mods_dir = os.path.join(minecraft_dir, "versions", version, "mods")
+        mods_dir = os.path.join(minecraft_dir, "versions", mc_version, "mods")
         if os.path.exists(mods_dir):
             for file in os.listdir(mods_dir):
                 if file.endswith('.jar'):
-                    mod_path = os.path.join(mods_dir, file)
-                    fabric_libs.append(mod_path)
-                    log(f"添加Fabric mod到类路径: {mod_path}")
+                    fabric_libs.append(os.path.join(mods_dir, file))
         
         # 首先添加 Fabric Loader 核心库和关键依赖
         fabric_loader_libs = [
@@ -1037,12 +1036,12 @@ def Get_Run_Script(version):
                 # 处理 Maven 风格的库名称
                 parts = lib["name"].split(":")
                 if len(parts) >= 3:
-                    group_id, artifact_id, version = parts[0:3]
+                    group_id, artifact_id, lib_version = parts[0:3]
                     relative_path = os.path.join(
                         group_id.replace(".", "/"),
                         artifact_id,
-                        version,
-                        f"{artifact_id}-{version}.jar"
+                        lib_version,
+                        f"{artifact_id}-{lib_version}.jar"
                     )
                     lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
             
@@ -1059,14 +1058,14 @@ def Get_Run_Script(version):
                     parts = lib_name.split(":")
                     if len(parts) >= 3:
                         asm_module = parts[1]  # 例如 "asm", "asm-commons" 等
-                        version = parts[2]  # 版本号
+                        lib_version = parts[2]  # 版本号
                         
                         # 如果这是一个更高版本，或者这个模块还没有被记录
-                        if asm_module not in asm_libs or version > asm_libs[asm_module]["version"]:
-                            asm_libs[asm_module] = {"version": version, "path": lib_path}
-                            log(f"记录ASM库 {asm_module} 版本 {version}")
+                        if asm_module not in asm_libs or lib_version > asm_libs[asm_module]["version"]:
+                            asm_libs[asm_module] = {"version": lib_version, "path": lib_path}
+                            log(f"记录ASM库 {asm_module} 版本 {lib_version}")
                         else:
-                            log(f"跳过较低版本的ASM库 {asm_module} 版本 {version}，已有版本 {asm_libs[asm_module]['version']}")
+                            log(f"跳过较低版本的ASM库 {asm_module} 版本 {lib_version}，已有版本 {asm_libs[asm_module]['version']}")
                     continue  # 跳过当前的库添加，稍后会统一添加ASM库
                         
                 # 添加Fabric核心库
@@ -1118,8 +1117,7 @@ def Get_Run_Script(version):
     
     # 添加客户端 JAR 到 classpath
     classpath.append(client_jar_path)
-    if not os.path.exists(client_jar_path):
-        missing_libraries.append(({"name": f"{version}.jar", "downloads": {"artifact": {"path": f"{version}/{version}.jar"}}}, client_jar_path))
+    if not os.path.exists(client_jar_path): missing_libraries.append(({"name": f"{mc_version}.jar", "downloads": {"artifact": {"path": f"{mc_version}/{mc_version}.jar"}}}, client_jar_path))
     
     # 检查是否有缺失的库文件并尝试下载
     if missing_libraries:
@@ -1150,8 +1148,10 @@ def Get_Run_Script(version):
                 log(f"添加之前缺失但现已下载的库: {lib_path}")
     
     # 添加类路径参数
-    launch_args.append("-cp")
-    launch_args.append('"' + ";".join(classpath) + '"')  # Windows 使用分号分隔
+    launch_args.extend(["-cp", '\"' + ";".join(classpath) + '\"'])  # Windows 使用分号分隔
+    
+    # Add Fabric Loader arguments to ensure mods are loaded
+    launch_args.extend(["-Dfabric.addMods=" + mods_dir])
     
     # 添加主类和参数
     if is_fabric:
@@ -1168,16 +1168,16 @@ def Get_Run_Script(version):
     
     # 添加游戏参数
     # 对于Fabric版本，需要使用实际的游戏版本号而不是Fabric加载器版本号
-    actual_game_version = version
-    game_dir_version = version  # 用于构建game_dir的版本
+    actual_game_version = mc_version
+    game_dir_version = mc_version  # 用于构建game_dir的版本
     
-    if is_fabric and "-fabric-" in version.lower():
+    if is_fabric and "-fabric-" in mc_version.lower():
         # 对于Fabric版本，目录结构为 .minecraft/versions/实际版本-fabric-加载器版本/实际版本-fabric-加载器版本.json
         # 但游戏目录应该是 .minecraft/versions/实际版本-fabric-加载器版本/实际版本.json
         # 我们需要从版本名称中提取实际的游戏版本
         # 例如: 1.21.8-fabric-0.17.2 应该对应游戏版本 1.21.8
-        actual_game_version = version.split("-fabric-")[0]
-        game_dir_version = version  # game_dir仍然使用完整版本名作为目录名
+        actual_game_version = mc_version.split("-fabric-")[0]
+        game_dir_version = mc_version  # game_dir仍然使用完整版本名作为目录名
     
     # 游戏目录应该是主 .minecraft 目录，而不是版本特定目录
     game_dir = minecraft_dir
@@ -1191,17 +1191,17 @@ def Get_Run_Script(version):
         raise FileNotFoundError(f"资产目录不存在: {assets_dir}")
     
     # 获取资产索引
-    asset_index = version_data.get("assetIndex", {}).get("id", version)
+    asset_index = version_data.get("assetIndex", {}).get("id", mc_version)
     
     # 设置 versionType
-    version_type = "Bloret-Launcher"
+    version_type = "Bloret Launcher"
     
     # 检查登录方式并设置相应参数
     login_method = account_info.get("loginMethod", 0) if account_info else 0
     
     # 在日志中以列表形式记录启动信息
     log("启动信息:")
-    log(f"- Minecraft 版本: {version}")  # 使用完整版本名而不是解析后的版本
+    log(f"- Minecraft 版本: {mc_version}")  # 使用完整版本名而不是解析后的版本
     log(f"- 登录方式: {'离线登录' if login_method == 0 else '微软登录' if login_method == 2 else '未知'}")
     log(f"- 登录名称: {username}")
     if account_info:
@@ -1212,7 +1212,7 @@ def Get_Run_Script(version):
     if login_method == 0:  # 离线登录
         launch_args.extend([
             "--username", username,
-            "--version", version,  # 使用完整版本名而不是解析后的版本
+            "--version", mc_version,  # 使用完整版本名而不是解析后的版本
             "--gameDir", game_dir,  # 不要在路径外额外添加引号
             "--assetsDir", assets_dir,  # 不要在路径外额外添加引号
             "--assetIndex", str(asset_index),
@@ -1240,7 +1240,7 @@ def Get_Run_Script(version):
             
         launch_args.extend([
             "--username", username,
-            "--version", version,  # 使用完整版本名而不是解析后的版本
+            "--version", mc_version,  # 使用完整版本名而不是解析后的版本
             "--gameDir", game_dir,  # 不要在路径外额外添加引号
             "--assetsDir", assets_dir,  # 不要在路径外额外添加引号
             "--assetIndex", str(asset_index),
@@ -1259,7 +1259,8 @@ def Get_Run_Script(version):
     bat_command = " ".join(launch_args)
     
     log(f"生成的启动命令: {bat_command}")
-    return bat_command
+    log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {"chcp 65001\n" + f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}\n' + bat_command}")
+    return "chcp 65001\n" + f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}\n' + bat_command
 
 def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False):
     # 如果没有提供下载对话框，则创建并显示一个新的

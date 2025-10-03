@@ -816,6 +816,7 @@ class MainWindow(FluentWindow):
             log(f"正在启动 {version}")
             if os.path.exists("run.bat"):
                 os.remove("run.bat")
+            log(f"传递给 Get_Run_Script 的版本: {version}")
             script_content = Get_Run_Script(version)
             with open("run.bat", "w", encoding="utf-8") as f:
                 f.write(script_content)
