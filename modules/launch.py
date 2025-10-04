@@ -1,21 +1,14 @@
-'''
-Versions.py
-## Bloret Launcher 版本操作模块
-
-### 模块功能：
- - [x] 删除 Minecraft 版本
- - [x] 修改 Minecraft 版本名称
- - [x] 删除自定义选项
- - [x] 修改自定义选项名称
-
-***
-###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-'''
 from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
 import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures, threading, time
 import sip # type: ignore
+from pathlib import Path
+from modules.win11toast import notify, update_progress
 # 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
+from modules.safe import handle_exception
 from modules.log import log
+from modules.safe import handle_exception
+import sys
+from modules.customize import find_Customize
 from modules.i18n import i18nText
 from modules.install import LibraryDownloader
 
