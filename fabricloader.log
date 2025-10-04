@@ -1,0 +1,12 @@
+[20:44:25] [ERROR] [FabricLoader/]: Uncaught exception in thread "main"
+java.nio.file.InvalidPathException: Illegal char <?> at index 88: C:\Users\0570\AppData\Roaming\Bloret-Launcher\.minecraft\versions\1.21.8-Fabric\mods\[玉 ??] Jade-1.21.8-Fabric-19.3.0.jar
+	at java.base/sun.nio.fs.WindowsPathParser.normalize(WindowsPathParser.java:204)
+	at java.base/sun.nio.fs.WindowsPathParser.parse(WindowsPathParser.java:175)
+	at java.base/sun.nio.fs.WindowsPathParser.parse(WindowsPathParser.java:77)
+	at java.base/sun.nio.fs.WindowsPath.parse(WindowsPath.java:92)
+	at java.base/sun.nio.fs.WindowsFileSystem.getPath(WindowsFileSystem.java:203)
+	at java.base/java.nio.file.Path.of(Path.java:148)
+	at java.base/java.nio.file.Paths.get(Paths.java:69)
+	at net.fabricmc.loader.impl.launch.knot.Knot.init(Knot.java:114)
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:66)
+	at net.fabricmc.loader.impl.launch.knot.KnotClient.main(KnotClient.java:23)

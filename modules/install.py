@@ -39,41 +39,32 @@ def dl_source_library_get(original_url):
     根据PCL启动器的DlSourceLibraryGet方法实现
     返回库文件URL的镜像源列表
     """
-    # 检查是否包含Forge/Fabric等特定库
-    special_libs = ["minecraftforge", "fabricmc", "neoforged"]
-    use_official_only = any(lib in original_url for lib in special_libs)
+    candidate_urls = []
     
-    if use_official_only:
-        # 不添加原版源
-        return [
-            original_url
-                .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/maven")
-                .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/maven")
-                .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/maven"),
-            original_url
-                .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
-                .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
-                .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/libraries")
-        ]
-    else:
-        # 官方源
-        official_urls = [original_url]
-        
-        # 镜像源
-        mirror_urls = [
-            original_url
-                .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/maven")
-                .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/maven")
-                .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/maven"),
-            original_url
-                .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
-                .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
-                .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/libraries")
-        ]
-        
-        # 根据是否优先使用官方源决定URL顺序
-        # 这里我们默认使用镜像源优先，与PCL的逻辑保持一致
-        return mirror_urls + official_urls
+    # 镜像源
+    mirror_urls = []
+    if "libraries.minecraft.net" in original_url:
+        mirror_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/"))
+        mirror_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/libraries/"))
+    elif "maven.fabricmc.net" in original_url:
+        mirror_urls.append(original_url.replace("https://maven.fabricmc.net/", "https://bmclapi2.bangbang93.com/maven/"))
+    
+    # 添加 BMCLAPI 镜像源
+    mirror_urls.append(original_url
+        .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/maven")
+        .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/maven")
+        .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/maven"))
+    mirror_urls.append(original_url
+        .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
+        .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
+        .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/libraries"))
+
+    # 优先添加镜像源
+    candidate_urls.extend(mirror_urls)
+    # 最后添加官方源
+    candidate_urls.append(original_url)
+    
+    return candidate_urls
 
 def dl_source_assets_get(original_url):
     """
@@ -184,16 +175,7 @@ class LibraryDownloader:
                 artifact = lib["downloads"]["artifact"]
                 original_url = artifact["url"]
                 
-                candidate_urls = []
-                # 优先添加原始 URL
-                candidate_urls.append(original_url)
-                
-                # 如果原始 URL 是 Minecraft 官方库，添加 BMCLAPI 镜像
-                if "libraries.minecraft.net" in original_url:
-                    candidate_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/"))
-                # 如果原始 URL 是 Fabric Maven 库，添加 BMCLAPI 镜像
-                elif "maven.fabricmc.net" in original_url:
-                    candidate_urls.append(original_url.replace("https://maven.fabricmc.net/", "https://bmclapi2.bangbang93.com/maven/"))
+                candidate_urls = dl_source_library_get(original_url)
 
                 downloaded = False
                 for url_to_try in candidate_urls:
@@ -226,11 +208,8 @@ class LibraryDownloader:
                 if len(parts) >= 3:
                     group_id, artifact_id, version = parts[0:3]
                     
-                    candidate_urls = [
-                        f"https://maven.fabricmc.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar", # Fabric Maven
-                        f"https://bmclapi2.bangbang93.com/maven/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar",  # BMCLAPI镜像
-                        f"https://libraries.minecraft.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar",  # 官方源
-                    ]
+                    original_url = f"https://maven.fabricmc.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar" # Fabric Maven
+                    candidate_urls = dl_source_library_get(original_url)
 
                     downloaded = False
                     for url_to_try in candidate_urls:
@@ -579,8 +558,10 @@ def Get_Run_Script(mc_version):
                         # 记录缺失的库文件
                         missing_libraries.append((lib, lib_path))
     
-    # 检查是否为 Fabric 版本
-    is_fabric = "fabric" in mc_version.lower() or any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", []))
+    # 检查是否为 Fabric 版本（支持PCL风格的命名格式）
+    is_fabric = ("fabric" in mc_version.lower() or 
+                 "-Fabric " in mc_version or 
+                 any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", [])))
 
     if is_fabric:
         log(f"检测到 Fabric 版本: {mc_version}")
@@ -762,7 +743,14 @@ def Get_Run_Script(mc_version):
     launch_args.extend(["-cp", '\"' + ";".join(classpath) + '\"'])  # Windows 使用分号分隔
     
     # Add Fabric Loader arguments to ensure mods are loaded
-    launch_args.extend(["-Dfabric.addMods=" + mods_dir])
+    if is_fabric:
+        # 对于Fabric版本，使用版本特定的mods目录（PCL风格）
+        fabric_mods_dir = os.path.join(minecraft_dir, "versions", mc_version, "mods")
+        launch_args.extend(["-Dfabric.addMods=" + fabric_mods_dir])
+    else:
+        # 对于原版，使用主mods目录（虽然原版不会加载mods）
+        main_mods_dir = os.path.join(minecraft_dir, "mods")
+        launch_args.extend(["-Dfabric.addMods=" + main_mods_dir])
     
     # 添加主类和参数
     if is_fabric:
@@ -782,12 +770,15 @@ def Get_Run_Script(mc_version):
     actual_game_version = mc_version
     game_dir_version = mc_version  # 用于构建game_dir的版本
     
-    if is_fabric and "-fabric-" in mc_version.lower():
-        # 对于Fabric版本，目录结构为 .minecraft/versions/实际版本-fabric-加载器版本/实际版本-fabric-加载器版本.json
-        # 但游戏目录应该是 .minecraft/versions/实际版本-fabric-加载器版本/实际版本.json
+    if is_fabric and ("-Fabric " in mc_version or "-fabric-" in mc_version.lower()):
+        # 对于Fabric版本，目录结构为 .minecraft/versions/实际版本-Fabric 加载器版本/实际版本-Fabric 加载器版本.json
+        # 但游戏目录应该是 .minecraft/versions/实际版本-Fabric 加载器版本/实际版本.json
         # 我们需要从版本名称中提取实际的游戏版本
-        # 例如: 1.21.8-fabric-0.17.2 应该对应游戏版本 1.21.8
-        actual_game_version = mc_version.split("-fabric-")[0]
+        # 例如: 1.21.8-Fabric 0.17.2 应该对应游戏版本 1.21.8
+        if "-Fabric " in mc_version:
+            actual_game_version = mc_version.split("-Fabric ")[0]
+        elif "-fabric-" in mc_version.lower():
+            actual_game_version = mc_version.split("-fabric-")[0]
         game_dir_version = mc_version  # game_dir仍然使用完整版本名作为目录名
     
     # 游戏目录应该是主 .minecraft 目录，而不是版本特定目录
@@ -1538,18 +1529,23 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 'valueStringOverride': '90%'
             })
             
-            # 获取最新的Fabric Loader版本
             try:
-                # 获取Fabric Loader版本列表
-                fabric_api_url = "https://meta.fabricmc.net/v2/versions/loader/" + version
-                log(f"正在获取Fabric Loader版本列表: {fabric_api_url}")
+                # 使用PCL风格的镜像源处理获取Fabric Loader版本列表
+                fabric_api_urls = dl_source_launcher_or_meta_get("https://meta.fabricmc.net/v2/versions/loader/" + version)
+                log(f"正在获取Fabric Loader版本列表: {fabric_api_urls}")
                 
-                fabric_response = requests.get(fabric_api_url, timeout=30)
-                if fabric_response.status_code != 200:
-                    log(f"获取Fabric Loader版本列表失败: HTTP {fabric_response.status_code}", logging.ERROR)
-                    raise Exception(f"获取Fabric Loader版本列表失败: HTTP {fabric_response.status_code}")
+                fabric_versions = None
+                for url in fabric_api_urls:
+                    try:
+                        fabric_response = requests.get(url, timeout=30)
+                        if fabric_response.status_code == 200:
+                            fabric_versions = fabric_response.json()
+                            break
+                        else:
+                            log(f"获取Fabric Loader版本列表失败: {url}, HTTP {fabric_response.status_code}", logging.WARNING)
+                    except requests.exceptions.RequestException as e:
+                        log(f"请求错误: {url}, {e}", logging.WARNING)
                 
-                fabric_versions = fabric_response.json()
                 if not fabric_versions:
                     log(f"未找到适用于 Minecraft {version} 的 Fabric Loader 版本", logging.ERROR)
                     raise Exception(f"未找到适用于 Minecraft {version} 的 Fabric Loader 版本")
@@ -1560,25 +1556,144 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 
                 log(f"找到最新的 Fabric Loader 版本: {loader_version}")
                 
-                # 构建Fabric版本的安装路径
-                fabric_version_id = f"{version}-fabric-{loader_version}"
+                # 使用PCL风格的版本命名格式
+                fabric_version_id = f"{version}-Fabric {loader_version}"
                 fabric_version_dir = os.path.join(versions_dir, fabric_version_id)
                 os.makedirs(fabric_version_dir, exist_ok=True)
                 
-                # 获取Fabric安装JSON
-                fabric_json_url = f"https://meta.fabricmc.net/v2/versions/loader/{version}/{loader_version}/profile/json"
-                log(f"正在获取Fabric安装JSON: {fabric_json_url}")
+                # 获取Fabric安装JSON，使用PCL风格的镜像源处理
+                fabric_json_urls = dl_source_launcher_or_meta_get(f"https://meta.fabricmc.net/v2/versions/loader/{version}/{loader_version}/profile/json")
+                log(f"正在获取Fabric安装JSON: {fabric_json_urls}")
 
-                fabric_json_response = requests.get(fabric_json_url, timeout=30)
-                if fabric_json_response.status_code != 200:
-                    log(f"获取Fabric安装JSON失败: HTTP {fabric_json_response.status_code}", logging.ERROR)
-                    raise Exception(f"获取Fabric安装JSON失败: HTTP {fabric_json_response.status_code}")
+                fabric_json_data = None
+                for url in fabric_json_urls:
+                    try:
+                        fabric_json_response = requests.get(url, timeout=30)
+                        if fabric_json_response.status_code == 200:
+                            fabric_json_data = fabric_json_response.json()
+                            break
+                        else:
+                            log(f"获取Fabric安装JSON失败: {url}, HTTP {fabric_json_response.status_code}", logging.WARNING)
+                    except requests.exceptions.RequestException as e:
+                        log(f"请求错误: {url}, {e}", logging.WARNING)
+                
+                if not fabric_json_data:
+                    log("所有Fabric安装JSON URL都获取失败", logging.ERROR)
+                    raise Exception("获取Fabric安装JSON失败")
 
-                fabric_json_data = fabric_json_response.json()
+                # 修改Fabric版本JSON文件，使用PCL风格的结构
+                fabric_json_data["id"] = fabric_version_id
+                
+                # 如果Fabric JSON不包含downloads字段，需要添加原始版本的资源信息
+                if "downloads" not in fabric_json_data:
+                    log("Fabric JSON不包含downloads字段，添加原始版本的资源信息")
+                    # 从原始版本JSON中获取资源信息
+                    original_version_json_path = os.path.join(version_dir, f"{version}.json")
+                    if os.path.exists(original_version_json_path):
+                        with open(original_version_json_path, 'r', encoding='utf-8') as f:
+                            original_version_data = json.load(f)
+                        
+                        # 添加原始版本的资源信息
+                        if "assetIndex" in original_version_data:
+                            fabric_json_data["assetIndex"] = original_version_data["assetIndex"]
+                        if "assets" in original_version_data:
+                            fabric_json_data["assets"] = original_version_data["assets"]
+                        if "complianceLevel" in original_version_data:
+                            fabric_json_data["complianceLevel"] = original_version_data["complianceLevel"]
+                        if "javaVersion" in original_version_data:
+                            fabric_json_data["javaVersion"] = original_version_data["javaVersion"]
+                        if "logging" in original_version_data:
+                            fabric_json_data["logging"] = original_version_data["logging"]
+                        if "minimumLauncherVersion" in original_version_data:
+                            fabric_json_data["minimumLauncherVersion"] = original_version_data["minimumLauncherVersion"]
+                        if "releaseTime" in original_version_data:
+                            fabric_json_data["releaseTime"] = original_version_data["releaseTime"]
+                        if "time" in original_version_data:
+                            fabric_json_data["time"] = original_version_data["time"]
+                        if "type" in original_version_data:
+                            fabric_json_data["type"] = original_version_data["type"]
+                        
+                        # 添加原始版本的库文件（除了Fabric相关的库）
+                        original_libraries = original_version_data.get("libraries", [])
+                        fabric_libraries = fabric_json_data.get("libraries", [])
+                        
+                        # 合并库文件，避免重复
+                        existing_lib_names = {lib.get("name", "") for lib in fabric_libraries}
+                        for lib in original_libraries:
+                            if lib.get("name", "") not in existing_lib_names:
+                                fabric_libraries.append(lib)
+                        
+                        fabric_json_data["libraries"] = fabric_libraries
+                        log(f"已添加原始版本的资源信息到Fabric版本")
+                    else:
+                        log(f"原始版本JSON文件不存在: {original_version_json_path}", logging.WARNING)
+                
+                # PCL的Fabric版本不使用inheritsFrom，而是直接包含所有库
+                if "inheritsFrom" in fabric_json_data:
+                    del fabric_json_data["inheritsFrom"]
+                if "jar" in fabric_json_data:
+                    del fabric_json_data["jar"]
+
                 fabric_json_path = os.path.join(fabric_version_dir, f"{fabric_version_id}.json")
                 with open(fabric_json_path, 'w', encoding='utf-8') as f:
                     json.dump(fabric_json_data, f, ensure_ascii=False, indent=4)
                 log(f"已保存Fabric安装JSON: {fabric_json_path}")
+
+                # 处理Fabric版本的客户端JAR文件
+                client_jar_path = os.path.join(fabric_version_dir, f"{fabric_version_id}.jar")
+                
+                if "downloads" in fabric_json_data and "client" in fabric_json_data["downloads"]:
+                    # 如果Fabric JSON包含客户端下载信息，直接下载
+                    client_info = fabric_json_data["downloads"]["client"]
+                    client_url = client_info["url"]
+                    
+                    # 使用PCL风格的镜像源处理
+                    client_urls = dl_source_launcher_or_meta_get(client_url)
+
+                    log(f"正在下载Fabric客户端JAR文件: {client_urls}")
+
+                    download_success = False
+                    for url in client_urls:
+                        try:
+                            log(f"正在下载Fabric客户端JAR文件: {url}")
+                            # 使用Session来更好地管理连接
+                            with requests.Session() as session:
+                                response = session.get(url, stream=True, timeout=30)
+                                if response.status_code == 200:
+                                    total_size = int(response.headers.get('content-length', 0))
+                                    downloaded_size = 0
+                                    
+                                    with open(client_jar_path, 'wb') as f:
+                                        for chunk in response.iter_content(chunk_size=8192):
+                                            if chunk:
+                                                f.write(chunk)
+                                                downloaded_size += len(chunk)
+                                    
+                                    log(f"已下载Fabric客户端JAR文件: {client_jar_path}")
+                                    download_success = True
+                                    break
+                                else:
+                                    log(f"下载Fabric客户端JAR文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
+                        except requests.exceptions.RequestException as e:
+                            log(f"请求错误: {url}, {e}", logging.WARNING)
+                    
+                    if not download_success:
+                        log("所有Fabric客户端JAR文件URL都下载失败", logging.ERROR)
+                        raise Exception("Fabric客户端JAR文件下载失败")
+                else:
+                    # 如果Fabric JSON不包含客户端下载信息，从原始版本复制客户端JAR
+                    log("Fabric版本信息中未找到客户端下载链接，尝试从原始版本复制客户端JAR")
+                    
+                    # 检查原始版本的客户端JAR是否存在
+                    original_client_jar_path = os.path.join(version_dir, f"{version}.jar")
+                    if os.path.exists(original_client_jar_path):
+                        # 复制原始版本的客户端JAR到Fabric版本目录
+                        import shutil
+                        shutil.copy2(original_client_jar_path, client_jar_path)
+                        log(f"已从原始版本复制客户端JAR: {original_client_jar_path} -> {client_jar_path}")
+                    else:
+                        log(f"原始版本的客户端JAR不存在: {original_client_jar_path}", logging.ERROR)
+                        raise Exception(f"原始版本的客户端JAR不存在: {original_client_jar_path}")
 
                 # 下载Fabric Loader所需的库文件
                 update_progress({
@@ -1618,19 +1733,66 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 else:
                     log("未找到 Fabric Loader 库文件", logging.WARNING)
 
-                # 修改版本隔离文件
-                # 复制原始版本JSON文件
-                original_version_json_path = os.path.join(version_dir, f"{version}.json")
-                shutil.copy(original_version_json_path, fabric_version_dir)
+                # 创建Fabric版本的mods目录（PCL风格：在版本目录下）
+                fabric_mods_dir = os.path.join(fabric_version_dir, "mods")
+                os.makedirs(fabric_mods_dir, exist_ok=True)
+                
+                # 下载Fabric API（可选）
+                update_progress({
+                    'status': f'正在下载 Fabric API...',
+                    'value': 0.95,
+                    'valueStringOverride': '95%'
+                })
+                
+                try:
+                    # 获取Fabric API版本列表
+                    fabric_api_urls = dl_source_launcher_or_meta_get(f"https://meta.fabricmc.net/v2/versions/fabric-api/{version}")
+                    fabric_api_data = None
+                    for url in fabric_api_urls:
+                        try:
+                            fabric_api_response = requests.get(url, timeout=30)
+                            if fabric_api_response.status_code == 200:
+                                fabric_api_data = fabric_api_response.json()
+                                break
+                        except requests.exceptions.RequestException as e:
+                            log(f"获取Fabric API版本列表失败: {url}, {e}", logging.WARNING)
+                    
+                    if fabric_api_data and len(fabric_api_data) > 0:
+                        # 获取最新版本的Fabric API
+                        latest_fabric_api = fabric_api_data[0]
+                        fabric_api_version = latest_fabric_api["version"]
+                        fabric_api_filename = f"fabric-api-{fabric_api_version}.jar"
+                        fabric_api_path = os.path.join(fabric_mods_dir, fabric_api_filename)
+                        
+                        # 下载Fabric API
+                        fabric_api_download_urls = dl_source_launcher_or_meta_get(f"https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/{fabric_api_version}/fabric-api-{fabric_api_version}.jar")
+                        
+                        download_success = False
+                        for url in fabric_api_download_urls:
+                            try:
+                                log(f"正在下载 Fabric API: {url}")
+                                response = requests.get(url, timeout=30)
+                                if response.status_code == 200:
+                                    with open(fabric_api_path, 'wb') as f:
+                                        f.write(response.content)
+                                    log(f"已下载 Fabric API: {fabric_api_path}")
+                                    download_success = True
+                                    break
+                                else:
+                                    log(f"下载Fabric API失败: {url}, HTTP {response.status_code}", logging.WARNING)
+                            except requests.exceptions.RequestException as e:
+                                log(f"下载Fabric API失败: {url}, {e}", logging.WARNING)
+                        
+                        if not download_success:
+                            log("Fabric API 下载失败，但不影响 Fabric Loader 安装", logging.WARNING)
+                    else:
+                        log("未找到适用于此版本的 Fabric API", logging.WARNING)
+                except Exception as e:
+                    log(f"下载 Fabric API 时出错: {e}", logging.WARNING)
 
-                # 修改Fabric版本JSON文件
-                fabric_json_data["id"] = fabric_version_id
-                fabric_json_data["inheritsFrom"] = version
-                fabric_json_data["jar"] = version
-
-                with open(fabric_json_path, 'w', encoding='utf-8') as f:
-                    json.dump(fabric_json_data, f, ensure_ascii=False, indent=4)
-                log(f"已修改Fabric版本JSON文件: {fabric_json_path}")
+                # 创建Fabric版本的resourcepacks目录
+                fabric_resourcepacks_dir = os.path.join(fabric_version_dir, "resourcepacks")
+                os.makedirs(fabric_resourcepacks_dir, exist_ok=True)
 
                 update_progress({
                     'status': f'Fabric Loader 安装完成!',
@@ -1638,64 +1800,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                     'valueStringOverride': '100%'
                 })
                 log(f"Fabric Loader 安装完成到 {fabric_version_id}")
-                
-                fabric_json_response = requests.get(fabric_json_url, timeout=30)
-                if fabric_json_response.status_code != 200:
-                    log(f"获取Fabric安装JSON失败: HTTP {fabric_json_response.status_code}", logging.ERROR)
-                    raise Exception(f"获取Fabric安装JSON失败: HTTP {fabric_json_response.status_code}")
-                
-                fabric_json = fabric_json_response.json()
-                
-                # 保存Fabric版本JSON
-                fabric_json_path = os.path.join(fabric_version_dir, f"{fabric_version_id}.json")
-                with open(fabric_json_path, 'w', encoding='utf-8') as f:
-                    json.dump(fabric_json, f, ensure_ascii=False, indent=4)
-                
-                log(f"已保存Fabric版本JSON: {fabric_json_path}")
-                
-                # 下载Fabric所需的库文件
-                update_progress({
-                    'status': f'正在下载Fabric库文件...',
-                    'value': 0.95,
-                    'valueStringOverride': '95%'
-                })
-                
-                # 获取Fabric所需的库文件列表
-                libraries = fabric_json.get("libraries", [])
-                log(f"Fabric需要下载 {len(libraries)} 个库文件")
-                
-                # 下载库文件
-                with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-                    future_to_lib = {}
-                    for lib in libraries:
-                        if "downloads" in lib and "artifact" in lib["downloads"]:
-                            artifact = lib["downloads"]["artifact"]
-                            lib_path = os.path.join(minecraft_dir, "libraries", artifact["path"])
-                            lib_url = artifact["url"]
-                            
-                            # 确保目录存在
-                            os.makedirs(os.path.dirname(lib_path), exist_ok=True)
-                            
-                            # 如果文件不存在或大小不匹配，则下载
-                            if not os.path.exists(lib_path) or os.path.getsize(lib_path) != artifact.get("size", 0):
-                                # 使用全局函数替换类方法调用
-                                future_to_lib[executor.submit(download_file, lib_url, lib_path)] = lib_path
-                    
-                    # 等待所有库文件下载完成
-                    for future in concurrent.futures.as_completed(future_to_lib):
-                        lib_path = future_to_lib[future]
-                        try:
-                            future.result()
-                            log(f"成功下载库文件: {lib_path}")
-                        except Exception as e:
-                            log(f"下载库文件失败: {lib_path}, {e}", logging.ERROR)
-                
-                log(f"Fabric Loader {loader_version} 安装完成")
-                update_progress({
-                    'status': f'Fabric Loader {loader_version} 安装完成!',
-                    'value': 1.0,
-                    'valueStringOverride': '100%'
-                })
                 
             except Exception as e:
                 log(f"安装 Fabric Loader 失败: {e}", logging.ERROR)
