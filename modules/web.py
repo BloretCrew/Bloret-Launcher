@@ -4,7 +4,9 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.parse
 import logging
 import os
+import json
 from modules.plugin import addPlugin
+from modules.win11toast import toast
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -28,7 +30,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 # 向验证服务器发送请求
                 verify_url = "http://pcfs.eno.ink:20000/app/verify"
                 params = {
-                    'app_id': 'Bloret-Launcher',
+                    'app_id': 'BloretLauncher',
                     'app_secret': 's4d56f4a68sd46g54asd46f54a5dsf654asdf546',
                     'code': code
                 }
@@ -41,6 +43,29 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     print(f"OAuth verification response: {response_data}")
                     logger.info(f"OAuth verification response: {response_data}")
                     
+                    # 解析响应数据并保存到 config.json
+                    try:
+                        user_data = json.loads(response_data)
+                        if isinstance(user_data, dict) and 'username' in user_data and 'email' in user_data:
+                            # 读取现有配置
+                            try:
+                                with open('config.json', 'r', encoding='utf-8') as f:
+                                    config_data = json.load(f)
+                            except FileNotFoundError:
+                                config_data = {}
+                            
+                            # 更新Bloret Passport用户信息
+                            config_data['Bloret_PassPort_UserName'] = user_data['username']
+                            config_data['Bloret_PassPort_PassWord'] = user_data.get('apptoken', '')
+                            
+                            # 保存配置到文件
+                            with open('config.json', 'w', encoding='utf-8') as f:
+                                json.dump(config_data, f, ensure_ascii=False, indent=4)
+                                
+                            logger.info(f"User data saved to config.json: {user_data['username']}")
+                    except json.JSONDecodeError:
+                        logger.error("Failed to parse OAuth response as JSON")
+                    
                     # 返回成功的网页页面
                     self.send_response(200)
                     self.send_header('Content-type', 'text/html; charset=utf-8')
@@ -48,6 +73,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     
                     html_content = self.generate_success_page()
                     self.wfile.write(html_content.encode('utf-8'))
+                    
+                    toast(f'您已以 {user_data["username"]} 登录', f'登录后可使用 Bloret PassPort 服务，例如同步 Minecraft 登录信息到云端等功能')
                     
                 except Exception as e:
                     logger.error(f"Error during OAuth verification: {e}")

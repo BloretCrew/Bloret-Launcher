@@ -297,7 +297,8 @@
                 "label_2": "选择登录方式",
                 "CaptionLabel_3": "请记得单击设定，否则更改不会生效",
                 "Bloret_PassPort_UserName": "未登录",
-                "CaptionLabel_5": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。"
+                "CaptionLabel_5": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。",
+                "Bloret_PassPort_Other": "其他操作"
             },
             "buttons": {
                 "login": "重新登录",

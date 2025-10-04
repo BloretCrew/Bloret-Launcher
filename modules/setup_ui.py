@@ -7,8 +7,8 @@ import requests, json, logging, os, socket
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.systems import setup_startup_with_self_starting
 from modules.log import log, clear_log_files
-from modules.Bloret_PassPort import Bloret_PassPort_Account_login,Bloret_PassPort_Account_logout
-from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard
+from modules.Bloret_PassPort import Bloret_PassPort_Account_logout
+from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard, Bloret_PassPort_Account_login
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
 from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder
 from modules.install import InstallMinecraftVersion
@@ -479,11 +479,11 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
     if Bloret_PassPort_logout:
         Bloret_PassPort_logout.clicked.connect(lambda: Bloret_PassPort_Account_logout(self,homeInterface))
     if Bloret_PassPort_login:
-        Bloret_PassPort_login.clicked.connect(lambda: Bloret_PassPort_Account_login(self,widget,server_ip,homeInterface))
+        Bloret_PassPort_login.clicked.connect(lambda: Bloret_PassPort_Account_login())
     if Bloret_PassPort_view_BBBS:
         Bloret_PassPort_view_BBBS.clicked.connect(lambda: open_BBBS_link(server_ip))
     if reg_Bloret_PassPort:
-        reg_Bloret_PassPort.clicked.connect(lambda: open_BBBS_Reg_link(server_ip))
+        reg_Bloret_PassPort.clicked.connect(lambda: open_BBBS_Reg_link())
 
 def setup_settings_ui(self, widget):
     '''
