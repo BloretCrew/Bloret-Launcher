@@ -17,7 +17,7 @@ from modules.customize import CustomizeRun
 from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
-from modules.versions import Get_Run_Script
+from modules.launch import Get_Run_Script
 from modules.i18n import i18n_widgets, i18nText
 # from modules.plugin import setup_window
 # 全局变量
@@ -526,7 +526,7 @@ class MainWindow(FluentWindow):
         log(f"开始下载Minecraft版本: {version}")
         
         # 使用InstallMinecraftVersion函数下载版本
-        from modules.versions import InstallMinecraftVersion
+        from modules.install import InstallMinecraftVersion
         
         from PyQt5 import uic
         from PyQt5.QtWidgets import QDialog
@@ -816,8 +816,11 @@ class MainWindow(FluentWindow):
             log(f"正在启动 {version}")
             if os.path.exists("run.bat"):
                 os.remove("run.bat")
+            # 获取第一个账户信息
+            account_info = cmcl_data['accounts'][0]
+            username = account_info.get("username", "Player")
             log(f"传递给 Get_Run_Script 的版本: {version}")
-            script_content = Get_Run_Script(version)
+            script_content = Get_Run_Script(version, account_info, username)
             with open("run.bat", "w", encoding="utf-8") as f:
                 f.write(script_content)
 

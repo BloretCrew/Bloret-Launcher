@@ -1,0 +1,461 @@
+[{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“libraries_dir”",
+	"source": "Pylance",
+	"startLineNumber": 128,
+	"startColumn": 47,
+	"endLineNumber": 128,
+	"endColumn": 60,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“missing_libraries”",
+	"source": "Pylance",
+	"startLineNumber": 215,
+	"startColumn": 21,
+	"endLineNumber": 215,
+	"endColumn": 38,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“missing_libraries”",
+	"source": "Pylance",
+	"startLineNumber": 285,
+	"startColumn": 45,
+	"endLineNumber": 285,
+	"endColumn": 62,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“missing_libraries”",
+	"source": "Pylance",
+	"startLineNumber": 288,
+	"startColumn": 8,
+	"endLineNumber": 288,
+	"endColumn": 25,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“missing_libraries”",
+	"source": "Pylance",
+	"startLineNumber": 289,
+	"startColumn": 23,
+	"endLineNumber": 289,
+	"endColumn": 40,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“missing_libraries”",
+	"source": "Pylance",
+	"startLineNumber": 300,
+	"startColumn": 40,
+	"endLineNumber": 300,
+	"endColumn": 57,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“missing_libraries”",
+	"source": "Pylance",
+	"startLineNumber": 310,
+	"startColumn": 30,
+	"endLineNumber": 310,
+	"endColumn": 47,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 365,
+	"startColumn": 20,
+	"endLineNumber": 365,
+	"endColumn": 32,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 365,
+	"startColumn": 58,
+	"endLineNumber": 365,
+	"endColumn": 70,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“username”",
+	"source": "Pylance",
+	"startLineNumber": 371,
+	"startColumn": 20,
+	"endLineNumber": 371,
+	"endColumn": 28,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 372,
+	"startColumn": 8,
+	"endLineNumber": 372,
+	"endColumn": 20,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 373,
+	"startColumn": 24,
+	"endLineNumber": 373,
+	"endColumn": 36,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 374,
+	"startColumn": 43,
+	"endLineNumber": 374,
+	"endColumn": 55,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“username”",
+	"source": "Pylance",
+	"startLineNumber": 379,
+	"startColumn": 27,
+	"endLineNumber": 379,
+	"endColumn": 35,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 394,
+	"startColumn": 16,
+	"endLineNumber": 394,
+	"endColumn": 28,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 397,
+	"startColumn": 20,
+	"endLineNumber": 397,
+	"endColumn": 32,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 399,
+	"startColumn": 20,
+	"endLineNumber": 399,
+	"endColumn": 32,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“username”",
+	"source": "Pylance",
+	"startLineNumber": 407,
+	"startColumn": 27,
+	"endLineNumber": 407,
+	"endColumn": 35,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 412,
+	"startColumn": 23,
+	"endLineNumber": 412,
+	"endColumn": 35,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 413,
+	"startColumn": 30,
+	"endLineNumber": 413,
+	"endColumn": 42,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 414,
+	"startColumn": 27,
+	"endLineNumber": 414,
+	"endColumn": 39,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 415,
+	"startColumn": 23,
+	"endLineNumber": 415,
+	"endColumn": 35,
+	"origin": "extHost1"
+},{
+	"resource": "/g:/Work/git/Bloret-Launcher/modules/launch.py",
+	"owner": "pylance",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "未定义“account_info”",
+	"source": "Pylance",
+	"startLineNumber": 416,
+	"startColumn": 27,
+	"endLineNumber": 416,
+	"endColumn": 39,
+	"origin": "extHost1"
+}]

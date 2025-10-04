@@ -1,5 +1,5 @@
 body {
-    background-image: url('https://api.imlazy.ink/img'); /* 背景图片地址 */
+    background-image: url('http://pcfs.eno.ink:20009/api/img/Takanashi-Hoshino?ratio=16_9'); /* 背景图片地址 Takanashi Hoshino API */
     background-size: cover; /* 图片覆盖整个页面 */
     background-position: center; /* 居中显示图片 */
     background-repeat: no-repeat; /* 禁止重复 */

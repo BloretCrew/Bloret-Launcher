@@ -19,7 +19,7 @@ config['Bloret_PassPort_Admin'] = False
 config['whenCWopen_BLopen'] = True
 config['home_show_login_mod'] = True
 config['localmod'] = False
-config['MaxThread'] = 2000
+config['MaxThread'] = 64
 config['minecraft_dir'] = ""
 
 # 保存修改后的 config.json

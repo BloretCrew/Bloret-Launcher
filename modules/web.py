@@ -2,12 +2,8 @@ import threading
 import requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.parse
-import json
 import logging
 import os
-import zipfile
-import shutil
-import tempfile
 from modules.plugin import addPlugin
 
 # 配置日志
@@ -262,7 +258,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-image: url('https://api.imlazy.ink/img');
+            background-image: url('http://pcfs.eno.ink:20009/api/img/Takanashi-Hoshino?ratio=16_9');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -347,7 +343,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-image: url('https://api.imlazy.ink/img');
+            background-image: url('http://pcfs.eno.ink:20009/api/img/Takanashi-Hoshino?ratio=16_9');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -479,7 +475,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-image: url('https://api.imlazy.ink/img');
+            background-image: url('http://pcfs.eno.ink:20009/api/img/Takanashi-Hoshino?ratio=16_9');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -559,7 +555,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-image: url('https://api.imlazy.ink/img');
+            background-image: url('http://pcfs.eno.ink:20009/api/img/Takanashi-Hoshino?ratio=16_9');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -644,7 +640,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-image: url('https://api.imlazy.ink/img');
+            background-image: url('http://pcfs.eno.ink:20009/api/img/Takanashi-Hoshino?ratio=16_9');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
