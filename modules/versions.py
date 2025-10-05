@@ -11,7 +11,7 @@ Versions.py
 ***
 ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
 '''
-from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
+from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox, StrongBodyLabel, BodyLabel, SubtitleLabel, MessageBoxBase
 import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures, threading, time
 import sip # type: ignore
 from pathlib import Path
@@ -23,6 +23,7 @@ from modules.safe import handle_exception
 import sys
 from modules.customize import find_Customize
 from modules.i18n import i18nText
+
 
 def dl_source_launcher_or_meta_get(original_url):
     """
@@ -569,9 +570,9 @@ class LibraryDownloader:
             os.makedirs(os.path.dirname(lib_path), exist_ok=True)
             
             # 下载库文件
-            if "downloads" in lib and "artifact" in lib['downloads']:
-                artifact = lib['downloads']['artifact']
-                original_url = artifact['url']
+            if "downloads" in lib and "artifact" in lib["downloads"]:
+                artifact = lib["downloads"]["artifact"]
+                original_url = artifact["url"]
                 
                 candidate_urls = []
                 # 优先添加原始 URL
@@ -611,7 +612,7 @@ class LibraryDownloader:
                     return False
             elif "name" in lib:
                 # 处理 Maven 风格的库名称
-                parts = lib['name'].split(':')
+                parts = lib["name"].split(":")
                 if len(parts) >= 3:
                     group_id, artifact_id, version = parts[0:3]
                     
@@ -933,7 +934,7 @@ def Get_Run_Script(mc_version):
             should_include = True
             if "rules" in lib:
                 should_include = False
-                for rule in lib['rules']:
+                for rule in lib["rules"]:
                     if rule.get("action") == "allow":
                         os_rule = rule.get("os", {})
                         if not os_rule or (os_rule.get("name", "").lower() == platform.system().lower() or 
@@ -945,11 +946,11 @@ def Get_Run_Script(mc_version):
             
             if should_include:
                 lib_path = None
-                if "downloads" in lib and "artifact" in lib['downloads']:
-                    lib_path = os.path.join(minecraft_dir, "libraries", lib['downloads']['artifact']['path'])
+                if "downloads" in lib and "artifact" in lib["downloads"]:
+                    lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
                 elif "name" in lib:
                     # 处理 Maven 风格的库名称
-                    parts = lib['name'].split(':')
+                    parts = lib["name"].split(":")
                     if len(parts) >= 3:
                         group_id, artifact_id, lib_version = parts[0:3]
                         relative_path = os.path.join(
@@ -1030,11 +1031,11 @@ def Get_Run_Script(mc_version):
             lib_path = None
             
             # 检查是否为 Fabric 相关库或关键依赖
-            if "downloads" in lib and "artifact" in lib['downloads']:
-                lib_path = os.path.join(minecraft_dir, "libraries", lib['downloads']['artifact']['path'])
+            if "downloads" in lib and "artifact" in lib["downloads"]:
+                lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
             elif "name" in lib:
                 # 处理 Maven 风格的库名称
-                parts = lib['name'].split(':')
+                parts = lib["name"].split(":")
                 if len(parts) >= 3:
                     group_id, artifact_id, lib_version = parts[0:3]
                     relative_path = os.path.join(
@@ -1629,7 +1630,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         if "libraries" in version_data:
             for lib in version_data["libraries"]:
                 if "name" in lib:
-                    parts = lib['name'].split(':')
+                    parts = lib["name"].split(":")
                     if len(parts) == 3:
                         group = parts[0].replace(".", "/")
                         artifact = parts[1]
@@ -1987,7 +1988,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 processed_fabric_libraries = []
                 for lib in fabric_libraries:
                     if "name" in lib:
-                        parts = lib['name'].split(':')
+                        parts = lib["name"].split(":")
                         if len(parts) == 3:
                             group = parts[0].replace(".", "/")
                             artifact = parts[1]
@@ -1996,7 +1997,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                             lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
                             processed_fabric_libraries.append((lib, lib_path))
                         else:
-                            log(f"无法解析库名称: {lib['name']}", logging.WARNING)
+                            log(f"无法解析库名称: {lib["name"]}", logging.WARNING)
                     else:
                         log(f"库缺少 'name' 字段: {lib}", logging.WARNING)
 
@@ -2062,8 +2063,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
                     future_to_lib = {}
                     for lib in libraries:
-                        if "downloads" in lib and "artifact" in lib['downloads']:
-                            artifact = lib['downloads']['artifact']
+                        if "downloads" in lib and "artifact" in lib["downloads"]:
+                            artifact = lib["downloads"]["artifact"]
                             lib_path = os.path.join(minecraft_dir, "libraries", artifact["path"])
                             lib_url = artifact["url"]
                             
@@ -2119,3 +2120,200 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 download_dialog.close()
             except Exception as e:
                 log(f"关闭下载对话框时出错: {e}")
+
+def update_version_combo_by_category(self, version_combo, category):
+    """
+    根据分类更新版本选择框的内容
+    
+    Args:
+        version_combo: 版本选择框控件
+        category: 分类名称
+    """
+    version_combo.clear()
+    
+    # 根据分类加载对应版本列表
+    if category == i18nText("百络谷支持版本"):
+        if hasattr(self, 'ver_id_bloret') and self.ver_id_bloret:
+            version_combo.addItems(self.ver_id_bloret)
+        else:
+            version_combo.addItems(["1.21.7", "1.21.8"])
+    elif category == i18nText("正式版本"):
+        # 如果已经有缓存数据，直接使用
+        if hasattr(self, 'ver_id_main') and self.ver_id_main:
+            version_combo.addItems(self.ver_id_main)
+        else:
+            # 从网络获取版本列表
+            try:
+                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
+                response.raise_for_status()
+                version_data = response.json()
+                versions = version_data["versions"]
+                ver_id_main_temp = []
+                for version in versions:
+                    if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
+                        ver_id_main_temp.append(version["id"])
+                version_combo.addItems(ver_id_main_temp)
+            except Exception as e:
+                log(f"获取正式版本列表失败: {e}")
+                version_combo.addItems(["1.21.8", "1.21.7"])
+    elif category == i18nText("快照版本"):
+        # 如果已经有缓存数据，直接使用
+        if hasattr(self, 'ver_id_short') and self.ver_id_short:
+            version_combo.addItems(self.ver_id_short)
+        else:
+            # 从网络获取版本列表
+            try:
+                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
+                response.raise_for_status()
+                version_data = response.json()
+                versions = version_data["versions"]
+                ver_id_short_temp = []
+                for version in versions:
+                    if version["type"] == "snapshot":
+                        ver_id_short_temp.append(version["id"])
+                version_combo.addItems(ver_id_short_temp)
+            except Exception as e:
+                log(f"获取快照版本列表失败: {e}")
+                version_combo.addItems(["24w14a", "24w13a"])
+    elif category == i18nText("远古版本"):
+        # 如果已经有缓存数据，直接使用
+        if hasattr(self, 'ver_id_long') and self.ver_id_long:
+            version_combo.addItems(self.ver_id_long)
+        else:
+            # 从网络获取版本列表
+            try:
+                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
+                response.raise_for_status()
+                version_data = response.json()
+                versions = version_data["versions"]
+                ver_id_long_temp = []
+                for version in versions:
+                    if version["type"] in ["old_alpha", "old_beta"]:
+                        ver_id_long_temp.append(version["id"])
+                version_combo.addItems(ver_id_long_temp)
+            except Exception as e:
+                log(f"获取远古版本列表失败: {e}")
+                version_combo.addItems(["b1.7.3", "b1.7.2"])
+
+
+def on_other_version_selected(self, selected_text, combo_box):
+    """
+    当用户在版本选择框中选择"其他版本..."时触发
+    
+    Args:
+        selected_text: 用户选择的文本
+        combo_box: 触发事件的ComboBox控件
+        version_type: 版本类型 ("Minecraft" 或 "Fabric")
+    """
+    log(f"[versions][on_other_version_selected] start with : {selected_text}, {combo_box.currentText()}")
+    # 检查是否选择了"其他版本..."
+    if selected_text == i18nText("其他版本..."):
+        log("[versions][on_other_version_selected] 用户选择了其他版本...")
+        # 创建自定义对话框
+        dialog = MessageBoxBase(self)
+        dialog.setWindowTitle(i18nText("其他版本..."))
+        
+        # 标题和副标题
+        title_label = SubtitleLabel(i18nText("其他版本..."))
+        subtitle_label = BodyLabel(i18nText("在这里可以选择下载 Minecraft 的其他版本。\n请注意，这些版本可能不受百络谷支持，可能无法正常进入 Bloret 服务器。\n部分比较老的或快照版本可能不受 Fabric Loader 支持。"))
+        
+        # 创建分类选择框
+        category_label = StrongBodyLabel(i18nText("版本分类"))
+        category_combo = ComboBox()
+        category_combo.addItems([
+            i18nText("百络谷支持版本"),
+            i18nText("正式版本"), 
+            i18nText("快照版本"),
+            i18nText("远古版本")
+        ])
+        category_combo.setCurrentText(i18nText("百络谷支持版本"))
+        
+        # 创建版本选择框
+        version_label = StrongBodyLabel(i18nText("具体版本"))
+        version_combo = ComboBox()
+        
+        # 初始化版本选择框
+        update_version_combo_by_category(self, version_combo, i18nText("百络谷支持版本"))
+        
+        # 当分类改变时更新版本选择框
+        def on_category_changed(category):
+            # 禁用两个选择框
+            category_combo.setEnabled(False)
+            version_combo.setEnabled(False)
+            
+            # 显示加载提示
+            from qfluentwidgets import InfoBar, InfoBarPosition
+            from PyQt5.QtCore import Qt, QThread, pyqtSignal
+            InfoBar.info(
+                title=i18nText('正在加载'),
+                content=i18nText(f'正在加载 {category} 版本列表'),
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=dialog
+            )
+            
+            # 在新线程中加载版本列表
+            class LoadVersionThread(QThread):
+                finished = pyqtSignal()
+                
+                def __init__(self, main_window, version_combo, category):
+                    super().__init__()
+                    self.main_window = main_window
+                    self.version_combo = version_combo
+                    self.category = category
+                
+                def run(self):
+                    update_version_combo_by_category(self.main_window, self.version_combo, self.category)
+                    self.finished.emit()
+            
+            # 创建并启动线程
+            load_thread = LoadVersionThread(self, version_combo, category)
+            
+            # 线程完成后的处理
+            def on_load_finished():
+                # 重新启用两个选择框
+                category_combo.setEnabled(True)
+                version_combo.setEnabled(True)
+                # 关闭线程
+                load_thread.quit()
+                load_thread.wait()
+            
+            load_thread.finished.connect(on_load_finished)
+            load_thread.start()
+        
+        category_combo.currentTextChanged.connect(on_category_changed)
+        
+        # 添加控件到对话框布局
+        dialog.viewLayout.addWidget(title_label)
+        dialog.viewLayout.addWidget(subtitle_label)
+        dialog.viewLayout.addWidget(category_label)
+        dialog.viewLayout.addWidget(category_combo)
+        dialog.viewLayout.addWidget(version_label)
+        dialog.viewLayout.addWidget(version_combo)
+        
+        # 隐藏取消按钮
+        # dialog.cancelButton.hide()
+        
+        # 处理确认按钮点击事件
+        def handle_confirm():
+            selected_version = version_combo.currentText()
+            if selected_version:
+                # 检查版本是否已存在于combo_box中
+                existing_items = [combo_box.itemText(i) for i in range(combo_box.count())]
+                # 移除"其他版本..."选项以避免重复
+                if i18nText("其他版本...") in existing_items:
+                    existing_items.remove(i18nText("其他版本..."))
+                    
+                # 如果版本不存在于现有列表中，则添加
+                if selected_version not in existing_items:
+                    # 在"其他版本..."之前插入新项目
+                    combo_box.insertItem(combo_box.count() - 1, selected_version)
+                combo_box.setCurrentText(selected_version)
+            dialog.accept()
+        
+        dialog.yesButton.clicked.connect(handle_confirm)
+        
+        # 显示对话框
+        dialog.exec_()

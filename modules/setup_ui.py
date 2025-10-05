@@ -10,7 +10,7 @@ from modules.log import log, clear_log_files
 from modules.Bloret_PassPort import Bloret_PassPort_Account_logout, sync_mc_account_to_bloret_passport, sync_bloret_passport_account_to_mc
 from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard, Bloret_PassPort_Account_login
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
-from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder
+from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder, on_other_version_selected
 from modules.install import InstallMinecraftVersion
 from modules.modrinth import search_mods, Get_Mod_File_Download_Url, add_mrpack
 from PyQt5.QtCore import QThread, pyqtSignal
@@ -1371,9 +1371,21 @@ def setup_download_ui(self, widget):
         
         if minecraft_version_choose and minecraft_versions:
             minecraft_version_choose.addItems(minecraft_versions)
+            # 添加"其他版本..."选项
+            minecraft_version_choose.addItem(i18nText("其他版本..."))
+            # 连接选择变化事件
+            minecraft_version_choose.currentTextChanged.connect(
+                lambda text: on_other_version_selected(self, minecraft_version_choose.currentText(), minecraft_version_choose)
+            )
             
         if fabric_version_choose and minecraft_versions:
             fabric_version_choose.addItems(minecraft_versions)
+            # 添加"其他版本..."选项
+            fabric_version_choose.addItem(i18nText("其他版本..."))
+            # 连接选择变化事件
+            fabric_version_choose.currentTextChanged.connect(
+                lambda text: on_other_version_selected(self, fabric_version_choose.currentText(), fabric_version_choose)
+            )
             
         # 2. 填充Java版本选择框
         java_versions = config.get('Java_Versions', {})
