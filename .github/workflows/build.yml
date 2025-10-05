@@ -120,8 +120,18 @@ jobs:
 
     - name: 签名 Bloret-Launcher.exe
       run: |
-        $env:PATH += ";C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64"
-        signtool sign /f sign\root.pvk /p ${{ secrets.PVK_PASSWORD }} /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
+        $signtoolPath = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe"
+        if (-not (Test-Path $signtoolPath)) {
+          Write-Host "signtool not found at expected path, searching for it..."
+          $signtoolPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Name "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($signtoolPath) {
+            $signtoolPath = "C:\Program Files (x86)\Windows Kits\$signtoolPath"
+          } else {
+            Write-Error "signtool.exe not found after installing Windows SDK"
+            exit 1
+          }
+        }
+        & $signtoolPath sign /f sign/root.pvk /p ${{ secrets.PVK_PASSWORD }} /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
       shell: pwsh
       
     - name: 清理旧压缩包
@@ -239,8 +249,18 @@ jobs:
 
     - name: 签名安装程序
       run: |
-        $env:PATH += ";C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64"
-        signtool sign /f sign\root.pvk /p ${{ secrets.PVK_PASSWORD }} /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
+        $signtoolPath = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe"
+        if (-not (Test-Path $signtoolPath)) {
+          Write-Host "signtool not found at expected path, searching for it..."
+          $signtoolPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Name "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($signtoolPath) {
+            $signtoolPath = "C:\Program Files (x86)\Windows Kits\$signtoolPath"
+          } else {
+            Write-Error "signtool.exe not found after installing Windows SDK"
+            exit 1
+          }
+        }
+        & $signtoolPath sign /f sign/root.pvk /p ${{ secrets.PVK_PASSWORD }} /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
       shell: pwsh
 
     - name: 上传安装程序
