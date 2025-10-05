@@ -85,6 +85,7 @@ jobs:
           --add-data "frpc.exe;." `
           --add-data "frpc.toml;." `
           --add-data "JavaWrapper.jar;." `
+          --add-data "modules;modules" `
           --hidden-import=sip `
           --hidden-import=qfluentwidgets `
           --hidden-import=win11toast `

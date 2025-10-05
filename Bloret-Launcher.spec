@@ -5,7 +5,7 @@ a = Analysis(
     ['Bloret-Launcher.py'],
     pathex=['.'],
     binaries=[],
-    datas=[('bloret.ico', '.'), ('config.json', '.'), ('ui', 'ui'), ('cmcl.json', '.'), ('cmcl.exe', '.'), ('cmcl.blank.json', '.')],
+    datas=[('bloret.ico', '.'), ('config.json', '.'), ('ui', 'ui'), ('cmcl.json', '.'), ('cmcl.exe', '.'), ('cmcl.blank.json', '.'), ('modules', 'modules')],
     hiddenimports=['sip', 'qfluentwidgets', 'win11toast'],
     hookspath=[],
     hooksconfig={},
