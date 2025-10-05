@@ -569,9 +569,9 @@ class LibraryDownloader:
             os.makedirs(os.path.dirname(lib_path), exist_ok=True)
             
             # 下载库文件
-            if "downloads" in lib and "artifact" in lib["downloads"]:
-                artifact = lib["downloads"]["artifact"]
-                original_url = artifact["url"]
+            if "downloads" in lib and "artifact" in lib['downloads']:
+                artifact = lib['downloads']['artifact']
+                original_url = artifact['url']
                 
                 candidate_urls = []
                 # 优先添加原始 URL
@@ -611,7 +611,7 @@ class LibraryDownloader:
                     return False
             elif "name" in lib:
                 # 处理 Maven 风格的库名称
-                parts = lib["name"].split(":")
+                parts = lib['name'].split(':')
                 if len(parts) >= 3:
                     group_id, artifact_id, version = parts[0:3]
                     
@@ -933,7 +933,7 @@ def Get_Run_Script(mc_version):
             should_include = True
             if "rules" in lib:
                 should_include = False
-                for rule in lib["rules"]:
+                for rule in lib['rules']:
                     if rule.get("action") == "allow":
                         os_rule = rule.get("os", {})
                         if not os_rule or (os_rule.get("name", "").lower() == platform.system().lower() or 
@@ -945,11 +945,11 @@ def Get_Run_Script(mc_version):
             
             if should_include:
                 lib_path = None
-                if "downloads" in lib and "artifact" in lib["downloads"]:
-                    lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
+                if "downloads" in lib and "artifact" in lib['downloads']:
+                    lib_path = os.path.join(minecraft_dir, "libraries", lib['downloads']['artifact']['path'])
                 elif "name" in lib:
                     # 处理 Maven 风格的库名称
-                    parts = lib["name"].split(":")
+                    parts = lib['name'].split(':')
                     if len(parts) >= 3:
                         group_id, artifact_id, lib_version = parts[0:3]
                         relative_path = os.path.join(
@@ -1030,11 +1030,11 @@ def Get_Run_Script(mc_version):
             lib_path = None
             
             # 检查是否为 Fabric 相关库或关键依赖
-            if "downloads" in lib and "artifact" in lib["downloads"]:
-                lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
+            if "downloads" in lib and "artifact" in lib['downloads']:
+                lib_path = os.path.join(minecraft_dir, "libraries", lib['downloads']['artifact']['path'])
             elif "name" in lib:
                 # 处理 Maven 风格的库名称
-                parts = lib["name"].split(":")
+                parts = lib['name'].split(':')
                 if len(parts) >= 3:
                     group_id, artifact_id, lib_version = parts[0:3]
                     relative_path = os.path.join(
@@ -1629,7 +1629,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         if "libraries" in version_data:
             for lib in version_data["libraries"]:
                 if "name" in lib:
-                    parts = lib["name"].split(":")
+                    parts = lib['name'].split(':')
                     if len(parts) == 3:
                         group = parts[0].replace(".", "/")
                         artifact = parts[1]
@@ -1987,7 +1987,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 processed_fabric_libraries = []
                 for lib in fabric_libraries:
                     if "name" in lib:
-                        parts = lib["name"].split(":")
+                        parts = lib['name'].split(':')
                         if len(parts) == 3:
                             group = parts[0].replace(".", "/")
                             artifact = parts[1]
@@ -1996,7 +1996,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                             lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
                             processed_fabric_libraries.append((lib, lib_path))
                         else:
-                            log(f"无法解析库名称: {lib["name"]}", logging.WARNING)
+                            log(f"无法解析库名称: {lib['name']}", logging.WARNING)
                     else:
                         log(f"库缺少 'name' 字段: {lib}", logging.WARNING)
 
@@ -2062,8 +2062,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
                     future_to_lib = {}
                     for lib in libraries:
-                        if "downloads" in lib and "artifact" in lib["downloads"]:
-                            artifact = lib["downloads"]["artifact"]
+                        if "downloads" in lib and "artifact" in lib['downloads']:
+                            artifact = lib['downloads']['artifact']
                             lib_path = os.path.join(minecraft_dir, "libraries", artifact["path"])
                             lib_url = artifact["url"]
                             
