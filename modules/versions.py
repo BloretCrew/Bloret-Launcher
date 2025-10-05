@@ -1259,7 +1259,7 @@ def Get_Run_Script(mc_version):
     bat_command = " ".join(launch_args)
     
     log(f"生成的启动命令: {bat_command}")
-    log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {"chcp 65001\n" + f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}\n' + bat_command}")
+    log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {'chcp 65001\n' + f'cd {os.path.join(minecraft_dir, 'versions', game_dir_version)}\n' + bat_command}")
     return "chcp 65001\n" + f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}\n' + bat_command
 
 def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False):
