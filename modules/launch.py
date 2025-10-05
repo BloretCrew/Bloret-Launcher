@@ -153,51 +153,58 @@ def Get_Run_Script(mc_version):
     ])
     
     # 构建类路径 (classpath)
-    classpath = []
+    final_classpath = []
     
     # 添加所有依赖库
     libraries_dir = os.path.join(minecraft_dir, "libraries")
-    missing_libraries = []
+    optifine_libs = []
+    missing_libraries = []  # 用于记录缺失的库文件
     if "libraries" in version_data:
         for lib in version_data["libraries"]:
-            # 检查库是否适用于当前系统
-            should_include = True
+            # 检查库的规则
             if "rules" in lib:
-                should_include = False
-                for rule in lib["rules"]:
-                    if rule.get("action") == "allow":
-                        os_rule = rule.get("os", {})
-                        if not os_rule or (os_rule.get("name", "").lower() == platform.system().lower() or 
-                                          (os_rule.get("name") == "windows" and platform.system() == "Windows") or
-                                          (os_rule.get("name") == "osx" and platform.system() == "Darwin") or
-                                          (os_rule.get("name") == "linux" and platform.system() == "Linux")):
-                            should_include = True
-                            break
+                allow_lib = False
+                for rule in lib['rules']:
+                    # 检查规则是否允许该库
+                    if "action" in rule and rule["action"] == "allow":
+                        # 检查操作系统规则
+                        if "os" in rule:
+                            os_rule = rule["os"]
+                            if "name" in os_rule:
+                                # 检查操作系统名称
+                                os_name = os.name  # 获取当前操作系统名称
+                                if os_rule["name"] == "windows" and os_name != "nt":
+                                    continue
+                                elif os_rule["name"] == "osx" and os_name != "posix":
+                                    continue
+                                elif os_rule["name"] == "linux" and os_name != "posix":
+                                    continue
+                        allow_lib = True
+                if not allow_lib:
+                    continue
             
-            if should_include:
-                lib_path = None
-                if "downloads" in lib and "artifact" in lib["downloads"]:
-                    lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
-                elif "name" in lib:
-                    # 处理 Maven 风格的库名称
-                    parts = lib["name"].split(":")
-                    if len(parts) >= 3:
-                        group_id, artifact_id, lib_version = parts[0:3]
-                        relative_path = os.path.join(
-                            group_id.replace(".", "/"),
-                            artifact_id,
-                            lib_version,
-                            f"{artifact_id}-{lib_version}.jar"
-                        )
-                        lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
-                
-                if lib_path:
-                    # 检查库文件是否存在
-                    if os.path.exists(lib_path):
-                        classpath.append(lib_path)
-                    else:
-                        # 记录缺失的库文件
-                        missing_libraries.append((lib, lib_path))
+            # 检查库是否需要下载
+            if "downloads" in lib and "artifact" in lib['downloads']:
+                lib_path = os.path.join(minecraft_dir, "libraries", lib['downloads']['artifact']["path"])
+            else:
+                # 从库名称构建路径
+                parts = lib['name'].split(":")
+                if len(parts) == 3:
+                    group = parts[0].replace(".", "/")
+                    artifact = parts[1]
+                    version_lib = parts[2]
+                    lib_filename = f"{artifact}-{version_lib}.jar"
+                    lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
+                else:
+                    log(f"无法解析库名称: {lib['name']}", logging.WARNING)
+                    continue
+            
+            # 添加库到类路径
+            final_classpath.append(lib_path)
+            
+            # 处理特殊库（如OptiFine）
+            if "name" in lib and "optifine" in lib['name'].lower():
+                optifine_libs.append(lib_path)
     
     # 检查是否为 Fabric 版本
     is_fabric = "fabric" in mc_version.lower() or any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", []))

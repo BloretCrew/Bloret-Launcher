@@ -733,7 +733,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         if "libraries" in version_data:
             for lib in version_data["libraries"]:
                 if "name" in lib:
-                    parts = lib["name"].split(":")
+                    parts = lib['name'].split(":")
                     if len(parts) == 3:
                         group = parts[0].replace(".", "/")
                         artifact = parts[1]
@@ -742,7 +742,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                         lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
                         processed_libraries.append((lib, lib_path))
                     else:
-                        log(f"无法解析库名称: {lib["name"]}", logging.WARNING)
+                        log(f"无法解析库名称: {lib['name']}", logging.WARNING)
                 else:
                     log(f"库缺少 'name' 字段: {lib}", logging.WARNING)
 
@@ -1215,7 +1215,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 processed_fabric_libraries = []
                 for lib in fabric_libraries:
                     if "name" in lib:
-                        parts = lib["name"].split(":")
+                        parts = lib['name'].split(":")
                         if len(parts) == 3:
                             group = parts[0].replace(".", "/")
                             artifact = parts[1]
@@ -1224,7 +1224,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                             lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
                             processed_fabric_libraries.append((lib, lib_path))
                         else:
-                            log(f"无法解析库名称: {lib["name"]}", logging.WARNING)
+                            log(f"无法解析库名称: {lib['name']}", logging.WARNING)
                     else:
                         log(f"库缺少 'name' 字段: {lib}", logging.WARNING)
 
