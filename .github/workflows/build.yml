@@ -135,10 +135,19 @@ jobs:
         # 确保证书文件存在
         if (-not (Test-Path "sign/root.pvk")) {
           Write-Error "sign/root.pvk not found"
+          Get-ChildItem -Path "sign" -ErrorAction SilentlyContinue
           exit 1
         }
         
-        & $signtoolPath sign /f sign/root.pvk /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
+        # 检查是否存在spc文件
+        $certFile = "sign/root.pvk"
+        if (Test-Path "sign/root.spc") {
+          # 如果存在spc文件，使用pvk和spc文件组合
+          & $signtoolPath sign /f "sign/root.spc" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
+        } else {
+          # 仅使用pvk文件
+          & $signtoolPath sign /f "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
+        }
       shell: pwsh
       
     - name: 清理旧压缩包
@@ -271,10 +280,19 @@ jobs:
         # 确保证书文件存在
         if (-not (Test-Path "sign/root.pvk")) {
           Write-Error "sign/root.pvk not found"
+          Get-ChildItem -Path "sign" -ErrorAction SilentlyContinue
           exit 1
         }
         
-        & $signtoolPath sign /f sign/root.pvk /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
+        # 检查是否存在spc文件
+        $certFile = "sign/root.pvk"
+        if (Test-Path "sign/root.spc") {
+          # 如果存在spc文件，使用pvk和spc文件组合
+          & $signtoolPath sign /f "sign/root.spc" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
+        } else {
+          # 仅使用pvk文件
+          & $signtoolPath sign /f "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
+        }
       shell: pwsh
 
     - name: 上传安装程序
