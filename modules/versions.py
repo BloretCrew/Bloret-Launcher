@@ -1258,9 +1258,14 @@ def Get_Run_Script(mc_version):
     # 不添加过滤器，避免被Minecraft误认为是游戏参数
     bat_command = " ".join(launch_args)
     
+    # 修复f-string中不能包含反斜杠的问题
+    chcp_command = "chcp 65001"
+    cd_command = f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}'
+    full_command = f"{chcp_command}\n{cd_command}\n{bat_command}"
+    
     log(f"生成的启动命令: {bat_command}")
-    log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {'chcp 65001\n' + f'cd {os.path.join(minecraft_dir, 'versions', game_dir_version)}\n' + bat_command}")
-    return "chcp 65001\n" + f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}\n' + bat_command
+    log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {full_command}")
+    return full_command
 
 def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False):
     # 如果没有提供下载对话框，则创建并显示一个新的
