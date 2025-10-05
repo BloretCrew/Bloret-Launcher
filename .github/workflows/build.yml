@@ -113,12 +113,17 @@ jobs:
         cp -r frpc.toml ${{ env.OUTPUT_DIR }}/
         cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
 
-    - name: 签名 Bloret-Launcher.exe
+    - name: 安装 Windows SDK
       run: |
-        # 假设 root.pvk, root.spc, root.cer 已经上传到仓库或作为 secrets 提供
-        signtool sign /f root.pvk /p your_password_here /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
+        choco install windows-sdk-10.0 --yes
       shell: pwsh
 
+    - name: 签名 Bloret-Launcher.exe
+      run: |
+        $env:PATH += ";C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64"
+        signtool sign /f sign\root.pvk /p ${{ secrets.PVK_PASSWORD }} /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
+      shell: pwsh
+      
     - name: 清理旧压缩包
       run: |
         if (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}") {
@@ -227,10 +232,15 @@ jobs:
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
       shell: pwsh
 
+    - name: 安装 Windows SDK
+      run: |
+        choco install windows-sdk-10.0 --yes
+      shell: pwsh
+
     - name: 签名安装程序
       run: |
-        # 使用相同的证书和时间戳服务对安装程序进行签名
-        signtool sign /f root.pvk /p ${{ secrets.PVK_PASSWORD }} /t http://timestamp.digicert.com /v "output/Bloret Launcher Setup.exe"
+        $env:PATH += ";C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64"
+        signtool sign /f sign\root.pvk /p ${{ secrets.PVK_PASSWORD }} /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
       shell: pwsh
 
     - name: 上传安装程序
