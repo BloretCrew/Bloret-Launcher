@@ -120,35 +120,38 @@ jobs:
 
     - name: 签名 Bloret-Launcher.exe
       run: |
-        $signtoolPath = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe"
-        if (-not (Test-Path $signtoolPath)) {
-          Write-Host "signtool not found at expected path, searching for it..."
-          $signtoolItems = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue
-          if ($signtoolItems) {
-            $signtoolPath = $signtoolItems[0].FullName
-          } else {
-            Write-Error "signtool.exe not found after installing Windows SDK"
-            exit 1
-          }
+        # 查找signtool.exe的位置
+        $signtoolPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+        
+        if (-not $signtoolPath) {
+          Write-Error "signtool.exe not found after installing Windows SDK"
+          exit 1
         }
+        
+        $signtoolPath = $signtoolPath.FullName
+        Write-Host "Found signtool at: $signtoolPath"
+        
+        # 列出sign目录中的文件
+        Write-Host "Certificate files:"
+        Get-ChildItem -Path "sign" -ErrorAction SilentlyContinue
         
         # 确保证书文件存在
         if (-not (Test-Path "sign/root.pvk")) {
           Write-Error "sign/root.pvk not found"
-          Get-ChildItem -Path "sign" -ErrorAction SilentlyContinue
           exit 1
         }
         
         # 检查证书文件组合并使用正确的签名命令
         if ((Test-Path "sign/root.spc") -and (Test-Path "sign/root.pvk")) {
           # 使用 SPC 和 PVK 文件进行签名
+          Write-Host "Signing with SPC and PVK files"
           & $signtoolPath sign /f "sign/root.spc" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
         } elseif (Test-Path "sign/root.pvk") {
           # 仅使用 PVK 文件进行签名
+          Write-Host "Signing with PVK file only"
           & $signtoolPath sign /f "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
         } else {
           Write-Error "No valid certificate files found for signing"
-          Get-ChildItem -Path "sign" -ErrorAction SilentlyContinue
           exit 1
         }
       shell: pwsh
@@ -268,35 +271,38 @@ jobs:
 
     - name: 签名安装程序
       run: |
-        $signtoolPath = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe"
-        if (-not (Test-Path $signtoolPath)) {
-          Write-Host "signtool not found at expected path, searching for it..."
-          $signtoolItems = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue
-          if ($signtoolItems) {
-            $signtoolPath = $signtoolItems[0].FullName
-          } else {
-            Write-Error "signtool.exe not found after installing Windows SDK"
-            exit 1
-          }
+        # 查找signtool.exe的位置
+        $signtoolPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+        
+        if (-not $signtoolPath) {
+          Write-Error "signtool.exe not found after installing Windows SDK"
+          exit 1
         }
+        
+        $signtoolPath = $signtoolPath.FullName
+        Write-Host "Found signtool at: $signtoolPath"
+        
+        # 列出sign目录中的文件
+        Write-Host "Certificate files:"
+        Get-ChildItem -Path "sign" -ErrorAction SilentlyContinue
         
         # 确保证书文件存在
         if (-not (Test-Path "sign/root.pvk")) {
           Write-Error "sign/root.pvk not found"
-          Get-ChildItem -Path "sign" -ErrorAction SilentlyContinue
           exit 1
         }
         
         # 检查证书文件组合并使用正确的签名命令
         if ((Test-Path "sign/root.spc") -and (Test-Path "sign/root.pvk")) {
           # 使用 SPC 和 PVK 文件进行签名
+          Write-Host "Signing with SPC and PVK files"
           & $signtoolPath sign /f "sign/root.spc" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
         } elseif (Test-Path "sign/root.pvk") {
           # 仅使用 PVK 文件进行签名
+          Write-Host "Signing with PVK file only"
           & $signtoolPath sign /f "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
         } else {
           Write-Error "No valid certificate files found for signing"
-          Get-ChildItem -Path "sign" -ErrorAction SilentlyContinue
           exit 1
         }
       shell: pwsh
