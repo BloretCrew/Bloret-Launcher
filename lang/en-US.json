@@ -297,14 +297,19 @@
                 "label_2": "Select Login Method",
                 "CaptionLabel_3": "Remember to click Set, otherwise changes will not take effect",
                 "Bloret_PassPort_UserName": "Not Logged In",
-                "CaptionLabel_5": "Using Bloret Passport, you can enjoy almost all Bloret services."
+                "CaptionLabel_5": "Using Bloret Passport, you can enjoy almost all Bloret services.",
+                "Bloret_PassPort_Other": "其他操作",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_title": " 同步到 Bloret PassPort",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_sub_title": "将您的 Minecraft  账户上传到云端，以便在其他设备上快速登录"
             },
             "buttons": {
                 "login": "Re-login",
                 "Bloret_PassPort_view_BBBS": "Visit Bloret BBS",
                 "Bloret_PassPort_login": "Re-login",
                 "Bloret_PassPort_logout": "Log Out",
-                "reg_Bloret_PassPort": "Register Bloret Passport"
+                "reg_Bloret_PassPort": "Register Bloret Passport",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_to": "同步到云端",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from": "从云端下载"
             },
             "ComboBox": {
                 "player_login_way": "",
@@ -756,6 +761,20 @@
         "安装成功!": "安装成功!",
         "Modpack 安装失败!": "Modpack 安装失败!",
         "安装失败!": "安装失败!",
-        "未选择文件": "未选择文件"
+        "未选择文件": "未选择文件",
+        "是否将本地 Minecraft 账户同步到Bloret Passport？": "是否将本地 Minecraft 账户同步到Bloret Passport？",
+        "同步到云端后，您可以在其他设备上登录 Bloret PassPort，然后快速恢复 Minecraft 账户登录。": "同步到云端后，您可以在其他设备上登录 Bloret PassPort，然后快速恢复 Minecraft 账户登录。",
+        "同步成功": "同步成功",
+        "同步失败": "同步失败",
+        "同步 Minecraft 账户到 Bloret Passport失败": "同步 Minecraft 账户到 Bloret Passport失败",
+        "已成功将本地 Minecraft 账户同步到 Bloret Passport": "已成功将本地 Minecraft 账户同步到 Bloret Passport",
+        "同步出错": "同步出错",
+        "同步过程中发生错误": "同步过程中发生错误",
+        "是否将 Bloret Passport 账户同步到本地 Minecraft 账户？": "是否将 Bloret Passport 账户同步到本地 Minecraft 账户？",
+        "确定要从 Bloret Passport 同步 Minecraft 账户 到本地吗？这将覆盖本地账户数据。": "确定要从 Bloret Passport 同步 Minecraft 账户 到本地吗？这将覆盖本地账户数据。",
+        "从 Bloret Passport 获取 Minecraft 账户失败": "从 Bloret Passport 获取 Minecraft 账户失败",
+        "已成功从 Bloret Passport 同步 Minecraft 账户到本地": "已成功从 Bloret Passport 同步 Minecraft 账户到本地",
+        "界面上可能不会及时刷新，但已经登录。": "界面上可能不会及时刷新，但已经登录。",
+        "打开 Bloret PassPort 登录页面": "打开 Bloret PassPort 登录页面"
     }
 }
