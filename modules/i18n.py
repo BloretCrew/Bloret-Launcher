@@ -218,4 +218,5 @@ def i18nText(key):
         return lang_data["texts"][key]
     except KeyError:
         # 如果在语言数据中找不到对应键值，则返回原始键值
+        log(f"[i18n][i18nText] 发现未翻译的值: {key}")
         return key

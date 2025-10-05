@@ -7,7 +7,7 @@ import requests, json, logging, os, socket
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.systems import setup_startup_with_self_starting
 from modules.log import log, clear_log_files
-from modules.Bloret_PassPort import Bloret_PassPort_Account_logout
+from modules.Bloret_PassPort import Bloret_PassPort_Account_logout, sync_mc_account_to_bloret_passport, sync_bloret_passport_account_to_mc
 from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard, Bloret_PassPort_Account_login
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
 from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder
@@ -433,10 +433,11 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
     login_way_combo = widget.findChild(ComboBox, "player_login_way")
     login_way_choose = widget.findChild(ComboBox, "login_way")
     name_combo = widget.findChild(ComboBox, "playername")
-    # if player_name_edit:
-    #     player_name_edit.setText(self.player_name if self.cmcl_data else '')
-    # else:
-    #     log("未找到player_name输入框", logging.ERROR)
+    Bloret_PassPort_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
+    Bloret_PassPort_logout = widget.findChild(QPushButton, "Bloret_PassPort_logout")
+    Bloret_PassPort_login = widget.findChild(QPushButton, "Bloret_PassPort_login")
+    go_Minecraft_Account_To_Bloret_PassPort_Cloud_to = widget.findChild(QPushButton, "go_Minecraft_Account_To_Bloret_PassPort_Cloud_to")
+    go_Minecraft_Account_To_Bloret_PassPort_Cloud_from = widget.findChild(QPushButton, "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from")
 
     if player_name_edit and player_name_set_button:
         player_name_set_button.clicked.connect(lambda: self.on_player_name_set_clicked(widget))
@@ -465,13 +466,9 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
     else:
         log(i18nText("读取 cmcl.json 失败"))
     
-    # 添加登录按钮点击事件
     login_button = widget.findChild(QPushButton, "login")
     if login_button:
         login_button.clicked.connect(lambda: self.handle_login(widget))
-    Bloret_PassPort_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
-    Bloret_PassPort_logout = widget.findChild(QPushButton, "Bloret_PassPort_logout")
-    Bloret_PassPort_login = widget.findChild(QPushButton, "Bloret_PassPort_login")
     Bloret_PassPort_view_BBBS = widget.findChild(QPushButton, "Bloret_PassPort_view_BBBS")
     reg_Bloret_PassPort = widget.findChild(QPushButton, "reg_Bloret_PassPort")
     if Bloret_PassPort_UserName:
@@ -484,6 +481,11 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
         Bloret_PassPort_view_BBBS.clicked.connect(lambda: open_BBBS_link(server_ip))
     if reg_Bloret_PassPort:
         reg_Bloret_PassPort.clicked.connect(lambda: open_BBBS_Reg_link())
+    if go_Minecraft_Account_To_Bloret_PassPort_Cloud_to:
+        go_Minecraft_Account_To_Bloret_PassPort_Cloud_to.clicked.connect(lambda: sync_mc_account_to_bloret_passport(self))
+
+    if go_Minecraft_Account_To_Bloret_PassPort_Cloud_from:
+        go_Minecraft_Account_To_Bloret_PassPort_Cloud_from.clicked.connect(lambda: sync_bloret_passport_account_to_mc(self))
 
 def setup_settings_ui(self, widget):
     '''
@@ -1430,7 +1432,14 @@ def setup_download_ui(self, widget):
         # 设置Fabric版本下载按钮点击事件
         fabric_download_button = widget.findChild(QPushButton, 'Fabric_version_Download')
         if fabric_download_button:
-            fabric_download_button.clicked.connect(lambda: InstallMinecraftVersion(fabric_version_choose.currentText(),None,None,True))
+            def on_fabric_download_button_clicked():
+                from qfluentwidgets import MessageBox
+                version = fabric_version_choose.currentText()
+                box = MessageBox(i18nText('您确定要安装 Fabric 版本 {} 吗？').format(version), i18nText('Fabric 版本安装目前尚在 Beta 阶段（实验性功能），安装完成后可能不能正常启动，但 Bloret Launcher 目前已可正常启动其他 Minecraft 启动器安装的 Fabric 版本 Minecraft。\n（人话：目前 Fabric 安装安装出来的可能不够标准，但是 Bloret Launcher 可以启动标准 Fabric 版本）\n如果您有能力，欢迎到 Github 来帮忙改进 Bloret Launcher'), widget)
+                if box.exec():
+                    InstallMinecraftVersion(version, None, None, True)
+            
+            fabric_download_button.clicked.connect(on_fabric_download_button_clicked)
             
         # 设置Java版本下载按钮点击事件
         java_download_button = widget.findChild(QPushButton, 'Java_version_Download')
@@ -1511,24 +1520,39 @@ def setup_multiplayer_ui(self, widget, server_ip):
 
 
 def start_search_mod(self, mod_list, search_term, loading):
-    # 确保旧线程结束
+    """
+    启动模组搜索功能，在单独的线程中执行搜索以避免阻塞UI
+    
+    Args:
+        mod_list: 模组列表对象，用于显示搜索结果
+        search_term: 搜索关键词
+        loading: 加载状态指示器
+    """
+    # 确保旧线程结束，避免线程冲突
     if hasattr(mod_list, '_ui_thread') and mod_list._ui_thread.isRunning():
         mod_list._ui_thread.quit()
         mod_list._ui_thread.wait()
     
-    # 创建新线程
+    # 创建新的模组搜索线程实例
     mod_list._ui_thread = ModSearchThread(mod_list, search_term)
     
-    # 连接结果信号
+    # 连接搜索结果信号到处理函数
     def handle_results(results):
+        """
+        处理搜索结果的通用逻辑
+        
+        Args:
+            results: 搜索返回的结果数据
+        """
         # 这里可以处理搜索结果的通用逻辑
         pass
     mod_list._ui_thread.results_ready.connect(handle_results)
     
     # 连接UI元素就绪信号到结果处理函数
+    # 当搜索完成且UI元素准备就绪时，调用on_search_mod_finish进行后续处理
     mod_list._ui_thread.ui_elements_ready.connect(lambda data: on_search_mod_finish(self, data, mod_list, loading))
     
-    # 启动线程
+    # 启动搜索线程
     mod_list._ui_thread.start()
 
 def setup_Mod_ui(self, widget, server_ip):
@@ -1553,5 +1577,3 @@ def setup_Mod_ui(self, widget, server_ip):
         Search.searchSignal.connect(lambda: start_search_mod(self, mod_list, Search.text(), loading_widget))
     else:
         log(i18nText("未找到 Search 搜索框"), logging.ERROR)
-
-

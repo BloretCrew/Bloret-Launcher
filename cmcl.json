@@ -1,11 +1,13 @@
 {
-  "language": "zh",
-  "downloadSource": 1,
-  "checkAccountBeforeStart": false,
-  "accounts": [{
-    "playerName": "Detritalw",
-    "loginMethod": 0,
-    "selected": true
-  }],
-  "printStartupInfo": true
+    "language": "zh",
+    "downloadSource": 1,
+    "checkAccountBeforeStart": false,
+    "accounts": [
+        {
+            "playerName": "Detritalw",
+            "loginMethod": 0,
+            "selected": true
+        }
+    ],
+    "printStartupInfo": true
 }

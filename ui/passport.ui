@@ -46,7 +46,7 @@
         <x>0</x>
         <y>0</y>
         <width>670</width>
-        <height>529</height>
+        <height>528</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -242,6 +242,101 @@
         </widget>
        </item>
        <item>
+        <widget class="CardWidget" name="CardWidget_2">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_6">
+            <item>
+             <widget class="StrongBodyLabel" name="go_Minecraft_Account_To_Bloret_PassPort_Cloud_title">
+              <property name="maximumSize">
+               <size>
+                <width>16777210</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string> 同步到 Bloret PassPort</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignJustify|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="go_Minecraft_Account_To_Bloret_PassPort_Cloud_sub_title">
+              <property name="text">
+               <string>将您的 Minecraft  账户上传到云端，以便在其他设备上快速登录</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color>
+                <red>127</red>
+                <green>127</green>
+                <blue>127</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color>
+                <red>185</red>
+                <green>185</green>
+                <blue>185</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_5">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>74</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="PushButton" name="go_Minecraft_Account_To_Bloret_PassPort_Cloud_to">
+            <property name="minimumSize">
+             <size>
+              <width>100</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>同步到云端</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="PushButton" name="go_Minecraft_Account_To_Bloret_PassPort_Cloud_from">
+            <property name="minimumSize">
+             <size>
+              <width>100</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>从云端下载</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="SubtitleLabel" name="SubtitleLabel">
          <property name="text">
           <string>Bloret 通行证</string>
@@ -282,19 +377,6 @@
            </spacer>
           </item>
           <item>
-           <widget class="PushButton" name="Bloret_PassPort_view_BBBS">
-            <property name="minimumSize">
-             <size>
-              <width>100</width>
-              <height>20</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>访问 Bloret BBS</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="PushButton" name="Bloret_PassPort_login">
             <property name="minimumSize">
              <size>
@@ -317,6 +399,51 @@
             </property>
             <property name="text">
              <string>退出登录</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="StrongBodyLabel" name="Bloret_PassPort_Other">
+            <property name="text">
+             <string>其他操作</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_4">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>292</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="PushButton" name="Bloret_PassPort_view_BBBS">
+            <property name="minimumSize">
+             <size>
+              <width>100</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>访问 Bloret BBS</string>
             </property>
            </widget>
           </item>
