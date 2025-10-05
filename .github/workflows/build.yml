@@ -141,21 +141,52 @@ jobs:
           exit 1
         }
         
-        # 检查证书文件组合并使用正确的签名命令
+        # 尝试不同的签名方法
         if ((Test-Path "sign/root.spc") -and (Test-Path "sign/root.pvk")) {
-          # 使用 SPC 和 PVK 文件进行签名
-          Write-Host "Signing with SPC and PVK files"
-          & $signtoolPath sign /f "sign/root.spc" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
-        } elseif ((Test-Path "sign/root.cer") -and (Test-Path "sign/root.pvk")) {
-          # 使用 CER 和 PVK 文件进行签名
-          Write-Host "Signing with CER and PVK files"
-          & $signtoolPath sign /f "sign/root.cer" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
-        } elseif (Test-Path "sign/root.pvk") {
-          # 仅使用 PVK 文件进行签名（添加/desc参数）
-          Write-Host "Signing with PVK file only"
+          # 方法1: 使用 SPC 和 PVK 文件进行签名
+          Write-Host "尝试使用 SPC 和 PVK 文件签名"
+          try {
+            & $signtoolPath sign /f "sign/root.spc" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "SPC+PVK签名成功"
+              exit 0
+            } else {
+              Write-Host "SPC+PVK签名失败，尝试其他方法"
+            }
+          } catch {
+            Write-Host "SPC+PVK签名异常: $_"
+          }
+        }
+        
+        if ((Test-Path "sign/root.cer") -and (Test-Path "sign/root.pvk")) {
+          # 方法2: 使用 CER 和 PVK 文件进行签名
+          Write-Host "尝试使用 CER 和 PVK 文件签名"
+          try {
+            & $signtoolPath sign /f "sign/root.cer" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "CER+PVK签名成功"
+              exit 0
+            } else {
+              Write-Host "CER+PVK签名失败，尝试其他方法"
+            }
+          } catch {
+            Write-Host "CER+PVK签名异常: $_"
+          }
+        }
+        
+        # 方法3: 仅使用 PVK 文件进行签名
+        Write-Host "尝试仅使用 PVK 文件签名"
+        try {
           & $signtoolPath sign /f "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
-        } else {
-          Write-Error "No valid certificate files found for signing"
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "PVK签名成功"
+            exit 0
+          } else {
+            Write-Error "所有签名方法都失败了"
+            exit 1
+          }
+        } catch {
+          Write-Error "PVK签名异常: $_"
           exit 1
         }
       shell: pwsh
@@ -296,21 +327,52 @@ jobs:
           exit 1
         }
         
-        # 检查证书文件组合并使用正确的签名命令
+        # 尝试不同的签名方法
         if ((Test-Path "sign/root.spc") -and (Test-Path "sign/root.pvk")) {
-          # 使用 SPC 和 PVK 文件进行签名
-          Write-Host "Signing with SPC and PVK files"
-          & $signtoolPath sign /f "sign/root.spc" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
-        } elseif ((Test-Path "sign/root.cer") -and (Test-Path "sign/root.pvk")) {
-          # 使用 CER 和 PVK 文件进行签名
-          Write-Host "Signing with CER and PVK files"
-          & $signtoolPath sign /f "sign/root.cer" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
-        } elseif (Test-Path "sign/root.pvk") {
-          # 仅使用 PVK 文件进行签名
-          Write-Host "Signing with PVK file only"
+          # 方法1: 使用 SPC 和 PVK 文件进行签名
+          Write-Host "尝试使用 SPC 和 PVK 文件签名"
+          try {
+            & $signtoolPath sign /f "sign/root.spc" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "SPC+PVK签名成功"
+              exit 0
+            } else {
+              Write-Host "SPC+PVK签名失败，尝试其他方法"
+            }
+          } catch {
+            Write-Host "SPC+PVK签名异常: $_"
+          }
+        }
+        
+        if ((Test-Path "sign/root.cer") -and (Test-Path "sign/root.pvk")) {
+          # 方法2: 使用 CER 和 PVK 文件进行签名
+          Write-Host "尝试使用 CER 和 PVK 文件签名"
+          try {
+            & $signtoolPath sign /f "sign/root.cer" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "CER+PVK签名成功"
+              exit 0
+            } else {
+              Write-Host "CER+PVK签名失败，尝试其他方法"
+            }
+          } catch {
+            Write-Host "CER+PVK签名异常: $_"
+          }
+        }
+        
+        # 方法3: 仅使用 PVK 文件进行签名
+        Write-Host "尝试仅使用 PVK 文件签名"
+        try {
           & $signtoolPath sign /f "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
-        } else {
-          Write-Error "No valid certificate files found for signing"
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "PVK签名成功"
+            exit 0
+          } else {
+            Write-Error "所有签名方法都失败了"
+            exit 1
+          }
+        } catch {
+          Write-Error "PVK签名异常: $_"
           exit 1
         }
       shell: pwsh
