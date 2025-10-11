@@ -83,7 +83,8 @@ def AskBlorikoAndSet(self, widget, text, AskBloriko_Answer):
     response_content = AskBloriko(text)
     if response_content == "Bloret_PassPort_Not_Login":
         log("用户未登录，无法使用 Bloriko 功能")
-        w = MessageBox("Bloriko 还不知道您是谁", "Bloriko AI 需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。请先登录，确认以转到通行证页面。", widget)
+        AskBloriko_Answer.setText("")
+        w = MessageBox("Bloriko 还不知道您是谁", "Bloriko AI 需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。", widget)
         if w.exec():
             self.switchTo(self.passportInterface)
     else :
