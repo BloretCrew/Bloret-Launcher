@@ -113,84 +113,12 @@ jobs:
         cp -r frpc.toml ${{ env.OUTPUT_DIR }}/
         cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
 
-    - name: 安装 Windows SDK
-      run: |
-        choco install windows-sdk-10.0 --yes
-      shell: pwsh
 
-    - name: 签名 Bloret-Launcher.exe
-      run: |
-        # 查找signtool.exe的位置
-        $signtoolPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-        
-        if (-not $signtoolPath) {
-          Write-Error "signtool.exe not found after installing Windows SDK"
-          exit 1
-        }
-        
-        $signtoolPath = $signtoolPath.FullName
-        Write-Host "Found signtool at: $signtoolPath"
-        
-        # 列出sign目录中的文件
-        Write-Host "Certificate files:"
-        Get-ChildItem -Path "sign" -ErrorAction SilentlyContinue
-        
-        # 确保证书文件存在
-        if (-not (Test-Path "sign/root.pvk")) {
-          Write-Error "sign/root.pvk not found"
-          exit 1
-        }
-        
-        # 尝试不同的签名方法
-        if ((Test-Path "sign/root.spc") -and (Test-Path "sign/root.pvk")) {
-          # 方法1: 使用 SPC 和 PVK 文件进行签名
-          Write-Host "尝试使用 SPC 和 PVK 文件签名"
-          try {
-            & $signtoolPath sign /f "sign/root.spc" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "SPC+PVK签名成功"
-              exit 0
-            } else {
-              Write-Host "SPC+PVK签名失败，尝试其他方法"
-            }
-          } catch {
-            Write-Host "SPC+PVK签名异常: $_"
-          }
-        }
-        
-        if ((Test-Path "sign/root.cer") -and (Test-Path "sign/root.pvk")) {
-          # 方法2: 使用 CER 和 PVK 文件进行签名
-          Write-Host "尝试使用 CER 和 PVK 文件签名"
-          try {
-            & $signtoolPath sign /f "sign/root.cer" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "CER+PVK签名成功"
-              exit 0
-            } else {
-              Write-Host "CER+PVK签名失败，尝试其他方法"
-            }
-          } catch {
-            Write-Host "CER+PVK签名异常: $_"
-          }
-        }
-        
-        # 方法3: 仅使用 PVK 文件进行签名
-        Write-Host "尝试仅使用 PVK 文件签名"
-        try {
-          & $signtoolPath sign /f "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v ${{ env.OUTPUT_DIR }}/Bloret-Launcher.exe
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "PVK签名成功"
-            exit 0
-          } else {
-            Write-Error "所有签名方法都失败了"
-            exit 1
-          }
-        } catch {
-          Write-Error "PVK签名异常: $_"
-          exit 1
-        }
-      shell: pwsh
-      
+
+
+
+
+
     - name: 清理旧压缩包
       run: |
         if (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}") {
@@ -299,83 +227,11 @@ jobs:
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
       shell: pwsh
 
-    - name: 安装 Windows SDK
-      run: |
-        choco install windows-sdk-10.0 --yes
-      shell: pwsh
 
-    - name: 签名安装程序
-      run: |
-        # 查找signtool.exe的位置
-        $signtoolPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-        
-        if (-not $signtoolPath) {
-          Write-Error "signtool.exe not found after installing Windows SDK"
-          exit 1
-        }
-        
-        $signtoolPath = $signtoolPath.FullName
-        Write-Host "Found signtool at: $signtoolPath"
-        
-        # 列出sign目录中的文件
-        Write-Host "Certificate files:"
-        Get-ChildItem -Path "sign" -ErrorAction SilentlyContinue
-        
-        # 确保证书文件存在
-        if (-not (Test-Path "sign/root.pvk")) {
-          Write-Error "sign/root.pvk not found"
-          exit 1
-        }
-        
-        # 尝试不同的签名方法
-        if ((Test-Path "sign/root.spc") -and (Test-Path "sign/root.pvk")) {
-          # 方法1: 使用 SPC 和 PVK 文件进行签名
-          Write-Host "尝试使用 SPC 和 PVK 文件签名"
-          try {
-            & $signtoolPath sign /f "sign/root.spc" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "SPC+PVK签名成功"
-              exit 0
-            } else {
-              Write-Host "SPC+PVK签名失败，尝试其他方法"
-            }
-          } catch {
-            Write-Host "SPC+PVK签名异常: $_"
-          }
-        }
-        
-        if ((Test-Path "sign/root.cer") -and (Test-Path "sign/root.pvk")) {
-          # 方法2: 使用 CER 和 PVK 文件进行签名
-          Write-Host "尝试使用 CER 和 PVK 文件签名"
-          try {
-            & $signtoolPath sign /f "sign/root.cer" /p7ce "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "CER+PVK签名成功"
-              exit 0
-            } else {
-              Write-Host "CER+PVK签名失败，尝试其他方法"
-            }
-          } catch {
-            Write-Host "CER+PVK签名异常: $_"
-          }
-        }
-        
-        # 方法3: 仅使用 PVK 文件进行签名
-        Write-Host "尝试仅使用 PVK 文件签名"
-        try {
-          & $signtoolPath sign /f "sign/root.pvk" /p ${{ secrets.PVK_PASSWORD }} /fd SHA256 /t http://timestamp.digicert.com /v "./output/Bloret Launcher Setup.exe"
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "PVK签名成功"
-            exit 0
-          } else {
-            Write-Error "所有签名方法都失败了"
-            exit 1
-          }
-        } catch {
-          Write-Error "PVK签名异常: $_"
-          exit 1
-        }
-      shell: pwsh
+
+
+
+
 
     - name: 上传安装程序
       uses: actions/upload-artifact@v4
@@ -607,7 +463,7 @@ jobs:
   #     with:
   #       name: Bloret-Launcher
   #       path: ${{ env.OUTPUT_DIR }}
-        
+
   #   - name: 检查 Bloret-Launcher.zip 是否存在
   #     run: |
   #       if (-not (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}")) {
