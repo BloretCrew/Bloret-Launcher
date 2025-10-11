@@ -20,6 +20,7 @@ from modules.java import InstallJava
 from modules.i18n import i18nText
 from modules.customize import CustomizeAdd
 from modules.Bloriko import AskBlorikoAndSet
+from modules.chafuwang import getServerData
 
 class DownloadDialog(MessageBoxBase):
     """ 自定义下载对话框 """
@@ -304,6 +305,16 @@ def setup_home_ui(self, widget):
 
     if not AskBloriko_Answer:
         log("未找到 AskBloriko_Answer 元素")
+
+    BloretServerOnlineNumber = widget.findChild(QLabel, "BloretServerOnlineNumber")
+    BloretServerText0 = widget.findChild(QLabel, "BloretServerText0")
+    BloretServerText1 = widget.findChild(QLabel, "BloretServerText1")
+    BloretServer_BestTime = widget.findChild(QLabel, "BloretServer_BestTime")
+    server_data = getServerData("Bloret")
+    BloretServerOnlineNumber.setText(f"{server_data["playersOnline"]} / {server_data["playersMax"]}")
+    BloretServerText0.setText(server_data["motdClean"][0])
+    BloretServerText1.setText(server_data["motdClean"][1])
+    BloretServer_BestTime.setText(server_data["bestTime"])
 
 def setup_download_load_ui(self, widget):
     '''
