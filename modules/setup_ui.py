@@ -19,6 +19,7 @@ from modules.local_client import OnlineClient
 from modules.java import InstallJava
 from modules.i18n import i18nText
 from modules.customize import CustomizeAdd
+from modules.Bloriko import AskBlorikoAndSet
 
 class DownloadDialog(MessageBoxBase):
     """ 自定义下载对话框 """
@@ -288,6 +289,20 @@ def setup_home_ui(self, widget):
                 Minecraft_account.setText(f"[{self.login_mod}] {self.player_name}")
         else:
             Minecraft_account.setText(f"{self.player_name}")
+            
+    AskBloriko_Edit = widget.findChild(LineEdit, "AskBloriko_Edit")
+    AskBloriko_Button = widget.findChild(PushButton, "AskBloriko_Button")
+    AskBloriko_Answer = widget.findChild(StrongBodyLabel, "AskBloriko_Answer")
+    if AskBloriko_Button:
+        AskBloriko_Button.clicked.connect(lambda: AskBlorikoAndSet(AskBloriko_Edit.text()))
+    else:
+        log("未找到 AskBloriko_Button 元素")
+
+    if not AskBloriko_Edit:
+        log("未找到 AskBloriko_Edit 元素")
+
+    if not AskBloriko_Answer:
+        log("未找到 AskBloriko_Answer 元素")
 
 def setup_download_load_ui(self, widget):
     '''
