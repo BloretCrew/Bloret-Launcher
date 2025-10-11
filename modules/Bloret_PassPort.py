@@ -9,7 +9,8 @@ from modules.i18n import i18nText
 
 
 def Bloret_PassPort_Account_logout(self, homeInterface):
-    self.config.update(Bloret_PassPort_UserName=i18nText('未登录'))
+    self.config.update(Bloret_PassPort_Login=False)
+    self.config.update(Bloret_PassPort_UserName=i18nText(''))
     self.config.update(Bloret_PassPort_PassWord='')
     self.config.update(Bloret_PassPort_Admin=False)
     

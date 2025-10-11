@@ -1,5 +1,5 @@
 ; MyAppVersion 的值会由 Github Actions 自动修改
-#define MyAppName "Bloret Launcher"
+#define MyAppName "Bloret-Launcher"
 #define MyAppVersion "8-Beta"
 #define MyAppPublisher "Bloret"
 #define MyAppURL "https://launcher.bloret.net/"
@@ -63,6 +63,7 @@ Source: "output\frpc.toml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\JavaWrapper.jar"; DestDir: "{app}"; Flags: ignoreversion
 ; Source: "output\icons\*"; DestDir: "{app}\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "output\ui\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "output\lang\*"; DestDir: "{app}\lang"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; 注意：不要在任何共享系统文件上使用 "Flags: ignoreversion"
 
 [Registry]

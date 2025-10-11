@@ -113,12 +113,6 @@ jobs:
         cp -r frpc.toml ${{ env.OUTPUT_DIR }}/
         cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
 
-
-
-
-
-
-
     - name: 清理旧压缩包
       run: |
         if (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}") {

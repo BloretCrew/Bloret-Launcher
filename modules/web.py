@@ -55,6 +55,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                                 config_data = {}
                             
                             # 更新Bloret Passport用户信息
+                            config_data['Bloret_PassPort_Login'] = True
                             config_data['Bloret_PassPort_UserName'] = user_data['username']
                             config_data['Bloret_PassPort_PassWord'] = user_data.get('apptoken', '')
                             
