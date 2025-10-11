@@ -299,7 +299,7 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
                 <x>13</x>
                 <y>15</y>
                 <width>611</width>
-                <height>71</height>
+                <height>82</height>
                </rect>
               </property>
               <layout class="QHBoxLayout" name="horizontalLayout_5">
@@ -392,6 +392,28 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
                       </size>
                      </property>
                     </spacer>
+                   </item>
+                   <item>
+                    <widget class="StrongBodyLabel" name="BloretServerIP">
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="text">
+                      <string>bloret.net </string>
+                     </property>
+                     <property name="textFormat">
+                      <enum>Qt::AutoText</enum>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                     </property>
+                     <property name="wordWrap">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
                    </item>
                    <item>
                     <widget class="StrongBodyLabel" name="BloretServerOnlineNumber">
