@@ -294,6 +294,7 @@ def setup_home_ui(self, widget):
     AskBloriko_Button = widget.findChild(PushButton, "AskBloriko_Button")
     AskBloriko_Answer = widget.findChild(StrongBodyLabel, "AskBloriko_Answer")
     if AskBloriko_Button:
+        AskBloriko_Button.setIcon(FluentIcon.SEND)
         AskBloriko_Button.clicked.connect(lambda: AskBlorikoAndSet(self, widget, AskBloriko_Edit.text(), AskBloriko_Answer))
     else:
         log("未找到 AskBloriko_Button 元素")
