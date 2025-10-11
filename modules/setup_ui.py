@@ -570,7 +570,7 @@ def setup_settings_ui(self, widget):
         size_choose.setValue(self.config.get("size", 100))
         size_choose.valueChanged.connect(lambda value: (
             self.config.update(size=value),
-            open('self.config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
         ))
 
     MaxThread_SpinBox = widget.findChild(SpinBox, "MaxThread_SpinBox")

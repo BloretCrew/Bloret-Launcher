@@ -15,17 +15,17 @@ def AskBloriko(text):
     Returns:
         str: 服务端返回的响应数据中的 content 字段值
     """
-    # 获取配置文件路径
-    config_path = os.path.join(os.path.dirname(__file__), "..", "config.json")
     
     # 读取配置文件
     try:
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open("config.json", 'r', encoding='utf-8') as f:
             config = json.load(f)
     except FileNotFoundError:
-        return "配置文件未找到"
+        log("配置文件未找到")
+        return ""
     except json.JSONDecodeError:
-        return "配置文件格式错误"
+        log("配置文件格式错误")
+        return ""
 
     # 检查登录状态
     if not config.get("Bloret_PassPort_Login", False):
