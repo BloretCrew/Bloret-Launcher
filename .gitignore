@@ -10,3 +10,4 @@ logs/
 /config
 run.bat
 /logs
+.DS_Store
