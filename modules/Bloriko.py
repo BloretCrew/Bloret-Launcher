@@ -71,6 +71,7 @@ def AskBloriko(text, callback=None):
             # 返回 content 字段值
             if "content" in result:
                 result_content = result["content"]
+                log(f"Bloriko 回复: {result_content}")
             else:
                 result_content = "未能获取到 AI 回复内容"
         except requests.exceptions.RequestException as e:
