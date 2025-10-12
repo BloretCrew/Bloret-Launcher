@@ -311,7 +311,7 @@ def setup_home_ui(self, widget):
     BloretServerText1 = widget.findChild(QLabel, "BloretServerText1")
     BloretServer_BestTime = widget.findChild(QLabel, "BloretServer_BestTime")
     server_data = getServerData("Bloret")
-    BloretServerOnlineNumber.setText(f"{server_data["playersOnline"]} / {server_data["playersMax"]}")
+    BloretServerOnlineNumber.setText(f"{server_data['playersOnline']} / {server_data['playersMax']}")
     BloretServerText0.setText(server_data["motdClean"][0])
     BloretServerText1.setText(server_data["motdClean"][1])
     BloretServer_BestTime.setText(server_data["bestTime"])
