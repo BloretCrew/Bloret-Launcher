@@ -136,8 +136,8 @@ def AskBlorikoAndSet(self, widget, text, AskBloriko_Answer):
         AskBloriko_Answer (StrongBodyLabel): 用于显示 AI 回复的 StrongBodyLabel 控件
     """
     log(f"开始调用 AskBlorikoAndSet 函数，请求文本: {text[:50]}{'...' if len(text) > 50 else ''}", logging.INFO)
-
-        # 读取配置文件
+    
+    # 读取配置文件
     try:
         with open("config.json", 'r', encoding='utf-8') as f:
             config = json.load(f)
@@ -152,10 +152,19 @@ def AskBlorikoAndSet(self, widget, text, AskBloriko_Answer):
     # 检查登录状态
     is_logged_in = config.get("Bloret_PassPort_Login", False)
     log(f"用户登录状态: {is_logged_in}", logging.DEBUG)
+    
+    # 定义登录提示消息框函数
+    def show_login_message():
+        log("显示登录提示消息框", logging.INFO)
+        w = MessageBox("Bloriko 还不知道您是谁", "Bloriko AI 需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。", widget)
+        if w.exec():
+            self.switchTo(self.passportInterface)
+            log("用户点击确认，切换到通行证界面", logging.INFO)
 
     if not is_logged_in:
-        show_login_message()
-
+        # 在主线程中显示消息框
+        QTimer.singleShot(0, show_login_message)
+        return
     
     # 设置文本格式为Markdown
     AskBloriko_Answer.setTextFormat(Qt.MarkdownText)
@@ -171,13 +180,6 @@ def AskBlorikoAndSet(self, widget, text, AskBloriko_Answer):
         # 将回复内容设置到 StrongBodyLabel 上
         AskBloriko_Answer.setText(response_content)
         log("已将 Bloriko 响应设置到界面控件", logging.INFO)
-
-    def show_login_message():
-        log("显示登录提示消息框", logging.INFO)
-        w = MessageBox("Bloriko 还不知道您是谁", "Bloriko AI 需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。", widget)
-        if w.exec():
-            self.switchTo(self.passportInterface)
-            log("用户点击确认，切换到通行证界面", logging.INFO)
 
     # 调用 Bloriko 函数获取 AI 回复（异步方式）
     result = AskBloriko(text, handle_response)
