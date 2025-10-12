@@ -314,14 +314,34 @@ def setup_home_ui(self, widget):
     # 修复：正确处理getServerData返回的线程对象
     def update_server_info(data):
         if BloretServerOnlineNumber and BloretServerText0 and BloretServerText1 and BloretServer_BestTime:
-            if "error" not in data:
-                BloretServerOnlineNumber.setText(f"{data['playersOnline']} / {data['playersMax']}")
-                BloretServerText0.setText(data["motdClean"][0])
-                BloretServerText1.setText(data["motdClean"][1])
-                BloretServer_BestTime.setText(data["bestTime"])
-            else:
+            # 检查是否有错误信息
+            if "error" in data:
                 BloretServerOnlineNumber.setText("N/A")
                 BloretServerText0.setText("服务器数据获取失败")
+                BloretServerText1.setText("")
+                BloretServer_BestTime.setText("")
+                return
+            
+            try:
+                # 安全地处理数据，确保数字类型正确转换为字符串
+                players_online = data.get('playersOnline', 'N/A')
+                players_max = data.get('playersMax', 'N/A')
+                motd_clean = data.get('motdClean', ['', ''])
+                best_time = data.get('bestTime', '')
+                
+                # 确保motdClean是一个至少有两个元素的列表
+                if not isinstance(motd_clean, (list, tuple)) or len(motd_clean) < 2:
+                    motd_clean = ['', '']
+                
+                # 正确地将数字转换为字符串进行显示
+                BloretServerOnlineNumber.setText(f"{players_online} / {players_max}")
+                BloretServerText0.setText(str(motd_clean[0]))
+                BloretServerText1.setText(str(motd_clean[1]))
+                BloretServer_BestTime.setText(str(best_time))
+            except Exception as e:
+                log(f"处理服务器数据时出错: {str(e)}")
+                BloretServerOnlineNumber.setText("N/A")
+                BloretServerText0.setText("数据处理错误")
                 BloretServerText1.setText("")
                 BloretServer_BestTime.setText("")
     
