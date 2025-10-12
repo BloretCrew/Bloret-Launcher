@@ -319,6 +319,7 @@ def setup_home_ui(self, widget):
                 BloretServerText0.setText(data["motdClean"][0])
                 BloretServerText1.setText(data["motdClean"][1])
                 BloretServer_BestTime.setText(data["bestTime"])
+            else:
                 BloretServerOnlineNumber.setText("N/A")
                 BloretServerText0.setText("服务器数据获取失败")
                 BloretServerText1.setText("")
