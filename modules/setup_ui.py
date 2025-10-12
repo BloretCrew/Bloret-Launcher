@@ -310,11 +310,22 @@ def setup_home_ui(self, widget):
     BloretServerText0 = widget.findChild(QLabel, "BloretServerText0")
     BloretServerText1 = widget.findChild(QLabel, "BloretServerText1")
     BloretServer_BestTime = widget.findChild(QLabel, "BloretServer_BestTime")
-    server_data = getServerData("Bloret")
-    BloretServerOnlineNumber.setText(f"{server_data['playersOnline']} / {server_data['playersMax']}")
-    BloretServerText0.setText(server_data["motdClean"][0])
-    BloretServerText1.setText(server_data["motdClean"][1])
-    BloretServer_BestTime.setText(server_data["bestTime"])
+    
+    # 修复：正确处理getServerData返回的线程对象
+    def update_server_info(data):
+        if BloretServerOnlineNumber and BloretServerText0 and BloretServerText1 and BloretServer_BestTime:
+            if "error" not in data:
+                BloretServerOnlineNumber.setText(f"{data['playersOnline']} / {data['playersMax']}")
+                BloretServerText0.setText(data["motdClean"][0])
+                BloretServerText1.setText(data["motdClean"][1])
+                BloretServer_BestTime.setText(data["bestTime"])
+                BloretServerOnlineNumber.setText("N/A")
+                BloretServerText0.setText("服务器数据获取失败")
+                BloretServerText1.setText("")
+                BloretServer_BestTime.setText("")
+    
+    # 调用getServerData并传入回调函数
+    getServerData("Bloret", callback=update_server_info)
 
 def setup_download_load_ui(self, widget):
     '''
