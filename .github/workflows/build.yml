@@ -6,7 +6,7 @@ permissions:
 on:
   push:
     branches:
-      - Windows
+      - Nuitka
 
 jobs:
   Set-Version:
@@ -70,35 +70,17 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
         pip install pillow
-        pip install pyinstaller
+        pip install nuitka
     
-    - name: 使用 PyInstaller 打包
+    - name: 使用 Nuitka 打包
       run: |
-        pyinstaller --onefile --noconsole --icon=bloret.ico --name=Bloret-Launcher `
-          --add-data "bloret.ico;." `
-          --add-data "config.json;." `
-          --add-data "ui;ui" `
-          --add-data "lang;lang" `
-          --add-data "cmcl.json;." `
-          --add-data "cmcl.exe;." `
-          --add-data "cmcl.blank.json;." `
-          --add-data "frpc.exe;." `
-          --add-data "frpc.toml;." `
-          --add-data "JavaWrapper.jar;." `
-          --add-data "modules;modules" `
-          --hidden-import=sip `
-          --hidden-import=qfluentwidgets `
-          --hidden-import=win11toast `
-          --hidden-import=toml `
-          --hidden-import=winsdk `
-          --paths=. `
-          Bloret-Launcher.py
+        python -m nuitka --standalone --onefile --windows-disable-console --enable-plugin=tk-inter --enable-plugin=pyside6 --windows-icon=bloret.ico --output-file=Bloret-Launcher.exe --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules --include-file=bloret.ico --include-file=config.json --include-file=cmcl.json --include-file=cmcl.exe --include-file=cmcl.blank.json --include-file=frpc.exe --include-file=frpc.toml --include-file=JavaWrapper.jar Bloret-Launcher.py
       shell: pwsh
 
     - name: 创建包含其他文件夹的目录
       run: |
         mkdir -p ${{ env.OUTPUT_DIR }}
-        cp dist/Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
+        cp Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
         cp -r lang/ ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
@@ -270,33 +252,17 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements_nopywin32.txt
-        pip install pillow pyinstaller
+        pip install pillow nuitka
       shell: bash
-    - name: 使用 PyInstaller 打包
+    - name: 使用 Nuitka 打包
       run: |
-        pyinstaller --onefile --windowed --name=Bloret-Launcher \
-          --add-data "bloret.ico:." \
-          --add-data "config.json:." \
-          --add-data "ui:ui" \
-          --add-data "lang:lang" \
-          --add-data "cmcl.json:." \
-          --add-data "cmcl.exe:." \
-          --add-data "cmcl.blank.json:." \
-          --add-data "frpc.exe:." \
-          --add-data "frpc.toml:." \
-          --add-data "JavaWrapper.jar:." \
-          --hidden-import=sip \
-          --hidden-import=qfluentwidgets \
-          --hidden-import=win11toast \
-          --hidden-import=toml \
-          --paths=. \
-          Bloret-Launcher.py
+        python -m nuitka --standalone --macos-create-app-bundle --macos-app-icon=bloret.ico --output-dir=dist --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules --include-file=bloret.ico --include-file=config.json --include-file=cmcl.json --include-file=cmcl.exe --include-file=cmcl.blank.json --include-file=frpc.exe --include-file=frpc.toml --include-file=JavaWrapper.jar Bloret-Launcher.py
       shell: bash
 
     - name: 创建包含其他文件夹的目录
       run: |
         mkdir -p ${{ env.OUTPUT_DIR }}
-        cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
+        cp -r dist/Bloret-Launcher.app ${{ env.OUTPUT_DIR }}/
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
         cp -r lang/ ${{ env.OUTPUT_DIR }}/
         cp cmcl.exe ${{ env.OUTPUT_DIR }}/
@@ -361,32 +327,16 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements_nopywin32.txt
-        pip install pillow pyinstaller
+        pip install pillow nuitka
       shell: bash
-    - name: 使用 PyInstaller 打包
+    - name: 使用 Nuitka 打包
       run: |
-        pyinstaller --onefile --windowed --name=Bloret-Launcher \
-          --add-data "bloret.ico:." \
-          --add-data "config.json:." \
-          --add-data "ui:ui" \
-          --add-data "lang:lang" \
-          --add-data "cmcl.json:." \
-          --add-data "cmcl.exe:." \
-          --add-data "cmcl.blank.json:." \
-          --add-data "frpc.exe:." \
-          --add-data "frpc.toml:." \
-          --add-data "JavaWrapper.jar:." \
-          --hidden-import=sip \
-          --hidden-import=qfluentwidgets \
-          --hidden-import=win11toast \
-          --hidden-import=toml \
-          --paths=. \
-          Bloret-Launcher.py
+        python -m nuitka --standalone --onefile --linux-disable-console --output-dir=dist --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules --include-file=bloret.ico --include-file=config.json --include-file=cmcl.json --include-file=cmcl.exe --include-file=cmcl.blank.json --include-file=frpc.exe --include-file=frpc.toml --include-file=JavaWrapper.jar Bloret-Launcher.py
       shell: bash
     - name: 创建包含其他文件夹的目录
       run: |
         mkdir -p ${{ env.OUTPUT_DIR }}
-        cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
+        cp dist/Bloret-Launcher.bin ${{ env.OUTPUT_DIR }}/Bloret-Launcher
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
         cp -r lang/ ${{ env.OUTPUT_DIR }}/
         cp cmcl.exe ${{ env.OUTPUT_DIR }}/
