@@ -310,12 +310,15 @@ def setup_home_ui(self, widget):
     BloretServerText0 = widget.findChild(QLabel, "BloretServerText0")
     BloretServerText1 = widget.findChild(QLabel, "BloretServerText1")
     BloretServer_BestTime = widget.findChild(QLabel, "BloretServer_BestTime")
+    if BloretServer_BestTime:
+        BloretServer_BestTime.setWordWrap(True)
     
     # 修复：正确处理getServerData返回的线程对象
     def update_server_info(data):
         if BloretServerOnlineNumber and BloretServerText0 and BloretServerText1 and BloretServer_BestTime:
             # 检查是否有错误信息
             if "error" in data:
+                log(f"服务器数据获取失败: {data.get("error")}")
                 BloretServerOnlineNumber.setText("N/A")
                 BloretServerText0.setText("服务器数据获取失败")
                 BloretServerText1.setText("")
@@ -324,20 +327,39 @@ def setup_home_ui(self, widget):
             
             try:
                 # 安全地处理数据，确保数字类型正确转换为字符串
-                players_online = data.get('playersOnline', 'N/A')
-                players_max = data.get('playersMax', 'N/A')
-                motd_clean = data.get('motdClean', ['', ''])
-                best_time = data.get('bestTime', '')
+                real_time_status = data.get('realTimeStatus', {})
+                players_online = real_time_status.get('playersOnline', 'N/A')
+                players_max = real_time_status.get('playersMax', 'N/A')
+                motd_clean = real_time_status.get('motdClean', ['', ''])
+                best_time = data.get('BestTime', '')
+
+                log(f"从数据中提取: players_online={players_online}, players_max={players_max}, motd_clean={motd_clean}, best_time={best_time}")
                 
-                # 确保motdClean是一个至少有两个元素的列表
-                if not isinstance(motd_clean, (list, tuple)) or len(motd_clean) < 2:
-                    motd_clean = ['', '']
-                
+                # 检查QLabel对象是否存在
+                if not BloretServerOnlineNumber:
+                    log("BloretServerOnlineNumber QLabel not found.")
+                if not BloretServerText0:
+                    log("BloretServerText0 QLabel not found.")
+                if not BloretServerText1:
+                    log("BloretServerText1 QLabel not found.")
+                if not BloretServer_BestTime:
+                    log("BloretServer_BestTime QLabel not found.")
+
                 # 正确地将数字转换为字符串进行显示
                 BloretServerOnlineNumber.setText(f"{players_online} / {players_max}")
-                BloretServerText0.setText(str(motd_clean[0]))
-                BloretServerText1.setText(str(motd_clean[1]))
+                
+                if motd_clean and len(motd_clean) > 0:
+                    BloretServerText0.setText(str(motd_clean[0]))
+                else:
+                    BloretServerText0.setText("暂无公告")
+
+                if motd_clean and len(motd_clean) > 1:
+                    BloretServerText1.setText(str(motd_clean[1]))
+                else:
+                    BloretServerText1.setText("")
+
                 BloretServer_BestTime.setText(str(best_time))
+                log(f"UI已更新: BloretServerOnlineNumber='{players_online} / {players_max}', BloretServerText0='{motd_clean[0] if motd_clean and len(motd_clean) > 0 else '暂无公告'}', BloretServerText1='{motd_clean[1] if motd_clean and len(motd_clean) > 1 else ''}'")
             except Exception as e:
                 log(f"处理服务器数据时出错: {str(e)}")
                 BloretServerOnlineNumber.setText("N/A")
