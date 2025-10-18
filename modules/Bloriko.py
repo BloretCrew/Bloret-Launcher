@@ -13,7 +13,7 @@ class BlorikoSignals(QObject):
     finished = pyqtSignal(str)  # 当请求完成时发出信号
 
 
-def AskBloriko(text, callback=None):
+def AskBloriko(text, AskBloriko_Answer):
     """
     发送文本到 AI 服务并返回响应
     
@@ -103,28 +103,40 @@ def AskBloriko(text, callback=None):
             log(f"处理 Bloriko 响应时发生未知错误: {str(e)}", logging.ERROR)
         
         # 如果提供了回调函数，则调用它
-        if callback:
-            log("调用回调函数处理响应结果", logging.DEBUG)
-            # 使用QTimer确保回调在主线程中执行
-            QTimer.singleShot(0, lambda: callback(result_content))
-        else:
-            log("同步调用，直接返回结果", logging.DEBUG)
+        # if callback:
+        #     log("准备调度回调函数处理响应结果", logging.DEBUG)
+        #     # 使用QTimer确保回调在主线程中执行
+        #     def execute_callback():
+        #         log("Lambda 函数（execute_callback）被执行，准备调用回调", logging.DEBUG)
+        #         try:
+        #             callback(result_content)
+        #             log("回调函数调用成功", logging.DEBUG)
+        #         except Exception as e:
+        #             log(f"执行回调函数时发生错误: {e}", logging.ERROR)
+        #     QTimer.singleShot(0, execute_callback)
+        #     log("回调函数已调度", logging.DEBUG)
+        # else:
+        #     log("同步调用，直接返回结果", logging.DEBUG)
+        AskBloriko_Answer.setText(result_content)
+        
+        log("已将 Bloriko 响应设置到界面控件", logging.INFO)
         return result_content
+        
     
     # 在单独线程中执行网络请求
-    if callback:
-        log("创建线程以异步执行请求", logging.INFO)
-        thread = threading.Thread(target=make_request)
-        thread.daemon = True  # 设置为守护线程
-        thread.start()
-        log(f"线程已启动，线程ID: {thread.ident}", logging.INFO)
-        return "请求已在后台执行"
-    else:
-        # 同步执行（会阻塞调用线程）
-        log("同步执行请求", logging.INFO)
-        result = make_request()
-        log("同步请求完成", logging.INFO)
-        return result
+    # if callback:
+    log("创建线程以异步执行请求", logging.INFO)
+    thread = threading.Thread(target=make_request)
+    thread.daemon = True  # 设置为守护线程
+    thread.start()
+    log(f"线程已启动，线程ID: {thread.ident}", logging.INFO)
+    return "请求已在后台执行"
+    # else:
+    #     # 同步执行（会阻塞调用线程）
+    #     log("同步执行请求", logging.INFO)
+    #     result = make_request()
+    #     log("同步请求完成", logging.INFO)
+    #     return result
 
 
 def AskBlorikoAndSet(self, widget, text, AskBloriko_Answer):
@@ -175,12 +187,13 @@ def AskBlorikoAndSet(self, widget, text, AskBloriko_Answer):
     log("已在界面显示'加载中'状态", logging.DEBUG)
 
     # 定义回调函数处理响应
-    def handle_response(response_content):
-        log(f"处理 Bloriko 响应，内容: {response_content[:50]}{'...' if len(response_content) > 50 else ''}", logging.INFO)
-        # 将回复内容设置到 StrongBodyLabel 上
-        AskBloriko_Answer.setText(response_content)
-        log("已将 Bloriko 响应设置到界面控件", logging.INFO)
+    # def handle_response(response_content):
+    #     log("进入 handle_response 函数", logging.DEBUG)
+    #     log(f"处理 Bloriko 响应，内容: {response_content[:50]}{'...' if len(response_content) > 50 else ''}", logging.INFO)
+    #     # 将回复内容设置到 StrongBodyLabel 上
+    #     AskBloriko_Answer.setText(response_content)
+    #     log("已将 Bloriko 响应设置到界面控件", logging.INFO)
 
     # 调用 Bloriko 函数获取 AI 回复（异步方式）
-    result = AskBloriko(text, handle_response)
+    result = AskBloriko(text, AskBloriko_Answer)
     log(f"AskBloriko 调用完成，返回结果: {result}", logging.INFO)
