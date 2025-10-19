@@ -9,29 +9,29 @@ on:
       - Nuitka
 
 jobs:
-  Set-Version:
-    runs-on: windows-latest
+  # Set-Version:
+  #   runs-on: windows-latest
 
-    steps:
-    - name: 检出代码
-      uses: actions/checkout@v2
+  #   steps:
+  #   - name: 检出代码
+  #     uses: actions/checkout@v2
 
-    - name: 更新版本号
-      run: |
-        python .github/workflows/refresh-version.py
+  #   - name: 更新版本号
+  #     run: |
+  #       python .github/workflows/refresh-version.py
 
-    - name: 提交版本号更新到仓库
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add Bloret-Launcher-Setup.iss
-        git add config.json
-        git add cmcl.json
-        git commit -m "更新 MyAppVersion 版本号和一些配置文件的默认值。"
-        git push
-      shell: pwsh
+  #   - name: 提交版本号更新到仓库
+  #     run: |
+  #       git config --global user.name "github-actions[bot]"
+  #       git config --global user.email "github-actions[bot]@users.noreply.github.com"
+  #       git add Bloret-Launcher-Setup.iss
+  #       git add config.json
+  #       git add cmcl.json
+  #       git commit -m "更新 MyAppVersion 版本号和一些配置文件的默认值。"
+  #       git push
+  #     shell: pwsh
   Build-Windows:
-    needs: Set-Version
+    # needs: Set-Version
     runs-on: windows-latest
 
     env:
@@ -74,7 +74,7 @@ jobs:
     
     - name: 使用 Nuitka 打包
       run: |
-        python -m nuitka --standalone --onefile --windows-disable-console --enable-plugin=tk-inter --enable-plugin=qt-plugins --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe `
+        python -m nuitka --standalone --onefile --windows-disable-console --enable-plugin=tk-inter --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe `
           --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules `
           --include-data-file=bloret.ico=. --include-data-file=config.json=. --include-data-file=cmcl.json=. --include-data-file=cmcl.exe=. --include-data-file=cmcl.blank.json=. --include-data-file=frpc.exe=. --include-data-file=frpc.toml=. --include-data-file=JavaWrapper.jar=. Bloret-Launcher.py
       shell: pwsh
