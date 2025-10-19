@@ -74,7 +74,7 @@ jobs:
     
     - name: 使用 Nuitka 打包
       run: |
-        python -m nuitka --standalone --onefile --windows-disable-console --enable-plugin=tk-inter --enable-plugin=pyside6 --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe `
+        python -m nuitka --standalone --onefile --windows-disable-console --enable-plugin=tk-inter --enable-plugin=qt5 --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe `
           --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules `
           --include-data-file=bloret.ico=. --include-data-file=config.json=. --include-data-file=cmcl.json=. --include-data-file=cmcl.exe=. --include-data-file=cmcl.blank.json=. --include-data-file=frpc.exe=. --include-data-file=frpc.toml=. --include-data-file=JavaWrapper.jar=. Bloret-Launcher.py
       shell: pwsh
@@ -258,7 +258,7 @@ jobs:
       shell: bash
     - name: 使用 Nuitka 打包
       run: |
-        python -m nuitka --standalone --macos-create-app-bundle --macos-app-icon=bloret.ico --output-dir=dist --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules --include-data-file=bloret.ico=. --include-data-file=config.json=. --include-data-file=cmcl.json=. --include-data-file=cmcl.exe=. --include-data-file=cmcl.blank.json=. --include-data-file=frpc.exe=. --include-data-file=frpc.toml=. --include-data-file=JavaWrapper.jar=. Bloret-Launcher.py
+        python -m nuitka --standalone --macos-create-app-bundle --enable-plugin=qt5 --macos-app-icon=bloret.ico --output-dir=dist --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules --include-data-file=bloret.ico=. --include-data-file=config.json=. --include-data-file=cmcl.json=. --include-data-file=cmcl.exe=. --include-data-file=cmcl.blank.json=. --include-data-file=frpc.exe=. --include-data-file=frpc.toml=. --include-data-file=JavaWrapper.jar=. Bloret-Launcher.py
       shell: bash
 
     - name: 创建包含其他文件夹的目录
@@ -333,7 +333,7 @@ jobs:
       shell: bash
     - name: 使用 Nuitka 打包
       run: |
-        python -m nuitka --standalone --onefile --output-dir=dist \--include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules --include-data-file=bloret.ico=. --include-data-file=config.json=. --include-data-file=cmcl.json=. --include-data-file=cmcl.exe=. --include-data-file=cmcl.blank.json=. --include-data-file=frpc.exe=. --include-data-file=frpc.toml=. --include-data-file=JavaWrapper.jar=. Bloret-Launcher.py
+        python -m nuitka --standalone --onefile --enable-plugin=qt5 --output-dir=dist \--include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules --include-data-file=bloret.ico=. --include-data-file=config.json=. --include-data-file=cmcl.json=. --include-data-file=cmcl.exe=. --include-data-file=cmcl.blank.json=. --include-data-file=frpc.exe=. --include-data-file=frpc.toml=. --include-data-file=JavaWrapper.jar=. Bloret-Launcher.py
       shell: bash
     - name: 创建包含其他文件夹的目录
       run: |
