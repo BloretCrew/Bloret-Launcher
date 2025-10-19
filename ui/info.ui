@@ -38,7 +38,7 @@
         <x>0</x>
         <y>0</y>
         <width>688</width>
-        <height>507</height>
+        <height>506</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
@@ -99,7 +99,8 @@
        <item>
         <widget class="CaptionLabel" name="CaptionLabel_3">
          <property name="text">
-          <string>Bloret Launcher 不只是 Minecraft 启动器，但也为 Minecraft 玩家提供便捷的游戏启动与管理体验。</string>
+          <string>Conveniently manage your Minecraft, conveniently play Bloret. 
+便捷地管理你的 Minecraft，便捷地游玩 Bloret。</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
