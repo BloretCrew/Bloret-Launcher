@@ -74,7 +74,9 @@ jobs:
     
     - name: 使用 Nuitka 打包
       run: |
-        python -m nuitka --standalone --onefile --windows-disable-console --enable-plugin=tk-inter --enable-plugin=pyside6 --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules --include-file=bloret.ico --include-file=config.json --include-file=cmcl.json --include-file=cmcl.exe --include-file=cmcl.blank.json --include-file=frpc.exe --include-file=frpc.toml --include-file=JavaWrapper.jar Bloret-Launcher.py
+        python -m nuitka --standalone --onefile --windows-disable-console --enable-plugin=tk-inter --enable-plugin=pyside6 --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe \
+          --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules \
+          --include-data-file=bloret.ico=. --include-data-file=config.json=. --include-data-file=cmcl.json=. --include-data-file=cmcl.exe=. --include-data-file=cmcl.blank.json=. --include-data-file=frpc.exe=. --include-data-file=frpc.toml=. --include-data-file=JavaWrapper.jar=. Bloret-Launcher.py
       shell: pwsh
 
     - name: 创建包含其他文件夹的目录
@@ -252,7 +254,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements_nopywin32.txt
-        pip install pillow nuitka
+        pip install pillow nuitka imageio
       shell: bash
     - name: 使用 Nuitka 打包
       run: |
