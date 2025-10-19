@@ -1,12 +1,14 @@
-<p align="center">
-  <img width="16%" align="center" src="bloret.ico" alt="logo">  
-</p>
-  <h1 align="center">  
-  Bloret Launcher
-</h1>
-<p align="center">
- Bloret Launcher 不只是 Minecraft 启动器，但也为 Minecraft 玩家提供便捷的游戏启动与管理体验。
-</p>
+<img src="bloret.ico" width = "200" height = "200" alt="NapCat" align=left />
+<div align="center">
+  <h1>
+    Bloret Launcher
+  </h1>
+  <p>
+   Conveniently manage your Minecraft, conveniently play Bloret. 
+   <br>
+   便捷地管理你的 Minecraft，便捷地游玩 Bloret。
+  </p>
+</div>
 
 <div align="center">
 
@@ -148,4 +150,5 @@
 
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
+
 
