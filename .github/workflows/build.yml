@@ -216,7 +216,7 @@ jobs:
       with:
         name: Bloret-Launcher-Setup
         path: "./output/Bloret Launcher Setup.exe"
-  Build-macOS:
+#   Build-macOS:
     needs: Set-Version
     runs-on: macos-latest
     env:
@@ -291,7 +291,7 @@ jobs:
       with:
         name: Bloret-Launcher-macOS
         path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
-  Build-Linux:
+#   Build-Linux:
     needs: Set-Version
     runs-on: ubuntu-latest
     env:
@@ -367,7 +367,7 @@ jobs:
         path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
 
   Collect-Artifacts:
-    needs: [Build-Windows, Build-macOS, Build-Linux]
+    needs: [Build-Windows]
     runs-on: ubuntu-latest
     steps:
       - name: 下载 Windows 构建产物
@@ -375,16 +375,16 @@ jobs:
         with:
           name: Bloret-Launcher
           path: output/all/windows
-      - name: 下载 macOS 构建产物
-        uses: actions/download-artifact@v4
-        with:
-          name: Bloret-Launcher-macOS
-          path: output/all/macos
-      - name: 下载 Linux 构建产物
-        uses: actions/download-artifact@v4
-        with:
-          name: Bloret-Launcher-Linux
-          path: output/all/linux
+      # - name: 下载 macOS 构建产物
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: Bloret-Launcher-macOS
+      #     path: output/all/macos
+      # - name: 下载 Linux 构建产物
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: Bloret-Launcher-Linux
+      #     path: output/all/linux
       - name: 展示收集到的产物
         run: |
           ls -alR output/all
@@ -395,105 +395,105 @@ jobs:
           path: output/all/
 
   # release:
-  #   needs: [Build, Code-Package, Build-Setup]
-  #   runs-on: windows-latest
-  #   env:
-  #     OUTPUT_DIR: 'output'  # 定义 OUTPUT_DIR 环境变量
-  #     ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'  # 定义 ARTIFACT_NAME 环境变量
-  #   steps:
-  #   - name: 检出代码
-  #     uses: actions/checkout@v2
+    needs: [Build, Code-Package, Build-Setup]
+    runs-on: windows-latest
+    env:
+      OUTPUT_DIR: 'output'  # 定义 OUTPUT_DIR 环境变量
+      ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'  # 定义 ARTIFACT_NAME 环境变量
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v2
 
-  #   - name: 下载构建产物
-  #     uses: actions/download-artifact@v4
-  #     with:
-  #       name: Bloret-Launcher
-  #       path: ${{ env.OUTPUT_DIR }}
+    - name: 下载构建产物
+      uses: actions/download-artifact@v4
+      with:
+        name: Bloret-Launcher
+        path: ${{ env.OUTPUT_DIR }}
 
-  #   - name: 检查 Bloret-Launcher.zip 是否存在
-  #     run: |
-  #       if (-not (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}")) {
-  #         Write-Host "${{ env.ARTIFACT_NAME }} not found"
-  #         exit 1
-  #       }
-  #     shell: pwsh
+    - name: 检查 Bloret-Launcher.zip 是否存在
+      run: |
+        if (-not (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}")) {
+          Write-Host "${{ env.ARTIFACT_NAME }} not found"
+          exit 1
+        }
+      shell: pwsh
 
-  #   - name: 创建预发布版本
-  #     id: create_release
-  #     uses: actions/github-script@v6
-  #     env:
-  #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #     with:
-  #       script: |
-  #         const fs = require('fs');
-  #         const path = require('path');
+    - name: 创建预发布版本
+      id: create_release
+      uses: actions/github-script@v6
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
 
-  #         // 读取 release.md 文件内容
-  #         const releaseNotesPath = path.join(process.env.GITHUB_WORKSPACE, '.github/workflows/release.md');
-  #         if (!fs.existsSync(releaseNotesPath)) {
-  #           throw new Error('release.md 文件未找到');
-  #         }
-  #         const releaseNotes = fs.readFileSync(releaseNotesPath, 'utf8');
+          // 读取 release.md 文件内容
+          const releaseNotesPath = path.join(process.env.GITHUB_WORKSPACE, '.github/workflows/release.md');
+          if (!fs.existsSync(releaseNotesPath)) {
+            throw new Error('release.md 文件未找到');
+          }
+          const releaseNotes = fs.readFileSync(releaseNotesPath, 'utf8');
 
-  #         // 创建预发布版本
-  #         const { data: release } = await github.rest.repos.createRelease({
-  #           owner: context.repo.owner,
-  #           repo: context.repo.repo,
-  #           tag_name: `v${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 12)}`, // 使用时间戳作为标签
-  #           name: '预发布版本',
-  #           body: releaseNotes,
-  #           draft: false,
-  #           prerelease: true
-  #         });
+          // 创建预发布版本
+          const { data: release } = await github.rest.repos.createRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            tag_name: `v${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 12)}`, // 使用时间戳作为标签
+            name: '预发布版本',
+            body: releaseNotes,
+            draft: false,
+            prerelease: true
+          });
 
-  #         console.log('Created release:', release);
+          console.log('Created release:', release);
 
-  #         // 确保生成 upload_url.txt 文件
-  #         const filePath = path.join(process.env.GITHUB_WORKSPACE, 'upload_url.txt');
-  #         fs.writeFileSync(filePath, release.upload_url);
+          // 确保生成 upload_url.txt 文件
+          const filePath = path.join(process.env.GITHUB_WORKSPACE, 'upload_url.txt');
+          fs.writeFileSync(filePath, release.upload_url);
 
-  #   - name: 检查 upload_url.txt 是否存在并验证内容
-  #     run: |
-  #       if (-not (Test-Path "upload_url.txt")) {
-  #         Write-Host "upload_url.txt 文件未找到"
-  #         exit 1
-  #       }
-  #       $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
-  #       if (-not $uploadUrl) {
-  #         Write-Host "upload_url.txt 内容为空"
-  #         exit 1
-  #       }
-  #     shell: pwsh
+    - name: 检查 upload_url.txt 是否存在并验证内容
+      run: |
+        if (-not (Test-Path "upload_url.txt")) {
+          Write-Host "upload_url.txt 文件未找到"
+          exit 1
+        }
+        $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
+        if (-not $uploadUrl) {
+          Write-Host "upload_url.txt 内容为空"
+          exit 1
+        }
+      shell: pwsh
 
-  #   - name: 设置上传 URL 环境变量
-  #     id: set_upload_url
-  #     run: |
-  #       $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
-  #       Add-Content -Path $env:GITHUB_ENV -Value "UPLOAD_URL=$uploadUrl"
-  #     shell: pwsh
+    - name: 设置上传 URL 环境变量
+      id: set_upload_url
+      run: |
+        $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
+        Add-Content -Path $env:GITHUB_ENV -Value "UPLOAD_URL=$uploadUrl"
+      shell: pwsh
 
-  #   - name: 检查上传 URL 是否有效
-  #     run: |
-  #       if (-not "${{ env.UPLOAD_URL }}") {
-  #         Write-Host "UPLOAD_URL 未正确设置"
-  #         exit 1
-  #       }
-  #     shell: pwsh
+    - name: 检查上传 URL 是否有效
+      run: |
+        if (-not "${{ env.UPLOAD_URL }}") {
+          Write-Host "UPLOAD_URL 未正确设置"
+          exit 1
+        }
+      shell: pwsh
 
-  #   - name: 检查构建产物是否存在
-  #     run: |
-  #       if (-not (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}")) {
-  #         Write-Host "构建产物未找到: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
-  #         exit 1
-  #       }
-  #     shell: pwsh
+    - name: 检查构建产物是否存在
+      run: |
+        if (-not (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}")) {
+          Write-Host "构建产物未找到: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+          exit 1
+        }
+      shell: pwsh
 
-  #   - name: 上传构建产物到预发布版本
-  #     uses: actions/upload-release-asset@v1
-  #     env:
-  #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #     with:
-  #       upload_url: ${{ env.UPLOAD_URL }}
-  #       asset_path: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}
-  #       asset_name: ${{ env.ARTIFACT_NAME }}
-  #       asset_content_type: application/zip
+    - name: 上传构建产物到预发布版本
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ env.UPLOAD_URL }}
+        asset_path: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}
+        asset_name: ${{ env.ARTIFACT_NAME }}
+        asset_content_type: application/zip
