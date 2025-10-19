@@ -1,4 +1,4 @@
-name: 应用程序打包
+name: 应用程序打包 - Pyinstaller
 
 permissions:
   contents: write
