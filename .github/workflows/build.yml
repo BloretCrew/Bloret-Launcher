@@ -6,32 +6,32 @@ permissions:
 on:
   push:
     branches:
-      - Nuitka
+      - Windows
 
 jobs:
-  # Set-Version:
-  #   runs-on: windows-latest
+  Set-Version:
+    runs-on: windows-latest
 
-  #   steps:
-  #   - name: 检出代码
-  #     uses: actions/checkout@v2
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v2
 
-  #   - name: 更新版本号
-  #     run: |
-  #       python .github/workflows/refresh-version.py
+    - name: 更新版本号
+      run: |
+        python .github/workflows/refresh-version.py
 
-  #   - name: 提交版本号更新到仓库
-  #     run: |
-  #       git config --global user.name "github-actions[bot]"
-  #       git config --global user.email "github-actions[bot]@users.noreply.github.com"
-  #       git add Bloret-Launcher-Setup.iss
-  #       git add config.json
-  #       git add cmcl.json
-  #       git commit -m "更新 MyAppVersion 版本号和一些配置文件的默认值。"
-  #       git push
-  #     shell: pwsh
+    - name: 提交版本号更新到仓库
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add Bloret-Launcher-Setup.iss
+        git add config.json
+        git add cmcl.json
+        git commit -m "更新 MyAppVersion 版本号和一些配置文件的默认值。"
+        git push
+      shell: pwsh
   Build-Windows:
-    # needs: Set-Version
+    needs: Set-Version
     runs-on: windows-latest
 
     env:
@@ -70,18 +70,35 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
         pip install pillow
-        pip install nuitka
+        pip install pyinstaller
     
-    - name: 使用 Nuitka 打包
+    - name: 使用 PyInstaller 打包
       run: |
-        python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=tk-inter --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe --assume-yes-for-downloads `
-          --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules Bloret-Launcher.py
+        pyinstaller --onefile --noconsole --icon=bloret.ico --name=Bloret-Launcher `
+          --add-data "bloret.ico;." `
+          --add-data "config.json;." `
+          --add-data "ui;ui" `
+          --add-data "lang;lang" `
+          --add-data "cmcl.json;." `
+          --add-data "cmcl.exe;." `
+          --add-data "cmcl.blank.json;." `
+          --add-data "frpc.exe;." `
+          --add-data "frpc.toml;." `
+          --add-data "JavaWrapper.jar;." `
+          --add-data "modules;modules" `
+          --hidden-import=sip `
+          --hidden-import=qfluentwidgets `
+          --hidden-import=win11toast `
+          --hidden-import=toml `
+          --hidden-import=winsdk `
+          --paths=. `
+          Bloret-Launcher.py
       shell: pwsh
 
     - name: 创建包含其他文件夹的目录
       run: |
         mkdir -p ${{ env.OUTPUT_DIR }}
-        cp Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
+        cp dist/Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
         cp -r lang/ ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
@@ -113,7 +130,7 @@ jobs:
         name: Bloret-Launcher
         path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
   Code-Package:
-    # needs: Set-Version
+    needs: Set-Version
     runs-on: windows-latest
 
     steps:
@@ -215,284 +232,316 @@ jobs:
       with:
         name: Bloret-Launcher-Setup
         path: "./output/Bloret Launcher Setup.exe"
-#   Build-macOS:
-    # needs: Set-Version
-    # runs-on: macos-latest
-    # env:
-    #   PYTHON_VERSION: '3.9'
-    #   OUTPUT_DIR: 'output'
-    #   ARTIFACT_NAME: 'Bloret-Launcher-macOS.zip'
-    # steps:
-    # - name: 检出最新版本
-    #   uses: actions/checkout@v2
-    #   with:
-    #     ref: 'Windows'
-    # - name: 验证资源文件路径
-    #   run: |
-    #     ls -alh .
-    #     [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
-    #     [ -f "config.json" ] || (echo "config.json not found" && exit 1)
-    #     [ -d "ui" ] || (echo "ui directory not found" && exit 1)
-    #     [ -d "lang" ] || (echo "lang directory not found" && exit 1)
-    #     [ -f "cmcl.json" ] || (echo "cmcl.json not found" && exit 1)
-    #     [ -f "cmcl.exe" ] || (echo "cmcl.exe not found" && exit 1)
-    #     [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
-    #     [ -f "frpc.exe" ] || (echo "frpc.exe not found" && exit 1)
-    #     [ -f "frpc.toml" ] || (echo "frpc.toml not found" && exit 1)
-    #     [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
-    #   shell: bash
-    # - name: 设置 Python
-    #   uses: actions/setup-python@v2
-    #   with:
-    #     python-version: ${{ env.PYTHON_VERSION }}
-    # - name: 过滤依赖
-    #   run: |
-    #     grep -ivE '^(pywin32|win11toast|winsdk)' requirements.txt > requirements_nopywin32.txt
-    #   shell: bash
-    # - name: 安装依赖
-    #   run: |
-    #     python -m pip install --upgrade pip
-    #     pip install -r requirements_nopywin32.txt
-    #     pip install pillow nuitka imageio
-    #   shell: bash
-    # - name: 使用 Nuitka 打包
-    #   run: |
-    #     python -m nuitka --standalone --macos-create-app-bundle --enable-plugin=qt5 --macos-app-icon=bloret.ico --output-dir=dist --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules --include-data-file=bloret.ico=. --include-data-file=config.json=. --include-data-file=cmcl.json=. --include-data-file=cmcl.exe=. --include-data-file=cmcl.blank.json=. --include-data-file=frpc.exe=. --include-data-file=frpc.toml=. --include-data-file=JavaWrapper.jar=. Bloret-Launcher.py
-    #   shell: bash
+  Build-macOS:
+    needs: Set-Version
+    runs-on: macos-latest
+    env:
+      PYTHON_VERSION: '3.9'
+      OUTPUT_DIR: 'output'
+      ARTIFACT_NAME: 'Bloret-Launcher-macOS.zip'
+    steps:
+    - name: 检出最新版本
+      uses: actions/checkout@v2
+      with:
+        ref: 'Windows'
+    - name: 验证资源文件路径
+      run: |
+        ls -alh .
+        [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
+        [ -f "config.json" ] || (echo "config.json not found" && exit 1)
+        [ -d "ui" ] || (echo "ui directory not found" && exit 1)
+        [ -d "lang" ] || (echo "lang directory not found" && exit 1)
+        [ -f "cmcl.json" ] || (echo "cmcl.json not found" && exit 1)
+        [ -f "cmcl.exe" ] || (echo "cmcl.exe not found" && exit 1)
+        [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
+        [ -f "frpc.exe" ] || (echo "frpc.exe not found" && exit 1)
+        [ -f "frpc.toml" ] || (echo "frpc.toml not found" && exit 1)
+        [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
+      shell: bash
+    - name: 设置 Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: 过滤依赖
+      run: |
+        grep -ivE '^(pywin32|win11toast|winsdk)' requirements.txt > requirements_nopywin32.txt
+      shell: bash
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements_nopywin32.txt
+        pip install pillow pyinstaller
+      shell: bash
+    - name: 使用 PyInstaller 打包
+      run: |
+        pyinstaller --onefile --windowed --name=Bloret-Launcher \
+          --add-data "bloret.ico:." \
+          --add-data "config.json:." \
+          --add-data "ui:ui" \
+          --add-data "lang:lang" \
+          --add-data "cmcl.json:." \
+          --add-data "cmcl.exe:." \
+          --add-data "cmcl.blank.json:." \
+          --add-data "frpc.exe:." \
+          --add-data "frpc.toml:." \
+          --add-data "JavaWrapper.jar:." \
+          --hidden-import=sip \
+          --hidden-import=qfluentwidgets \
+          --hidden-import=win11toast \
+          --hidden-import=toml \
+          --paths=. \
+          Bloret-Launcher.py
+      shell: bash
 
-    # - name: 创建包含其他文件夹的目录
-    #   run: |
-    #     mkdir -p ${{ env.OUTPUT_DIR }}
-    #     cp -r dist/Bloret-Launcher.app ${{ env.OUTPUT_DIR }}/
-    #     cp -r ui/ ${{ env.OUTPUT_DIR }}/
-    #     cp -r lang/ ${{ env.OUTPUT_DIR }}/
-    #     cp cmcl.exe ${{ env.OUTPUT_DIR }}/
-    #     cp cmcl.json ${{ env.OUTPUT_DIR }}/
-    #     cp cmcl.blank.json ${{ env.OUTPUT_DIR }}/
-    #     cp config.json ${{ env.OUTPUT_DIR }}/
-    #     cp LICENSE ${{ env.OUTPUT_DIR }}/
-    #     cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
-    #     cp cmcl_save.json ${{ env.OUTPUT_DIR }}/ || true
-    #     cp bloret.ico ${{ env.OUTPUT_DIR }}/
-    #     cp frpc.exe ${{ env.OUTPUT_DIR }}/
-    #     cp frpc.toml ${{ env.OUTPUT_DIR }}/
-    #     cp JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
-    #   shell: bash
-    # - name: 清理旧压缩包
-    #   run: |
-    #     [ -f "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ] && rm "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" || true
-    #   shell: bash
-    # - name: 创建压缩包
-    #   run: zip -r "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ${{ env.OUTPUT_DIR }}/*
-    #   shell: bash
-    # - name: 上传构建产物
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: Bloret-Launcher-macOS
-    #     path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
-#   Build-Linux:
-  #   needs: Set-Version
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     PYTHON_VERSION: '3.9'
-  #     OUTPUT_DIR: 'output'
-  #     ARTIFACT_NAME: 'Bloret-Launcher-Linux.zip'
-  #   steps:
-  #   - name: 检出最新版本
-  #     uses: actions/checkout@v2
-  #     with:
-  #       ref: 'Windows'
-  #   - name: 验证资源文件路径
-  #     run: |
-  #       ls -alh .
-  #       [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
-  #       [ -f "config.json" ] || (echo "config.json not found" && exit 1)
-  #       [ -d "ui" ] || (echo "ui directory not found" && exit 1)
-  #       [ -d "lang" ] || (echo "lang directory not found" && exit 1)
-  #       [ -f "cmcl.json" ] || (echo "cmcl.json not found" && exit 1)
-  #       [ -f "cmcl.exe" ] || (echo "cmcl.exe not found" && exit 1)
-  #       [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
-  #       [ -f "frpc.exe" ] || (echo "frpc.exe not found" && exit 1)
-  #       [ -f "frpc.toml" ] || (echo "frpc.toml not found" && exit 1)
-  #       [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
-  #     shell: bash
-  #   - name: 设置 Python
-  #     uses: actions/setup-python@v2
-  #     with:
-  #       python-version: ${{ env.PYTHON_VERSION }}
-  #   - name: 过滤依赖
-  #     run: |
-  #       grep -ivE '^(pywin32|win11toast|winsdk)' requirements.txt > requirements_nopywin32.txt
-  #     shell: bash
-  #   - name: 安装依赖
-  #     run: |
-  #       python -m pip install --upgrade pip
-  #       pip install -r requirements_nopywin32.txt
-  #       pip install pillow nuitka
-  #     shell: bash
-  #   - name: 使用 Nuitka 打包
-  #     run: |
-  #       python -m nuitka --standalone --onefile --enable-plugin=qt5 --output-dir=dist \--include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules --include-data-file=bloret.ico=. --include-data-file=config.json=. --include-data-file=cmcl.json=. --include-data-file=cmcl.exe=. --include-data-file=cmcl.blank.json=. --include-data-file=frpc.exe=. --include-data-file=frpc.toml=. --include-data-file=JavaWrapper.jar=. Bloret-Launcher.py
-  #     shell: bash
-  #   - name: 创建包含其他文件夹的目录
-  #     run: |
-  #       mkdir -p ${{ env.OUTPUT_DIR }}
-  #       cp dist/Bloret-Launcher.bin ${{ env.OUTPUT_DIR }}/Bloret-Launcher
-  #       cp -r ui/ ${{ env.OUTPUT_DIR }}/
-  #       cp -r lang/ ${{ env.OUTPUT_DIR }}/
-  #       cp cmcl.exe ${{ env.OUTPUT_DIR }}/
-  #       cp cmcl.json ${{ env.OUTPUT_DIR }}/
-  #       cp cmcl.blank.json ${{ env.OUTPUT_DIR }}/
-  #       cp config.json ${{ env.OUTPUT_DIR }}/
-  #       cp LICENSE ${{ env.OUTPUT_DIR }}/
-  #       cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
-  #       cp cmcl_save.json ${{ env.OUTPUT_DIR }}/ || true
-  #       cp bloret.ico ${{ env.OUTPUT_DIR }}/
-  #       cp frpc.exe ${{ env.OUTPUT_DIR }}/
-  #       cp frpc.toml ${{ env.OUTPUT_DIR }}/
-  #       cp JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
-  #     shell: bash
-  #   - name: 清理旧压缩包
-  #     run: |
-  #       [ -f "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ] && rm "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" || true
-  #     shell: bash
-  #   - name: 创建压缩包
-  #     run: zip -r "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ${{ env.OUTPUT_DIR }}/*
-  #     shell: bash
-  #   - name: 上传构建产物
-  #     uses: actions/upload-artifact@v4
-  #     with:
-  #       name: Bloret-Launcher-Linux
-  #       path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+    - name: 创建包含其他文件夹的目录
+      run: |
+        mkdir -p ${{ env.OUTPUT_DIR }}
+        cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
+        cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp -r lang/ ${{ env.OUTPUT_DIR }}/
+        cp cmcl.exe ${{ env.OUTPUT_DIR }}/
+        cp cmcl.json ${{ env.OUTPUT_DIR }}/
+        cp cmcl.blank.json ${{ env.OUTPUT_DIR }}/
+        cp config.json ${{ env.OUTPUT_DIR }}/
+        cp LICENSE ${{ env.OUTPUT_DIR }}/
+        cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
+        cp cmcl_save.json ${{ env.OUTPUT_DIR }}/ || true
+        cp bloret.ico ${{ env.OUTPUT_DIR }}/
+        cp frpc.exe ${{ env.OUTPUT_DIR }}/
+        cp frpc.toml ${{ env.OUTPUT_DIR }}/
+        cp JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+      shell: bash
+    - name: 清理旧压缩包
+      run: |
+        [ -f "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ] && rm "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" || true
+      shell: bash
+    - name: 创建压缩包
+      run: zip -r "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ${{ env.OUTPUT_DIR }}/*
+      shell: bash
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher-macOS
+        path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+  Build-Linux:
+    needs: Set-Version
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: '3.9'
+      OUTPUT_DIR: 'output'
+      ARTIFACT_NAME: 'Bloret-Launcher-Linux.zip'
+    steps:
+    - name: 检出最新版本
+      uses: actions/checkout@v2
+      with:
+        ref: 'Windows'
+    - name: 验证资源文件路径
+      run: |
+        ls -alh .
+        [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
+        [ -f "config.json" ] || (echo "config.json not found" && exit 1)
+        [ -d "ui" ] || (echo "ui directory not found" && exit 1)
+        [ -d "lang" ] || (echo "lang directory not found" && exit 1)
+        [ -f "cmcl.json" ] || (echo "cmcl.json not found" && exit 1)
+        [ -f "cmcl.exe" ] || (echo "cmcl.exe not found" && exit 1)
+        [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
+        [ -f "frpc.exe" ] || (echo "frpc.exe not found" && exit 1)
+        [ -f "frpc.toml" ] || (echo "frpc.toml not found" && exit 1)
+        [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
+      shell: bash
+    - name: 设置 Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: 过滤依赖
+      run: |
+        grep -ivE '^(pywin32|win11toast|winsdk)' requirements.txt > requirements_nopywin32.txt
+      shell: bash
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements_nopywin32.txt
+        pip install pillow pyinstaller
+      shell: bash
+    - name: 使用 PyInstaller 打包
+      run: |
+        pyinstaller --onefile --windowed --name=Bloret-Launcher \
+          --add-data "bloret.ico:." \
+          --add-data "config.json:." \
+          --add-data "ui:ui" \
+          --add-data "lang:lang" \
+          --add-data "cmcl.json:." \
+          --add-data "cmcl.exe:." \
+          --add-data "cmcl.blank.json:." \
+          --add-data "frpc.exe:." \
+          --add-data "frpc.toml:." \
+          --add-data "JavaWrapper.jar:." \
+          --hidden-import=sip \
+          --hidden-import=qfluentwidgets \
+          --hidden-import=win11toast \
+          --hidden-import=toml \
+          --paths=. \
+          Bloret-Launcher.py
+      shell: bash
+    - name: 创建包含其他文件夹的目录
+      run: |
+        mkdir -p ${{ env.OUTPUT_DIR }}
+        cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
+        cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp -r lang/ ${{ env.OUTPUT_DIR }}/
+        cp cmcl.exe ${{ env.OUTPUT_DIR }}/
+        cp cmcl.json ${{ env.OUTPUT_DIR }}/
+        cp cmcl.blank.json ${{ env.OUTPUT_DIR }}/
+        cp config.json ${{ env.OUTPUT_DIR }}/
+        cp LICENSE ${{ env.OUTPUT_DIR }}/
+        cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
+        cp cmcl_save.json ${{ env.OUTPUT_DIR }}/ || true
+        cp bloret.ico ${{ env.OUTPUT_DIR }}/
+        cp frpc.exe ${{ env.OUTPUT_DIR }}/
+        cp frpc.toml ${{ env.OUTPUT_DIR }}/
+        cp JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+      shell: bash
+    - name: 清理旧压缩包
+      run: |
+        [ -f "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ] && rm "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" || true
+      shell: bash
+    - name: 创建压缩包
+      run: zip -r "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}" ${{ env.OUTPUT_DIR }}/*
+      shell: bash
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher-Linux
+        path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
 
-  # Collect-Artifacts:
-  #   needs: [Build-Windows]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: 下载 Windows 构建产物
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: Bloret-Launcher
-  #         path: output/all/windows
-  #     # - name: 下载 macOS 构建产物
-  #     #   uses: actions/download-artifact@v4
-  #     #   with:
-  #     #     name: Bloret-Launcher-macOS
-  #     #     path: output/all/macos
-  #     # - name: 下载 Linux 构建产物
-  #     #   uses: actions/download-artifact@v4
-  #     #   with:
-  #     #     name: Bloret-Launcher-Linux
-  #     #     path: output/all/linux
-  #     - name: 展示收集到的产物
-  #       run: |
-  #         ls -alR output/all
-  #     - name: 上传所有平台产物
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: Bloret-Launcher-All
-  #         path: output/all/
+  Collect-Artifacts:
+    needs: [Build-Windows, Build-macOS, Build-Linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载 Windows 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher
+          path: output/all/windows
+      - name: 下载 macOS 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-macOS
+          path: output/all/macos
+      - name: 下载 Linux 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-Linux
+          path: output/all/linux
+      - name: 展示收集到的产物
+        run: |
+          ls -alR output/all
+      - name: 上传所有平台产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bloret-Launcher-All
+          path: output/all/
 
   # release:
-    # needs: [Build, Code-Package, Build-Setup]
-    # runs-on: windows-latest
-    # env:
-    #   OUTPUT_DIR: 'output'  # 定义 OUTPUT_DIR 环境变量
-    #   ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'  # 定义 ARTIFACT_NAME 环境变量
-    # steps:
-    # - name: 检出代码
-    #   uses: actions/checkout@v2
+  #   needs: [Build, Code-Package, Build-Setup]
+  #   runs-on: windows-latest
+  #   env:
+  #     OUTPUT_DIR: 'output'  # 定义 OUTPUT_DIR 环境变量
+  #     ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'  # 定义 ARTIFACT_NAME 环境变量
+  #   steps:
+  #   - name: 检出代码
+  #     uses: actions/checkout@v2
 
-    # - name: 下载构建产物
-    #   uses: actions/download-artifact@v4
-    #   with:
-    #     name: Bloret-Launcher
-    #     path: ${{ env.OUTPUT_DIR }}
+  #   - name: 下载构建产物
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       name: Bloret-Launcher
+  #       path: ${{ env.OUTPUT_DIR }}
 
-    # - name: 检查 Bloret-Launcher.zip 是否存在
-    #   run: |
-    #     if (-not (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}")) {
-    #       Write-Host "${{ env.ARTIFACT_NAME }} not found"
-    #       exit 1
-    #     }
-    #   shell: pwsh
+  #   - name: 检查 Bloret-Launcher.zip 是否存在
+  #     run: |
+  #       if (-not (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}")) {
+  #         Write-Host "${{ env.ARTIFACT_NAME }} not found"
+  #         exit 1
+  #       }
+  #     shell: pwsh
 
-    # - name: 创建预发布版本
-    #   id: create_release
-    #   uses: actions/github-script@v6
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     script: |
-    #       const fs = require('fs');
-    #       const path = require('path');
+  #   - name: 创建预发布版本
+  #     id: create_release
+  #     uses: actions/github-script@v6
+  #     env:
+  #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     with:
+  #       script: |
+  #         const fs = require('fs');
+  #         const path = require('path');
 
-    #       // 读取 release.md 文件内容
-    #       const releaseNotesPath = path.join(process.env.GITHUB_WORKSPACE, '.github/workflows/release.md');
-    #       if (!fs.existsSync(releaseNotesPath)) {
-    #         throw new Error('release.md 文件未找到');
-    #       }
-    #       const releaseNotes = fs.readFileSync(releaseNotesPath, 'utf8');
+  #         // 读取 release.md 文件内容
+  #         const releaseNotesPath = path.join(process.env.GITHUB_WORKSPACE, '.github/workflows/release.md');
+  #         if (!fs.existsSync(releaseNotesPath)) {
+  #           throw new Error('release.md 文件未找到');
+  #         }
+  #         const releaseNotes = fs.readFileSync(releaseNotesPath, 'utf8');
 
-    #       // 创建预发布版本
-    #       const { data: release } = await github.rest.repos.createRelease({
-    #         owner: context.repo.owner,
-    #         repo: context.repo.repo,
-    #         tag_name: `v${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 12)}`, // 使用时间戳作为标签
-    #         name: '预发布版本',
-    #         body: releaseNotes,
-    #         draft: false,
-    #         prerelease: true
-    #       });
+  #         // 创建预发布版本
+  #         const { data: release } = await github.rest.repos.createRelease({
+  #           owner: context.repo.owner,
+  #           repo: context.repo.repo,
+  #           tag_name: `v${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 12)}`, // 使用时间戳作为标签
+  #           name: '预发布版本',
+  #           body: releaseNotes,
+  #           draft: false,
+  #           prerelease: true
+  #         });
 
-    #       console.log('Created release:', release);
+  #         console.log('Created release:', release);
 
-    #       // 确保生成 upload_url.txt 文件
-    #       const filePath = path.join(process.env.GITHUB_WORKSPACE, 'upload_url.txt');
-    #       fs.writeFileSync(filePath, release.upload_url);
+  #         // 确保生成 upload_url.txt 文件
+  #         const filePath = path.join(process.env.GITHUB_WORKSPACE, 'upload_url.txt');
+  #         fs.writeFileSync(filePath, release.upload_url);
 
-    # - name: 检查 upload_url.txt 是否存在并验证内容
-    #   run: |
-    #     if (-not (Test-Path "upload_url.txt")) {
-    #       Write-Host "upload_url.txt 文件未找到"
-    #       exit 1
-    #     }
-    #     $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
-    #     if (-not $uploadUrl) {
-    #       Write-Host "upload_url.txt 内容为空"
-    #       exit 1
-    #     }
-    #   shell: pwsh
+  #   - name: 检查 upload_url.txt 是否存在并验证内容
+  #     run: |
+  #       if (-not (Test-Path "upload_url.txt")) {
+  #         Write-Host "upload_url.txt 文件未找到"
+  #         exit 1
+  #       }
+  #       $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
+  #       if (-not $uploadUrl) {
+  #         Write-Host "upload_url.txt 内容为空"
+  #         exit 1
+  #       }
+  #     shell: pwsh
 
-    # - name: 设置上传 URL 环境变量
-    #   id: set_upload_url
-    #   run: |
-    #     $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
-    #     Add-Content -Path $env:GITHUB_ENV -Value "UPLOAD_URL=$uploadUrl"
-    #   shell: pwsh
+  #   - name: 设置上传 URL 环境变量
+  #     id: set_upload_url
+  #     run: |
+  #       $uploadUrl = Get-Content -Path "upload_url.txt" -Raw
+  #       Add-Content -Path $env:GITHUB_ENV -Value "UPLOAD_URL=$uploadUrl"
+  #     shell: pwsh
 
-    # - name: 检查上传 URL 是否有效
-    #   run: |
-    #     if (-not "${{ env.UPLOAD_URL }}") {
-    #       Write-Host "UPLOAD_URL 未正确设置"
-    #       exit 1
-    #     }
-    #   shell: pwsh
+  #   - name: 检查上传 URL 是否有效
+  #     run: |
+  #       if (-not "${{ env.UPLOAD_URL }}") {
+  #         Write-Host "UPLOAD_URL 未正确设置"
+  #         exit 1
+  #       }
+  #     shell: pwsh
 
-    # - name: 检查构建产物是否存在
-    #   run: |
-    #     if (-not (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}")) {
-    #       Write-Host "构建产物未找到: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
-    #       exit 1
-    #     }
-    #   shell: pwsh
+  #   - name: 检查构建产物是否存在
+  #     run: |
+  #       if (-not (Test-Path "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}")) {
+  #         Write-Host "构建产物未找到: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+  #         exit 1
+  #       }
+  #     shell: pwsh
 
-    # - name: 上传构建产物到预发布版本
-    #   uses: actions/upload-release-asset@v1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ env.UPLOAD_URL }}
-    #     asset_path: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}
-    #     asset_name: ${{ env.ARTIFACT_NAME }}
-    #     asset_content_type: application/zip
+  #   - name: 上传构建产物到预发布版本
+  #     uses: actions/upload-release-asset@v1
+  #     env:
+  #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     with:
+  #       upload_url: ${{ env.UPLOAD_URL }}
+  #       asset_path: ${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}
+  #       asset_name: ${{ env.ARTIFACT_NAME }}
+  #       asset_content_type: application/zip
