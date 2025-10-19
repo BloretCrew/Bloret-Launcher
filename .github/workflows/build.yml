@@ -74,7 +74,7 @@ jobs:
     
     - name: 使用 Nuitka 打包
       run: |
-        python -m nuitka --standalone --onefile --windows-disable-console --enable-plugin=tk-inter --enable-plugin=qt5 --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe `
+        python -m nuitka --standalone --onefile --windows-disable-console --enable-plugin=tk-inter --enable-plugin=qt-plugins --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe `
           --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=modules=modules `
           --include-data-file=bloret.ico=. --include-data-file=config.json=. --include-data-file=cmcl.json=. --include-data-file=cmcl.exe=. --include-data-file=cmcl.blank.json=. --include-data-file=frpc.exe=. --include-data-file=frpc.toml=. --include-data-file=JavaWrapper.jar=. Bloret-Launcher.py
       shell: pwsh
