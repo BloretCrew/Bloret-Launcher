@@ -318,7 +318,7 @@ def setup_home_ui(self, widget):
         if BloretServerOnlineNumber and BloretServerText0 and BloretServerText1 and BloretServer_BestTime:
             # 检查是否有错误信息
             if "error" in data:
-                log(f"服务器数据获取失败: {data.get("error")}")
+                log(f"服务器数据获取失败: {data.get('error')}")
                 BloretServerOnlineNumber.setText("N/A")
                 BloretServerText0.setText("服务器数据获取失败")
                 BloretServerText1.setText("")
