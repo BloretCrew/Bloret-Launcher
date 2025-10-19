@@ -114,7 +114,7 @@ jobs:
         name: Bloret-Launcher
         path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
   Code-Package:
-    needs: Set-Version
+    # needs: Set-Version
     runs-on: windows-latest
 
     steps:
