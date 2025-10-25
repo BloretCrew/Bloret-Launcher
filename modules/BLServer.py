@@ -6,9 +6,67 @@ from modules.i18n import i18nText
 import threading
 import sys
 import traceback
+from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log
 from modules.safe import handle_exception
+from modules.update import update_to_latest_version
+
+def IsNeedUpdate(NowVersion, LatestVersion):
+    """
+    比较两个版本号字符串，判断是否需要更新
+    支持格式如: "1.2.3", "8.1-b1", "2.0-alpha", 等
+    
+    Args:
+        NowVersion (str): 当前版本号
+        LatestVersion (str): 最新版本号
+    
+    Returns:
+        bool: 如果需要更新返回True，否则返回False
+    """
+    import re
+    
+    def parse_version(version_str):
+        # 分离主版本号和预发布版本信息
+        parts = version_str.split('-')
+        main_version = parts[0]
+        prerelease = parts[1] if len(parts) > 1 else ''
+        
+        # 解析主版本号
+        main_parts = [int(x) for x in main_version.split('.') if x.isdigit()]
+        return main_parts, prerelease
+    
+    now_main, now_prerelease = parse_version(NowVersion)
+    latest_main, latest_prerelease = parse_version(LatestVersion)
+    
+    # 获取主版本号的最大长度
+    max_length = max(len(now_main), len(latest_main))
+    
+    # 补齐主版本号
+    now_main.extend([0] * (max_length - len(now_main)))
+    latest_main.extend([0] * (max_length - len(latest_main)))
+    
+    # 比较主版本号
+    for now, latest in zip(now_main, latest_main):
+        if now < latest:
+            return True
+        elif now > latest:
+            return False
+    
+    # 主版本号相同，比较预发布版本
+    # 如果当前没有预发布版本，说明是正式版，不需要更新
+    if not now_prerelease and latest_prerelease:
+        return True
+    # 如果当前是预发布版，最新是正式版，需要更新
+    elif now_prerelease and not latest_prerelease:
+        return True
+    # 如果两者都有预发布版本或者都没有预发布版本
+    elif now_prerelease and latest_prerelease:
+        # 简单比较字符串（实际项目中可能需要更复杂的逻辑）
+        return now_prerelease < latest_prerelease
+    else:
+        # 都是正式版且主版本号相同，不需要更新
+        return False
 
 def check_Light_Minecraft_Download_Way(server_ip, callback=None):
     def _inner():
@@ -79,37 +137,43 @@ def get_latest_version(server_ip):
     BL_latest_ver = "0.0"
     
     try:
-        response = requests.get(server_ip + "api/BLlatest")
+        response = requests.get(server_ip + "api/BL/info")
         if response.status_code == 200:
             latest_release = response.json()
-            BL_update_text = latest_release.get("text", "")
-            BL_latest_ver = latest_release.get("Bloret-Launcher-latest", "0.0")
+            BL_update_text = latest_release.get("Bloret-Launcher-update-text", "")
+            BL_latest_ver = latest_release.get("Bloret-Launcher-latest-version", "0.0")
             return BL_latest_ver, BL_update_text
         else:
-            log(i18nText("查询最新版本失败"), logging.ERROR)
+            log(f"无法获取最新版本信息，状态码: {response.status_code}", logging.ERROR)
             return BL_latest_ver, BL_update_text
     except requests.RequestException as e:
         log(f"查询最新版本时发生错误: {e}", logging.ERROR)
         return BL_latest_ver, BL_update_text
 
+class UpdateSignal(QObject):
+    show_update = pyqtSignal(object, str, str, str)
+
 def check_for_updates(self,server_ip):
-    def _inner(self, server_ip):
+    update_signal = UpdateSignal()
+    update_signal.show_update.connect(show_update_message)
+    
+    def _inner(self, server_ip, signal):
         if not self.config.get('localmod', False):
             try:
                 BL_latest_ver, BL_update_text = get_latest_version(server_ip)
                 log(f"最新正式版: {BL_latest_ver}")
-                BL_ver = float(self.config.get('ver', '0.0'))  # 从config.json读取当前版本
-                # 确保BL_latest_ver是一个有效的数字字符串
+                current_ver = self.config.get('ver', '0.0')  # 从config.json读取当前版本
+                log(f"当前版本: {current_ver}")
+                # 使用 IsNeedUpdate 函数比较版本
                 if BL_latest_ver is not None and BL_latest_ver != "":
-                    if BL_ver < float(BL_latest_ver):
+                    need_update = IsNeedUpdate(current_ver, BL_latest_ver)
+                    log(f"是否需要更新: {need_update}")
+                    if need_update:
                         log(f"当前版本不是最新版，请更新到 {BL_latest_ver} 版本", logging.WARNING)
-                        w = MessageBox(
-                            title=i18nText("当前版本不是最新版"),
-                            content=f'Bloret Launcher 貌似有个新新新版本\n你似乎正在运行 {BL_ver}，但事实上，百络谷启动器 {BL_latest_ver} 来啦！按下按钮自动更新。\n这个更新... {BL_update_text}',
-                            parent=self
-                        )
-                        w.show()
-                        w.yesButton.clicked.connect(self.update_to_latest_version)
+                        # 使用信号确保在主线程中创建和显示 MessageBox
+                        signal.show_update.emit(self, current_ver, BL_latest_ver, BL_update_text)
+                    else:
+                        log("当前版本是最新的")
             except Exception as e:
                 handle_exception(type(e), e, e.__traceback__)
                 log(f"检查更新时发生错误: {e}", logging.ERROR)
@@ -117,6 +181,23 @@ def check_for_updates(self,server_ip):
                 update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': i18nText('无法连接到服务器 ❌')})
         else:
             log(i18nText("本地模式已启用，检查更新 的过程已跳过。"))
-    t = threading.Thread(target=_inner, args=(self, server_ip), daemon=True)
+    t = threading.Thread(target=_inner, args=(self, server_ip, update_signal), daemon=True)
     t.start()
+
+def show_update_message(parent, current_ver, latest_ver, update_text):
+    """在主线程中显示更新消息框"""
+    try:
+        log("准备显示更新消息框")
+        w = MessageBox(
+            title=i18nText("当前版本不是最新版"),
+            content=f'Bloret Launcher 貌似有个新新新版本\n你似乎正在运行 Bloret Launcher {current_ver}，但事实上，Bloret Launcher {latest_ver} 来啦！按下按钮自动更新。\n这个更新... {update_text}',
+            parent=parent
+        )
+        from modules.update import update_to_latest_version
+        w.yesButton.clicked.connect(lambda: update_to_latest_version(parent))
+        w.show()
+        log("更新消息框已显示")
+    except Exception as e:
+        handle_exception(type(e), e, e.__traceback__)
+        log(f"显示更新消息时发生错误: {e}", logging.ERROR)
 

@@ -6,7 +6,7 @@ permissions:
 on:
   push:
     branches:
-      - Windows
+      - auto_update
 
 jobs:
   Set-Version:
@@ -43,7 +43,7 @@ jobs:
     - name: 检出最新版本
       uses: actions/checkout@v2
       with:
-        ref: 'Windows'
+        ref: 'auto_update'
 
     - name: 验证资源文件路径
       run: |
@@ -120,15 +120,15 @@ jobs:
         }
       shell: pwsh
 
-    - name: 创建压缩包
-      run: Compress-Archive -Path "${{ env.OUTPUT_DIR }}/*" -DestinationPath "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
-      shell: pwsh
+    # - name: 创建压缩包
+    #   run: Compress-Archive -Path "${{ env.OUTPUT_DIR }}/*" -DestinationPath "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+    #   shell: pwsh
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
-        name: Bloret-Launcher
-        path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+        name: Bloret-Launcher-Windows
+        path: "${{ env.OUTPUT_DIR }}/"
   Code-Package:
     needs: Set-Version
     runs-on: windows-latest
@@ -183,13 +183,13 @@ jobs:
     - name: 下载构建产物
       uses: actions/download-artifact@v4
       with:
-        name: Bloret-Launcher
+        name: Bloret-Launcher-Windows
         path: output
 
-    - name: 解压构建产物
-      run: |
-        Expand-Archive -Path "output/Bloret-Launcher-Windows.zip" -DestinationPath "output/"
-      shell: pwsh
+    # - name: 解压构建产物
+    #   run: |
+    #     Expand-Archive -Path "output/Bloret-Launcher-Windows.zip" -DestinationPath "output/"
+    #   shell: pwsh
 
     - name: 确保 LICENSE 文件存在
       run: |

@@ -1,7 +1,8 @@
 {
     "minecraft-part": ".minecraft",
     "first-run": true,
-    "ver": 8.1,
+    "ver": "8",
+    "123": "123",
     "size": 85,
     "themelight": true,
     "repeat_run": false,

@@ -1,6 +1,6 @@
 ; MyAppVersion 的值会由 Github Actions 自动修改
 #define MyAppName "Bloret-Launcher"
-#define MyAppVersion "8.1-Beta"
+#define MyAppVersion "8-Beta"
 #define MyAppPublisher "Bloret"
 #define MyAppURL "https://launcher.bloret.net/"
 #define MyAppExeName "Bloret-Launcher.exe"
@@ -79,5 +79,4 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait
