@@ -1586,8 +1586,6 @@ class MainWindow(FluentWindow):
         )
         log(f"run.bat 运行失败: {error}", logging.ERROR)
         self.is_running = False  # 重置标志变量
-    def update_show_text(self, text):
-        self.show_text.setText(text) 
     def download_skin(self, widget):
         if self.player_skin:
             skin_url = self.player_skin
