@@ -305,7 +305,6 @@ class MainWindow(FluentWindow):
         self.loading_dialogs = []  # 初始化 loading_dialogs 属性
         self.threads = []  # 初始化 threads 属性
         handle_first_run(self,server_ip)
-        check_for_updates(self,server_ip)
         global ver_id_bloret
         ver_id_bloret = check_Bloret_version(self, server_ip, ver_id_bloret)
         
@@ -350,6 +349,7 @@ class MainWindow(FluentWindow):
         # 显示窗口
         update_progress({'value': 100 / 100, 'valueStringOverride': '10/10', 'status': i18nText('显示窗口')})
         self.show()
+        check_for_updates(self,server_ip)
 
         self.destroyed.connect(lambda: (
             json.dump(self.config, open('config.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)

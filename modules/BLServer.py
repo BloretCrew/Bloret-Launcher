@@ -6,6 +6,7 @@ from modules.i18n import i18nText
 import threading
 import sys
 import traceback
+from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log
 from modules.safe import handle_exception
@@ -136,37 +137,43 @@ def get_latest_version(server_ip):
     BL_latest_ver = "0.0"
     
     try:
-        response = requests.get(server_ip + "/api/BL/info")
+        response = requests.get(server_ip + "api/BL/info")
         if response.status_code == 200:
             latest_release = response.json()
             BL_update_text = latest_release.get("Bloret-Launcher-update-text", "")
             BL_latest_ver = latest_release.get("Bloret-Launcher-latest-version", "0.0")
             return BL_latest_ver, BL_update_text
         else:
-            log(i18nText("查询最新版本失败"), logging.ERROR)
+            log(f"无法获取最新版本信息，状态码: {response.status_code}", logging.ERROR)
             return BL_latest_ver, BL_update_text
     except requests.RequestException as e:
         log(f"查询最新版本时发生错误: {e}", logging.ERROR)
         return BL_latest_ver, BL_update_text
 
+class UpdateSignal(QObject):
+    show_update = pyqtSignal(object, str, str, str)
+
 def check_for_updates(self,server_ip):
-    def _inner(self, server_ip):
+    update_signal = UpdateSignal()
+    update_signal.show_update.connect(show_update_message)
+    
+    def _inner(self, server_ip, signal):
         if not self.config.get('localmod', False):
             try:
                 BL_latest_ver, BL_update_text = get_latest_version(server_ip)
                 log(f"最新正式版: {BL_latest_ver}")
                 current_ver = self.config.get('ver', '0.0')  # 从config.json读取当前版本
+                log(f"当前版本: {current_ver}")
                 # 使用 IsNeedUpdate 函数比较版本
                 if BL_latest_ver is not None and BL_latest_ver != "":
-                    if IsNeedUpdate(current_ver, BL_latest_ver):
+                    need_update = IsNeedUpdate(current_ver, BL_latest_ver)
+                    log(f"是否需要更新: {need_update}")
+                    if need_update:
                         log(f"当前版本不是最新版，请更新到 {BL_latest_ver} 版本", logging.WARNING)
-                        w = MessageBox(
-                            title=i18nText("当前版本不是最新版"),
-                            content=f'Bloret Launcher 貌似有个新新新版本\n你似乎正在运行 {current_ver}，但事实上，百络谷启动器 {BL_latest_ver} 来啦！按下按钮自动更新。\n这个更新... {BL_update_text}',
-                            parent=self
-                        )
-                        w.show()
-                        w.yesButton.clicked.connect(update_to_latest_version)
+                        # 使用信号确保在主线程中创建和显示 MessageBox
+                        signal.show_update.emit(self, current_ver, BL_latest_ver, BL_update_text)
+                    else:
+                        log("当前版本是最新的")
             except Exception as e:
                 handle_exception(type(e), e, e.__traceback__)
                 log(f"检查更新时发生错误: {e}", logging.ERROR)
@@ -174,6 +181,22 @@ def check_for_updates(self,server_ip):
                 update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': i18nText('无法连接到服务器 ❌')})
         else:
             log(i18nText("本地模式已启用，检查更新 的过程已跳过。"))
-    t = threading.Thread(target=_inner, args=(self, server_ip), daemon=True)
+    t = threading.Thread(target=_inner, args=(self, server_ip, update_signal), daemon=True)
     t.start()
+
+def show_update_message(parent, current_ver, latest_ver, update_text):
+    """在主线程中显示更新消息框"""
+    try:
+        log("准备显示更新消息框")
+        w = MessageBox(
+            title=i18nText("当前版本不是最新版"),
+            content=f'Bloret Launcher 貌似有个新新新版本\n你似乎正在运行 Bloret Launcher {current_ver}，但事实上，Bloret Launcher {latest_ver} 来啦！按下按钮自动更新。\n这个更新... {update_text}',
+            parent=parent
+        )
+        w.yesButton.clicked.connect(lambda: update_to_latest_version(parent))
+        w.show()
+        log("更新消息框已显示")
+    except Exception as e:
+        handle_exception(type(e), e, e.__traceback__)
+        log(f"显示更新消息时发生错误: {e}", logging.ERROR)
 
