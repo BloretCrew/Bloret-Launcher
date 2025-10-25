@@ -6,7 +6,7 @@ permissions:
 on:
   push:
     branches:
-      - Windows
+      - auto_update
 
 jobs:
   Set-Version:
