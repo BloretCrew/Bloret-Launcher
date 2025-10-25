@@ -92,7 +92,7 @@ def update_to_latest_version(self):
         })
         
         # 启动安装程序并退出当前程序
-        subprocess.Popen([file_name, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"])
+        subprocess.Popen([file_name, "/SILENT", "/NORESTART"])
         sys.exit(0)
         
     except Exception as e:
