@@ -193,6 +193,7 @@ def show_update_message(parent, current_ver, latest_ver, update_text):
             content=f'Bloret Launcher 貌似有个新新新版本\n你似乎正在运行 Bloret Launcher {current_ver}，但事实上，Bloret Launcher {latest_ver} 来啦！按下按钮自动更新。\n这个更新... {update_text}',
             parent=parent
         )
+        from modules.update import update_to_latest_version
         w.yesButton.clicked.connect(lambda: update_to_latest_version(parent))
         w.show()
         log("更新消息框已显示")
