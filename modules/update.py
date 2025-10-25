@@ -60,6 +60,7 @@ def update_to_latest_version(self):
             r.raise_for_status()
             total_size = int(r.headers.get('content-length', 0))
             downloaded_size = 0
+            last_progress = 0
             with open(file_name, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
@@ -67,11 +68,14 @@ def update_to_latest_version(self):
                     if total_size > 0:
                         # 计算进度 (20% - 80%之间)
                         progress = 20 + (downloaded_size / total_size) * 60
-                        update_progress({
-                            'value': progress / 100,
-                            'valueStringOverride': f'{progress:.1f}%',
-                            'status': f'正在下载更新文件... ({downloaded_size}/{total_size} bytes)'
-                        })
+                        # 每5%更新一次进度，避免过于频繁的更新影响下载速度
+                        if progress - last_progress >= 5:
+                            update_progress({
+                                'value': progress / 100,
+                                'valueStringOverride': f'{progress:.1f}%',
+                                'status': f'正在下载更新文件... ({downloaded_size}/{total_size} bytes)'
+                            })
+                            last_progress = progress
         
         # 更新进度
         update_progress({
