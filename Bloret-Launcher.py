@@ -848,6 +848,8 @@ class MainWindow(FluentWindow):
             self.run_script_thread.start()
             self.threads.append(self.run_script_thread)
 
+            
+
             self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
             self.update_show_text_thread.update_text.connect(self.update_show_text)
             self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
@@ -1586,6 +1588,13 @@ class MainWindow(FluentWindow):
         )
         log(f"run.bat 运行失败: {error}", logging.ERROR)
         self.is_running = False  # 重置标志变量
+
+    def update_show_text(self, text):
+        if self.show_text is not None:
+            self.show_text.setText(text)
+        else:
+            log("show_text is None, unable to set text", logging.ERROR)
+
     def download_skin(self, widget):
         if self.player_skin:
             skin_url = self.player_skin
