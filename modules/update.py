@@ -55,12 +55,23 @@ def update_to_latest_version(self):
         temp_dir = tempfile.gettempdir()
         file_name = os.path.join(temp_dir, f"Bloret-Launcher-Setup-{version}.exe")
         
-        # 下载文件
+        # 下载文件并实时更新进度
         with requests.get(download_url, stream=True) as r:
             r.raise_for_status()
+            total_size = int(r.headers.get('content-length', 0))
+            downloaded_size = 0
             with open(file_name, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
+                    downloaded_size += len(chunk)
+                    if total_size > 0:
+                        # 计算进度 (20% - 80%之间)
+                        progress = 20 + (downloaded_size / total_size) * 60
+                        update_progress({
+                            'value': progress / 100,
+                            'valueStringOverride': f'{progress:.1f}%',
+                            'status': f'正在下载更新文件... ({downloaded_size}/{total_size} bytes)'
+                        })
         
         # 更新进度
         update_progress({
@@ -81,7 +92,8 @@ def update_to_latest_version(self):
         sys.exit(0)
         
     except Exception as e:
-        handle_exception(e)
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        handle_exception(exc_type, exc_value, exc_traceback)
         log(f"更新失败: {str(e)}", logging.ERROR)
         # 如果有父窗口，显示错误消息框
         if hasattr(self, 'parent') and self.parent:
