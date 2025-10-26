@@ -770,6 +770,13 @@ def setup_multiplayer_ui(self, widget, server_ip):
     else:
         log(i18nText("未找到StartOnlineClient按钮"))
 
+    ClientOnlineClient = widget.findChild(QPushButton, "ClientOnlineClient")
+    if ClientOnlineClient:
+        ClientOnlineClient.clicked.connect(lambda: ClientOnlineClient(self, server_ip))
+        log(i18nText("已连接ClientOnlineClient按钮"))
+    else:
+        log(i18nText("未找到ClientOnlineClient按钮"))
+
 
 def start_online_client(parent, server_ip):
     """启动在线客户端服务"""
@@ -871,6 +878,113 @@ def start_online_client(parent, server_ip):
     port_dialog.yesButton.clicked.connect(handle_port_confirm)
     port_dialog.exec_()
 
+def clinet_online_client(parent, server_ip):
+    """启动在线客户端服务"""
+
+    def show_login_message():
+        log("显示登录提示消息框", logging.INFO)
+        w = MessageBox("登录才可使用联机功能", "Easytier 联机需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。", parent)
+        if w.exec():
+            parent.switchTo(parent.passportInterface)
+            log("用户点击确认，切换到通行证界面", logging.INFO)
+
+    if not config.get("Bloret_PassPort_Login", False):
+        # 在主线程中显示消息框
+        QTimer.singleShot(0, show_login_message)
+        return
+
+    # 创建端口输入对话框
+    port_dialog = MessageBoxBase(parent)
+    port_dialog.setWindowTitle(i18nText("连接联机服务"))
+    
+    name_label = BodyLabel(i18nText("请输入发起人 Bloret PassPort 用户名"))
+    name_input = LineEdit()
+    name_input.setPlaceholderText("发起人 Bloret PassPort 用户名")
+    # name_input.setText("25565")
+    
+    port_dialog.viewLayout.addWidget(name_label)
+    port_dialog.viewLayout.addWidget(name_input)
+
+    port_label = BodyLabel(i18nText("请输入对方 Minecraft 端口"))
+    port_input = LineEdit()
+    port_input.setPlaceholderText(i18nText("默认端口: 25565，不一定为默认端口，若不知道请询问对方。"))
+    port_input.setText("25565")  # 设置默认端口
+    
+    port_dialog.viewLayout.addWidget(port_label)
+    port_dialog.viewLayout.addWidget(port_input)
+    
+    # 添加联机密钥输入框
+    online_key_label = BodyLabel(i18nText("请输入联机密钥"))
+    online_key_input = LineEdit()
+    online_key_input.setPlaceholderText(i18nText("联机密钥"))
+    online_key_input.setEchoMode(LineEdit.Password) # 设置为密码模式
+    
+    port_dialog.viewLayout.addWidget(online_key_label)
+    port_dialog.viewLayout.addWidget(online_key_input)
+
+    # 添加动图
+    from PyQt5.QtWidgets import QLabel
+    from PyQt5.QtGui import QMovie
+    from PyQt5.QtCore import QSize # 新增导入
+    gif_label = QLabel()
+    movie = QMovie("ui/icon/OnlineClient.gif")
+    gif_label.setMovie(movie)
+    movie.start()
+    
+    port_dialog.viewLayout.addWidget(gif_label)
+    
+    port_dialog.yesButton.setText(i18nText("确认"))
+    port_dialog.cancelButton.setText(i18nText("取消"))
+    
+    def handle_port_confirm():
+        port = port_input.text().strip()
+        online_key = online_key_input.text().strip() # 获取联机密钥
+        if not port.isdigit():
+            InfoBar.error(
+                title=i18nText('输入错误'),
+                content=i18nText('请输入有效的端口号'),
+                parent=parent
+            )
+            return False
+        
+        # 调用OnlineClient函数
+        try:
+            # 将端口转换为整数再传递
+            port_int = int(port)
+            # 调用 StartEasytierServer 函数
+            easytier_name = name_input.text().strip()
+            connection_address = StartEasytierServer(easytier_name, online_key)
+            
+            # 检查是否返回了错误信息
+            if connection_address.startswith(i18nText("权限错误：")) or connection_address.startswith(i18nText("安全软件阻止：")):
+                InfoBar.error(
+                    title=i18nText('启动失败'),
+                    content=connection_address,
+                    parent=parent,
+                    duration=10000  # 显示更长时间以便用户阅读
+                )
+                return False
+            elif connection_address.startswith(i18nText("启动失败:")) or connection_address == i18nText("网络请求失败") or connection_address == i18nText("配置文件不存在") or connection_address == i18nText("frpc程序不存在") or connection_address == i18nText("获取连接信息失败"):
+                InfoBar.error(
+                    title=i18nText('启动失败'),
+                    content=connection_address,
+                    parent=parent
+                )
+                return False
+            
+            # 显示连接地址对话框
+            show_connection_address_dialog(parent, connection_address, port)
+            return True
+        except Exception as e:
+            InfoBar.error(
+                title=i18nText('启动失败'),
+                content=f'启动联机服务时出错: {str(e)}',
+                parent=parent
+            )
+            return False
+    
+    port_dialog.yesButton.clicked.connect(handle_port_confirm)
+    port_dialog.exec_()
 
 def show_connection_address_dialog(parent, connection_address, port):
     """显示连接地址对话框"""
@@ -885,12 +999,12 @@ def show_connection_address_dialog(parent, connection_address, port):
     instruction_label.setAlignment(Qt.AlignCenter)
     
     # 添加动图
-    from PyQt5.QtWidgets import QLabel
-    from PyQt5.QtGui import QMovie
-    gif_label = QLabel()
-    movie = QMovie("ui/icon/OnlineClient.gif")
-    gif_label.setMovie(movie)
-    movie.start()
+    # from PyQt5.QtWidgets import QLabel
+    # from PyQt5.QtGui import QMovie
+    # gif_label = QLabel()
+    # movie = QMovie("ui/icon/OnlineClient.gif")
+    # gif_label.setMovie(movie)
+    # movie.start()
     
     result_dialog.viewLayout.addWidget(address_label)
     result_dialog.viewLayout.addWidget(instruction_label)
