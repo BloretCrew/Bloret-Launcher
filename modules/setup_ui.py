@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy, QApplication
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
 from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime
@@ -21,6 +21,22 @@ from modules.i18n import i18nText
 from modules.customize import CustomizeAdd
 from modules.Bloriko import AskBlorikoAndSet
 from modules.chafuwang import getServerData
+from modules.easytier import StartEasytierServer
+
+# 加载配置文件
+def load_config():
+    config_path = "config.json"
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"错误：配置文件 {config_path} 未找到。")
+        return {}
+    except json.JSONDecodeError:
+        print(f"错误：配置文件 {config_path} 格式不正确。")
+        return {}
+
+config = load_config()
 
 class DownloadDialog(MessageBoxBase):
     """ 自定义下载对话框 """
@@ -757,6 +773,19 @@ def setup_multiplayer_ui(self, widget, server_ip):
 
 def start_online_client(parent, server_ip):
     """启动在线客户端服务"""
+
+    def show_login_message():
+        log("显示登录提示消息框", logging.INFO)
+        w = MessageBox("登录才可使用联机功能", "Easytier 联机需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。", parent)
+        if w.exec():
+            parent.switchTo(parent.passportInterface)
+            log("用户点击确认，切换到通行证界面", logging.INFO)
+
+    if not config.get("Bloret_PassPort_Login", False):
+        # 在主线程中显示消息框
+        QTimer.singleShot(0, show_login_message)
+        return
+
     # 创建端口输入对话框
     port_dialog = MessageBoxBase(parent)
     port_dialog.setWindowTitle(i18nText("开启联机服务"))
@@ -769,9 +798,19 @@ def start_online_client(parent, server_ip):
     port_dialog.viewLayout.addWidget(port_label)
     port_dialog.viewLayout.addWidget(port_input)
     
+    # 添加联机密钥输入框
+    online_key_label = BodyLabel(i18nText("请输入联机密钥"))
+    online_key_input = LineEdit()
+    online_key_input.setPlaceholderText(i18nText("联机密钥"))
+    online_key_input.setEchoMode(LineEdit.Password) # 设置为密码模式
+    
+    port_dialog.viewLayout.addWidget(online_key_label)
+    port_dialog.viewLayout.addWidget(online_key_input)
+
     # 添加动图
     from PyQt5.QtWidgets import QLabel
     from PyQt5.QtGui import QMovie
+    from PyQt5.QtCore import QSize # 新增导入
     gif_label = QLabel()
     movie = QMovie("ui/icon/OnlineClient.gif")
     gif_label.setMovie(movie)
@@ -784,6 +823,7 @@ def start_online_client(parent, server_ip):
     
     def handle_port_confirm():
         port = port_input.text().strip()
+        online_key = online_key_input.text().strip() # 获取联机密钥
         if not port.isdigit():
             InfoBar.error(
                 title=i18nText('输入错误'),
@@ -796,7 +836,9 @@ def start_online_client(parent, server_ip):
         try:
             # 将端口转换为整数再传递
             port_int = int(port)
-            connection_address = OnlineClient(server_ip, port_int)
+            # 调用 StartEasytierServer 函数
+            easytier_name = config.get("Bloret_PassPort_UserName") # 从配置中读取 name
+            connection_address = StartEasytierServer(easytier_name, online_key)
             
             # 检查是否返回了错误信息
             if connection_address.startswith(i18nText("权限错误：")) or connection_address.startswith(i18nText("安全软件阻止：")):
