@@ -12,8 +12,9 @@
 
 <div align="center">
 
-[![应用程序打包](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml)
-[![Crowdin 翻译进度](https://badges.crowdin.net/Bloret-Launcher/localized.svg)](https://launcher.bloret.net/go/translate)
+[![应用程序打包](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml)  
+[![应用程序打包 - Nuitka](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/Nuitka-Build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/Nuitka-Build.yml)  
+[![Crowdin 翻译进度](https://badges.crowdin.net/Bloret-Launcher/localized.svg)](https://launcher.bloret.net/go/translate)  
 [![讨论数](https://img.shields.io/github/discussions/BloretCrew/Bloret-Launcher?style=social&label=%E8%AE%A8%E8%AE%BA)](https://github.com/BloretCrew/Bloret-Launcher/discussions)
 ![仓库大小](https://img.shields.io/github/repo-size/BloretCrew/Bloret-Launcher?style=social&label=%E4%BB%93%E5%BA%93%E5%A4%A7%E5%B0%8F)
 ![星标数](https://img.shields.io/github/stars/BloretCrew/Bloret-Launcher?style=social&label=%E6%98%9F%E6%A0%87)  
@@ -150,5 +151,6 @@
 
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
+
 
 
