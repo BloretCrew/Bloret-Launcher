@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 <img src="bloret.ico" width = "200" height = "200" alt="NapCat" align=left />
 <div align="center">
   <h1>
@@ -10,17 +9,6 @@
    便捷地管理你的 Minecraft，便捷地游玩 Bloret。
   </p>
 </div>
-=======
-<p align="center">
-  <img width="16%" align="center" src="https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/bloret.ico" alt="logo">  
-</p>
-  <h1 align="center">  
-  Bloret Launcher
-</h1>
-<p align="center">
- Bloret Launcher 不只是 Minecraft 启动器，但也为 Minecraft 玩家提供便捷的游戏启动与管理体验。
-</p>
->>>>>>> Stashed changes
 
 <div align="center">
 
