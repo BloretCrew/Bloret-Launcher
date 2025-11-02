@@ -865,7 +865,7 @@ def start_online_client(parent, clientpage):
                 return False
             
             # 显示连接地址对话框
-            show_connection_address_dialog(parent, connection_address, port, clientpage)
+            show_connection_address_dialog(parent, connection_address, port, clientpage, True)
             return True
         except Exception as e:
             InfoBar.error(
@@ -898,7 +898,7 @@ def client_online_client(parent, clientpage):
     connect_dialog = MessageBoxBase(parent)
     connect_dialog.setWindowTitle(i18nText("连接联机服务"))
     
-    name_label = BodyLabel(i18nText("请输入发起人 Bloret PassPort 用户名"))
+    name_label = BodyLabel(i18nText("请输入连接信息"))
     name_input = LineEdit()
     name_input.setPlaceholderText("发起人 Bloret PassPort 用户名")
     
@@ -969,7 +969,7 @@ def client_online_client(parent, clientpage):
                 return
             
             # 显示连接地址对话框
-            show_connection_address_dialog(parent, connection_address, port, clientpage)
+            show_connection_address_dialog(parent, connection_address, port, clientpage, False)
         except Exception as e:
             InfoBar.error(
                 title=i18nText('连接失败'),
@@ -981,16 +981,22 @@ def client_online_client(parent, clientpage):
 
     connect_dialog.exec_()
 
-def show_connection_address_dialog(parent, connection_address, port, clientpage):
+def show_connection_address_dialog(parent, connection_address, port, clientpage, isserver):
     """显示连接地址对话框"""
     # 创建结果显示对话框
     result_dialog = MessageBoxBase(parent)
     result_dialog.setWindowTitle(i18nText("联机服务已启动"))
     
-    address_label = StrongBodyLabel(connection_address)
+    address_label = StrongBodyLabel(connection_address+':'+port)
     address_label.setAlignment(Qt.AlignCenter)
+
+
+    if isserver:
+        text = "按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。"
+    else:
+        text = "按下确认键复制到剪贴板，然后在 Minecraft 客户端中添加服务器并加入。"
     
-    instruction_label = CaptionLabel(i18nText("按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。"))
+    instruction_label = CaptionLabel(i18nText(text))
     instruction_label.setAlignment(Qt.AlignCenter)
     
     # 添加动图
@@ -1012,7 +1018,7 @@ def show_connection_address_dialog(parent, connection_address, port, clientpage)
         # 复制到剪贴板
         clipboard = QApplication.clipboard()
         if clipboard:
-            clipboard.setText(connection_address)
+            clipboard.setText(connection_address+':'+port)
         InfoBar.success(
             title=i18nText('复制成功'),
             content=i18nText('联机地址已复制到剪贴板'),
@@ -1060,16 +1066,20 @@ def show_connection_address_dialog(parent, connection_address, port, clientpage)
             log("未找到 Client_Statue_Show 标签")
             
         if client_link_tip_label:
-            client_link_tip_label.setText(i18nText("请打开 Minecraft，并像加入服务器一样加入 "))
+            if isserver:
+                text = "请告诉对方端口号、你的用户名和联机密钥，然后让对方打开 Bloret Launcher 连接"
+            else:
+                text = "请打开 Minecraft，并像加入服务器一样加入 "
+            client_link_tip_label.setText(i18nText(text))
             client_link_tip_label.repaint()  # 强制重绘
-            log(f"已更新连接提示标签: {i18nText('请打开 Minecraft，并像加入服务器一样加入 ')}")
+            log(f"已更新连接提示标签: {i18nText(text)}")
         else:
             log("未找到 Client_link_tip 标签")
             
         if client_link_show_label:
             client_link_show_label.setText(connection_address)
             client_link_show_label.repaint()  # 强制重绘
-            log(f"已更新连接地址显示标签: {connection_address}")
+            log(f"已更新连接地址显示标签: {connection_address+':'+port}")
         else:
             log("未找到 Client_link_show 标签")
         
