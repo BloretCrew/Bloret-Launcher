@@ -19,7 +19,7 @@ if not os.path.exists(log_filename):
 logging.basicConfig(
     filename=log_filename,
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
+    format='%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d - %(funcName)s()] %(message)s',
     encoding='utf-8'
 )
 
