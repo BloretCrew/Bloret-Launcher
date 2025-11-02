@@ -1132,7 +1132,7 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
         # else:
         #     log(i18nText("未找到OnlineClient_ClientTime标签"))
     
-    result_dialog.yesButton.clicked.connect(handle_result_confirm)
+    result_dialog.yesButton.clicked.connect(handle_result_confirm(text))
     result_dialog.exec_()
 
         #         timer = QTimer()
@@ -1149,8 +1149,6 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
         #     else:
         #         log(i18nText("未找到OnlineClient_ClientTime标签"))
     
-    result_dialog.yesButton.clicked.connect(handle_result_confirm)
-    result_dialog.exec_()
 
 
 def update_connection_time(time_label, start_time):
