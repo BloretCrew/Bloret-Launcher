@@ -68,7 +68,56 @@ def Get_Run_Script(mc_version):
         raise FileNotFoundError(f"客户端 JAR 文件 {client_jar_path} 不存在")
     
     # 获取 Java 路径 (使用指定的 Zulu JDK 路径)
-    java_path = r"java"
+    java_path = "java"  # 默认使用系统PATH中的java命令
+    log(f"初始 java_path: {java_path}")
+    
+    # 检查系统PATH中是否存在java命令
+    import shutil
+    java_in_path = shutil.which("java")
+    log(f"系统PATH中的java路径: {java_in_path}")
+    
+    if not java_in_path:
+        # 如果系统PATH中没有java，尝试使用配置中的Java路径
+        log("系统PATH中未找到java命令")
+        try:
+            with open('config.json', 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+            
+            java_dir = config_data.get('java_dir', '')
+            log(f"配置文件中的java_dir: {java_dir}")
+            
+            if java_dir and os.path.exists(java_dir):
+                java_exe_path = os.path.join(java_dir, "bin", "java.exe")
+                log(f"构造的java路径: {java_exe_path}")
+                if os.path.exists(java_exe_path):
+                    java_path = java_exe_path
+                    log(f"使用配置中的Java路径: {java_path}")
+                else:
+                    log(f"配置中的Java路径不存在: {java_exe_path}")
+            else:
+                # 尝试默认的Java安装路径
+                log("尝试默认Java安装路径")
+                default_java_paths = [
+                    r"C:\Program Files\Java\jdk-17\bin\java.exe",
+                    r"C:\Program Files\Java\jdk-21\bin\java.exe",
+                    r"C:\Program Files\Eclipse Adoptium\jdk-17-hotspot\bin\java.exe",
+                    r"C:\Program Files\Eclipse Adoptium\jdk-21-hotspot\bin\java.exe"
+                ]
+                
+                for default_path in default_java_paths:
+                    log(f"检查默认路径: {default_path}")
+                    if os.path.exists(default_path):
+                        java_path = default_path
+                        log(f"使用默认Java路径: {java_path}")
+                        break
+        except Exception as e:
+            log(f"读取Java路径配置时出错: {e}")
+            pass  # 如果无法读取配置或查找Java路径，则使用默认值
+    else:
+        # java在系统PATH中，使用完整路径
+        if java_in_path:
+            java_path = java_in_path
+            log(f"使用系统PATH中的Java路径: {java_path}")
     
     # 获取账户信息
     account_info = None
@@ -83,8 +132,18 @@ def Get_Run_Script(mc_version):
         username = account_info.get("playerName", "Bloret-Player")
     
     # 构建基本启动参数
+    # 根据java_path是否为完整路径决定是否添加引号
+    if java_path == "java":
+        # 使用系统PATH中的java命令，不需要引号
+        java_arg = java_path
+        log("使用系统PATH中的java命令")
+    else:
+        # 使用绝对路径，需要添加引号
+        java_arg = f'"{java_path}"'
+        log(f"使用绝对Java路径: {java_path}")
+    
     launch_args = [
-        f'"{java_path}"',  # Java路径需要用引号包围
+        java_arg,  # Java路径，根据情况决定是否添加引号
         "--enable-native-access=ALL-UNNAMED",  # 解决Java警告
         "--add-opens", "java.base/java.lang=ALL-UNNAMED",  # 抑制弃用警告
         "--add-opens", "java.base/java.util=ALL-UNNAMED",  # 抑制弃用警告
@@ -153,7 +212,7 @@ def Get_Run_Script(mc_version):
     ])
     
     # 构建类路径 (classpath)
-    final_classpath = []
+    classpath = []  # 初始化classpath列表
     
     # 添加所有依赖库
     libraries_dir = os.path.join(minecraft_dir, "libraries")
@@ -200,7 +259,7 @@ def Get_Run_Script(mc_version):
                     continue
             
             # 添加库到类路径
-            final_classpath.append(lib_path)
+            classpath.append(lib_path)
             
             # 处理特殊库（如OptiFine）
             if "name" in lib and "optifine" in lib['name'].lower():
@@ -224,6 +283,9 @@ def Get_Run_Script(mc_version):
     # 添加自定义参数
     launch_args.append(f'-Doolloo.jlw.tmpdir="{os.path.join(os.getcwd(), "Bloret Launcher")}"')
     
+    # 初始化mods_dir变量
+    mods_dir = ""  # 默认值为空字符串
+    
     # 添加 Fabric 特定参数和处理
     if is_fabric:
         launch_args.append("-DFabricMcEmu=net.minecraft.client.main.Main")
@@ -243,6 +305,7 @@ def Get_Run_Script(mc_version):
         
         # 添加 mods 目录中的所有 JAR 文件 (Fabric mods)
         mods_dir = os.path.join(minecraft_dir, "versions", mc_version, "mods")
+        
         if os.path.exists(mods_dir):
             for file in os.listdir(mods_dir):
                 if file.endswith('.jar'):
@@ -389,7 +452,8 @@ def Get_Run_Script(mc_version):
     launch_args.extend(["-cp", '\"' + ";".join(classpath) + '\"'])  # Windows 使用分号分隔
     
     # Add Fabric Loader arguments to ensure mods are loaded
-    launch_args.extend(["-Dfabric.addMods=" + mods_dir])
+    if is_fabric and os.path.exists(mods_dir):  # 只有在是fabric版本且mods_dir存在时才添加
+        launch_args.extend(["-Dfabric.addMods=" + mods_dir])
     
     # 添加主类和参数
     if is_fabric:
@@ -476,21 +540,22 @@ def Get_Run_Script(mc_version):
         if missing_fields:
             raise ValueError(f"缺少必要的启动参数: {', '.join(missing_fields)}，请先登录或完善账户信息。")
             
-        launch_args.extend([
-            "--username", username,
-            "--version", mc_version,  # 使用完整版本名而不是解析后的版本
-            "--gameDir", game_dir,  # 不要在路径外额外添加引号
-            "--assetsDir", assets_dir,  # 不要在路径外额外添加引号
-            "--assetIndex", str(asset_index),
-            "--uuid", account_info.get("uuid"),
-            "--accessToken", account_info.get("accessToken"),
-            "--clientId", account_info.get("clientId", ""),
-            "--xuid", account_info.get("xuid", ""),
-            "--userType", account_info.get("userType", "msa"),
-            "--versionType", version_type,
-            "--width", "854",
-            "--height", "480"
-        ])
+        if account_info:  # 确保account_info不为None
+            launch_args.extend([
+                "--username", username,
+                "--version", mc_version,  # 使用完整版本名而不是解析后的版本
+                "--gameDir", game_dir,  # 不要在路径外额外添加引号
+                "--assetsDir", assets_dir,  # 不要在路径外额外添加引号
+                "--assetIndex", str(asset_index),
+                "--uuid", account_info.get("uuid", "") if account_info else "",
+                "--accessToken", account_info.get("accessToken", "") if account_info else "",
+                "--clientId", account_info.get("clientId", "") if account_info else "",
+                "--xuid", account_info.get("xuid", "") if account_info else "",
+                "--userType", account_info.get("userType", "msa") if account_info else "msa",
+                "--versionType", version_type,
+                "--width", "854",
+                "--height", "480"
+            ])
     
     # 构建命令
     # 不添加过滤器，避免被Minecraft误认为是游戏参数
