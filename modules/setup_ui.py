@@ -1029,7 +1029,7 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
     result_dialog.yesButton.setText(i18nText("确认"))
     result_dialog.cancelButton.hide()  # 隐藏取消按钮
     
-    def handle_result_confirm():
+    def handle_result_confirm(text):
         # 复制到剪贴板
         clipboard = QApplication.clipboard()
         if clipboard:
