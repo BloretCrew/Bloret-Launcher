@@ -866,7 +866,7 @@ def start_online_client(parent, clientpage):
             
             # 显示连接地址对话框
             text = "和我用 Bloret Launcher 联机！打开 Bloret Launcher 并进入联机页面，即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/ . (%/BLClient%){\"ip\":\""+connection_address+"\",\"key\":\""+online_key+"\",\"port\":\""+port+"\",\"username\":\""+easytier_name+"\"}(%/BLClient%) 复制该信息，输入 Bloret Launcher 联机页面的连接信息中即可加入联机。"
-            show_connection_address_dialog(parent, text, clientpage, True)
+            show_connection_address_dialog(parent, text, connection_address + ':' + port, clientpage, True)
             return True
         except Exception as e:
             InfoBar.error(
@@ -899,29 +899,13 @@ def client_online_client(parent, clientpage):
     connect_dialog = MessageBoxBase(parent)
     connect_dialog.setWindowTitle(i18nText("连接联机服务"))
     
-    name_label = BodyLabel(i18nText("请输入连接信息"))
+    name_label = BodyLabel(i18nText("请输入完整的连接信息"))
     name_input = LineEdit()
-    name_input.setPlaceholderText("{}")
-    
-    port_label = BodyLabel(i18nText("请输入对方 Minecraft 端口"))
-    port_input = LineEdit()
-    port_input.setPlaceholderText(i18nText("默认端口: 25565，不一定为默认端口，若不知道请询问对方。"))
-    port_input.setText("25565")  # 设置默认端口
+    name_input.setPlaceholderText(i18nText('粘贴从主机复制的完整连接信息'))
     
     connect_dialog.viewLayout.addWidget(name_label)
     connect_dialog.viewLayout.addWidget(name_input)
-    connect_dialog.viewLayout.addWidget(port_label)
-    connect_dialog.viewLayout.addWidget(port_input)
     
-    # 添加联机密钥输入框
-    online_key_label = BodyLabel(i18nText("请输入联机密钥"))
-    online_key_input = LineEdit()
-    online_key_input.setPlaceholderText(i18nText("联机密钥"))
-    online_key_input.setEchoMode(LineEdit.Password) # 设置为密码模式
-    
-    connect_dialog.viewLayout.addWidget(online_key_label)
-    connect_dialog.viewLayout.addWidget(online_key_input)
-
     # 添加动图
     # gif_label = QLabel()
     # movie = QMovie("ui/icon/OnlineClient.gif")
@@ -934,23 +918,34 @@ def client_online_client(parent, clientpage):
     connect_dialog.cancelButton.setText(i18nText("取消"))
     
     def handle_connect_confirm():
-        port = port_input.text().strip()
-        online_key = online_key_input.text().strip() # 获取联机密钥
-        host_name = name_input.text().strip() # 获取主机用户名
-        if not port.isdigit():
-            InfoBar.error(
-                title=i18nText('输入错误'),
-                content=i18nText('请输入有效的端口号'),
-                parent=parent
-            )
-            return
-        
-        # 调用OnlineClient函数
         try:
-            # 将端口转换为整数再传递
-            port_int = int(port)
+            # 获取输入的完整连接信息
+            full_text = name_input.text().strip()
+            
+            # 提取JSON部分
+            start_marker = "(%/BLClient%)"
+            end_marker = "(%/BLClient%)"
+            
+            start_index = full_text.find(start_marker)
+            end_index = full_text.find(end_marker, start_index + len(start_marker))
+            
+            if start_index == -1 or end_index == -1:
+                raise ValueError("连接信息格式不正确，未找到有效的标记")
+                
+            json_text = full_text[start_index + len(start_marker):end_index]
+            clientdata = json.loads(json_text)
+            
+            # 获取连接参数
+            ip = clientdata.get("ip")
+            key = clientdata.get("key")
+            port = clientdata.get("port")
+            username = clientdata.get("username")
+            
+            if not all([ip, key, port, username]):
+                raise ValueError("连接信息缺少必要参数")
+            
             # 调用 StartEasytierServer 函数连接到主机
-            connection_address = StartEasytierServer(host_name, online_key)
+            connection_address = StartEasytierServer(username, key)
             
             # 检查是否返回了错误信息
             if isinstance(connection_address, str) and (connection_address.startswith(i18nText("权限错误：")) or connection_address.startswith(i18nText("安全软件阻止："))):
@@ -970,7 +965,14 @@ def client_online_client(parent, clientpage):
                 return
             
             # 显示连接地址对话框
-            show_connection_address_dialog(parent, connection_address, port, clientpage, False)
+            show_connection_address_dialog(parent, connection_address, ip + ':' + port, clientpage, False)
+        except json.JSONDecodeError as e:
+            InfoBar.error(
+                title=i18nText('解析失败'),
+                content=f'连接信息解析错误: {str(e)}',
+                parent=parent
+            )
+            return
         except Exception as e:
             InfoBar.error(
                 title=i18nText('连接失败'),
@@ -982,7 +984,7 @@ def client_online_client(parent, clientpage):
 
     connect_dialog.exec_()
 
-def show_connection_address_dialog(parent, text, clientpage, isserver):
+def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver):
     """
     显示连接地址对话框
     联机信息：
@@ -1082,9 +1084,9 @@ def show_connection_address_dialog(parent, text, clientpage, isserver):
             log("未找到 Client_link_tip 标签")
             
         if client_link_show_label:
-            client_link_show_label.setText(text)
+            client_link_show_label.setText(ipandport)
             client_link_show_label.repaint()  # 强制重绘
-            log(f"已更新连接地址显示标签: {text}")
+            log(f"已更新连接地址显示标签: {ipandport}")
         else:
             log("未找到 Client_link_show 标签")
         
