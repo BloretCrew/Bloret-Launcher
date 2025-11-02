@@ -1004,6 +1004,14 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
         text = "按下确认键复制到剪贴板，然后在 Minecraft 客户端中添加服务器并加入。"
     
     instruction_label = CaptionLabel(i18nText(text))
+
+
+    if isserver:
+        text = "按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。"
+    else:
+        text = "按下确认键复制到剪贴板，然后在 Minecraft 客户端中添加服务器并加入。"
+    
+    instruction_label = CaptionLabel(i18nText(text))
     instruction_label.setAlignment(Qt.AlignCenter)
     
     # 添加动图
@@ -1078,7 +1086,13 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
             else:
                 text = "请打开 Minecraft，并像加入服务器一样加入 "
             client_link_tip_label.setText(i18nText(text))
+            if isserver:
+                text = "请告诉对方端口号、你的用户名和联机密钥，然后让对方打开 Bloret Launcher 连接"
+            else:
+                text = "请打开 Minecraft，并像加入服务器一样加入 "
+            client_link_tip_label.setText(i18nText(text))
             client_link_tip_label.repaint()  # 强制重绘
+            log(f"已更新连接提示标签: {i18nText(text)}")
             log(f"已更新连接提示标签: {i18nText(text)}")
         else:
             log("未找到 Client_link_tip 标签")
