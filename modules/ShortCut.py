@@ -157,6 +157,10 @@ class ScreenCaptureWidget(QWidget):
     
     def capture_window_at_point(self, point):
         """根据点击位置获取窗口并截图"""
+        # 隐藏整个截图工具窗口
+        self.hide()
+        QApplication.processEvents()  # 确保窗口完全隐藏
+        
         # 将相对坐标转换为全局坐标
         global_point = self.mapToGlobal(point)
         
@@ -183,9 +187,16 @@ class ScreenCaptureWidget(QWidget):
                     print(f"截图已复制到剪贴板")
             except Exception as e:
                 print(f"Error capturing window: {e}")
+        
+        # 截图完成后直接关闭窗口（不再显示）
+        # 注意：由于我们要关闭窗口，不需要重新显示
     
     def capture_region(self, rect):
         """截取指定区域"""
+        # 隐藏整个截图工具窗口
+        self.hide()
+        QApplication.processEvents()  # 确保窗口完全隐藏
+        
         # 转换为全局坐标
         global_top_left = self.mapToGlobal(rect.topLeft())
         
@@ -203,6 +214,12 @@ class ScreenCaptureWidget(QWidget):
             # 复制到剪贴板
             clipboard = QApplication.clipboard()
             clipboard.setPixmap(screenshot)
+            
+            # 添加提示信息
+            print(f"区域截图已复制到剪贴板")
+        
+        # 截图完成后直接关闭窗口（不再显示）
+        # 注意：由于我们要关闭窗口，不需要重新显示
 
 
 def ScreenShortCut():
