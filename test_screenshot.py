@@ -17,8 +17,8 @@ def test_screenshot():
     print(f"窗口几何信息: {screenshot_widget.geometry()}")
     print(f"窗口标志: {screenshot_widget.windowFlags()}")
     
-    # 5秒后自动关闭（用于测试）
-    QTimer.singleShot(5000, lambda: app.quit())
+    # 10秒后自动关闭（用于测试）
+    QTimer.singleShot(10000, lambda: app.quit())
     
     print("程序将在5秒后自动退出...")
     print("您可以在这5秒内测试截图功能：")

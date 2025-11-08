@@ -21,6 +21,7 @@ from modules.i18n import i18nText
 from modules.customize import CustomizeAdd
 from modules.Bloriko import AskBlorikoAndSet
 from modules.chafuwang import getServerData
+from modules.ShortCut import ScreenShortCut
 
 class DownloadDialog(MessageBoxBase):
     """ 自定义下载对话框 """
@@ -499,6 +500,14 @@ def setup_tools_ui(self, widget):
     cape_copy_button = widget.findChild(QPushButton, "search_cape_copy")
     if cape_copy_button:
         cape_copy_button.clicked.connect(lambda: copy_cape_to_clipboard(self))
+        
+    ScreenCutButton = widget.findChild(QPushButton, "ScreenCutButton")
+    if ScreenCutButton:
+        # 保持对截图窗口的引用，防止被垃圾回收
+        self.screenshot_widget = None
+        def start_screenshot():
+            self.screenshot_widget = ScreenShortCut()
+        ScreenCutButton.clicked.connect(start_screenshot)
 
 def setup_passport_ui(self, widget, server_ip, homeInterface):
     '''
