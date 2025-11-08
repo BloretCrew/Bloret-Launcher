@@ -839,12 +839,31 @@ def start_online_client(parent, clientpage):
             )
             return False
         
+        # 检查联机密钥是否为空
+        if not online_key:
+            InfoBar.error(
+                title=i18nText('输入错误'),
+                content=i18nText('请输入联机密钥'),
+                parent=parent
+            )
+            return False
+        
         # 调用OnlineClient函数
         try:
             # 将端口转换为整数再传递
             port_int = int(port)
             # 调用 StartEasytierServer 函数
-            easytier_name = config.get("Bloret_PassPort_UserName") # 从配置中读取 name
+            username = config.get("Bloret_PassPort_UserName", "")
+            easytier_name = "BLClient"+username
+            # 检查用户名是否为空
+            if not easytier_name:
+                InfoBar.error(
+                    title=i18nText('启动失败'),
+                    content=i18nText('无法获取用户名，请重新登录 Bloret PassPort'),
+                    parent=parent
+                )
+                return False
+                
             connection_address = StartEasytierServer(easytier_name, online_key)
             
             # 检查是否返回了错误信息
@@ -865,10 +884,17 @@ def start_online_client(parent, clientpage):
                 return False
             
             # 显示连接地址对话框
-            text = "和我用 Bloret Launcher 联机！打开 Bloret Launcher 并进入联机页面，即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/ . (%/BLClient%){\"ip\":\""+connection_address+"\",\"key\":\""+online_key+"\",\"port\":\""+port+"\",\"username\":\""+easytier_name+"\"}(%/BLClient%) 复制该信息，输入 Bloret Launcher 联机页面的连接信息中即可加入联机。"
-            show_connection_address_dialog(parent, text, connection_address + ':' + port, clientpage, True)
+            # 以下是联机信息示例：
+            # 和我用 Bloret Launcher 联机！打开 Bloret Launcher 进入联机页面，选择“连接到对方的网络”，输入我的用户名 {username} 即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/
+
+            # connection_info = "{\"ip\":\""+connection_address+"\",\"key\":\""+online_key+"\",\"port\":\""+port+"\",\"username\":\""+easytier_name+"\"}"
+            # full_text = "和我用 Bloret Launcher 联机！打开 Bloret Launcher 并进入联机页面，即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/ . (%/BLClient%)"+connection_info+"(%/BLClient%) 复制该信息，输入 Bloret Launcher 联机页面的连接信息中即可加入联机。"
+
+            full_text = f"和我用 Bloret Launcher 联机！打开 Bloret Launcher 进入联机页面，选择“连接到对方的网络”，输入我的用户名 {username} 即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/"
+            show_connection_address_dialog(parent, full_text, connection_address + ':' + port, clientpage, True)
             return True
         except Exception as e:
+            log(f"启动联机服务时出错: {str(e)}", logging.ERROR)
             InfoBar.error(
                 title=i18nText('启动失败'),
                 content=f'启动联机服务时出错: {str(e)}',
@@ -876,7 +902,10 @@ def start_online_client(parent, clientpage):
             )
             return False
     
-    port_dialog.yesButton.clicked.connect(handle_port_confirm)
+    def connect_handler():
+        handle_port_confirm()
+        
+    port_dialog.yesButton.clicked.connect(connect_handler)
     port_dialog.exec_()
 
 def client_online_client(parent, clientpage):
@@ -899,9 +928,9 @@ def client_online_client(parent, clientpage):
     connect_dialog = MessageBoxBase(parent)
     connect_dialog.setWindowTitle(i18nText("连接联机服务"))
     
-    name_label = BodyLabel(i18nText("请输入完整的连接信息"))
+    name_label = BodyLabel(i18nText("请输入对方 Bloret PassPort 用户名"))
     name_input = LineEdit()
-    name_input.setPlaceholderText(i18nText('粘贴从主机复制的完整连接信息'))
+    name_input.setPlaceholderText(i18nText('对方用户名'))
     
     connect_dialog.viewLayout.addWidget(name_label)
     connect_dialog.viewLayout.addWidget(name_input)
@@ -919,30 +948,9 @@ def client_online_client(parent, clientpage):
     
     def handle_connect_confirm():
         try:
-            # 获取输入的完整连接信息
-            full_text = name_input.text().strip()
             
-            # 提取JSON部分
-            start_marker = "(%/BLClient%)"
-            end_marker = "(%/BLClient%)"
+            # username, key, port 都从 Bloret PassPort 的 public 数据中读取。
             
-            start_index = full_text.find(start_marker)
-            end_index = full_text.find(end_marker, start_index + len(start_marker))
-            
-            if start_index == -1 or end_index == -1:
-                raise ValueError("连接信息格式不正确，未找到有效的标记")
-                
-            json_text = full_text[start_index + len(start_marker):end_index]
-            clientdata = json.loads(json_text)
-            
-            # 获取连接参数
-            ip = clientdata.get("ip")
-            key = clientdata.get("key")
-            port = clientdata.get("port")
-            username = clientdata.get("username")
-            
-            if not all([ip, key, port, username]):
-                raise ValueError("连接信息缺少必要参数")
             
             # 调用 StartEasytierServer 函数连接到主机
             connection_address = StartEasytierServer(username, key)
@@ -988,31 +996,22 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
     """
     显示连接地址对话框
     联机信息：
-    和我用 Bloret Launcher 联机！打开 Bloret Launcher 并进入联机页面，即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/ . (%/BLClient%){"ip":ip,"key":key,"port":port,"username":username}(%/BLClient%) 复制该信息，输入 Bloret Launcher 联机页面的连接信息中即可加入联机。
+    和我用 Bloret Launcher 联机！打开 Bloret Launcher 进入联机页面，选择“连接到对方的网络”，输入我的用户名 {username} 即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/
     """
     # 创建结果显示对话框
     result_dialog = MessageBoxBase(parent)
     result_dialog.setWindowTitle(i18nText("联机服务已启动"))
     
     address_label = StrongBodyLabel(text)
-    address_label.setAlignment(Qt.AlignCenter)
-
-
-    if isserver:
-        text = "按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。"
-    else:
-        text = "按下确认键复制到剪贴板，然后在 Minecraft 客户端中添加服务器并加入。"
-    
-    instruction_label = CaptionLabel(i18nText(text))
-
+    address_label.setAlignment(Qt.AlignCenter if hasattr(Qt, 'AlignCenter') else Qt.AlignmentFlag.AlignCenter)
 
     if isserver:
-        text = "按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。"
+        instruction_text = "按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。"
     else:
-        text = "按下确认键复制到剪贴板，然后在 Minecraft 客户端中添加服务器并加入。"
+        instruction_text = "按下确认键复制到剪贴板，然后在 Minecraft 客户端中添加服务器并加入。"
     
-    instruction_label = CaptionLabel(i18nText(text))
-    instruction_label.setAlignment(Qt.AlignCenter)
+    instruction_label = CaptionLabel(i18nText(instruction_text))
+    instruction_label.setAlignment(Qt.AlignCenter if hasattr(Qt, 'AlignCenter') else Qt.AlignmentFlag.AlignCenter)
     
     # 添加动图
     # from PyQt5.QtWidgets import QLabel
@@ -1029,7 +1028,7 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
     result_dialog.yesButton.setText(i18nText("确认"))
     result_dialog.cancelButton.hide()  # 隐藏取消按钮
     
-    def handle_result_confirm(text):
+    def handle_result_confirm():
         # 复制到剪贴板
         clipboard = QApplication.clipboard()
         if clipboard:
@@ -1082,18 +1081,12 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
             
         if client_link_tip_label:
             if isserver:
-                text = "请告诉对方端口号、你的用户名和联机密钥，然后让对方打开 Bloret Launcher 连接"
+                tip_text = "请告诉对方端口号、你的用户名和联机密钥，然后让对方打开 Bloret Launcher 连接"
             else:
-                text = "请打开 Minecraft，并像加入服务器一样加入 "
-            client_link_tip_label.setText(i18nText(text))
-            if isserver:
-                text = "请告诉对方端口号、你的用户名和联机密钥，然后让对方打开 Bloret Launcher 连接"
-            else:
-                text = "请打开 Minecraft，并像加入服务器一样加入 "
-            client_link_tip_label.setText(i18nText(text))
+                tip_text = "请打开 Minecraft，并像加入服务器一样加入 "
+            client_link_tip_label.setText(i18nText(tip_text))
             client_link_tip_label.repaint()  # 强制重绘
-            log(f"已更新连接提示标签: {i18nText(text)}")
-            log(f"已更新连接提示标签: {i18nText(text)}")
+            log(f"已更新连接提示标签: {i18nText(tip_text)}")
         else:
             log("未找到 Client_link_tip 标签")
             
@@ -1132,24 +1125,8 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
         # else:
         #     log(i18nText("未找到OnlineClient_ClientTime标签"))
     
-    result_dialog.yesButton.clicked.connect(handle_result_confirm(text))
+    result_dialog.yesButton.clicked.connect(handle_result_confirm)
     result_dialog.exec_()
-
-        #         timer = QTimer()
-        #         timer.timeout.connect(lambda: update_connection_time(online_client_time_label, start_time))
-        #         timer.start(1000)  # 每秒更新一次
-                
-        #         # 将定时器保存到parent对象中，以便后续可以停止它
-        #         parent.online_client_timer = timer
-        #         parent.online_client_start_time = start_time
-                
-        #         # 立即更新一次时间显示
-        #         update_connection_time(online_client_time_label, start_time)
-        #         log(i18nText("已启动连接时长计时器"))
-        #     else:
-        #         log(i18nText("未找到OnlineClient_ClientTime标签"))
-    
-
 
 def update_connection_time(time_label, start_time):
     """更新连接时长显示"""
@@ -1195,6 +1172,7 @@ def get_ipv6_address():
     except Exception as e:
         log(f"获取IPv6地址失败: {str(e)}")
         return None
+
 
 
 def show_ipv6_dialog(parent, ipv6_address):

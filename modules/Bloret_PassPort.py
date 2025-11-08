@@ -7,6 +7,85 @@ from modules.safe import handle_exception
 from modules.i18n import i18nText
 
 
+def save_private_data(key, data, public=False):
+    '''
+    存储信息到 Bloret PassPort 服务器
+    '''
+    # 读取config.json获取用户信息
+    with open('config.json', 'r', encoding='utf-8') as f:
+        config_data = json.load(f)
+    
+    user = config_data.get('Bloret_PassPort_UserName', '')
+    usertoken = config_data.get('Bloret_PassPort_PassWord', '')
+    
+    # 读取cmcl.json获取Minecraft账户数据
+    with open('cmcl.json', 'r', encoding='utf-8') as f:
+        cmcl_data = json.load(f)
+    
+    # 将cmcl_data转换为字符串作为data参数
+    data = json.dumps(cmcl_data, ensure_ascii=False)
+    # 构建请求URL
+    if public:
+        url = (f"http://pcfs.eno.ink:20000/app/data/save?"
+                f"app_id=BloretLauncher&"
+                f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
+                f"user=public&"
+                f"key={key}&"
+                f"data={data}")
+    else:
+        url = (f"http://pcfs.eno.ink:20000/app/data/save?"
+                f"app_id=BloretLauncher&"
+                f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
+                f"user={user}&"
+                f"usertoken={usertoken}&"
+                f"key={key}&"
+                f"data={data}")
+
+    response = requests.get(url)
+    if response.status_code == 200:
+        log(i18nText("成功存储 Minecraft 账户数据到 Bloret PassPort 服务器"))
+    else:
+        log(f"存储 Minecraft 账户数据到 Bloret PassPort 服务器失败，状态码: {response.status_code}")
+
+def read_private_data(key, public=False):
+    '''
+    存储信息到 Bloret PassPort 服务器
+    '''
+    # 读取config.json获取用户信息
+    with open('config.json', 'r', encoding='utf-8') as f:
+        config_data = json.load(f)
+    
+    user = config_data.get('Bloret_PassPort_UserName', '')
+    usertoken = config_data.get('Bloret_PassPort_PassWord', '')
+    
+    # 读取cmcl.json获取Minecraft账户数据
+    with open('cmcl.json', 'r', encoding='utf-8') as f:
+        cmcl_data = json.load(f)
+    
+    # 将cmcl_data转换为字符串作为data参数
+    data = json.dumps(cmcl_data, ensure_ascii=False)
+    # 构建请求URL
+    if public:
+        url = (f"http://pcfs.eno.ink:20000/app/data/read?"
+                f"app_id=BloretLauncher&"
+                f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
+                f"user=public&"
+                f"key={key}")
+    else:
+        url = (f"http://pcfs.eno.ink:20000/app/data/read?"
+                f"app_id=BloretLauncher&"
+                f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
+                f"user={user}&"
+                f"usertoken={usertoken}&"
+                f"key={key}")
+
+    response = requests.get(url)
+    if response.status_code == 200:
+        log(i18nText("成功存储 Minecraft 账户数据到 Bloret PassPort 服务器"))
+        return response.json()["data"] if "data" in response.json() else None
+    else:
+        log(f"存储 Minecraft 账户数据到 Bloret PassPort 服务器失败，状态码: {response.status_code}")
+
 
 def Bloret_PassPort_Account_logout(self, homeInterface):
     self.config.update(Bloret_PassPort_Login=False)
@@ -196,3 +275,4 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
                                  parent_window)
             error_msg.exec()
         return False
+
