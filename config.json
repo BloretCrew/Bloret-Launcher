@@ -50,5 +50,6 @@
     },
     "minecraft_dir": "C:\\Users\\0570\\AppData\\Roaming\\Bloret-Launcher\\.minecraft",
     "Java_Path": "C:\\Program Files\\Zulu\\zulu-23\\bin\\java.exe",
-    "language": "gt-ZH"
+    "language": "gt-ZH",
+    "screen_cut_shortcut": "Alt+2"
 }
