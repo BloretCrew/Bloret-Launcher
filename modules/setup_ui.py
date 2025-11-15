@@ -7,7 +7,7 @@ import requests, json, logging, os, socket
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.systems import setup_startup_with_self_starting
 from modules.log import log, clear_log_files
-from modules.Bloret_PassPort import Bloret_PassPort_Account_logout, sync_mc_account_to_bloret_passport, sync_bloret_passport_account_to_mc
+from modules.Bloret_PassPort import Bloret_PassPort_Account_logout, sync_mc_account_to_bloret_passport, sync_bloret_passport_account_to_mc, savedata, readdata
 from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard, Bloret_PassPort_Account_login
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
 from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder, on_other_version_selected
@@ -822,6 +822,7 @@ def start_online_client(parent, clientpage):
     movie = QMovie("ui/icon/OnlineClient.gif")
     gif_label.setMovie(movie)
     movie.start()
+    movie.setScaledSize(QSize(500, 280))  # 设置动图大小
     
     port_dialog.viewLayout.addWidget(gif_label)
     
@@ -841,12 +842,7 @@ def start_online_client(parent, clientpage):
         
         # 检查联机密钥是否为空
         if not online_key:
-            InfoBar.error(
-                title=i18nText('输入错误'),
-                content=i18nText('请输入联机密钥'),
-                parent=parent
-            )
-            return False
+            online_key = "NoPassWord"
         
         # 调用OnlineClient函数
         try:
@@ -890,6 +886,18 @@ def start_online_client(parent, clientpage):
             # connection_info = "{\"ip\":\""+connection_address+"\",\"key\":\""+online_key+"\",\"port\":\""+port+"\",\"username\":\""+easytier_name+"\"}"
             # full_text = "和我用 Bloret Launcher 联机！打开 Bloret Launcher 并进入联机页面，即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/ . (%/BLClient%)"+connection_info+"(%/BLClient%) 复制该信息，输入 Bloret Launcher 联机页面的连接信息中即可加入联机。"
 
+            # 此处发送必要信息到 Bloret PassPort 的 public 数据中，以便客户端读取
+            ClinetPublic = readdata("Client", True)
+            # 这里返回的数据是 str, 需要先转换为字典再处理
+            ClinetPublic = json.loads(ClinetPublic)
+
+            # 向 ClinetPublic 加入联机信息 username:{ip:connection_address, port:port, username:easytier_name}
+            ClinetPublic[easytier_name] = {"ip":connection_address, "port":port, "username":easytier_name}
+            
+            # 重新转换为 str 再保存
+            ClinetPublic = json.dumps(ClinetPublic)
+            savedata("Client", ClinetPublic, True)
+
             full_text = f"和我用 Bloret Launcher 联机！打开 Bloret Launcher 进入联机页面，选择“连接到对方的网络”，输入我的用户名 {username} 即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/"
             show_connection_address_dialog(parent, full_text, connection_address + ':' + port, clientpage, True)
             return True
@@ -910,30 +918,48 @@ def start_online_client(parent, clientpage):
 
 def client_online_client(parent, clientpage):
     """连接在线客户端服务"""
-    log("连接在线客户端服务")
+    log("client_online_client: 开始执行客户端联机功能", logging.INFO)
+    log(f"client_online_client: 传入参数 - parent: {parent}, clientpage: {clientpage}", logging.DEBUG)
 
     def show_login_message():
-        log("显示登录提示消息框", logging.INFO)
+        log("client_online_client: 显示登录提示消息框", logging.INFO)
         w = MessageBox("登录才可使用联机功能", "Easytier 联机需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。", parent)
         if w.exec_():
             parent.switchTo(parent.passportInterface)
-            log("用户点击确认，切换到通行证界面", logging.INFO)
+            log("client_online_client: 用户点击确认，切换到通行证界面", logging.INFO)
 
-    if not config.get("Bloret_PassPort_Login", False):
+    # 检查登录状态
+    login_status = config.get("Bloret_PassPort_Login", False)
+    log(f"client_online_client: Bloret PassPort 登录状态: {login_status}", logging.INFO)
+    
+    if not login_status:
+        log("client_online_client: 用户未登录，显示登录提示", logging.WARNING)
         # 在主线程中显示消息框
         QTimer.singleShot(0, show_login_message)
         return
+    
+    log("client_online_client: 用户已登录，继续执行联机流程", logging.INFO)
 
     # 创建连接信息输入对话框
+    log("client_online_client: 创建连接信息输入对话框", logging.INFO)
     connect_dialog = MessageBoxBase(parent)
     connect_dialog.setWindowTitle(i18nText("连接联机服务"))
     
     name_label = BodyLabel(i18nText("请输入对方 Bloret PassPort 用户名"))
     name_input = LineEdit()
     name_input.setPlaceholderText(i18nText('对方用户名'))
+
+    # 密码输入框
+    key_label = BodyLabel(i18nText("请输入对方联机密钥"))
+    key_input = LineEdit()
+    key_input.setPlaceholderText(i18nText('对方密钥'))
+    # 将密码输入框设置为密码模式
+    key_input.setEchoMode(LineEdit.Password)
     
     connect_dialog.viewLayout.addWidget(name_label)
     connect_dialog.viewLayout.addWidget(name_input)
+    connect_dialog.viewLayout.addWidget(key_label)
+    connect_dialog.viewLayout.addWidget(key_input)
     
     # 添加动图
     # gif_label = QLabel()
@@ -946,17 +972,42 @@ def client_online_client(parent, clientpage):
     connect_dialog.yesButton.setText(i18nText("确认"))
     connect_dialog.cancelButton.setText(i18nText("取消"))
     
+    log("client_online_client: 对话框组件初始化完成", logging.DEBUG)
+    
     def handle_connect_confirm():
         try:
+            log("client_online_client: 用户点击确认连接按钮", logging.INFO)
             
-            # username, key, port 都从 Bloret PassPort 的 public 数据中读取。
+            # 获取用户输入的 username
+            username = name_input.text().strip()
+            log(f"client_online_client: 获取用户名输入: '{username}'", logging.DEBUG)
             
+            if not username:
+                log("client_online_client: 用户名为空，显示错误提示", logging.WARNING)
+                InfoBar.error(
+                    title=i18nText('输入错误'),
+                    content=i18nText('请输入对方用户名'),
+                    parent=parent
+                )
+                return
+
+            # 获取用户输入的联机密钥
+            key = key_input.text().strip()
+            log(f"client_online_client: 获取联机密钥输入: {'*' * len(key) if key else '空'}", logging.DEBUG)
+
+            # 检查联机密钥是否为空
+            if not key:
+                key = "NoPassWord"
+            
+            log(f"client_online_client: 开始连接 - 目标用户: {username}, 密钥长度: {len(key)}", logging.INFO)
             
             # 调用 StartEasytierServer 函数连接到主机
             connection_address = StartEasytierServer(username, key)
+            log(f"client_online_client: StartEasytierServer 返回结果: {connection_address}", logging.DEBUG)
             
             # 检查是否返回了错误信息
             if isinstance(connection_address, str) and (connection_address.startswith(i18nText("权限错误：")) or connection_address.startswith(i18nText("安全软件阻止："))):
+                log(f"client_online_client: 权限或安全软件错误: {connection_address}", logging.ERROR)
                 InfoBar.error(
                     title=i18nText('连接失败'),
                     content=connection_address,
@@ -965,23 +1016,66 @@ def client_online_client(parent, clientpage):
                 )
                 return
             elif isinstance(connection_address, str) and (connection_address.startswith(i18nText("启动失败:")) or connection_address == i18nText("网络请求失败") or connection_address == i18nText("配置文件不存在") or connection_address == i18nText("frpc程序不存在") or connection_address == i18nText("获取连接信息失败")):
+                log(f"client_online_client: 连接失败: {connection_address}", logging.ERROR)
                 InfoBar.error(
                     title=i18nText('连接失败'),
                     content=connection_address,
                     parent=parent
                 )
                 return
+
+            log("client_online_client: 连接成功，开始获取服务器信息", logging.INFO)
             
+            # 此处发送必要信息到 Bloret PassPort 的 public 数据中，以便客户端读取
+            log("client_online_client: 从 Bloret PassPort 读取客户端公共数据", logging.DEBUG)
+            ClinetPublic = readdata("Client", True)
+            log(f"client_online_client: 获取到的原始数据: {ClinetPublic[:200]}{'...' if len(str(ClinetPublic)) > 200 else ''}", logging.DEBUG)
+            
+            # 这里返回的数据是 str, 需要先转换为字典再处理
+            ClinetPublic = json.loads(ClinetPublic)
+            log(f"client_online_client: JSON解析成功，数据类型: {type(ClinetPublic)}", logging.DEBUG)
+
+            username = 'BLClient' + username
+            log(f"client_online_client: 构造完整用户名: {username}", logging.DEBUG)
+            
+            # 检查目标用户是否存在
+            if username not in ClinetPublic:
+                log(f"client_online_client: 目标用户 {username} 不存在于公共数据中", logging.ERROR)
+                InfoBar.error(
+                    title=i18nText('连接失败'),
+                    content=f'用户 {username} 未找到或不在线',
+                    parent=parent
+                )
+                return
+
+            # 获取 ClientPublic[username] 得到：{ip:connection_address, port:port, username:easytier_name}
+            log(f"client_online_client: 获取用户 {username} 的连接信息", logging.DEBUG)
+            ip = ClinetPublic[username]["ip"]
+            port = ClinetPublic[username]["port"]
+            log(f"client_online_client: 服务器信息 - IP: {ip}, 端口: {port}", logging.INFO)
+
             # 显示连接地址对话框
-            show_connection_address_dialog(parent, connection_address, ip + ':' + port, clientpage, False)
+            server_address = f"{ip}:{port}"
+            log("client_online_client: 显示连接地址对话框", logging.INFO)
+            show_connection_address_dialog(parent, f"已连接到对方的网络，现在打开 Minecraft，连接服务器 {server_address}\n(请注意联机过程中不要关闭 Bloret Launcher，您可以关闭本窗口，保持 Bloret Launcher 在托盘中运行)", server_address, clientpage, False)
         except json.JSONDecodeError as e:
+            log(f"client_online_client: JSON解析错误: {str(e)}", logging.ERROR)
             InfoBar.error(
                 title=i18nText('解析失败'),
                 content=f'连接信息解析错误: {str(e)}',
                 parent=parent
             )
             return
+        except KeyError as e:
+            log(f"client_online_client: 数据字段缺失: {str(e)}", logging.ERROR)
+            InfoBar.error(
+                title=i18nText('数据错误'),
+                content=f'服务器数据格式错误，缺少字段: {str(e)}',
+                parent=parent
+            )
+            return
         except Exception as e:
+            log(f"client_online_client: 连接过程发生未知错误: {type(e).__name__}: {str(e)}", logging.ERROR)
             InfoBar.error(
                 title=i18nText('连接失败'),
                 content=f'连接联机服务时出错: {str(e)}',
@@ -989,8 +1083,11 @@ def client_online_client(parent, clientpage):
             )
 
     connect_dialog.yesButton.clicked.connect(handle_connect_confirm)
+    log("client_online_client: 连接对话框事件绑定完成", logging.DEBUG)
 
+    log("client_online_client: 显示连接对话框，等待用户输入", logging.INFO)
     connect_dialog.exec_()
+    log("client_online_client: 连接对话框关闭", logging.INFO)
 
 def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver):
     """
@@ -1004,6 +1101,8 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
     
     address_label = StrongBodyLabel(text)
     address_label.setAlignment(Qt.AlignCenter if hasattr(Qt, 'AlignCenter') else Qt.AlignmentFlag.AlignCenter)
+    address_label.setWordWrap(True)  # 启用自动换行
+    address_label.setMaximumWidth(400)  # 设置最大宽度，确保文本不会过长
 
     if isserver:
         instruction_text = "按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。"
