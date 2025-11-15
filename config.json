@@ -6,7 +6,7 @@
     "size": 85,
     "themelight": true,
     "repeat_run": false,
-    "show_runtime_do": true,
+    "show_runtime_do": false,
     "Customize": [],
     "Bloret_PassPort_Login": false,
     "Bloret_PassPort_UserName": "",
@@ -48,7 +48,8 @@
             }
         }
     },
-    "minecraft_dir": "",
+    "minecraft_dir": "C:\\Users\\0570\\AppData\\Roaming\\Bloret-Launcher\\.minecraft",
     "Java_Path": "C:\\Program Files\\Zulu\\zulu-23\\bin\\java.exe",
-    "language": "gt-ZH"
+    "language": "gt-ZH",
+    "screen_cut_shortcut": "Alt+F1"
 }
