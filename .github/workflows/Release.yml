@@ -1,4 +1,6 @@
 name: 发布正式版
+permissions:
+  contents: read
 
 on:
   release:
