@@ -211,12 +211,12 @@ jobs:
     - name: 更新为测试版
       run: |
         # 从GitHub事件中提取版本信息
-        VERSION=$(echo ${{ github.event.release.tag_name }})
-        VERSION_NAME=$(echo ${{ github.event.release.name }})
-        DESCRIPTION=$(echo ${{ github.event.release.body }})
+        VERSION="${{ github.event.release.tag_name }}"
+        VERSION_NAME="${{ github.event.release.name }}"
+        DESCRIPTION=${{ toJSON(github.event.release.body) }}
         
         # 调用API更新为测试版
         curl -X POST http://pcfs.eno.ink:3001/api/newversion/github \
           -H "Content-Type: application/json" \
-          -d "{\"key\":\"${{ secrets.BLORET_LAUNCHER_WEBSITE }}\",\"beta\":true,\"version\":\"$VERSION\",\"versionName\":\"$VERSION_NAME\",\"description\":\"$DESCRIPTION\"}"
+          -d "{\"key\":\"${{ secrets.BLORET_LAUNCHER_WEBSITE }}\",\"beta\":true,\"version\":\"$VERSION\",\"versionName\":\"$VERSION_NAME\",\"description\":$DESCRIPTION}"
       shell: bash
