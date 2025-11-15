@@ -5,8 +5,6 @@ permissions:
 
 on:
   push:
-    branches:
-      - Windows
 
 jobs:
   Set-Version:
