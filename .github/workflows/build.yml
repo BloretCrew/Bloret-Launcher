@@ -40,8 +40,6 @@ jobs:
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
-      with:
-        ref: 'Windows'
 
     - name: 验证资源文件路径
       run: |
