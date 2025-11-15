@@ -6,7 +6,7 @@ permissions:
 on:
   push:
     branches:
-      - auto_update
+      - Windows
 
 jobs:
   Set-Version:
@@ -43,7 +43,7 @@ jobs:
     - name: 检出最新版本
       uses: actions/checkout@v2
       with:
-        ref: 'auto_update'
+        ref: 'Windows'
 
     - name: 验证资源文件路径
       run: |

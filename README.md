@@ -13,6 +13,7 @@
 <div align="center">
 
 [![应用程序打包](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml)
+[![应用程序打包 - Nuitka](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/Nuitka-Build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/Nuitka-Build.yml)
 [![Crowdin 翻译进度](https://badges.crowdin.net/Bloret-Launcher/localized.svg)](https://launcher.bloret.net/go/translate)
 [![讨论数](https://img.shields.io/github/discussions/BloretCrew/Bloret-Launcher?style=social&label=%E8%AE%A8%E8%AE%BA)](https://github.com/BloretCrew/Bloret-Launcher/discussions)
 ![仓库大小](https://img.shields.io/github/repo-size/BloretCrew/Bloret-Launcher?style=social&label=%E4%BB%93%E5%BA%93%E5%A4%A7%E5%B0%8F)
@@ -26,10 +27,10 @@
 
 </div>
 
-![Show](img/show.gif)
+![Show](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/show.gif)
 
 ## 联机使用指南
-![](ui/icon/OnlineClient.gif)
+![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/ui/icon/OnlineClient.gif)
 然后将获取到的端口输入至 Bloret Launcher 中。您将获得一个地址，让您的好友像进入服务器一样加入您的世界。
 > [!NOTE]
 > 使用 Bloret Launcher 联机，对方无需安装 Bloret Launcher。
@@ -57,8 +58,8 @@
 >
 > **<summary>单击此处展开，查看操作方法 (2 张图片)</summary>**
 >
-> ![](img/Windows1.jpg)
-> ![](img/Windows2.jpg)
+> ![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/Windows1.jpg)
+> ![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/Windows2.jpg)
 >
 > </details>
 
@@ -66,7 +67,7 @@
 <details>
   
 **<summary>单击此处展开，查看宣传图 (1 张图片)</summary>**
-![](img/if-not-use-jiedi-will.jpg)
+![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/if-not-use-jiedi-will.jpg)
 
 </details>
 
@@ -90,19 +91,19 @@
 **<summary>单击此处展开，查看软件截图 (7 张图片)</summary>**
 
 #### 主界面
-![Home](img/Home.png)
+![Home](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/Home.png)
 #### 下载
-![Download](img/Download.png)
+![Download](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/Download.png)
 #### 小工具
-![tools](img/tools.png)
+![tools](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/tools.png)
 #### 通行证
-![passport](img/passport.png)
+![passport](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/passport.png)
 #### 设置
-![settings](img/settings.png)
+![settings](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/settings.png)
 #### 关于
-![info](img/info.png)
+![info](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/info.png)
 #### 侧边栏
-![menu](img/menu.png)
+![menu](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/menu.png)
 
 </details>
 
@@ -116,7 +117,7 @@
 
 本项目有一部分基于此项目构建
 > 本软件已取得 CMCL 作者许可，请不要像 [不符合 Console Minecraft Launcher (CMCL) 的使用协议 #12](https://github.com/BloretCrew/Bloret-Launcher/issues/12) 一样来问关于 CMCL 的版权问题
-> ![CMCLLICENSE](img/CMCLLICENSE.png)
+> ![CMCLLICENSE](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/CMCLLICENSE.png)
 
 </details>
 
@@ -150,5 +151,7 @@
 
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
+
+
 
 

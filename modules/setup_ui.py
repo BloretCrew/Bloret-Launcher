@@ -22,6 +22,7 @@ from modules.customize import CustomizeAdd
 from modules.Bloriko import AskBlorikoAndSet
 from modules.chafuwang import getServerData
 from modules.easytier import StartEasytierServer
+from modules.ShortCut import ScreenShortCut
 
 # 加载配置文件
 def load_config():
@@ -515,6 +516,14 @@ def setup_tools_ui(self, widget):
     cape_copy_button = widget.findChild(QPushButton, "search_cape_copy")
     if cape_copy_button:
         cape_copy_button.clicked.connect(lambda: copy_cape_to_clipboard(self))
+        
+    ScreenCutButton = widget.findChild(QPushButton, "ScreenCutButton")
+    if ScreenCutButton:
+        # 保持对截图窗口的引用，防止被垃圾回收
+        self.screenshot_widget = None
+        def start_screenshot():
+            self.screenshot_widget = ScreenShortCut()
+        ScreenCutButton.clicked.connect(start_screenshot)
 
 def setup_passport_ui(self, widget, server_ip, homeInterface):
     '''
@@ -1778,6 +1787,399 @@ def start_search_mod(self, mod_list, search_term, loading):
     
     # 启动搜索线程
     mod_list._ui_thread.start()
+
+
+class ShortCutSettingDialog(MessageBoxBase):
+    """截图快捷键设置对话框"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.capturing = False
+        self.current_keys = set()
+        
+        # 标题
+        self.titleLabel = SubtitleLabel(i18nText('设置截图快捷键'))
+        self.titleLabel.setAlignment(Qt.AlignCenter)
+        
+        # 当前快捷键显示
+        self.currentLabel = StrongBodyLabel(i18nText('当前快捷键:'))
+        self.currentShortcut = StrongBodyLabel("Ctrl+Alt+A")  # 默认值
+        self.currentShortcut.setStyleSheet("color: #0078d4; font-weight: bold;")
+        
+        # 新快捷键显示
+        self.newLabel = StrongBodyLabel(i18nText('新快捷键:'))
+        self.newShortcutLabel = StrongBodyLabel(i18nText('点击"开始捕捉"后按下快捷键组合'))
+        self.newShortcutLabel.setStyleSheet("color: #666666; font-style: italic;")
+        
+        # 按钮区域
+        self.buttonLayout = QHBoxLayout()
+        self.startCaptureButton = PushButton(i18nText('开始捕捉'))
+        self.clearButton = PushButton(i18nText('清除'))
+        self.buttonLayout.addWidget(self.startCaptureButton)
+        self.buttonLayout.addWidget(self.clearButton)
+        
+        # 提示信息
+        self.tipLabel = CaptionLabel(i18nText('提示: 点击"开始捕捉"按钮，然后按下您想要的快捷键组合'))
+        self.tipLabel.setTextColor("#666666", QColor(102, 102, 102))
+        
+        # 状态提示
+        self.statusLabel = CaptionLabel(i18nText('准备捕捉...'))
+        self.statusLabel.setTextColor("#0078d4", QColor(0, 120, 212))
+        
+        # 将组件添加到布局中
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.currentLabel)
+        self.viewLayout.addWidget(self.currentShortcut)
+        self.viewLayout.addWidget(self.newLabel)
+        self.viewLayout.addWidget(self.newShortcutLabel)
+        self.viewLayout.addLayout(self.buttonLayout)
+        self.viewLayout.addWidget(self.tipLabel)
+        self.viewLayout.addWidget(self.statusLabel)
+        
+        # 设置对话框的最小宽度
+        self.widget.setMinimumWidth(400)
+        
+        # 加载当前配置
+        self.load_current_shortcut()
+        
+        # 连接按钮信号
+        self.startCaptureButton.clicked.connect(self.start_capture)
+        self.clearButton.clicked.connect(self.clear_shortcut)
+        
+        # 安装事件过滤器来捕捉按键
+        self.installEventFilter(self)
+    
+    def eventFilter(self, obj, event):
+        """事件过滤器，用于捕捉按键事件"""
+        # 确保capturing属性存在
+        if not hasattr(self, 'capturing'):
+            self.capturing = False
+            
+        if self.capturing and event.type() == event.KeyPress:
+            # 获取按键信息
+            key = event.key()
+            modifiers = event.modifiers()
+            
+            # 忽略某些特殊按键
+            if key in [Qt.Key_Control, Qt.Key_Alt, Qt.Key_Shift, Qt.Key_Meta]:
+                return True
+            
+            # 构建快捷键字符串
+            shortcut_parts = []
+            
+            # 添加修饰键
+            if modifiers & Qt.ControlModifier:
+                shortcut_parts.append("Ctrl")
+            if modifiers & Qt.AltModifier:
+                shortcut_parts.append("Alt")
+            if modifiers & Qt.ShiftModifier:
+                shortcut_parts.append("Shift")
+            if modifiers & Qt.MetaModifier:
+                shortcut_parts.append("Win")
+            
+            # 添加主按键
+            key_text = self.get_key_text(key)
+            if key_text:
+                shortcut_parts.append(key_text)
+                
+                # 更新显示
+                shortcut_text = "+".join(shortcut_parts)
+                self.newShortcutLabel.setText(shortcut_text)
+                self.newShortcutLabel.setStyleSheet("color: #0078d4; font-weight: bold;")
+                self.statusLabel.setText(i18nText('快捷键已捕捉，点击确定保存'))
+                
+                # 停止捕捉
+                self.stop_capture()
+                
+            return True
+        elif self.capturing and event.type() == event.KeyRelease:
+            return True
+            
+        return super().eventFilter(obj, event)
+    
+    def get_key_text(self, key):
+        """将Qt按键转换为文本表示"""
+        # 字母键
+        if Qt.Key_A <= key <= Qt.Key_Z:
+            return chr(key - Qt.Key_A + ord('A'))
+        
+        # 数字键
+        if Qt.Key_0 <= key <= Qt.Key_9:
+            return chr(key - Qt.Key_0 + ord('0'))
+        
+        # 功能键
+        if Qt.Key_F1 <= key <= Qt.Key_F12:
+            return f"F{key - Qt.Key_F1 + 1}"
+        
+        # 其他常用按键
+        key_map = {
+            Qt.Key_Space: "Space",
+            Qt.Key_Return: "Enter",
+            Qt.Key_Enter: "Enter",
+            Qt.Key_Tab: "Tab",
+            Qt.Key_Escape: "Escape",
+            Qt.Key_Delete: "Delete",
+            Qt.Key_Backspace: "Backspace",
+            Qt.Key_Insert: "Insert",
+            Qt.Key_Home: "Home",
+            Qt.Key_End: "End",
+            Qt.Key_PageUp: "PageUp",
+            Qt.Key_PageDown: "PageDown",
+            Qt.Key_Up: "Up",
+            Qt.Key_Down: "Down",
+            Qt.Key_Left: "Left",
+            Qt.Key_Right: "Right",
+        }
+        
+        return key_map.get(key, "")
+    
+    def start_capture(self):
+        """开始捕捉快捷键"""
+        self.capturing = True
+        self.startCaptureButton.setText(i18nText('正在捕捉...'))
+        self.startCaptureButton.setEnabled(False)
+        self.statusLabel.setText(i18nText('请按下您想要的快捷键组合'))
+        self.statusLabel.setTextColor("#ff6b35", QColor(255, 107, 53))
+        
+        # 清空之前的快捷键
+        self.newShortcutLabel.setText(i18nText('等待按键...'))
+        self.newShortcutLabel.setStyleSheet("color: #666666; font-style: italic;")
+    
+    def stop_capture(self):
+        """停止捕捉快捷键"""
+        self.capturing = False
+        self.startCaptureButton.setText(i18nText('开始捕捉'))
+        self.startCaptureButton.setEnabled(True)
+        self.statusLabel.setTextColor("#0078d4", QColor(0, 120, 212))
+    
+    def clear_shortcut(self):
+        """清除快捷键"""
+        self.newShortcutLabel.setText(i18nText('点击"开始捕捉"后按下快捷键组合'))
+        self.newShortcutLabel.setStyleSheet("color: #666666; font-style: italic;")
+        self.statusLabel.setText(i18nText('快捷键已清除'))
+        self.stop_capture()
+    
+    def load_current_shortcut(self):
+        """从配置文件加载当前快捷键"""
+        try:
+            config_path = "config.json"
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                    shortcut = config.get("screen_cut_shortcut", "Ctrl+Alt+A")
+                    self.currentShortcut.setText(shortcut)
+        except Exception as e:
+            log(f"加载快捷键配置失败: {e}")
+    
+    def get_new_shortcut(self):
+        """获取新捕捉的快捷键"""
+        return self.newShortcutLabel.text()
+    
+    def validate_shortcut_format(self, shortcut):
+        """验证快捷键格式"""
+        if not shortcut or shortcut == i18nText('点击"开始捕捉"后按下快捷键组合') or shortcut == i18nText('等待按键...'):
+            return False
+            
+        # 允许的修饰键
+        modifiers = ["Ctrl", "Alt", "Shift", "Win"]
+        # 允许的按键（字母、数字、功能键）
+        keys = [chr(i) for i in range(ord('A'), ord('Z')+1)] + \
+               [chr(i) for i in range(ord('0'), ord('9')+1)] + \
+               [f"F{i}" for i in range(1, 13)] + \
+               ["Space", "Enter", "Tab", "Escape", "Delete", "Backspace", "Insert", 
+                "Home", "End", "PageUp", "PageDown", "Up", "Down", "Left", "Right"]
+        
+        parts = shortcut.split("+")
+        if len(parts) < 2:
+            return False
+            
+        # 检查是否至少有一个修饰键和一个有效按键
+        has_modifier = any(mod in parts for mod in modifiers)
+        has_key = any(key in parts for key in keys)
+        
+        return has_modifier and has_key
+    
+    def validate(self):
+        """重写验证表单数据的方法"""
+        shortcut = self.get_new_shortcut()
+        
+        if not shortcut or shortcut == i18nText('点击"开始捕捉"后按下快捷键组合') or shortcut == i18nText('等待按键...'):
+            self.statusLabel.setText(i18nText('请先捕捉快捷键'))
+            self.statusLabel.setTextColor("#cf1010", QColor(207, 16, 16))
+            return False
+            
+        if not self.validate_shortcut_format(shortcut):
+            self.statusLabel.setText(i18nText('快捷键格式不正确'))
+            self.statusLabel.setTextColor("#cf1010", QColor(207, 16, 16))
+            return False
+            
+        self.statusLabel.setTextColor("#0078d4", QColor(0, 120, 212))
+        return True
+    
+    def save_shortcut(self):
+        """保存快捷键到配置文件"""
+        try:
+            config_path = "config.json"
+            config = {}
+            
+            # 读取现有配置
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+            
+            # 更新快捷键配置
+            shortcut = self.get_new_shortcut()
+            config["screen_cut_shortcut"] = shortcut
+            
+            # 保存配置
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, ensure_ascii=False, indent=4)
+            
+            log(f"截图快捷键已更新为: {shortcut}")
+            return True
+            
+        except Exception as e:
+            log(f"保存快捷键配置失败: {e}")
+            return False
+
+
+def setup_tools_ui(self, widget):
+    """
+    设定 Bloret Launcher 工具界面 UI 布局和操作。
+    ***
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    """
+    try:
+        # 获取截图按钮
+        ScreenCutButton = widget.findChild(QPushButton, "ScreenCutButton")
+        if ScreenCutButton:
+            # 保持对截图窗口的引用，防止被垃圾回收
+            self.screenshot_widget = None
+            def start_screenshot():
+                self.screenshot_widget = ScreenShortCut()
+            ScreenCutButton.clicked.connect(start_screenshot)
+        
+        # 获取快捷键设置按钮
+        shortcut_set_button = widget.findChild(QPushButton, "ScreenCut_ShortCut_Set")
+        if shortcut_set_button:
+            shortcut_set_button.clicked.connect(lambda: show_shortcut_setting_dialog(self))
+        
+        # 获取当前快捷键显示标签
+        shortcut_label = widget.findChild(StrongBodyLabel, "ScreenCut_ShortCut")
+        if shortcut_label:
+            # 加载并显示当前快捷键
+            load_and_display_shortcut(shortcut_label)
+        
+        # 获取玩家UUID查询按钮
+        name2uuid_button = widget.findChild(QPushButton, "name2uuid_player_Button")
+        name2uuid_input = widget.findChild(LineEdit, "name2uuid_player_uuid")
+        name2uuid_result = widget.findChild(StrongBodyLabel, "label_2")
+        name2uuid_copy_button = widget.findChild(QPushButton, "pushButton_5")
+        
+        if name2uuid_button and name2uuid_input and name2uuid_result:
+            name2uuid_button.clicked.connect(
+                lambda: query_player_uuid(name2uuid_input.text(), name2uuid_result)
+            )
+        
+        if name2uuid_copy_button and name2uuid_result:
+            name2uuid_copy_button.clicked.connect(
+                lambda: copy_uuid_to_clipboard(name2uuid_result.text())
+            )
+        
+        # 获取玩家名字查询按钮
+        search_name_button = widget.findChild(QPushButton, "search_name_button")
+        search_name_input = widget.findChild(LineEdit, "search_name_type")
+        search_name_result = widget.findChild(StrongBodyLabel, "search_name")
+        search_name_copy_button = widget.findChild(QPushButton, "search_name_copy")
+        
+        if search_name_button and search_name_input and search_name_result:
+            search_name_button.clicked.connect(
+                lambda: query_player_name(search_name_input.text(), search_name_result)
+            )
+        
+        if search_name_copy_button and search_name_result:
+            search_name_copy_button.clicked.connect(
+                lambda: copy_name_to_clipboard(search_name_result.text())
+            )
+        
+        # 获取皮肤和披风查询按钮
+        skin_search_button = widget.findChild(QPushButton, "skin_search_button")
+        skin_uuid_input = widget.findChild(LineEdit, "skin_uuid")
+        skin_result_label = widget.findChild(StrongBodyLabel, "search_skin")
+        skin_copy_button = widget.findChild(QPushButton, "skin_copy")
+        cape_copy_button = widget.findChild(QPushButton, "cape_copy")
+        
+        if skin_search_button and skin_uuid_input and skin_result_label:
+            skin_search_button.clicked.connect(
+                lambda: query_player_skin(skin_uuid_input.text(), skin_result_label, widget)
+            )
+        
+        if skin_copy_button:
+            skin_copy_button.clicked.connect(
+                lambda: copy_skin_to_clipboard(skin_uuid_input.text())
+            )
+        
+        if cape_copy_button:
+            cape_copy_button.clicked.connect(
+                lambda: copy_cape_to_clipboard(skin_uuid_input.text())
+            )
+        
+    except Exception as e:
+        log(f"设置工具UI时出错: {str(e)}", logging.ERROR)
+
+
+def show_shortcut_setting_dialog(parent):
+    """显示快捷键设置对话框"""
+    dialog = ShortCutSettingDialog(parent)
+    if dialog.exec():
+        # 用户点击了确定按钮，保存快捷键
+        if dialog.validate() and dialog.save_shortcut():
+            # 更新界面上的快捷键显示
+            main_window = parent.window() if hasattr(parent, 'window') else parent
+            shortcut_label = main_window.findChild(StrongBodyLabel, "ScreenCut_ShortCut")
+            if shortcut_label:
+                load_and_display_shortcut(shortcut_label)
+            
+            # 更新全局快捷键
+            try:
+                old_shortcut = main_window.config.get('screen_cut_shortcut', '')
+                new_shortcut = dialog.get_new_shortcut()
+                
+                # 调用主窗口的更新方法
+                if hasattr(main_window, 'update_global_screenshot_hotkey'):
+                    main_window.update_global_screenshot_hotkey(old_shortcut, new_shortcut)
+                
+            except Exception as e:
+                log(f"更新全局快捷键失败: {e}", logging.WARNING)
+            
+            InfoBar.success(
+                title=i18nText('✅ 设置成功'),
+                content=i18nText('截图快捷键已更新'),
+                parent=parent,
+                duration=3000
+            )
+        else:
+            InfoBar.error(
+                title=i18nText('❌ 设置失败'),
+                content=i18nText('保存快捷键时出错，请检查配置文件'),
+                parent=parent,
+                duration=3000
+            )
+
+
+def load_and_display_shortcut(label):
+    """加载并显示当前快捷键"""
+    try:
+        config_path = "config.json"
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                shortcut = config.get("screen_cut_shortcut", "Ctrl+Alt+A")
+                label.setText(shortcut)
+    except Exception as e:
+        log(f"加载快捷键显示失败: {e}")
+        label.setText("Ctrl+Alt+A")  # 默认值
 
 def setup_Mod_ui(self, widget, server_ip):
     '''
