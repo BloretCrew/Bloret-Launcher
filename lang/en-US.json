@@ -56,13 +56,17 @@
                 "CaptionLabel_5": "View your computer's IPV6 configuration",
                 "ipv6_address": "------:------:------:------:------:------:------:------",
                 "CaptionLabel_12": "<html><head/><body><p>Using IPV6 for online play, you can play with others without opening Bloret Launcher.<br/><span style=\" font-weight:700;\">IPV6 is a free service provided by your operator, no additional charges. </span>Users who already have it can click the button above to use it directly.<br/>IPV6 online play may not be stable, if you pursue stability, it is recommended to use the Online Client below for online play.</p></body></html>",
-                "SubtitleLabel_2": "Online Client",
-                "CaptionLabel_9": "<html><head/><body><p>Online Client is an open-source project of Bloret that can provide you with efficient online services.<br/><span style=\" font-weight:700;\">Start the online service here, and others can participate in online play without installing Bloret Launcher.</span></p></body></html>",
-                "CaptionLabel_6": "Online Service Powered by Online Client (BloretCrew), Server PCFS  © 2025 Bloret All rights reserved."
+                "SubtitleLabel_2": "Easytier",
+                "CaptionLabel_9": "<html><head/><body><p>Easytier 是一项开源项目，可以为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方需要打开 Bloret Launcher 才能与您一起联机。</span></p></body></html>",
+                "StrongBodyLabel_18": "已连接",
+                "CaptionLabel_7": "您已连接至 Easytier 网络",
+                "CaptionLabel_6": "请打开 Minecraft，并像加入服务器一样加入 ",
+                "OnlineClient_address": "连接地址"
             },
             "buttons": {
                 "GetIPV6AddressButton": "Get IPV6 Online Address",
-                "StartOnlineClient": "Start Online Service"
+                "StartOnlineClient": "开启 Easytier 联机服务",
+                "ClientOnlineClient": "连接到对方的网络"
             }
         },
         "download_load": {
