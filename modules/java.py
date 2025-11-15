@@ -67,6 +67,7 @@ def _install_java_thread(Java_Version):
         log(f"文件总大小: {total_size} 字节")
 
         with open(download_path, 'wb') as f:
+            last_progress_update = 0  # 记录上次更新进度的百分比值
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     f.write(chunk)
@@ -74,11 +75,14 @@ def _install_java_thread(Java_Version):
                     progress = (downloaded_size / total_size) if total_size > 0 else 0
                     progress_percent = progress * 100
                     
-                    # 更新通知中的进度信息
-                    update_progress({
-                        'value': progress,
-                        'valueStringOverride': f'{progress_percent:.1f}%'
-                    })
+                    # 每5%更新一次进度
+                    if progress_percent >= last_progress_update + 5 or progress_percent >= 100:
+                        # 更新通知中的进度信息
+                        update_progress({
+                            'value': progress,
+                            'valueStringOverride': f'{progress_percent:.1f}%'
+                        })
+                        last_progress_update = progress_percent
                     
                     # 每下载5%更新一次日志
                     # if total_size > 0 and downloaded_size % (total_size // 20) == 0:

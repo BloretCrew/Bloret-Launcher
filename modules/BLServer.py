@@ -69,6 +69,10 @@ def IsNeedUpdate(NowVersion, LatestVersion):
         return False
 
 def check_Light_Minecraft_Download_Way(server_ip, callback=None):
+    '''
+    Light Minecraft 下载方式 **已弃用**  
+    但为了保持原有兼容性，暂时保留。
+    '''
     def _inner():
         try:
             response = requests.get(server_ip + "api/Light-Minecraft-Download-Way")
@@ -81,7 +85,8 @@ def check_Light_Minecraft_Download_Way(server_ip, callback=None):
                 if callback:
                     callback(LM_Download_Way, LM_Download_Way_list, LM_Download_Way_version, LM_Download_Way_minecraft)
         except Exception as e:
-            handle_exception(type(e), e, e.__traceback__)
+            # handle_exception(type(e), e, e.__traceback__)
+            log(f"检查 Light Minecraft 下载方式 时发生错误: {e}", logging.ERROR)
             pass
     threading.Thread(target=_inner, daemon=True).start()
 
