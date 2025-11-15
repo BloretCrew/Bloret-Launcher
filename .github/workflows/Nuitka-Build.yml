@@ -4,8 +4,9 @@ permissions:
   contents: write
 
 on:
-  release:
-    types: [prereleased]
+  push:
+    branches:
+      - Easytier-Client
 
 jobs:
   Build-Windows:
