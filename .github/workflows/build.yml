@@ -218,7 +218,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher-Setup
-        path: "./output/Bloret Launcher Setup.exe"
+        path: "./output/Bloret-Launcher-Setup.exe"
   # Build-macOS:
   #   needs: Set-Version
   #   runs-on: macos-latest
