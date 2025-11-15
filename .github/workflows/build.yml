@@ -78,8 +78,6 @@ jobs:
           --add-data "cmcl.json;." `
           --add-data "cmcl.exe;." `
           --add-data "cmcl.blank.json;." `
-          --add-data "frpc.exe;." `
-          --add-data "frpc.toml;." `
           --add-data "JavaWrapper.jar;." `
           --add-data "modules;modules" `
           --hidden-import=sip `
@@ -106,8 +104,6 @@ jobs:
         cp -r servers.dat ${{ env.OUTPUT_DIR }}/
         cp -r cmcl_save.json ${{ env.OUTPUT_DIR }}/
         cp -r bloret.ico ${{ env.OUTPUT_DIR }}/
-        cp -r frpc.exe ${{ env.OUTPUT_DIR }}/
-        cp -r frpc.toml ${{ env.OUTPUT_DIR }}/
         cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
 
     - name: 清理旧压缩包
