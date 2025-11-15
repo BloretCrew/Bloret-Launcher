@@ -20,7 +20,18 @@ _screenshot_widget_ref = None
 
 # 修复导入路径问题
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from modules.ShortCut import ScreenShortCut
+
+# Qt相关导入 - 用于线程间通信
+try:
+    from PyQt5.QtCore import QObject, pyqtSignal, QTimer
+    from PyQt5.QtWidgets import QApplication
+    QT_AVAILABLE = True
+except ImportError:
+    QT_AVAILABLE = False
+    print("[Warning] PyQt5 not available for hotkey signal communication")
+
+# 截图功能导入延迟到使用时
+ScreenShortCut = None
 
 
 def load_config():
@@ -116,21 +127,79 @@ def unregister_hotkey(hwnd, id):
     return user32.UnregisterHotKey(hwnd, id)
 
 
+class HotkeySignalEmitter(QObject):
+    """用于从子线程向主线程发送快捷键信号"""
+    shortcut_triggered = pyqtSignal()
+    
+    def __init__(self):
+        super().__init__()
+        self.main_thread_timer = None
+        
+    def emit_shortcut(self):
+        """在子线程中调用，通过定时器在主线程中执行截图"""
+        if QT_AVAILABLE and QApplication.instance():
+            # 使用单次定时器确保在主线程中执行
+            QTimer.singleShot(0, self._execute_screenshot)
+        else:
+            # 降级处理：直接执行（可能导致问题）
+            self._execute_screenshot_directly()
+    
+    def _execute_screenshot(self):
+        """在主线程中执行截图"""
+        self._do_screenshot()
+    
+    def _execute_screenshot_directly(self):
+        """直接执行截图（不推荐，可能导致问题）"""
+        print("[Warning] 在非主线程中执行截图，可能导致界面无响应")
+        self._do_screenshot()
+    
+    def _do_screenshot(self):
+        """实际执行截图功能"""
+        global ScreenShortCut, _screenshot_widget_ref
+        
+        # 延迟导入截图功能
+        if ScreenShortCut is None:
+            try:
+                from modules.ShortCut import ScreenShortCut
+            except Exception as e:
+                print(f"[Error] 导入截图功能失败: {e}")
+                return
+        
+        try:
+            # 保持对截图窗口的引用，防止被垃圾回收
+            widget = ScreenShortCut()
+            # 将截图窗口引用存储在全局变量中，确保不会被垃圾回收
+            _screenshot_widget_ref = widget
+            print("[Hotkey] 截图功能已成功启动")
+        except Exception as e:
+            print(f"[Error] 执行截图功能时出错: {e}")
+            import traceback
+            traceback.print_exc()
+
+# 创建全局信号发射器实例
+_signal_emitter = None
+
+def get_signal_emitter():
+    """获取或创建信号发射器实例"""
+    global _signal_emitter
+    if _signal_emitter is None and QT_AVAILABLE:
+        _signal_emitter = HotkeySignalEmitter()
+    return _signal_emitter
+
 def on_shortcut_pressed():
     """
     当快捷键被按下时的回调函数
     """
     print("[Hotkey] 截图快捷键被触发")
-    try:
-        # 保持对截图窗口的引用，防止被垃圾回收
-        widget = ScreenShortCut()
-        # 将截图窗口引用存储在全局变量中，确保不会被垃圾回收
-        global _screenshot_widget_ref
-        _screenshot_widget_ref = widget
-    except Exception as e:
-        print(f"[Error] 执行截图功能时出错: {e}")
-        import traceback
-        traceback.print_exc()
+    
+    # 尝试通过信号机制在主线程中执行
+    emitter = get_signal_emitter()
+    if emitter:
+        emitter.emit_shortcut()
+    else:
+        # 降级处理：直接执行（可能导致问题）
+        print("[Warning] 无法获取信号发射器，尝试直接执行截图")
+        HotkeySignalEmitter()._execute_screenshot_directly()
 
 
 def hotkey_listener_thread(shortcut_key):

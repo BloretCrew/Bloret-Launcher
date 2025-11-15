@@ -337,6 +337,18 @@ class MainWindow(FluentWindow):
 
         # 初始化全局快捷键
         init_global_hotkeys()
+        
+        # 连接快捷键信号到主线程处理
+        try:
+            from modules.global_hotkey import get_signal_emitter
+            signal_emitter = get_signal_emitter()
+            if signal_emitter:
+                signal_emitter.shortcut_triggered.connect(self.handle_screenshot_shortcut)
+                log("已连接截图快捷键信号到主线程处理")
+            else:
+                log("警告：无法获取快捷键信号发射器")
+        except Exception as e:
+            log(f"连接快捷键信号失败: {e}")
 
         # 处理首次运行
         update_progress({'value': 70 / 100, 'valueStringOverride': '7/10', 'status': i18nText('处理首次运行')})
@@ -359,6 +371,18 @@ class MainWindow(FluentWindow):
             json.dump(self.config, open('config.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
             if hasattr(self, 'config') else None
         ))
+        
+    def handle_screenshot_shortcut(self):
+        """处理截图快捷键，在主线程中执行截图功能"""
+        try:
+            log("收到截图快捷键信号，开始执行截图功能")
+            from modules.ShortCut import ScreenShortCut
+            widget = ScreenShortCut()
+            log("截图功能已启动")
+        except Exception as e:
+            log(f"执行截图功能失败: {e}")
+            import traceback
+            traceback.print_exc()
         
         # 错误报告测试
         # try:
