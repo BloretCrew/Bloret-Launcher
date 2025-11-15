@@ -1,6 +1,7 @@
 name: 发布正式版
 permissions:
-  contents: read
+  contents: read    # Read access to repository contents
+  actions: read     # Read access to actions
 
 on:
   release:
