@@ -216,7 +216,7 @@ jobs:
         DESCRIPTION=${{ toJSON(github.event.release.body) }}
         
         # 调用API更新为测试版
-        curl -X POST http://pcfs.eno.ink:3001/api/newversion/github \
+        curl -X POST https://launcher.bloret.net/api/newversion/github \
           -H "Content-Type: application/json" \
           -d "{\"key\":\"${{ secrets.BLORET_LAUNCHER_WEBSITE }}\",\"beta\":true,\"version\":\"$VERSION\",\"versionName\":\"$VERSION_NAME\",\"description\":$DESCRIPTION}"
       shell: bash
