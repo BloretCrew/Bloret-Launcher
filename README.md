@@ -1,4 +1,4 @@
-<img src="bloret.ico" width = "200" height = "200" alt="NapCat" align=left />
+<img src="bloret.ico" width = "200" height = "200" alt="Bloret" align=left />
 <div align="center">
   <h1>
     Bloret Launcher
