@@ -17,7 +17,8 @@
 [![Crowdin 翻译进度](https://badges.crowdin.net/Bloret-Launcher/localized.svg)](https://launcher.bloret.net/go/translate)
 [![讨论数](https://img.shields.io/github/discussions/BloretCrew/Bloret-Launcher?style=social&label=%E8%AE%A8%E8%AE%BA)](https://github.com/BloretCrew/Bloret-Launcher/discussions)
 ![仓库大小](https://img.shields.io/github/repo-size/BloretCrew/Bloret-Launcher?style=social&label=%E4%BB%93%E5%BA%93%E5%A4%A7%E5%B0%8F)
-![星标数](https://img.shields.io/github/stars/BloretCrew/Bloret-Launcher?style=social&label=%E6%98%9F%E6%A0%87)  
+![星标数](https://img.shields.io/github/stars/BloretCrew/Bloret-Launcher?style=social&label=%E6%98%9F%E6%A0%87)
+[![wakatime](https://wakatime.com/badge/user/38dee536-8d34-42c1-925d-43b79e143e83/project/4f5bb74a-2298-419e-8ba8-dee40e51d08b.svg)](https://wakatime.com/badge/user/38dee536-8d34-42c1-925d-43b79e143e83/project/4f5bb74a-2298-419e-8ba8-dee40e51d08b)  
 
 [![下载量](https://img.shields.io/github/downloads/BloretCrew/Bloret-Launcher/total?style=social&label=%E4%B8%8B%E8%BD%BD%E9%87%8F)](https://github.com/BloretCrew/Bloret-Launcher/releases)
 ![最新正式版](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?label=%E6%9C%80%E6%96%B0%E6%AD%A3%E5%BC%8F%E7%89%88)

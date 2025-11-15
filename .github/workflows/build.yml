@@ -5,8 +5,6 @@ permissions:
 
 on:
   push:
-    branches:
-      - Windows
 
 jobs:
   Set-Version:
@@ -42,8 +40,6 @@ jobs:
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
-      with:
-        ref: 'Windows'
 
     - name: 验证资源文件路径
       run: |
@@ -51,12 +47,11 @@ jobs:
         if (-not (Test-Path "bloret.ico")) { Write-Host "bloret.ico not found"; exit 1 }
         if (-not (Test-Path "config.json")) { Write-Host "config.json not found"; exit 1 }
         if (-not (Test-Path "ui")) { Write-Host "ui directory not found"; exit 1 }
+        if (-not (Test-Path "easytier")) { Write-Host "ui directory not found"; exit 1 }
         if (-not (Test-Path "lang")) { Write-Host "lang directory not found"; exit 1 }
         if (-not (Test-Path "cmcl.json")) { Write-Host "cmcl.json not found"; exit 1 }
         if (-not (Test-Path "cmcl.exe")) { Write-Host "cmcl.exe not found"; exit 1 }
         if (-not (Test-Path "cmcl.blank.json")) { Write-Host "cmcl.blank.json not found"; exit 1 }
-        if (-not (Test-Path "frpc.exe")) { Write-Host "frpc.exe not found"; exit 1 }
-        if (-not (Test-Path "frpc.toml")) { Write-Host "frpc.toml not found"; exit 1 }
         if (-not (Test-Path "JavaWrapper.jar")) { Write-Host "JavaWrapper.jar not found"; exit 1 }
       shell: pwsh
 
@@ -79,11 +74,10 @@ jobs:
           --add-data "config.json;." `
           --add-data "ui;ui" `
           --add-data "lang;lang" `
+          --add-data "easytier;easytier" `
           --add-data "cmcl.json;." `
           --add-data "cmcl.exe;." `
           --add-data "cmcl.blank.json;." `
-          --add-data "frpc.exe;." `
-          --add-data "frpc.toml;." `
           --add-data "JavaWrapper.jar;." `
           --add-data "modules;modules" `
           --hidden-import=sip `
@@ -101,6 +95,7 @@ jobs:
         cp dist/Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
         cp -r lang/ ${{ env.OUTPUT_DIR }}/
+        cp -r easytier/ ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.json ${{ env.OUTPUT_DIR }}/
         cp -r cmcl.blank.json ${{ env.OUTPUT_DIR }}/
@@ -109,8 +104,6 @@ jobs:
         cp -r servers.dat ${{ env.OUTPUT_DIR }}/
         cp -r cmcl_save.json ${{ env.OUTPUT_DIR }}/
         cp -r bloret.ico ${{ env.OUTPUT_DIR }}/
-        cp -r frpc.exe ${{ env.OUTPUT_DIR }}/
-        cp -r frpc.toml ${{ env.OUTPUT_DIR }}/
         cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
 
     - name: 清理旧压缩包
@@ -225,7 +218,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher-Setup
-        path: "./output/Bloret Launcher Setup.exe"
+        path: "./output/Bloret-Launcher-Setup.exe"
   # Build-macOS:
   #   needs: Set-Version
   #   runs-on: macos-latest

@@ -11,7 +11,7 @@
 [Setup]
 ; 注意：AppId 的值唯一标识此应用程序。不要在其他应用程序的安装程序中使用相同的 AppId 值。
 ; (若要生成新的 GUID，请在 IDE 中单击 "工具|生成 GUID"。)
-AppId={{A9AFE7D1-89A9-47C5-9E1A-003DB3575EB8}
+AppId={A9AFE7D1-89A9-47C5-9E1A-003DB3575EB8}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
@@ -39,7 +39,7 @@ AllowNoIcons=yes
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline
 OutputDir=.\output
-OutputBaseFilename=Bloret Launcher Setup
+OutputBaseFilename=Bloret-Launcher-Setup
 SetupIconFile=output\bloret.ico
 SolidCompression=yes
 WizardStyle=modern
@@ -58,12 +58,11 @@ Source: "output\config.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\servers.dat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\bloret.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\frpc.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\frpc.toml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\JavaWrapper.jar"; DestDir: "{app}"; Flags: ignoreversion
 ; Source: "output\icons\*"; DestDir: "{app}\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "output\ui\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "output\lang\*"; DestDir: "{app}\lang"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "output\lang\*"; DestDir: "{app}\lang"; Flags: ignoreversion 
+Source: "output\easytier\*"; DestDir: "{app}\easytier"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; 注意：不要在任何共享系统文件上使用 "Flags: ignoreversion"
 
 [Registry]

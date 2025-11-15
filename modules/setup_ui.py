@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy, QApplication
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
 from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime
@@ -7,7 +7,7 @@ import requests, json, logging, os, socket
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.systems import setup_startup_with_self_starting
 from modules.log import log, clear_log_files
-from modules.Bloret_PassPort import Bloret_PassPort_Account_logout, sync_mc_account_to_bloret_passport, sync_bloret_passport_account_to_mc
+from modules.Bloret_PassPort import Bloret_PassPort_Account_logout, sync_mc_account_to_bloret_passport, sync_bloret_passport_account_to_mc, savedata, readdata
 from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard, Bloret_PassPort_Account_login
 from modules.querys import query_player_uuid,query_player_skin,query_player_name
 from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder, on_other_version_selected
@@ -21,7 +21,23 @@ from modules.i18n import i18nText
 from modules.customize import CustomizeAdd
 from modules.Bloriko import AskBlorikoAndSet
 from modules.chafuwang import getServerData
+from modules.easytier import StartEasytierServer
 from modules.ShortCut import ScreenShortCut
+
+# 加载配置文件
+def load_config():
+    config_path = "config.json"
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"错误：配置文件 {config_path} 未找到。")
+        return {}
+    except json.JSONDecodeError:
+        print(f"错误：配置文件 {config_path} 格式不正确。")
+        return {}
+
+config = load_config()
 
 class DownloadDialog(MessageBoxBase):
     """ 自定义下载对话框 """
@@ -758,14 +774,34 @@ def setup_multiplayer_ui(self, widget, server_ip):
             start_online_client_btn.clicked.disconnect()
         except:
             pass
-        start_online_client_btn.clicked.connect(lambda: start_online_client(self, server_ip))
+        start_online_client_btn.clicked.connect(lambda: start_online_client(self, widget))
         log(i18nText("已连接StartOnlineClient按钮"))
     else:
         log(i18nText("未找到StartOnlineClient按钮"))
 
+    ClientOnlineClient = widget.findChild(QPushButton, "ClientOnlineClient")
+    if ClientOnlineClient:
+        ClientOnlineClient.clicked.connect(lambda: client_online_client(self, widget))
+        log(i18nText("已连接ClientOnlineClient按钮"))
+    else:
+        log(i18nText("未找到ClientOnlineClient按钮"))
 
-def start_online_client(parent, server_ip):
+
+def start_online_client(parent, clientpage):
     """启动在线客户端服务"""
+
+    def show_login_message():
+        log("显示登录提示消息框", logging.INFO)
+        w = MessageBox("登录才可使用联机功能", "Easytier 联机需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。", parent)
+        if w.exec():
+            parent.switchTo(parent.passportInterface)
+            log("用户点击确认，切换到通行证界面", logging.INFO)
+
+    if not config.get("Bloret_PassPort_Login", False):
+        # 在主线程中显示消息框
+        QTimer.singleShot(0, show_login_message)
+        return
+
     # 创建端口输入对话框
     port_dialog = MessageBoxBase(parent)
     port_dialog.setWindowTitle(i18nText("开启联机服务"))
@@ -778,13 +814,24 @@ def start_online_client(parent, server_ip):
     port_dialog.viewLayout.addWidget(port_label)
     port_dialog.viewLayout.addWidget(port_input)
     
+    # 添加联机密钥输入框
+    online_key_label = BodyLabel(i18nText("请输入联机密钥"))
+    online_key_input = LineEdit()
+    online_key_input.setPlaceholderText(i18nText("联机密钥"))
+    online_key_input.setEchoMode(LineEdit.Password) # 设置为密码模式
+    
+    port_dialog.viewLayout.addWidget(online_key_label)
+    port_dialog.viewLayout.addWidget(online_key_input)
+
     # 添加动图
     from PyQt5.QtWidgets import QLabel
     from PyQt5.QtGui import QMovie
+    from PyQt5.QtCore import QSize # 新增导入
     gif_label = QLabel()
     movie = QMovie("ui/icon/OnlineClient.gif")
     gif_label.setMovie(movie)
     movie.start()
+    movie.setScaledSize(QSize(500, 280))  # 设置动图大小
     
     port_dialog.viewLayout.addWidget(gif_label)
     
@@ -793,6 +840,7 @@ def start_online_client(parent, server_ip):
     
     def handle_port_confirm():
         port = port_input.text().strip()
+        online_key = online_key_input.text().strip() # 获取联机密钥
         if not port.isdigit():
             InfoBar.error(
                 title=i18nText('输入错误'),
@@ -801,11 +849,27 @@ def start_online_client(parent, server_ip):
             )
             return False
         
+        # 检查联机密钥是否为空
+        if not online_key:
+            online_key = "NoPassWord"
+        
         # 调用OnlineClient函数
         try:
             # 将端口转换为整数再传递
             port_int = int(port)
-            connection_address = OnlineClient(server_ip, port_int)
+            # 调用 StartEasytierServer 函数
+            username = config.get("Bloret_PassPort_UserName", "")
+            easytier_name = "BLClient"+username
+            # 检查用户名是否为空
+            if not easytier_name:
+                InfoBar.error(
+                    title=i18nText('启动失败'),
+                    content=i18nText('无法获取用户名，请重新登录 Bloret PassPort'),
+                    parent=parent
+                )
+                return False
+                
+            connection_address = StartEasytierServer(easytier_name, online_key)
             
             # 检查是否返回了错误信息
             if connection_address.startswith(i18nText("权限错误：")) or connection_address.startswith(i18nText("安全软件阻止：")):
@@ -825,9 +889,29 @@ def start_online_client(parent, server_ip):
                 return False
             
             # 显示连接地址对话框
-            show_connection_address_dialog(parent, connection_address, port)
+            # 以下是联机信息示例：
+            # 和我用 Bloret Launcher 联机！打开 Bloret Launcher 进入联机页面，选择“连接到对方的网络”，输入我的用户名 {username} 即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/
+
+            # connection_info = "{\"ip\":\""+connection_address+"\",\"key\":\""+online_key+"\",\"port\":\""+port+"\",\"username\":\""+easytier_name+"\"}"
+            # full_text = "和我用 Bloret Launcher 联机！打开 Bloret Launcher 并进入联机页面，即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/ . (%/BLClient%)"+connection_info+"(%/BLClient%) 复制该信息，输入 Bloret Launcher 联机页面的连接信息中即可加入联机。"
+
+            # 此处发送必要信息到 Bloret PassPort 的 public 数据中，以便客户端读取
+            ClinetPublic = readdata("Client", True)
+            # 这里返回的数据是 str, 需要先转换为字典再处理
+            ClinetPublic = json.loads(ClinetPublic)
+
+            # 向 ClinetPublic 加入联机信息 username:{ip:connection_address, port:port, username:easytier_name}
+            ClinetPublic[easytier_name] = {"ip":connection_address, "port":port, "username":easytier_name}
+            
+            # 重新转换为 str 再保存
+            ClinetPublic = json.dumps(ClinetPublic)
+            savedata("Client", ClinetPublic, True)
+
+            full_text = f"和我用 Bloret Launcher 联机！打开 Bloret Launcher 进入联机页面，选择“连接到对方的网络”，输入我的用户名 {username} 即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/"
+            show_connection_address_dialog(parent, full_text, connection_address + ':' + port, clientpage, True)
             return True
         except Exception as e:
+            log(f"启动联机服务时出错: {str(e)}", logging.ERROR)
             InfoBar.error(
                 title=i18nText('启动失败'),
                 content=f'启动联机服务时出错: {str(e)}',
@@ -835,33 +919,219 @@ def start_online_client(parent, server_ip):
             )
             return False
     
-    port_dialog.yesButton.clicked.connect(handle_port_confirm)
+    def connect_handler():
+        handle_port_confirm()
+        
+    port_dialog.yesButton.clicked.connect(connect_handler)
     port_dialog.exec_()
 
+def client_online_client(parent, clientpage):
+    """连接在线客户端服务"""
+    log("client_online_client: 开始执行客户端联机功能", logging.INFO)
+    log(f"client_online_client: 传入参数 - parent: {parent}, clientpage: {clientpage}", logging.DEBUG)
 
-def show_connection_address_dialog(parent, connection_address, port):
-    """显示连接地址对话框"""
+    def show_login_message():
+        log("client_online_client: 显示登录提示消息框", logging.INFO)
+        w = MessageBox("登录才可使用联机功能", "Easytier 联机需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。", parent)
+        if w.exec_():
+            parent.switchTo(parent.passportInterface)
+            log("client_online_client: 用户点击确认，切换到通行证界面", logging.INFO)
+
+    # 检查登录状态
+    login_status = config.get("Bloret_PassPort_Login", False)
+    log(f"client_online_client: Bloret PassPort 登录状态: {login_status}", logging.INFO)
+    
+    if not login_status:
+        log("client_online_client: 用户未登录，显示登录提示", logging.WARNING)
+        # 在主线程中显示消息框
+        QTimer.singleShot(0, show_login_message)
+        return
+    
+    log("client_online_client: 用户已登录，继续执行联机流程", logging.INFO)
+
+    # 创建连接信息输入对话框
+    log("client_online_client: 创建连接信息输入对话框", logging.INFO)
+    connect_dialog = MessageBoxBase(parent)
+    connect_dialog.setWindowTitle(i18nText("连接联机服务"))
+    
+    name_label = BodyLabel(i18nText("请输入对方 Bloret PassPort 用户名"))
+    name_input = LineEdit()
+    name_input.setPlaceholderText(i18nText('对方用户名'))
+
+    # 密码输入框
+    key_label = BodyLabel(i18nText("请输入对方联机密钥"))
+    key_input = LineEdit()
+    key_input.setPlaceholderText(i18nText('对方密钥'))
+    # 将密码输入框设置为密码模式
+    key_input.setEchoMode(LineEdit.Password)
+    
+    connect_dialog.viewLayout.addWidget(name_label)
+    connect_dialog.viewLayout.addWidget(name_input)
+    connect_dialog.viewLayout.addWidget(key_label)
+    connect_dialog.viewLayout.addWidget(key_input)
+    
+    # 添加动图
+    # gif_label = QLabel()
+    # movie = QMovie("ui/icon/OnlineClient.gif")
+    # gif_label.setMovie(movie)
+    # movie.start()
+    
+    # connect_dialog.viewLayout.addWidget(gif_label)
+    
+    connect_dialog.yesButton.setText(i18nText("确认"))
+    connect_dialog.cancelButton.setText(i18nText("取消"))
+    
+    log("client_online_client: 对话框组件初始化完成", logging.DEBUG)
+    
+    def handle_connect_confirm():
+        try:
+            log("client_online_client: 用户点击确认连接按钮", logging.INFO)
+            
+            # 获取用户输入的 username
+            username = name_input.text().strip()
+            log(f"client_online_client: 获取用户名输入: '{username}'", logging.DEBUG)
+            
+            if not username:
+                log("client_online_client: 用户名为空，显示错误提示", logging.WARNING)
+                InfoBar.error(
+                    title=i18nText('输入错误'),
+                    content=i18nText('请输入对方用户名'),
+                    parent=parent
+                )
+                return
+
+            # 获取用户输入的联机密钥
+            key = key_input.text().strip()
+            log(f"client_online_client: 获取联机密钥输入: {'*' * len(key) if key else '空'}", logging.DEBUG)
+
+            # 检查联机密钥是否为空
+            if not key:
+                key = "NoPassWord"
+            
+            log(f"client_online_client: 开始连接 - 目标用户: {username}, 密钥长度: {len(key)}", logging.INFO)
+            
+            # 调用 StartEasytierServer 函数连接到主机
+            connection_address = StartEasytierServer(username, key)
+            log(f"client_online_client: StartEasytierServer 返回结果: {connection_address}", logging.DEBUG)
+            
+            # 检查是否返回了错误信息
+            if isinstance(connection_address, str) and (connection_address.startswith(i18nText("权限错误：")) or connection_address.startswith(i18nText("安全软件阻止："))):
+                log(f"client_online_client: 权限或安全软件错误: {connection_address}", logging.ERROR)
+                InfoBar.error(
+                    title=i18nText('连接失败'),
+                    content=connection_address,
+                    parent=parent,
+                    duration=10000  # 显示更长时间以便用户阅读
+                )
+                return
+            elif isinstance(connection_address, str) and (connection_address.startswith(i18nText("启动失败:")) or connection_address == i18nText("网络请求失败") or connection_address == i18nText("配置文件不存在") or connection_address == i18nText("frpc程序不存在") or connection_address == i18nText("获取连接信息失败")):
+                log(f"client_online_client: 连接失败: {connection_address}", logging.ERROR)
+                InfoBar.error(
+                    title=i18nText('连接失败'),
+                    content=connection_address,
+                    parent=parent
+                )
+                return
+
+            log("client_online_client: 连接成功，开始获取服务器信息", logging.INFO)
+            
+            # 此处发送必要信息到 Bloret PassPort 的 public 数据中，以便客户端读取
+            log("client_online_client: 从 Bloret PassPort 读取客户端公共数据", logging.DEBUG)
+            ClinetPublic = readdata("Client", True)
+            log(f"client_online_client: 获取到的原始数据: {ClinetPublic[:200]}{'...' if len(str(ClinetPublic)) > 200 else ''}", logging.DEBUG)
+            
+            # 这里返回的数据是 str, 需要先转换为字典再处理
+            ClinetPublic = json.loads(ClinetPublic)
+            log(f"client_online_client: JSON解析成功，数据类型: {type(ClinetPublic)}", logging.DEBUG)
+
+            username = 'BLClient' + username
+            log(f"client_online_client: 构造完整用户名: {username}", logging.DEBUG)
+            
+            # 检查目标用户是否存在
+            if username not in ClinetPublic:
+                log(f"client_online_client: 目标用户 {username} 不存在于公共数据中", logging.ERROR)
+                InfoBar.error(
+                    title=i18nText('连接失败'),
+                    content=f'用户 {username} 未找到或不在线',
+                    parent=parent
+                )
+                return
+
+            # 获取 ClientPublic[username] 得到：{ip:connection_address, port:port, username:easytier_name}
+            log(f"client_online_client: 获取用户 {username} 的连接信息", logging.DEBUG)
+            ip = ClinetPublic[username]["ip"]
+            port = ClinetPublic[username]["port"]
+            log(f"client_online_client: 服务器信息 - IP: {ip}, 端口: {port}", logging.INFO)
+
+            # 显示连接地址对话框
+            server_address = f"{ip}:{port}"
+            log("client_online_client: 显示连接地址对话框", logging.INFO)
+            show_connection_address_dialog(parent, f"已连接到对方的网络，现在打开 Minecraft，连接服务器 {server_address}\n(请注意联机过程中不要关闭 Bloret Launcher，您可以关闭本窗口，保持 Bloret Launcher 在托盘中运行)", server_address, clientpage, False)
+        except json.JSONDecodeError as e:
+            log(f"client_online_client: JSON解析错误: {str(e)}", logging.ERROR)
+            InfoBar.error(
+                title=i18nText('解析失败'),
+                content=f'连接信息解析错误: {str(e)}',
+                parent=parent
+            )
+            return
+        except KeyError as e:
+            log(f"client_online_client: 数据字段缺失: {str(e)}", logging.ERROR)
+            InfoBar.error(
+                title=i18nText('数据错误'),
+                content=f'服务器数据格式错误，缺少字段: {str(e)}',
+                parent=parent
+            )
+            return
+        except Exception as e:
+            log(f"client_online_client: 连接过程发生未知错误: {type(e).__name__}: {str(e)}", logging.ERROR)
+            InfoBar.error(
+                title=i18nText('连接失败'),
+                content=f'连接联机服务时出错: {str(e)}',
+                parent=parent
+            )
+
+    connect_dialog.yesButton.clicked.connect(handle_connect_confirm)
+    log("client_online_client: 连接对话框事件绑定完成", logging.DEBUG)
+
+    log("client_online_client: 显示连接对话框，等待用户输入", logging.INFO)
+    connect_dialog.exec_()
+    log("client_online_client: 连接对话框关闭", logging.INFO)
+
+def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver):
+    """
+    显示连接地址对话框
+    联机信息：
+    和我用 Bloret Launcher 联机！打开 Bloret Launcher 进入联机页面，选择“连接到对方的网络”，输入我的用户名 {username} 即可和我在 Minecraft 中一起游玩！如还未下载 Bloret Launcher ，请访问 https://launcher.bloret.net/
+    """
     # 创建结果显示对话框
     result_dialog = MessageBoxBase(parent)
     result_dialog.setWindowTitle(i18nText("联机服务已启动"))
     
-    address_label = StrongBodyLabel(connection_address)
-    address_label.setAlignment(Qt.AlignCenter)
+    address_label = StrongBodyLabel(text)
+    address_label.setAlignment(Qt.AlignCenter if hasattr(Qt, 'AlignCenter') else Qt.AlignmentFlag.AlignCenter)
+    address_label.setWordWrap(True)  # 启用自动换行
+    address_label.setMaximumWidth(400)  # 设置最大宽度，确保文本不会过长
+
+    if isserver:
+        instruction_text = "按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。"
+    else:
+        instruction_text = "按下确认键复制到剪贴板，然后在 Minecraft 客户端中添加服务器并加入。"
     
-    instruction_label = CaptionLabel(i18nText("按下确认键复制到剪贴板，然后发给好友，在 Minecraft 客户端中添加服务器并加入。"))
-    instruction_label.setAlignment(Qt.AlignCenter)
+    instruction_label = CaptionLabel(i18nText(instruction_text))
+    instruction_label.setAlignment(Qt.AlignCenter if hasattr(Qt, 'AlignCenter') else Qt.AlignmentFlag.AlignCenter)
     
     # 添加动图
-    from PyQt5.QtWidgets import QLabel
-    from PyQt5.QtGui import QMovie
-    gif_label = QLabel()
-    movie = QMovie("ui/icon/OnlineClient.gif")
-    gif_label.setMovie(movie)
-    movie.start()
+    # from PyQt5.QtWidgets import QLabel
+    # from PyQt5.QtGui import QMovie
+    # gif_label = QLabel()
+    # movie = QMovie("ui/icon/OnlineClient.gif")
+    # gif_label.setMovie(movie)
+    # movie.start()
     
     result_dialog.viewLayout.addWidget(address_label)
     result_dialog.viewLayout.addWidget(instruction_label)
-    result_dialog.viewLayout.addWidget(gif_label)
+    # result_dialog.viewLayout.addWidget(gif_label)
     
     result_dialog.yesButton.setText(i18nText("确认"))
     result_dialog.cancelButton.hide()  # 隐藏取消按钮
@@ -869,7 +1139,8 @@ def show_connection_address_dialog(parent, connection_address, port):
     def handle_result_confirm():
         # 复制到剪贴板
         clipboard = QApplication.clipboard()
-        clipboard.setText(connection_address)
+        if clipboard:
+            clipboard.setText(text)
         InfoBar.success(
             title=i18nText('复制成功'),
             content=i18nText('联机地址已复制到剪贴板'),
@@ -881,67 +1152,89 @@ def show_connection_address_dialog(parent, connection_address, port):
         from PyQt5.QtWidgets import QLabel
         from PyQt5.QtCore import QTimer, QDateTime
         
-        # 通过parent.window()获取主窗口，再查找标签
-        # 这样可以确保在正确的窗口中查找组件
-        main_window = parent.window()
-        online_client_time_label = main_window.findChild(QLabel, "OnlineClient_ClientTime")
-        online_client_address_label = main_window.findChild(QLabel, "OnlineClient_address")
+        # 从parent中查找标签（联机界面）
+        # online_client_time_label = parent.findChild(QLabel, "OnlineClient_ClientTime")
+        # online_client_address_label = parent.findChild(QLabel, "OnlineClient_address")
         
-        if online_client_address_label:
-            online_client_address_label.setText(connection_address)
-            log(f"已更新连接地址标签: {connection_address}")
-        else:
-            # 如果通过window()找不到，尝试直接在parent中查找
-            online_client_address_label = parent.findChild(QLabel, "OnlineClient_address")
-            if online_client_address_label:
-                online_client_address_label.setText(connection_address)
-                log(f"已更新连接地址标签: {connection_address}")
-            else:
-                log(i18nText("未找到OnlineClient_address标签"))
+        # 更新多人联机界面的状态显示
+        # 查找并更新UI中的标签 (使用UI文件中实际的组件名称)
+        client_status_label = clientpage.findChild(QLabel, "Client_Statue")  # "未连接" 标签
+        client_status_desc_label = clientpage.findChild(QLabel, "Client_Statue_Show")  # "您尚未连接到 Easytier 网络" 标签
+        client_link_tip_label = clientpage.findChild(QLabel, "Client_link_tip")    # "请打开 Minecraft，并像加入服务器一样加入 " 标签
+        client_link_show_label = clientpage.findChild(QLabel, "Client_link_show")  # 地址显示标签
         
-        # 启动计时器更新连接时长
-        if online_client_time_label:
-            
-            # 记录开始时间
-            start_time = QDateTime.currentDateTime()
-            
-            # 创建定时器每秒更新时间显示
-            timer = QTimer()
-            timer.timeout.connect(lambda: update_connection_time(online_client_time_label, start_time))
-            timer.start(1000)  # 每秒更新一次
-            
-            # 将定时器保存到main_window对象中，以便后续可以停止它
-            main_window.online_client_timer = timer
-            main_window.online_client_start_time = start_time
-            
-            # 立即更新一次时间显示
-            update_connection_time(online_client_time_label, start_time)
-            log(i18nText("已启动连接时长计时器"))
+        log(f"查找界面组件:")
+        log(f"  parent: {clientpage}")
+        log(f"  client_status_label: {client_status_label}")
+        log(f"  client_status_desc_label: {client_status_desc_label}")
+        log(f"  client_link_tip_label: {client_link_tip_label}")
+        log(f"  client_link_show_label: {client_link_show_label}")
+        # log(f"  online_client_time_label: {online_client_time_label}")
+        # log(f"  online_client_address_label: {online_client_address_label}")
+        
+        # 强制刷新界面
+        if client_status_label:
+            client_status_label.setText(i18nText("已连接"))
+            client_status_label.repaint()  # 强制重绘
+            log(f"已更新连接状态标签: {i18nText('已连接')}")
         else:
-            # 如果通过window()找不到，尝试直接在parent中查找
-            online_client_time_label = parent.findChild(QLabel, "OnlineClient_ClientTime")
-            if online_client_time_label:
-                # 记录开始时间
-                start_time = QDateTime.currentDateTime()
-                
-                # 创建定时器每秒更新时间显示
-                timer = QTimer()
-                timer.timeout.connect(lambda: update_connection_time(online_client_time_label, start_time))
-                timer.start(1000)  # 每秒更新一次
-                
-                # 将定时器保存到parent对象中，以便后续可以停止它
-                parent.online_client_timer = timer
-                parent.online_client_start_time = start_time
-                
-                # 立即更新一次时间显示
-                update_connection_time(online_client_time_label, start_time)
-                log(i18nText("已启动连接时长计时器"))
+            log("未找到 Client_Statue 标签")
+            
+        if client_status_desc_label:
+            client_status_desc_label.setText(i18nText("您已连接至 Easytier 网络"))
+            client_status_desc_label.repaint()  # 强制重绘
+            log(f"已更新连接状态描述标签: {i18nText('您已连接至 Easytier 网络')}")
+        else:
+            log("未找到 Client_Statue_Show 标签")
+            
+        if client_link_tip_label:
+            if isserver:
+                tip_text = "请告诉对方端口号、你的用户名和联机密钥，然后让对方打开 Bloret Launcher 连接"
             else:
-                log(i18nText("未找到OnlineClient_ClientTime标签"))
+                tip_text = "请打开 Minecraft，并像加入服务器一样加入 "
+            client_link_tip_label.setText(i18nText(tip_text))
+            client_link_tip_label.repaint()  # 强制重绘
+            log(f"已更新连接提示标签: {i18nText(tip_text)}")
+        else:
+            log("未找到 Client_link_tip 标签")
+            
+        if client_link_show_label:
+            client_link_show_label.setText(ipandport)
+            client_link_show_label.repaint()  # 强制重绘
+            log(f"已更新连接地址显示标签: {ipandport}")
+        else:
+            log("未找到 Client_link_show 标签")
+        
+        # if online_client_address_label:
+        #     online_client_address_label.setText(connection_address)
+        #     online_client_address_label.repaint()  # 强制重绘
+        #     log(f"已更新连接地址标签: {connection_address}")
+        # else:
+        #     log(i18nText("未找到OnlineClient_address标签"))
+        
+        # # 启动计时器更新连接时长
+        # if online_client_time_label:
+            
+        #     # 记录开始时间
+        #     start_time = QDateTime.currentDateTime()
+            
+        #     # 创建定时器每秒更新时间显示
+        #     timer = QTimer()
+        #     timer.timeout.connect(lambda: update_connection_time(online_client_time_label, start_time))
+        #     timer.start(1000)  # 每秒更新一次
+            
+        #     # 将定时器保存到parent对象中，以便后续可以停止它
+        #     parent.online_client_timer = timer
+        #     parent.online_client_start_time = start_time
+            
+        #     # 立即更新一次时间显示
+        #     update_connection_time(online_client_time_label, start_time)
+        #     log(i18nText("已启动连接时长计时器"))
+        # else:
+        #     log(i18nText("未找到OnlineClient_ClientTime标签"))
     
     result_dialog.yesButton.clicked.connect(handle_result_confirm)
     result_dialog.exec_()
-
 
 def update_connection_time(time_label, start_time):
     """更新连接时长显示"""
@@ -987,6 +1280,7 @@ def get_ipv6_address():
     except Exception as e:
         log(f"获取IPv6地址失败: {str(e)}")
         return None
+
 
 
 def show_ipv6_dialog(parent, ipv6_address):
@@ -1555,70 +1849,6 @@ def setup_download_ui(self, widget):
             
     except Exception as e:
         log(f"设置下载UI时出错: {str(e)}", logging.ERROR)
-
-def setup_multiplayer_ui(self, widget, server_ip):
-    """设定 Bloret Launcher 多人联机界面 UI 布局和操作"""
-    # 获取IPv6地址
-    ipv6_address_str = get_ipv6_address()
-    log(f"检测到的IPv6地址: {ipv6_address_str if ipv6_address_str else '未找到可用IPv6地址'}")
-    
-    ipv6_address_label = widget.findChild(QLabel, "ipv6_address")
-    if ipv6_address_label:
-        if ipv6_address_str:
-            # 显示缩短的IPv6地址（只显示前8个字符）
-            ipv6_display = f"{ipv6_address_str[:8]}..." if len(ipv6_address_str) > 8 else ipv6_address_str
-            ipv6_address_label.setText(ipv6_display)
-        else:
-            ipv6_address_label.setText(i18nText("无法获取IPv6地址"))
-            log(i18nText("未找到可用的IPv6地址，IPv6功能将被禁用"))
-
-    get_ipv6_btn = widget.findChild(QPushButton, "GetIPV6AddressButton")
-    if get_ipv6_btn:
-        # 根据是否有IPv6地址设置按钮状态
-        if ipv6_address_str:
-            get_ipv6_btn.setEnabled(True)
-            get_ipv6_btn.setToolTip(i18nText("点击显示IPv6联机对话框"))
-        else:
-            get_ipv6_btn.setEnabled(False)
-            get_ipv6_btn.setToolTip(i18nText("未检测到IPv6地址，请确保您的网络支持IPv6"))
-        
-        # 断开可能存在的重复连接
-        try:
-            get_ipv6_btn.clicked.disconnect()
-        except:
-            pass
-            
-        # 连接按钮点击事件
-        get_ipv6_btn.clicked.connect(lambda: show_ipv6_dialog(self, ipv6_address_str))
-    
-    # 设置初始状态
-    online_client_time_label = widget.findChild(QLabel, "OnlineClient_ClientTime")
-    online_client_address_label = widget.findChild(QLabel, "OnlineClient_address")
-    
-    if online_client_time_label:
-        online_client_time_label.setText("--:--")
-        log(i18nText("初始化OnlineClient_ClientTime标签"))
-    else:
-        log(i18nText("未找到OnlineClient_ClientTime标签"))
-    
-    if online_client_address_label:
-        online_client_address_label.setText(i18nText("未连接"))
-        log(i18nText("初始化OnlineClient_address标签"))
-    else:
-        log(i18nText("未找到OnlineClient_address标签"))
-    
-    # 连接StartOnlineClient按钮
-    start_online_client_btn = widget.findChild(QPushButton, "StartOnlineClient")
-    if start_online_client_btn:
-        # 断开可能存在的重复连接
-        try:
-            start_online_client_btn.clicked.disconnect()
-        except:
-            pass
-        start_online_client_btn.clicked.connect(lambda: start_online_client(self, server_ip))
-        log(i18nText("已连接StartOnlineClient按钮"))
-    else:
-        log(i18nText("未找到StartOnlineClient按钮"))
 
 
 def start_search_mod(self, mod_list, search_term, loading):
