@@ -78,15 +78,11 @@ jobs:
         }
       shell: pwsh
 
-    - name: 创建压缩包
-      run: Compress-Archive -Path "${{ env.OUTPUT_DIR }}/*" -DestinationPath "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
-      shell: pwsh
-
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher
-        path: "${{ env.OUTPUT_DIR }}/${{ env.ARTIFACT_NAME }}"
+        path: "${{ env.OUTPUT_DIR }}/"
         
   Upload-To-Release:
     needs: [Build-Windows, Build-Setup]
@@ -106,7 +102,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            Bloret-Launcher-Windows.zip
+            Bloret-Launcher.zip
             Bloret-Launcher-Setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
