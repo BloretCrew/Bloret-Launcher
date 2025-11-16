@@ -208,15 +208,15 @@ jobs:
         name: Bloret-Launcher-Setup
         path: "./output/Bloret-Launcher-Setup.exe"
 
-    - name: 更新为测试版
-      run: |
-        # 从GitHub事件中提取版本信息
-        VERSION="${{ github.event.release.tag_name }}"
-        VERSION_NAME="${{ github.event.release.name }}"
-        DESCRIPTION=${{ toJSON(github.event.release.body) }}
+    # - name: 更新为测试版
+    #   run: |
+    #     # 从GitHub事件中提取版本信息
+    #     VERSION="${{ github.event.release.tag_name }}"
+    #     VERSION_NAME="${{ github.event.release.name }}"
+    #     DESCRIPTION=${{ toJSON(github.event.release.body) }}
         
-        # 调用API更新为测试版
-        curl -X POST https://launcher.bloret.net/api/newversion/github \
-          -H "Content-Type: application/json" \
-          -d "{\"key\":\"${{ secrets.BLORET_LAUNCHER_WEBSITE }}\",\"beta\":true,\"version\":\"$VERSION\",\"versionName\":\"$VERSION_NAME\",\"description\":$DESCRIPTION}"
-      shell: bash
+    #     # 调用API更新为测试版
+    #     curl -X POST https://launcher.bloret.net/api/newversion/github \
+    #       -H "Content-Type: application/json" \
+    #       -d "{\"key\":\"${{ secrets.BLORET_LAUNCHER_WEBSITE }}\",\"beta\":true,\"version\":\"$VERSION\",\"versionName\":\"$VERSION_NAME\",\"description\":$DESCRIPTION}"
+    #   shell: bash
