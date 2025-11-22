@@ -13,6 +13,21 @@ import time
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
+def mask_sensitive_data(data, sensitive_fields=None, mask="****** (已隐藏)"):
+    """
+    递归地屏蔽 dict/list 结构中的敏感字段内容，返回新对象，不修改原始对象。
+    """
+    import copy
+    if sensitive_fields is None:
+        sensitive_fields = {"app_secret", "token", "password", "secret", "api_key", "access_token"}
+    if isinstance(data, dict):
+        return {k: (mask if k in sensitive_fields else mask_sensitive_data(v, sensitive_fields, mask))
+                for k, v in data.items()}
+    elif isinstance(data, list):
+        return [mask_sensitive_data(item, sensitive_fields, mask) for item in data]
+    else:
+        return data
+
 def test_ai_api():
     """测试AI API接口"""
     
@@ -84,13 +99,7 @@ def test_ai_api():
             try:
                 log.info(f"发送请求到: {api_endpoint}")
                 # 屏蔽敏感信息后再进行日志记录
-                safe_payload = json.loads(json.dumps(payload))  # shallow copy, nested dicts are preserved
-                if 'OauthApp' in safe_payload:
-                    if 'app_secret' in safe_payload['OauthApp']:
-                        safe_payload['OauthApp']['app_secret'] = "****** (已隐藏)"
-                if 'user' in safe_payload:
-                    if 'token' in safe_payload['user']:
-                        safe_payload['user']['token'] = "****** (已隐藏)"
+                safe_payload = mask_sensitive_data(payload)
                 log.debug(f"请求payload: {json.dumps(safe_payload, ensure_ascii=False, indent=2)}")
                 
                 response = requests.post(api_endpoint, json=payload, headers=headers, timeout=30)
