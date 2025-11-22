@@ -18,8 +18,8 @@ def open_BBBS_link(server_ip):
     QDesktopServices.openUrl(QUrl(server_ip+"bbs/"))
     log(i18nText("打开 BBBS 页面"))
 def open_BBBS_Reg_link():
-    QDesktopServices.openUrl(QUrl("http://pcfs.eno.ink:20000/register"))
-    log(i18nText("打开 BBBS 注册页面"))
+    QDesktopServices.openUrl(QUrl("https://passport.bloret.net/register"))
+    log(i18nText("打开 Bloret PassPort 注册页面"))
 def open_bloret_web():
     QDesktopServices.openUrl(QUrl("https://launcher.bloret.net/"))
     log(i18nText("打开 Bloret Launcher 网页"))
@@ -50,5 +50,5 @@ def copy_name_to_clipboard(self):
     log(f"名称 {self.player_name} 已复制到剪贴板")
 
 def Bloret_PassPort_Account_login():
-    QDesktopServices.openUrl(QUrl("http://pcfs.eno.ink:20000/app/oauth?app_id=BloretLauncher&redirect_uri=http://localhost:25252/login/Bloret-PassPort"))
+    QDesktopServices.openUrl(QUrl("https://passport.bloret.net/app/oauth?app_id=BloretLauncher&redirect_uri=http://localhost:25252/login/Bloret-PassPort"))
     log(i18nText("打开 Bloret PassPort 登录页面"))

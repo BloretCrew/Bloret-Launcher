@@ -66,7 +66,7 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
-        <widget class="SmoothScrollArea" name="scrollArea">
+        <widget class="SmoothScrollArea" name="smoothScrollArea">
          <property name="sizeIncrement">
           <size>
            <width>0</width>
@@ -88,6 +88,28 @@
           <layout class="QVBoxLayout" name="verticalLayout">
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_3">
+             <item>
+              <widget class="CaptionLabel" name="BlorikoIcon">
+               <property name="maximumSize">
+                <size>
+                 <width>35</width>
+                 <height>35</height>
+                </size>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+               <property name="pixmap">
+                <pixmap>icon/Bloriko.jpg</pixmap>
+               </property>
+               <property name="scaledContents">
+                <bool>true</bool>
+               </property>
+               <property name="wordWrap">
+                <bool>false</bool>
+               </property>
+              </widget>
+             </item>
              <item>
               <widget class="LineEdit" name="AskBloriko_Edit">
                <property name="inputMask">
@@ -112,6 +134,9 @@
               </widget>
              </item>
             </layout>
+           </item>
+           <item>
+            <widget class="IndeterminateProgressBar" name="BlorikoThinking"/>
            </item>
            <item>
             <widget class="StrongBodyLabel" name="AskBloriko_Answer">
@@ -817,6 +842,11 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
   <customwidget>
    <class>TitleLabel</class>
    <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>IndeterminateProgressBar</class>
+   <extends>QProgressBar</extends>
    <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>

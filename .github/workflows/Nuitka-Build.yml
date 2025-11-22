@@ -165,7 +165,7 @@ jobs:
 
     - name: 解压构建产物
       run: |
-        Expand-Archive -Path "output/Bloret-Launcher-Windows.zip" -DestinationPath "output/"
+        Expand-Archive -Path "output/Bloret-Launcher.zip" -DestinationPath "output/"
       shell: pwsh
 
     - name: 确保 LICENSE 文件存在

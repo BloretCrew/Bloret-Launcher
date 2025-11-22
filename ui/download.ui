@@ -63,7 +63,7 @@
            <widget class="BodyLabel" name="BodyLabel_2">
             <property name="maximumSize">
              <size>
-              <width>50</width>
+              <width>51</width>
               <height>50</height>
              </size>
             </property>
