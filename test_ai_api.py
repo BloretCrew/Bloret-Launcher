@@ -99,8 +99,8 @@ def test_ai_api():
             try:
                 log.info(f"发送请求到: {api_endpoint}")
                 # 屏蔽敏感信息后再进行日志记录
-                safe_payload = mask_sensitive_data(payload)
-                log.debug(f"请求payload: {json.dumps(safe_payload, ensure_ascii=False, indent=2)}")
+                # safe_payload = mask_sensitive_data(payload)
+                # log.debug(f"请求payload: {json.dumps(safe_payload, ensure_ascii=False, indent=2)}")
                 
                 response = requests.post(api_endpoint, json=payload, headers=headers, timeout=30)
                 
