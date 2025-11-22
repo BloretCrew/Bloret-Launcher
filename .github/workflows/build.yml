@@ -5,6 +5,10 @@ permissions:
 
 on:
   push:
+    branches:
+      - '**'        # 匹配所有分支
+    tags-ignore:
+      - '*'         # 忽略所有 tag 推送
 
 jobs:
   Set-Version:
