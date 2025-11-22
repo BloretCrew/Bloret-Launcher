@@ -57,8 +57,8 @@ def test_ai_api():
         log.info(f"\n{'='*60}")
         log.info(f"测试配置: {config['name']}")
         log.info(f"用户: {config['user']['name']}")
-        log.info(f"Token: {config['user']['token']}")
-        log.info(f"应用密钥: {config['OauthApp']['app_secret']}")
+        log.info("Token: ****** (已隐藏敏感信息)")
+        log.info("应用密钥: ****** (已隐藏敏感信息)")
         
         for question in test_questions:
             log.info(f"\n--- 测试问题: {question} ---")
