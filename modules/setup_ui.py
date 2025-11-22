@@ -311,9 +311,17 @@ def setup_home_ui(self, widget):
     AskBloriko_Edit = widget.findChild(LineEdit, "AskBloriko_Edit")
     AskBloriko_Button = widget.findChild(PushButton, "AskBloriko_Button")
     AskBloriko_Answer = widget.findChild(StrongBodyLabel, "AskBloriko_Answer")
+    BlorikoThinking = widget.findChild(IndeterminateProgressBar, "BlorikoThinking")
+    # BlorikoIcon = widget.findChild(QLabel, "BlorikoIcon")
+    # BlorikoIcon.setBorderRadius(8, 8, 8, 8)
+    if BlorikoThinking:
+        BlorikoThinking.hide()
+    else:
+        log("未找到 BlorikoThinking 元素")
+
     if AskBloriko_Button:
         AskBloriko_Button.setIcon(FluentIcon.SEND)
-        AskBloriko_Button.clicked.connect(lambda: AskBlorikoAndSet(AskBloriko_Edit.text(), AskBloriko_Answer, widget))
+        AskBloriko_Button.clicked.connect(lambda: AskBlorikoAndSet(AskBloriko_Edit.text(), AskBloriko_Answer, BlorikoThinking, widget))
     else:
         log("未找到 AskBloriko_Button 元素")
 

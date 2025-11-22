@@ -30,58 +30,57 @@ def continue_ai_response(connection_id):
     Returns:
         str: AI的完整回复内容
     """
-    url = "http://pcfs.eno.ink:20000/api/ai/continue"
-    
-    payload = {
-        "connectionId": connection_id
-    }
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
+    url = f"http://pcfs.eno.ink:20000/api/aicontinue?connectionId={connection_id}"
     
     log(f"开始继续获取AI响应，连接ID: {connection_id}", logging.INFO)
     
-    try:
-        log(f"发送继续请求到: {url}", logging.DEBUG)
-        log(f"请求payload: {payload}", logging.DEBUG)
-        
-        response = requests.post(url, json=payload, headers=headers, timeout=30)
-        log(f"继续获取响应状态码: {response.status_code}", logging.DEBUG)
-        
-        response.raise_for_status()
-        result = response.json()
-        
-        log(f"继续获取响应结果: {result}", logging.DEBUG)
-        
-        if result.get("status"):
-            if "content" in result:
-                content = result["content"]
-                log(f"成功获取到完整回复内容，长度: {len(content)}字符", logging.INFO)
-                return content
-            elif "message" in result:
-                message = result["message"]
-                log(f"AI还在处理中: {message}，1秒后重试", logging.INFO)
-                # 还在处理中，等待后重试
-                time.sleep(1)
-                return continue_ai_response(connection_id)  # 递归重试
-            else:
-                log("继续获取响应成功但无内容", logging.WARNING)
-                return "未能获取到 AI 回复内容"
-        else:
-            error_msg = result.get("error", "未知错误")
-            log(f"继续获取失败: {error_msg}", logging.ERROR)
-            return f"继续获取结果失败: {error_msg}"
+    while True:  # 持续重试直到成功
+        try:
+            log(f"发送继续请求到: {url}", logging.DEBUG)
+            log(f"请求 json: {{'connectionId': '{connection_id}'}}", logging.DEBUG)
             
-    except requests.exceptions.RequestException as e:
-        log(f"继续获取请求失败: {str(e)}", logging.ERROR)
-        return f"请求失败: {str(e)}"
-    except json.JSONDecodeError as e:
-        log(f"继续获取响应JSON解析失败: {str(e)}", logging.ERROR)
-        return "服务器响应不是有效的 JSON 格式"
-    except Exception as e:
-        log(f"继续获取发生未知错误: {str(e)}", logging.ERROR)
-        return f"未知错误: {str(e)}"
+            response = requests.get(url)
+            log(f"继续获取响应状态码: {response.status_code}", logging.DEBUG)
+            log(f"响应内容： {response.text}", logging.DEBUG)
+            
+            response.raise_for_status()
+            result = response.json()
+            
+            log(f"继续获取响应结果: {result}", logging.DEBUG)
+            
+            if result.get("status"):
+                if "content" in result:
+                    content = result["content"]
+                    log(f"成功获取到完整回复内容，长度: {len(content)}字符", logging.INFO)
+                    return content
+                elif "message" in result:
+                    message = result["message"]
+                    log(f"AI还在处理中: {message}，等待5秒后重试", logging.INFO)
+                    # 还在处理中，等待5秒后重试
+                    time.sleep(5)
+                    continue  # 继续循环重试
+                else:
+                    log("继续获取响应成功但无内容", logging.WARNING)
+                    return "未能获取到 AI 回复内容"
+            else:
+                # status == false，等待5秒后重试
+                error_msg = result.get("error", "未知错误")
+                log(f"继续获取失败(status=false): {error_msg}，等待5秒后重试", logging.WARNING)
+                time.sleep(5)
+                continue  # 继续循环重试
+                
+        except requests.exceptions.RequestException as e:
+            log(f"继续获取请求失败: {str(e)}，等待5秒后重试", logging.ERROR)
+            time.sleep(5)
+            continue  # 继续循环重试
+        except json.JSONDecodeError as e:
+            log(f"继续获取响应JSON解析失败: {str(e)}，等待5秒后重试", logging.ERROR)
+            time.sleep(5)
+            continue  # 继续循环重试
+        except Exception as e:
+            log(f"继续获取发生未知错误: {str(e)}，等待5秒后重试", logging.ERROR)
+            time.sleep(5)
+            continue  # 继续循环重试
 
 
 def AskBloriko(question, config):
@@ -217,7 +216,7 @@ def AskBloriko(question, config):
     #     return result
 
 
-def AskBlorikoAndSet(question, AskBloriko_Answer, parent):
+def AskBlorikoAndSet(question, AskBloriko_Answer, BlorikoThinking, parent):
     """
     向Bloriko发送问题并获取回答，直接设置到UI控件
     
@@ -229,6 +228,8 @@ def AskBlorikoAndSet(question, AskBloriko_Answer, parent):
     Returns:
         str: AI的回复内容
     """
+    AskBloriko_Answer.setText("让络可好好想想...")
+    BlorikoThinking.show()
     log(f"开始AskBlorikoAndSet函数，问题长度: {len(question)}字符", logging.INFO)
     
     # 读取配置文件
@@ -371,6 +372,7 @@ def AskBlorikoAndSet(question, AskBloriko_Answer, parent):
         # 设置结果到UI控件
         log(f"准备将结果设置到UI控件，内容长度: {len(result_content)}字符", logging.DEBUG)
         AskBloriko_Answer.setText(result_content)
+        BlorikoThinking.hide()
         log("已将 Bloriko 响应设置到界面控件", logging.INFO)
         return result_content
     
