@@ -216,7 +216,7 @@ def AskBloriko(question, config):
     #     return result
 
 
-def AskBlorikoAndSet(question, AskBloriko_Answer, BlorikoThinking, parent):
+def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent):
     """
     向Bloriko发送问题并获取回答，直接设置到UI控件
     
@@ -247,9 +247,9 @@ def AskBlorikoAndSet(question, AskBloriko_Answer, BlorikoThinking, parent):
 
     def show_login_message():
         log("显示登录提示消息框", logging.INFO)
-        w = MessageBox("登录才可使用联机功能", "Easytier 联机需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。", parent)
+        w = MessageBox("Bloriko 还不知道您是谁", "Bloriko AI 需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。", parent)
         if w.exec():
-            parent.switchTo(parent.passportInterface)
+            self.switchTo(self.passportInterface)
             log("用户点击确认，切换到通行证界面", logging.INFO)
 
     if not config.get("Bloret_PassPort_Login", False):

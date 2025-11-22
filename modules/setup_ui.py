@@ -321,7 +321,7 @@ def setup_home_ui(self, widget):
 
     if AskBloriko_Button:
         AskBloriko_Button.setIcon(FluentIcon.SEND)
-        AskBloriko_Button.clicked.connect(lambda: AskBlorikoAndSet(AskBloriko_Edit.text(), AskBloriko_Answer, BlorikoThinking, widget))
+        AskBloriko_Button.clicked.connect(lambda: AskBlorikoAndSet(self, AskBloriko_Edit.text(), AskBloriko_Answer, BlorikoThinking, widget))
     else:
         log("未找到 AskBloriko_Button 元素")
 
