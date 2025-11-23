@@ -2269,42 +2269,37 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                             # 无论成功失败，都增加完成计数器
                             completed_count += 1
                         
-                        # 更新资源文件下载进度条和线程数显示（在UI中安全更新）
-                        if download_dialog:
-                            try:
-                                # 导入PyQt5控件
-                                from PyQt5.QtWidgets import QProgressBar, QLabel
-                                # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                                from PyQt5.QtCore import QMetaObject, Qt
-                                
-                                # 更新进度条显示
-                                resources_progress_bar = download_dialog.findChild(QProgressBar, "Resources_progress")
-                                if resources_progress_bar:
-                                    # 计算进度百分比（基于完成数量）
-                                    progress_value = int((completed_count / assets_count) * 100)
-                                    # 使用invokeMethod在Qt主线程中更新进度条值
-                                    QMetaObject.invokeMethod(resources_progress_bar, "setValue", Qt.QueuedConnection,
-                                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(int, progress_value))
-                                
-                                # 更新活动线程数显示
-                                thread_label = download_dialog.findChild(QLabel, "Resources_file_working_Thread")
-                                if thread_label:
-                                    # 使用invokeMethod在Qt主线程中更新活动线程数文本
-                                    QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
-                            except Exception as e:
-                                # 如果更新UI失败，记录错误日志但不中断下载
-                                log(f"更新资源文件进度时出错: {e}")
-                                
-                        # 每下载10个文件或达到总数的5%时更新一次通知，避免频繁更新
-                        # 这样可以平衡用户体验和系统性能
-                        if completed_count % 10 == 0 or completed_count % int(assets_count * 0.05) == 0 or completed_count == assets_count:
-                            # 更新系统通知进度
-                            update_progress({
-                                'value': completed_count/assets_count,  # 进度值（0-1之间）
-                                'valueStringOverride': f'{completed_count}/{assets_count} ({int(completed_count/assets_count*100)}%)',  # 自定义进度文本
-                                'status': f'正在下载资源文件...'  # 状态描述
-                            })
+                        # 每10%更新一次UI，避免频繁更新
+                        current_progress = int((completed_count / assets_count) * 100)
+                        last_progress = int(((completed_count - 1) / assets_count) * 100) if completed_count > 0 else 0
+                        
+                        # 当进度达到10%的倍数时更新UI，只更新进度条，不发送通知
+                        if current_progress // 10 > last_progress // 10 or completed_count == assets_count:
+                            # 更新资源文件下载进度条和线程数显示（在UI中安全更新）
+                            if download_dialog:
+                                try:
+                                    # 导入PyQt5控件
+                                    from PyQt5.QtWidgets import QProgressBar, QLabel
+                                    # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
+                                    from PyQt5.QtCore import QMetaObject, Qt
+                                    
+                                    # 更新进度条显示
+                                    resources_progress_bar = download_dialog.findChild(QProgressBar, "Resources_progress")
+                                    if resources_progress_bar:
+                                        # 使用invokeMethod在Qt主线程中更新进度条值
+                                        QMetaObject.invokeMethod(resources_progress_bar, "setValue", Qt.QueuedConnection,
+                                                               __import__('PyQt5.QtCore').QtCore.Q_ARG(int, current_progress))
+                                        log(f"资源文件下载进度: {current_progress}% ({completed_count}/{assets_count})")
+                                    
+                                    # 更新活动线程数显示
+                                    thread_label = download_dialog.findChild(QLabel, "Resources_file_working_Thread")
+                                    if thread_label:
+                                        # 使用invokeMethod在Qt主线程中更新活动线程数文本
+                                        QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
+                                                               __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
+                                except Exception as e:
+                                    # 如果更新UI失败，记录错误日志但不中断下载
+                                    log(f"更新资源文件进度时出错: {e}")
                     
                     # 等待所有任务完成（设置60秒超时）
                     try:
@@ -2314,12 +2309,19 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                         # 如果等待超时或出错，记录错误日志
                         log(f"等待资源文件下载完成时出错: {e}")
                 
-                # 更新通知为完成状态
-                update_progress({
-                    'value': 1,  # 进度值设置为1（100%）
-                    'valueStringOverride': f'{assets_count}/{assets_count} 个',  # 显示完成数量
-                    'status': i18nText('资源文件下载完成!')  # 使用国际化文本显示完成状态
-                })
+                # 下载完成时更新UI到100%
+                if download_dialog:
+                    try:
+                        from PyQt5.QtWidgets import QProgressBar
+                        from PyQt5.QtCore import QMetaObject, Qt
+                        
+                        resources_progress_bar = download_dialog.findChild(QProgressBar, "Resources_progress")
+                        if resources_progress_bar:
+                            QMetaObject.invokeMethod(resources_progress_bar, "setValue", Qt.QueuedConnection,
+                                                   __import__('PyQt5.QtCore').QtCore.Q_ARG(int, 100))
+                            log(f"资源文件下载完成，设置进度条为100%")
+                    except Exception as e:
+                        log(f"更新资源文件完成进度时出错: {e}")
                 
                 # 输出下载结果日志
                 log(f"资源文件下载完成: 成功 {success_count} 个, 失败 {failed_count} 个")
@@ -2372,8 +2374,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 # 记录找到的版本信息
                 log(f"找到最新的 Fabric Loader 版本: {loader_version}")
                 
-                # 构建Fabric版本的安装路径（版本ID格式：原版版本-fabric-loader版本）
-                fabric_version_id = f"{version}-fabric-{loader_version}"
+                # 使用PCL风格的版本命名格式（空格分隔）
+                fabric_version_id = f"{version}-Fabric {loader_version}"
                 # 构建Fabric版本目录路径
                 fabric_version_dir = os.path.join(versions_dir, fabric_version_id)
                 # 创建版本目录（如果不存在则创建）
@@ -2395,6 +2397,44 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
 
                 # 解析JSON响应数据
                 fabric_json_data = fabric_json_response.json()
+                
+                # 获取原版版本JSON以合并库文件和资源信息
+                original_version_json_path = os.path.join(version_dir, f"{version}.json")
+                if os.path.exists(original_version_json_path):
+                    with open(original_version_json_path, 'r', encoding='utf-8') as f:
+                        original_json = json.load(f)
+                    
+                    # 合并原版库文件到Fabric JSON
+                    original_libraries = original_json.get("libraries", [])
+                    fabric_libraries = fabric_json_data.get("libraries", [])
+                    
+                    # 合并库文件并去重（基于name字段）
+                    merged_libraries = fabric_libraries.copy()
+                    existing_names = {lib.get("name") for lib in fabric_libraries if "name" in lib}
+                    
+                    for lib in original_libraries:
+                        lib_name = lib.get("name")
+                        if lib_name and lib_name not in existing_names:
+                            merged_libraries.append(lib)
+                    
+                    # 更新合并后的库文件列表
+                    fabric_json_data["libraries"] = merged_libraries
+                    
+                    # 合并资源文件信息
+                    if "assetIndex" in original_json:
+                        fabric_json_data["assetIndex"] = original_json["assetIndex"]
+                    if "assets" in original_json:
+                        fabric_json_data["assets"] = original_json["assets"]
+                    if "downloads" in original_json and "client" in original_json["downloads"]:
+                        fabric_json_data["downloads"] = {"client": original_json["downloads"]["client"]}
+                
+                # 删除inheritsFrom和jar字段，使用直接包含的方式
+                fabric_json_data.pop("inheritsFrom", None)
+                fabric_json_data.pop("jar", None)
+                
+                # 设置版本ID
+                fabric_json_data["id"] = fabric_version_id
+                
                 # 构建Fabric版本JSON文件路径
                 fabric_json_path = os.path.join(fabric_version_dir, f"{fabric_version_id}.json")
                 # 以UTF-8编码写入JSON文件，使用ensure_ascii=False保持Unicode字符，indent=4格式化输出
@@ -2463,21 +2503,56 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                     # 如果没有找到库文件，记录WARNING级别日志
                     log("未找到 Fabric Loader 库文件", logging.WARNING)
 
-                # 修改版本隔离文件
-                # 复制原始版本JSON文件到Fabric版本目录（用于版本隔离）
-                original_version_json_path = os.path.join(version_dir, f"{version}.json")
-                shutil.copy(original_version_json_path, fabric_version_dir)
-
-                # 修改Fabric版本JSON文件的关键字段
-                fabric_json_data["id"] = fabric_version_id  # 设置版本ID为Fabric格式
-                fabric_json_data["inheritsFrom"] = version  # 设置继承的原版版本
-                fabric_json_data["jar"] = version  # 设置JAR文件指向原版版本
-
-                # 重新写入修改后的JSON文件
-                with open(fabric_json_path, 'w', encoding='utf-8') as f:
-                    json.dump(fabric_json_data, f, ensure_ascii=False, indent=4)
-                # 记录修改JSON文件成功的日志
-                log(f"已修改Fabric版本JSON文件: {fabric_json_path}")
+                # 下载客户端JAR文件
+                update_progress({
+                    'status': f'正在下载 Fabric 客户端 JAR...',  # 状态描述
+                    'value': 0.92,  # 进度值设置为92%
+                    'valueStringOverride': '92%'  # 自定义进度文本显示
+                })
+                
+                # 处理客户端JAR文件
+                client_jar_path = os.path.join(fabric_version_dir, f"{fabric_version_id}.jar")
+                
+                # 优先尝试下载原版客户端JAR
+                if "downloads" in fabric_json_data and "client" in fabric_json_data["downloads"]:
+                    client_download_info = fabric_json_data["downloads"]["client"]
+                    client_url = client_download_info.get("url")
+                    client_size = client_download_info.get("size", 0)
+                    client_sha1 = client_download_info.get("sha1", "")
+                    
+                    if client_url:
+                        log(f"正在下载客户端JAR: {client_url}")
+                        try:
+                            # 使用镜像源下载客户端JAR
+                            mirror_urls = dl_source_launcher_or_meta_get(client_url)
+                            for url in mirror_urls:
+                                try:
+                                    download_file(url, client_jar_path)
+                                    # 验证文件大小
+                                    if os.path.exists(client_jar_path) and os.path.getsize(client_jar_path) == client_size:
+                                        log(f"客户端JAR下载成功: {client_jar_path}")
+                                        break
+                                except Exception as e:
+                                    log(f"从 {url} 下载客户端JAR失败: {e}", logging.WARNING)
+                                    continue
+                            else:
+                                # 如果所有镜像源都失败，尝试从原版复制
+                                original_jar_path = os.path.join(version_dir, f"{version}.jar")
+                                if os.path.exists(original_jar_path):
+                                    shutil.copy(original_jar_path, client_jar_path)
+                                    log(f"从原版复制客户端JAR: {original_jar_path} -> {client_jar_path}")
+                                else:
+                                    log(f"无法获取客户端JAR文件", logging.ERROR)
+                        except Exception as e:
+                            log(f"下载客户端JAR失败: {e}", logging.ERROR)
+                else:
+                    # 如果没有下载信息，尝试从原版复制
+                    original_jar_path = os.path.join(version_dir, f"{version}.jar")
+                    if os.path.exists(original_jar_path):
+                        shutil.copy(original_jar_path, client_jar_path)
+                        log(f"从原版复制客户端JAR: {original_jar_path} -> {client_jar_path}")
+                    else:
+                        log(f"无法获取客户端JAR文件", logging.ERROR)
 
                 # 更新进度条显示Fabric Loader安装完成
                 update_progress({
@@ -2521,47 +2596,62 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 # 记录需要下载的库文件数量
                 log(f"Fabric需要下载 {len(libraries)} 个库文件")
                 
-                # 使用线程池并发下载库文件
-                with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-                    # 创建future到库文件路径的映射字典
-                    future_to_lib = {}
-                    # 遍历所有库文件
-                    for lib in libraries:
-                        # 检查库文件是否有downloads和artifact字段
-                        if "downloads" in lib and "artifact" in lib["downloads"]:
-                            # 提取artifact信息
-                            artifact = lib["downloads"]["artifact"]
-                            # 构建库文件路径（遵循Maven目录结构）
-                            lib_path = os.path.join(minecraft_dir, "libraries", artifact["path"])
-                            # 获取库文件下载URL
-                            lib_url = artifact["url"]
-                            
-                            # 确保库文件目录存在（如果不存在则创建）
+                # 使用镜像源下载库文件
+                processed_libraries = []
+                for lib in libraries:
+                    if "downloads" in lib and "artifact" in lib["downloads"]:
+                        artifact = lib["downloads"]["artifact"]
+                        lib_path = os.path.join(minecraft_dir, "libraries", artifact["path"])
+                        lib_url = artifact["url"]
+                        lib_size = artifact.get("size", 0)
+                        
+                        # 检查文件是否需要下载
+                        if not os.path.exists(lib_path) or os.path.getsize(lib_path) != lib_size:
+                            processed_libraries.append((lib, lib_path, lib_url))
+                
+                # 使用多线程下载库文件
+                if processed_libraries:
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                        future_to_lib = {}
+                        for lib, lib_path, lib_url in processed_libraries:
+                            # 确保目录存在
                             os.makedirs(os.path.dirname(lib_path), exist_ok=True)
                             
-                            # 如果文件不存在或大小不匹配，则下载
-                            if not os.path.exists(lib_path) or os.path.getsize(lib_path) != artifact.get("size", 0):
-                                # 提交下载任务到线程池，使用全局download_file函数
-                                future_to_lib[executor.submit(download_file, lib_url, lib_path)] = lib_path
-                    
-                    # 等待所有库文件下载完成
-                    for future in concurrent.futures.as_completed(future_to_lib):
-                        # 获取对应的库文件路径
-                        lib_path = future_to_lib[future]
-                        try:
-                            # 获取任务结果（会阻塞直到任务完成或抛出异常）
-                            future.result()
-                            # 记录库文件下载成功的日志
-                            log(f"成功下载库文件: {lib_path}")
-                        except Exception as e:
-                            # 如果下载失败，记录ERROR级别日志
-                            log(f"下载库文件失败: {lib_path}, {e}", logging.ERROR)
+                            # 使用镜像源下载库文件
+                            mirror_urls = dl_source_library_get(lib_url)
+                            for url in mirror_urls:
+                                try:
+                                    future = executor.submit(download_file, url, lib_path)
+                                    future_to_lib[future] = (lib_path, url)
+                                    break
+                                except Exception as e:
+                                    log(f"从 {url} 下载库文件失败: {e}", logging.WARNING)
+                                    continue
+                        
+                        # 等待所有下载任务完成
+                        for future in concurrent.futures.as_completed(future_to_lib):
+                            lib_path, url = future_to_lib[future]
+                            try:
+                                future.result()
+                                log(f"成功下载库文件: {lib_path}")
+                            except Exception as e:
+                                log(f"下载库文件失败: {lib_path}, {e}", logging.ERROR)
+                
+                # 创建mods目录
+                mods_dir = os.path.join(fabric_version_dir, "mods")
+                os.makedirs(mods_dir, exist_ok=True)
+                log(f"已创建mods目录: {mods_dir}")
+                
+                # 创建资源包目录
+                resourcepacks_dir = os.path.join(fabric_version_dir, "resourcepacks")
+                os.makedirs(resourcepacks_dir, exist_ok=True)
+                log(f"已创建资源包目录: {resourcepacks_dir}")
                 
                 # 记录Fabric Loader安装完成的日志
-                log(f"Fabric Loader {loader_version} 安装完成")
+                log(f"Fabric {loader_version} 安装完成")
                 # 更新进度条显示安装完成
                 update_progress({
-                    'status': f'Fabric Loader {loader_version} 安装完成!',  # 状态描述
+                    'status': f'Fabric {loader_version} 安装完成!',  # 状态描述
                     'value': 1.0,  # 进度值设置为100%
                     'valueStringOverride': '100%'  # 自定义进度文本显示
                 })
