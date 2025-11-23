@@ -92,19 +92,19 @@
 **<summary>单击此处展开，查看软件截图 (7 张图片)</summary>**
 
 #### 主界面
-![Home](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/Home.png)
+![Home](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/New-Images/cropped/Home.png)
 #### 下载
-![Download](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/Download.png)
+![Download](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/New-Images/cropped/Download.png)
 #### 小工具
-![tools](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/tools.png)
+![tools](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/New-Images/cropped/tools.png)
 #### 通行证
-![passport](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/passport.png)
+![passport](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/New-Images/cropped/passport.png)
 #### 设置
-![settings](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/settings.png)
+![settings](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/New-Images/cropped/settings.png)
 #### 关于
-![info](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/info.png)
+![info](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/New-Images/cropped/info.png)
 #### 侧边栏
-![menu](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/menu.png)
+![menu](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/New-Images/cropped/menu.png)
 
 </details>
 
