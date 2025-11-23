@@ -21,24 +21,7 @@ from modules.BLDownload import BL_download
 from modules.versions import Get_Run_Script
 from modules.i18n import i18n_widgets, i18nText
 # from modules.plugin import setup_window
-# 全局变量
-server_ip = "http://pcfs.eno.ink:2/" # Bloret Launcher Server 服务器地址 （尾部带斜杠）
-ver_id_main = []
-ver_id_short = []
-ver_id = [] 
-ver_url = {}
-ver_id_long = []
-ver_id_bloret = ['1.21.7', '1.21.8']
-set_list = []
-set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
-BL_update_text = ""
-BL_latest_ver = 0
-threads = []
-icon = {'src': 'bloret.ico','placement': 'appLogoOverride'}
-minecraft_list = []
-tabbar = None
-isdarktheme = False
-LM_Download_Way_list = ["1.21.8","1.21.7"]
+import modules.globals as BLglobals
 
 # 读取 config.json 配置
 with open("config.json", "r", encoding="utf-8") as f:
@@ -83,7 +66,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.menu.addMenu(launch_menu)
 
         self.menu.addActions([
-            Action(i18nText('🔡  访问 BBS'), triggered=lambda: open_BBBS_link(server_ip)),
+            Action(i18nText('🔡  访问 BBS'), triggered=lambda: open_BBBS_link(BLglobals.server_ip)),
             Action(i18nText('🔄️  重启程序'), triggered=lambda: restart()),
             Action(i18nText('✅  显示窗口'), triggered=self.main_window.show_main_window),
             Action(i18nText('❎  退出程序'), triggered=QApplication.quit)
@@ -157,26 +140,26 @@ class LoadMinecraftVersionsThread(QThread):
             response.raise_for_status()
             version_data = response.json()
             versions = version_data["versions"]
-            ver_id_main.clear()
-            ver_id_short.clear()
-            ver_id_long.clear()
+            BLglobals.ver_id_main.clear()
+            BLglobals.ver_id_short.clear()
+            BLglobals.ver_id_long.clear()
             for version in versions:
                 if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
-                    ver_id_main.append(version["id"])
+                    BLglobals.ver_id_main.append(version["id"])
                 else:
                     if version["type"] == "snapshot":
-                        ver_id_short.append(version["id"])
+                        BLglobals.ver_id_short.append(version["id"])
                     elif version["type"] in ["old_alpha", "old_beta"]:
-                        ver_id_long.append(version["id"])
+                        BLglobals.ver_id_long.append(version["id"])
             if self.version_type == i18nText("百络谷支持版本"):
                 # 直接使用固定的版本列表
                 self.versions_loaded.emit(["1.21.7", "1.21.8"])
             elif self.version_type == i18nText("正式版本"):
-                self.versions_loaded.emit(ver_id_main)
+                self.versions_loaded.emit(BLglobals.ver_id_main)
             elif self.version_type == i18nText("快照版本"):
-                self.versions_loaded.emit(ver_id_short)
+                self.versions_loaded.emit(BLglobals.ver_id_short)
             elif self.version_type == i18nText("远古版本"):
-                self.versions_loaded.emit(ver_id_long)
+                self.versions_loaded.emit(BLglobals.ver_id_long)
             else:
                 self.error_occurred.emit(i18nText("未知的版本类型"))
         except requests.RequestException as e:
@@ -305,9 +288,8 @@ class MainWindow(FluentWindow):
         
         self.loading_dialogs = []  # 初始化 loading_dialogs 属性
         self.threads = []  # 初始化 threads 属性
-        handle_first_run(self,server_ip)
-        global ver_id_bloret
-        ver_id_bloret = check_Bloret_version(self, server_ip, ver_id_bloret)
+        handle_first_run(self,BLglobals.server_ip)
+        ver_id_bloret = check_Bloret_version(self, BLglobals.server_ip, BLglobals.ver_id_bloret)
         
 
         # 初始化其他属性
@@ -352,7 +334,7 @@ class MainWindow(FluentWindow):
 
         # 处理首次运行
         update_progress({'value': 70 / 100, 'valueStringOverride': '7/10', 'status': i18nText('处理首次运行')})
-        QTimer.singleShot(0, lambda: handle_first_run(self,server_ip))
+        QTimer.singleShot(0, lambda: handle_first_run(self,BLglobals.server_ip))
         
         # 隐藏启动页面
         update_progress({'value': 80 / 100, 'valueStringOverride': '8/10', 'status': i18nText('隐藏启动页面')})
@@ -365,7 +347,7 @@ class MainWindow(FluentWindow):
         # 显示窗口
         update_progress({'value': 100 / 100, 'valueStringOverride': '10/10', 'status': i18nText('显示窗口')})
         self.show()
-        check_for_updates(self,server_ip)
+        check_for_updates(self,BLglobals.server_ip)
 
         self.destroyed.connect(lambda: (
             json.dump(self.config, open('config.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
@@ -483,10 +465,10 @@ class MainWindow(FluentWindow):
         setup_download_ui(self,self.downloadInterface)
         setup_tools_ui(self,self.toolsInterface)
         setup_info_ui(self,self.infoInterface)
-        setup_BBS_ui(self,self.BBSInterface,server_ip)
-        setup_Mod_ui(self,self.modInterface,server_ip)
-        setup_multiplayer_ui(self,self.multiplayerInterface, server_ip)
-        setup_passport_ui(self,self.passportInterface,server_ip,self.homeInterface)
+        setup_BBS_ui(self,self.BBSInterface,BLglobals.server_ip)
+        setup_Mod_ui(self,self.modInterface,BLglobals.server_ip)
+        setup_multiplayer_ui(self,self.multiplayerInterface, BLglobals.server_ip)
+        setup_passport_ui(self,self.passportInterface,BLglobals.server_ip,self.homeInterface)
         setup_settings_ui(self,self.settingsInterface)
         setup_version_ui(self,self.versionInterface,minecraft_list,customize_list,MINECRAFT_DIR,self.homeInterface)
     def animate_sidebar(self):
@@ -610,7 +592,7 @@ class MainWindow(FluentWindow):
         download_thread = DownloadThread(version, MINECRAFT_DIR, self.download_dialog)
         download_thread.download_finished.connect(lambda success: self.on_minecraft_download_finished(success, version, self.download_dialog))
         download_thread.start()
-        threads.append(download_thread)  # 防止线程被垃圾回收
+        BLglobals.threads.append(download_thread)  # 防止线程被垃圾回收
     
     def download_fabric_version(self, version):
         """下载并安装Fabric版本"""
@@ -1091,17 +1073,17 @@ class MainWindow(FluentWindow):
                     latest_release = version_data["latest"]["release"]
                     latest_snapshot = version_data["latest"]["snapshot"]
                     versions = version_data["versions"]
-                    ver_id_main.clear()
-                    ver_id_short.clear()
-                    ver_id_long.clear()
+                    BLglobals.ver_id_main.clear()
+                    BLglobals.ver_id_short.clear()
+                    BLglobals.ver_id_long.clear()
                     for version in versions:
                         if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
-                            ver_id_main.append(version["id"])
+                            BLglobals.ver_id_main.append(version["id"])
                         else:
                             if version["type"] == "snapshot":
-                                ver_id_short.append(version["id"])
+                                BLglobals.ver_id_short.append(version["id"])
                             elif version["type"] in ["old_alpha", "old_beta"]:
-                                ver_id_long.append(version["id"])
+                                BLglobals.ver_id_long.append(version["id"])
             
                     # 更新UI中的minecraft_choose下拉框
                     minecraft_choose.clear()
@@ -1113,11 +1095,11 @@ class MainWindow(FluentWindow):
                             # 如果ver_id_bloret为空，则添加默认版本列表
                             minecraft_choose.addItems(["1.21.7", "1.21.8"])
                     elif version_type == i18nText("正式版本"):
-                        minecraft_choose.addItems(ver_id_main)
+                        minecraft_choose.addItems(BLglobals.ver_id_main)
                     elif version_type == i18nText("快照版本"):
-                        minecraft_choose.addItems(ver_id_short)
+                        minecraft_choose.addItems(BLglobals.ver_id_short)
                     elif version_type == i18nText("远古版本"):
-                        minecraft_choose.addItems(ver_id_long)
+                        minecraft_choose.addItems(BLglobals.ver_id_long)
                     else:
                         log(i18nText("未知的版本类型"), logging.ERROR)
             
@@ -1679,7 +1661,7 @@ log(f"当前主题:{isdarktheme}")
 #     switch_language(QLocale(language))
 
 if not config.get('localmod', False):
-    check_Light_Minecraft_Download_Way(server_ip, update_download_way)
+    check_Light_Minecraft_Download_Way(BLglobals.server_ip, update_download_way)
 else:
     log(i18nText("本地模式已启用，获取 Light-Minecraft-Download-Way 的过程已跳过。"))
 
