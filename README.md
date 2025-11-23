@@ -92,21 +92,32 @@
 **<summary>单击此处展开，查看软件截图 (7 张图片)</summary>**
 
 #### 主界面
-![Home](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/Home.png)
+![Home](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Home-Long.PNG?raw=true)
 #### 下载
-![Download](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/Download.png)
+![Download](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Download.jpg?raw=true)
 #### 小工具
-![tools](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/tools.png)
+![tools](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Tools.jpg?raw=true)
 #### 通行证
-![passport](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/passport.png)
+![passport](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/PassPort.jpg?raw=true)
 #### 设置
-![settings](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/settings.png)
+![settings](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Settings.jpg?raw=true)
 #### 关于
-![info](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/info.png)
-#### 侧边栏
-![menu](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/menu.png)
+![info](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/About.jpg?raw=true)
+#### Modrinth
+![Modrinth](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Mods-toast.jpg?raw=true)
+![Modrinth](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Mods-Dialog.jpg?raw=true)
+#### 联机
+![Client](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Client.jpg?raw=true)
+![Client-Easytier-Server](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Client-Easytier-Server.jpg?raw=true)
+![Client-Easytier-Client](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Client-Easytier-Client.jpg?raw=true)
+
 
 </details>
+
+## 贡献者
+![contributors](http://contrib.nn.ci/api?repo=BloretCrew/Bloret-Launcher)
+
+![Alt](https://repobeats.axiom.co/api/embed/a5638ffaed2d2ba6776999fafc10b5e1513c53a9.svg "Repobeats analytics image")
 
 ## 致谢以下存储库或项目
 - [PyQt5](https://www.riverbankcomputing.com/static/Docs/PyQt5/)
