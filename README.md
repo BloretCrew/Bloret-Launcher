@@ -89,7 +89,7 @@
 ## 软件截图
 <details>
 
-**<summary>单击此处展开，查看软件截图 (7 张图片)</summary>**
+**<summary>单击此处展开，查看软件截图 (11 张图片)</summary>**
 
 #### 主界面
 ![Home](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Home-Long.PNG?raw=true)
