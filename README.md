@@ -119,6 +119,11 @@
 
 ![Alt](https://repobeats.axiom.co/api/embed/a5638ffaed2d2ba6776999fafc10b5e1513c53a9.svg "Repobeats analytics image")
 
+## 贡献者
+![contributors](http://contrib.nn.ci/api?repo=BloretCrew/Bloret-Launcher)
+
+![Alt](https://repobeats.axiom.co/api/embed/a5638ffaed2d2ba6776999fafc10b5e1513c53a9.svg "Repobeats analytics image")
+
 ## 致谢以下存储库或项目
 - [PyQt5](https://www.riverbankcomputing.com/static/Docs/PyQt5/)
 - [PyQt Fluent Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)

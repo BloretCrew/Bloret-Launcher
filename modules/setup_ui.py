@@ -1839,9 +1839,9 @@ def setup_download_ui(self, widget):
             def on_fabric_download_button_clicked():
                 from qfluentwidgets import MessageBox
                 version = fabric_version_choose.currentText()
-                box = MessageBox(i18nText('您确定要安装 Fabric 版本 {} 吗？').format(version), i18nText('Fabric 版本安装目前尚在 Beta 阶段（实验性功能），安装完成后可能不能正常启动，但 Bloret Launcher 目前已可正常启动其他 Minecraft 启动器安装的 Fabric 版本 Minecraft。\n（人话：目前 Fabric 安装安装出来的可能不够标准，但是 Bloret Launcher 可以启动标准 Fabric 版本）\n如果您有能力，欢迎到 Github 来帮忙改进 Bloret Launcher'), widget)
-                if box.exec():
-                    InstallMinecraftVersion(version, None, None, True)
+                # box = MessageBox(i18nText('您确定要安装 Fabric 版本 {} 吗？').format(version), i18nText('Fabric 版本安装目前尚在 Beta 阶段（实验性功能），安装完成后可能不能正常启动，但 Bloret Launcher 目前已可正常启动其他 Minecraft 启动器安装的 Fabric 版本 Minecraft。\n（人话：目前 Fabric 安装安装出来的可能不够标准，但是 Bloret Launcher 可以启动标准 Fabric 版本）\n如果您有能力，欢迎到 Github 来帮忙改进 Bloret Launcher'), widget)
+                # if box.exec():
+                InstallMinecraftVersion(version, None, None, True)
             
             fabric_download_button.clicked.connect(on_fabric_download_button_clicked)
             
