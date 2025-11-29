@@ -74,8 +74,33 @@ def log(message, level=logging.INFO):
     ***
     ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
+    import inspect
+    
+    # 获取调用者的帧信息
+    frame = inspect.currentframe().f_back
+    if frame:
+        filename = frame.f_code.co_filename
+        lineno = frame.f_lineno
+        func_name = frame.f_code.co_name
+        
+        # 创建自定义的日志记录
+        logger = logging.getLogger()
+        record = logger.makeRecord(
+            name=logger.name,
+            level=level,
+            fn=filename,
+            lno=lineno,
+            msg=message,
+            args=(),
+            exc_info=None,
+            func=func_name
+        )
+        logger.handle(record)
+    else:
+        # 如果无法获取调用者信息，使用默认方式
+        logging.log(level, message)
+    
     print(message)
-    logging.log(level, message)
     logging.getLogger().handlers[0].flush()  # 强制刷新日志
     # if level == logging.ERROR:
     #     handle_exception(Exception(message))  # 如果是错误级别，调用异常处理函数
@@ -126,5 +151,3 @@ def clear_log_files(self, log_clear_button):
         parent=self
     )
     self.update_log_clear_button_text(log_clear_button)
-    
-    
