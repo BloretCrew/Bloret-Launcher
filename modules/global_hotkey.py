@@ -4,6 +4,7 @@ import os
 import sys
 import ctypes
 import ctypes.wintypes
+import modules.globals as BLglobals
 
 # Windows API 常量
 WM_HOTKEY = 0x0312
@@ -37,7 +38,7 @@ ScreenShortCut = None
 def load_config():
     """从 config.json 加载配置，并将快捷键转为小写"""
     # 修改配置文件路径，指向项目根目录而不是modules目录
-    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), BLglobals.config_path)
     if not os.path.exists(config_path):
         print(f"警告: 配置文件未找到: {config_path}，将使用默认快捷键 Ctrl+Alt+A")
         # 返回默认快捷键

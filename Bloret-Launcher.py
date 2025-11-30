@@ -1,3 +1,5 @@
+import modules.globals as BLglobals
+import modules.config
 from http import server
 from PyQt5.QtWidgets import QSystemTrayIcon, QApplication, QPushButton, QWidget, QLineEdit, QLabel, QFileDialog, QMessageBox, QDialog
 from PyQt5 import uic
@@ -21,10 +23,9 @@ from modules.BLDownload import BL_download
 from modules.versions import Get_Run_Script
 from modules.i18n import i18n_widgets, i18nText
 # from modules.plugin import setup_window
-import modules.globals as BLglobals
 
 # 读取 config.json 配置
-with open("config.json", "r", encoding="utf-8") as f:
+with open(BLglobals.config_path, "r", encoding="utf-8") as f:
     config = json.load(f)
 
 # 从配置中获取 minecraft_dir
@@ -171,7 +172,7 @@ class MainWindow(FluentWindow):
         super().__init__()
 
         # 初始化配置文件
-        with open('config.json', 'r', encoding='utf-8') as f:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             self.config = json.load(f)
 
         # 获取系统主题颜色
@@ -237,7 +238,7 @@ class MainWindow(FluentWindow):
             default_mc_dir = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', '.minecraft')
             self.config['minecraft_dir'] = default_mc_dir
             # 保存配置到文件
-            with open('config.json', 'w', encoding='utf-8') as f:
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, ensure_ascii=False, indent=4)
 
         # 设置全局编码
@@ -350,7 +351,7 @@ class MainWindow(FluentWindow):
         check_for_updates(self,BLglobals.server_ip)
 
         self.destroyed.connect(lambda: (
-            json.dump(self.config, open('config.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+            json.dump(self.config, open(BLglobals.config_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
             if hasattr(self, 'config') else None
         ))
         
@@ -559,7 +560,7 @@ class MainWindow(FluentWindow):
             self.download_dialog.setWindowTitle(f"正在下载 Minecraft {version}")
 
             # 设置MaxThread的值
-            with open("config.json", "r", encoding="utf-8") as f:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
             max_thread_value = config.get("MaxThread", 2000)
             self.download_dialog.MaxThread.setText(str(max_thread_value))
@@ -889,7 +890,7 @@ class MainWindow(FluentWindow):
     def on_download_clicked(self):
         log(i18nText("下载 被点击"))
         load_ui("ui/download.old.ui", animate=False)
-        setup_download_old_ui(self,self.content_layout.itemAt(0).widget(),LM_Download_Way_list,ver_id_bloret,self.homeInterface)
+        setup_download_old_ui(self,self.content_layout.itemAt(0).widget(),LM_Download_Way_list,BLglobals.ver_id_bloret,self.homeInterface)
     def on_download_way_changed(self, widget, selected_way):
         show_way = widget.findChild(ComboBox, "show_way")
         fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
@@ -962,7 +963,7 @@ class MainWindow(FluentWindow):
             return
         # Save to config.json
         try:
-            with open('config.json', 'r', encoding='utf-8') as file:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as file:
                 config_data = json.load(file)
 
             if "Customize" not in config_data:
@@ -973,7 +974,7 @@ class MainWindow(FluentWindow):
                 "path": Customize_path_value
             })
 
-            with open('config.json', 'w', encoding='utf-8') as file:
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as file:
                 json.dump(config_data, file, ensure_ascii=False, indent=4)
             self.config = config_data  # 同步到 self.config
             InfoBar.success(
@@ -1089,8 +1090,8 @@ class MainWindow(FluentWindow):
                     minecraft_choose.clear()
                     if version_type == i18nText("百络谷支持版本"):
                         # 确保ver_id_bloret不为None且不为空
-                        if ver_id_bloret is not None and len(ver_id_bloret) > 0:
-                            minecraft_choose.addItems(ver_id_bloret)
+                        if BLglobals.ver_id_bloret is not None and len(BLglobals.ver_id_bloret) > 0:
+                            minecraft_choose.addItems(BLglobals.ver_id_bloret)
                         else:
                             # 如果ver_id_bloret为空，则添加默认版本列表
                             minecraft_choose.addItems(["1.21.7", "1.21.8"])
@@ -1640,7 +1641,7 @@ class MainWindow(FluentWindow):
         else:
             button.setText(i18nText("清空日志"))
 # 初始化配置文件
-with open('config.json', 'r', encoding='utf-8') as f:
+with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
     config = json.load(f)
 
 # 获取系统深浅色主题

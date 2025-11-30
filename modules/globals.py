@@ -15,4 +15,5 @@ minecraft_list = []
 tabbar = None
 isdarktheme = False
 LM_Download_Way_list = ["1.21.8","1.21.7"]
-ver_id_bloret = []
+
+config_path = ''

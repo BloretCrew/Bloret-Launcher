@@ -49,7 +49,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                         if isinstance(user_data, dict) and 'username' in user_data and 'email' in user_data:
                             # 读取现有配置
                             try:
-                                with open('config.json', 'r', encoding='utf-8') as f:
+                                with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                                     config_data = json.load(f)
                             except FileNotFoundError:
                                 config_data = {}
@@ -60,7 +60,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             config_data['Bloret_PassPort_PassWord'] = user_data.get('apptoken', '')
                             
                             # 保存配置到文件
-                            with open('config.json', 'w', encoding='utf-8') as f:
+                            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                                 json.dump(config_data, f, ensure_ascii=False, indent=4)
                                 
                             logger.info(f"User data saved to config.json: {user_data['username']}")

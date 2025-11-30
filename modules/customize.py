@@ -3,6 +3,8 @@ import os,subprocess,json,sys,logging
 from modules.log import log
 from modules.i18n import i18nText
 from modules.safe import handle_exception
+import modules.globals as BLglobals
+
 
 def CustomizeRun(self,version):
     ''' 
@@ -54,7 +56,7 @@ def find_Customize(self,version):
     ***
     ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
-    with open('config.json', 'r', encoding='utf-8') as file:
+    with open(BLglobals.config_path, 'r', encoding='utf-8') as file:
         config_data = json.load(file)
     if "Customize" not in config_data:
         config_data["Customize"] = []
@@ -101,7 +103,7 @@ def CustomizeAdd(self):
         
         # 读取现有配置
         try:
-            with open('config.json', 'r', encoding='utf-8') as file:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as file:
                 config_data = json.load(file)
         except FileNotFoundError:
             config_data = {}
@@ -132,7 +134,7 @@ def CustomizeAdd(self):
         config_data["Customize"].append(new_custom)
         
         # 保存到配置文件
-        with open('config.json', 'w', encoding='utf-8') as file:
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as file:
             json.dump(config_data, file, ensure_ascii=False, indent=4)
             
         # 更新当前配置
@@ -198,7 +200,7 @@ def CustomizeAppAdd(file_path, file_name):
         # 读取现有配置
         log("正在读取现有配置文件 config.json")
         try:
-            with open('config.json', 'r', encoding='utf-8') as file:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as file:
                 config_data = json.load(file)
             log("成功读取配置文件")
         except FileNotFoundError:
@@ -234,7 +236,7 @@ def CustomizeAppAdd(file_path, file_name):
         # 保存到配置文件
         log("正在将配置保存到 config.json")
         try:
-            with open('config.json', 'w', encoding='utf-8') as file:
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as file:
                 json.dump(config_data, file, ensure_ascii=False, indent=4)
             log("配置文件保存成功")
         except Exception as e:

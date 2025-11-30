@@ -3,12 +3,12 @@ import os
 from modules.log import log
 from PyQt5.QtWidgets import QLabel, QPushButton, QCheckBox, QRadioButton, QComboBox, QTextEdit, QLineEdit, QSpinBox
 from qfluentwidgets import ComboBox, SwitchButton, TextEdit
-
+import modules.globals as BLglobals
 
 def load_language():
     # 读取配置文件获取语言设置
     try:
-        with open('config.json', 'r', encoding='utf-8') as f:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
             language = config.get('language', 'zh-cn')  # 默认使用中文
     except FileNotFoundError:

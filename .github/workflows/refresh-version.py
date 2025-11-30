@@ -4,7 +4,7 @@ import json
 修改 config.json 文件中的指定字段
 '''
 # 读取 config.json 文件
-with open('config.json', 'r', encoding='utf-8') as config_file:
+with open(BLglobals.config_path, 'r', encoding='utf-8') as config_file:
     config = json.load(config_file)
 
 # 修改 config.json 的指定字段
@@ -24,7 +24,7 @@ config['MaxThread'] = 64
 config['minecraft_dir'] = ""
 
 # 保存修改后的 config.json
-with open('config.json', 'w', encoding='utf-8') as config_file:
+with open(BLglobals.config_path, 'w', encoding='utf-8') as config_file:
     json.dump(config, config_file, indent=4)
 
 print("Config values updated successfully.")

@@ -10,6 +10,7 @@ from modules.safe import handle_exception
 import sys
 from modules.customize import find_Customize
 from modules.i18n import i18nText
+import modules.globals as BLglobals
 
 # 线程安全的UI更新函数
 def safe_ui_update(widget, method, value, widget_type=None):
@@ -870,7 +871,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 
                 # 设置最大线程数，根据系统资源限制调整默认值
                 try:
-                    with open('config.json', 'r', encoding='utf-8') as f:
+                    with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                         config_data = json.load(f)
                     max_workers = config_data.get("MaxThread", 64)
                 except Exception:

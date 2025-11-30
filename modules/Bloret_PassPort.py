@@ -5,7 +5,7 @@ import logging,requests,json
 from modules.log import log
 from modules.safe import handle_exception
 from modules.i18n import i18nText
-
+import modules.globals as BLglobals
 
 def savedata(key, data, public=False):
     '''
@@ -18,7 +18,7 @@ def savedata(key, data, public=False):
     try:
         # 读取config.json获取用户信息
         log("正在读取 config.json 文件...")
-        with open('config.json', 'r', encoding='utf-8') as f:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
         log(f"成功读取 config.json，包含用户: {config_data.get('Bloret_PassPort_UserName', '未设置')}")
         
@@ -96,7 +96,7 @@ def readdata(key, public=False):
     try:
         # 读取config.json获取用户信息
         log("正在读取 config.json 文件...")
-        with open('config.json', 'r', encoding='utf-8') as f:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
         log(f"成功读取 config.json，包含用户: {config_data.get('Bloret_PassPort_UserName', '未设置')}")
         
@@ -173,7 +173,7 @@ def Bloret_PassPort_Account_logout(self, homeInterface):
     self.config.update(Bloret_PassPort_PassWord='')
     self.config.update(Bloret_PassPort_Admin=False)
     
-    open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+    open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
     # 更新界面显示
     Bloret_PassPort_User_UserName = homeInterface.findChild(QLabel, "Bloret_PassPort_UserName")
     if Bloret_PassPort_User_UserName:
@@ -209,7 +209,7 @@ def sync_mc_account_to_bloret_passport(parent_window=None):
     try:
         log("正在读取 config.json 获取用户信息...")
         # 读取config.json获取用户信息
-        with open('config.json', 'r', encoding='utf-8') as f:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
         
         user = config_data.get('Bloret_PassPort_UserName', '')
@@ -324,7 +324,7 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
     try:
         log("正在读取 config.json 获取用户信息...")
         # 读取config.json获取用户信息
-        with open('config.json', 'r', encoding='utf-8') as f:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
         
         user = config_data.get('Bloret_PassPort_UserName', '')
