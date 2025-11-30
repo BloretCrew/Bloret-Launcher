@@ -7,6 +7,7 @@ import os
 import json
 from modules.plugin import addPlugin
 from modules.win11toast import toast
+import modules.globals as BLglobals
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
