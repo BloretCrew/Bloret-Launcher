@@ -16,7 +16,7 @@ from modules.modrinth import search_mods, Get_Mod_File_Download_Url, add_mrpack
 from PyQt5.QtCore import QThread, pyqtSignal
 from modules.win11toast import notify, update_progress
 from modules.local_client import OnlineClient
-from modules.java import InstallJava
+from modules.java import InstallJava, java_versions
 from modules.i18n import i18nText
 from modules.customize import CustomizeAdd
 from modules.Bloriko import AskBlorikoAndSet
@@ -1781,7 +1781,6 @@ def setup_download_ui(self, widget):
             )
             
         # 2. 填充Java版本选择框
-        java_versions = config.get('Java_Versions', {})
         java_version_choose = widget.findChild(ComboBox, 'Java_version_choose')
         
         if java_version_choose and java_versions:
