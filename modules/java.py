@@ -8,6 +8,34 @@ from threading import Thread
 from modules.log import log
 from modules.i18n import i18nText
 
+java_versions = {
+        "24": {
+            "Windows": {
+                "x64": "https://cdn.azul.com/zulu/bin/zulu24.32.13-ca-jdk24.0.2-win_x64.msi"
+            }
+        },
+        "21": {
+            "Windows": {
+                "x64": "https://cdn.azul.com/zulu/bin/zulu21.44.17-ca-jdk21.0.8-win_x64.msi"
+            }
+        },
+        "17": {
+            "Windows": {
+                "x64": "https://cdn.azul.com/zulu/bin/zulu17.60.17-ca-jdk17.0.16-win_x64.msi"
+            }
+        },
+        "11": {
+            "Windows": {
+                "x64": "https://cdn.azul.com/zulu/bin/zulu11.82.19-ca-jdk11.0.28-win_x64.msi"
+            }
+        },
+        "8": {
+            "Windows": {
+                "x64": "https://cdn.azul.com/zulu/bin/zulu8.88.0.19-ca-jdk8.0.462-win_x64.msi"
+            }
+        }
+    }
+
 def InstallJava(Java_Version):
     # 创建新线程执行Java安装
     thread = Thread(target=_install_java_thread, args=(Java_Version,))
@@ -25,8 +53,6 @@ def _install_java_thread(Java_Version):
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
         log(i18nText("配置文件加载成功。"))
-        
-        java_versions = config.get("Java_Versions", {})
         
         # 修复Java版本处理逻辑，确保正确获取版本数据
         # 确保Java_Version是字符串类型，避免float类型导致的问题

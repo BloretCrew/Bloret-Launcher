@@ -16,13 +16,14 @@ from modules.modrinth import search_mods, Get_Mod_File_Download_Url, add_mrpack
 from PyQt5.QtCore import QThread, pyqtSignal
 from modules.win11toast import notify, update_progress
 from modules.local_client import OnlineClient
-from modules.java import InstallJava
+from modules.java import InstallJava, java_versions
 from modules.i18n import i18nText
 from modules.customize import CustomizeAdd
 from modules.Bloriko import AskBlorikoAndSet
 from modules.chafuwang import getServerData
 from modules.easytier import StartEasytierServer
 from modules.ShortCut import ScreenShortCut
+import modules.globals as BLglobals
 
 # 加载配置文件
 def load_config():
@@ -648,7 +649,7 @@ def setup_settings_ui(self, widget):
                 # 获取语言代码
                 lang_code = language_map.get(display_name, display_name)
                 self.config.update(language=lang_code)
-                with open('config.json', 'w', encoding='utf-8') as f:
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                     json.dump(self.config, f, ensure_ascii=False, indent=4)
                 log(f"语言设置已更改为: {lang_code}")
             
@@ -660,7 +661,7 @@ def setup_settings_ui(self, widget):
             language_choose.setCurrentText(self.config.get("language", "zh-cn"))
             language_choose.currentTextChanged.connect(lambda language: (
                 self.config.update(language=language),
-                open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+                open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
                 log(f"语言设置已更改为: {language}")
             ))
 
@@ -669,7 +670,7 @@ def setup_settings_ui(self, widget):
         size_choose.setValue(self.config.get("size", 100))
         size_choose.valueChanged.connect(lambda value: (
             self.config.update(size=value),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
         ))
 
     MaxThread_SpinBox = widget.findChild(SpinBox, "MaxThread_SpinBox")
@@ -677,7 +678,7 @@ def setup_settings_ui(self, widget):
         MaxThread_SpinBox.setValue(self.config.get("MaxThread", 2000))
         MaxThread_SpinBox.valueChanged.connect(lambda value: (
             self.config.update(MaxThread=value),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
         ))
 
     repeat_run_button = widget.findChild(SwitchButton, "repeat_run_button")
@@ -685,7 +686,7 @@ def setup_settings_ui(self, widget):
         repeat_run_button.setChecked(self.config.get('repeat_run', False))
         repeat_run_button.checkedChanged.connect(lambda state: (
             self.config.update(repeat_run=state),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
             log(f"重复运行设置已更改为: {'启用' if state else '禁用'}")
         ))
     show_runtime_do_button = widget.findChild(SwitchButton, "show_runtime_do_button")
@@ -693,7 +694,7 @@ def setup_settings_ui(self, widget):
         show_runtime_do_button.setChecked(self.config.get('show_runtime_do', False))
         show_runtime_do_button.checkedChanged.connect(lambda state: (
             self.config.update(show_runtime_do=state),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
             log(f"显示软件打开过程: {'启用' if state else '禁用'}")
         ))
     BL_version = widget.findChild(QLabel, "BL_version")
@@ -704,7 +705,7 @@ def setup_settings_ui(self, widget):
         localmod_button.setChecked(self.config.get('localmod', False))
         localmod_button.checkedChanged.connect(lambda state: (
             self.config.update(localmod=state),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
             log(f"本地模式: {'启用' if state else '禁用'}")
         ))
     home_show_login_mod_button = widget.findChild(SwitchButton, "home_show_login_mod_button")
@@ -712,7 +713,7 @@ def setup_settings_ui(self, widget):
         home_show_login_mod_button.setChecked(self.config.get('home_show_login_mod', False))
         home_show_login_mod_button.checkedChanged.connect(lambda state: (
             self.config.update(home_show_login_mod=state),
-            open('config.json', 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
             log(f"在首页上 显示 Minecraft 账户登录方式: {'启用' if state else '禁用'}")
         ))
     
@@ -1753,7 +1754,7 @@ def setup_download_ui(self, widget):
     '''
     # 获取配置文件中的Minecraft版本列表
     try:
-        with open('config.json', 'r', encoding='utf-8') as f:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
             
         # 1. 填充Minecraft版本选择框和Fabric版本选择框
@@ -1780,7 +1781,6 @@ def setup_download_ui(self, widget):
             )
             
         # 2. 填充Java版本选择框
-        java_versions = config.get('Java_Versions', {})
         java_version_choose = widget.findChild(ComboBox, 'Java_version_choose')
         
         if java_version_choose and java_versions:

@@ -33,7 +33,7 @@ def main():
         # 解析命令行参数
         if "--set-self-start" in sys.argv:
             # 从配置文件读取设置
-            config_path = 'config.json'
+            config_path = BLglobals.config_path
             if not os.path.exists(config_path):
                 print("Error: config.json not found")
                 logging.error("配置文件 config.json 未找到")

@@ -340,14 +340,14 @@ def delete_Customize(self,version,label,card,customize_list,homeInterface):
     try:
         isOK,item=find_Customize(self,version)
         if isOK:
-            with open('config.json', 'r', encoding='utf-8') as file:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as file:
                 config_data = json.load(file)
 
             if "Customize" not in config_data:
                 config_data["Customize"] = []
             if item in config_data["Customize"]:
                 config_data["Customize"].remove(item)
-            with open('config.json', 'w', encoding='utf-8') as file:
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as file:
                 json.dump(config_data, file, ensure_ascii=False, indent=4)
             self.config = config_data
             InfoBar.success(
@@ -408,7 +408,7 @@ def Change_Customize_name(self,version,label,homeInterface):
     log(f"正在修改自定义选项名称：{version}")
     isOK,item=find_Customize(self,version)
     if isOK:
-        with open('config.json', 'r', encoding='utf-8') as file:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as file:
             config_data = json.load(file)
 
         if "Customize" not in config_data:
@@ -439,7 +439,7 @@ def Change_Customize_name(self,version,label,homeInterface):
             return
         isOK, item = find_Customize(self, version)
         if isOK:
-            with open('config.json', 'r', encoding='utf-8') as file:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as file:
                 config_data = json.load(file)
 
             if "Customize" not in config_data:
@@ -462,7 +462,7 @@ def Change_Customize_name(self,version,label,homeInterface):
                     parent=self
                 )
                 return
-            with open('config.json', 'w', encoding='utf-8') as file:
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as file:
                 json.dump(config_data, file, ensure_ascii=False, indent=4)
             self.config = config_data
             InfoBar.success(
@@ -805,7 +805,7 @@ def Get_Run_Script(mc_version):
     
     # 获取 Minecraft 目录
     try:
-        with open('config.json', 'r', encoding='utf-8') as f:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
         minecraft_dir = config_data.get('minecraft_dir', '')
         if not minecraft_dir:
@@ -850,7 +850,7 @@ def Get_Run_Script(mc_version):
         # 如果系统PATH中没有java，尝试使用配置中的Java路径
         log("系统PATH中未找到java命令")
         try:
-            with open('config.json', 'r', encoding='utf-8') as f:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
             
             java_dir = config_data.get('java_dir', '')
@@ -1190,7 +1190,7 @@ def Get_Run_Script(mc_version):
         
         # 从 config.json 读取 MaxThread
         try:
-            with open('config.json', 'r', encoding='utf-8') as f:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
             max_workers = config_data.get("MaxThread", 64)  # 默认值改为64，避免资源耗尽
         except Exception:
@@ -2059,7 +2059,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 # 设置最大线程数，根据系统资源限制调整默认值
                 try:
                     # 尝试读取配置文件获取最大线程数设置
-                    with open('config.json', 'r', encoding='utf-8') as f:
+                    with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                         # 使用UTF-8编码读取JSON配置文件
                         config_data = json.load(f)
                     # 从配置中获取MaxThread值，默认使用64个线程

@@ -11,6 +11,7 @@ import sys
 from modules.customize import find_Customize
 from modules.i18n import i18nText
 from modules.install import LibraryDownloader
+import modules.globals as BLglobals
 
 def Get_Run_Script(mc_version):
     """
@@ -35,7 +36,7 @@ def Get_Run_Script(mc_version):
     
     # 获取 Minecraft 目录
     try:
-        with open('config.json', 'r', encoding='utf-8') as f:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
         minecraft_dir = config_data.get('minecraft_dir', '')
         if not minecraft_dir:
@@ -80,7 +81,7 @@ def Get_Run_Script(mc_version):
         # 如果系统PATH中没有java，尝试使用配置中的Java路径
         log("系统PATH中未找到java命令")
         try:
-            with open('config.json', 'r', encoding='utf-8') as f:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
             
             java_dir = config_data.get('java_dir', '')
@@ -426,7 +427,7 @@ def Get_Run_Script(mc_version):
         
         # 从 config.json 读取 MaxThread
         try:
-            with open('config.json', 'r', encoding='utf-8') as f:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
             max_workers = config_data.get("MaxThread", 64)  # 默认值改为64，避免资源耗尽
         except Exception:
