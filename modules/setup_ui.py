@@ -24,6 +24,7 @@ from modules.chafuwang import getServerData
 from modules.easytier import StartEasytierServer
 from modules.ShortCut import ScreenShortCut
 import modules.globals as BLglobals
+import modules.config as cfg
 
 # 加载配置文件
 def load_config():
@@ -48,6 +49,7 @@ class DownloadDialog(MessageBoxBase):
         self.mod_title = mod_title
         self.slug = slug
         self.game_versions = []  # 存储模组支持的游戏版本
+        self.version_mappings = {}  # 存储文件夹名到实际版本号的映射
         
         self.titleLabel = SubtitleLabel(mod_title)
         self.titleLabel.setAlignment(Qt.AlignCenter)
@@ -59,13 +61,26 @@ class DownloadDialog(MessageBoxBase):
         
         # 获取模组支持的游戏版本
         self.fetch_mod_versions()
+
+        # 先获取 config.json 中 .minecraft 文件夹位置
+        minecraft_dir = cfg.read()["minecraft_dir"]
+        
+        # 加载 .BL.json 文件来获取版本映射
+        self.load_version_mappings(minecraft_dir)
         
         # 获取 .minecraft\versions 文件夹内的文件夹列表
-        versions_path = os.path.join(os.getcwd(), ".minecraft", "versions")
+        versions_path = os.path.join(minecraft_dir, "versions")
         if os.path.exists(versions_path):
             version_folders = [f for f in os.listdir(versions_path) 
                               if os.path.isdir(os.path.join(versions_path, f))]
-            self.versionCombo.addItems(version_folders)
+            
+            # 只添加启用了Fabric的版本
+            fabric_versions = []
+            for folder in version_folders:
+                if folder in self.version_mappings and self.version_mappings[folder].get("Fabric", False):
+                    fabric_versions.append(folder)
+            
+            self.versionCombo.addItems(fabric_versions)
         
         if self.versionCombo.count() > 0:
             self.versionCombo.setCurrentIndex(0)
@@ -102,12 +117,37 @@ class DownloadDialog(MessageBoxBase):
     
     def open_modrinth_page(self):
         # 这里可以添加实际的下载逻辑
-        log(f"准备下载模组: {self.mod_title} (版本: {self.versionCombo.currentText()})")
+        folder_name = self.versionCombo.currentText()
+        actual_version = self.get_actual_version(folder_name) if folder_name else "未知版本"
+        log(f"准备下载模组: {self.mod_title} (文件夹: {folder_name}, 版本: {actual_version})")
         log(f"模组链接: https://modrinth.com/mod/{self.slug}")
         # 打开模组页面
         QDesktopServices.openUrl(QUrl(f"https://modrinth.com/mod/{self.slug}"))
         self.accept()  # 关闭对话框
         
+    def load_version_mappings(self, minecraft_dir):
+        """加载 .BL.json 文件来获取版本映射"""
+        bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
+        try:
+            if os.path.exists(bl_json_path):
+                with open(bl_json_path, "r", encoding="utf-8") as f:
+                    bl_data = json.load(f)
+                    if "versions" in bl_data:
+                        self.version_mappings = bl_data["versions"]
+                        log(f"成功加载版本映射: {list(self.version_mappings.keys())}")
+                    else:
+                        log("警告: .BL.json 文件格式不正确，缺少 'versions' 字段")
+            else:
+                log("警告: 未找到 .BL.json 文件，将使用文件夹名作为版本号")
+        except Exception as e:
+            log(f"加载 .BL.json 文件时出错: {str(e)}")
+    
+    def get_actual_version(self, folder_name):
+        """获取文件夹对应的实际版本号"""
+        if folder_name in self.version_mappings:
+            return self.version_mappings[folder_name].get("version", folder_name)
+        return folder_name
+    
     def fetch_mod_versions(self):
         """获取模组支持的游戏版本"""
         try:
@@ -128,9 +168,13 @@ class DownloadDialog(MessageBoxBase):
             self.warningLabel.hide()
             self.yesButton.show()  # 重新启用下载按钮
             return
+        
+        # 获取实际的版本号
+        actual_version = self.get_actual_version(selected_version)
+        log(f"检查版本兼容性: 文件夹名={selected_version}, 实际版本={actual_version}")
             
-        # 检查所选版本是否在模组支持的版本列表中
-        if selected_version in self.game_versions:
+        # 检查实际版本是否在模组支持的版本列表中
+        if actual_version in self.game_versions:
             self.warningLabel.hide()
             self.yesButton.show()  # 启用下载按钮
         else:
@@ -140,19 +184,24 @@ class DownloadDialog(MessageBoxBase):
             
     def download_mod(self):
         """下载选定的Mod文件"""
-        version = self.versionCombo.currentText()
-        if not version or version == i18nText("未找到任何版本"):
+        folder_name = self.versionCombo.currentText()
+        if not folder_name or folder_name == i18nText("未找到任何版本"):
             log(i18nText("未选择有效的版本"))
             return
+        
+        # 获取实际的版本号
+        actual_version = self.get_actual_version(folder_name)
+        log(f"开始下载模组: 文件夹名={folder_name}, 实际版本={actual_version}")
             
         # 获取Mod下载URL
-        url = Get_Mod_File_Download_Url(self.slug, "fabric", version)
+        url = Get_Mod_File_Download_Url(self.slug, "fabric", actual_version)
         if not url:
             log(f"无法获取Mod {self.mod_title} 的下载URL")
             return
             
-        # 创建目标目录
-        mod_dir = os.path.join(os.getcwd(), ".minecraft", "versions", version, "mods")
+        # 使用配置中的minecraft目录创建目标路径
+        minecraft_dir = cfg.read().get('minecraft_dir', os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', '.minecraft'))
+        mod_dir = os.path.join(minecraft_dir, "versions", folder_name, "mods")
         if not os.path.exists(mod_dir):
             os.makedirs(mod_dir)
             
@@ -162,7 +211,8 @@ class DownloadDialog(MessageBoxBase):
         
         # 下载文件
         try:
-            log(f"开始下载 {self.mod_title} 到 {file_path}")
+            log(f"开始下载 {self.mod_title} (版本: {actual_version}) 到 {file_path}")
+            log(f"Minecraft目录: {minecraft_dir}")
             response = requests.get(url, stream=True)
             response.raise_for_status()
             
@@ -170,7 +220,7 @@ class DownloadDialog(MessageBoxBase):
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
                     
-            log(f"成功下载 {self.mod_title} 到 {file_path}")
+            log(f"成功下载 {self.mod_title} (版本: {actual_version}) 到 {file_path}")
             InfoBar.success(
                 title=i18nText('✅ 下载成功'),
                 content=f"Mod {self.mod_title} 已成功下载到 {file_path}",
@@ -179,7 +229,7 @@ class DownloadDialog(MessageBoxBase):
             )
             self.accept()  # 关闭对话框
         except Exception as e:
-            log(f"下载Mod时出错: {str(e)}")
+            log(f"下载Mod {self.mod_title} (版本: {actual_version}) 时出错: {str(e)}")
             InfoBar.error(
                 title=i18nText('❌ 下载失败'),
                 content=f"下载Mod {self.mod_title} 时出错: {str(e)}",
