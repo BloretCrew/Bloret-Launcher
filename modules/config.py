@@ -1,4 +1,5 @@
 import os, shutil
+import json
 import modules.globals as BLglobals
 from modules.log import log
 
@@ -13,3 +14,7 @@ if not os.path.exists(config_path):
     log(f"配置文件已复制到: {config_path}")
 BLglobals.config_path = config_path
 log("配置文件路径: " + config_path)
+
+def read():
+    with open(config_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
