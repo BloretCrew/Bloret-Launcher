@@ -28,10 +28,12 @@
 
 </div>
 
-![Show](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/show.gif)
+
+![Home](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Home-Long.PNG?raw=true)
+
 
 ## 联机使用指南
-![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/ui/icon/OnlineClient.gif)
+![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/ui/icon/OnlineClient.gif)  
 然后将获取到的端口输入至 Bloret Launcher 中。您将获得一个地址，让您的好友像进入服务器一样加入您的世界。
 > [!NOTE]
 > 使用 Bloret Launcher 联机，对方无需安装 Bloret Launcher。
@@ -145,14 +147,6 @@
  - [求教如何往下拉选择框做东西进去 #338](https://github.com/orgs/Class-Widgets/discussions/338)
 </details>
 
-## 使用人数统计（实时）
-
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="http://pcfs.eno.ink:2/api/BL/madeuserpic" />
-   <source media="(prefers-color-scheme: light)" srcset="http://pcfs.eno.ink:2/api/BL/madeuserpic" />
-   <img alt="Bloret Launcher 实时新增使用人数" src="http://pcfs.eno.ink:2/api/BL/madeuserpic" />
- </picture>
-
 ## 星标历史
 
  <picture>
@@ -163,6 +157,7 @@
 
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
+
 
 
 
