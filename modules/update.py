@@ -5,12 +5,10 @@ import logging,os,subprocess,tempfile,requests,sys
 from modules.log import log
 from modules.safe import handle_exception
 from modules.i18n import i18nText
+from modules.win11toast import notify, update_progress
 
 def update_to_latest_version(self):
     try:
-        # 导入win11toast模块，用于显示进度通知
-        from modules.win11toast import notify, update_progress
-        
         # 初始化通知
         notify(progress={
             'title': '正在准备更新...',
@@ -27,18 +25,18 @@ def update_to_latest_version(self):
             'status': '正在获取最新版本信息...'
         })
         
-        response = requests.get("http://pcfs.eno.ink:2/api/BL/info")
+        response = requests.get("http://pcfs.eno.ink:3001/api/info")
         response.raise_for_status()
         res = response.json()
         
         # 获取下载链接
-        download_url = res["Bloret-Launcher-DownLoad-Link"]["Bloret-Launcher-Setup"]["GitCode"]
-        version = res["Bloret-Launcher-latest-version"]
+        download_url = res["downloads"]["stable"]["gitcode"]
+        version = res["latestVersion"]
         
         # 更新通知
         notify(progress={
             'title': f'正在更新 Bloret Launcher 至 {version}',
-            'status': res["Bloret-Launcher-update-text"],
+            'status': res["newVersionDescription"],
             'value': '0',
             'valueStringOverride': '0%',
             'icon': os.path.join(os.getcwd(), 'bloret.ico')

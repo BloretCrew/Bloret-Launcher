@@ -136,17 +136,17 @@ def check_Bloret_version(self,server_ip,ver_id_bloret):
     t = threading.Thread(target=_inner, args=(self, server_ip, ver_id_bloret), daemon=True)
     t.start()
 
-def get_latest_version(server_ip):
+def get_latest_version():
     # 初始化变量
     BL_update_text = ""
     BL_latest_ver = "0.0"
     
     try:
-        response = requests.get(server_ip + "api/BL/info")
+        response = requests.get("http://pcfs.eno.ink:3001/api/info")
         if response.status_code == 200:
             latest_release = response.json()
-            BL_update_text = latest_release.get("Bloret-Launcher-update-text", "")
-            BL_latest_ver = latest_release.get("Bloret-Launcher-latest-version", "0.0")
+            BL_update_text = latest_release.get("newVersionDescription", "")
+            BL_latest_ver = latest_release.get("latestVersion", "0.0")
             return BL_latest_ver, BL_update_text
         else:
             log(f"无法获取最新版本信息，状态码: {response.status_code}", logging.ERROR)
@@ -162,10 +162,10 @@ def check_for_updates(self,server_ip):
     update_signal = UpdateSignal()
     update_signal.show_update.connect(show_update_message)
     
-    def _inner(self, server_ip, signal):
+    def _inner(self, signal):
         if not self.config.get('localmod', False):
             try:
-                BL_latest_ver, BL_update_text = get_latest_version(server_ip)
+                BL_latest_ver, BL_update_text = get_latest_version()
                 log(f"最新正式版: {BL_latest_ver}")
                 current_ver = self.config.get('ver', '0.0')  # 从config.json读取当前版本
                 log(f"当前版本: {current_ver}")
@@ -174,7 +174,7 @@ def check_for_updates(self,server_ip):
                     need_update = IsNeedUpdate(current_ver, BL_latest_ver)
                     log(f"是否需要更新: {need_update}")
                     if need_update:
-                        log(f"当前版本不是最新版，请更新到 {BL_latest_ver} 版本", logging.WARNING)
+                        log(f"当前版本不是最新版，请求更新到 {BL_latest_ver} 版本", logging.WARNING)
                         # 使用信号确保在主线程中创建和显示 MessageBox
                         signal.show_update.emit(self, current_ver, BL_latest_ver, BL_update_text)
                     else:
@@ -186,7 +186,7 @@ def check_for_updates(self,server_ip):
                 update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': i18nText('无法连接到服务器 ❌')})
         else:
             log(i18nText("本地模式已启用，检查更新 的过程已跳过。"))
-    t = threading.Thread(target=_inner, args=(self, server_ip, update_signal), daemon=True)
+    t = threading.Thread(target=_inner, args=(self, update_signal), daemon=True)
     t.start()
 
 def show_update_message(parent, current_ver, latest_ver, update_text):
@@ -198,7 +198,6 @@ def show_update_message(parent, current_ver, latest_ver, update_text):
             content=f'Bloret Launcher 貌似有个新新新版本\n你似乎正在运行 Bloret Launcher {current_ver}，但事实上，Bloret Launcher {latest_ver} 来啦！按下按钮自动更新。\n这个更新... {update_text}',
             parent=parent
         )
-        from modules.update import update_to_latest_version
         w.yesButton.clicked.connect(lambda: update_to_latest_version(parent))
         w.show()
         log("更新消息框已显示")

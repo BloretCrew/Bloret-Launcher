@@ -29,7 +29,6 @@ with open(config_path, 'r', encoding='utf-8') as f:
             # 复制 config.json 到 %appdata%/Bloret-Launcher/config.json
             shutil.copyfile("config.json", config_path)
             log(f"配置文件已复制到: {config_path}")
-            exit(1)
 
 def read():
     with open(config_path, 'r', encoding='utf-8') as f:
