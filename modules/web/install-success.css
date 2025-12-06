@@ -1,0 +1,188 @@
+/* Microsoft Fluent2 Design CSS - 安装成功页面 */
+:root {
+    --fluent-success: #107c10;
+    --fluent-primary: #0078d4;
+    --fluent-background: #faf9f8;
+    --fluent-surface: #ffffff;
+    --fluent-surface-secondary: #f3f2f1;
+    --fluent-text-primary: #323130;
+    --fluent-text-secondary: #605e5c;
+    --fluent-border: #e1dfdd;
+    --fluent-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    --fluent-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.14);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    color: var(--fluent-text-primary);
+    padding: 16px;
+}
+
+.fluent-card {
+    background: var(--fluent-surface);
+    border-radius: 12px;
+    box-shadow: var(--fluent-shadow);
+    padding: 32px;
+    text-align: center;
+    max-width: 480px;
+    width: 100%;
+    border: 1px solid var(--fluent-border);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fluent-card:hover {
+    box-shadow: var(--fluent-shadow-hover);
+    transform: translateY(-2px);
+}
+
+.fluent-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--fluent-success), #0e6d0e);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 32px;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(16, 124, 16, 0.3);
+    position: relative;
+}
+
+.fluent-icon::after {
+    content: "✓";
+    animation: fluentCheckmark 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both;
+}
+
+.fluent-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--fluent-text-primary);
+    margin-bottom: 16px;
+    line-height: 1.3;
+}
+
+.fluent-text {
+    font-size: 16px;
+    color: var(--fluent-text-secondary);
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+.fluent-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 120px;
+    margin-top: 24px;
+}
+
+.fluent-btn-primary {
+    background: linear-gradient(135deg, var(--fluent-success), #0e6d0e);
+    color: white;
+    box-shadow: 0 2px 8px rgba(16, 124, 16, 0.3);
+}
+
+.fluent-btn-primary:hover {
+    background: linear-gradient(135deg, #0e6d0e, #0d5d0d);
+    box-shadow: 0 4px 12px rgba(16, 124, 16, 0.4);
+    transform: translateY(-1px);
+}
+
+.fluent-btn-secondary {
+    background: var(--fluent-surface-secondary);
+    color: var(--fluent-text-primary);
+    border: 1px solid var(--fluent-border);
+}
+
+.fluent-btn-secondary:hover {
+    background: var(--fluent-border);
+    transform: translateY(-1px);
+}
+
+@keyframes fluentFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.fluent-card {
+    animation: fluentFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fluentIconBounce {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.fluent-icon {
+    animation: fluentIconBounce 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both;
+}
+
+@keyframes fluentCheckmark {
+    0% {
+        transform: scale(0) rotate(-45deg);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2) rotate(-45deg);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1) rotate(-45deg);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 480px) {
+    .fluent-card {
+        padding: 24px;
+        margin: 16px;
+    }
+    
+    .fluent-title {
+        font-size: 20px;
+    }
+    
+    .fluent-icon {
+        width: 64px;
+        height: 64px;
+        font-size: 24px;
+    }
+}

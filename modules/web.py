@@ -235,6 +235,91 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'text/plain')
                 self.end_headers()
                 self.wfile.write(b"CSS file not found")
+        elif self.path == '/fluent.css':
+            # 提供Fluent Design CSS文件
+            try:
+                css_path = os.path.join(os.path.dirname(__file__), 'web', 'fluent.css')
+                with open(css_path, 'r', encoding='utf-8') as f:
+                    css_content = f.read()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'text/css; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(css_content.encode('utf-8'))
+            except Exception as e:
+                logger.error(f"Error serving fluent CSS file: {e}")
+                self.send_response(404)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b"Fluent CSS file not found")
+        elif self.path == '/plugin-confirm.css':
+            # 提供插件确认页面CSS文件
+            try:
+                css_path = os.path.join(os.path.dirname(__file__), 'web', 'plugin-confirm.css')
+                with open(css_path, 'r', encoding='utf-8') as f:
+                    css_content = f.read()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'text/css; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(css_content.encode('utf-8'))
+            except Exception as e:
+                logger.error(f"Error serving plugin confirm CSS file: {e}")
+                self.send_response(404)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b"Plugin confirm CSS file not found")
+        elif self.path == '/installing.css':
+            # 提供安装中页面CSS文件
+            try:
+                css_path = os.path.join(os.path.dirname(__file__), 'web', 'installing.css')
+                with open(css_path, 'r', encoding='utf-8') as f:
+                    css_content = f.read()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'text/css; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(css_content.encode('utf-8'))
+            except Exception as e:
+                logger.error(f"Error serving installing CSS file: {e}")
+                self.send_response(404)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b"Installing CSS file not found")
+        elif self.path == '/install-success.css':
+            # 提供安装成功页面CSS文件
+            try:
+                css_path = os.path.join(os.path.dirname(__file__), 'web', 'install-success.css')
+                with open(css_path, 'r', encoding='utf-8') as f:
+                    css_content = f.read()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'text/css; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(css_content.encode('utf-8'))
+            except Exception as e:
+                logger.error(f"Error serving install success CSS file: {e}")
+                self.send_response(404)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b"Install success CSS file not found")
+        elif self.path == '/error.css':
+            # 提供错误页面CSS文件
+            try:
+                css_path = os.path.join(os.path.dirname(__file__), 'web', 'error.css')
+                with open(css_path, 'r', encoding='utf-8') as f:
+                    css_content = f.read()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'text/css; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(css_content.encode('utf-8'))
+            except Exception as e:
+                logger.error(f"Error serving error CSS file: {e}")
+                self.send_response(404)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b"Error CSS file not found")
         else:
             # 未找到的路径
             self.send_response(404)
@@ -269,80 +354,32 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             html_content = self.generate_error_page(f"Error during plugin installation: {str(e)}")
             self.wfile.write(html_content.encode('utf-8'))
 
-    def generate_success_page(self):
-        """生成授权成功的页面"""
-        return '''
+    def generate_success_page(self, username=None):
+        """生成授权成功页面 - Microsoft Fluent2 Design"""
+        return f'''
 <!DOCTYPE html>
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>授权成功</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-image: url('http://pcfs.eno.ink:20009/api/img/Takanashi-Hoshino?ratio=16_9');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
-        .container {
-            background: rgba(255, 255, 255, 0.35);
-            border-radius: 18px;
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.18), 0 1.5px 8px 0 rgba(255, 255, 255, 0.25) inset;
-            border: 1.5px solid rgba(255, 255, 255, 0.45);
-            padding: 40px;
-            text-align: center;
-            backdrop-filter: blur(18px) saturate(180%);
-            -webkit-backdrop-filter: blur(18px) saturate(180%);
-            max-width: 500px;
-            width: 80%;
-        }
-        h1 {
-            color: white;
-            font-weight: 500;
-            margin-bottom: 20px;
-            font-size: 28px;
-        }
-        p {
-            font-size: 18px;
-            color: rgba(255, 255, 255, 0.95);
-            line-height: 1.6;
-            margin: 10px 0;
-        }
-        .icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-            color: white;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .container {
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-    </style>
+    <link rel="stylesheet" href="/fluent.css">
 </head>
 <body>
-    <div class="container">
-        <div class="icon">✓</div>
-        <h1>授权成功</h1>
-        <p>您的 Bloret Passport 账户已成功授权</p>
-        <p>请返回 Bloret Launcher 继续操作</p>
+    <div class="fluent-card">
+        <div class="fluent-icon"></div>
+        <h1 class="fluent-title">授权成功</h1>
+        <p class="fluent-text">您已成功登录 Bloret Passport</p>
+        {f'<p class="fluent-text">欢迎回来，{username}！</p>' if username else ''}
+        <p class="fluent-text">现在您可以关闭此页面并返回 Bloret Launcher</p>
+        <button class="fluent-btn fluent-btn-primary" onclick="window.close()">关闭页面</button>
     </div>
 </body>
 </html>
         '''
 
     def generate_plugin_confirmation_page(self, plugin, list_url=None):
-        """生成插件安装确认页面"""
+        """生成插件安装确认页面 - Microsoft Fluent2 Design"""
         plugin_name = plugin.get('name', 'Unknown Plugin')
         plugin_master = plugin.get('master', 'Unknown Author')
         plugin_version = plugin.get('version', 'Unknown Version')
@@ -363,122 +400,73 @@ class WebRequestHandler(BaseHTTPRequestHandler):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>插件安装确认</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-image: url('http://pcfs.eno.ink:20009/api/img/Takanashi-Hoshino?ratio=16_9');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }}
-        .container {{
-            background: rgba(255, 255, 255, 0.35);
-            border-radius: 18px;
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.18), 0 1.5px 8px 0 rgba(255, 255, 255, 0.25) inset;
-            border: 1.5px solid rgba(255, 255, 255, 0.45);
-            padding: 40px;
-            text-align: center;
-            backdrop-filter: blur(18px) saturate(180%);
-            -webkit-backdrop-filter: blur(18px) saturate(180%);
-            max-width: 500px;
-            width: 80%;
-        }}
-        h1 {{
-            color: white;
-            font-weight: 500;
-            margin-bottom: 20px;
-            font-size: 28px;
-        }}
-        p {{
-            font-size: 18px;
-            color: rgba(255, 255, 255, 0.95);
-            line-height: 1.6;
-            margin: 10px 0;
-        }}
-        .warning {{
-            color: #ffcc00;
-            font-weight: bold;
-            margin: 20px 0;
-            padding: 15px;
-            background: rgba(255, 204, 0, 0.2);
-            border-radius: 10px;
-            font-size: 16px;
-        }}
-        .plugin-info {{
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            padding: 15px;
-            margin: 20px 0;
-            text-align: left;
-        }}
-        .plugin-info div {{
-            margin: 10px 0;
-        }}
-        .icon {{
-            font-size: 48px;
-            margin-bottom: 20px;
-            color: white;
-        }}
-        .btn {{
-            background-color: #4CAF50;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 10px;
-        }}
-        .btn.cancel {{
-            background-color: #f44336;
-        }}
-        .btn:hover {{
-            opacity: 0.9;
-        }}
-        @keyframes fadeIn {{
-            from {{ opacity: 0; transform: translateY(20px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
-        }}
-        .container {{
-            animation: fadeIn 0.5s ease-out forwards;
-        }}
-    </style>
+    <link rel="stylesheet" href="/plugin-confirm.css">
 </head>
 <body>
-    <div class="container">
-        <div class="icon">ⓘ</div>
-        <h1>插件安装确认</h1>
-        <div class="plugin-info">
-            <div><strong>插件名称:</strong> {plugin_name}</div>
-            <div><strong>插件作者:</strong> {plugin_master}</div>
-            <div><strong>插件版本:</strong> {plugin_version}</div>
+    <div class="fluent-card">
+        <div class="fluent-icon">ⓘ</div>
+        <h1 class="fluent-title">插件安装确认</h1>
+        
+        <div class="fluent-info-card">
+            <div class="info-row">
+                <span class="info-label">插件名称:</span>
+                <span class="info-value">{plugin_name}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">插件作者:</span>
+                <span class="info-value">{plugin_master}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">插件版本:</span>
+                <span class="info-value">{plugin_version}</span>
+            </div>
         </div>
-        <div class="warning">
+        
+        <div class="fluent-warning">
             警告：插件可以访问 Bloret Launcher 的所有内容，请谨慎安装！
         </div>
-        <p>您确定要安装此插件吗？</p>
-        <a href="{install_url}" class="btn">确认安装</a>
-        <button class="btn cancel" onclick="window.close()">取消</button>
+        
+        <p class="fluent-text">您确定要安装此插件吗？</p>
+        
+        <div class="fluent-button-group">
+            <a href="{install_url}" class="fluent-btn fluent-btn-primary">确认安装</a>
+            <button class="fluent-btn fluent-btn-secondary" onclick="window.close()">取消</button>
+        </div>
     </div>
     
     <script>
         // 如果用户点击确认安装按钮，显示正在安装页面
-        document.querySelector('.btn').addEventListener('click', function() {{
+        document.querySelector('.fluent-btn-primary').addEventListener('click', function(e) {{
+            e.preventDefault();
             // 创建正在安装的页面
             document.body.innerHTML = `
-                <div class="container">
-                    <div class="spinner"></div>
-                    <h1>插件安装中</h1>
-                    <p>正在安装插件，请稍候...</p>
-                    <p>安装完成后您可以关闭此页面</p>
+                <div class="fluent-card">
+                    <div class="fluent-icon" style="background: linear-gradient(135deg, var(--fluent-primary), #106ebe);">
+                        <div class="spinner"></div>
+                    </div>
+                    <h1 class="fluent-title">插件安装中</h1>
+                    <p class="fluent-text">正在安装插件，请稍候...</p>
+                    <p class="fluent-text">安装完成后您可以关闭此页面</p>
                 </div>
+                <style>
+                    .spinner {{
+                        width: 24px;
+                        height: 24px;
+                        border: 3px solid rgba(255, 255, 255, 0.3);
+                        border-radius: 50%;
+                        border-top: 3px solid white;
+                        animation: spin 1s linear infinite;
+                    }}
+                    @keyframes spin {{
+                        0% {{ transform: rotate(0deg); }}
+                        100% {{ transform: rotate(360deg); }}
+                    }}
+                </style>
             `;
+            // 延迟跳转，让用户看到安装中状态
+            setTimeout(() => {{
+                window.location.href = '{install_url}';
+            }}, 800);
         }});
     </script>
 </body>
@@ -486,7 +474,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         '''
 
     def generate_installing_page(self):
-        """生成正在安装插件的页面，使用 Apple Liquid Glass 设计"""
+        """生成插件安装中页面 - Microsoft Fluent2 Design"""
         return '''
 <!DOCTYPE html>
 <html lang="zh">
@@ -494,240 +482,68 @@ class WebRequestHandler(BaseHTTPRequestHandler):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>插件安装中</title>
-    <link rel="stylesheet" href="/index.css">
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-image: url('http://pcfs.eno.ink:20009/api/img/Takanashi-Hoshino?ratio=16_9');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
-        .container {
-            background: rgba(255, 255, 255, 0.35);
-            border-radius: 18px;
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.18), 0 1.5px 8px 0 rgba(255, 255, 255, 0.25) inset;
-            border: 1.5px solid rgba(255, 255, 255, 0.45);
-            padding: 40px;
-            text-align: center;
-            backdrop-filter: blur(18px) saturate(180%);
-            -webkit-backdrop-filter: blur(18px) saturate(180%);
-            max-width: 500px;
-            width: 80%;
-        }
-        h1 {
-            color: white;
-            font-weight: 500;
-            margin-bottom: 20px;
-            font-size: 28px;
-        }
-        p {
-            font-size: 18px;
-            color: rgba(255, 255, 255, 0.95);
-            line-height: 1.6;
-            margin: 10px 0;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 4px solid white;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .container {
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-    </style>
+    <link rel="stylesheet" href="/installing.css">
 </head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>插件安装中</h1>
-        <p>正在安装插件，请稍候...</p>
-        <p>安装完成后您可以关闭此页面</p>
+    <div class="fluent-card">
+        <div class="fluent-icon">
+            <div class="fluent-spinner"></div>
+        </div>
+        <h1 class="fluent-title">插件安装中</h1>
+        <p class="fluent-text">正在安装插件，请稍候...</p>
+        <p class="fluent-text">安装完成后您可以关闭此页面</p>
+        <div class="fluent-progress">
+            <div class="fluent-progress-bar"></div>
+        </div>
     </div>
 </body>
 </html>
         '''
 
-    def generate_install_success_page(self):
-        """生成插件安装成功页面"""
-        return '''
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>插件安装成功</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-image: url('http://pcfs.eno.ink:20009/api/img/Takanashi-Hoshino?ratio=16_9');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
-        .container {
-            background: rgba(255, 255, 255, 0.35);
-            border-radius: 18px;
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.18), 0 1.5px 8px 0 rgba(255, 255, 255, 0.25) inset;
-            border: 1.5px solid rgba(255, 255, 255, 0.45);
-            padding: 40px;
-            text-align: center;
-            backdrop-filter: blur(18px) saturate(180%);
-            -webkit-backdrop-filter: blur(18px) saturate(180%);
-            max-width: 500px;
-            width: 80%;
-        }
-        h1 {
-            color: white;
-            font-weight: 500;
-            margin-bottom: 20px;
-            font-size: 28px;
-        }
-        p {
-            font-size: 18px;
-            color: rgba(255, 255, 255, 0.95);
-            line-height: 1.6;
-            margin: 10px 0;
-        }
-        .icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-            color: white;
-        }
-        .btn {
-            background-color: #4CAF50;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 10px;
-        }
-        .btn:hover {
-            opacity: 0.9;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .container {
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="icon">✓</div>
-        <h1>插件安装成功</h1>
-        <p>插件已成功安装到您的 Bloret Launcher 中</p>
-        <p>您可以关闭此页面并返回 Bloret Launcher 使用新插件</p>
-    </div>
-</body>
-</html>
-        '''
-
-    def generate_error_page(self, error_message):
-        """生成错误页面"""
+    def generate_install_success_page(self, plugin_name):
+        """生成插件安装成功页面 - Microsoft Fluent2 Design"""
         return f'''
 <!DOCTYPE html>
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>授权失败</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            background: linear-gradient(135deg, #ea6666 0%, #a24b4b 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-image: url('http://pcfs.eno.ink:20009/api/img/Takanashi-Hoshino?ratio=16_9');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }}
-        .container {{
-            background: rgba(255, 255, 255, 0.35);
-            border-radius: 18px;
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.18), 0 1.5px 8px 0 rgba(255, 255, 255, 0.25) inset;
-            border: 1.5px solid rgba(255, 255, 255, 0.45);
-            padding: 40px;
-            text-align: center;
-            backdrop-filter: blur(18px) saturate(180%);
-            -webkit-backdrop-filter: blur(18px) saturate(180%);
-            max-width: 500px;
-            width: 80%;
-        }}
-        h1 {{
-            color: white;
-            font-weight: 500;
-            margin-bottom: 20px;
-            font-size: 28px;
-        }}
-        p {{
-            font-size: 18px;
-            color: rgba(255, 255, 255, 0.95);
-            line-height: 1.6;
-            margin: 10px 0;
-        }}
-        .error {{
-            color: rgba(255, 255, 255, 0.95);
-            font-weight: bold;
-            margin: 20px 0;
-            padding: 15px;
-            background: rgba(244, 67, 54, 0.2);
-            border-radius: 10px;
-            font-size: 16px;
-        }}
-        .icon {{
-            font-size: 48px;
-            margin-bottom: 20px;
-            color: white;
-        }}
-        @keyframes fadeIn {{
-            from {{ opacity: 0; transform: translateY(20px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
-        }}
-        .container {{
-            animation: fadeIn 0.5s ease-out forwards;
-        }}
-    </style>
+    <title>插件安装成功</title>
+    <link rel="stylesheet" href="/install-success.css">
 </head>
 <body>
-    <div class="container">
-        <div class="icon">✗</div>
-        <h1>授权失败</h1>
-        <p>在处理您的 Bloret Passport 授权时发生错误</p>
-        <div class="error">{error_message}</div>
-        <p>请关闭此页面并返回 Bloret Launcher 重试</p>
+    <div class="fluent-card">
+        <div class="fluent-icon"></div>
+        <h1 class="fluent-title">插件安装成功</h1>
+        <p class="fluent-text">插件 {plugin_name} 已成功安装！</p>
+        <p class="fluent-text">您现在可以在 Bloret Launcher 中使用此插件了。</p>
+        <button class="fluent-btn fluent-btn-success" onclick="window.close()">关闭页面</button>
+    </div>
+</body>
+</html>
+        '''
+
+    def generate_error_page(self, error_message):
+        """生成错误页面 - Microsoft Fluent2 Design"""
+        return f'''
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>插件安装失败</title>
+    <link rel="stylesheet" href="/error.css">
+</head>
+<body>
+    <div class="fluent-card">
+        <div class="fluent-icon"></div>
+        <h1 class="fluent-title">插件安装失败</h1>
+        <p class="fluent-text">抱歉，插件安装过程中出现错误。</p>
+        <div class="fluent-error-card">
+            <div class="fluent-error-message">{error_message}</div>
+        </div>
+        <p class="fluent-text">请稍后重试或联系插件作者。</p>
+        <button class="fluent-btn fluent-btn-error" onclick="window.close()">关闭页面</button>
     </div>
 </body>
 </html>
