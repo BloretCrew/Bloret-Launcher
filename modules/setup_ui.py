@@ -1882,17 +1882,24 @@ def setup_download_ui(self, widget):
         # 设置Minecraft版本下载按钮点击事件
         minecraft_download_button = widget.findChild(QPushButton, 'Minecraft_version_Download')
         if minecraft_download_button:
-            minecraft_download_button.clicked.connect(lambda: InstallMinecraftVersion(minecraft_version_choose.currentText(),None,None,False))
+            def on_minecraft_download_button_clicked():
+                version = minecraft_version_choose.currentText()
+                dialog = VersionNameInputDialog(version, False, self)
+                if dialog.exec():
+                    version_name = dialog.get_version_name()
+                    InstallMinecraftVersion(version, version_name, None, False)
+            
+            minecraft_download_button.clicked.connect(on_minecraft_download_button_clicked)
             
         # 设置Fabric版本下载按钮点击事件
         fabric_download_button = widget.findChild(QPushButton, 'Fabric_version_Download')
         if fabric_download_button:
             def on_fabric_download_button_clicked():
-                from qfluentwidgets import MessageBox
                 version = fabric_version_choose.currentText()
-                # box = MessageBox(i18nText('您确定要安装 Fabric 版本 {} 吗？').format(version), i18nText('Fabric 版本安装目前尚在 Beta 阶段（实验性功能），安装完成后可能不能正常启动，但 Bloret Launcher 目前已可正常启动其他 Minecraft 启动器安装的 Fabric 版本 Minecraft。\n（人话：目前 Fabric 安装安装出来的可能不够标准，但是 Bloret Launcher 可以启动标准 Fabric 版本）\n如果您有能力，欢迎到 Github 来帮忙改进 Bloret Launcher'), widget)
-                # if box.exec():
-                InstallMinecraftVersion(version, None, None, True)
+                dialog = VersionNameInputDialog(version, True, self)
+                if dialog.exec():
+                    version_name = dialog.get_version_name()
+                    InstallMinecraftVersion(version, version_name, None, True)
             
             fabric_download_button.clicked.connect(on_fabric_download_button_clicked)
             
@@ -2007,6 +2014,141 @@ class ShortCutSettingDialog(MessageBoxBase):
         
         # 安装事件过滤器来捕捉按键
         self.installEventFilter(self)
+
+
+class VersionNameInputDialog(MessageBoxBase):
+    """版本名输入对话框"""
+    
+    def __init__(self, version, is_fabric=False, parent=None):
+        super().__init__(parent)
+        self.version = version
+        self.is_fabric = is_fabric
+        self.minecraft_dir = self.get_minecraft_dir()
+        
+        # 标题
+        title_text = i18nText('安装 {} 版本 {}').format('Fabric' if is_fabric else 'Minecraft', version)
+        self.titleLabel = SubtitleLabel(title_text)
+        self.titleLabel.setAlignment(Qt.AlignCenter)
+        
+        # 版本名输入区域
+        self.versionNameLabel = StrongBodyLabel(i18nText('版本名:'))
+        self.versionNameInput = LineEdit()
+        self.versionNameInput.setText(version)  # 默认为版本号
+        self.versionNameInput.setPlaceholderText(i18nText('输入版本名（默认为版本号）'))
+        
+        # 错误提示标签（红色）
+        self.errorLabel = CaptionLabel('')
+        self.errorLabel.setTextColor("#ff0000", QColor(255, 0, 0))
+        self.errorLabel.hide()
+        
+        # 提示信息
+        self.tipLabel = CaptionLabel(i18nText('版本名将用于创建版本文件夹'))
+        self.tipLabel.setTextColor("#666666", QColor(102, 102, 102))
+        
+        # 将组件添加到布局中
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.versionNameLabel)
+        self.viewLayout.addWidget(self.versionNameInput)
+        self.viewLayout.addWidget(self.errorLabel)
+        self.viewLayout.addWidget(self.tipLabel)
+        
+        # 设置对话框的最小宽度
+        self.widget.setMinimumWidth(400)
+        
+        # 连接输入变化事件
+        self.versionNameInput.textChanged.connect(self.on_version_name_changed)
+        
+        # 初始检查
+        self.validate_version_name()
+    
+    def get_minecraft_dir(self):
+        """获取Minecraft目录路径"""
+        try:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                return config.get('Minecraft_Directory', '')
+        except:
+            return ''
+    
+    def is_valid_windows_filename(self, filename):
+        """检查是否符合Windows文件夹命名规则"""
+        if not filename or filename.strip() == '':
+            return False, i18nText('版本名不能为空')
+        
+        # Windows保留字
+        reserved_names = [
+            'CON', 'PRN', 'AUX', 'NUL',
+            'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+            'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+        ]
+        
+        upper_filename = filename.upper()
+        if upper_filename in reserved_names:
+            return False, i18nText('版本名不能为Windows保留字')
+        
+        # 检查非法字符
+        invalid_chars = '<>:"/\\|?*'
+        for char in invalid_chars:
+            if char in filename:
+                return False, i18nText('版本名包含非法字符: {}').format(char)
+        
+        # 检查开头和结尾
+        if filename.startswith(' ') or filename.endswith(' '):
+            return False, i18nText('版本名不能以空格开头或结尾')
+        
+        if filename.endswith('.') or filename.endswith('..'):
+            return False, i18nText('版本名不能以点结尾')
+        
+        return True, ''
+    
+    def version_folder_exists(self, version_name):
+        """检查版本文件夹是否已存在"""
+        if not self.minecraft_dir:
+            return False
+        
+        versions_dir = os.path.join(self.minecraft_dir, 'versions')
+        version_dir = os.path.join(versions_dir, version_name)
+        return os.path.exists(version_dir)
+    
+    def validate_version_name(self):
+        """验证版本名"""
+        version_name = self.versionNameInput.text().strip()
+        
+        # 检查Windows文件夹命名规则
+        is_valid, error_msg = self.is_valid_windows_filename(version_name)
+        if not is_valid:
+            self.show_error(error_msg)
+            return False
+        
+        # 检查版本文件夹是否已存在
+        if self.version_folder_exists(version_name):
+            self.show_error(i18nText('版本文件夹 {} 已存在').format(version_name))
+            return False
+        
+        # 通过验证
+        self.hide_error()
+        return True
+    
+    def show_error(self, message):
+        """显示错误信息"""
+        self.errorLabel.setText(message)
+        self.errorLabel.show()
+        self.yesButton.setEnabled(False)
+        self.yesButton.setVisible(False)
+    
+    def hide_error(self):
+        """隐藏错误信息"""
+        self.errorLabel.hide()
+        self.yesButton.setEnabled(True)
+        self.yesButton.setVisible(True)
+    
+    def on_version_name_changed(self, text):
+        """版本名输入变化时的处理"""
+        self.validate_version_name()
+    
+    def get_version_name(self):
+        """获取用户输入的版本名"""
+        return self.versionNameInput.text().strip()
     
     def eventFilter(self, obj, event):
         """事件过滤器，用于捕捉按键事件"""
