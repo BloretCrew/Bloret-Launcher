@@ -7,6 +7,7 @@ from modules.win11toast import toast, update_progress, notify
 from threading import Thread
 from modules.log import log
 from modules.i18n import i18nText
+import modules.globals as BLglobals
 
 java_versions = {
         "24": {
@@ -50,7 +51,7 @@ def _install_java_thread(Java_Version):
 
     try:
         log(f"正在加载配置文件: {config_path}")
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
         log(i18nText("配置文件加载成功。"))
         
@@ -256,7 +257,7 @@ def _install_java_thread(Java_Version):
 
         if java_path:
             config["Java_Path"] = java_path
-            with open(config_path, 'w', encoding='utf-8') as f:
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f, indent=4, ensure_ascii=False)
             log(f"配置文件中 Java_Path 已更新为: {java_path}")
         else:

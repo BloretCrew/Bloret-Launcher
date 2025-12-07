@@ -25,12 +25,13 @@ from modules.easytier import StartEasytierServer
 from modules.ShortCut import ScreenShortCut
 import modules.globals as BLglobals
 import modules.config as cfg
+from modules.config import read
 
 # 加载配置文件
 def load_config():
     config_path = "config.json"
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(BLglobals.config_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         print(f"错误：配置文件 {config_path} 未找到。")
@@ -300,13 +301,13 @@ def on_self_starting_changed(value):
     config_path = os.path.join("config.json")
     try:
         # 读取现有配置
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(BLglobals.config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         config = {}
     config["self-starting"] = value
     try:
-        with open(config_path, "w", encoding="utf-8") as f:
+        with open(BLglobals.config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=4)
         log(f"已更新配置: self-starting={value}")
         setup_startup_with_self_starting(value) # 更新开机自启设置
@@ -2121,8 +2122,8 @@ class ShortCutSettingDialog(MessageBoxBase):
         """从配置文件加载当前快捷键"""
         try:
             config_path = "config.json"
-            if os.path.exists(config_path):
-                with open(config_path, "r", encoding="utf-8") as f:
+            if os.path.exists(BLglobals.config_path):
+                with open(BLglobals.config_path, "r", encoding="utf-8") as f:
                     config = json.load(f)
                     shortcut = config.get("screen_cut_shortcut", "Ctrl+Alt+A")
                     self.currentShortcut.setText(shortcut)
@@ -2177,20 +2178,16 @@ class ShortCutSettingDialog(MessageBoxBase):
     def save_shortcut(self):
         """保存快捷键到配置文件"""
         try:
-            config_path = "config.json"
             config = {}
             
-            # 读取现有配置
-            if os.path.exists(config_path):
-                with open(config_path, "r", encoding="utf-8") as f:
-                    config = json.load(f)
+            config = read()
             
             # 更新快捷键配置
             shortcut = self.get_new_shortcut()
             config["screen_cut_shortcut"] = shortcut
             
             # 保存配置
-            with open(config_path, "w", encoding="utf-8") as f:
+            with open(BLglobals.config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, ensure_ascii=False, indent=4)
             
             log(f"截图快捷键已更新为: {shortcut}")
@@ -2329,8 +2326,8 @@ def load_and_display_shortcut(label):
     """加载并显示当前快捷键"""
     try:
         config_path = "config.json"
-        if os.path.exists(config_path):
-            with open(config_path, "r", encoding="utf-8") as f:
+        if os.path.exists(BLglobals.config_path):
+            with open(BLglobals.config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
                 shortcut = config.get("screen_cut_shortcut", "Ctrl+Alt+A")
                 label.setText(shortcut)
