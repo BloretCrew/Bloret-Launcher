@@ -474,7 +474,7 @@ def download_file(url, file_path):
         log(f"下载文件失败 {url}: {str(e)}", logging.ERROR)
         return False
 
-def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False):
+def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None):
     # 如果没有提供下载对话框，则创建并显示一个新的
     if download_dialog is None:
         try:
@@ -506,7 +506,11 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
             log(f"创建下载对话框时出错: {e}")
             download_dialog = None
     
-    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir, download_dialog, Fabric_Loader))
+    # 如果未提供VersionName，则使用version作为默认值
+    if VersionName is None:
+        VersionName = version
+        
+    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir, download_dialog, Fabric_Loader, VersionName))
     thread.start()
 
 def toggle_pause_download(download_dialog):
@@ -519,7 +523,7 @@ def toggle_pause_download(download_dialog):
             downloader.pause()
             download_dialog.pause_button.setText(i18nText("恢复下载"))
 
-def _install_minecraft_version_threaded(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False):
+def _install_minecraft_version_threaded(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None):
     '''
     下载并安装指定版本的 Minecraft，可选安装 Fabric Loader
     
@@ -528,6 +532,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         minecraft_dir (str, optional): Minecraft 安装目录。如果未提供，默认为 %appdata%/Bloret-Launcher/.minecraft
         download_dialog (QDialog, optional): 下载进度对话框
         Fabric_Loader (bool, optional): 是否安装 Fabric Loader，默认为 False
+        VersionName (str, optional): 版本目录名称，如果未提供，默认为 version 的值
     
     Returns:
         bool: 安装成功返回True，失败返回False
@@ -548,8 +553,12 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         if minecraft_dir is None:
             appdata = os.environ.get('APPDATA', '')
             minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
+            
+        # 如果未提供VersionName，则使用version作为默认值
+        if VersionName is None:
+            VersionName = version
 
-        log(f"开始安装 Minecraft 版本: {version}，安装目录: {minecraft_dir}")
+        log(f"开始安装 Minecraft 版本: {version}，版本目录名称: {VersionName}，安装目录: {minecraft_dir}")
 
         # 确保目录存在
         os.makedirs(minecraft_dir, exist_ok=True)
@@ -667,11 +676,11 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             'valueStringOverride': '40%',
             'status': i18nText('正在创建版本目录...')
         })
-        version_dir = os.path.join(versions_dir, version)
+        version_dir = os.path.join(versions_dir, VersionName)  # 使用VersionName作为目录名
         os.makedirs(version_dir, exist_ok=True)
 
         # 保存版本JSON文件
-        version_json_path = os.path.join(version_dir, f"{version}.json")
+        version_json_path = os.path.join(version_dir, f"{VersionName}.json")  # JSON文件名也使用VersionName
         with open(version_json_path, 'w', encoding='utf-8') as f:
             json.dump(version_data, f, ensure_ascii=False, indent=4)
 
@@ -701,7 +710,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             # 使用PCL风格的镜像源处理
             client_urls = dl_source_launcher_or_meta_get(client_url)
 
-            client_jar_path = os.path.join(version_dir, f"{version}.jar")
+            client_jar_path = os.path.join(version_dir, f"{VersionName}.jar")  # 使用VersionName作为JAR文件名
             log(f"正在下载客户端JAR文件: {client_urls}")
 
             download_success = False
@@ -845,7 +854,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             download_dialog.downloader = LibraryDownloader(processed_libraries, max_workers=max_thread_value)
 
         # 创建natives目录
-        natives_dir = os.path.join(version_dir, f"{version}-natives")
+        natives_dir = os.path.join(version_dir, f"{VersionName}-natives")  # 使用VersionName作为natives目录名
         os.makedirs(natives_dir, exist_ok=True)
 
         # 下载库文件，使用PCL风格的镜像源处理
@@ -1208,8 +1217,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 
                 log(f"找到最新的 Fabric Loader 版本: {loader_version}")
                 
-                # 使用PCL风格的版本命名格式
-                fabric_version_id = f"{version}-Fabric {loader_version}"
+                # 使用PCL风格的版本命名格式，基于VersionName生成Fabric版本ID
+                fabric_version_id = f"{VersionName}-Fabric {loader_version}"
                 fabric_version_dir = os.path.join(versions_dir, fabric_version_id)
                 os.makedirs(fabric_version_dir, exist_ok=True)
                 
