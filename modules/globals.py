@@ -17,3 +17,8 @@ isdarktheme = False
 LM_Download_Way_list = ["1.21.8","1.21.7"]
 
 config_path = ''
+
+import os
+
+datapath = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher')
+minecraft_dir = ""

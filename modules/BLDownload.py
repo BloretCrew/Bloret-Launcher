@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from modules.safe import handle_exception
 from modules.log import log
 from modules.i18n import i18nText
+import modules.globals as BLglobals
 
 def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft, LM_Download_Way_version, parent):
     class BLDownloadDialog(QDialog):
@@ -65,14 +66,14 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
         def __init__(self, version, minecraft_dir):
             super().__init__()
             self.version = version
-            self.minecraft_dir = minecraft_dir
+            BLglobals.minecraft_dir = minecraft_dir
             # self.base_url = f"https://gitee.com/detrital/minecraft/releases/download/minecraft/"
             self.base_url = LM_Download_Way_minecraft.get(LM_download_way_choose)
             log(f"下载链接:{self.base_url}")
 
         def run(self):
             try:
-                log(f"开始下载版本 {self.version}，目标目录: {self.minecraft_dir}")
+                log(f"开始下载版本 {self.version}，目标目录: {BLglobals.minecraft_dir}")
 
                 # 检查 .minecraft 文件夹是否存在
                 minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
@@ -166,9 +167,9 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
 
         def ensure_minecraft_dir(self):
             """确保 .minecraft 文件夹存在"""
-            if not os.path.exists(self.MINECRAFT_DIR):
-                os.makedirs(self.MINECRAFT_DIR)
-                log(f"创建 .minecraft 文件夹: {self.MINECRAFT_DIR}")
+            if not os.path.exists(BLglobals.minecraft_dir):
+                os.makedirs(BLglobals.minecraft_dir)
+                log(f"创建 .minecraft 文件夹: {BLglobals.minecraft_dir}")
             else:
                 log(i18nText(".minecraft 文件夹已存在"))
 
@@ -179,10 +180,10 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
             self.ensure_minecraft_dir()
         
             # 创建必要的子文件夹
-            assets_dir = os.path.join(self.MINECRAFT_DIR, "assets")  # 定义 assets 文件夹路径
+            assets_dir = os.path.join(BLglobals.minecraft_dir, "assets")  # 定义 assets 文件夹路径
             objects_dir = os.path.join(assets_dir, "objects")  # 定义 objects 文件夹路径
             indexes_dir = os.path.join(assets_dir, "indexes")  # 定义 indexes 文件夹路径
-            libraries_dir = os.path.join(self.MINECRAFT_DIR, "libraries")  # 定义 libraries 文件夹路径
+            libraries_dir = os.path.join(BLglobals.minecraft_dir, "libraries")  # 定义 libraries 文件夹路径
         
             # 确保上述文件夹存在，如果不存在则创建
             os.makedirs(objects_dir, exist_ok=True)  # 创建 objects 文件夹

@@ -22,14 +22,9 @@ from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
 from modules.versions import Get_Run_Script
 from modules.i18n import i18n_widgets, i18nText
-# from modules.plugin import setup_window
+from modules.config import read
 
-# 读取 config.json 配置
-with open(BLglobals.config_path, "r", encoding="utf-8") as f:
-    config = json.load(f)
-
-# 从配置中获取 minecraft_dir
-MINECRAFT_DIR = config["minecraft_dir"]
+config = read()
 
 def update_download_way(data, data_list, version, minecraft):
     global LM_Download_Way, LM_Download_Way_list, LM_Download_Way_version, LM_Download_Way_minecraft
@@ -471,7 +466,7 @@ class MainWindow(FluentWindow):
         setup_multiplayer_ui(self,self.multiplayerInterface, BLglobals.server_ip)
         setup_passport_ui(self,self.passportInterface,BLglobals.server_ip,self.homeInterface)
         setup_settings_ui(self,self.settingsInterface)
-        setup_version_ui(self,self.versionInterface,minecraft_list,customize_list,MINECRAFT_DIR,self.homeInterface)
+        setup_version_ui(self,self.versionInterface,minecraft_list,customize_list,BLglobals.minecraft_dir,self.homeInterface)
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -583,14 +578,14 @@ class MainWindow(FluentWindow):
             def __init__(self, version, minecraft_dir, download_dialog):
                 super().__init__()
                 self.version = version
-                self.minecraft_dir = minecraft_dir
+                BLglobals.minecraft_dir = minecraft_dir
                 self.download_dialog = download_dialog
 
             def run(self):
-                result = InstallMinecraftVersion(self.version, self.minecraft_dir, self.download_dialog)
+                result = InstallMinecraftVersion(self.version, BLglobals.minecraft_dir, self.download_dialog)
                 self.download_finished.emit(result)
 
-        download_thread = DownloadThread(version, MINECRAFT_DIR, self.download_dialog)
+        download_thread = DownloadThread(version, BLglobals.minecraft_dir, self.download_dialog)
         download_thread.download_finished.connect(lambda success: self.on_minecraft_download_finished(success, version, self.download_dialog))
         download_thread.start()
         BLglobals.threads.append(download_thread)  # 防止线程被垃圾回收
