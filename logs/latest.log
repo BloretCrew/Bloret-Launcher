@@ -1,36 +1,44 @@
-[15:32:16] [main/INFO]: Loading Minecraft 1.21.8 with Fabric Loader 0.18.1
-[15:32:17] [main/INFO]: Fabric is preparing JARs on first launch, this may take a few seconds...
-[15:32:17] [main/INFO]: Loading 4 mods:
-	- fabricloader 0.18.1
+[14:39:51] [main/INFO]: Loading Minecraft 1.21.8 with Fabric Loader 0.18.2
+[14:39:51] [main/INFO]: Loading 11 mods:
+	- fabricloader 0.18.2
 	   \-- mixinextras 0.5.0
 	- java 24
 	- minecraft 1.21.8
-[15:32:17] [main/INFO]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/C:/Users/0570/AppData/Roaming/Bloret-Launcher/.minecraft/libraries/net/fabricmc/sponge-mixin/0.16.5+mixin.0.8.7/sponge-mixin-0.16.5+mixin.0.8.7.jar Service=Knot/Fabric Env=CLIENT
-[15:32:20] [Datafixer Bootstrap/INFO]: 269 Datafixer optimizations took 974 milliseconds
-[15:32:26] [main/INFO]: Completely ignored arguments: [0.18.1, Launcher]
-[15:32:26] [Render thread/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
-[15:32:26] [Render thread/INFO]: Setting user: Bloret
-[15:32:27] [Render thread/INFO]: [STDERR]: [LWJGL] [ThreadLocalUtil] Unsupported JNI version detected, this may result in a crash. Please inform LWJGL developers.
-[15:32:27] [Render thread/INFO]: Backend library: LWJGL version 3.3.3-snapshot
-[15:32:27] [Render thread/WARN]: Detected unexpected shutdown during last game startup: resetting fullscreen mode
-[15:32:28] [Render thread/INFO]: Using optional rendering extensions: GL_ARB_buffer_storage, GL_KHR_debug, GL_ARB_vertex_attrib_binding, GL_ARB_direct_state_access
-[15:32:28] [Render thread/INFO]: Reloading ResourceManager: vanilla
-[15:32:28] [Worker-Main-4/INFO]: Found unifont_pua-16.0.03.hex, loading
-[15:32:28] [Worker-Main-3/INFO]: Found unifont_all_no_pua-16.0.03.hex, loading
-[15:32:29] [Worker-Main-7/INFO]: Found unifont_jp_patch-16.0.03.hex, loading
-[15:32:31] [Render thread/INFO]: OpenAL initialized on device OpenAL Soft on 扬声器/听筒 (Realtek(R) Audio)
-[15:32:31] [Render thread/INFO]: Sound engine started
-[15:32:31] [Render thread/INFO]: Created: 1024x512x4 minecraft:textures/atlas/blocks.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 2048x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
-[15:32:31] [Render thread/INFO]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
-[15:34:50] [Render thread/INFO]: Stopping!
+	- modmenu 15.0.0
+	   |-- fabric-api-base 0.5.0+cd8c0daa2c
+	   |-- fabric-key-binding-api-v1 1.0.65+946bf4c32c
+	   |-- fabric-lifecycle-events-v1 2.6.4+db4dfd852c
+	   |-- fabric-resource-loader-v0 3.1.12+020423442c
+	   |-- fabric-screen-api-v1 2.1.1+277ecf7d2c
+	   \-- placeholder-api 2.7.2+1.21.8
+[14:39:52] [main/INFO]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/C:/Users/0570/AppData/Roaming/Bloret-Launcher/.minecraft/libraries/net/fabricmc/sponge-mixin/0.16.5+mixin.0.8.7/sponge-mixin-0.16.5+mixin.0.8.7.jar Service=Knot/Fabric Env=CLIENT
+[14:39:52] [main/INFO]: Compatibility level set to JAVA_21
+[14:39:54] [Datafixer Bootstrap/INFO]: 269 Datafixer optimizations took 628 milliseconds
+[14:39:55] [main/INFO]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.0).
+[14:40:02] [main/INFO]: Completely ignored arguments: [0.18.2]
+[14:40:02] [Render thread/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[14:40:02] [Render thread/INFO]: Setting user: Detritalw
+[14:40:02] [Render thread/INFO]: Checking mod updates...
+[14:40:02] [Render thread/INFO]: [STDERR]: [LWJGL] [ThreadLocalUtil] Unsupported JNI version detected, this may result in a crash. Please inform LWJGL developers.
+[14:40:03] [Render thread/INFO]: Backend library: LWJGL version 3.3.3-snapshot
+[14:40:04] [Render thread/INFO]: Using optional rendering extensions: GL_ARB_buffer_storage, GL_KHR_debug, GL_ARB_vertex_attrib_binding, GL_ARB_direct_state_access
+[14:40:04] [Render thread/INFO]: Reloading ResourceManager: vanilla, fabric, fabric-api-base, fabric-key-binding-api-v1, fabric-lifecycle-events-v1, fabric-resource-loader-v0, fabric-screen-api-v1, fabricloader, modmenu, placeholder-api
+[14:40:04] [Worker-Main-7/INFO]: Found unifont_pua-16.0.03.hex, loading
+[14:40:04] [Worker-Main-5/INFO]: Found unifont_all_no_pua-16.0.03.hex, loading
+[14:40:05] [Worker-Main-5/INFO]: Found unifont_jp_patch-16.0.03.hex, loading
+[14:40:07] [Render thread/INFO]: OpenAL initialized on device OpenAL Soft on 扬声器/听筒 (Realtek(R) Audio)
+[14:40:07] [Render thread/INFO]: Sound engine started
+[14:40:07] [Render thread/INFO]: Created: 1024x512x4 minecraft:textures/atlas/blocks.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 2048x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
+[14:40:07] [Render thread/INFO]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
+[14:40:19] [Render thread/INFO]: Stopping!

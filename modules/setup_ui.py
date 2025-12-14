@@ -1887,7 +1887,7 @@ def setup_download_ui(self, widget):
                 dialog = VersionNameInputDialog(version, False, self)
                 if dialog.exec():
                     version_name = dialog.get_version_name()
-                    InstallMinecraftVersion(version, version_name, None, False)
+                    InstallMinecraftVersion(version, VersionName=version_name, download_dialog=None, Fabric_Loader=False)
             
             minecraft_download_button.clicked.connect(on_minecraft_download_button_clicked)
             
@@ -1899,7 +1899,7 @@ def setup_download_ui(self, widget):
                 dialog = VersionNameInputDialog(version, True, self)
                 if dialog.exec():
                     version_name = dialog.get_version_name()
-                    InstallMinecraftVersion(version, version_name, None, True)
+                    InstallMinecraftVersion(version, VersionName=version_name, download_dialog=None, Fabric_Loader=True)
             
             fabric_download_button.clicked.connect(on_fabric_download_button_clicked)
             
@@ -2057,6 +2057,9 @@ class VersionNameInputDialog(MessageBoxBase):
         
         # 连接输入变化事件
         self.versionNameInput.textChanged.connect(self.on_version_name_changed)
+
+        # 将取消按钮设为 "取消安装"
+        self.cancelButton.setText(i18nText('取消安装'))
         
         # 初始检查
         self.validate_version_name()
@@ -2066,7 +2069,7 @@ class VersionNameInputDialog(MessageBoxBase):
         try:
             with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-                return config.get('Minecraft_Directory', '')
+                return config.get('minecraft_dir', '')
         except:
             return ''
     
@@ -2183,7 +2186,7 @@ class VersionNameInputDialog(MessageBoxBase):
         log("开始检查版本文件夹是否已存在...")
         if self.version_folder_exists(version_name):
             log(f"版本文件夹已存在，显示警告信息")
-            self.show_warning(i18nText('版本文件夹 {} 已存在').format(version_name))
+            self.show_warning(i18nText('版本文件夹 {} 已存在，确定将修复已安装的版本。').format(version_name))
             log("=== 验证结束：通过（显示警告） ===")
             return True  # 允许继续，但显示警告
         
@@ -2213,9 +2216,9 @@ class VersionNameInputDialog(MessageBoxBase):
         self.errorLabel.show()
         self.yesButton.setEnabled(True)
         self.yesButton.setVisible(True)
-        # 修改确认按钮文本为"修复"
-        self.yesButton.setText(i18nText('修复'))
-        log("警告信息已显示，确认按钮已启用并设置为'修复'")
+        # 修改确认按钮文本为"修复已安装的版本"
+        self.yesButton.setText(i18nText('修复已安装的版本'))
+        log("警告信息已显示，确认按钮已启用并设置为'修复已安装的版本'")
     
     def hide_error(self):
         """隐藏错误信息"""

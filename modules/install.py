@@ -558,7 +558,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         if VersionName is None:
             VersionName = version
 
-        log(f"开始安装 Minecraft 版本: {version}，版本目录名称: {VersionName}，安装目录: {minecraft_dir}")
+        version_dir = os.path.join(minecraft_dir, "versions", VersionName)
+        log(f"开始安装 Minecraft 版本: {version}，版本目录名称: {VersionName}，安装目录: {version_dir}")
 
         # 确保目录存在
         os.makedirs(minecraft_dir, exist_ok=True)
@@ -670,13 +671,12 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             log("所有版本详细信息URL都获取失败", logging.ERROR)
             return False
 
-        # 5. 创建版本目录
+        # 5. 确保版本目录存在
         update_progress({
             'value': 0.4, 
             'valueStringOverride': '40%',
-            'status': i18nText('正在创建版本目录...')
+            'status': i18nText('正在确保版本目录存在...')
         })
-        version_dir = os.path.join(versions_dir, VersionName)  # 使用VersionName作为目录名
         os.makedirs(version_dir, exist_ok=True)
 
         # 保存版本JSON文件

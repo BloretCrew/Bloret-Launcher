@@ -20,7 +20,7 @@ from modules.global_hotkey import init_global_hotkeys
 from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
-from modules.versions import Get_Run_Script
+from modules.launch import Get_Run_Script
 from modules.i18n import i18n_widgets, i18nText
 from modules.config import read
 
@@ -235,6 +235,12 @@ class MainWindow(FluentWindow):
             # 保存配置到文件
             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, ensure_ascii=False, indent=4)
+            # 同时更新全局变量
+            BLglobals.minecraft_dir = default_mc_dir
+            log(f"已设置默认Minecraft目录: {default_mc_dir}")
+        else:
+            # 确保全局变量与配置文件同步
+            BLglobals.minecraft_dir = self.config['minecraft_dir']
 
         # 设置全局编码
         codec = locale.getpreferredencoding()
@@ -1596,10 +1602,7 @@ class MainWindow(FluentWindow):
         self.is_running = False  # 重置标志变量
 
     def update_show_text(self, text):
-        if self.show_text is not None:
-            self.show_text.setText(text)
-        else:
-            log("show_text is None, unable to set text", logging.ERROR)
+        return
 
     def download_skin(self, widget):
         if self.player_skin:

@@ -101,8 +101,13 @@ def Get_Run_Script(mc_version):
                 default_java_paths = [
                     r"C:\Program Files\Java\jdk-17\bin\java.exe",
                     r"C:\Program Files\Java\jdk-21\bin\java.exe",
+                    r"C:\Program Files\Java\jdk-24\bin\java.exe",
                     r"C:\Program Files\Eclipse Adoptium\jdk-17-hotspot\bin\java.exe",
-                    r"C:\Program Files\Eclipse Adoptium\jdk-21-hotspot\bin\java.exe"
+                    r"C:\Program Files\Eclipse Adoptium\jdk-21-hotspot\bin\java.exe",
+                    r"C:\Program Files\Eclipse Adoptium\jdk-24-hotspot\bin\java.exe",
+                    r"C:\Program Files\Zulu\zulu-24\bin\java.exe",
+                    r"C:\Program Files\Zulu\zulu-17\bin\java.exe",
+                    r"C:\Program Files\Zulu\zulu-21\bin\java.exe"
                 ]
                 
                 for default_path in default_java_paths:
@@ -213,58 +218,51 @@ def Get_Run_Script(mc_version):
     ])
     
     # 构建类路径 (classpath)
-    classpath = []  # 初始化classpath列表
+    classpath = []
     
     # 添加所有依赖库
     libraries_dir = os.path.join(minecraft_dir, "libraries")
-    optifine_libs = []
-    missing_libraries = []  # 用于记录缺失的库文件
+    missing_libraries = []
     if "libraries" in version_data:
         for lib in version_data["libraries"]:
-            # 检查库的规则
+            # 检查库是否适用于当前系统
+            should_include = True
             if "rules" in lib:
-                allow_lib = False
-                for rule in lib['rules']:
-                    # 检查规则是否允许该库
-                    if "action" in rule and rule["action"] == "allow":
-                        # 检查操作系统规则
-                        if "os" in rule:
-                            os_rule = rule["os"]
-                            if "name" in os_rule:
-                                # 检查操作系统名称
-                                os_name = os.name  # 获取当前操作系统名称
-                                if os_rule["name"] == "windows" and os_name != "nt":
-                                    continue
-                                elif os_rule["name"] == "osx" and os_name != "posix":
-                                    continue
-                                elif os_rule["name"] == "linux" and os_name != "posix":
-                                    continue
-                        allow_lib = True
-                if not allow_lib:
-                    continue
+                should_include = False
+                for rule in lib["rules"]:
+                    if rule.get("action") == "allow":
+                        os_rule = rule.get("os", {})
+                        if not os_rule or (os_rule.get("name", "").lower() == platform.system().lower() or 
+                                          (os_rule.get("name") == "windows" and platform.system() == "Windows") or
+                                          (os_rule.get("name") == "osx" and platform.system() == "Darwin") or
+                                          (os_rule.get("name") == "linux" and platform.system() == "Linux")):
+                            should_include = True
+                            break
             
-            # 检查库是否需要下载
-            if "downloads" in lib and "artifact" in lib['downloads']:
-                lib_path = os.path.join(minecraft_dir, "libraries", lib['downloads']['artifact']["path"])
-            else:
-                # 从库名称构建路径
-                parts = lib['name'].split(":")
-                if len(parts) == 3:
-                    group = parts[0].replace(".", "/")
-                    artifact = parts[1]
-                    version_lib = parts[2]
-                    lib_filename = f"{artifact}-{version_lib}.jar"
-                    lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
-                else:
-                    log(f"无法解析库名称: {lib['name']}", logging.WARNING)
-                    continue
-            
-            # 添加库到类路径
-            classpath.append(lib_path)
-            
-            # 处理特殊库（如OptiFine）
-            if "name" in lib and "optifine" in lib['name'].lower():
-                optifine_libs.append(lib_path)
+            if should_include:
+                lib_path = None
+                if "downloads" in lib and "artifact" in lib["downloads"]:
+                    lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
+                elif "name" in lib:
+                    # 处理 Maven 风格的库名称
+                    parts = lib["name"].split(":")
+                    if len(parts) >= 3:
+                        group_id, artifact_id, lib_version = parts[0:3]
+                        relative_path = os.path.join(
+                            group_id.replace(".", "/"),
+                            artifact_id,
+                            lib_version,
+                            f"{artifact_id}-{lib_version}.jar"
+                        )
+                        lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
+                
+                if lib_path:
+                    # 检查库文件是否存在
+                    if os.path.exists(lib_path):
+                        classpath.append(lib_path)
+                    else:
+                        # 记录缺失的库文件
+                        missing_libraries.append((lib, lib_path))
     
     # 检查是否为 Fabric 版本
     is_fabric = "fabric" in mc_version.lower() or any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", []))
@@ -281,11 +279,9 @@ def Get_Run_Script(mc_version):
         "-Xmx4096m"  # 最大堆内存，设置为4GB
     ])
     
-    # 添加自定义参数
-    launch_args.append(f'-Doolloo.jlw.tmpdir="{os.path.join(os.getcwd(), "Bloret Launcher")}"')
-    
-    # 初始化mods_dir变量
-    mods_dir = ""  # 默认值为空字符串
+    # 添加自定义参数 - 设置JavaWrapper的临时目录为系统临时目录
+    temp_dir = os.path.join(os.environ.get('TEMP', os.environ.get('TMP', os.getcwd())), 'Bloret-Launcher')
+    launch_args.append(f'-Doolloo.jlw.tmpdir="{temp_dir}"')
     
     # 添加 Fabric 特定参数和处理
     if is_fabric:
@@ -306,7 +302,6 @@ def Get_Run_Script(mc_version):
         
         # 添加 mods 目录中的所有 JAR 文件 (Fabric mods)
         mods_dir = os.path.join(minecraft_dir, "versions", mc_version, "mods")
-        
         if os.path.exists(mods_dir):
             for file in os.listdir(mods_dir):
                 if file.endswith('.jar'):
@@ -449,17 +444,34 @@ def Get_Run_Script(mc_version):
                 classpath.append(lib_path)
                 log(f"添加之前缺失但现已下载的库: {lib_path}")
     
+    # 添加自定义参数 - 设置JavaWrapper的临时目录为系统临时目录
+    temp_dir = os.path.join(os.environ.get('TEMP', os.environ.get('TMP', os.getcwd())), 'Bloret-Launcher')
+    launch_args.append(f'-Doolloo.jlw.tmpdir="{temp_dir}"')
+    
+    # 初始化mods_dir变量 - 使用版本目录下的mods文件夹
+    mods_dir = os.path.join(versions_dir, "mods")
+    
+    # 确保mods目录存在
+    if not os.path.exists(mods_dir):
+        os.makedirs(mods_dir)
+        log(f"创建mods目录: {mods_dir}")
+    
+    log("mods 目录: " + mods_dir)
+
     # 添加类路径参数
     launch_args.extend(["-cp", '\"' + ";".join(classpath) + '\"'])  # Windows 使用分号分隔
     
     # Add Fabric Loader arguments to ensure mods are loaded
     if is_fabric and os.path.exists(mods_dir):  # 只有在是fabric版本且mods_dir存在时才添加
-        launch_args.extend(["-Dfabric.addMods=" + mods_dir])
+        log(f"添加 Fabric mods 目录: {mods_dir}")
+        # 确保路径被正确引用，特别是包含空格时
+        launch_args.extend([f'-Dfabric.addMods="{mods_dir}"'])
     
     # 添加主类和参数
     if is_fabric:
         # Fabric 使用 KnotClient 主类而不是 -jar 参数
         launch_args.append("net.fabricmc.loader.impl.launch.knot.KnotClient")
+
     else:
         # 原始 Minecraft 启动方式
         launch_args.append("-jar")
@@ -497,7 +509,7 @@ def Get_Run_Script(mc_version):
     asset_index = version_data.get("assetIndex", {}).get("id", mc_version)
     
     # 设置 versionType
-    version_type = "Bloret Launcher"
+    version_type = "Bloret-Launcher"
     
     # 检查登录方式并设置相应参数
     login_method = account_info.get("loginMethod", 0) if account_info else 0
@@ -562,6 +574,11 @@ def Get_Run_Script(mc_version):
     # 不添加过滤器，避免被Minecraft误认为是游戏参数
     bat_command = " ".join(launch_args)
     
+    # 修复f-string中不能包含反斜杠的问题
+    chcp_command = "chcp 65001"
+    cd_command = f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}'
+    full_command = f"{chcp_command}\n{cd_command}\n{bat_command}"
+    
     log(f"生成的启动命令: {bat_command}")
-    log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {"chcp 65001\n" + f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}\n' + bat_command}")
-    return "chcp 65001\n" + f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}\n' + bat_command
+    log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {full_command}")
+    return full_command
