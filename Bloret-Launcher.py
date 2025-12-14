@@ -780,7 +780,8 @@ class MainWindow(FluentWindow):
             log(f"读取版本列表失败: {e}", logging.ERROR)
             set_list = []
             set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
-    def run_cmcl(self, version):
+    def run_cmcl(self, version, HomePage):
+        from PyQt5.QtCore import Qt
         log(f"minecraft_list:{minecraft_list}")
         if version not in minecraft_list:
             CustomizeRun(self,version)
@@ -826,6 +827,33 @@ class MainWindow(FluentWindow):
                 return
             self.is_running = True
             log(f"正在启动 {version}")
+            
+            # 在启动时添加TabBar标签
+            try:
+                # 导入必要的组件
+                from PyQt5.QtWidgets import QLabel, QWidget
+                from qfluentwidgets import TabBar
+                
+                # 获取TabBar组件
+                minecraft_tab = HomePage.findChild(TabBar, "MinecraftTab")
+                if minecraft_tab and hasattr(minecraft_tab, 'addTab'):
+                    try:
+                        minecraft_tab.show()
+                        minecraft_tab.addTab(
+                            routeKey=version,
+                            text=version,
+                            icon="ui/icon/Grass_Block.png",
+                            onClick=lambda: log(f"点击了标签: {version}")
+                        )
+
+                        log(f"启动时已向 MinecraftTab 添加标签: {version}")
+                    except Exception as e:
+                        log(f"启动时添加标签到 MinecraftTab 失败: {e}")
+                else:
+                    log(f"启动时未找到 MinecraftTab 组件或组件不支持 addTab 方法")
+            except Exception as e:
+                log(f"启动时添加标签时出错: {e}")
+            
             if os.path.exists("run.bat"):
                 os.remove("run.bat")
             # 获取第一个账户信息
@@ -1572,6 +1600,7 @@ class MainWindow(FluentWindow):
             self.update_show_text_thread.wait()  # 确保线程完全停止
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()  # 关闭气泡消息
+        
         InfoBar.success(
             title=i18nText('⏹️ 游戏结束'),
             content=i18nText("Minecraft 已结束\n如果您认为是异常退出，请查看 log 文件夹中的最后一份日志文件\n并前往本项目的 Github 或 百络谷QQ群 询问"),

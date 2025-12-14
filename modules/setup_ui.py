@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy, QApplication
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox, TabBar
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
 from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime
@@ -342,10 +342,16 @@ def setup_home_ui(self, widget):
     if openblweb_button:
         openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://launcher.bloret.net")))
     self.run_cmcl_list(True)
+
     run_choose = widget.findChild(ComboBox, "run_choose")
     run_button = widget.findChild(QPushButton, "run")
     if run_button:
-        run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText()))
+        run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText(),widget))
+
+    minecraft_tab = widget.findChild(TabBar, "MinecraftTab")
+    if minecraft_tab:
+        minecraft_tab.hide()
+    
     self.show_text = widget.findChild(QLabel, "show")
     Bloret_PassPort_Name = widget.findChild(QLabel, "Bloret_PassPort_Name")
     if Bloret_PassPort_Name:
@@ -1471,8 +1477,8 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
 
                     def create_minecraft_context_menu(pos, label_now, card_now, version_name=minecraft_list[i]):
                         menu = RoundMenu()
-                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name))
-                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name))
+                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name,homeInterface))
+                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name,homeInterface))
                         rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_minecraft_version_name(self,version_name,label_now, MINECRAFT_DIR,homeInterface))
                         delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_minecraft_version(self,version_name,label_now, card_now, MINECRAFT_DIR, homeInterface))
                         folder_action = Action(FluentIcon.FOLDER, i18nText('打开文件位置'), triggered=lambda: open_minecraft_version_folder(self,version_name,MINECRAFT_DIR))
@@ -1505,8 +1511,8 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
 
                     def create_customize_context_menu(pos, label_now, card_now, version_name=customize_list[i]):
                         menu = RoundMenu()
-                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name))
-                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name))
+                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name,homeInterface))
+                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name,homeInterface))
                         rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_Customize_name(self,version_name, label_now, homeInterface))
                         delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_Customize(self,version_name, label_now, card_now,customize_list,homeInterface))
 
