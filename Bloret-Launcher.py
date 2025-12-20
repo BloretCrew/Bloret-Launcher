@@ -975,6 +975,17 @@ class MainWindow(FluentWindow):
             
             # 跟踪运行中的进程
             self.running_processes[version] = self.run_script_thread
+            
+            # 启动 Minecraft 窗口监控
+            try:
+                from modules.launch import monitor_minecraft_window
+                monitor_thread = monitor_minecraft_window(version)
+                if monitor_thread:
+                    log(f"已启动 Minecraft {version} 窗口监控线程")
+            except ImportError as e:
+                log(f"无法导入窗口监控功能: {e}")
+            except Exception as e:
+                log(f"启动窗口监控时出错: {e}")
 
             
 

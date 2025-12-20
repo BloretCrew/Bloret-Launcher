@@ -13,6 +13,14 @@ from modules.i18n import i18nText
 from modules.install import LibraryDownloader
 import modules.globals as BLglobals
 
+# Windows API 导入，用于获取窗口句柄
+if platform.system() == "Windows":
+    import ctypes
+    from ctypes import wintypes
+    import win32gui
+    import win32con
+    import win32process
+
 def Get_Run_Script(mc_version):
     """
     根据 cmcl.json 的内容生成启动 .minecraft 文件夹中指定版本的命令
@@ -582,3 +590,171 @@ def Get_Run_Script(mc_version):
     log(f"生成的启动命令: {bat_command}")
     log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {full_command}")
     return full_command
+
+def get_minecraft_window_handle(version=None, timeout=30):
+    """
+    获取 Minecraft 窗口句柄
+    
+    Args:
+        version (str): Minecraft 版本号，用于识别特定版本的窗口
+        timeout (int): 超时时间（秒）
+    
+    Returns:
+        int: 窗口句柄，如果未找到则返回 None
+    """
+    if platform.system() != "Windows":
+        log("获取窗口句柄功能仅支持 Windows 系统")
+        return None
+    
+    try:
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout:
+            # 枚举所有窗口
+            def enum_windows_callback(hwnd, windows_list):
+                if win32gui.IsWindowVisible(hwnd) and win32gui.IsWindowEnabled(hwnd):
+                    try:
+                        window_text = win32gui.GetWindowText(hwnd)
+                        class_name = win32gui.GetClassName(hwnd)
+                        
+                        # 检查是否为 Minecraft 窗口
+                        # Minecraft 窗口通常包含 "Minecraft" 或 "Minecraft*" 标题
+                        # 并且类名通常是 "LWJGL" 或包含 "GLFW" 的类名
+                        if ("Minecraft" in window_text or 
+                            (version and version in window_text)):
+                            
+                            # 进一步验证窗口类名
+                            if (class_name.startswith("LWJGL") or 
+                                "GLFW" in class_name or
+                                "SunAwtFrame" in class_name or
+                                "SDL_app" in class_name):
+                                
+                                # 获取进程ID
+                                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                                
+                                # 检查进程命令行是否包含 Minecraft 相关参数
+                                try:
+                                    import psutil
+                                    process = psutil.Process(pid)
+                                    cmdline = ' '.join(process.cmdline())
+                                    
+                                    # 检查是否包含 Minecraft 相关关键词
+                                    minecraft_keywords = [
+                                        'net.minecraft',
+                                        'minecraft',
+                                        '.jar',
+                                        'forge',
+                                        'fabric',
+                                        mc_version if 'mc_version' in locals() else ''
+                                    ]
+                                    
+                                    if any(keyword in cmdline.lower() for keyword in minecraft_keywords if keyword):
+                                        windows_list.append({
+                                            'hwnd': hwnd,
+                                            'title': window_text,
+                                            'class': class_name,
+                                            'pid': pid,
+                                            'cmdline': cmdline
+                                        })
+                                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                    # 如果无法获取进程信息，但窗口标题和类名匹配，也认为是 Minecraft 窗口
+                                    windows_list.append({
+                                        'hwnd': hwnd,
+                                        'title': window_text,
+                                        'class': class_name,
+                                        'pid': pid,
+                                        'cmdline': 'unknown'
+                                    })
+                    except Exception as e:
+                        log(f"枚举窗口时出错: {e}")
+                return True
+            
+            minecraft_windows = []
+            win32gui.EnumWindows(enum_windows_callback, minecraft_windows)
+            
+            if minecraft_windows:
+                # 找到最可能的 Minecraft 窗口
+                # 优先选择标题中包含版本号的窗口
+                best_match = None
+                for window in minecraft_windows:
+                    if version and version in window['title']:
+                        best_match = window
+                        break
+                
+                if not best_match:
+                    best_match = minecraft_windows[0]  # 选择第一个匹配的窗口
+                
+                hwnd = best_match['hwnd']
+                log(f"找到 Minecraft 窗口: 句柄={hwnd}, 标题='{best_match['title']}', "
+                    f"类名='{best_match['class']}', PID={best_match['pid']}")
+                
+                return hwnd
+            
+            # 等待一段时间后重试
+            time.sleep(0.5)
+        
+        log(f"在 {timeout} 秒内未找到 Minecraft 窗口")
+        return None
+        
+    except ImportError as e:
+        log(f"缺少必要的库: {e}")
+        log("请安装 pywin32 和 psutil: pip install pywin32 psutil")
+        return None
+    except Exception as e:
+        log(f"获取 Minecraft 窗口句柄时出错: {e}")
+        return None
+
+def monitor_minecraft_window(version, check_interval=1):
+    """
+    监控 Minecraft 窗口，当窗口出现时获取句柄并输出到控制台
+    
+    Args:
+        version (str): Minecraft 版本号
+        check_interval (int): 检查间隔（秒）
+    """
+    def monitor_thread():
+        log(f"开始监控 Minecraft {version} 窗口...")
+        
+        # 等待一段时间让 Minecraft 启动
+        time.sleep(3)
+        
+        # 尝试获取窗口句柄
+        hwnd = get_minecraft_window_handle(version, timeout=30)
+        
+        if hwnd:
+            log(f"✅ Minecraft {version} 窗口已找到！")
+            log(f"🎯 窗口句柄: {hwnd}")
+            log(f"🔍 窗口句柄(十六进制): 0x{hwnd:08X}")
+            
+            # 获取窗口信息
+            try:
+                window_text = win32gui.GetWindowText(hwnd)
+                class_name = win32gui.GetClassName(hwnd)
+                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                
+                log(f"📋 窗口标题: {window_text}")
+                log(f"🏷️ 窗口类名: {class_name}")
+                log(f"🔢 进程ID: {pid}")
+                
+                # 尝试获取进程信息
+                try:
+                    import psutil
+                    process = psutil.Process(pid)
+                    log(f"⚙️ 进程名称: {process.name()}")
+                    log(f"📁 进程路径: {process.exe()}")
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+                
+            except Exception as e:
+                log(f"获取窗口详细信息时出错: {e}")
+            
+            # 返回窗口句柄给调用者
+            return hwnd
+        else:
+            log(f"❌ 未找到 Minecraft {version} 窗口")
+            return None
+    
+    # 启动监控线程
+    thread = threading.Thread(target=monitor_thread, daemon=True)
+    thread.start()
+    return thread
