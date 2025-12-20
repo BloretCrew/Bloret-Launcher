@@ -61,7 +61,7 @@
         <x>0</x>
         <y>0</y>
         <width>726</width>
-        <height>1196</height>
+        <height>1197</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -98,7 +98,7 @@
             <x>0</x>
             <y>0</y>
             <width>708</width>
-            <height>1026</height>
+            <height>1027</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout">
@@ -744,10 +744,10 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
              </widget>
             </item>
             <item>
-             <widget class="PushButton" name="run">
+             <widget class="PrimaryPushButton" name="run">
               <property name="maximumSize">
                <size>
-                <width>150</width>
+                <width>200</width>
                 <height>16777215</height>
                </size>
               </property>
@@ -779,6 +779,11 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
   <customwidget>
    <class>PushButton</class>
    <extends>QPushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>PrimaryPushButton</class>
+   <extends>PushButton</extends>
    <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>

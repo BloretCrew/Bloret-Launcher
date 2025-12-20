@@ -1,8 +1,11 @@
 {
-    "language": "zh",
-    "downloadSource": 1,
-    "checkAccountBeforeStart": false,
-    "accounts": [],
-    "printStartupInfo": true,
-    "language-run": "zh"
+  "language": "zh",
+  "downloadSource": 1,
+  "checkAccountBeforeStart": false,
+  "accounts": [{
+    "playerName": "abcd",
+    "loginMethod": 0,
+    "selected": true
+  }],
+  "printStartupInfo": true
 }
