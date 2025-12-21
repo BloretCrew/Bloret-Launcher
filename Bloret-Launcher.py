@@ -20,16 +20,12 @@ from modules.global_hotkey import init_global_hotkeys
 from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
-from modules.versions import Get_Run_Script
+from modules.launch import Get_Run_Script
 from modules.i18n import i18n_widgets, i18nText
-# from modules.plugin import setup_window
+from modules.config import read
+import modules.mwtool
 
-# 读取 config.json 配置
-with open(BLglobals.config_path, "r", encoding="utf-8") as f:
-    config = json.load(f)
-
-# 从配置中获取 minecraft_dir
-MINECRAFT_DIR = config["minecraft_dir"]
+config = read()
 
 def update_download_way(data, data_list, version, minecraft):
     global LM_Download_Way, LM_Download_Way_list, LM_Download_Way_version, LM_Download_Way_minecraft
@@ -91,10 +87,15 @@ class RunScriptThread(QThread):
     output_received = pyqtSignal(str)
     last_output_received = pyqtSignal(str)  # 新增信号
     
+    def __init__(self):
+        super().__init__()
+        self.process = None
+        self.version = None
+    
     def run(self):
         script_path = "run.bat"
         try:
-            process = subprocess.Popen(
+            self.process = subprocess.Popen(
                 [script_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -105,18 +106,82 @@ class RunScriptThread(QThread):
                 creationflags=subprocess.CREATE_NO_WINDOW  # 隐藏控制台窗口
             )
             last_line = ""
-            for line in iter(lambda: process.stdout.readline(), ''):  # 移除errors参数
+            for line in iter(lambda: self.process.stdout.readline(), ''):  # 移除errors参数
                 last_line = line.strip()
                 self.output_received.emit(last_line)
             self.last_output_received.emit(last_line)
-            process.stdout.close()
-            process.wait()
-            if process.returncode == 0:
+            self.process.stdout.close()
+            self.process.wait()
+            if self.process.returncode == 0:
                 self.finished.emit()
             else:
-                self.error_occurred.emit(process.stderr.read().strip())
+                self.error_occurred.emit(self.process.stderr.read().strip())
         except subprocess.CalledProcessError as e:
             self.error_occurred.emit(str(e.stderr))
+    
+    def terminate_process(self):
+        """终止Minecraft进程"""
+        try:
+            # 首先终止批处理脚本进程
+            if self.process and self.process.poll() is None:
+                self.process.terminate()
+                self.process.wait(timeout=3)  # 等待3秒
+                if self.process.poll() is None:
+                    self.process.kill()
+                    self.process.wait()
+            
+            # 然后查找并终止Minecraft Java进程
+            import psutil
+            
+            # 查找包含版本信息的Java进程
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    cmdline = proc.info.get('cmdline', [])
+                    if cmdline and 'java' in proc.info.get('name', '').lower():
+                        # 检查命令行参数中是否包含版本信息
+                        cmd_str = ' '.join(cmdline)
+                        if self.version and self.version in cmd_str:
+                            log(f"找到Minecraft进程 (PID: {proc.pid}, 版本: {self.version})")
+                            proc.terminate()
+                            try:
+                                proc.wait(timeout=5)
+                            except psutil.TimeoutExpired:
+                                proc.kill()
+                                proc.wait()
+                            log(f"已终止Minecraft进程 (PID: {proc.pid})")
+                            return True
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+            
+            # 如果没有找到特定版本的进程，尝试查找典型的Minecraft进程
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    cmdline = proc.info.get('cmdline', [])
+                    if cmdline and 'java' in proc.info.get('name', '').lower():
+                        cmd_str = ' '.join(cmdline)
+                        # 检查是否包含Minecraft相关的类或参数
+                        if any(keyword in cmd_str for keyword in ['net.minecraft', 'minecraft', '.jar', 'forge', 'fabric']):
+                            log(f"找到可能的Minecraft进程 (PID: {proc.pid})")
+                            proc.terminate()
+                            try:
+                                proc.wait(timeout=3)
+                            except psutil.TimeoutExpired:
+                                proc.kill()
+                                proc.wait()
+                            log(f"已终止可能的Minecraft进程 (PID: {proc.pid})")
+                            return True
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+            
+            log(f"未找到正在运行的Minecraft进程 (版本: {self.version})")
+            return True  # 即使没有找到进程，也算作成功
+            
+        except ImportError:
+            log("警告: 未安装psutil库，无法精确查找Minecraft进程")
+            return True
+        except Exception as e:
+            log(f"终止进程时出错: {e}")
+            return False
 class UpdateShowTextThread(QThread):
     update_text = pyqtSignal(str)
     def __init__(self, run_script_thread):
@@ -174,6 +239,10 @@ class MainWindow(FluentWindow):
         # 初始化配置文件
         with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             self.config = json.load(f)
+        
+        # 进程管理：版本 -> RunScriptThread 映射
+        self.running_processes = {}
+        self.minecraft_tab = None
 
         # 获取系统主题颜色
         theme_color = get_system_theme_color()
@@ -240,6 +309,12 @@ class MainWindow(FluentWindow):
             # 保存配置到文件
             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, ensure_ascii=False, indent=4)
+            # 同时更新全局变量
+            BLglobals.minecraft_dir = default_mc_dir
+            log(f"已设置默认Minecraft目录: {default_mc_dir}")
+        else:
+            # 确保全局变量与配置文件同步
+            BLglobals.minecraft_dir = self.config['minecraft_dir']
 
         # 设置全局编码
         codec = locale.getpreferredencoding()
@@ -471,7 +546,7 @@ class MainWindow(FluentWindow):
         setup_multiplayer_ui(self,self.multiplayerInterface, BLglobals.server_ip)
         setup_passport_ui(self,self.passportInterface,BLglobals.server_ip,self.homeInterface)
         setup_settings_ui(self,self.settingsInterface)
-        setup_version_ui(self,self.versionInterface,minecraft_list,customize_list,MINECRAFT_DIR,self.homeInterface)
+        setup_version_ui(self,self.versionInterface,minecraft_list,customize_list,BLglobals.minecraft_dir,self.homeInterface)
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -583,14 +658,14 @@ class MainWindow(FluentWindow):
             def __init__(self, version, minecraft_dir, download_dialog):
                 super().__init__()
                 self.version = version
-                self.minecraft_dir = minecraft_dir
+                BLglobals.minecraft_dir = minecraft_dir
                 self.download_dialog = download_dialog
 
             def run(self):
-                result = InstallMinecraftVersion(self.version, self.minecraft_dir, self.download_dialog)
+                result = InstallMinecraftVersion(self.version, BLglobals.minecraft_dir, self.download_dialog)
                 self.download_finished.emit(result)
 
-        download_thread = DownloadThread(version, MINECRAFT_DIR, self.download_dialog)
+        download_thread = DownloadThread(version, BLglobals.minecraft_dir, self.download_dialog)
         download_thread.download_finished.connect(lambda success: self.on_minecraft_download_finished(success, version, self.download_dialog))
         download_thread.start()
         BLglobals.threads.append(download_thread)  # 防止线程被垃圾回收
@@ -779,7 +854,8 @@ class MainWindow(FluentWindow):
             log(f"读取版本列表失败: {e}", logging.ERROR)
             set_list = []
             set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
-    def run_cmcl(self, version):
+    def run_cmcl(self, version, HomePage):
+        from PyQt5.QtCore import Qt
         log(f"minecraft_list:{minecraft_list}")
         if version not in minecraft_list:
             CustomizeRun(self,version)
@@ -825,6 +901,44 @@ class MainWindow(FluentWindow):
                 return
             self.is_running = True
             log(f"正在启动 {version}")
+            
+            # 在启动时添加TabBar标签
+            try:
+                # 导入必要的组件
+                from PyQt5.QtWidgets import QLabel, QWidget
+                from qfluentwidgets import TabBar
+                
+                # 获取TabBar组件
+                minecraft_tab = HomePage.findChild(TabBar, "MinecraftTab")
+                if minecraft_tab and hasattr(minecraft_tab, 'addTab'):
+                    try:
+                        # 启用关闭按钮
+                        from qfluentwidgets import TabCloseButtonDisplayMode
+                        minecraft_tab.setCloseButtonDisplayMode(TabCloseButtonDisplayMode.ON_HOVER)
+                        minecraft_tab.show()
+                        
+                        # 添加标签
+                        minecraft_tab.addTab(
+                            routeKey=version,
+                            text=version,
+                            icon="ui/icon/Grass_Block.png",
+                            onClick=lambda: log(f"点击了标签: {version}")
+                        )
+                        
+                        # 连接关闭信号（如果尚未连接）
+                        if not hasattr(self, '_tab_close_connected'):
+                            minecraft_tab.tabCloseRequested.connect(self.on_tab_close_requested)
+                            self._tab_close_connected = True
+                            self.minecraft_tab = minecraft_tab
+
+                        log(f"启动时已向 MinecraftTab 添加标签: {version}")
+                    except Exception as e:
+                        log(f"启动时添加标签到 MinecraftTab 失败: {e}")
+                else:
+                    log(f"启动时未找到 MinecraftTab 组件或组件不支持 addTab 方法")
+            except Exception as e:
+                log(f"启动时添加标签时出错: {e}")
+            
             if os.path.exists("run.bat"):
                 os.remove("run.bat")
             # 获取第一个账户信息
@@ -854,10 +968,21 @@ class MainWindow(FluentWindow):
 
             # 线程
             self.run_script_thread = RunScriptThread()
-            self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(None, run_button))
+            self.run_script_thread.version = version  # 设置版本信息
+            self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(None, run_button, version))
             self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, None, run_button))
             self.run_script_thread.start()
             self.threads.append(self.run_script_thread)
+            
+            # 跟踪运行中的进程
+            self.running_processes[version] = self.run_script_thread
+            
+            # 启动 Minecraft 窗口监控 (使用 mwtool)
+            try:
+                log(f"启动工具栏监视器，目标版本: {version}")
+                modules.mwtool.start_monitoring(version)
+            except Exception as e:
+                log(f"启动工具栏监视器失败: {e}", logging.ERROR)
 
             
 
@@ -1565,12 +1690,91 @@ class MainWindow(FluentWindow):
     def log_output(self, output):
         if output:
             log(output.strip())
-    def on_run_script_finished(self, teaching_tip, run_button):
+    def on_tab_close_requested(self, index):
+        """处理TabBar关闭按钮点击事件"""
+        try:
+            from qfluentwidgets import TabBar
+            
+            if self.minecraft_tab and isinstance(self.minecraft_tab, TabBar):
+                # 获取要关闭的标签的版本信息
+                tab_item = self.minecraft_tab.tabItem(index)
+                if tab_item:
+                    version = tab_item.routeKey()
+                    
+                    # 检查是否有对应的运行进程
+                    if version in self.running_processes:
+                        run_thread = self.running_processes[version]
+                        
+                        # 确认对话框
+                        from qfluentwidgets import MessageBox
+                        w = MessageBox(
+                            i18nText('确认关闭'),
+                            i18nText(f'确定要关闭 Minecraft {version} 吗？'),
+                            self
+                        )
+                        
+                        if w.exec():
+                            # 用户确认关闭
+                            log(f"用户请求关闭 Minecraft {version}")
+                            
+                            # 终止进程
+                            if run_thread.terminate_process():
+                                # 从跟踪列表中移除
+                                del self.running_processes[version]
+                                
+                                # 移除标签
+                                self.minecraft_tab.removeTab(index)
+                                
+                                InfoBar.success(
+                                    title=i18nText('✅ 已关闭'),
+                                    content=i18nText(f"Minecraft {version} 已关闭"),
+                                    isClosable=True,
+                                    position=InfoBarPosition.TOP,
+                                    duration=3000,
+                                    parent=self
+                                )
+                            else:
+                                InfoBar.error(
+                                    title=i18nText('❌ 关闭失败'),
+                                    content=i18nText(f"无法终止 Minecraft {version} 进程"),
+                                    isClosable=True,
+                                    position=InfoBarPosition.TOP,
+                                    duration=5000,
+                                    parent=self
+                                )
+                    else:
+                        # 没有对应的进程，直接移除标签
+                        self.minecraft_tab.removeTab(index)
+                        log(f"移除了未运行状态的标签: {version}")
+                        
+        except Exception as e:
+            log(f"处理标签关闭请求时出错: {e}")
+            InfoBar.error(
+                title=i18nText('❌ 错误'),
+                content=i18nText("关闭标签时发生错误"),
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+
+    def on_run_script_finished(self, teaching_tip, run_button, version=None):
+        try:
+            modules.mwtool.hide_minecraft_tool()
+            modules.mwtool.stop_monitoring()
+        except Exception as e:
+            log(f"停止工具栏失败: {e}")
+
         if self.update_show_text_thread:
             self.update_show_text_thread.terminate()  # 停止更新线程
             self.update_show_text_thread.wait()  # 确保线程完全停止
         if teaching_tip and not sip.isdeleted(teaching_tip):
             teaching_tip.close()  # 关闭气泡消息
+        
+        # 从运行进程列表中移除
+        if version and version in self.running_processes:
+            del self.running_processes[version]
+        
         InfoBar.success(
             title=i18nText('⏹️ 游戏结束'),
             content=i18nText("Minecraft 已结束\n如果您认为是异常退出，请查看 log 文件夹中的最后一份日志文件\n并前往本项目的 Github 或 百络谷QQ群 询问"),
@@ -1585,6 +1789,11 @@ class MainWindow(FluentWindow):
         time.sleep(1)  # 等待1秒确保所有事件处理完毕
 
     def on_run_script_error(self, error, teaching_tip, run_button):
+        try:
+            modules.mwtool.hide_minecraft_tool()
+            modules.mwtool.stop_monitoring()
+        except Exception:
+            pass
         if self.update_show_text_thread:
             self.update_show_text_thread.terminate()  # 停止更新线程
         if teaching_tip and not sip.isdeleted(teaching_tip):
@@ -1601,10 +1810,7 @@ class MainWindow(FluentWindow):
         self.is_running = False  # 重置标志变量
 
     def update_show_text(self, text):
-        if self.show_text is not None:
-            self.show_text.setText(text)
-        else:
-            log("show_text is None, unable to set text", logging.ERROR)
+        return
 
     def download_skin(self, widget):
         if self.player_skin:

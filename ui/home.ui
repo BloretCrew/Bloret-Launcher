@@ -61,10 +61,26 @@
         <x>0</x>
         <y>0</y>
         <width>726</width>
-        <height>1196</height>
+        <height>1197</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <widget class="TabBar" name="MinecraftTab">
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <property name="movable">
+          <bool>true</bool>
+         </property>
+         <property name="scrollable">
+          <bool>true</bool>
+         </property>
+         <property name="tabShadowEnabled">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
        <item>
         <widget class="SmoothScrollArea" name="smoothScrollArea">
          <property name="sizeIncrement">
@@ -82,7 +98,7 @@
             <x>0</x>
             <y>0</y>
             <width>708</width>
-            <height>1058</height>
+            <height>1027</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout">
@@ -575,22 +591,6 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
              </property>
             </spacer>
            </item>
-           <item>
-            <widget class="QFrame" name="frame_2">
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>10</height>
-              </size>
-             </property>
-             <property name="frameShape">
-              <enum>QFrame::StyledPanel</enum>
-             </property>
-             <property name="frameShadow">
-              <enum>QFrame::Raised</enum>
-             </property>
-            </widget>
-           </item>
           </layout>
          </widget>
         </widget>
@@ -605,7 +605,10 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_6">
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_6">
+           <layout class="QHBoxLayout" name="horizontalLayout_6"/>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_8">
             <item>
              <widget class="StrongBodyLabel" name="Welcome_text">
               <property name="maximumSize">
@@ -629,23 +632,6 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
               </property>
              </widget>
             </item>
-            <item>
-             <spacer name="horizontalSpacer_3">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>40</width>
-                <height>20</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_8">
             <item>
              <widget class="CaptionLabel" name="WillUseAccount_Top">
               <property name="text">
@@ -758,10 +744,10 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
              </widget>
             </item>
             <item>
-             <widget class="PushButton" name="run">
+             <widget class="PrimaryPushButton" name="run">
               <property name="maximumSize">
                <size>
-                <width>150</width>
+                <width>200</width>
                 <height>16777215</height>
                </size>
               </property>
@@ -796,6 +782,11 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
    <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
+   <class>PrimaryPushButton</class>
+   <extends>PushButton</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
    <class>CardWidget</class>
    <extends>QFrame</extends>
    <header>qfluentwidgets</header>
@@ -815,6 +806,12 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
   </customwidget>
   <customwidget>
    <class>SmoothScrollArea</class>
+   <extends>QScrollArea</extends>
+   <header>qfluentwidgets</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>SingleDirectionScrollArea</class>
    <extends>QScrollArea</extends>
    <header>qfluentwidgets</header>
    <container>1</container>
@@ -842,6 +839,11 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
   <customwidget>
    <class>TitleLabel</class>
    <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>TabBar</class>
+   <extends>SingleDirectionScrollArea</extends>
    <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>

@@ -9,3 +9,4 @@ sip
 Send2Trash
 winsdk
 toml
+psutil

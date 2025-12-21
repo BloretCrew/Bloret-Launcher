@@ -7,30 +7,104 @@ from modules.log import log
 # config_path = %appdata%/Bloret-Launcher/config.json
 config_path = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'config.json')
 
-#先检查是否存在
-if not os.path.exists(BLglobals.config_path):
-    log(f"配置文件未找到: {config_path}")
-    # 复制 config.json 到 %appdata%/Bloret-Launcher/config.json
-    shutil.copyfile("config.json", config_path)
-    log(f"配置文件已复制到: {config_path}")
+#先检查目标配置文件是否存在
+log(f"正在检查配置文件路径: {config_path}")
+log(f"当前工作目录: {os.getcwd()}")
+log(f"默认配置文件是否存在: {os.path.exists('config.json')}")
+
+if not os.path.exists(config_path):
+    log(f"目标配置文件未找到: {config_path}")
+    
+    # 确保目标目录存在
+    config_dir = os.path.dirname(config_path)
+    if not os.path.exists(config_dir):
+        log(f"配置目录不存在，正在创建: {config_dir}")
+        os.makedirs(config_dir, exist_ok=True)
+        log(f"配置目录已创建: {config_dir}")
+    
+    # 检查源文件是否存在
+    if os.path.exists("config.json"):
+        try:
+            # 复制 config.json 到 %appdata%/Bloret-Launcher/config.json
+            shutil.copyfile("config.json", config_path)
+            log(f"配置文件已成功复制到: {config_path}")
+        except Exception as e:
+            log(f"复制配置文件时出错: {str(e)}")
+    else:
+        log(f"错误：默认配置文件 config.json 在当前目录中不存在")
+else:
+    log(f"目标配置文件已存在: {config_path}")
+
 BLglobals.config_path = config_path
 log("配置文件路径: " + config_path)
 
 # 检查一下配置文件中的 ver 字段是否与当前版本匹配
-with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-    config = json.load(f)
-    with open('config.json', 'r', encoding='utf-8') as f:
-        default_config = json.load(f)
-        if config.get('ver') != default_config.get('ver'):
-            log(f"配置文件版本({config.get('ver')})与默认配置文件版本({default_config.get('ver')})不匹配")
+try:
+    log(f"正在读取配置文件: {BLglobals.config_path}")
+    with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+        
+    log(f"成功读取配置文件，正在检查版本字段...")
+    
+    # 检查默认配置文件是否存在
+    if os.path.exists('config.json'):
+        with open('config.json', 'r', encoding='utf-8') as f:
+            default_config = json.load(f)
+            
+        current_ver = config.get('ver')
+        default_ver = default_config.get('ver')
+        
+        log(f"当前配置文件版本: {current_ver}")
+        log(f"默认配置文件版本: {default_ver}")
+        
+        if current_ver != default_ver:
+            log(f"配置文件版本不匹配，正在更新...")
             # 备份旧的配置文件为 config.back.json
             shutil.copyfile(BLglobals.config_path, config_path + ".back")
             log(f"旧的配置文件已备份为: {config_path + '.back'}")
             # 复制 config.json 到 %appdata%/Bloret-Launcher/config.json
             shutil.copyfile("config.json", config_path)
-            log(f"配置文件已复制到: {config_path}")
-            exit(1)
+            log(f"配置文件已更新到: {config_path}")
+        else:
+            log("配置文件版本匹配，无需更新")
+    else:
+        log("警告：默认配置文件 config.json 不存在，无法进行版本检查")
+        
+except FileNotFoundError:
+    log(f"错误：配置文件 {BLglobals.config_path} 不存在")
+except json.JSONDecodeError as e:
+    log(f"错误：配置文件格式不正确: {str(e)}")
+    # 如果配置文件损坏，尝试用默认配置替换
+    if os.path.exists('config.json'):
+        log("尝试用默认配置文件替换损坏的配置文件...")
+        shutil.copyfile("config.json", config_path)
+        log("配置文件已替换")
+except Exception as e:
+    log(f"读取配置文件时发生未知错误: {str(e)}")
+
 
 def read():
     with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
         return json.load(f)
+    
+try:
+    log(f"正在读取最终配置文件: {BLglobals.config_path}")
+    config_data = read()
+    log(f"成功读取配置文件内容: {config_data}")
+    
+    BLglobals.minecraft_dir = config_data.get('minecraft_dir', '')
+    log(f"Minecraft目录已设置为: '{BLglobals.minecraft_dir}'")
+    
+    # 检查minecraft目录是否存在
+    if BLglobals.minecraft_dir:
+        if os.path.exists(BLglobals.minecraft_dir):
+            log(f"Minecraft目录存在: {BLglobals.minecraft_dir}")
+        else:
+            log(f"警告：Minecraft目录不存在: {BLglobals.minecraft_dir}")
+    else:
+        log("警告：Minecraft目录未设置（为空字符串）")
+        
+except Exception as e:
+    log(f"读取配置文件失败: {str(e)}")
+    BLglobals.minecraft_dir = ''
+    log("Minecraft目录已设置为空字符串作为默认值")

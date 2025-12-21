@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy, QApplication
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox, TabBar
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
 from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime
@@ -342,10 +342,16 @@ def setup_home_ui(self, widget):
     if openblweb_button:
         openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://launcher.bloret.net")))
     self.run_cmcl_list(True)
+
     run_choose = widget.findChild(ComboBox, "run_choose")
     run_button = widget.findChild(QPushButton, "run")
     if run_button:
-        run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText()))
+        run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText(),widget))
+
+    minecraft_tab = widget.findChild(TabBar, "MinecraftTab")
+    if minecraft_tab:
+        minecraft_tab.hide()
+    
     self.show_text = widget.findChild(QLabel, "show")
     Bloret_PassPort_Name = widget.findChild(QLabel, "Bloret_PassPort_Name")
     if Bloret_PassPort_Name:
@@ -1471,8 +1477,8 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
 
                     def create_minecraft_context_menu(pos, label_now, card_now, version_name=minecraft_list[i]):
                         menu = RoundMenu()
-                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name))
-                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name))
+                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name,homeInterface))
+                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name,homeInterface))
                         rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_minecraft_version_name(self,version_name,label_now, MINECRAFT_DIR,homeInterface))
                         delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_minecraft_version(self,version_name,label_now, card_now, MINECRAFT_DIR, homeInterface))
                         folder_action = Action(FluentIcon.FOLDER, i18nText('打开文件位置'), triggered=lambda: open_minecraft_version_folder(self,version_name,MINECRAFT_DIR))
@@ -1505,8 +1511,8 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
 
                     def create_customize_context_menu(pos, label_now, card_now, version_name=customize_list[i]):
                         menu = RoundMenu()
-                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name))
-                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name))
+                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name,homeInterface))
+                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name,homeInterface))
                         rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_Customize_name(self,version_name, label_now, homeInterface))
                         delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_Customize(self,version_name, label_now, card_now,customize_list,homeInterface))
 
@@ -1882,17 +1888,24 @@ def setup_download_ui(self, widget):
         # 设置Minecraft版本下载按钮点击事件
         minecraft_download_button = widget.findChild(QPushButton, 'Minecraft_version_Download')
         if minecraft_download_button:
-            minecraft_download_button.clicked.connect(lambda: InstallMinecraftVersion(minecraft_version_choose.currentText(),None,None,False))
+            def on_minecraft_download_button_clicked():
+                version = minecraft_version_choose.currentText()
+                dialog = VersionNameInputDialog(version, False, self)
+                if dialog.exec():
+                    version_name = dialog.get_version_name()
+                    InstallMinecraftVersion(version, VersionName=version_name, download_dialog=None, Fabric_Loader=False)
+            
+            minecraft_download_button.clicked.connect(on_minecraft_download_button_clicked)
             
         # 设置Fabric版本下载按钮点击事件
         fabric_download_button = widget.findChild(QPushButton, 'Fabric_version_Download')
         if fabric_download_button:
             def on_fabric_download_button_clicked():
-                from qfluentwidgets import MessageBox
                 version = fabric_version_choose.currentText()
-                # box = MessageBox(i18nText('您确定要安装 Fabric 版本 {} 吗？').format(version), i18nText('Fabric 版本安装目前尚在 Beta 阶段（实验性功能），安装完成后可能不能正常启动，但 Bloret Launcher 目前已可正常启动其他 Minecraft 启动器安装的 Fabric 版本 Minecraft。\n（人话：目前 Fabric 安装安装出来的可能不够标准，但是 Bloret Launcher 可以启动标准 Fabric 版本）\n如果您有能力，欢迎到 Github 来帮忙改进 Bloret Launcher'), widget)
-                # if box.exec():
-                InstallMinecraftVersion(version, None, None, True)
+                dialog = VersionNameInputDialog(version, True, self)
+                if dialog.exec():
+                    version_name = dialog.get_version_name()
+                    InstallMinecraftVersion(version, VersionName=version_name, download_dialog=None, Fabric_Loader=True)
             
             fabric_download_button.clicked.connect(on_fabric_download_button_clicked)
             
@@ -2007,195 +2020,234 @@ class ShortCutSettingDialog(MessageBoxBase):
         
         # 安装事件过滤器来捕捉按键
         self.installEventFilter(self)
+
+
+class VersionNameInputDialog(MessageBoxBase):
+    """版本名输入对话框"""
     
-    def eventFilter(self, obj, event):
-        """事件过滤器，用于捕捉按键事件"""
-        # 确保capturing属性存在
-        if not hasattr(self, 'capturing'):
-            self.capturing = False
-            
-        if self.capturing and event.type() == event.KeyPress:
-            # 获取按键信息
-            key = event.key()
-            modifiers = event.modifiers()
-            
-            # 忽略某些特殊按键
-            if key in [Qt.Key_Control, Qt.Key_Alt, Qt.Key_Shift, Qt.Key_Meta]:
-                return True
-            
-            # 构建快捷键字符串
-            shortcut_parts = []
-            
-            # 添加修饰键
-            if modifiers & Qt.ControlModifier:
-                shortcut_parts.append("Ctrl")
-            if modifiers & Qt.AltModifier:
-                shortcut_parts.append("Alt")
-            if modifiers & Qt.ShiftModifier:
-                shortcut_parts.append("Shift")
-            if modifiers & Qt.MetaModifier:
-                shortcut_parts.append("Win")
-            
-            # 添加主按键
-            key_text = self.get_key_text(key)
-            if key_text:
-                shortcut_parts.append(key_text)
-                
-                # 更新显示
-                shortcut_text = "+".join(shortcut_parts)
-                self.newShortcutLabel.setText(shortcut_text)
-                self.newShortcutLabel.setStyleSheet("color: #0078d4; font-weight: bold;")
-                self.statusLabel.setText(i18nText('快捷键已捕捉，点击确定保存'))
-                
-                # 停止捕捉
-                self.stop_capture()
-                
-            return True
-        elif self.capturing and event.type() == event.KeyRelease:
-            return True
-            
-        return super().eventFilter(obj, event)
-    
-    def get_key_text(self, key):
-        """将Qt按键转换为文本表示"""
-        # 字母键
-        if Qt.Key_A <= key <= Qt.Key_Z:
-            return chr(key - Qt.Key_A + ord('A'))
+    def __init__(self, version, is_fabric=False, parent=None):
+        super().__init__(parent)
+        self.version = version
+        self.is_fabric = is_fabric
+        BLglobals.minecraft_dir = self.get_minecraft_dir()
         
-        # 数字键
-        if Qt.Key_0 <= key <= Qt.Key_9:
-            return chr(key - Qt.Key_0 + ord('0'))
+        # 标题
+        title_text = i18nText('安装 {} 版本 {}').format('Fabric' if is_fabric else 'Minecraft', version)
+        self.titleLabel = SubtitleLabel(title_text)
+        self.titleLabel.setAlignment(Qt.AlignCenter)
         
-        # 功能键
-        if Qt.Key_F1 <= key <= Qt.Key_F12:
-            return f"F{key - Qt.Key_F1 + 1}"
+        # 版本名输入区域
+        self.versionNameLabel = StrongBodyLabel(i18nText('版本名:'))
+        self.versionNameInput = LineEdit()
+        self.versionNameInput.setText(version)  # 默认为版本号
+        self.versionNameInput.setPlaceholderText(i18nText('输入版本名（默认为版本号）'))
         
-        # 其他常用按键
-        key_map = {
-            Qt.Key_Space: "Space",
-            Qt.Key_Return: "Enter",
-            Qt.Key_Enter: "Enter",
-            Qt.Key_Tab: "Tab",
-            Qt.Key_Escape: "Escape",
-            Qt.Key_Delete: "Delete",
-            Qt.Key_Backspace: "Backspace",
-            Qt.Key_Insert: "Insert",
-            Qt.Key_Home: "Home",
-            Qt.Key_End: "End",
-            Qt.Key_PageUp: "PageUp",
-            Qt.Key_PageDown: "PageDown",
-            Qt.Key_Up: "Up",
-            Qt.Key_Down: "Down",
-            Qt.Key_Left: "Left",
-            Qt.Key_Right: "Right",
-        }
+        # 错误提示标签（红色）
+        self.errorLabel = CaptionLabel('')
+        self.errorLabel.setTextColor("#ff0000", QColor(255, 0, 0))
+        self.errorLabel.hide()
         
-        return key_map.get(key, "")
-    
-    def start_capture(self):
-        """开始捕捉快捷键"""
-        self.capturing = True
-        self.startCaptureButton.setText(i18nText('正在捕捉...'))
-        self.startCaptureButton.setEnabled(False)
-        self.statusLabel.setText(i18nText('请按下您想要的快捷键组合'))
-        self.statusLabel.setTextColor("#ff6b35", QColor(255, 107, 53))
+        # 提示信息
+        self.tipLabel = CaptionLabel(i18nText('版本名将用于创建版本文件夹'))
+        self.tipLabel.setTextColor("#666666", QColor(102, 102, 102))
         
-        # 清空之前的快捷键
-        self.newShortcutLabel.setText(i18nText('等待按键...'))
-        self.newShortcutLabel.setStyleSheet("color: #666666; font-style: italic;")
+        # 将组件添加到布局中
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.versionNameLabel)
+        self.viewLayout.addWidget(self.versionNameInput)
+        self.viewLayout.addWidget(self.errorLabel)
+        self.viewLayout.addWidget(self.tipLabel)
+        
+        # 设置对话框的最小宽度
+        self.widget.setMinimumWidth(400)
+        
+        # 连接输入变化事件
+        self.versionNameInput.textChanged.connect(self.on_version_name_changed)
+
+        # 将取消按钮设为 "取消安装"
+        self.cancelButton.setText(i18nText('取消安装'))
+        
+        # 初始检查
+        self.validate_version_name()
     
-    def stop_capture(self):
-        """停止捕捉快捷键"""
-        self.capturing = False
-        self.startCaptureButton.setText(i18nText('开始捕捉'))
-        self.startCaptureButton.setEnabled(True)
-        self.statusLabel.setTextColor("#0078d4", QColor(0, 120, 212))
-    
-    def clear_shortcut(self):
-        """清除快捷键"""
-        self.newShortcutLabel.setText(i18nText('点击"开始捕捉"后按下快捷键组合'))
-        self.newShortcutLabel.setStyleSheet("color: #666666; font-style: italic;")
-        self.statusLabel.setText(i18nText('快捷键已清除'))
-        self.stop_capture()
-    
-    def load_current_shortcut(self):
-        """从配置文件加载当前快捷键"""
+    def get_minecraft_dir(self):
+        """获取Minecraft目录路径"""
         try:
-            config_path = "config.json"
-            if os.path.exists(BLglobals.config_path):
-                with open(BLglobals.config_path, "r", encoding="utf-8") as f:
-                    config = json.load(f)
-                    shortcut = config.get("screen_cut_shortcut", "Ctrl+Alt+A")
-                    self.currentShortcut.setText(shortcut)
-        except Exception as e:
-            log(f"加载快捷键配置失败: {e}")
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                return config.get('minecraft_dir', '')
+        except:
+            return ''
     
-    def get_new_shortcut(self):
-        """获取新捕捉的快捷键"""
-        return self.newShortcutLabel.text()
+    def is_valid_windows_filename(self, filename):
+        """检查是否符合Windows文件夹命名规则"""
+        log(f"开始检查Windows文件夹命名规则，文件名: '{filename}'")
+        
+        if not filename or filename.strip() == '':
+            log("检查失败：文件名为空或仅包含空格")
+            return False, i18nText('版本名不能为空')
+        
+        log(f"文件名长度: {len(filename)} 字符")
+        
+        # Windows保留字
+        reserved_names = [
+            'CON', 'PRN', 'AUX', 'NUL',
+            'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+            'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+        ]
+        
+        upper_filename = filename.upper()
+        log(f"转换为大写: '{upper_filename}'")
+        
+        if upper_filename in reserved_names:
+            log(f"检查失败：文件名是Windows保留字: {upper_filename}")
+            return False, i18nText('版本名不能为Windows保留字')
+        
+        log("保留字检查通过")
+        
+        # 检查非法字符
+        invalid_chars = '<>:"/\\|?*'
+        log(f"检查非法字符: {invalid_chars}")
+        for char in invalid_chars:
+            if char in filename:
+                log(f"检查失败：发现非法字符 '{char}' 在文件名中")
+                return False, i18nText('版本名包含非法字符: {}').format(char)
+        
+        log("非法字符检查通过")
+        
+        # 检查开头和结尾
+        if filename.startswith(' ') or filename.endswith(' '):
+            log("检查失败：文件名以空格开头或结尾")
+            return False, i18nText('版本名不能以空格开头或结尾')
+        
+        log("开头结尾空格检查通过")
+        
+        if filename.endswith('.') or filename.endswith('..'):
+            log(f"检查失败：文件名以点结尾: '{filename}'")
+            return False, i18nText('版本名不能以点结尾')
+        
+        log("结尾点检查通过")
+        log(f"所有Windows文件夹命名规则检查通过: '{filename}'")
+        return True, ''
     
-    def validate_shortcut_format(self, shortcut):
-        """验证快捷键格式"""
-        if not shortcut or shortcut == i18nText('点击"开始捕捉"后按下快捷键组合') or shortcut == i18nText('等待按键...'):
-            return False
-            
-        # 允许的修饰键
-        modifiers = ["Ctrl", "Alt", "Shift", "Win"]
-        # 允许的按键（字母、数字、功能键）
-        keys = [chr(i) for i in range(ord('A'), ord('Z')+1)] + \
-               [chr(i) for i in range(ord('0'), ord('9')+1)] + \
-               [f"F{i}" for i in range(1, 13)] + \
-               ["Space", "Enter", "Tab", "Escape", "Delete", "Backspace", "Insert", 
-                "Home", "End", "PageUp", "PageDown", "Up", "Down", "Left", "Right"]
+    def version_folder_exists(self, version_name):
+        """检查版本文件夹是否已存在"""
+        log(f"=== 开始检查版本文件夹是否存在 ===")
+        log(f"输入的版本名: '{version_name}'")
         
-        parts = shortcut.split("+")
-        if len(parts) < 2:
+        if not BLglobals.minecraft_dir:
+            log(f"minecraft_dir 未设置，BLglobals.minecraft_dir: {BLglobals.minecraft_dir}")
+            log("=== 检查结束：版本文件夹不存在 ===")
             return False
-            
-        # 检查是否至少有一个修饰键和一个有效按键
-        has_modifier = any(mod in parts for mod in modifiers)
-        has_key = any(key in parts for key in keys)
         
-        return has_modifier and has_key
+        log(f"minecraft_dir 已设置: {BLglobals.minecraft_dir}")
+        
+        versions_dir = os.path.join(BLglobals.minecraft_dir, 'versions')
+        log(f"versions_dir 路径: {versions_dir}")
+        
+        # 检查 versions 目录是否存在
+        if not os.path.exists(versions_dir):
+            log(f"警告：versions 目录不存在: {versions_dir}")
+            log("=== 检查结束：版本文件夹不存在 ===")
+            return False
+        
+        version_dir = os.path.join(versions_dir, version_name)
+        log(f"完整的版本文件夹路径: {version_dir}")
+        
+        # 检查具体版本文件夹是否存在
+        exists = os.path.exists(version_dir)
+        log(f"版本文件夹存在状态: {exists}")
+        
+        if exists:
+            log(f"版本文件夹已存在: {version_dir}")
+            # 检查是否为目录
+            if os.path.isdir(version_dir):
+                log(f"确认 {version_dir} 是一个目录")
+            else:
+                log(f"警告：{version_dir} 存在但不是目录")
+        else:
+            log(f"版本文件夹不存在: {version_dir}")
+        
+        log("=== 检查结束 ===")
+        return exists
     
-    def validate(self):
-        """重写验证表单数据的方法"""
-        shortcut = self.get_new_shortcut()
+    def validate_version_name(self):
+        """验证版本名"""
+        log("=== 开始验证版本名 ===")
+        version_name = self.versionNameInput.text().strip()
+        log(f"输入的版本名（去除前后空格）: '{version_name}'")
         
-        if not shortcut or shortcut == i18nText('点击"开始捕捉"后按下快捷键组合') or shortcut == i18nText('等待按键...'):
-            self.statusLabel.setText(i18nText('请先捕捉快捷键'))
-            self.statusLabel.setTextColor("#cf1010", QColor(207, 16, 16))
+        # 检查Windows文件夹命名规则
+        log("开始检查Windows文件夹命名规则...")
+        is_valid, error_msg = self.is_valid_windows_filename(version_name)
+        if not is_valid:
+            log(f"Windows文件夹命名规则检查失败: {error_msg}")
+            self.show_error(error_msg)
+            log("=== 验证结束：失败 ===")
             return False
-            
-        if not self.validate_shortcut_format(shortcut):
-            self.statusLabel.setText(i18nText('快捷键格式不正确'))
-            self.statusLabel.setTextColor("#cf1010", QColor(207, 16, 16))
-            return False
-            
-        self.statusLabel.setTextColor("#0078d4", QColor(0, 120, 212))
+        
+        log("Windows文件夹命名规则检查通过")
+        
+        # 检查版本文件夹是否已存在
+        log("开始检查版本文件夹是否已存在...")
+        if self.version_folder_exists(version_name):
+            log(f"版本文件夹已存在，显示警告信息")
+            self.show_warning(i18nText('版本文件夹 {} 已存在，确定将修复已安装的版本。').format(version_name))
+            log("=== 验证结束：通过（显示警告） ===")
+            return True  # 允许继续，但显示警告
+        
+        log("版本文件夹不存在，可以继续创建")
+        
+        # 通过验证
+        log("所有验证检查通过")
+        self.hide_error()
+        log("=== 验证结束：成功 ===")
         return True
     
-    def save_shortcut(self):
-        """保存快捷键到配置文件"""
-        try:
-            config = {}
-            
-            config = read()
-            
-            # 更新快捷键配置
-            shortcut = self.get_new_shortcut()
-            config["screen_cut_shortcut"] = shortcut
-            
-            # 保存配置
-            with open(BLglobals.config_path, "w", encoding="utf-8") as f:
-                json.dump(config, f, ensure_ascii=False, indent=4)
-            
-            log(f"截图快捷键已更新为: {shortcut}")
-            return True
-            
-        except Exception as e:
-            log(f"保存快捷键配置失败: {e}")
-            return False
+    def show_error(self, message):
+        """显示错误信息"""
+        log(f"显示错误信息: {message}")
+        self.errorLabel.setText(message)
+        self.errorLabel.setTextColor("#ff0000", QColor(255, 0, 0))  # 红色
+        self.errorLabel.show()
+        self.yesButton.setEnabled(False)
+        self.yesButton.setVisible(False)
+        log("错误信息已显示，确认按钮已禁用")
+    
+    def show_warning(self, message):
+        """显示警告信息"""
+        log(f"显示警告信息: {message}")
+        self.errorLabel.setText(message)
+        self.errorLabel.setTextColor("#ff9800", QColor(255, 152, 0))  # 橙色
+        self.errorLabel.show()
+        self.yesButton.setEnabled(True)
+        self.yesButton.setVisible(True)
+        # 修改确认按钮文本为"修复已安装的版本"
+        self.yesButton.setText(i18nText('修复已安装的版本'))
+        log("警告信息已显示，确认按钮已启用并设置为'修复已安装的版本'")
+    
+    def hide_error(self):
+        """隐藏错误信息"""
+        log("隐藏错误信息")
+        self.errorLabel.hide()
+        self.yesButton.setEnabled(True)
+        self.yesButton.setVisible(True)
+        # 恢复确认按钮文本为"确定"
+        self.yesButton.setText(i18nText('确定'))
+        log("错误信息已隐藏，确认按钮已启用并恢复为'确定'")
+    
+    def on_version_name_changed(self, text):
+        """版本名输入变化时的处理"""
+        log(f"版本名输入发生变化，新文本: '{text}'")
+        self.validate_version_name()
+    
+    def get_version_name(self):
+        """获取用户输入的版本名"""
+        return self.versionNameInput.text().strip()
+    
+    def validate(self):
+        """重写验证方法，确保版本名有效"""
+        return self.validate_version_name()
 
 
 def setup_tools_ui(self, widget):

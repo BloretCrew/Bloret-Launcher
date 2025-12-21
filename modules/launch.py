@@ -13,6 +13,14 @@ from modules.i18n import i18nText
 from modules.install import LibraryDownloader
 import modules.globals as BLglobals
 
+# Windows API 导入，用于获取窗口句柄
+if platform.system() == "Windows":
+    import ctypes
+    from ctypes import wintypes
+    import win32gui
+    import win32con
+    import win32process
+
 def Get_Run_Script(mc_version):
     """
     根据 cmcl.json 的内容生成启动 .minecraft 文件夹中指定版本的命令
@@ -101,8 +109,13 @@ def Get_Run_Script(mc_version):
                 default_java_paths = [
                     r"C:\Program Files\Java\jdk-17\bin\java.exe",
                     r"C:\Program Files\Java\jdk-21\bin\java.exe",
+                    r"C:\Program Files\Java\jdk-24\bin\java.exe",
                     r"C:\Program Files\Eclipse Adoptium\jdk-17-hotspot\bin\java.exe",
-                    r"C:\Program Files\Eclipse Adoptium\jdk-21-hotspot\bin\java.exe"
+                    r"C:\Program Files\Eclipse Adoptium\jdk-21-hotspot\bin\java.exe",
+                    r"C:\Program Files\Eclipse Adoptium\jdk-24-hotspot\bin\java.exe",
+                    r"C:\Program Files\Zulu\zulu-24\bin\java.exe",
+                    r"C:\Program Files\Zulu\zulu-17\bin\java.exe",
+                    r"C:\Program Files\Zulu\zulu-21\bin\java.exe"
                 ]
                 
                 for default_path in default_java_paths:
@@ -213,58 +226,51 @@ def Get_Run_Script(mc_version):
     ])
     
     # 构建类路径 (classpath)
-    classpath = []  # 初始化classpath列表
+    classpath = []
     
     # 添加所有依赖库
     libraries_dir = os.path.join(minecraft_dir, "libraries")
-    optifine_libs = []
-    missing_libraries = []  # 用于记录缺失的库文件
+    missing_libraries = []
     if "libraries" in version_data:
         for lib in version_data["libraries"]:
-            # 检查库的规则
+            # 检查库是否适用于当前系统
+            should_include = True
             if "rules" in lib:
-                allow_lib = False
-                for rule in lib['rules']:
-                    # 检查规则是否允许该库
-                    if "action" in rule and rule["action"] == "allow":
-                        # 检查操作系统规则
-                        if "os" in rule:
-                            os_rule = rule["os"]
-                            if "name" in os_rule:
-                                # 检查操作系统名称
-                                os_name = os.name  # 获取当前操作系统名称
-                                if os_rule["name"] == "windows" and os_name != "nt":
-                                    continue
-                                elif os_rule["name"] == "osx" and os_name != "posix":
-                                    continue
-                                elif os_rule["name"] == "linux" and os_name != "posix":
-                                    continue
-                        allow_lib = True
-                if not allow_lib:
-                    continue
+                should_include = False
+                for rule in lib["rules"]:
+                    if rule.get("action") == "allow":
+                        os_rule = rule.get("os", {})
+                        if not os_rule or (os_rule.get("name", "").lower() == platform.system().lower() or 
+                                          (os_rule.get("name") == "windows" and platform.system() == "Windows") or
+                                          (os_rule.get("name") == "osx" and platform.system() == "Darwin") or
+                                          (os_rule.get("name") == "linux" and platform.system() == "Linux")):
+                            should_include = True
+                            break
             
-            # 检查库是否需要下载
-            if "downloads" in lib and "artifact" in lib['downloads']:
-                lib_path = os.path.join(minecraft_dir, "libraries", lib['downloads']['artifact']["path"])
-            else:
-                # 从库名称构建路径
-                parts = lib['name'].split(":")
-                if len(parts) == 3:
-                    group = parts[0].replace(".", "/")
-                    artifact = parts[1]
-                    version_lib = parts[2]
-                    lib_filename = f"{artifact}-{version_lib}.jar"
-                    lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
-                else:
-                    log(f"无法解析库名称: {lib['name']}", logging.WARNING)
-                    continue
-            
-            # 添加库到类路径
-            classpath.append(lib_path)
-            
-            # 处理特殊库（如OptiFine）
-            if "name" in lib and "optifine" in lib['name'].lower():
-                optifine_libs.append(lib_path)
+            if should_include:
+                lib_path = None
+                if "downloads" in lib and "artifact" in lib["downloads"]:
+                    lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
+                elif "name" in lib:
+                    # 处理 Maven 风格的库名称
+                    parts = lib["name"].split(":")
+                    if len(parts) >= 3:
+                        group_id, artifact_id, lib_version = parts[0:3]
+                        relative_path = os.path.join(
+                            group_id.replace(".", "/"),
+                            artifact_id,
+                            lib_version,
+                            f"{artifact_id}-{lib_version}.jar"
+                        )
+                        lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
+                
+                if lib_path:
+                    # 检查库文件是否存在
+                    if os.path.exists(lib_path):
+                        classpath.append(lib_path)
+                    else:
+                        # 记录缺失的库文件
+                        missing_libraries.append((lib, lib_path))
     
     # 检查是否为 Fabric 版本
     is_fabric = "fabric" in mc_version.lower() or any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", []))
@@ -281,11 +287,9 @@ def Get_Run_Script(mc_version):
         "-Xmx4096m"  # 最大堆内存，设置为4GB
     ])
     
-    # 添加自定义参数
-    launch_args.append(f'-Doolloo.jlw.tmpdir="{os.path.join(os.getcwd(), "Bloret Launcher")}"')
-    
-    # 初始化mods_dir变量
-    mods_dir = ""  # 默认值为空字符串
+    # 添加自定义参数 - 设置JavaWrapper的临时目录为系统临时目录
+    temp_dir = os.path.join(os.environ.get('TEMP', os.environ.get('TMP', os.getcwd())), 'Bloret-Launcher')
+    launch_args.append(f'-Doolloo.jlw.tmpdir="{temp_dir}"')
     
     # 添加 Fabric 特定参数和处理
     if is_fabric:
@@ -306,7 +310,6 @@ def Get_Run_Script(mc_version):
         
         # 添加 mods 目录中的所有 JAR 文件 (Fabric mods)
         mods_dir = os.path.join(minecraft_dir, "versions", mc_version, "mods")
-        
         if os.path.exists(mods_dir):
             for file in os.listdir(mods_dir):
                 if file.endswith('.jar'):
@@ -449,17 +452,34 @@ def Get_Run_Script(mc_version):
                 classpath.append(lib_path)
                 log(f"添加之前缺失但现已下载的库: {lib_path}")
     
+    # 添加自定义参数 - 设置JavaWrapper的临时目录为系统临时目录
+    temp_dir = os.path.join(os.environ.get('TEMP', os.environ.get('TMP', os.getcwd())), 'Bloret-Launcher')
+    launch_args.append(f'-Doolloo.jlw.tmpdir="{temp_dir}"')
+    
+    # 初始化mods_dir变量 - 使用版本目录下的mods文件夹
+    mods_dir = os.path.join(versions_dir, "mods")
+    
+    # 确保mods目录存在
+    if not os.path.exists(mods_dir):
+        os.makedirs(mods_dir)
+        log(f"创建mods目录: {mods_dir}")
+    
+    log("mods 目录: " + mods_dir)
+
     # 添加类路径参数
     launch_args.extend(["-cp", '\"' + ";".join(classpath) + '\"'])  # Windows 使用分号分隔
     
     # Add Fabric Loader arguments to ensure mods are loaded
     if is_fabric and os.path.exists(mods_dir):  # 只有在是fabric版本且mods_dir存在时才添加
-        launch_args.extend(["-Dfabric.addMods=" + mods_dir])
+        log(f"添加 Fabric mods 目录: {mods_dir}")
+        # 确保路径被正确引用，特别是包含空格时
+        launch_args.extend([f'-Dfabric.addMods="{mods_dir}"'])
     
     # 添加主类和参数
     if is_fabric:
         # Fabric 使用 KnotClient 主类而不是 -jar 参数
         launch_args.append("net.fabricmc.loader.impl.launch.knot.KnotClient")
+
     else:
         # 原始 Minecraft 启动方式
         launch_args.append("-jar")
@@ -497,7 +517,7 @@ def Get_Run_Script(mc_version):
     asset_index = version_data.get("assetIndex", {}).get("id", mc_version)
     
     # 设置 versionType
-    version_type = "Bloret Launcher"
+    version_type = "Bloret-Launcher"
     
     # 检查登录方式并设置相应参数
     login_method = account_info.get("loginMethod", 0) if account_info else 0
@@ -562,6 +582,208 @@ def Get_Run_Script(mc_version):
     # 不添加过滤器，避免被Minecraft误认为是游戏参数
     bat_command = " ".join(launch_args)
     
+    # 修复f-string中不能包含反斜杠的问题
+    chcp_command = "chcp 65001"
+    cd_command = f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}'
+    full_command = f"{chcp_command}\n{cd_command}\n{bat_command}"
+    
     log(f"生成的启动命令: {bat_command}")
-    log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {"chcp 65001\n" + f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}\n' + bat_command}")
-    return "chcp 65001\n" + f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}\n' + bat_command
+    log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {full_command}")
+    return full_command
+
+def get_minecraft_window_handle(version=None, timeout=30):
+    """
+    获取 Minecraft 窗口句柄
+    
+    Args:
+        version (str): Minecraft 版本号，用于识别特定版本的窗口
+        timeout (int): 超时时间（秒）
+    
+    Returns:
+        int: 窗口句柄，如果未找到则返回 None
+    """
+    if platform.system() != "Windows":
+        log("获取窗口句柄功能仅支持 Windows 系统")
+        return None
+    
+    try:
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout:
+            # 枚举所有窗口
+            def enum_windows_callback(hwnd, windows_list):
+                if win32gui.IsWindowVisible(hwnd) and win32gui.IsWindowEnabled(hwnd):
+                    try:
+                        window_text = win32gui.GetWindowText(hwnd)
+                        class_name = win32gui.GetClassName(hwnd)
+                        
+                        # 检查是否为 Minecraft 窗口
+                        # Minecraft 窗口通常包含 "Minecraft" 或 "Minecraft*" 标题
+                        # 并且类名通常是 "LWJGL" 或包含 "GLFW" 的类名
+                        if ("Minecraft" in window_text or 
+                            (version and version in window_text)):
+                            
+                            # 进一步验证窗口类名
+                            if (class_name.startswith("LWJGL") or 
+                                "GLFW" in class_name or
+                                "SunAwtFrame" in class_name or
+                                "SDL_app" in class_name):
+                                
+                                # 获取进程ID
+                                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                                
+                                # 检查进程命令行是否包含 Minecraft 相关参数
+                                try:
+                                    import psutil
+                                    process = psutil.Process(pid)
+                                    cmdline = ' '.join(process.cmdline())
+                                    
+                                    # 检查是否包含 Minecraft 相关关键词
+                                    minecraft_keywords = [
+                                        'net.minecraft',
+                                        'minecraft',
+                                        '.jar',
+                                        'forge',
+                                        'fabric',
+                                        version if version else ''
+                                    ]
+                                    
+                                    if any(keyword in cmdline.lower() for keyword in minecraft_keywords if keyword):
+                                        windows_list.append({
+                                            'hwnd': hwnd,
+                                            'title': window_text,
+                                            'class': class_name,
+                                            'pid': pid,
+                                            'cmdline': cmdline
+                                        })
+                                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                    # 如果无法获取进程信息，但窗口标题和类名匹配，也认为是 Minecraft 窗口
+                                    windows_list.append({
+                                        'hwnd': hwnd,
+                                        'title': window_text,
+                                        'class': class_name,
+                                        'pid': pid,
+                                        'cmdline': 'unknown'
+                                    })
+                    except Exception as e:
+                        log(f"枚举窗口时出错: {e}")
+                return True
+            
+            minecraft_windows = []
+            win32gui.EnumWindows(enum_windows_callback, minecraft_windows)
+            
+            if minecraft_windows:
+                # 找到最可能的 Minecraft 窗口
+                # 优先选择标题中包含版本号的窗口
+                best_match = None
+                for window in minecraft_windows:
+                    if version and version in window['title']:
+                        best_match = window
+                        break
+                
+                if not best_match:
+                    best_match = minecraft_windows[0]  # 选择第一个匹配的窗口
+                
+                hwnd = best_match['hwnd']
+                log(f"找到 Minecraft 窗口: 句柄={hwnd}, 标题='{best_match['title']}', "
+                    f"类名='{best_match['class']}', PID={best_match['pid']}")
+                
+                return hwnd
+            
+            # 等待一段时间后重试
+            time.sleep(0.5)
+        
+        log(f"在 {timeout} 秒内未找到 Minecraft 窗口")
+        return None
+        
+    except ImportError as e:
+        log(f"缺少必要的库: {e}")
+        log("请安装 pywin32 和 psutil: pip install pywin32 psutil")
+        return None
+    except Exception as e:
+        log(f"获取 Minecraft 窗口句柄时出错: {e}")
+        return None
+
+def monitor_minecraft_window(version, check_interval=1):
+    """
+    监控 Minecraft 窗口，当窗口出现时获取句柄并显示浮动工具栏
+    
+    Args:
+        version (str): Minecraft 版本号
+        check_interval (int): 检查间隔（秒）
+    """
+    def monitor_thread():
+        log(f"开始监控 Minecraft {version} 窗口...")
+        
+        # 等待一段时间让 Minecraft 启动
+        time.sleep(3)
+        
+        # 尝试获取窗口句柄
+        hwnd = get_minecraft_window_handle(version, timeout=30)
+        
+        if hwnd:
+            log(f"✅ Minecraft {version} 窗口已找到！")
+            log(f"🎯 窗口句柄: {hwnd}")
+            log(f"🔍 窗口句柄(十六进制): 0x{hwnd:08X}")
+            
+            # 获取窗口信息
+            try:
+                window_text = win32gui.GetWindowText(hwnd)
+                class_name = win32gui.GetClassName(hwnd)
+                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                
+                log(f"📋 窗口标题: {window_text}")
+                log(f"🏷️ 窗口类名: {class_name}")
+                log(f"🔢 进程ID: {pid}")
+                
+                # 尝试获取进程信息
+                try:
+                    import psutil
+                    process = psutil.Process(pid)
+                    log(f"⚙️ 进程名称: {process.name()}")
+                    log(f"📁 进程路径: {process.exe()}")
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+                
+            except Exception as e:
+                log(f"获取窗口详细信息时出错: {e}")
+            
+            # 创建工具栏 - 使用修复后的模块确保线程安全
+            try:
+                from PyQt5.QtCore import QObject, pyqtSignal, QCoreApplication, QTimer
+                from . import mwtool
+                
+                # 确保在主线程中创建QObject
+                app = QCoreApplication.instance()
+                if not app:
+                    log("无法获取 QApplication 实例", logging.ERROR)
+                    return
+                
+                log("正在创建工具栏...", logging.DEBUG)
+                
+                # 直接在监控线程中调用工具栏创建（mwtool 内部会处理跨线程调用）
+                try:
+                    tool = mwtool.create_minecraft_tool(hwnd, version)
+                    if tool:
+                        log(f"工具栏创建成功: {tool}", logging.DEBUG)
+                    else:
+                        log("工具栏创建返回 None", logging.ERROR)
+                except Exception as e:
+                    log(f"工具栏创建失败: {e}", logging.ERROR)
+                    import traceback
+                    traceback.print_exc()
+                
+                log(f"✅ Minecraft 浮动工具栏创建完成，版本: {version}")
+            except Exception as e:
+                log(f"创建 Minecraft 浮动工具栏失败: {e}")
+            
+            # 返回窗口句柄给调用者
+            return hwnd
+        else:
+            log(f"❌ 未找到 Minecraft {version} 窗口")
+            return None
+    
+    # 启动监控线程
+    thread = threading.Thread(target=monitor_thread, daemon=True)
+    thread.start()
+    return thread
