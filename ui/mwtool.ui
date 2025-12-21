@@ -60,7 +60,7 @@
        </widget>
       </item>
       <item>
-       <widget class="PushButton" name="PushButton">
+       <widget class="PushButton" name="ScreenCutButton">
         <property name="text">
          <string>屏幕截图</string>
         </property>
