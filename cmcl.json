@@ -1,17 +1,8 @@
 {
-  "language": "zh",
-  "downloadSource": 1,
-  "checkAccountBeforeStart": false,
-  "accounts": [{
-    "expiresIn": 1766362805490,
-    "loginMethod": 2,
-    "playerName": "Detritalw",
-    "id": "cf535bd4-ba05-4b3e-9c69-2a7733d6494b",
-    "accessToken": "eyJraWQiOiIwNDkxODEiLCJhbGciOiJSUzI1NiJ9.eyJ4dWlkIjoiMjUzNTQ1MDIxMzQ2OTExMSIsImFnZyI6IkFkdWx0Iiwic3ViIjoiY2Y1MzViZDQtYmEwNS00YjNlLTljNjktMmE3NzMzZDY0OTRiIiwiYXV0aCI6IlhCT1giLCJucyI6ImRlZmF1bHQiLCJyb2xlcyI6W10sImlzcyI6ImF1dGhlbnRpY2F0aW9uIiwiZmxhZ3MiOlsib3JkZXJzXzIwMjIiLCJtdWx0aXBsYXllciIsInR3b2ZhY3RvcmF1dGgiLCJtc2FtaWdyYXRpb25fc3RhZ2U0Il0sInByb2ZpbGVzIjp7Im1jIjoiZjI4MmRkYTAtNjlhOS00Nzg3LWIxMmItYWExNmExOTM5ZmM0In0sInBsYXRmb3JtIjoiUENfTEFVTkNIRVIiLCJwZmQiOlt7InR5cGUiOiJtYyIsImlkIjoiZjI4MmRkYTAtNjlhOS00Nzg3LWIxMmItYWExNmExOTM5ZmM0IiwibmFtZSI6IkRldHJpdGFsdyJ9XSwibmJmIjoxNzY2Mjc2NDA1LCJleHAiOjE3NjYzNjI4MDUsImlhdCI6MTc2NjI3NjQwNSwiYWlkIjoiMjg4ZWM1ZGQtNjczNi00ZDRiLTliOTYtMzBlMDgzYThjYWQyIn0.EKqiMqPFNgOCv3YqC9ydd1wLWkZY8R_K29PO4x3wsm-w6AlVZDzdAAx0br74xDWr1uXvo6IEjwUpq6EHnVaKxuV8DZwcSCU62kr5cHDSuqm2YGK-HD-_7ualrq3HOP_wjd7doMKGimwyDShsG9_WRCdrs9BYsxxuvGCDfqixthhirexQshlESMISD2CIcJtCvvE_trK0V9oMVGCMcBDDV_VTcqEqTAwbUfqOW8qtsnFO4EZl85TKsFyJY28HsFGkxjqG7vzUiPo2K5Ozk4mcNzs6_eud7yGNjBGt1YPFb-viaRT3F7ErqGWrV28h4K9iWoN9DJE-6zbtmkqUAkFtTg",
-    "tokenType": "bearer",
-    "uuid": "f282dda069a94787b12baa16a1939fc4",
-    "selected": false,
-    "refreshToken": "M.C539_SN1.0.U.-Cr97AQznn8jfLfn93WuTt2kre*mrFvcFHOugk9zJa69dusD3XkSluUjMio*QbdZ1rFawnGdmXEpGrg9iF9fmIKw67R5LgZdXlHdF5KXrb2J6AqXu5qgy8KR0Jp8Na3TPHphEa8k6AoKrg7jKLftv2rnFJwZGYz08ClutcNGIc56UZA8alJRrHeX2Q9PvCUfPr4FFXsOVQL4r3KxnOgq1hDF6vezXegZZsQkgLEoMRFAQvjwQDpvCM0iNtWW55jZ2SGOBmq7I5V1UUA!eMcxfSqGaaLv1Dr9EUN4q40rA9vM5XDlOicSNyL4bGZHJJiW8ubT6KXdqaw9kHZHmZwJ*fhSjySv0cFezv*OZRTbaShIEGtYGwmlCWmYc1Wq8QjZWMOoZwP6GZoLye0ckurGQR5j2l2khOmLnzVIiF957eMkxBGE5E0j8C8JgIWhMPEfOGyM!xMo9Bz9d*gPuQKFMQGk$"
-  }],
-  "printStartupInfo": true
+    "language": "zh",
+    "downloadSource": 1,
+    "checkAccountBeforeStart": false,
+    "accounts": [],
+    "printStartupInfo": true,
+    "language-run": "zh"
 }
