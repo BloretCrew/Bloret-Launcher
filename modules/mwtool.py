@@ -627,14 +627,28 @@ def _ensure_tool_manager():
     if not app:
         log.debug("QApplication 不存在，创建新实例")
         app = QApplication(sys.argv)
-    app_thread = app.thread()
+    
+    main_thread = app.thread()
+    current_thread = QThread.currentThread()
 
-    # 已存在且在正确线程中
-    if tool_manager and tool_manager.thread() == app_thread:
+    # 1. 如果当前已经在主线程，直接创建，不要使用 Timer 和 Wait (否则会死锁)
+    if current_thread == main_thread:
+        if not tool_manager:
+            try:
+                tool_manager = MinecraftWindowToolManager()
+                log.info("已在主线程(直接)创建 tool_manager")
+            except Exception as e:
+                log.error(f"在主线程直接创建 tool_manager 失败: {e}")
+                return False
         return True
 
+    # 2. 如果在后台线程，检查是否已存在
+    if tool_manager and tool_manager.thread() == main_thread:
+        return True
+
+    # 3. 如果在后台线程且不存在，调度到主线程创建并等待
     with _tool_manager_lock:
-        if tool_manager and tool_manager.thread() == app_thread:
+        if tool_manager and tool_manager.thread() == main_thread:
             return True
 
         _tool_manager_ready.clear()
@@ -643,26 +657,16 @@ def _ensure_tool_manager():
             global tool_manager
             try:
                 tool_manager = MinecraftWindowToolManager()
-                log.debug(f"已在主线程创建 tool_manager: {tool_manager}")
-                try:
-                    app_log("已在主线程创建 tool_manager")
-                except Exception:
-                    pass
-                # 标记为已准备就绪，解除等待
-                try:
-                    _tool_manager_ready.set()
-                except Exception:
-                    pass
+                log.info("已在主线程(Timer)创建 tool_manager")
             except Exception as e:
                 log.error(f"在主线程创建 tool_manager 失败: {e}")
-                try:
-                    app_log(f"在主线程创建 tool_manager 失败: {e}")
-                except Exception:
-                    pass
+            finally:
+                # 无论成功失败，都解除等待
                 try:
                     _tool_manager_ready.set()
                 except Exception:
                     pass
+        
         # 在主线程调度创建
         try:
             QTimer.singleShot(0, _create_manager)
@@ -675,8 +679,7 @@ def _ensure_tool_manager():
             log.error("等待 tool_manager 创建超时")
             return False
 
-        return tool_manager is not None and tool_manager.thread() == app_thread
-
+        return tool_manager is not None and tool_manager.thread() == main_thread
 
 def create_minecraft_tool(minecraft_hwnd, version):
     """
