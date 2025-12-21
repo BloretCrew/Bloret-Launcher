@@ -6,7 +6,7 @@
     "size": 85,
     "themelight": false,
     "repeat_run": false,
-    "show_runtime_do": true,
+    "show_runtime_do": false,
     "Customize": [],
     "Bloret_PassPort_Login": false,
     "Bloret_PassPort_UserName": "",
