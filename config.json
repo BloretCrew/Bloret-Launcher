@@ -4,7 +4,7 @@
     "ver": "26.0",
     "123": "123",
     "size": 85,
-    "themelight": true,
+    "themelight": false,
     "repeat_run": false,
     "show_runtime_do": true,
     "Customize": [],

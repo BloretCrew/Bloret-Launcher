@@ -8,7 +8,6 @@ import win32api
 import win32process
 from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout, QVBoxLayout
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread, QEventLoop
-from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.uic import loadUi
 from qfluentwidgets import SimpleCardWidget, BodyLabel, StrongBodyLabel
@@ -356,13 +355,6 @@ class MinecraftWindowTool(QWidget):
         
         # 添加延迟创建定时器，确保窗口创建完成后再显示
         QTimer.singleShot(500, self.ensure_visible)
-
-        # 连接快捷键信号到槽
-        from modules.ShortCut import ScreenShortCut
-        screen_cut_button = self.findChild(QPushButton, "ScreenCutButton")
-        if screen_cut_button:
-            screen_cut_button.clicked.connect(lambda: ScreenShortCut())
-
         
     def init_ui(self):
         """初始化UI"""
@@ -762,7 +754,6 @@ def is_tool_visible():
     if tool_manager:
         return tool_manager.is_tool_visible()
     return False
-
 
 
 if __name__ == "__main__":
