@@ -349,6 +349,8 @@ class MinecraftWindowTool(QWidget):
         
         # 设置窗口属性
         self.setAttribute(Qt.WA_TranslucentBackground)  # 半透明背景
+        # 提高窗口不透明度（1.0 为完全不透明），根据需要调整此值
+        self.setWindowOpacity(0.95)
         self.setAttribute(Qt.WA_ShowWithoutActivating)  # 显示但不激活
         
         # 初始化UI
