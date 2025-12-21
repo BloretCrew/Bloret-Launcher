@@ -5,6 +5,7 @@ import threading
 import win32gui
 import win32con
 import win32api
+import win32process
 from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout, QVBoxLayout
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread, QEventLoop
 from PyQt5.QtGui import QFont, QIcon
@@ -24,6 +25,93 @@ class ImmediateFlushHandler(log.StreamHandler):
 for handler in log.root.handlers:
     if isinstance(handler, log.StreamHandler):
         handler.flush = lambda: sys.stderr.flush() if hasattr(sys.stderr, 'flush') else None
+
+
+class MinecraftWindowWatcher(QThread):
+    """监视线程：等待 Minecraft 窗口出现"""
+    window_found = pyqtSignal(int, str)
+    
+    def __init__(self, version):
+        super().__init__()
+        self.version = version
+        self.is_running = True
+    
+    def run(self):
+        log.info(f"开始寻找 Minecraft {self.version} 窗口...")
+        # 最多寻找 300 秒 (5分钟)
+        for _ in range(300):
+            if not self.is_running:
+                break
+            
+            # 使用加强版的查找逻辑
+            hwnd = self._find_window()
+            if hwnd:
+                log.info(f"找到窗口句柄: {hwnd}")
+                # 再次确认窗口有效性
+                if win32gui.IsWindow(hwnd) and win32gui.IsWindowVisible(hwnd):
+                    time.sleep(1) # 等待窗口完全初始化
+                    self.window_found.emit(hwnd, self.version)
+                    return
+            time.sleep(1)
+            
+    def _find_window(self):
+        found_hwnd = []
+        target_version = self.version
+
+        def callback(hwnd, _):
+            if not win32gui.IsWindowVisible(hwnd):
+                return
+
+            try:
+                title = win32gui.GetWindowText(hwnd)
+                class_name = win32gui.GetClassName(hwnd)
+                
+                # 排除启动器自己
+                if "Bloret Launcher" in title:
+                    return
+
+                # 匹配逻辑：标题包含 "Minecraft" 且类名符合游戏特征
+                # 1. 标题匹配
+                if "Minecraft" in title or (target_version and target_version in title):
+                    # 2. 类名匹配 (LWJGL, GLFW, SDL等是游戏常用窗口库)
+                    if (class_name.startswith("LWJGL") or 
+                        "GLFW" in class_name or 
+                        "SunAwtFrame" in class_name or
+                        "SDL_app" in class_name):
+                        
+                        found_hwnd.append(hwnd)
+            except Exception:
+                pass
+
+        try:
+            win32gui.EnumWindows(callback, None)
+        except Exception:
+            pass
+            
+        return found_hwnd[0] if found_hwnd else None
+
+    def stop(self):
+        self.is_running = False
+
+# 全局监视器变量
+_watcher_thread = None
+
+def start_monitoring(version):
+    """启动监视"""
+    global _watcher_thread
+    if _watcher_thread and _watcher_thread.isRunning():
+        _watcher_thread.stop()
+    
+    _watcher_thread = MinecraftWindowWatcher(version)
+    # 连接信号：找到窗口后直接调用创建工具栏函数
+    _watcher_thread.window_found.connect(create_minecraft_tool)
+    _watcher_thread.start()
+
+def stop_monitoring():
+    """停止监视"""
+    global _watcher_thread
+    if _watcher_thread:
+        _watcher_thread.stop()
 
 class MinecraftWindowToolManager(QObject):
     """Minecraft 窗口工具栏管理器 - 完全在主线程中运行"""

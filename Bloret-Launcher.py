@@ -23,6 +23,7 @@ from modules.BLDownload import BL_download
 from modules.launch import Get_Run_Script
 from modules.i18n import i18n_widgets, i18nText
 from modules.config import read
+import modules.mwtool
 
 config = read()
 
@@ -976,16 +977,12 @@ class MainWindow(FluentWindow):
             # 跟踪运行中的进程
             self.running_processes[version] = self.run_script_thread
             
-            # 启动 Minecraft 窗口监控
+            # 启动 Minecraft 窗口监控 (使用 mwtool)
             try:
-                from modules.launch import monitor_minecraft_window
-                monitor_thread = monitor_minecraft_window(version)
-                if monitor_thread:
-                    log(f"已启动 Minecraft {version} 窗口监控线程")
-            except ImportError as e:
-                log(f"无法导入窗口监控功能: {e}")
+                log(f"启动工具栏监视器，目标版本: {version}")
+                modules.mwtool.start_monitoring(version)
             except Exception as e:
-                log(f"启动窗口监控时出错: {e}")
+                log(f"启动工具栏监视器失败: {e}", logging.ERROR)
 
             
 
@@ -1762,6 +1759,12 @@ class MainWindow(FluentWindow):
             )
 
     def on_run_script_finished(self, teaching_tip, run_button, version=None):
+        try:
+            modules.mwtool.hide_minecraft_tool()
+            modules.mwtool.stop_monitoring()
+        except Exception as e:
+            log(f"停止工具栏失败: {e}")
+
         if self.update_show_text_thread:
             self.update_show_text_thread.terminate()  # 停止更新线程
             self.update_show_text_thread.wait()  # 确保线程完全停止
@@ -1786,6 +1789,11 @@ class MainWindow(FluentWindow):
         time.sleep(1)  # 等待1秒确保所有事件处理完毕
 
     def on_run_script_error(self, error, teaching_tip, run_button):
+        try:
+            modules.mwtool.hide_minecraft_tool()
+            modules.mwtool.stop_monitoring()
+        except Exception:
+            pass
         if self.update_show_text_thread:
             self.update_show_text_thread.terminate()  # 停止更新线程
         if teaching_tip and not sip.isdeleted(teaching_tip):
