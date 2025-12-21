@@ -6,11 +6,12 @@ import win32gui
 import win32con
 import win32api
 import win32process
-from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout, QVBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread, QEventLoop
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.uic import loadUi
 from qfluentwidgets import SimpleCardWidget, BodyLabel, StrongBodyLabel
+from .ShortCut import ScreenShortCut
 import logging as log
 from .log import log as app_log
 
@@ -357,34 +358,73 @@ class MinecraftWindowTool(QWidget):
         QTimer.singleShot(500, self.ensure_visible)
         
     def init_ui(self):
-        """初始化UI"""
-        # 创建水平布局
+        """初始化UI：优先从 UI 文件加载，失败时回退到备用 UI"""
+        ui_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui')
+        ui_file = os.path.join(ui_dir, 'mwtool.ui')
+
+        try:
+            loadUi(ui_file, self)
+            log.debug(f"成功加载 UI 文件: {ui_file}")
+        except Exception as e:
+            log.error(f"加载 UI 文件失败: {e}，使用备用 UI")
+            self._create_fallback_ui()
+            return
+
+        # 绑定 UI 上的控件
+        try:
+            self.MinecraftVersion = self.findChild(BodyLabel, "MinecraftVersion")
+            if self.MinecraftVersion:
+                self.MinecraftVersion.setText(f"Minecraft {self.version}")
+
+            # 连接屏幕截图按钮
+            try:
+                screen_btn = self.findChild(QPushButton, "ScreenCutButton")
+                if screen_btn:
+                    screen_btn.clicked.connect(self._on_screencut)
+                    log.debug("ScreenCutButton 连接成功")
+                else:
+                    log.debug("未找到 ScreenCutButton 控件")
+            except Exception as _e:
+                log.warning(f"连接 ScreenCutButton 时出错: {_e}")
+        except Exception as e:
+            log.warning(f"获取 UI 组件失败: {e}")
+
+    def _create_fallback_ui(self):
+        """创建备用UI（当 loadUi 失败时使用）"""
         layout = QHBoxLayout()
         layout.setContentsMargins(10, 5, 10, 5)
         layout.setSpacing(10)
-        
-        # 创建图标标签
+
+        # 图标
         self.icon_label = QLabel("🎮")
         self.icon_label.setStyleSheet("font-size: 20px;")
 
-        # 创建标题标签
+        # 标题
         self.title_label = QLabel("Bloret Launcher")
         self.title_label.setFont(QFont("Arial", 12, QFont.Bold))
         self.title_label.setStyleSheet("color: white;")
 
-        # 创建版本标签（保存为实例变量，便于后续更新）
+        # 版本标签
         self.version_label = QLabel(f"Minecraft {self.version}")
         self.version_label.setFont(QFont("Arial", 10))
         self.version_label.setStyleSheet("color: #cccccc;")
-        
+
         # 添加到布局
         layout.addWidget(self.icon_label)
         layout.addWidget(self.title_label)
         layout.addWidget(self.version_label)
         layout.addStretch()
-        
+
         self.setLayout(layout)
         self.resize(400, 40)
+
+    def _on_screencut(self):
+        """处理 ScreenCutButton 点击事件，调用截图逻辑"""
+        try:
+            log.info("ScreenCutButton 被点击，启动截图工具")
+            ScreenShortCut()
+        except Exception as e:
+            log.error(f"启动截图工具失败: {e}")
     
     def ensure_visible(self):
         """确保窗口可见"""
@@ -421,9 +461,12 @@ class MinecraftWindowTool(QWidget):
         """设置工具栏参数"""
         self.minecraft_hwnd = minecraft_hwnd
         self.version = version
-        # 更新版本标签（使用实例变量，避免 findChild 的歧义）
+        # 更新版本标签（优先使用 UI 中的 MinecraftVersion 控件）
         try:
-            if hasattr(self, 'version_label'):
+            version_label = self.findChild(BodyLabel, "MinecraftVersion")
+            if version_label:
+                version_label.setText(f"Minecraft {self.version}")
+            elif hasattr(self, 'version_label'):
                 self.version_label.setText(f"Minecraft {self.version}")
         except Exception:
             pass
