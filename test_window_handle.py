@@ -7,6 +7,10 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# 在导入其他模块之前，先创建QApplication实例
+from PyQt5.QtWidgets import QApplication
+app = QApplication(sys.argv)
+
 from modules.launch import get_minecraft_window_handle, monitor_minecraft_window
 from modules.log import log
 import time

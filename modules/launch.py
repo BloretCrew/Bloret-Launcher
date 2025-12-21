@@ -645,7 +645,7 @@ def get_minecraft_window_handle(version=None, timeout=30):
                                         '.jar',
                                         'forge',
                                         'fabric',
-                                        mc_version if 'mc_version' in locals() else ''
+                                        version if version else ''
                                     ]
                                     
                                     if any(keyword in cmdline.lower() for keyword in minecraft_keywords if keyword):
@@ -706,7 +706,7 @@ def get_minecraft_window_handle(version=None, timeout=30):
 
 def monitor_minecraft_window(version, check_interval=1):
     """
-    监控 Minecraft 窗口，当窗口出现时获取句柄并输出到控制台
+    监控 Minecraft 窗口，当窗口出现时获取句柄并显示浮动工具栏
     
     Args:
         version (str): Minecraft 版本号
@@ -747,6 +747,35 @@ def monitor_minecraft_window(version, check_interval=1):
                 
             except Exception as e:
                 log(f"获取窗口详细信息时出错: {e}")
+            
+            # 创建工具栏 - 使用修复后的模块确保线程安全
+            try:
+                from PyQt5.QtCore import QObject, pyqtSignal, QCoreApplication, QTimer
+                from . import mwtool
+                
+                # 确保在主线程中创建QObject
+                app = QCoreApplication.instance()
+                if not app:
+                    log("无法获取 QApplication 实例", logging.ERROR)
+                    return
+                
+                log("正在创建工具栏...", logging.DEBUG)
+                
+                # 直接在监控线程中调用工具栏创建（mwtool 内部会处理跨线程调用）
+                try:
+                    tool = mwtool.create_minecraft_tool(hwnd, version)
+                    if tool:
+                        log(f"工具栏创建成功: {tool}", logging.DEBUG)
+                    else:
+                        log("工具栏创建返回 None", logging.ERROR)
+                except Exception as e:
+                    log(f"工具栏创建失败: {e}", logging.ERROR)
+                    import traceback
+                    traceback.print_exc()
+                
+                log(f"✅ Minecraft 浮动工具栏创建完成，版本: {version}")
+            except Exception as e:
+                log(f"创建 Minecraft 浮动工具栏失败: {e}")
             
             # 返回窗口句柄给调用者
             return hwnd
