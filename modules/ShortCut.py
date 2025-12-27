@@ -94,13 +94,15 @@ class ScreenCaptureWidget(QWidget):
             primary_screen = QGuiApplication.primaryScreen()
             if primary_screen:
                 screen_geometry = primary_screen.geometry()
-                
+
+                # 设置最小宽度为 400，最小高度为 60
+                self.CardWidget.setMinimumSize(400, 60)
                 self.CardWidget.adjustSize()
                 widget_width = self.CardWidget.width()
                 
                 # 计算主屏顶部的逻辑坐标
                 target_global_x = screen_geometry.x() + (screen_geometry.width() - widget_width) // 2
-                target_global_y = screen_geometry.y() + 50
+                target_global_y = screen_geometry.y() + 25
                 
                 # 使用 mapFromGlobal 确保坐标在多屏/高DPI下正确转换
                 local_pos = self.mapFromGlobal(QPoint(target_global_x, target_global_y))
