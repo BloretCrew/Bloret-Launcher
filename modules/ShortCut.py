@@ -19,7 +19,7 @@ from qfluentwidgets import CardWidget, BodyLabel, StrongBodyLabel, CaptionLabel
 class ScreenCaptureWidget(QWidget):
     def __init__(self):
         super().__init__()
-        # 设置窗口为全屏覆盖层 - 确保能接收鼠标事件
+        # 设置窗口为全屏覆盖层
         self.setWindowFlags(
             Qt.FramelessWindowHint | 
             Qt.WindowStaysOnTopHint | 
@@ -30,7 +30,7 @@ class ScreenCaptureWidget(QWidget):
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         
-        # 初始化透明度属性
+        # 初始化透明度
         self._opacity = 0.0
         self.setWindowOpacity(self._opacity)
         
@@ -51,7 +51,7 @@ class ScreenCaptureWidget(QWidget):
         self.raise_()
         self.activateWindow()
         
-        # 设置变量
+        # 状态变量
         self.start_pos = None
         self.end_pos = None
         self.is_selecting = False
@@ -62,7 +62,7 @@ class ScreenCaptureWidget(QWidget):
         self.setCursor(QCursor(Qt.CrossCursor))
         self.setMouseTracking(True)
         
-        # UI 初始化
+        # UI 加载
         current_size = self.size()
         ui_file_path = os.path.join(os.path.dirname(__file__), '..', 'ui', 'ScreenCut.ui')
         if os.path.exists(ui_file_path):
@@ -88,11 +88,11 @@ class ScreenCaptureWidget(QWidget):
                 self.CardWidget.adjustSize()
                 widget_width = self.CardWidget.width()
                 
-                # 计算逻辑坐标
+                # 计算主屏顶部的逻辑坐标
                 target_global_x = screen_geometry.x() + (screen_geometry.width() - widget_width) // 2
                 target_global_y = screen_geometry.y() + 50
                 
-                # 转换为局部坐标
+                # 转换为相对于截图窗口的局部坐标
                 local_x = target_global_x - self.geometry().x()
                 local_y = target_global_y - self.geometry().y()
                 
@@ -140,87 +140,101 @@ class ScreenCaptureWidget(QWidget):
     def mouseMoveEvent(self, event):
         if self.is_selecting:
             self.end_pos = event.pos()
-            self.update()
+            self.update() # 触发重绘
         else:
             self.update_hover_window(event.pos())
-            self.update()
+            self.update() # 触发重绘
     
     def update_hover_window(self, pos):
-        """更新悬停窗口的矩形（修复DPI偏移问题）"""
-        # 1. 将 Qt 逻辑坐标转换为全局逻辑坐标
+        """检测鼠标下的窗口（包含DPI修正和穿透检测）"""
+        # 1. Qt逻辑坐标 转 物理坐标
         global_point_logical = self.mapToGlobal(pos)
         
-        # 检查防抖
-        if self.last_hover_pos and (abs(global_point_logical.x() - self.last_hover_pos.x()) < 10 and 
-                                    abs(global_point_logical.y() - self.last_hover_pos.y()) < 10):
+        # 简单的防抖动
+        if self.last_hover_pos and (abs(global_point_logical.x() - self.last_hover_pos.x()) < 5 and 
+                                    abs(global_point_logical.y() - self.last_hover_pos.y()) < 5):
             return
         self.last_hover_pos = global_point_logical
         
-        # 2. 将全局逻辑坐标转换为物理坐标 (传给 win32gui)
-        # self.dpr 是 self.devicePixelRatioF()
         phy_x = int(global_point_logical.x() * self.dpr)
         phy_y = int(global_point_logical.y() * self.dpr)
         
         self_hwnd = int(self.winId()) if self.winId() else 0
         
-        # 使用物理坐标查询窗口
+        # 2. 获取鼠标下的窗口句柄
         hwnd = win32gui.WindowFromPoint((phy_x, phy_y))
         
-        # 排除自身和桌面
+        # 3. 如果检测到的是截图层自己，则通过遍历寻找下层窗口
         if hwnd == self_hwnd or hwnd == win32gui.GetDesktopWindow():
-            # 简单的向下查找逻辑 (EnumWindows 可能会比较慢，这里简化处理)
-            hwnd = None 
+            hwnd = None
+            def enum_cb(wnd, result_list):
+                # 过滤掉自己、不可见窗口
+                if wnd != self_hwnd and win32gui.IsWindowVisible(wnd):
+                    try:
+                        rect = win32gui.GetWindowRect(wnd)
+                        # 检查点是否在窗口内
+                        if rect[0] <= phy_x < rect[2] and rect[1] <= phy_y < rect[3]:
+                            # 过滤掉尺寸异常小的窗口
+                            if rect[2] - rect[0] > 10 and rect[3] - rect[1] > 10:
+                                result_list.append(wnd)
+                    except:
+                        pass
+                return True
+            
+            found_windows = []
+            win32gui.EnumWindows(enum_cb, found_windows)
+            
+            # EnumWindows 通常按 Z-order 顺序返回，取第一个即为最上层窗口
+            for w in found_windows:
+                if w != win32gui.GetDesktopWindow():
+                    hwnd = w
+                    break
 
+        # 4. 如果找到了有效的窗口
         if hwnd and hwnd != self_hwnd:
             try:
                 # 获取物理矩形
-                rect = win32gui.GetWindowRect(hwnd) # Returns (left, top, right, bottom) in physical pixels
+                rect = win32gui.GetWindowRect(hwnd)
                 
-                # 更新文字并重新定位（解决位置重置问题）
+                # 更新提示文字
                 window_title = win32gui.GetWindowText(hwnd)
                 if hasattr(self, 'ScreenCut_Title') and self.ScreenCut_Title:
-                    current_text = self.ScreenCut_Title.text()
-                    new_text = f"当前窗口：{window_title}"
-                    if current_text != new_text:
+                    new_text = f"当前窗口：{window_title}" if window_title else "当前窗口"
+                    if self.ScreenCut_Title.text() != new_text:
                         self.ScreenCut_Title.setText(new_text)
-                        # 关键：文字改变后重新计算位置
-                        self._update_tip_geometry()
-
-                if not win32gui.IsWindowVisible(hwnd):
-                    self.current_hover_rect = None
-                    return
-
+                        self._update_tip_geometry() # 文字变动后重新居中
+                
                 if self.last_hover_hwnd == hwnd:
                     return
                 self.last_hover_hwnd = hwnd
-                
-                # 3. 将物理矩形转换回逻辑矩形 (供 Qt 绘图)
-                # ClientRect 处理
+
+                # 5. 计算绘制区域（物理 -> 逻辑）
+                # 尝试获取客户区以去除阴影干扰，如果失败则用窗口矩形
                 try:
                     client_rect = win32gui.GetClientRect(hwnd)
                     client_tl = win32gui.ClientToScreen(hwnd, (0, 0))
-                    # 物理绘制区域
                     draw_rect_phy = (client_tl[0], client_tl[1], 
                                      client_tl[0] + client_rect[2], client_tl[1] + client_rect[3])
                 except:
                     draw_rect_phy = rect
 
-                # 物理转逻辑
+                # 物理坐标除以 DPR 得到逻辑坐标
                 log_x = int(draw_rect_phy[0] / self.dpr)
                 log_y = int(draw_rect_phy[1] / self.dpr)
                 log_w = int((draw_rect_phy[2] - draw_rect_phy[0]) / self.dpr)
                 log_h = int((draw_rect_phy[3] - draw_rect_phy[1]) / self.dpr)
 
-                # 转换为相对于截图窗口的坐标
+                # 转换为相对于截图窗口的局部坐标
                 top_left = self.mapFromGlobal(QPoint(log_x, log_y))
                 self.current_hover_rect = QRect(top_left.x(), top_left.y(), log_w, log_h)
                 
             except Exception as e:
-                print(f"Window detect error: {e}")
+                # print(f"Window detect error: {e}")
                 self.current_hover_rect = None
         else:
             self.current_hover_rect = None
             self.last_hover_hwnd = None
+            # 恢复默认提示
             if hasattr(self, 'ScreenCut_Title') and self.ScreenCut_Title:
                 if self.ScreenCut_Title.text() != "移动鼠标选择窗口，或拖拽框选区域":
                     self.ScreenCut_Title.setText("移动鼠标选择窗口，或拖拽框选区域")
@@ -233,7 +247,6 @@ class ScreenCaptureWidget(QWidget):
         if self.start_pos == self.end_pos:
             self.capture_window_at_point(event.pos())
         else:
-            # 区域截图使用的是 Qt 逻辑坐标，无需转换
             rect = QRect(self.start_pos, self.end_pos).normalized()
             self.capture_region(rect)
         
@@ -243,7 +256,7 @@ class ScreenCaptureWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
-        # 绘制背景
+        # 绘制背景遮罩
         if self.is_selecting and self.start_pos and self.end_pos:
             painter.fillRect(self.rect(), QColor(0, 0, 0, 120))
             selection_rect = QRect(self.start_pos, self.end_pos).normalized()
@@ -253,28 +266,46 @@ class ScreenCaptureWidget(QWidget):
             painter.setPen(Qt.red)
             painter.drawRect(selection_rect)
         else:
+            # 默认背景色
             painter.fillRect(self.rect(), QColor(0, 0, 0, 80))
+            # 绘制窗口识别框
             if self.current_hover_rect and not self.current_hover_rect.isEmpty():
-                painter.setPen(QColor(0, 120, 215))
-                painter.setBrush(QColor(0, 120, 215, 50))
+                painter.setPen(QColor(0, 120, 215)) # 蓝色边框
+                painter.setBrush(QColor(0, 120, 215, 50)) # 蓝色半透明填充
                 painter.drawRect(self.current_hover_rect)
     
     def capture_window_at_point(self, point):
-        """点击截图（修复DPI偏移）"""
+        """点击截图"""
         self.hide()
         QApplication.processEvents()
         
-        # 逻辑转物理
         global_point = self.mapToGlobal(point)
         phy_x = int(global_point.x() * self.dpr)
         phy_y = int(global_point.y() * self.dpr)
         
+        # 使用穿透逻辑获取真实窗口
         hwnd = win32gui.WindowFromPoint((phy_x, phy_y))
+        self_hwnd = int(self.winId()) if self.winId() else 0
         
+        # 再次确认不是点到了自己
+        if hwnd == self_hwnd or hwnd == win32gui.GetDesktopWindow():
+            def enum_cb_capture(wnd, result_list):
+                if wnd != self_hwnd and win32gui.IsWindowVisible(wnd):
+                    try:
+                        rect = win32gui.GetWindowRect(wnd)
+                        if rect[0] <= phy_x < rect[2] and rect[1] <= phy_y < rect[3]:
+                            result_list.append(wnd)
+                    except: pass
+                return True
+            found = []
+            win32gui.EnumWindows(enum_cb_capture, found)
+            if found:
+                hwnd = found[0]
+
         if hwnd:
             try:
-                rect = win32gui.GetWindowRect(hwnd) # 物理坐标
-                # 物理转逻辑 (Qt grabWindow 需要逻辑坐标)
+                rect = win32gui.GetWindowRect(hwnd)
+                # 物理 -> 逻辑
                 x = int(rect[0] / self.dpr)
                 y = int(rect[1] / self.dpr)
                 w = int((rect[2] - rect[0]) / self.dpr)
@@ -301,6 +332,21 @@ class ScreenCaptureWidget(QWidget):
             screenshot = screen.grabWindow(0, x, y, w, h)
             QApplication.clipboard().setPixmap(screenshot)
             print(f"区域截图已复制到剪贴板")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def ScreenShortCut():
