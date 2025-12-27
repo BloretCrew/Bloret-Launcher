@@ -67,6 +67,16 @@ class ScreenCaptureWidget(QWidget):
         ui_file_path = os.path.join(os.path.dirname(__file__), '..', 'ui', 'ScreenCut.ui')
         if os.path.exists(ui_file_path):
             uic.loadUi(ui_file_path, self)
+            
+            # --- 关键修复：彻底从布局管理器中剥离 CardWidget ---
+            # 仅仅调用 removeWidget 可能不够（如果控件在嵌套布局中）。
+            # 通过重设 Parent，可以确保它彻底脱离原有的布局约束。
+            if hasattr(self, 'CardWidget'):
+                self.CardWidget.setParent(None)  # 1. 移除父对象（自动脱离布局）
+                self.CardWidget.setParent(self)  # 2. 重新挂载为本窗口子对象
+                self.CardWidget.show()           # 3. 重新显示（setParent(None)会隐藏控件）
+            # --------------------------------------------
+            
         else:
             print(f"UI文件不存在: {ui_file_path}")
         self.resize(current_size)
@@ -92,11 +102,10 @@ class ScreenCaptureWidget(QWidget):
                 target_global_x = screen_geometry.x() + (screen_geometry.width() - widget_width) // 2
                 target_global_y = screen_geometry.y() + 50
                 
-                # 转换为相对于截图窗口的局部坐标
-                local_x = target_global_x - self.geometry().x()
-                local_y = target_global_y - self.geometry().y()
+                # 使用 mapFromGlobal 确保坐标在多屏/高DPI下正确转换
+                local_pos = self.mapFromGlobal(QPoint(target_global_x, target_global_y))
                 
-                self.CardWidget.move(local_x, local_y)
+                self.CardWidget.move(local_pos)
                 self.CardWidget.raise_()
                 self.CardWidget.show()
         else:
@@ -200,9 +209,10 @@ class ScreenCaptureWidget(QWidget):
                 window_title = win32gui.GetWindowText(hwnd)
                 if hasattr(self, 'ScreenCut_Title') and self.ScreenCut_Title:
                     new_text = f"当前窗口：{window_title}" if window_title else "当前窗口"
+                    # 当文字改变时，调用 _update_tip_geometry
                     if self.ScreenCut_Title.text() != new_text:
                         self.ScreenCut_Title.setText(new_text)
-                        self._update_tip_geometry() # 文字变动后重新居中
+                        self._update_tip_geometry() 
                 
                 if self.last_hover_hwnd == hwnd:
                     return
@@ -332,21 +342,6 @@ class ScreenCaptureWidget(QWidget):
             screenshot = screen.grabWindow(0, x, y, w, h)
             QApplication.clipboard().setPixmap(screenshot)
             print(f"区域截图已复制到剪贴板")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def ScreenShortCut():
