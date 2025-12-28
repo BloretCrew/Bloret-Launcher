@@ -4,11 +4,13 @@ import os
 from qfluentwidgets import MessageBox
 from modules.log import log
 import threading
-from PyQt5.QtCore import QTimer, QObject, pyqtSignal
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QTimer, QObject, pyqtSignal, pyqtSlot, Qt
 import logging
 import hashlib
 import time
+import modules.config as cfg
+
+timeout = 600 # second
 
 class BlorikoSignals(QObject):
     """Bloriko 信号类"""
@@ -18,6 +20,28 @@ class BlorikoSignals(QObject):
     def __init__(self):
         super().__init__()
         log("BlorikoSignals 信号类初始化完成", logging.DEBUG)
+
+class UIUpdater(QObject):
+    """用于跨线程更新UI的辅助类"""
+    def __init__(self, answer_label, thinking_widget):
+        super().__init__()
+        self.answer_label = answer_label
+        self.thinking_widget = thinking_widget
+
+    @pyqtSlot(str)
+    def update_ui(self, content):
+        """在主线程中接收信号并更新UI"""
+        log(f"UIUpdater: 收到信号，准备更新UI，内容长度: {len(content)}字符", logging.DEBUG)
+        try:
+            # 设置 Markdown 格式
+            self.answer_label.setTextFormat(Qt.MarkdownText)
+            # 设置文本内容
+            self.answer_label.setText(content.replace('\n', '\n').replace('```', '```'))
+            # 隐藏思考中动画
+            self.thinking_widget.hide()
+            log("UIUpdater: 已将 Bloriko 响应设置到界面控件", logging.INFO)
+        except Exception as e:
+            log(f"UIUpdater: 更新UI时发生错误: {str(e)}", logging.ERROR)
 
 
 def continue_ai_response(connection_id):
@@ -138,7 +162,7 @@ def AskBloriko(question, config, deepthink=False):
         
         try:
             log("开始发送POST请求...", logging.DEBUG)
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            response = requests.post(url, json=payload, headers=headers, timeout=timeout)
             log(f"收到响应，状态码: {response.status_code}", logging.INFO)
             log(f"响应头: {dict(response.headers)}", logging.DEBUG)
             
@@ -200,21 +224,15 @@ def AskBloriko(question, config, deepthink=False):
     
     thread = threading.Thread(target=run_in_thread)
     thread.start()
-    thread.join(timeout=600)  # 600秒超时
+    thread.join(timeout=timeout)
     
     if thread.is_alive():
-        log("AI请求超时(600秒)，线程仍在运行", logging.ERROR)
+        log(f"AI请求超时({timeout}秒)，线程仍在运行", logging.ERROR)
         return "请求超时，请稍后重试"
     
     final_result = result[0]
     log(f"AI请求处理完成，最终返回内容长度: {len(final_result) if final_result else 0}字符", logging.INFO)
     return final_result
-    # else:
-    #     # 同步执行（会阻塞调用线程）
-    #     log("同步执行请求", logging.INFO)
-    #     result = make_request()
-    #     log("同步请求完成", logging.INFO)
-    #     return result
 
 
 def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent, deepthink=False):
@@ -236,8 +254,7 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent,
     # 读取配置文件
     try:
         log("开始读取配置文件 config.json", logging.DEBUG)
-        with open("config.json", 'r', encoding='utf-8') as f:
-            config = json.load(f)
+        config = cfg.read()
         log("成功读取配置文件 config.json", logging.DEBUG)
     except FileNotFoundError:
         log("配置文件 config.json 未找到", logging.ERROR)
@@ -270,6 +287,15 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent,
     if not user_name:
         log("用户名为空，无法使用 Bloriko 功能", logging.ERROR)
         return "用户名为空"
+
+    # 初始化信号和UI更新器，并绑定到控件上防止被垃圾回收
+    signals = BlorikoSignals()
+    ui_updater = UIUpdater(AskBloriko_Answer, BlorikoThinking)
+    signals.responseReceived.connect(ui_updater.update_ui)
+    
+    # 临时存储引用，防止被回收
+    AskBloriko_Answer._bloriko_signals = signals
+    AskBloriko_Answer._bloriko_updater = ui_updater
 
     def make_request():
         url = "http://pcfs.eno.ink:20000/api/ai"
@@ -308,7 +334,7 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent,
         # 发送 POST 请求
         try:
             log("正在发送 POST 请求到 Bloriko AI 服务", logging.INFO)
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            response = requests.post(url, json=payload, headers=headers, timeout=timeout)
             log(f"收到响应，状态码: {response.status_code}", logging.INFO)
             
             response.raise_for_status()  # 如果响应状态码不是 200，会抛出异常
@@ -326,7 +352,6 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent,
                         log(f"AI正在使用工具，连接ID: {connection_id}，开始继续获取结果", logging.INFO)
                         result_content = continue_ai_response(connection_id)
                         log(f"最终回复内容长度: {len(result_content)}字符", logging.INFO)
-                        log(f"最终回复内容预览: {result_content[:100]}{'...' if len(result_content) > 100 else ''}", logging.DEBUG)
                     else:
                         result_content = "未能获取到连接ID"
                         log("响应中未找到 connectionId 字段", logging.WARNING)
@@ -335,7 +360,6 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent,
                     if "content" in result:
                         result_content = result["content"]
                         log(f"直接获取到完整回复内容，长度: {len(result_content)}字符", logging.INFO)
-                        log(f"回复内容预览: {result_content[:100]}{'...' if len(result_content) > 100 else ''}", logging.DEBUG)
                     else:
                         result_content = "未能获取到 AI 回复内容"
                         log("响应中未找到 content 字段", logging.WARNING)
@@ -354,11 +378,9 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent,
             # 处理HTTP错误（包括400错误）
             result_content = f"请求失败: {str(e)}"
             log(f"HTTP错误: {type(e).__name__}: {str(e)}", logging.ERROR)
-            log(f"HTTP状态码: {e.response.status_code if e.response else '未知'}", logging.ERROR)
-            log(f"HTTP响应头: {dict(e.response.headers) if e.response else '无响应'}", logging.ERROR)
-            log(f"HTTP响应内容: {e.response.text if e.response else '无响应内容'}", logging.ERROR)
-            log(f"请求URL: {url}", logging.ERROR)
-            log(f"请求Payload: {payload}", logging.ERROR)
+            if e.response:
+                log(f"HTTP状态码: {e.response.status_code}", logging.ERROR)
+                log(f"HTTP响应内容: {e.response.text}", logging.ERROR)
         except requests.exceptions.RequestException as e:
             # 处理其他请求异常
             result_content = f"请求失败: {str(e)}"
@@ -371,11 +393,9 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent,
             result_content = f"未知错误: {str(e)}"
             log(f"处理 Bloriko 响应时发生未知错误: {type(e).__name__}: {str(e)}", logging.ERROR)
         
-        # 设置结果到UI控件
-        log(f"准备将结果设置到UI控件，内容长度: {len(result_content)}字符", logging.DEBUG)
-        AskBloriko_Answer.setText(result_content)
-        BlorikoThinking.hide()
-        log("已将 Bloriko 响应设置到界面控件", logging.INFO)
+        # 通过信号发送结果到主线程更新UI
+        log(f"发送信号通知UI更新，内容长度: {len(result_content)}", logging.DEBUG)
+        signals.responseReceived.emit(result_content)
         return result_content
     
     # 在单独线程中执行网络请求

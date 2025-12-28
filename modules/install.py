@@ -17,11 +17,7 @@ from modules.log import log
 from modules.customize import find_Customize
 from modules.i18n import i18nText
 import modules.globals as BLglobals
-
-
-
-
-
+import modules.config as cfg
 
 # 线程安全的UI更新函数
 def safe_ui_update(widget, method, value, widget_type=None):
@@ -492,8 +488,7 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
 
             # 设置MaxThread的值
             try:
-                with open("config.json", "r", encoding="utf-8") as f:
-                    config = json.load(f)
+                config = cfg.read()
                 max_thread_value = config.get("MaxThread", 2000)
                 if hasattr(download_dialog, 'MaxThread') and hasattr(download_dialog, 'MaxThread_2'):
                     download_dialog.MaxThread.setText(str(max_thread_value))
@@ -828,8 +823,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             return False
 
         # 加载 config.json 文件
-        with open("config.json", "r", encoding="utf-8") as f:
-            config = json.load(f)
+        config = cfg.read()
         # 创建 LibraryDownloader 实例
         max_thread_value = config.get("MaxThread", 2000)
         # 处理主版本库文件

@@ -23,6 +23,8 @@ from modules.safe import handle_exception
 import sys
 from modules.customize import find_Customize
 from modules.i18n import i18nText
+import modules.globals as BLglobals
+import modules.config as cfg
 
 
 def dl_source_launcher_or_meta_get(original_url):
@@ -822,8 +824,7 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
             # 从配置文件读取并设置最大线程数值
             try:
                 # 打开配置文件
-                with open("config.json", "r", encoding="utf-8") as f:
-                    config = json.load(f)
+                config = cfg.read()
                 # 获取最大线程数配置，默认2000
                 max_thread_value = config.get("MaxThread", 2000)
                 # 如果对话框中有MaxThread相关控件，则设置其值
@@ -1321,9 +1322,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             return False
 
         # 加载配置文件config.json，获取下载线程数等配置
-        with open("config.json", "r", encoding="utf-8") as f:
-            # 使用UTF-8编码读取JSON配置文件
-            config = json.load(f)
+        config = cfg.read()
         # 从配置中获取最大线程数，默认值为2000
         max_thread_value = config.get("MaxThread", 2000)
         # 处理主版本库文件，准备下载Minecraft依赖的库文件

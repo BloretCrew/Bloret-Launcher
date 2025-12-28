@@ -2415,6 +2415,7 @@ def setup_Mod_ui(self, widget):
     AskBloriko_Button = widget.findChild(QPushButton, "AskBloriko_Button")
     
     Bloriko_DeepThink_CheckBox = widget.findChild(CheckBox, "Bloriko_DeepThink_CheckBox") # 获取 CheckBox
+    AskBloriko_Button.setIcon(FluentIcon.SEND)
     
     # 这一部分之前的代码可能连接了 AskBlorikoAndSet，现在我们要改用新的弹窗逻辑
     if AskBloriko_Button and AskBloriko_Edit:
