@@ -83,7 +83,7 @@ def continue_ai_response(connection_id):
             continue  # 继续循环重试
 
 
-def AskBloriko(question, config):
+def AskBloriko(question, config, deepthink=False):
     """
     向Bloriko发送问题并获取回答
     
@@ -112,6 +112,7 @@ def AskBloriko(question, config):
         payload = {
             "pause": True,
             "model": "Bloriko",
+            "deepthink": deepthink,
             "OauthApp": {
                 "app_id": "BloretLauncher",
                 "app_secret": "s4d56f4a68sd46g54asd46f54a5dsf654asdf546"
@@ -216,7 +217,7 @@ def AskBloriko(question, config):
     #     return result
 
 
-def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent):
+def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent, deepthink=False):
     """
     向Bloriko发送问题并获取回答，直接设置到UI控件
     
@@ -278,6 +279,7 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent)
         payload = {
             "pause": True,  # 允许暂停，以便处理工具调用
             "model": "Bloriko",
+            "deepthink": deepthink,
             "OauthApp": {
                 "app_id": "BloretLauncher",
                 "app_secret": "s4d56f4a68sd46g54asd46f54a5dsf654asdf546"

@@ -61,7 +61,7 @@
         <x>0</x>
         <y>0</y>
         <width>726</width>
-        <height>1197</height>
+        <height>1196</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -98,7 +98,7 @@
             <x>0</x>
             <y>0</y>
             <width>708</width>
-            <height>1027</height>
+            <height>1026</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout">
@@ -133,6 +133,13 @@
                </property>
                <property name="placeholderText">
                 <string>关于 Minecraft 的任何问题，可以问络可哦 ~</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="CheckBox" name="Bloriko_DeepThink_CheckBox">
+               <property name="text">
+                <string>深度思考</string>
                </property>
               </widget>
              </item>
@@ -771,6 +778,11 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>CheckBox</class>
+   <extends>QCheckBox</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
   <customwidget>
    <class>ComboBox</class>
    <extends>QPushButton</extends>

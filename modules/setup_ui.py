@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy, QApplication
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox, TabBar
+from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox, TabBar, CheckBox
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
 from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime
@@ -370,8 +370,8 @@ def setup_home_ui(self, widget):
     AskBloriko_Button = widget.findChild(PushButton, "AskBloriko_Button")
     AskBloriko_Answer = widget.findChild(StrongBodyLabel, "AskBloriko_Answer")
     BlorikoThinking = widget.findChild(IndeterminateProgressBar, "BlorikoThinking")
-    # BlorikoIcon = widget.findChild(QLabel, "BlorikoIcon")
-    # BlorikoIcon.setBorderRadius(8, 8, 8, 8)
+    Bloriko_DeepThink_CheckBox = widget.findChild(CheckBox, "Bloriko_DeepThink_CheckBox") # 获取 CheckBox
+
     if BlorikoThinking:
         BlorikoThinking.hide()
     else:
@@ -379,7 +379,15 @@ def setup_home_ui(self, widget):
 
     if AskBloriko_Button:
         AskBloriko_Button.setIcon(FluentIcon.SEND)
-        AskBloriko_Button.clicked.connect(lambda: AskBlorikoAndSet(self, AskBloriko_Edit.text(), AskBloriko_Answer, BlorikoThinking, widget))
+        # 获取 CheckBox 状态并传入 AskBlorikoAndSet
+        AskBloriko_Button.clicked.connect(lambda: AskBlorikoAndSet(
+            self, 
+            AskBloriko_Edit.text(), 
+            AskBloriko_Answer, 
+            BlorikoThinking, 
+            widget, 
+            deepthink=Bloriko_DeepThink_CheckBox.isChecked() if Bloriko_DeepThink_CheckBox else False
+        ))
     else:
         log("未找到 AskBloriko_Button 元素")
 
@@ -2406,6 +2414,8 @@ def setup_Mod_ui(self, widget):
     AskBloriko_Edit = widget.findChild(LineEdit, "AskBloriko_Edit")
     AskBloriko_Button = widget.findChild(QPushButton, "AskBloriko_Button")
     
+    Bloriko_DeepThink_CheckBox = widget.findChild(CheckBox, "Bloriko_DeepThink_CheckBox") # 获取 CheckBox
+    
     # 这一部分之前的代码可能连接了 AskBlorikoAndSet，现在我们要改用新的弹窗逻辑
     if AskBloriko_Button and AskBloriko_Edit:
         def show_bloriko_mod_dialog():
@@ -2418,8 +2428,11 @@ def setup_Mod_ui(self, widget):
                 )
                 return
                 
-            # 弹出自定义对话框
-            dialog = BlorikoModRecommendationDialog(self, question)
+            # 获取深度思考状态
+            is_deepthink = Bloriko_DeepThink_CheckBox.isChecked() if Bloriko_DeepThink_CheckBox else False
+            
+            # 弹出自定义对话框，传入 deepthink 参数
+            dialog = BlorikoModRecommendationDialog(self, question, deepthink=is_deepthink)
             dialog.exec_()
 
         # 断开旧的连接（如果有）并连接新函数
@@ -2441,11 +2454,12 @@ class BlorikoAIModThread(QThread):
     """用于请求 Bloriko AI 的线程"""
     finished = pyqtSignal(bool, str, list)  # success, text_response, slug_list
 
-    def __init__(self, question, version, config_data):
+    def __init__(self, question, version, config_data, deepthink=False):
         super().__init__()
         self.question = question
         self.version = version
         self.config_data = config_data
+        self.deepthink = deepthink
 
     def run(self):
         from modules.Bloriko import AskBloriko
@@ -2463,7 +2477,7 @@ class BlorikoAIModThread(QThread):
         try:
             # 调用 Bloriko.py 中的 AskBloriko
             # 注意：AskBloriko 需要 config 字典
-            response_text = AskBloriko(prompt, self.config_data)
+            response_text = AskBloriko(prompt, self.config_data, deepthink=self.deepthink)
             
             # 解析 JSON
             json_match = re.search(r'```json\s*(\[.*?\])\s*```', response_text, re.DOTALL)
@@ -2489,10 +2503,11 @@ class BlorikoAIModThread(QThread):
 class BlorikoModRecommendationDialog(MessageBoxBase):
     """ Bloriko Mod 推荐与安装对话框 """
 
-    def __init__(self, parent_window, question):
+    def __init__(self, parent_window, question, deepthink=False):
         super().__init__(parent_window)
         self.parent_window = parent_window
         self.question = question
+        self.deepthink = deepthink # 存储 deepthink 状态
         self.slugs = [] # 存储 AI 推荐的 slug
         self.minecraft_dir = cfg.read().get('minecraft_dir', os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', '.minecraft'))
         self.version_mappings = {} # 存储版本映射信息
@@ -2633,7 +2648,7 @@ class BlorikoModRecommendationDialog(MessageBoxBase):
         # 启动线程
         config = cfg.read()
         # 传入解析后的真实版本号
-        self.thread = BlorikoAIModThread(self.question, actual_version, config)
+        self.thread = BlorikoAIModThread(self.question, actual_version, config, deepthink=self.deepthink)
         self.thread.finished.connect(self.on_ai_finished)
         self.thread.start()
 
@@ -2666,7 +2681,6 @@ class BlorikoModRecommendationDialog(MessageBoxBase):
             self.modListLayout.addWidget(BodyLabel(i18nText("未能识别出具体的 Mod，请参考上方文字手动搜索。")))
             self.yesButton.setEnabled(False)
         else:
-            from qfluentwidgets import CheckBox
             for slug in slugs:
                 row = QWidget()
                 row_layout = QHBoxLayout(row)
@@ -2682,7 +2696,6 @@ class BlorikoModRecommendationDialog(MessageBoxBase):
 
     def install_selected_mods(self):
         """下载并安装选中的 Mod"""
-        from qfluentwidgets import CheckBox
         
         selected_slugs = []
         for i in range(self.modListLayout.count()):
