@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>688</width>
-    <height>590</height>
+    <height>591</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -81,6 +81,98 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
+        <widget class="CardWidget" name="CardWidget">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <item>
+             <widget class="CaptionLabel" name="BlorikoIcon">
+              <property name="maximumSize">
+               <size>
+                <width>35</width>
+                <height>35</height>
+               </size>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="pixmap">
+               <pixmap>icon/Bloriko.jpg</pixmap>
+              </property>
+              <property name="scaledContents">
+               <bool>true</bool>
+              </property>
+              <property name="wordWrap">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="StrongBodyLabel" name="StrongBodyLabel">
+              <property name="text">
+               <string>让络可帮你挑选合适的 Mod</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel">
+              <property name="text">
+               <string>无需一个一个找 Mod，让 Bloriko 帮你找齐。</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_2">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <item>
+             <widget class="LineEdit" name="AskBloriko_Edit">
+              <property name="inputMask">
+               <string/>
+              </property>
+              <property name="placeholderText">
+               <string>告诉 Bloriko 你的需求，让 Bloriko  帮你挑选一批适合你的 Mod</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="PushButton" name="AskBloriko_Button">
+              <property name="minimumSize">
+               <size>
+                <width>100</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>发送</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="SearchLineEdit" name="Search">
          <property name="inputMask">
           <string/>
@@ -104,7 +196,7 @@
             <x>0</x>
             <y>0</y>
             <width>652</width>
-            <height>470</height>
+            <height>368</height>
            </rect>
           </property>
          </widget>
@@ -123,10 +215,26 @@
    <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
+   <class>CardWidget</class>
+   <extends>QFrame</extends>
+   <header>qfluentwidgets</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
    <class>SmoothScrollArea</class>
    <extends>QScrollArea</extends>
    <header>qfluentwidgets</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CaptionLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>StrongBodyLabel</class>
+   <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
    <class>TitleLabel</class>

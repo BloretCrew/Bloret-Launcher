@@ -199,10 +199,10 @@ def AskBloriko(question, config):
     
     thread = threading.Thread(target=run_in_thread)
     thread.start()
-    thread.join(timeout=30)  # 30秒超时
+    thread.join(timeout=600)  # 600秒超时
     
     if thread.is_alive():
-        log("AI请求超时(30秒)，线程仍在运行", logging.ERROR)
+        log("AI请求超时(600秒)，线程仍在运行", logging.ERROR)
         return "请求超时，请稍后重试"
     
     final_result = result[0]

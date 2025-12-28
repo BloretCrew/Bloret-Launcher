@@ -542,7 +542,7 @@ class MainWindow(FluentWindow):
         setup_tools_ui(self,self.toolsInterface)
         setup_info_ui(self,self.infoInterface)
         setup_BBS_ui(self,self.BBSInterface,BLglobals.server_ip)
-        setup_Mod_ui(self,self.modInterface,BLglobals.server_ip)
+        setup_Mod_ui(self,self.modInterface)
         setup_multiplayer_ui(self,self.multiplayerInterface, BLglobals.server_ip)
         setup_passport_ui(self,self.passportInterface,BLglobals.server_ip,self.homeInterface)
         setup_settings_ui(self,self.settingsInterface)

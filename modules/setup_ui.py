@@ -3,7 +3,7 @@ from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPos
 from PyQt5 import uic
 from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
 from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime
-import requests, json, logging, os, socket
+import requests, json, logging, os, socket, re
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.systems import setup_startup_with_self_starting
 from modules.log import log, clear_log_files
@@ -2387,7 +2387,7 @@ def load_and_display_shortcut(label):
         log(f"加载快捷键显示失败: {e}")
         label.setText("Ctrl+Alt+A")  # 默认值
 
-def setup_Mod_ui(self, widget, server_ip):
+def setup_Mod_ui(self, widget):
     '''
     设定 Bloret Launcher 模组界面 UI 布局和操作。
     ***
@@ -2402,6 +2402,33 @@ def setup_Mod_ui(self, widget, server_ip):
 
     Search = widget.findChild(SearchLineEdit, "Search")
     mod_list = widget.findChild(SmoothScrollArea, "mod_list")
+    
+    AskBloriko_Edit = widget.findChild(LineEdit, "AskBloriko_Edit")
+    AskBloriko_Button = widget.findChild(QPushButton, "AskBloriko_Button")
+    
+    # 这一部分之前的代码可能连接了 AskBlorikoAndSet，现在我们要改用新的弹窗逻辑
+    if AskBloriko_Button and AskBloriko_Edit:
+        def show_bloriko_mod_dialog():
+            question = AskBloriko_Edit.text()
+            if not question.strip():
+                InfoBar.warning(
+                    title=i18nText('请输入需求'),
+                    content=i18nText('请告诉 Bloriko 您想要什么样的 Mod'),
+                    parent=self
+                )
+                return
+                
+            # 弹出自定义对话框
+            dialog = BlorikoModRecommendationDialog(self, question)
+            dialog.exec_()
+
+        # 断开旧的连接（如果有）并连接新函数
+        try:
+            AskBloriko_Button.clicked.disconnect()
+        except:
+            pass
+        AskBloriko_Button.clicked.connect(show_bloriko_mod_dialog)
+
     if Search:
         # on_search_mod_clicked(mod_list)
         # 获取进度条控件实例
@@ -2409,3 +2436,340 @@ def setup_Mod_ui(self, widget, server_ip):
         Search.searchSignal.connect(lambda: start_search_mod(self, mod_list, Search.text(), loading_widget))
     else:
         log(i18nText("未找到 Search 搜索框"), logging.ERROR)
+
+class BlorikoAIModThread(QThread):
+    """用于请求 Bloriko AI 的线程"""
+    finished = pyqtSignal(bool, str, list)  # success, text_response, slug_list
+
+    def __init__(self, question, version, config_data):
+        super().__init__()
+        self.question = question
+        self.version = version
+        self.config_data = config_data
+
+    def run(self):
+        from modules.Bloriko import AskBloriko
+        
+        # 构建 Prompt，强制 AI 返回 JSON 格式的 slug，并指定只推荐 Fabric 模组
+        prompt = (
+            f"User is playing Minecraft version {self.version} using the FABRIC loader. "
+            f"User Request: {self.question}. "
+            f"Please recommend some suitable Modrinth mods that are compatible with FABRIC. "
+            f"Describe why you chose them briefly. "
+            f"\n\nEXTREMELY IMPORTANT: At the very end of your response, you MUST provide a JSON block containing ONLY a list of the Modrinth slugs (project IDs) for these mods. "
+            f"Format strictly like this:\n```json\n[\"slug-1\", \"slug-2\", \"slug-3\"]\n```"
+        )
+        
+        try:
+            # 调用 Bloriko.py 中的 AskBloriko
+            # 注意：AskBloriko 需要 config 字典
+            response_text = AskBloriko(prompt, self.config_data)
+            
+            # 解析 JSON
+            json_match = re.search(r'```json\s*(\[.*?\])\s*```', response_text, re.DOTALL)
+            slugs = []
+            clean_text = response_text
+            
+            if json_match:
+                json_str = json_match.group(1)
+                try:
+                    slugs = json.loads(json_str)
+                    # 从展示文本中移除 JSON 块，让界面更干净
+                    clean_text = response_text.replace(json_match.group(0), "").strip()
+                except json.JSONDecodeError:
+                    log("Bloriko AI 返回的 JSON 格式错误", logging.ERROR)
+            
+            self.finished.emit(True, clean_text, slugs)
+            
+        except Exception as e:
+            log(f"Bloriko AI 请求失败: {e}", logging.ERROR)
+            self.finished.emit(False, str(e), [])
+
+
+class BlorikoModRecommendationDialog(MessageBoxBase):
+    """ Bloriko Mod 推荐与安装对话框 """
+
+    def __init__(self, parent_window, question):
+        super().__init__(parent_window)
+        self.parent_window = parent_window
+        self.question = question
+        self.slugs = [] # 存储 AI 推荐的 slug
+        self.minecraft_dir = cfg.read().get('minecraft_dir', os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', '.minecraft'))
+        self.version_mappings = {} # 存储版本映射信息
+        
+        # --- UI 初始化 ---
+        self.titleLabel = SubtitleLabel(i18nText('让 Bloriko 挑选 Mod'), self.widget)
+        self.viewLayout.addWidget(self.titleLabel)
+
+        # 1. 版本选择区域
+        self.selectionWidget = QWidget()
+        self.selectionLayout = QVBoxLayout(self.selectionWidget)
+        self.selectionLayout.setContentsMargins(0, 0, 0, 0)
+        
+        self.verLabel = BodyLabel(i18nText("请选择您要安装 Mod 的游戏版本 (仅显示 Fabric)："))
+        self.versionCombo = ComboBox()
+        self.load_versions()
+        
+        self.selectionLayout.addWidget(self.verLabel)
+        self.selectionLayout.addWidget(self.versionCombo)
+        self.viewLayout.addWidget(self.selectionWidget)
+
+        # 2. 加载区域
+        self.loadingWidget = QWidget()
+        self.loadingLayout = QVBoxLayout(self.loadingWidget)
+        self.loadingBar = IndeterminateProgressBar()
+        self.loadingLabel = CaptionLabel(i18nText("Bloriko 正在思考并搜索 Modrinth..."))
+        self.loadingLabel.setAlignment(Qt.AlignCenter)
+        self.loadingLayout.addWidget(self.loadingBar)
+        self.loadingLayout.addWidget(self.loadingLabel)
+        self.viewLayout.addWidget(self.loadingWidget)
+        self.loadingWidget.hide()
+
+        # 3. 结果区域 (整体滚动)
+        self.resultScroll = SmoothScrollArea()
+        self.resultScroll.setWidgetResizable(True)
+        self.resultScroll.setStyleSheet("background-color: transparent; border: none;") 
+        
+        self.resultContentWidget = QWidget()
+        self.resultLayout = QVBoxLayout(self.resultContentWidget)
+        self.resultLayout.setContentsMargins(10, 0, 20, 0)
+        
+        self.aiResponseBrowser = BodyLabel()
+        self.aiResponseBrowser.setWordWrap(True)
+        self.aiResponseBrowser.setTextFormat(Qt.MarkdownText)
+        self.aiResponseBrowser.setOpenExternalLinks(True)
+        
+        self.modListLabel = StrongBodyLabel(i18nText("推荐的 Mod (已自动勾选):"))
+        self.modListContainer = QWidget()
+        self.modListLayout = QVBoxLayout(self.modListContainer)
+        self.modListLayout.setContentsMargins(0, 0, 0, 0)
+        self.modListLayout.setSpacing(5)
+        
+        self.resultLayout.addWidget(self.aiResponseBrowser)
+        self.resultLayout.addSpacing(10)
+        self.resultLayout.addWidget(self.modListLabel)
+        self.resultLayout.addWidget(self.modListContainer)
+        self.resultLayout.addStretch(1)
+
+        self.resultScroll.setWidget(self.resultContentWidget)
+        self.viewLayout.addWidget(self.resultScroll)
+        self.resultScroll.hide()
+
+        # 设置按钮
+        self.yesButton.setText(i18nText("开始询问"))
+        self.cancelButton.setText(i18nText("取消"))
+        
+        self.yesButton.clicked.disconnect() 
+        self.yesButton.clicked.connect(self.on_action_clicked)
+        
+        self.widget.setMinimumWidth(500)
+        self.widget.setMinimumHeight(400) 
+        self.current_state = "SELECT" # SELECT -> LOADING -> RESULT
+
+    def load_versions(self):
+        """加载已安装的版本，通过 .BL.json 筛选 Fabric 版本"""
+        versions_path = os.path.join(self.minecraft_dir, "versions")
+        bl_json_path = os.path.join(versions_path, ".BL.json")
+        
+        # 1. 尝试读取版本元数据
+        try:
+            if os.path.exists(bl_json_path):
+                with open(bl_json_path, "r", encoding="utf-8") as f:
+                    bl_data = json.load(f)
+                    if "versions" in bl_data:
+                        self.version_mappings = bl_data["versions"]
+        except Exception as e:
+            log(f"读取 .BL.json 失败: {str(e)}", logging.WARNING)
+
+        fabric_versions = []
+        if os.path.exists(versions_path):
+            all_folders = [d for d in os.listdir(versions_path) if os.path.isdir(os.path.join(versions_path, d))]
+            
+            for folder in all_folders:
+                is_fabric = False
+                # 检查元数据
+                if folder in self.version_mappings:
+                    if self.version_mappings[folder].get("Fabric", False):
+                        is_fabric = True
+                # 后备检查：如果文件夹名包含 fabric
+                elif "fabric" in folder.lower():
+                    is_fabric = True
+                
+                if is_fabric:
+                    fabric_versions.append(folder)
+        
+        if fabric_versions:
+            self.versionCombo.addItems(fabric_versions)
+        else:
+            self.versionCombo.addItem(i18nText("未找到 Fabric 版本"))
+            self.versionCombo.setEnabled(False) # 禁用，防止误操作
+
+    def on_action_clicked(self):
+        if self.current_state == "SELECT":
+            self.start_ai_inquiry()
+        elif self.current_state == "RESULT":
+            self.install_selected_mods()
+
+    def start_ai_inquiry(self):
+        """开始请求 AI"""
+        folder_name = self.versionCombo.currentText()
+        if not folder_name or folder_name == i18nText("未找到 Fabric 版本"):
+            InfoBar.error(title="错误", content="请先选择一个有效的 Fabric 游戏版本", parent=self.widget)
+            return
+
+        # 尝试获取真实的纯数字版本号传给 AI (例如 1.20.1 而不是 1.20.1-Fabric)
+        actual_version = folder_name
+        if folder_name in self.version_mappings:
+            actual_version = self.version_mappings[folder_name].get("version", folder_name)
+
+        # 切换 UI 到加载状态
+        self.current_state = "LOADING"
+        self.selectionWidget.hide()
+        self.loadingWidget.show()
+        self.resultScroll.hide() 
+        self.yesButton.setEnabled(False)
+        self.yesButton.setText(i18nText("正在思考..."))
+
+        # 启动线程
+        config = cfg.read()
+        # 传入解析后的真实版本号
+        self.thread = BlorikoAIModThread(self.question, actual_version, config)
+        self.thread.finished.connect(self.on_ai_finished)
+        self.thread.start()
+
+    def on_ai_finished(self, success, response_text, slugs):
+        self.loadingWidget.hide()
+        
+        if not success:
+            self.selectionWidget.show()
+            self.yesButton.setEnabled(True)
+            self.yesButton.setText(i18nText("重试"))
+            self.current_state = "SELECT"
+            InfoBar.error(title="请求失败", content=response_text, parent=self.widget)
+            return
+
+        self.current_state = "RESULT"
+        self.resultScroll.show()
+        self.yesButton.setEnabled(True)
+        self.yesButton.setText(i18nText("一键安装全部"))
+        
+        self.aiResponseBrowser.setText(response_text)
+        self.slugs = slugs
+        
+        # 清空旧列表
+        while self.modListLayout.count():
+            item = self.modListLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if not slugs:
+            self.modListLayout.addWidget(BodyLabel(i18nText("未能识别出具体的 Mod，请参考上方文字手动搜索。")))
+            self.yesButton.setEnabled(False)
+        else:
+            from qfluentwidgets import CheckBox
+            for slug in slugs:
+                row = QWidget()
+                row_layout = QHBoxLayout(row)
+                row_layout.setContentsMargins(0, 0, 0, 0)
+                
+                chk = CheckBox()
+                chk.setChecked(True)
+                chk.setText(slug) 
+                chk.setProperty("slug", slug) 
+                
+                row_layout.addWidget(chk)
+                self.modListLayout.addWidget(row)
+
+    def install_selected_mods(self):
+        """下载并安装选中的 Mod"""
+        from qfluentwidgets import CheckBox
+        
+        selected_slugs = []
+        for i in range(self.modListLayout.count()):
+            item = self.modListLayout.itemAt(i)
+            if item and item.widget():
+                chk = item.widget().findChild(CheckBox)
+                if chk and chk.isChecked():
+                    selected_slugs.append(chk.property("slug"))
+        
+        if not selected_slugs:
+            InfoBar.warning(title="提示", content="未选择任何 Mod", parent=self.widget)
+            return
+
+        target_version = self.versionCombo.currentText()
+        self.yesButton.setEnabled(False)
+        self.yesButton.setText(i18nText("正在安装..."))
+        
+        self.download_thread = ModBatchDownloadThread(selected_slugs, target_version, self.minecraft_dir)
+        self.download_thread.progress_signal.connect(self.update_download_progress)
+        self.download_thread.finished_signal.connect(self.on_download_finished)
+        self.download_thread.start()
+
+    def update_download_progress(self, msg, is_error):
+        """ 更新下载进度显示 """
+        if is_error:
+            log(msg, logging.ERROR)
+        else:
+            self.yesButton.setText(msg)
+
+    def on_download_finished(self, success_count, fail_count):
+        """ 下载完成后的处理 """
+        self.accept() # 关闭弹窗
+        title = i18nText('安装完成')
+        content = i18nText(f"成功安装 {success_count} 个 Mod，失败 {fail_count} 个。")
+        if fail_count > 0:
+            InfoBar.warning(title=title, content=content, parent=self.parent_window, duration=5000)
+        else:
+            InfoBar.success(title=title, content=content, parent=self.parent_window, duration=5000)
+
+class ModBatchDownloadThread(QThread):
+    """ 批量下载 Mod 的线程 """
+    progress_signal = pyqtSignal(str, bool) # message, is_error
+    finished_signal = pyqtSignal(int, int) # success_count, fail_count
+
+    def __init__(self, slugs, version_folder, minecraft_dir):
+        super().__init__()
+        self.slugs = slugs
+        self.version_folder = version_folder
+        self.minecraft_dir = minecraft_dir
+
+    def run(self):
+        success = 0
+        fail = 0
+        total = len(self.slugs)
+        
+        mod_dir = os.path.join(self.minecraft_dir, "versions", self.version_folder, "mods")
+        if not os.path.exists(mod_dir):
+            os.makedirs(mod_dir)
+
+        for i, slug in enumerate(self.slugs):
+            self.progress_signal.emit(f"正在安装 ({i+1}/{total}): {slug}", False)
+            
+            try:
+                # 获取下载链接 (默认尝试 Fabric，因为 Modrinth Fabric 居多，也可以尝试检测)
+                # 注意：这里我们假设是 Fabric，如果需要更精确，需要解析 versions 文件夹下的 json 或让用户选
+                url = Get_Mod_File_Download_Url(slug, "fabric") 
+                
+                if not url:
+                    # 尝试 Forge
+                    url = Get_Mod_File_Download_Url(slug, "forge")
+                
+                if url:
+                    filename = url.split("/")[-1]
+                    file_path = os.path.join(mod_dir, filename)
+                    
+                    response = requests.get(url, stream=True)
+                    response.raise_for_status()
+                    
+                    with open(file_path, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    success += 1
+                else:
+                    log(f"无法获取 Mod 下载链接: {slug}", logging.ERROR)
+                    fail += 1
+            except Exception as e:
+                log(f"下载 Mod 失败 {slug}: {e}", logging.ERROR)
+                fail += 1
+                
+        self.finished_signal.emit(success, fail)
