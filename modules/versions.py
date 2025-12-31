@@ -26,6 +26,13 @@ from modules.i18n import i18nText
 import modules.globals as BLglobals
 import modules.config as cfg
 
+from qfluentwidgets import (
+    MessageBoxBase, SubtitleLabel, LineEdit, StrongBodyLabel, 
+    PushButton, SwitchButton, CaptionLabel, BodyLabel
+)
+from PyQt5.QtWidgets import QHBoxLayout, QFileDialog, QWidget
+from PyQt5.QtCore import Qt
+
 
 def dl_source_launcher_or_meta_get(original_url):
     """
@@ -2387,3 +2394,199 @@ def on_other_version_selected(self, selected_text, combo_box):
         
         # 显示对话框（模态对话框，会阻塞直到用户操作）
         dialog.exec_()
+
+class CoreManageDialog(MessageBoxBase):
+    """ 核心管理对话框 """
+    def __init__(self, version_name, minecraft_dir, home_interface, parent=None):
+        super().__init__(parent)
+        self.version_name = version_name
+        self.minecraft_dir = minecraft_dir
+        self.home_interface = home_interface
+        self.bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
+        self.current_data = {}
+
+        # UI 初始化
+        self.titleLabel = SubtitleLabel(i18nText("核心管理"), self)
+        self.viewLayout.addWidget(self.titleLabel)
+
+        # 1. 核心名称 (更名功能)
+        self.viewLayout.addWidget(StrongBodyLabel(i18nText("核心名称 (文件夹名)"), self))
+        self.name_edit = LineEdit(self)
+        self.name_edit.setText(version_name)
+        self.name_edit.setPlaceholderText(i18nText("修改此项将重命名版本文件夹"))
+        self.viewLayout.addWidget(self.name_edit)
+
+        # 2. 真实版本号 (用于元数据)
+        self.viewLayout.addWidget(StrongBodyLabel(i18nText("真实游戏版本"), self))
+        self.real_ver_edit = LineEdit(self)
+        self.real_ver_edit.setPlaceholderText(i18nText("例如: 1.21.8"))
+        self.viewLayout.addWidget(self.real_ver_edit)
+
+        # 3. Fabric 状态
+        self.fabric_layout = QHBoxLayout()
+        self.fabric_label = BodyLabel(i18nText("是否为 Fabric 版本"), self)
+        self.fabric_switch = SwitchButton(self)
+        self.fabric_switch.setOnText(i18nText("是"))
+        self.fabric_switch.setOffText(i18nText("否"))
+        self.fabric_layout.addWidget(self.fabric_label)
+        self.fabric_layout.addWidget(self.fabric_switch)
+        self.fabric_layout.addStretch(1)
+        self.viewLayout.addLayout(self.fabric_layout)
+
+        # 4. 图标路径
+        self.viewLayout.addWidget(StrongBodyLabel(i18nText("自定义图标路径"), self))
+        self.icon_layout = QHBoxLayout()
+        self.icon_edit = LineEdit(self)
+        self.icon_edit.setPlaceholderText(i18nText("图标文件的绝对路径"))
+        self.browse_btn = PushButton(i18nText("浏览"), self)
+        self.browse_btn.clicked.connect(self.browse_icon)
+        self.icon_layout.addWidget(self.icon_edit)
+        self.icon_layout.addWidget(self.browse_btn)
+        self.viewLayout.addLayout(self.icon_layout)
+
+        # 提示信息
+        self.tipLabel = CaptionLabel(i18nText("注意：修改名称后需重启启动器或刷新列表才能完全生效"), self)
+        self.tipLabel.setTextColor("#ff9800", "#ff9800")
+        self.viewLayout.addWidget(self.tipLabel)
+
+        # 加载数据
+        self.load_data()
+
+        # 调整按钮文字
+        self.yesButton.setText(i18nText("保存修改"))
+        self.cancelButton.setText(i18nText("取消"))
+
+        # 连接保存事件 (覆盖默认的 accept，以便我们处理逻辑)
+        self.yesButton.clicked.disconnect()
+        self.yesButton.clicked.connect(self.save_data)
+
+    def load_data(self):
+        """ 从 .BL.json 加载数据 """
+        try:
+            if os.path.exists(self.bl_json_path):
+                with open(self.bl_json_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    versions_data = data.get("versions", {})
+                    
+                    # 获取当前版本的数据，如果不存在则使用默认值
+                    self.current_data = versions_data.get(self.version_name, {})
+                    
+                    # 填充 UI
+                    self.real_ver_edit.setText(self.current_data.get("version", self.version_name))
+                    self.fabric_switch.setChecked(self.current_data.get("Fabric", False))
+                    self.icon_edit.setText(self.current_data.get("icon", ""))
+        except Exception as e:
+            log(f"加载核心信息失败: {e}", logging.ERROR)
+
+    def browse_icon(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, i18nText("选择图标"), "", i18nText("图片文件 (*.png *.jpg *.ico);;所有文件 (*.*)")
+        )
+        if path:
+            self.icon_edit.setText(path)
+
+    def save_data(self):
+        """ 保存数据并处理重命名 """
+        new_name = self.name_edit.text().strip()
+        new_real_ver = self.real_ver_edit.text().strip()
+        is_fabric = self.fabric_switch.isChecked()
+        new_icon = self.icon_edit.text().strip()
+        
+        if not new_name:
+            InfoBar.error(title=i18nText("错误"), content=i18nText("核心名称不能为空"), parent=self.widget)
+            return
+
+        try:
+            # 读取完整的 json
+            full_data = {"versions": {}}
+            if os.path.exists(self.bl_json_path):
+                with open(self.bl_json_path, "r", encoding="utf-8") as f:
+                    full_data = json.load(f)
+
+            # 1. 处理文件夹重命名
+            rename_success = True
+            if new_name != self.version_name:
+                old_path = os.path.join(self.minecraft_dir, "versions", self.version_name)
+                new_path = os.path.join(self.minecraft_dir, "versions", new_name)
+                
+                if os.path.exists(new_path):
+                    InfoBar.error(title=i18nText("错误"), content=i18nText("目标名称已存在"), parent=self.widget)
+                    return
+                
+                try:
+                    os.rename(old_path, new_path)
+                    log(f"核心已重命名: {self.version_name} -> {new_name}")
+                except Exception as e:
+                    InfoBar.error(title=i18nText("重命名失败"), content=str(e), parent=self.widget)
+                    return
+
+                # 在 JSON 中移除旧键
+                if self.version_name in full_data["versions"]:
+                    del full_data["versions"][self.version_name]
+            
+            # 2. 更新 JSON 数据
+            # 如果是重命名，这里使用的是 new_name 作为键；如果没重命名，new_name 等于 version_name
+            full_data["versions"][new_name] = {
+                "Fabric": is_fabric,
+                "version": new_real_ver,
+                "setup_time": self.current_data.get("setup_time", int(time.time())),
+                "icon": new_icon
+            }
+
+            # 写入文件
+            with open(self.bl_json_path, "w", encoding="utf-8") as f:
+                json.dump(full_data, f, ensure_ascii=False, indent=4)
+
+            InfoBar.success(
+                title=i18nText("保存成功"),
+                content=i18nText("核心信息已更新"),
+                parent=self.parent() if self.parent() else self.widget
+            )
+            
+            # 刷新 UI (这里简单地触发一次关闭，并在主界面刷新列表逻辑需要单独调用)
+            # 如果发生了重命名，需要通知主窗口刷新列表
+            if new_name != self.version_name:
+                # 更新全局列表 (简单的 hack，最好是主窗口监听信号)
+                global set_list, minecraft_list
+                if self.version_name in set_list:
+                    index = set_list.index(self.version_name)
+                    set_list[index] = new_name
+                if self.version_name in minecraft_list:
+                    index = minecraft_list.index(self.version_name)
+                    minecraft_list[index] = new_name
+                
+                # 尝试刷新主页下拉框
+                if self.home_interface:
+                    run_choose = self.home_interface.findChild(ComboBox, "run_choose")
+                    if run_choose:
+                        # 此处无法直接调用 self.run_cmcl_list，因为它属于 MainWindow
+                        # 我们可以触发一个重新加载 UI 的操作，或者提示用户
+                        pass
+
+            self.accept() # 关闭弹窗
+            
+            # 如果改名了，刷新一下界面比较好，这里尝试调用传入的刷新回调（如果有）
+            # 目前主要依赖 setup_ui 中的回调逻辑来刷新 ScrollArea
+
+        except Exception as e:
+            handle_exception(e)
+            InfoBar.error(title=i18nText("保存失败"), content=str(e), parent=self.widget)
+
+def open_core_management(self, version_name, MINECRAFT_DIR, home_interface):
+    """ 打开核心管理对话框的入口函数 """
+    dialog = CoreManageDialog(version_name, MINECRAFT_DIR, home_interface, parent=self)
+    if dialog.exec():
+        # 如果保存成功，重新加载列表
+        # 这里需要调用 setup_ui 中的刷新逻辑，或者重新加载 version_ui
+        # 由于这里是在 versions.py，我们只能做数据层的处理
+        # UI 的刷新最好在 setup_ui.py 的回调中处理
+        pass
+    # 无论是否保存，最好都刷新一下版本列表显示，因为可能改名了
+    # 获取 MainWindow 实例并刷新
+    try:
+        # 这是一个特定于实现的Hack，假设 self 是 MainWindow 或者可以访问到 setup_version_ui
+        # 最好的方式是在 setup_ui.py 里调用 setup_version_ui 重新生成列表
+        pass 
+    except:
+        pass
+    return True # 告知调用者刷新

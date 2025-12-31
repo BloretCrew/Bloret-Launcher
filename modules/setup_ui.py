@@ -26,6 +26,12 @@ from modules.ShortCut import ScreenShortCut
 import modules.globals as BLglobals
 import modules.config as cfg
 from modules.config import read
+from modules.versions import (
+    delete_minecraft_version, Change_minecraft_version_name, 
+    delete_Customize, Change_Customize_name, open_minecraft_version_folder, 
+    on_other_version_selected, open_core_management  # <--- 新增导入
+)
+
 
 # 加载配置文件
 def load_config():
@@ -1467,33 +1473,64 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
     minecraft_list_NUM = len(minecraft_list)
     customize_list_NUM = len(customize_list)
     Minecraft_list = widget.findChild(SmoothScrollArea, "Minecraft_list")
+    
     if Minecraft_list:
+        # 创建新的滚动内容容器
         scroll_widget = QWidget()
         scroll_layout = QVBoxLayout(scroll_widget)
 
         if minecraft_list_NUM != 0 or customize_list_NUM != 0:
+            # --- Minecraft 核心列表 ---
             if minecraft_list_NUM != 0:
                 title_label = SubtitleLabel(i18nText("Minecraft 核心"), parent=scroll_widget)
                 scroll_layout.addWidget(title_label)
 
                 for i in range(minecraft_list_NUM):
+                    version_name = minecraft_list[i] # 捕获当前版本名
+                    
                     card = CardWidget(scroll_widget)
                     card.setMaximumWidth(659)  # 设置最大宽度
-                    label = StrongBodyLabel(minecraft_list[i], card)
+                    label = StrongBodyLabel(version_name, card)
                     layout = QVBoxLayout(card)
                     layout.addWidget(label)
 
-                    def create_minecraft_context_menu(pos, label_now, card_now, version_name=minecraft_list[i]):
+                    # 定义右键菜单逻辑
+                    def create_minecraft_context_menu(pos, label_now, card_now, v_name=version_name):
                         menu = RoundMenu()
-                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name,homeInterface))
-                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name,homeInterface))
-                        rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_minecraft_version_name(self,version_name,label_now, MINECRAFT_DIR,homeInterface))
-                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_minecraft_version(self,version_name,label_now, card_now, MINECRAFT_DIR, homeInterface))
-                        folder_action = Action(FluentIcon.FOLDER, i18nText('打开文件位置'), triggered=lambda: open_minecraft_version_folder(self,version_name,MINECRAFT_DIR))
+                        
+                        info_action = Action(FluentIcon.INFO, v_name, triggered=lambda: self.run_cmcl(v_name, homeInterface))
+                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(v_name, homeInterface))
+                        
+                        # --- 核心管理与刷新逻辑 ---
+                        def open_manage_and_refresh():
+                            # 打开管理对话框 (会阻塞直到关闭)
+                            open_core_management(self, v_name, MINECRAFT_DIR, homeInterface)
+                            
+                            # 对话框关闭后，执行刷新逻辑
+                            # 1. 重新扫描所有版本，更新主窗口状态
+                            full_list = self.run_cmcl_list(True)
+                            
+                            # 2. 重新分离 Minecraft 列表和 自定义列表
+                            new_customize_list = []
+                            if "Customize" in self.config:
+                                new_customize_list = [item.get("showname") for item in self.config["Customize"]]
+                            
+                            # Minecraft 列表 = 总列表 - 自定义列表
+                            new_minecraft_list = [x for x in full_list if x not in new_customize_list]
+                            
+                            # 3. 重新构建 UI
+                            setup_version_ui(self, widget, new_minecraft_list, new_customize_list, MINECRAFT_DIR, homeInterface)
+
+                        manage_action = Action(FluentIcon.SETTING, i18nText('核心管理'), triggered=open_manage_and_refresh)
+                        
+                        rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_minecraft_version_name(self, v_name, label_now, MINECRAFT_DIR, homeInterface))
+                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_minecraft_version(self, v_name, label_now, card_now, MINECRAFT_DIR, homeInterface))
+                        folder_action = Action(FluentIcon.FOLDER, i18nText('打开文件位置'), triggered=lambda: open_minecraft_version_folder(self, v_name, MINECRAFT_DIR))
 
                         menu.addActions([
                             info_action,
                             launch_action,
+                            manage_action, # 新增的核心管理入口
                             rename_action,
                             delete_action,
                             folder_action
@@ -1503,26 +1540,30 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                         menu.exec_(global_pos)
 
                     card.setContextMenuPolicy(Qt.CustomContextMenu)
-                    card.customContextMenuRequested.connect(lambda pos, v=minecraft_list[i], label_now=label, card_now=card: create_minecraft_context_menu(pos, label_now, card_now, v))
+                    # 注意 lambda传参：使用 v=version_name 锁定循环变量
+                    card.customContextMenuRequested.connect(lambda pos, v=minecraft_list[i], l=label, c=card: create_minecraft_context_menu(pos, l, c, v))
                     scroll_layout.addWidget(card)
 
+            # --- 自定义启动列表 ---
             if customize_list_NUM != 0:
                 title_label_custom = SubtitleLabel(i18nText("自定义启动"), parent=scroll_widget)
                 scroll_layout.addWidget(title_label_custom)
 
                 for i in range(customize_list_NUM):
+                    version_name = customize_list[i]
+                    
                     card = CardWidget(scroll_widget)
                     card.setMaximumWidth(659)  # 设置最大宽度
-                    label = StrongBodyLabel(f"{customize_list[i]}", card)
+                    label = StrongBodyLabel(version_name, card)
                     layout = QVBoxLayout(card)
                     layout.addWidget(label)
 
-                    def create_customize_context_menu(pos, label_now, card_now, version_name=customize_list[i]):
+                    def create_customize_context_menu(pos, label_now, card_now, v_name=version_name):
                         menu = RoundMenu()
-                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name,homeInterface))
-                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name,homeInterface))
-                        rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_Customize_name(self,version_name, label_now, homeInterface))
-                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_Customize(self,version_name, label_now, card_now,customize_list,homeInterface))
+                        info_action = Action(FluentIcon.INFO, v_name, triggered=lambda: self.run_cmcl(v_name, homeInterface))
+                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(v_name, homeInterface))
+                        rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_Customize_name(self, v_name, label_now, homeInterface))
+                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_Customize(self, v_name, label_now, card_now, customize_list, homeInterface))
 
                         menu.addActions([
                             info_action,
@@ -1535,13 +1576,17 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                         menu.exec_(global_pos)
 
                     card.setContextMenuPolicy(Qt.CustomContextMenu)
-                    card.customContextMenuRequested.connect(lambda pos, v=customize_list[i], label_now=label, card_now=card: create_customize_context_menu(pos, label_now, card_now, v))
+                    card.customContextMenuRequested.connect(lambda pos, v=customize_list[i], l=label, c=card: create_customize_context_menu(pos, l, c, v))
                     scroll_layout.addWidget(card)
 
         scroll_layout.addStretch(1)
 
+        # 将构建好的 widget 设置给 SmoothScrollArea
+        # 这会自动替换掉旧的内容，实现刷新效果
         Minecraft_list.setWidget(scroll_widget)
         Minecraft_list.setWidgetResizable(True)
+
+
 
 def setup_BBS_ui(self, widget, server_ip):
     '''
