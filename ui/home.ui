@@ -98,7 +98,7 @@
             <x>0</x>
             <y>0</y>
             <width>708</width>
-            <height>1027</height>
+            <height>1035</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout">
@@ -636,9 +636,6 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_6">
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_6"/>
-          </item>
-          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_8">
             <item>
              <widget class="StrongBodyLabel" name="Welcome_text">
@@ -753,24 +750,44 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_7">
             <item>
-             <widget class="ComboBox" name="run_choose">
-              <property name="minimumSize">
+             <widget class="BodyLabel" name="MinecraftVersionImageLabel">
+              <property name="maximumSize">
                <size>
-                <width>0</width>
-                <height>0</height>
+                <width>32</width>
+                <height>32</height>
                </size>
               </property>
-              <property name="sizeIncrement">
+              <property name="text">
+               <string/>
+              </property>
+              <property name="pixmap">
+               <pixmap>icon/Grass_Block.png</pixmap>
+              </property>
+              <property name="scaledContents">
+               <bool>true</bool>
+              </property>
+              <property name="wordWrap">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="StrongBodyLabel" name="MinecraftVersionLabel">
+              <property name="text">
+               <string>1.20.1</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="PushButton" name="MinecraftVersionChoose">
+              <property name="maximumSize">
                <size>
-                <width>0</width>
-                <height>0</height>
+                <width>150</width>
+                <height>16777215</height>
                </size>
               </property>
-              <property name="baseSize">
-               <size>
-                <width>0</width>
-                <height>0</height>
-               </size>
+              <property name="text">
+               <string>切换核心</string>
               </property>
              </widget>
             </item>
@@ -778,7 +795,7 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
              <widget class="PrimaryPushButton" name="run">
               <property name="maximumSize">
                <size>
-                <width>200</width>
+                <width>500</width>
                 <height>16777215</height>
                </size>
               </property>
@@ -805,11 +822,6 @@ Bloret 百络谷的暑季新程听起来好棒，我超喜欢这种充满希望�
   <customwidget>
    <class>CheckBox</class>
    <extends>QCheckBox</extends>
-   <header>qfluentwidgets</header>
-  </customwidget>
-  <customwidget>
-   <class>ComboBox</class>
-   <extends>QPushButton</extends>
    <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
