@@ -1526,6 +1526,20 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         
         # 更新 .BL.json 文件，记录已安装的版本
         try:
+            # 获取程序运行目录
+            current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            # 原版图标路径
+            vanilla_icon_path = os.path.join(current_dir, "ui", "icon", "Grass_Block.png")
+            # Fabric 图标路径
+            fabric_icon_path = os.path.join(current_dir, "ui", "icon", "fabric.png")
+            
+            # 确保路径存在，如果不存在则设为None
+            if not os.path.exists(vanilla_icon_path):
+                log(f"原版图标未找到: {vanilla_icon_path}", logging.WARNING)
+                vanilla_icon_path = None
+            if not os.path.exists(fabric_icon_path):
+                log(f"Fabric图标未找到: {fabric_icon_path}", logging.WARNING)
+                fabric_icon_path = None
             # 尝试获取fabric版本ID，如果fabric安装成功的话
             fabric_version_id_final = None
             if Fabric_Loader:
@@ -1536,12 +1550,12 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                     fabric_version_id_final = None
             
             if fabric_version_id_final:
-                update_bl_json(minecraft_dir, fabric_version_id_final, True, None)
+                update_bl_json(minecraft_dir, fabric_version_id_final, True, fabric_icon_path)
                 # 如果安装了Fabric版本，同时记录原版版本
-                update_bl_json(minecraft_dir, version, False, None)
+                update_bl_json(minecraft_dir, version, False, vanilla_icon_path)
                 log(f"已将 Fabric 版本 {fabric_version_id_final} 和原版版本 {version} 记录到 .BL.json 文件")
             else:
-                update_bl_json(minecraft_dir, version, False, None)
+                update_bl_json(minecraft_dir, version, False, vanilla_icon_path)
         except Exception as e:
             log(f"更新 .BL.json 文件时出错: {e}，但安装流程继续", logging.WARNING)
         
