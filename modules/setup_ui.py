@@ -31,7 +31,18 @@ from modules.versions import (
     delete_Customize, Change_Customize_name, open_minecraft_version_folder, 
     on_other_version_selected, open_core_management  # <--- 新增导入
 )
-
+# 确保在 versions.py 顶部的 from qfluentwidgets import ... 中包含以下组件
+from qfluentwidgets import (
+    MessageBoxBase, SubtitleLabel, LineEdit, StrongBodyLabel, 
+    PushButton, SwitchButton, CaptionLabel, BodyLabel, Pivot, 
+    SegmentedWidget, CardWidget, IconWidget, FluentIcon, InfoBar
+)
+# 确保包含这些 PyQt5 组件
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QListWidget, 
+    QListWidgetItem, QFileDialog, QLabel
+)
+from PyQt5.QtCore import Qt
 
 # 加载配置文件
 def load_config():

@@ -503,7 +503,10 @@ def Get_Run_Script(mc_version):
         game_dir_version = mc_version  # game_dir仍然使用完整版本名作为目录名
     
     # 游戏目录应该是主 .minecraft 目录，而不是版本特定目录
-    game_dir = minecraft_dir
+    # 修改：为了实现版本隔离，game_dir 应该指向 versions_dir
+    game_dir = versions_dir
+    log(f"启用了版本隔离，游戏目录: {game_dir}")
+
     assets_dir = os.path.join(minecraft_dir, "assets")
     
     # 检查游戏目录和资产目录是否存在
@@ -584,7 +587,7 @@ def Get_Run_Script(mc_version):
     
     # 修复f-string中不能包含反斜杠的问题
     chcp_command = "chcp 65001"
-    cd_command = f'cd {os.path.join(minecraft_dir, "versions", game_dir_version)}'
+    cd_command = f'cd {game_dir}'  # 使用 game_dir (即版本目录) 作为工作目录
     full_command = f"{chcp_command}\n{cd_command}\n{bat_command}"
     
     log(f"生成的启动命令: {bat_command}")

@@ -15,6 +15,10 @@ from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox, StrongBodyLabel, 
 import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures, threading, time
 import sip # type: ignore
 from pathlib import Path
+import base64
+import struct  # <--- 新增
+import io      # <--- 新增
+import gzip    # <--- 新增
 from modules.win11toast import notify, update_progress
 # 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
 from modules.safe import handle_exception
@@ -31,19 +35,25 @@ from qfluentwidgets import (
     PushButton, SwitchButton, CaptionLabel, BodyLabel
 )
 from PyQt5.QtWidgets import QHBoxLayout, QFileDialog, QWidget
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QThread, pyqtSignal  # <--- 修改了这一行，添加了 QThread 和 pyqtSignal
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QListWidget, 
     QListWidgetItem, QFileDialog, QLabel
 )
-from PyQt5.QtCore import Qt
+# from PyQt5.QtCore import Qt # 这一行重复了，可以忽略或删除
 from qfluentwidgets import (
     MessageBoxBase, SubtitleLabel, LineEdit, StrongBodyLabel, 
     PushButton, SwitchButton, CaptionLabel, BodyLabel, Pivot, 
     SegmentedWidget, CardWidget, IconWidget, FluentIcon, InfoBar
 )
 import shutil
-
+from qfluentwidgets import (
+    MessageBoxBase, SubtitleLabel, LineEdit, StrongBodyLabel, 
+    PushButton, SwitchButton, CaptionLabel, BodyLabel, Pivot, 
+    SegmentedWidget, CardWidget, IconWidget, FluentIcon, InfoBar,
+    IndeterminateProgressBar # <--- 确保有这个
+)
+from PyQt5.QtGui import QPixmap, QDesktopServices # <--- 确保有这个
 
 def dl_source_launcher_or_meta_get(original_url):
     """
@@ -2583,22 +2593,6 @@ class CoreManageDialog(MessageBoxBase):
             handle_exception(e)
             InfoBar.error(title=i18nText("保存失败"), content=str(e), parent=self.widget)
 
---- START OF FILE versions.py ---
-# ... (保留原有的导入)
-
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QListWidget, 
-    QListWidgetItem, QFileDialog, QLabel
-)
-from PyQt5.QtCore import Qt
-from qfluentwidgets import (
-    MessageBoxBase, SubtitleLabel, LineEdit, StrongBodyLabel, 
-    PushButton, SwitchButton, CaptionLabel, BodyLabel, Pivot, 
-    SegmentedWidget, CardWidget, IconWidget, FluentIcon, InfoBar
-)
-import shutil
-
-# ... (保留原有函数)
 
 class BaseInfoPage(QWidget):
     """ 基本信息页面 """
@@ -2668,14 +2662,207 @@ class ControlPage(QWidget):
         
         self.vLayout.addStretch(1)
 
+class ServerQueryThread(QThread):
+    """ 用于查询服务器状态的后台线程 """
+    finished = pyqtSignal(dict)
+    error = pyqtSignal(str)
+
+    def __init__(self, address):
+        super().__init__()
+        self.address = address
+
+    def run(self):
+        try:
+            # 使用用户提供的 API
+            url = f"https://api.mcsrvstat.us/3/{self.address}"
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                self.finished.emit(data)
+            else:
+                self.error.emit(f"HTTP Error: {response.status_code}")
+        except Exception as e:
+            self.error.emit(str(e))
+
 class ServerPage(QWidget):
-    """ 服务器管理页面 (占位) """
+    """ 服务器管理页面 """
     def __init__(self, parent=None):
         super().__init__(parent)
         self.vLayout = QVBoxLayout(self)
-        self.label = BodyLabel(i18nText("服务器管理功能开发中..."), self)
-        self.vLayout.addWidget(self.label)
+        self.vLayout.setSpacing(15)
+
+        # --- 1. 顶部输入区 ---
+        input_container = QWidget()
+        input_layout = QHBoxLayout(input_container)
+        input_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.addr_label = BodyLabel(i18nText("服务器地址:"), self)
+        self.addr_edit = LineEdit(self)
+        self.addr_edit.setPlaceholderText("example.com:25565")
+        self.addr_edit.setClearButtonEnabled(True)
+        
+        self.query_btn = PushButton(i18nText("获取状态"), self)
+        self.query_btn.setIcon(FluentIcon.SEARCH)
+        self.query_btn.clicked.connect(self.start_query)
+
+        input_layout.addWidget(self.addr_label)
+        input_layout.addWidget(self.addr_edit)
+        input_layout.addWidget(self.query_btn)
+        
+        self.vLayout.addWidget(input_container)
+
+        # --- 2. 状态展示卡片 (默认隐藏) ---
+        self.status_card = CardWidget(self)
+        self.card_layout = QHBoxLayout(self.status_card)
+        self.card_layout.setContentsMargins(16, 16, 16, 16)
+        self.card_layout.setSpacing(16)
+
+        # 图标
+        self.icon_label = QLabel(self.status_card)
+        self.icon_label.setFixedSize(64, 64)
+        self.icon_label.setScaledContents(True)
+        # 默认图标 (灰色方块)
+        default_pix = QPixmap(64, 64)
+        default_pix.fill(Qt.gray)
+        self.icon_label.setPixmap(default_pix)
+
+        # 信息区
+        info_container = QWidget()
+        self.info_layout = QVBoxLayout(info_container)
+        self.info_layout.setContentsMargins(0, 0, 0, 0)
+        self.info_layout.setSpacing(4)
+
+        # 第一行: IP/Hostname (状态)
+        self.host_label = StrongBodyLabel("Unknown Server", self.status_card)
+        
+        # 第二行: MOTD
+        self.motd_label = BodyLabel("No description", self.status_card)
+        self.motd_label.setWordWrap(True)
+        self.motd_label.setTextFormat(Qt.RichText) # 支持 HTML 颜色代码
+
+        # 第三行: 详细信息 (人数, 版本, 延迟)
+        self.detail_label = CaptionLabel("Players: --/-- | Version: --", self.status_card)
+        self.detail_label.setTextColor("#666666", "#999999")
+
+        self.info_layout.addWidget(self.host_label)
+        self.info_layout.addWidget(self.motd_label)
+        self.info_layout.addWidget(self.detail_label)
+        self.info_layout.addStretch(1)
+
+        self.card_layout.addWidget(self.icon_label)
+        self.card_layout.addWidget(info_container, 1) # 1 stretch factor
+
+        self.vLayout.addWidget(self.status_card)
+        self.status_card.hide() # 初始隐藏
+
+        # 进度条 (加载时显示)
+        self.progress_bar = IndeterminateProgressBar(self)
+        self.progress_bar.hide()
+        self.vLayout.addWidget(self.progress_bar)
+
         self.vLayout.addStretch(1)
+
+    def start_query(self):
+        addr = self.addr_edit.text().strip()
+        if not addr:
+            InfoBar.warning(title=i18nText("提示"), content=i18nText("请输入服务器地址"), parent=self.window())
+            return
+
+        # UI 状态更新
+        self.query_btn.setEnabled(False)
+        self.status_card.hide()
+        self.progress_bar.show()
+
+        # 启动线程
+        self.thread = ServerQueryThread(addr)
+        self.thread.finished.connect(self.on_query_success)
+        self.thread.error.connect(self.on_query_error)
+        self.thread.start()
+
+    def on_query_success(self, data):
+        self.query_btn.setEnabled(True)
+        self.progress_bar.hide()
+        self.status_card.show()
+        
+        try:
+            # 1. 在线状态处理
+            is_online = data.get("online", False)
+            ip = data.get("ip", "")
+            port = data.get("port", "")
+            hostname = data.get("hostname", f"{ip}:{port}")
+
+            if not is_online:
+                self.host_label.setText(f"{hostname} (离线)")
+                self.motd_label.setText(i18nText("服务器不在线或无法连接。"))
+                self.detail_label.setText("Players: 0/0")
+                # 设为默认图标
+                default_pix = QPixmap(64, 64)
+                default_pix.fill(Qt.gray)
+                self.icon_label.setPixmap(default_pix)
+                return
+
+            self.host_label.setText(hostname)
+
+            # 2. 图标处理
+            icon_base64 = data.get("icon", "")
+            if icon_base64 and icon_base64.startswith("data:image/png;base64,"):
+                try:
+                    # 去掉前缀
+                    base64_str = icon_base64.split(",")[1]
+                    img_data = base64.b64decode(base64_str)
+                    pixmap = QPixmap()
+                    pixmap.loadFromData(img_data)
+                    self.icon_label.setPixmap(pixmap)
+                except Exception as e:
+                    log(f"图标解析失败: {e}")
+                    default_pix = QPixmap(64, 64)
+                    default_pix.fill(Qt.blue) # 区分，解析失败用蓝色
+                    self.icon_label.setPixmap(default_pix)
+            else:
+                default_pix = QPixmap(64, 64)
+                default_pix.fill(Qt.gray)
+                self.icon_label.setPixmap(default_pix)
+
+            # 3. MOTD 处理 (优先使用 HTML)
+            motd_html_list = data.get("motd", {}).get("html", [])
+            if motd_html_list:
+                # API 返回的是列表，每行一个元素，我们用 <br> 连接
+                # 注意：RichText Label 会自动解析 HTML 标签
+                motd_text = "<br>".join(motd_html_list)
+                # 简单的替换，将 \n 换成 <br> 以防万一
+                self.motd_label.setText(motd_text)
+            else:
+                # 降级到 clean 文本
+                motd_clean = data.get("motd", {}).get("clean", [])
+                self.motd_label.setText("\n".join(motd_clean))
+
+            # 4. 详细信息
+            players = data.get("players", {})
+            online = players.get("online", 0)
+            max_p = players.get("max", 0)
+            
+            # 版本处理 (可能是单个字符串或对象)
+            version_data = data.get("version", "Unknown")
+            version_str = version_data if isinstance(version_data, str) else version_data.get("name_clean", version_data.get("name", "Unknown"))
+            
+            # 延迟 (如果 debug.ping 存在)
+            latency = "N/A"
+            if "debug" in data and "ping" in data["debug"]:
+                 # API 文档 v3 返回 ping 是 bool，实际延迟可能不在 debug 里直接显示数值，
+                 # v2/v3 差异较大，这里暂不显示 ping 值，除非协议里带了 protocol 数据
+                 pass
+            
+            self.detail_label.setText(f"在线: {online}/{max_p} | 版本: {version_str}")
+
+        except Exception as e:
+            handle_exception(e)
+            InfoBar.error(title="解析错误", content=str(e), parent=self.window())
+
+    def on_query_error(self, err_msg):
+        self.query_btn.setEnabled(True)
+        self.progress_bar.hide()
+        self.status_card.hide()
+        InfoBar.error(title="查询失败", content=err_msg, parent=self.window())
 
 class ResourcePackPage(QWidget):
     """ 资源包管理页面 (占位) """
@@ -2694,6 +2881,320 @@ class ModPage(QWidget):
         self.label = BodyLabel(i18nText("Mod 管理功能开发中..."), self)
         self.vLayout.addWidget(self.label)
         self.vLayout.addStretch(1)
+
+# --- NBT 解析工具类 (用于读取 servers.dat) ---
+class SimpleNBT:
+    TAG_END = 0
+    TAG_BYTE = 1
+    TAG_SHORT = 2
+    TAG_INT = 3
+    TAG_LONG = 4
+    TAG_FLOAT = 5
+    TAG_DOUBLE = 6
+    TAG_BYTE_ARRAY = 7
+    TAG_STRING = 8
+    TAG_LIST = 9
+    TAG_COMPOUND = 10
+    TAG_INT_ARRAY = 11
+    TAG_LONG_ARRAY = 12
+
+    def __init__(self, data):
+        self.stream = io.BytesIO(data)
+
+    def read_tag(self, include_name=True):
+        tag_type = self.read_byte()
+        if tag_type == self.TAG_END:
+            return None, None
+        
+        name = None
+        if include_name:
+            name = self.read_string()
+        
+        value = self.read_payload(tag_type)
+        return name, value
+
+    def read_payload(self, tag_type):
+        if tag_type == self.TAG_BYTE:
+            return self.read_byte()
+        elif tag_type == self.TAG_SHORT:
+            return self.read_short()
+        elif tag_type == self.TAG_INT:
+            return self.read_int()
+        elif tag_type == self.TAG_LONG:
+            return self.read_long()
+        elif tag_type == self.TAG_FLOAT:
+            return self.read_float()
+        elif tag_type == self.TAG_DOUBLE:
+            return self.read_double()
+        elif tag_type == self.TAG_BYTE_ARRAY:
+            length = self.read_int()
+            return self.stream.read(length)
+        elif tag_type == self.TAG_STRING:
+            return self.read_string()
+        elif tag_type == self.TAG_LIST:
+            return self.read_list()
+        elif tag_type == self.TAG_COMPOUND:
+            return self.read_compound()
+        elif tag_type == self.TAG_INT_ARRAY:
+            length = self.read_int()
+            return [self.read_int() for _ in range(length)]
+        elif tag_type == self.TAG_LONG_ARRAY:
+            length = self.read_int()
+            return [self.read_long() for _ in range(length)]
+        return None
+
+    def read_byte(self):
+        b = self.stream.read(1)
+        if not b: return 0
+        return struct.unpack('>b', b)[0]
+
+    def read_short(self):
+        return struct.unpack('>h', self.stream.read(2))[0]
+
+    def read_int(self):
+        return struct.unpack('>i', self.stream.read(4))[0]
+
+    def read_long(self):
+        return struct.unpack('>q', self.stream.read(8))[0]
+
+    def read_float(self):
+        return struct.unpack('>f', self.stream.read(4))[0]
+
+    def read_double(self):
+        return struct.unpack('>d', self.stream.read(8))[0]
+
+    def read_string(self):
+        length_bytes = self.stream.read(2)
+        if len(length_bytes) < 2: return ""
+        length = struct.unpack('>H', length_bytes)[0]
+        return self.stream.read(length).decode('utf-8', errors='ignore')
+
+    def read_list(self):
+        tag_id = self.read_byte()
+        length = self.read_int()
+        res = []
+        for _ in range(length):
+            res.append(self.read_payload(tag_id))
+        return res
+
+    def read_compound(self):
+        res = {}
+        while True:
+            tag_type = self.read_byte()
+            if tag_type == self.TAG_END or tag_type == 0: # Handle potential EOF or End tag
+                break
+            name = self.read_string()
+            value = self.read_payload(tag_type)
+            res[name] = value
+        return res
+
+def parse_servers_dat(file_path):
+    """ 解析 servers.dat 文件返回服务器列表 """
+    if not os.path.exists(file_path):
+        return []
+    
+    try:
+        with open(file_path, 'rb') as f:
+            data = f.read()
+        
+        # 检查是否为 GZIP 压缩 (标准 NBT 通常是 GZIP)
+        if len(data) > 2 and data[:2] == b'\x1f\x8b':
+            try:
+                data = gzip.decompress(data)
+            except:
+                pass
+                
+        reader = SimpleNBT(data)
+        # 根节点通常是一个 Compound Tag (name="")
+        root_name, root_val = reader.read_tag()
+        
+        if isinstance(root_val, dict) and 'servers' in root_val:
+            return root_val['servers']
+        return []
+    except Exception as e:
+        log(f"解析 servers.dat 失败: {e}", logging.ERROR)
+        return []
+
+# --- 单个服务器列表项组件 ---
+class ServerItemWidget(CardWidget):
+    def __init__(self, name, ip, icon_data, parent=None):
+        super().__init__(parent)
+        self.ip = ip
+        self.setFixedHeight(80)
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(12)
+        
+        # 1. 图标
+        self.iconLabel = QLabel(self)
+        self.iconLabel.setFixedSize(54, 54)
+        self.iconLabel.setScaledContents(True)
+        
+        pixmap = QPixmap(54, 54)
+        pixmap.fill(Qt.gray) # 默认灰色背景
+        
+        # 处理 Base64 图标
+        if icon_data and isinstance(icon_data, str) and icon_data.startswith("data:image/png;base64,"):
+            try:
+                b64_data = icon_data.split(",")[1]
+                img_data = base64.b64decode(b64_data)
+                loaded_pixmap = QPixmap()
+                if loaded_pixmap.loadFromData(img_data):
+                    pixmap = loaded_pixmap
+            except Exception as e:
+                log(f"服务器图标加载失败: {e}")
+        self.iconLabel.setPixmap(pixmap)
+        
+        # 2. 文本信息
+        textLayout = QVBoxLayout()
+        textLayout.setSpacing(2)
+        textLayout.setContentsMargins(0, 5, 0, 5)
+        
+        self.nameLabel = StrongBodyLabel(name, self)
+        self.ipLabel = CaptionLabel(ip, self)
+        self.ipLabel.setTextColor("#606060", "#a0a0a0") # 灰色 IP
+        
+        self.statusLabel = CaptionLabel(i18nText("点击刷新获取状态..."), self)
+        self.statusLabel.setTextColor("#0078D4", "#0078D4")
+        
+        textLayout.addWidget(self.nameLabel)
+        textLayout.addWidget(self.ipLabel)
+        textLayout.addWidget(self.statusLabel)
+        textLayout.addStretch(1)
+        
+        # 3. 按钮区
+        btnLayout = QVBoxLayout()
+        btnLayout.setAlignment(Qt.AlignCenter)
+        self.playBtn = ToolButton(FluentIcon.PLAY, self)
+        self.playBtn.setToolTip(i18nText("刷新状态")) # 暂时仅作为刷新，因为启动参数复杂
+        self.playBtn.clicked.connect(self.refresh_status)
+        
+        btnLayout.addWidget(self.playBtn)
+        
+        layout.addWidget(self.iconLabel)
+        layout.addLayout(textLayout, 1) # 1 stretch factor
+        layout.addLayout(btnLayout)
+        
+        # 自动刷新一次
+        # QTimer.singleShot(100, self.refresh_status) 
+
+    def refresh_status(self):
+        self.statusLabel.setText(i18nText("正在获取..."))
+        self.thread = ServerQueryThread(self.ip)
+        self.thread.finished.connect(self.on_query_finished)
+        self.thread.error.connect(self.on_query_error)
+        self.thread.start()
+
+    def on_query_finished(self, data):
+        online = data.get("online", False)
+        if online:
+            players = data.get("players", {})
+            curr = players.get("online", 0)
+            max_p = players.get("max", 0)
+            
+            # 尝试获取纯文本 MOTD
+            motd_raw = data.get("motd", {}).get("clean", [])
+            motd_str = motd_raw[0].strip() if motd_raw else "Online"
+            if len(motd_str) > 20: motd_str = motd_str[:20] + "..."
+            
+            self.statusLabel.setText(f"🟢 {curr}/{max_p} | {motd_str}")
+            self.statusLabel.setTextColor("#107C10", "#107C10") # 绿色
+        else:
+            self.statusLabel.setText(i18nText("🔴 离线"))
+            self.statusLabel.setTextColor("#D13438", "#D13438") # 红色
+
+    def on_query_error(self, err):
+        self.statusLabel.setText(i18nText("⚠️ 无法连接"))
+        self.statusLabel.setTextColor("#D13438", "#D13438")
+
+# --- 重写 ServerPage ---
+class ServerPage(QWidget):
+    """ 服务器管理页面 (读取 servers.dat) """
+    def __init__(self, version_name, minecraft_dir, home_interface, parent=None):
+        super().__init__(parent)
+        self.version_name = version_name
+        self.minecraft_dir = minecraft_dir
+        self.home_interface = home_interface
+        
+        # 确定 servers.dat 路径 (优先检查版本隔离目录，否则检查根目录)
+        self.version_servers_dat = os.path.join(minecraft_dir, "versions", version_name, "servers.dat")
+        self.root_servers_dat = os.path.join(minecraft_dir, "servers.dat")
+        
+        self.vLayout = QVBoxLayout(self)
+        self.vLayout.setSpacing(10)
+        
+        # 1. 顶部工具栏
+        self.headerLayout = QHBoxLayout()
+        self.refreshBtn = ToolButton(FluentIcon.SYNC, self)
+        self.refreshBtn.setToolTip(i18nText("重新读取列表"))
+        self.refreshBtn.clicked.connect(self.load_servers)
+        
+        self.addBtn = PushButton(i18nText("添加服务器"), self)
+        self.addBtn.setIcon(FluentIcon.ADD)
+        self.addBtn.setEnabled(False) # 暂未实现写入功能
+        self.addBtn.setToolTip(i18nText("写入功能开发中"))
+        
+        self.headerLayout.addWidget(StrongBodyLabel(i18nText("服务器列表"), self))
+        self.headerLayout.addStretch(1)
+        self.headerLayout.addWidget(self.refreshBtn)
+        self.headerLayout.addWidget(self.addBtn)
+        self.vLayout.addLayout(self.headerLayout)
+        
+        # 2. 列表滚动区
+        from qfluentwidgets import SmoothScrollArea
+        self.scrollArea = SmoothScrollArea(self)
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setStyleSheet("background-color: transparent; border: none;")
+        
+        self.contentWidget = QWidget()
+        self.contentLayout = QVBoxLayout(self.contentWidget)
+        self.contentLayout.setContentsMargins(0, 0, 10, 0) # 右侧留点空隙给滚动条
+        self.contentLayout.setSpacing(8)
+        self.contentLayout.addStretch(1) # 占位，确保列表从顶部开始
+        
+        self.scrollArea.setWidget(self.contentWidget)
+        self.vLayout.addWidget(self.scrollArea)
+        
+        # 初始加载
+        self.load_servers()
+
+    def load_servers(self):
+        # 清空现有列表 (保留最后一个 stretch item)
+        while self.contentLayout.count() > 1:
+            item = self.contentLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        # 读取数据
+        servers = []
+        source_path = ""
+        
+        if os.path.exists(self.version_servers_dat):
+            servers = parse_servers_dat(self.version_servers_dat)
+            source_path = self.version_servers_dat
+        elif os.path.exists(self.root_servers_dat):
+            servers = parse_servers_dat(self.root_servers_dat)
+            source_path = self.root_servers_dat
+            
+        log(f"加载服务器列表: {source_path}, 数量: {len(servers)}")
+        
+        if not servers:
+            empty_lbl = BodyLabel(i18nText("未找到服务器数据 (servers.dat)"), self)
+            empty_lbl.setAlignment(Qt.AlignCenter)
+            self.contentLayout.insertWidget(0, empty_lbl)
+            return
+
+        # 生成列表项
+        for server in servers:
+            # NBT 解析出来的通常是字典
+            name = server.get('name', 'Minecraft Server')
+            ip = server.get('ip', '')
+            icon = server.get('icon', None)
+            
+            item = ServerItemWidget(name, ip, icon, self)
+            # 插入到 stretch 之前
+            self.contentLayout.insertWidget(self.contentLayout.count() - 1, item)
 
 class CoreManageDialog(MessageBoxBase):
     """ 核心管理对话框 (分页式) """
@@ -2729,7 +3230,8 @@ class CoreManageDialog(MessageBoxBase):
         # 初始化各个页面
         self.baseInfoPage = BaseInfoPage(self)
         self.controlPage = ControlPage(self.open_version_folder, self.delete_core, self)
-        self.serverPage = ServerPage(self)
+        # 传递版本名和目录给 ServerPage
+        self.serverPage = ServerPage(self.version_name, self.minecraft_dir, self.home_interface, self)
         self.resourcePage = ResourcePackPage(self)
         self.modPage = ModPage(self)
 
