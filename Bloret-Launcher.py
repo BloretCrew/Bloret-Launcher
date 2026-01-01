@@ -1,29 +1,69 @@
-import modules.globals as BLglobals
-import modules.config
+# 1. 系统与内置库
+import os
+import sys
+import re
+import json
+import time
+import locale
+import ctypes
+import shutil
+import logging
+import traceback
+import subprocess
 from http import server
-from PyQt5.QtWidgets import QSystemTrayIcon, QApplication, QPushButton, QWidget, QLineEdit, QLabel, QFileDialog, QMessageBox, QDialog
+
+# 2. 第三方库
+import sip  # type: ignore
+import psutil
+import requests
 from PyQt5 import uic
-from qfluentwidgets import MessageBox, SubtitleLabel, StrongBodyLabel, MessageBoxBase, NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, FluentTranslator, FluentIcon
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QPushButton, QLineEdit, QLabel, QFileDialog, 
+    QMessageBox, QDialog, QSystemTrayIcon, QStackedWidget
+)
 from PyQt5.QtGui import QIcon, QColor, QPalette
-from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve, QSettings, QThread, pyqtSignal, Qt, QTimer, QSize, QLocale
-from modules.win11toast import toast, notify, update_progress
-import ctypes, re, locale, sys, logging, os, requests, json, subprocess, time, shutil
-import sip # type: ignore
-# 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 文件夹中
+from PyQt5.QtCore import (
+    Qt, QTimer, QSize, QRect, QPropertyAnimation, QEasingCurve, 
+    QSettings, QThread, pyqtSignal, QLocale
+)
+from qfluentwidgets import (
+    MessageBox, SubtitleLabel, StrongBodyLabel, MessageBoxBase, 
+    NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, 
+    ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, 
+    Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, 
+    FluentTranslator, FluentIcon, TabBar, TabCloseButtonDisplayMode
+)
+
+# 3. 自定义模块 (Bloret Launcher Modules)
+import modules.globals as BLglobals
+import modules.config as cfg
 import modules.web
+import modules.mwtool
+from modules.config import read
 from modules.safe import handle_exception
 from modules.log import log
-from modules.systems import get_system_theme_color,is_dark_theme,check_write_permission,restart,setup_startup_with_self_starting
-from modules.setup_ui import setup_home_ui,setup_download_old_ui,setup_tools_ui,setup_passport_ui,setup_settings_ui,setup_info_ui,load_ui,setup_version_ui,setup_BBS_ui, setup_Mod_ui, setup_multiplayer_ui, setup_download_ui
+from modules.win11toast import toast, notify, update_progress
+from modules.systems import (
+    get_system_theme_color, is_dark_theme, check_write_permission, 
+    restart, setup_startup_with_self_starting
+)
+from modules.setup_ui import (
+    setup_home_ui, setup_download_old_ui, setup_tools_ui, setup_passport_ui, 
+    setup_settings_ui, setup_info_ui, load_ui, setup_version_ui, 
+    setup_BBS_ui, setup_Mod_ui, setup_multiplayer_ui, setup_download_ui
+)
 from modules.customize import CustomizeRun
-from modules.global_hotkey import init_global_hotkeys
-from modules.BLServer import check_Light_Minecraft_Download_Way,handle_first_run,check_Bloret_version,check_for_updates
+from modules.global_hotkey import init_global_hotkeys, get_signal_emitter
+from modules.BLServer import (
+    check_Light_Minecraft_Download_Way, handle_first_run, 
+    check_Bloret_version, check_for_updates
+)
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
 from modules.launch import Get_Run_Script
 from modules.i18n import i18n_widgets, i18nText
-from modules.config import read
-import modules.mwtool
+from modules.ShortCut import ScreenShortCut
+from modules.install import InstallMinecraftVersion
 
 config = read()
 
@@ -129,9 +169,6 @@ class RunScriptThread(QThread):
                 if self.process.poll() is None:
                     self.process.kill()
                     self.process.wait()
-            
-            # 然后查找并终止Minecraft Java进程
-            import psutil
             
             # 查找包含版本信息的Java进程
             for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
@@ -398,7 +435,6 @@ class MainWindow(FluentWindow):
         
         # 连接快捷键信号到主线程处理
         try:
-            from modules.global_hotkey import get_signal_emitter
             signal_emitter = get_signal_emitter()
             if signal_emitter:
                 signal_emitter.shortcut_triggered.connect(self.handle_screenshot_shortcut)
@@ -434,12 +470,10 @@ class MainWindow(FluentWindow):
         """处理截图快捷键，在主线程中执行截图功能"""
         try:
             log("收到截图快捷键信号，开始执行截图功能")
-            from modules.ShortCut import ScreenShortCut
             widget = ScreenShortCut()
             log("截图功能已启动")
         except Exception as e:
             log(f"执行截图功能失败: {e}")
-            import traceback
             traceback.print_exc()
         
         # 错误报告测试
@@ -546,7 +580,12 @@ class MainWindow(FluentWindow):
         setup_multiplayer_ui(self,self.multiplayerInterface, BLglobals.server_ip)
         setup_passport_ui(self,self.passportInterface,BLglobals.server_ip,self.homeInterface)
         setup_settings_ui(self,self.settingsInterface)
-        setup_version_ui(self,self.versionInterface,minecraft_list,customize_list,BLglobals.minecraft_dir,self.homeInterface)
+        
+        mc_list = getattr(BLglobals, 'minecraft_list', [])
+        cust_list = getattr(BLglobals, 'customize_list', [])
+        
+        setup_version_ui(self, self.versionInterface, mc_list, cust_list, BLglobals.minecraft_dir, self.homeInterface)
+        
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
@@ -612,21 +651,6 @@ class MainWindow(FluentWindow):
         log(f"开始下载Minecraft版本: {version}")
         
         # 使用InstallMinecraftVersion函数下载版本
-        from modules.install import InstallMinecraftVersion
-        
-        from PyQt5 import uic
-        from PyQt5.QtWidgets import QDialog
-
-        # 创建进度提示
-        # teaching_tip = TeachingTip(
-        #     title=f"正在下载 Minecraft {version}",
-        #     content="下载过程可能需要几分钟，请耐心等待...",
-        #     parent=self,
-        #     tailPosition=TeachingTipTailPosition.BOTTOM,
-        #     duration=-1,  # 不自动关闭
-        #     isClosable=False
-        # )
-        # teaching_tip.show()
 
         # 加载UI文件
         try:
@@ -716,7 +740,6 @@ class MainWindow(FluentWindow):
             return
             
         # 从选择框文本中提取版本号
-        import re
         match = re.search(r'Java (\d+)', version_text)
         if not match:
             InfoBar.error(
@@ -812,7 +835,9 @@ class MainWindow(FluentWindow):
             log("show_text is None", logging.ERROR)
         self.run_cmcl_list(True)
     def run_cmcl_list(self,back_set_list):
-        global set_list,minecraft_list,customize_list  # 添加全局声明
+        global set_list # 保留 set_list 可能是因为其他模块（如托盘）还在用它
+        # 移除 minecraft_list, customize_list 的 global 声明，改用 BLglobals
+        
         try:
             versions_path = os.path.join(self.config['minecraft_dir'], "versions")
             temp_list = []  # 使用临时变量
@@ -822,42 +847,54 @@ class MainWindow(FluentWindow):
                             if os.path.isdir(os.path.join(versions_path, d))]
                 
                 if not temp_list:
-                    temp_list = []
-                    temp_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
+                    # 注意：这里逻辑有点奇怪，如果为空返回提示文本，但这会污染列表类型
+                    # 建议保持为空列表，在 UI 层处理提示
+                    # 为了兼容现有逻辑，我们暂且保留，但要注意
+                    # temp_list = []
+                    # temp_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
                     log(f"版本目录为空: {versions_path}")
                 else:
                     log(f"成功读取版本列表: {temp_list}")
             else:
-                temp_list = []
-                temp_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
+                # 同上
+                # temp_list = []
+                # temp_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
                 log(f"路径无效: {versions_path}")
                 
             set_list = temp_list  # 最后统一赋值给全局变量
 
-            minecraft_list = temp_list # 保留原 Minecraft 版本列表备用
-            log(f"Minecraft 版本列表: {minecraft_list}")
+            # --- 修改：存入 BLglobals ---
+            BLglobals.minecraft_list = temp_list 
+            log(f"Minecraft 版本列表: {BLglobals.minecraft_list}")
 
             if "Customize" in self.config:
-                customize_list = [item.get("showname") for item in self.config["Customize"]]
-            log(f"Customize 列表中的 showname 值: {customize_list}")
-            set_list = temp_list + customize_list  # 合并 customize_list 到 set_list
-
+                BLglobals.customize_list = [item.get("showname") for item in self.config["Customize"]]
+            else:
+                BLglobals.customize_list = []
+                
+            log(f"Customize 列表中的 showname 值: {BLglobals.customize_list}")
+            
+            # 合并
+            set_list = BLglobals.minecraft_list + BLglobals.customize_list
             log(f"合并后的版本列表: {set_list}")
 
             self.update_version_combobox()  # 新增UI更新方法
             if back_set_list:
                 return set_list
             else:
-                return customize_list
+                return BLglobals.customize_list
         except Exception as e:
             # handle_exception(e)
             log(f"读取版本列表失败: {e}", logging.ERROR)
             set_list = []
-            set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
+            # 异常情况下给默认空值
+            BLglobals.minecraft_list = []
+            BLglobals.customize_list = []
+            # set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
+   
     def run_cmcl(self, version, HomePage):
-        from PyQt5.QtCore import Qt
-        log(f"minecraft_list:{minecraft_list}")
-        if version not in minecraft_list:
+        log(f"minecraft_list:{BLglobals.minecraft_list}")
+        if version not in BLglobals.minecraft_list:
             CustomizeRun(self,version)
         else:
             # 检查 cmcl.json 中是否有账户信息
@@ -904,16 +941,11 @@ class MainWindow(FluentWindow):
             
             # 在启动时添加TabBar标签
             try:
-                # 导入必要的组件
-                from PyQt5.QtWidgets import QLabel, QWidget
-                from qfluentwidgets import TabBar
-                
                 # 获取TabBar组件
                 minecraft_tab = HomePage.findChild(TabBar, "MinecraftTab")
                 if minecraft_tab and hasattr(minecraft_tab, 'addTab'):
                     try:
                         # 启用关闭按钮
-                        from qfluentwidgets import TabCloseButtonDisplayMode
                         minecraft_tab.setCloseButtonDisplayMode(TabCloseButtonDisplayMode.ON_HOVER)
                         minecraft_tab.show()
                         
@@ -1693,7 +1725,6 @@ class MainWindow(FluentWindow):
     def on_tab_close_requested(self, index):
         """处理TabBar关闭按钮点击事件"""
         try:
-            from qfluentwidgets import TabBar
             
             if self.minecraft_tab and isinstance(self.minecraft_tab, TabBar):
                 # 获取要关闭的标签的版本信息
@@ -1706,7 +1737,6 @@ class MainWindow(FluentWindow):
                         run_thread = self.running_processes[version]
                         
                         # 确认对话框
-                        from qfluentwidgets import MessageBox
                         w = MessageBox(
                             i18nText('确认关闭'),
                             i18nText(f'确定要关闭 Minecraft {version} 吗？'),
