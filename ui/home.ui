@@ -61,7 +61,7 @@
         <x>0</x>
         <y>0</y>
         <width>726</width>
-        <height>1196</height>
+        <height>1197</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -98,7 +98,7 @@
             <x>0</x>
             <y>0</y>
             <width>708</width>
-            <height>1026</height>
+            <height>1027</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout">
@@ -157,6 +157,30 @@
               </widget>
              </item>
             </layout>
+           </item>
+           <item>
+            <widget class="CaptionLabel" name="Bloriko_Important_Info">
+             <property name="text">
+              <string>Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+             </property>
+             <property name="lightColor" stdset="0">
+              <color>
+               <red>127</red>
+               <green>127</green>
+               <blue>127</blue>
+              </color>
+             </property>
+             <property name="darkColor" stdset="0">
+              <color>
+               <red>185</red>
+               <green>185</green>
+               <blue>185</blue>
+              </color>
+             </property>
+            </widget>
            </item>
            <item>
             <widget class="IndeterminateProgressBar" name="BlorikoThinking"/>
