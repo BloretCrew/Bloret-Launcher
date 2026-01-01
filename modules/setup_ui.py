@@ -356,67 +356,53 @@ class LaunchSelectorDialog(MessageBoxBase):
         self.titleLabel = SubtitleLabel(i18nText("选择启动项目"), self)
         self.viewLayout.addWidget(self.titleLabel)
         
-        self.listWidget = QListWidget(self)
-        self.listWidget.setSelectionMode(QListWidget.SingleSelection)
-        # 设置样式使其更符合 Fluent Design
-        self.listWidget.setStyleSheet("""
-            QListWidget {
-                background-color: transparent;
-                border: 1px solid rgba(0, 0, 0, 0.1);
-                border-radius: 8px;
-            }
-            QListWidget::item {
-                height: 40px;
-                padding-left: 10px;
-                border-radius: 4px;
-            }
-            QListWidget::item:hover {
-                background-color: rgba(0, 0, 0, 0.05);
-            }
-            QListWidget::item:selected {
-                background-color: rgba(0, 0, 0, 0.1);
-                color: palette(text);
-            }
-        """)
+        # 使用滚动区域容纳按钮列表
+        self.scrollArea = SmoothScrollArea(self)
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setStyleSheet("background-color: transparent; border: none;")
+        
+        self.scrollContent = QWidget()
+        self.scrollLayout = QVBoxLayout(self.scrollContent)
+        self.scrollLayout.setSpacing(10) # 按钮间距
+        self.scrollLayout.setContentsMargins(0, 0, 10, 0) # 右侧留点空隙给滚动条
+        self.scrollLayout.setAlignment(Qt.AlignTop)
         
         self.items = items or []
         self.selected_item = None
         
-        # 填充列表
+        # 填充按钮列表
         for item in self.items:
-            list_item = QListWidgetItem(item['icon'], item['name'])
-            # 存储完整数据到 UserRole
-            list_item.setData(Qt.UserRole, item)
-            self.listWidget.addItem(list_item)
+            # 创建按钮
+            btn = PushButton(self.scrollContent)
+            btn.setText(item['name'])
+            btn.setIcon(item['icon'])
+            btn.setFixedHeight(45) # 设置按钮高度，使其更易点击
+            
+            # 设置图标大小，使其更清晰
+            btn.setIconSize(QSize(24, 24))
+            
+            # 文本左对齐
+            btn.setStyleSheet("QPushButton { text-align: left; padding-left: 15px; }")
+            
+            # 连接点击事件 (使用默认参数闭包)
+            btn.clicked.connect(lambda _, i=item: self.on_item_clicked(i))
+            
+            self.scrollLayout.addWidget(btn)
 
-        self.viewLayout.addWidget(self.listWidget)
+        self.scrollArea.setWidget(self.scrollContent)
+        self.viewLayout.addWidget(self.scrollArea)
         
-        self.yesButton.setText(i18nText("确定"))
+        # 隐藏确定按钮，因为点击即选中
+        self.yesButton.hide()
         self.cancelButton.setText(i18nText("取消"))
         
         self.widget.setMinimumWidth(400)
         self.widget.setMinimumHeight(500)
-        
-        # 双击直接确认
-        self.listWidget.itemDoubleClicked.connect(self.on_double_click)
-        self.yesButton.clicked.disconnect()
-        self.yesButton.clicked.connect(self.on_confirm)
 
-    def on_double_click(self, item):
-        self.selected_item = item.data(Qt.UserRole)
-        self.accept()
-
-    def on_confirm(self):
-        current = self.listWidget.currentItem()
-        if current:
-            self.selected_item = current.data(Qt.UserRole)
-            self.accept()
-        else:
-            InfoBar.warning(
-                title=i18nText("提示"),
-                content=i18nText("请选择一个启动项"),
-                parent=self.window()
-            )
+    def on_item_clicked(self, item):
+        """ 点击项目按钮触发 """
+        self.selected_item = item
+        self.accept() # 关闭并返回 True
 def get_all_launch_items():
     """ 获取所有启动项 (Minecraft + Customize) """
     items = []
