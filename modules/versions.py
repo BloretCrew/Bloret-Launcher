@@ -3600,7 +3600,7 @@ class CoreManageDialog(MessageBoxBase):
         # 询问确认
         w = MessageBoxBase(self)
         w.viewLayout.addWidget(SubtitleLabel(i18nText("确认删除?")))
-        w.viewLayout.addWidget(BodyLabel(i18nText("此操作将永久删除该核心文件，无法撤销。")))
+        w.viewLayout.addWidget(BodyLabel(i18nText("将删除此 Minecraft 版本。删除后可在系统回收站中找到。")))
         w.yesButton.setText(i18nText("删除"))
         w.cancelButton.setText(i18nText("取消"))
         
@@ -3608,9 +3608,22 @@ class CoreManageDialog(MessageBoxBase):
             version_path = os.path.join(self.minecraft_dir, "versions", self.version_name)
             try:
                 if os.path.exists(version_path):
-                    import send2trash
                     send2trash.send2trash(version_path)
                     log(f"核心已删除: {version_path}")
+                    try:
+                        if os.path.exists(self.bl_json_path):
+                            with open(self.bl_json_path, "r", encoding="utf-8") as f:
+                                full_data = json.load(f)
+                            
+                            if "versions" in full_data and self.version_name in full_data["versions"]:
+                                del full_data["versions"][self.version_name]
+                                
+                                with open(self.bl_json_path, "w", encoding="utf-8") as f:
+                                    json.dump(full_data, f, ensure_ascii=False, indent=4)
+                                log(f"已从 .BL.json 中移除核心信息: {self.version_name}")
+                    except Exception as e_json:
+                        log(f"更新 .BL.json 失败: {e_json}", logging.WARNING)
+
                     InfoBar.success(title=i18nText("删除成功"), content=i18nText("核心已移至回收站"), parent=self.parent())
                     self.reject() # 关闭当前管理窗口
                     # 注意：这里需要在关闭后通知主界面刷新列表，
