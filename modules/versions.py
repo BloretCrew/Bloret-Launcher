@@ -3690,13 +3690,12 @@ class CoreManageDialog(MessageBoxBase):
             
             # 如果发生了重命名，更新全局列表
             if new_name != self.version_name:
-                global set_list, minecraft_list
-                if self.version_name in set_list:
-                    index = set_list.index(self.version_name)
-                    set_list[index] = new_name
-                if self.version_name in minecraft_list:
-                    index = minecraft_list.index(self.version_name)
-                    minecraft_list[index] = new_name
+                if hasattr(BLglobals, 'set_list') and self.version_name in BLglobals.set_list:
+                    index = BLglobals.set_list.index(self.version_name)
+                    BLglobals.set_list[index] = new_name
+                if hasattr(BLglobals, 'minecraft_list') and self.version_name in BLglobals.minecraft_list:
+                    index = BLglobals.minecraft_list.index(self.version_name)
+                    BLglobals.minecraft_list[index] = new_name
 
             self.accept() # 关闭弹窗
 
