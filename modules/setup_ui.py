@@ -1,8 +1,8 @@
-from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy, QApplication
+from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy, QApplication, QListWidget, QListWidgetItem, QFileIconProvider
 from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox, TabBar, CheckBox
 from PyQt5 import uic
-from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
-from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime
+from PyQt5.QtGui import QDesktopServices, QPixmap, QColor, QIcon
+from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime, QFileInfo
 import requests, json, logging, os, socket, re
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.systems import setup_startup_with_self_starting
@@ -332,6 +332,138 @@ def on_self_starting_changed(value):
     except Exception as e:
         log(f"写入配置文件失败: {e}")
 
+class LaunchSelectorDialog(MessageBoxBase):
+    """ 启动项选择窗口 """
+    def __init__(self, parent=None, items=None):
+        super().__init__(parent)
+        self.titleLabel = SubtitleLabel(i18nText("选择启动项目"), self)
+        self.viewLayout.addWidget(self.titleLabel)
+        
+        self.listWidget = QListWidget(self)
+        self.listWidget.setSelectionMode(QListWidget.SingleSelection)
+        # 设置样式使其更符合 Fluent Design
+        self.listWidget.setStyleSheet("""
+            QListWidget {
+                background-color: transparent;
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                border-radius: 8px;
+            }
+            QListWidget::item {
+                height: 40px;
+                padding-left: 10px;
+                border-radius: 4px;
+            }
+            QListWidget::item:hover {
+                background-color: rgba(0, 0, 0, 0.05);
+            }
+            QListWidget::item:selected {
+                background-color: rgba(0, 0, 0, 0.1);
+                color: palette(text);
+            }
+        """)
+        
+        self.items = items or []
+        self.selected_item = None
+        
+        # 填充列表
+        for item in self.items:
+            list_item = QListWidgetItem(item['icon'], item['name'])
+            # 存储完整数据到 UserRole
+            list_item.setData(Qt.UserRole, item)
+            self.listWidget.addItem(list_item)
+
+        self.viewLayout.addWidget(self.listWidget)
+        
+        self.yesButton.setText(i18nText("确定"))
+        self.cancelButton.setText(i18nText("取消"))
+        
+        self.widget.setMinimumWidth(400)
+        self.widget.setMinimumHeight(500)
+        
+        # 双击直接确认
+        self.listWidget.itemDoubleClicked.connect(self.on_double_click)
+        self.yesButton.clicked.disconnect()
+        self.yesButton.clicked.connect(self.on_confirm)
+
+    def on_double_click(self, item):
+        self.selected_item = item.data(Qt.UserRole)
+        self.accept()
+
+    def on_confirm(self):
+        current = self.listWidget.currentItem()
+        if current:
+            self.selected_item = current.data(Qt.UserRole)
+            self.accept()
+        else:
+            InfoBar.warning(
+                title=i18nText("提示"),
+                content=i18nText("请选择一个启动项"),
+                parent=self.window()
+            )
+def get_all_launch_items():
+    """ 获取所有启动项 (Minecraft + Customize) """
+    items = []
+    
+    # 1. 获取 Minecraft 版本
+    minecraft_dir = cfg.read().get('minecraft_dir', BLglobals.minecraft_dir)
+    versions_dir = os.path.join(minecraft_dir, "versions")
+    bl_json_path = os.path.join(versions_dir, ".BL.json")
+    
+    versions_metadata = {}
+    try:
+        if os.path.exists(bl_json_path):
+            with open(bl_json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                versions_metadata = data.get("versions", {})
+    except:
+        pass
+
+    if os.path.exists(versions_dir):
+        # 遍历文件夹获取真实存在的版本
+        for d in os.listdir(versions_dir):
+            if os.path.isdir(os.path.join(versions_dir, d)):
+                # 获取图标
+                icon = QIcon("ui/icon/Grass_Block.png") # 默认图标
+                
+                # 优先从 .BL.json 获取图标路径
+                if d in versions_metadata:
+                    icon_path = versions_metadata[d].get("icon", "")
+                    if icon_path and os.path.exists(icon_path):
+                        icon = QIcon(icon_path)
+                    # 如果没有自定义图标，尝试判断是否为 Fabric (根据命名规则简单判断，或者 .BL.json 数据)
+                    elif versions_metadata[d].get("Fabric", False):
+                         icon = QIcon("ui/icon/fabric.png")
+
+                items.append({
+                    "name": d,
+                    "type": "minecraft",
+                    "icon": icon,
+                    "path": d # 对于MC，path即版本名
+                })
+
+    # 2. 获取自定义启动项
+    config = cfg.read()
+    if "Customize" in config:
+        provider = QFileIconProvider()
+        for custom_item in config["Customize"]:
+            path = custom_item.get("path", "")
+            name = custom_item.get("showname", "Unknown")
+            
+            # 获取系统图标
+            icon = FluentIcon.APPLICATION.icon() # 默认
+            if os.path.exists(path):
+                icon = provider.icon(QFileInfo(path))
+            
+            items.append({
+                "name": name,
+                "type": "custom",
+                "icon": icon,
+                "path": path, # 对于自定义，path即文件路径
+                "raw_data": custom_item
+            })
+            
+    return items
+
 def setup_home_ui(self, widget):
     '''
     设定 Bloret Launcher 主页 UI 布局和操作。
@@ -358,12 +490,125 @@ def setup_home_ui(self, widget):
     openblweb_button = widget.findChild(QPushButton, "openblweb")
     if openblweb_button:
         openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://launcher.bloret.net")))
-    self.run_cmcl_list(True)
 
-    run_choose = widget.findChild(ComboBox, "run_choose")
+    # --- 新的启动项逻辑 ---
+    
+    # 1. 获取控件
+    MinecraftVersionChoose = widget.findChild(QPushButton, "MinecraftVersionChoose")
     run_button = widget.findChild(QPushButton, "run")
+    MinecraftVersionLabel = widget.findChild(StrongBodyLabel, "MinecraftVersionLabel")
+    MinecraftVersionImageLabel = widget.findChild(BodyLabel, "MinecraftVersionImageLabel")
+    
+    # 2. 设置图标
+    if MinecraftVersionChoose:
+        MinecraftVersionChoose.setIcon(FluentIcon.MENU)
     if run_button:
-        run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText(),widget))
+        run_button.setIcon(FluentIcon.PLAY_SOLID)
+        
+    # 定义刷新显示函数
+    def refresh_launch_display():
+        """ 刷新当前选中的启动项显示 """
+        config = cfg.read()
+        choosed_run = config.get("ChoosedRun", "")
+        items = get_all_launch_items()
+        
+        selected_item = None
+        
+        # 如果列表为空
+        if not items:
+            if MinecraftVersionLabel: MinecraftVersionLabel.setText(i18nText("无启动项"))
+            if MinecraftVersionImageLabel: MinecraftVersionImageLabel.setPixmap(QPixmap())
+            if run_button: 
+                run_button.setEnabled(False)
+                run_button.setText(i18nText("无项目"))
+            return
+
+        # 查找当前选中项
+        for item in items:
+            if item["name"] == choosed_run:
+                selected_item = item
+                break
+        
+        # 如果未选择或选择项不存在，默认选择第一个
+        if not selected_item and items:
+            selected_item = items[0]
+            # 保存默认选择
+            config["ChoosedRun"] = selected_item["name"]
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=4, ensure_ascii=False)
+        
+        # 更新 UI
+        if selected_item:
+            if MinecraftVersionLabel: 
+                MinecraftVersionLabel.setText(selected_item["name"])
+            if MinecraftVersionImageLabel: 
+                # 从 QIcon 提取 Pixmap
+                pixmap = selected_item["icon"].pixmap(32, 32)
+                MinecraftVersionImageLabel.setPixmap(pixmap)
+                MinecraftVersionImageLabel.setScaledContents(True)
+            if run_button:
+                run_button.setEnabled(True)
+                run_button.setText(i18nText("启动"))
+
+    # 定义选择启动项函数
+    def open_launch_selector():
+        items = get_all_launch_items()
+        if not items:
+             InfoBar.warning(title=i18nText("提示"), content=i18nText("没有找到任何启动项，请先下载或添加。"), parent=self)
+             return
+
+        dialog = LaunchSelectorDialog(self, items)
+        if dialog.exec():
+            selected = dialog.selected_item
+            if selected:
+                # 保存选择
+                config = cfg.read()
+                config["ChoosedRun"] = selected["name"]
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=4, ensure_ascii=False)
+                
+                # 刷新显示
+                refresh_launch_display()
+
+    # 定义启动函数
+    def execute_launch():
+        config = cfg.read()
+        choosed_name = config.get("ChoosedRun", "")
+        if not choosed_name:
+            return
+            
+        items = get_all_launch_items()
+        target_item = next((item for item in items if item["name"] == choosed_name), None)
+        
+        if target_item:
+            if target_item["type"] == "minecraft":
+                # Minecraft 启动
+                self.run_cmcl(target_item["name"], widget)
+            elif target_item["type"] == "custom":
+                # 自定义启动
+                # 注意：CustomizeRun 需要导入
+                from modules.customize import CustomizeRun
+                CustomizeRun(self, target_item["name"])
+        else:
+             InfoBar.error(title=i18nText("错误"), content=i18nText("选中的启动项已不存在"), parent=self)
+             refresh_launch_display() # 重新刷新以修正状态
+
+    # 连接信号
+    if MinecraftVersionChoose:
+        # 断开旧连接（如果存在）
+        try: MinecraftVersionChoose.clicked.disconnect() 
+        except: pass
+        MinecraftVersionChoose.clicked.connect(open_launch_selector)
+        
+    if run_button:
+        try: run_button.clicked.disconnect() 
+        except: pass
+        run_button.clicked.connect(execute_launch)
+
+    # 初始化显示
+    refresh_launch_display()
+    
+    # ----------------------------
 
     minecraft_tab = widget.findChild(TabBar, "MinecraftTab")
     if minecraft_tab:
@@ -477,6 +722,7 @@ def setup_home_ui(self, widget):
     
     # 调用getServerData并传入回调函数
     getServerData("Bloret", callback=update_server_info)
+
 
 def setup_download_load_ui(self, widget):
     '''
