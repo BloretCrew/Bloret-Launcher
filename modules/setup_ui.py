@@ -356,51 +356,64 @@ class LaunchSelectorDialog(MessageBoxBase):
         self.titleLabel = SubtitleLabel(i18nText("选择启动项目"), self)
         self.viewLayout.addWidget(self.titleLabel)
         
-        # 使用滚动区域容纳按钮列表
+        # 使用滚动区域容纳卡片列表
         self.scrollArea = SmoothScrollArea(self)
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setStyleSheet("background-color: transparent; border: none;")
         
         self.scrollContent = QWidget()
         self.scrollLayout = QVBoxLayout(self.scrollContent)
-        self.scrollLayout.setSpacing(10) # 按钮间距
-        self.scrollLayout.setContentsMargins(0, 0, 10, 0) # 右侧留点空隙给滚动条
+        self.scrollLayout.setSpacing(10) # 卡片间距
+        self.scrollLayout.setContentsMargins(5, 5, 15, 5) # 边距
         self.scrollLayout.setAlignment(Qt.AlignTop)
         
         self.items = items or []
         self.selected_item = None
         
-        # 填充按钮列表
+        # 填充卡片列表
         for item in self.items:
-            # 创建按钮
-            btn = PushButton(self.scrollContent)
-            btn.setText(item['name'])
-            btn.setIcon(item['icon'])
-            btn.setFixedHeight(45) # 设置按钮高度，使其更易点击
+            # 创建卡片
+            card = CardWidget(self.scrollContent)
+            card.setFixedHeight(60)
             
-            # 设置图标大小，使其更清晰
-            btn.setIconSize(QSize(24, 24))
+            cardLayout = QHBoxLayout(card)
+            cardLayout.setContentsMargins(15, 10, 15, 10)
+            cardLayout.setSpacing(15)
             
-            # 文本左对齐
-            btn.setStyleSheet("QPushButton { text-align: left; padding-left: 15px; }")
+            # 图标
+            iconLabel = QLabel(card)
+            iconLabel.setFixedSize(32, 32)
+            iconLabel.setScaledContents(True)
+            if isinstance(item['icon'], QIcon):
+                iconLabel.setPixmap(item['icon'].pixmap(32, 32))
             
-            # 连接点击事件 (使用默认参数闭包)
-            btn.clicked.connect(lambda _, i=item: self.on_item_clicked(i))
+            # 名称
+            nameLabel = StrongBodyLabel(item['name'], card)
             
-            self.scrollLayout.addWidget(btn)
+            # 选择按钮
+            selectBtn = PushButton(i18nText("选择"), card)
+            selectBtn.setFixedWidth(80)
+            selectBtn.clicked.connect(lambda _, i=item: self.on_item_clicked(i))
+            
+            cardLayout.addWidget(iconLabel)
+            cardLayout.addWidget(nameLabel)
+            cardLayout.addStretch(1) # 弹簧，将按钮推到最右侧
+            cardLayout.addWidget(selectBtn)
+            
+            self.scrollLayout.addWidget(card)
 
         self.scrollArea.setWidget(self.scrollContent)
         self.viewLayout.addWidget(self.scrollArea)
         
-        # 隐藏确定按钮，因为点击即选中
+        # 隐藏确定按钮，因为点击选择按钮即选中
         self.yesButton.hide()
         self.cancelButton.setText(i18nText("取消"))
         
-        self.widget.setMinimumWidth(400)
+        self.widget.setMinimumWidth(450) # 稍微加宽一点以适应卡片布局
         self.widget.setMinimumHeight(500)
 
     def on_item_clicked(self, item):
-        """ 点击项目按钮触发 """
+        """ 点击选择按钮触发 """
         self.selected_item = item
         self.accept() # 关闭并返回 True
 def get_all_launch_items():
