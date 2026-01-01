@@ -91,9 +91,9 @@ class SystemTrayIcon(QSystemTrayIcon):
 
         # 添加二级菜单
         launch_menu = SystemTrayMenu(i18nText("🔼  启动版本"), self.menu)
-        print("set_list:", set_list)  # 打印 set_list 的内容以调试
+        print("BLglobals.set_list:", BLglobals.set_list)
 
-        for version in set_list:
+        for version in BLglobals.set_list:
             action = Action(
                 version,
                 triggered=lambda checked, version=version: self.main_window.run_cmcl(version)
@@ -835,7 +835,6 @@ class MainWindow(FluentWindow):
             log("show_text is None", logging.ERROR)
         self.run_cmcl_list(True)
     def run_cmcl_list(self,back_set_list):
-        global set_list # 保留 set_list 可能是因为其他模块（如托盘）还在用它
         # 移除 minecraft_list, customize_list 的 global 声明，改用 BLglobals
         
         try:
@@ -861,7 +860,7 @@ class MainWindow(FluentWindow):
                 # temp_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
                 log(f"路径无效: {versions_path}")
                 
-            set_list = temp_list  # 最后统一赋值给全局变量
+            BLglobals.set_list = temp_list  # 最后统一赋值给全局变量
 
             # --- 修改：存入 BLglobals ---
             BLglobals.minecraft_list = temp_list 
@@ -875,22 +874,22 @@ class MainWindow(FluentWindow):
             log(f"Customize 列表中的 showname 值: {BLglobals.customize_list}")
             
             # 合并
-            set_list = BLglobals.minecraft_list + BLglobals.customize_list
-            log(f"合并后的版本列表: {set_list}")
+            BLglobals.set_list = BLglobals.minecraft_list + BLglobals.customize_list
+            log(f"合并后的版本列表: {BLglobals.set_list}")
 
             self.update_version_combobox()  # 新增UI更新方法
             if back_set_list:
-                return set_list
+                return BLglobals.set_list
             else:
                 return BLglobals.customize_list
         except Exception as e:
             # handle_exception(e)
             log(f"读取版本列表失败: {e}", logging.ERROR)
-            set_list = []
+            BLglobals.set_list = []
             # 异常情况下给默认空值
             BLglobals.minecraft_list = []
             BLglobals.customize_list = []
-            # set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
+            # BLglobals.set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
    
     def run_cmcl(self, version, HomePage):
         log(f"minecraft_list:{BLglobals.minecraft_list}")
@@ -1029,7 +1028,7 @@ class MainWindow(FluentWindow):
             run_choose = home_interface.findChild(ComboBox, "run_choose")
             if run_choose:
                 # 添加版本去重逻辑
-                unique_versions = list(dict.fromkeys(set_list))  # 保持顺序去重
+                unique_versions = list(dict.fromkeys(BLglobals.set_list))  # 保持顺序去重
                 current_text = run_choose.currentText()  # 保留当前选中项
                 
                 run_choose.clear()
