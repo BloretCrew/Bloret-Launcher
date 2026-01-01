@@ -1,5 +1,5 @@
 from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
-import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures, threading, time
+import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures, threading, time, psutil
 import sip # type: ignore
 from pathlib import Path
 from modules.win11toast import notify, update_progress
@@ -637,7 +637,6 @@ def get_minecraft_window_handle(version=None, timeout=30):
                                 
                                 # 检查进程命令行是否包含 Minecraft 相关参数
                                 try:
-                                    import psutil
                                     process = psutil.Process(pid)
                                     cmdline = ' '.join(process.cmdline())
                                     
