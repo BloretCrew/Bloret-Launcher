@@ -1,48 +1,65 @@
-from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy, QApplication, QListWidget, QListWidgetItem, QFileIconProvider
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox, TabBar, CheckBox
+# 1. 标准库
+import os
+import re
+import json
+import socket
+import logging
+import requests
+
+# 2. 第三方库 (PyQt5)
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
+    QListWidget, QListWidgetItem, QLineEdit, QLabel, QPushButton,
+    QSizePolicy, QFileDialog, QFileIconProvider
+)
+from PyQt5.QtGui import QDesktopServices, QPixmap, QColor, QIcon, QMovie
+from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime, QFileInfo, QThread, pyqtSignal
 from PyQt5 import uic
-from PyQt5.QtGui import QDesktopServices, QPixmap, QColor, QIcon
-from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime, QFileInfo
-import requests, json, logging, os, socket, re
-# 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
+
+# 3. 第三方库 (qfluentwidgets)
+from qfluentwidgets import (
+    SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar,
+    SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton,
+    SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit,
+    CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget,
+    ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox,
+    TabBar, CheckBox, Pivot, SegmentedWidget
+)
+
+# 4. 自定义模块 (Bloret Launcher Modules)
+import modules.globals as BLglobals
+import modules.config as cfg
+from modules.config import read
 from modules.systems import setup_startup_with_self_starting
 from modules.log import log, clear_log_files
-from modules.Bloret_PassPort import Bloret_PassPort_Account_logout, sync_mc_account_to_bloret_passport, sync_bloret_passport_account_to_mc, savedata, readdata
-from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard, Bloret_PassPort_Account_login
-from modules.querys import query_player_uuid,query_player_skin,query_player_name
-from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder, on_other_version_selected
+from modules.Bloret_PassPort import (
+    Bloret_PassPort_Account_logout, sync_mc_account_to_bloret_passport,
+    sync_bloret_passport_account_to_mc, savedata, readdata, Bloret_PassPort_Account_login
+)
+from modules.links import (
+    open_github_bloret_Launcher, open_qq_link, open_BLC_qq_link,
+    open_BBBS_link, open_BBBS_Reg_link, open_github_bloret,
+    copy_skin_to_clipboard, copy_cape_to_clipboard, copy_uuid_to_clipboard,
+    copy_name_to_clipboard
+)
+from modules.querys import query_player_uuid, query_player_skin, query_player_name
+from modules.versions import (
+    delete_minecraft_version, Change_minecraft_version_name,
+    delete_Customize, Change_Customize_name, open_minecraft_version_folder,
+    on_other_version_selected, open_core_management
+)
 from modules.install import InstallMinecraftVersion
 from modules.modrinth import search_mods, Get_Mod_File_Download_Url, add_mrpack
-from PyQt5.QtCore import QThread, pyqtSignal
 from modules.win11toast import notify, update_progress
 from modules.local_client import OnlineClient
 from modules.java import InstallJava, java_versions
 from modules.i18n import i18nText
-from modules.customize import CustomizeAdd
-from modules.Bloriko import AskBlorikoAndSet
+from modules.customize import CustomizeAdd, CustomizeRun
+from modules.Bloriko import AskBlorikoAndSet, AskBloriko
 from modules.chafuwang import getServerData
 from modules.easytier import StartEasytierServer
 from modules.ShortCut import ScreenShortCut
-import modules.globals as BLglobals
-import modules.config as cfg
-from modules.config import read
-from modules.versions import (
-    delete_minecraft_version, Change_minecraft_version_name, 
-    delete_Customize, Change_Customize_name, open_minecraft_version_folder, 
-    on_other_version_selected, open_core_management  # <--- 新增导入
-)
-# 确保在 versions.py 顶部的 from qfluentwidgets import ... 中包含以下组件
-from qfluentwidgets import (
-    MessageBoxBase, SubtitleLabel, LineEdit, StrongBodyLabel, 
-    PushButton, SwitchButton, CaptionLabel, BodyLabel, Pivot, 
-    SegmentedWidget, CardWidget, IconWidget, FluentIcon, InfoBar
-)
-# 确保包含这些 PyQt5 组件
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QListWidget, 
-    QListWidgetItem, QFileDialog, QLabel
-)
-from PyQt5.QtCore import Qt
+
 
 # 加载配置文件
 def load_config():
@@ -587,7 +604,6 @@ def setup_home_ui(self, widget):
             elif target_item["type"] == "custom":
                 # 自定义启动
                 # 注意：CustomizeRun 需要导入
-                from modules.customize import CustomizeRun
                 CustomizeRun(self, target_item["name"])
         else:
              InfoBar.error(title=i18nText("错误"), content=i18nText("选中的启动项已不存在"), parent=self)
@@ -1161,9 +1177,6 @@ def start_online_client(parent, clientpage):
     port_dialog.viewLayout.addWidget(online_key_input)
 
     # 添加动图
-    from PyQt5.QtWidgets import QLabel
-    from PyQt5.QtGui import QMovie
-    from PyQt5.QtCore import QSize # 新增导入
     gif_label = QLabel()
     movie = QMovie("ui/icon/OnlineClient.gif")
     gif_label.setMovie(movie)
@@ -1458,13 +1471,6 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
     instruction_label = CaptionLabel(i18nText(instruction_text))
     instruction_label.setAlignment(Qt.AlignCenter if hasattr(Qt, 'AlignCenter') else Qt.AlignmentFlag.AlignCenter)
     
-    # 添加动图
-    # from PyQt5.QtWidgets import QLabel
-    # from PyQt5.QtGui import QMovie
-    # gif_label = QLabel()
-    # movie = QMovie("ui/icon/OnlineClient.gif")
-    # gif_label.setMovie(movie)
-    # movie.start()
     
     result_dialog.viewLayout.addWidget(address_label)
     result_dialog.viewLayout.addWidget(instruction_label)
@@ -1486,8 +1492,6 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
         
         # 更新界面上的地址和时间显示
         # 获取界面上的时间和地址标签
-        from PyQt5.QtWidgets import QLabel
-        from PyQt5.QtCore import QTimer, QDateTime
         
         # 从parent中查找标签（联机界面）
         # online_client_time_label = parent.findChild(QLabel, "OnlineClient_ClientTime")
@@ -1575,7 +1579,6 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
 
 def update_connection_time(time_label, start_time):
     """更新连接时长显示"""
-    from PyQt5.QtCore import QDateTime
     
     # 计算已连接的时间
     current_time = QDateTime.currentDateTime()
@@ -1635,8 +1638,6 @@ def show_ipv6_dialog(parent, ipv6_address):
     port_dialog.viewLayout.addWidget(port_input)
     
     # 添加动图
-    from PyQt5.QtWidgets import QLabel
-    from PyQt5.QtGui import QMovie
     gif_label = QLabel()
     movie = QMovie("ui/icon/OnlineClient.gif")
     gif_label.setMovie(movie)
@@ -1668,8 +1669,6 @@ def show_ipv6_dialog(parent, ipv6_address):
         instruction_label.setAlignment(Qt.AlignCenter)
         
         # 添加动图
-        from PyQt5.QtWidgets import QLabel
-        from PyQt5.QtGui import QMovie
         gif_label = QLabel()
         movie = QMovie("ui/icon/OnlineClient.gif")
         gif_label.setMovie(movie)
@@ -2825,7 +2824,6 @@ class BlorikoAIModThread(QThread):
         self.deepthink = deepthink
 
     def run(self):
-        from modules.Bloriko import AskBloriko
         
         # 构建 Prompt，强制 AI 返回 JSON 格式的 slug，并指定只推荐 Fabric 模组
         prompt = (
