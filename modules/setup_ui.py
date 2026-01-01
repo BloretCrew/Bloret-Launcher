@@ -1475,6 +1475,7 @@ def setup_info_ui(self, widget):
     if BLC_QQ:
         BLC_QQ.clicked.connect(open_BLC_qq_link)
 
+
 def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR, homeInterface):
     '''
     设定 Bloret Launcher 版本管理界面 UI 布局和操作。
@@ -1485,6 +1486,19 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
     customize_list_NUM = len(customize_list)
     Minecraft_list = widget.findChild(SmoothScrollArea, "Minecraft_list")
     
+    # --- 新增：预先加载 .BL.json 数据 ---
+    bl_json_path = os.path.join(MINECRAFT_DIR, "versions", ".BL.json")
+    versions_metadata = {}
+    try:
+        if os.path.exists(bl_json_path):
+            with open(bl_json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if "versions" in data:
+                    versions_metadata = data["versions"]
+    except Exception as e:
+        log(f"读取 .BL.json 失败: {e}", logging.WARNING)
+    # ------------------------------------
+
     if Minecraft_list:
         # 创建新的滚动内容容器
         scroll_widget = QWidget()
@@ -1501,9 +1515,44 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     
                     card = CardWidget(scroll_widget)
                     card.setMaximumWidth(659)  # 设置最大宽度
+                    
+                    # --- 修改：使用水平布局来容纳图标和文字 ---
+                    card_layout = QHBoxLayout(card)
+                    card_layout.setContentsMargins(16, 12, 16, 12)
+                    card_layout.setSpacing(16)
+                    
+                    # 1. 图标部分
+                    icon_label = QLabel(card)
+                    icon_label.setFixedSize(32, 32) # 设置图标大小
+                    icon_label.setScaledContents(True)
+                    
+                    # 默认图标
+                    default_pixmap = FluentIcon.GAME.icon().pixmap(32, 32)
+                    
+                    # 尝试从元数据加载自定义图标
+                    icon_path = ""
+                    if version_name in versions_metadata:
+                        icon_path = versions_metadata[version_name].get("icon", "")
+                    
+                    if icon_path and os.path.exists(icon_path):
+                        try:
+                            pixmap = QPixmap(icon_path)
+                            if not pixmap.isNull():
+                                icon_label.setPixmap(pixmap)
+                            else:
+                                icon_label.setPixmap(default_pixmap)
+                        except:
+                            icon_label.setPixmap(default_pixmap)
+                    else:
+                        icon_label.setPixmap(default_pixmap)
+                        
+                    card_layout.addWidget(icon_label)
+
+                    # 2. 文字部分
                     label = StrongBodyLabel(version_name, card)
-                    layout = QVBoxLayout(card)
-                    layout.addWidget(label)
+                    card_layout.addWidget(label)
+                    card_layout.addStretch(1) # 文字左对齐
+                    # ----------------------------------------
 
                     # 定义右键菜单逻辑
                     def create_minecraft_context_menu(pos, label_now, card_now, v_name=version_name):
@@ -1555,7 +1604,7 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     card.customContextMenuRequested.connect(lambda pos, v=minecraft_list[i], l=label, c=card: create_minecraft_context_menu(pos, l, c, v))
                     scroll_layout.addWidget(card)
 
-            # --- 自定义启动列表 ---
+            # --- 自定义启动列表 (保持不变，或者也可以加上默认图标) ---
             if customize_list_NUM != 0:
                 title_label_custom = SubtitleLabel(i18nText("自定义启动"), parent=scroll_widget)
                 scroll_layout.addWidget(title_label_custom)
@@ -1565,9 +1614,22 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     
                     card = CardWidget(scroll_widget)
                     card.setMaximumWidth(659)  # 设置最大宽度
+                    
+                    # 同样使用水平布局
+                    card_layout = QHBoxLayout(card)
+                    card_layout.setContentsMargins(16, 12, 16, 12)
+                    card_layout.setSpacing(16)
+                    
+                    # 自定义项图标 (暂用 APPLICATION 图标)
+                    icon_label = QLabel(card)
+                    icon_label.setFixedSize(32, 32)
+                    icon_label.setScaledContents(True)
+                    icon_label.setPixmap(FluentIcon.APPLICATION.icon().pixmap(32, 32))
+                    card_layout.addWidget(icon_label)
+                    
                     label = StrongBodyLabel(version_name, card)
-                    layout = QVBoxLayout(card)
-                    layout.addWidget(label)
+                    card_layout.addWidget(label)
+                    card_layout.addStretch(1)
 
                     def create_customize_context_menu(pos, label_now, card_now, v_name=version_name):
                         menu = RoundMenu()
@@ -1596,8 +1658,6 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
         # 这会自动替换掉旧的内容，实现刷新效果
         Minecraft_list.setWidget(scroll_widget)
         Minecraft_list.setWidgetResizable(True)
-
-
 
 def setup_BBS_ui(self, widget, server_ip):
     '''
