@@ -11,49 +11,49 @@ Versions.py
 ***
 ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
 '''
-from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox, StrongBodyLabel, BodyLabel, SubtitleLabel, MessageBoxBase
-import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures, threading, time
-import sip # type: ignore
-from pathlib import Path
+import logging
+import os
+import json
+import platform
+import requests
+import shutil
+import concurrent.futures
+import threading
+import time
+import zipfile
 import base64
-import struct  # <--- 新增
-import io      # <--- 新增
-import gzip    # <--- 新增
+import struct
+import io
+import gzip
+import sys
+from pathlib import Path
+
+# 第三方库
+import sip  # type: ignore
+import send2trash
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QPixmap, QDesktopServices, QColor
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, 
+    QListWidget, QListWidgetItem, QFileDialog, QLabel, 
+    QSizePolicy
+)
+from qfluentwidgets import (
+    InfoBar, InfoBarPosition, ComboBox, StrongBodyLabel, 
+    BodyLabel, SubtitleLabel, MessageBoxBase, LineEdit, 
+    PushButton, SwitchButton, CaptionLabel, Pivot, 
+    SegmentedWidget, CardWidget, IconWidget, FluentIcon,
+    IndeterminateProgressBar, ToolButton
+)
+
+# 自定义模块
 from modules.win11toast import notify, update_progress
-# 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
 from modules.safe import handle_exception
 from modules.log import log
-from modules.safe import handle_exception
-import sys
 from modules.customize import find_Customize
 from modules.i18n import i18nText
 import modules.globals as BLglobals
 import modules.config as cfg
-
-from qfluentwidgets import (
-    MessageBoxBase, SubtitleLabel, LineEdit, StrongBodyLabel, 
-    PushButton, SwitchButton, CaptionLabel, BodyLabel
-)
-from PyQt5.QtWidgets import QHBoxLayout, QFileDialog, QWidget
-from PyQt5.QtCore import Qt, QThread, pyqtSignal  # <--- 修改了这一行，添加了 QThread 和 pyqtSignal
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QListWidget, 
-    QListWidgetItem, QFileDialog, QLabel
-)
-# from PyQt5.QtCore import Qt # 这一行重复了，可以忽略或删除
-from qfluentwidgets import (
-    MessageBoxBase, SubtitleLabel, LineEdit, StrongBodyLabel, 
-    PushButton, SwitchButton, CaptionLabel, BodyLabel, Pivot, 
-    SegmentedWidget, CardWidget, IconWidget, FluentIcon, InfoBar
-)
-import shutil
-from qfluentwidgets import (
-    MessageBoxBase, SubtitleLabel, LineEdit, StrongBodyLabel, 
-    PushButton, SwitchButton, CaptionLabel, BodyLabel, Pivot, 
-    SegmentedWidget, CardWidget, IconWidget, FluentIcon, InfoBar,
-    IndeterminateProgressBar, ToolButton
-)
-from PyQt5.QtGui import QPixmap, QDesktopServices, QColor
 
 def dl_source_launcher_or_meta_get(original_url):
     """
@@ -2416,184 +2416,6 @@ def on_other_version_selected(self, selected_text, combo_box):
         # 显示对话框（模态对话框，会阻塞直到用户操作）
         dialog.exec_()
 
-class CoreManageDialog(MessageBoxBase):
-    """ 核心管理对话框 """
-    def __init__(self, version_name, minecraft_dir, home_interface, parent=None):
-        super().__init__(parent)
-        self.version_name = version_name
-        self.minecraft_dir = minecraft_dir
-        self.home_interface = home_interface
-        self.bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
-        self.current_data = {}
-
-        # UI 初始化
-        self.titleLabel = SubtitleLabel(i18nText("核心管理"), self)
-        self.viewLayout.addWidget(self.titleLabel)
-
-        # 1. 核心名称 (更名功能)
-        self.viewLayout.addWidget(StrongBodyLabel(i18nText("核心名称 (文件夹名)"), self))
-        self.name_edit = LineEdit(self)
-        self.name_edit.setText(version_name)
-        self.name_edit.setPlaceholderText(i18nText("修改此项将重命名版本文件夹"))
-        self.viewLayout.addWidget(self.name_edit)
-
-        # 2. 真实版本号 (用于元数据)
-        self.viewLayout.addWidget(StrongBodyLabel(i18nText("真实游戏版本"), self))
-        self.real_ver_edit = LineEdit(self)
-        self.real_ver_edit.setPlaceholderText(i18nText("例如: 1.21.8"))
-        self.viewLayout.addWidget(self.real_ver_edit)
-
-        # 3. Fabric 状态
-        self.fabric_layout = QHBoxLayout()
-        self.fabric_label = BodyLabel(i18nText("是否为 Fabric 版本"), self)
-        self.fabric_switch = SwitchButton(self)
-        self.fabric_switch.setOnText(i18nText("是"))
-        self.fabric_switch.setOffText(i18nText("否"))
-        self.fabric_layout.addWidget(self.fabric_label)
-        self.fabric_layout.addWidget(self.fabric_switch)
-        self.fabric_layout.addStretch(1)
-        self.viewLayout.addLayout(self.fabric_layout)
-
-        # 4. 图标路径
-        self.viewLayout.addWidget(StrongBodyLabel(i18nText("自定义图标路径"), self))
-        self.icon_layout = QHBoxLayout()
-        self.icon_edit = LineEdit(self)
-        self.icon_edit.setPlaceholderText(i18nText("图标文件的绝对路径"))
-        self.browse_btn = PushButton(i18nText("浏览"), self)
-        self.browse_btn.clicked.connect(self.browse_icon)
-        self.icon_layout.addWidget(self.icon_edit)
-        self.icon_layout.addWidget(self.browse_btn)
-        self.viewLayout.addLayout(self.icon_layout)
-
-        # 提示信息
-        self.tipLabel = CaptionLabel(i18nText("注意：修改名称后需重启启动器或刷新列表才能完全生效"), self)
-        self.tipLabel.setTextColor("#ff9800", "#ff9800")
-        self.viewLayout.addWidget(self.tipLabel)
-
-        # 加载数据
-        self.load_data()
-
-        # 调整按钮文字
-        self.yesButton.setText(i18nText("保存修改"))
-        self.cancelButton.setText(i18nText("取消"))
-
-        # 连接保存事件 (覆盖默认的 accept，以便我们处理逻辑)
-        self.yesButton.clicked.disconnect()
-        self.yesButton.clicked.connect(self.save_data)
-
-    def load_data(self):
-        """ 从 .BL.json 加载数据 """
-        try:
-            if os.path.exists(self.bl_json_path):
-                with open(self.bl_json_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    versions_data = data.get("versions", {})
-                    
-                    # 获取当前版本的数据，如果不存在则使用默认值
-                    self.current_data = versions_data.get(self.version_name, {})
-                    
-                    # 填充 UI
-                    self.real_ver_edit.setText(self.current_data.get("version", self.version_name))
-                    self.fabric_switch.setChecked(self.current_data.get("Fabric", False))
-                    self.icon_edit.setText(self.current_data.get("icon", ""))
-        except Exception as e:
-            log(f"加载核心信息失败: {e}", logging.ERROR)
-
-    def browse_icon(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, i18nText("选择图标"), "", i18nText("图片文件 (*.png *.jpg *.ico);;所有文件 (*.*)")
-        )
-        if path:
-            self.icon_edit.setText(path)
-
-    def save_data(self):
-        """ 保存数据并处理重命名 """
-        new_name = self.name_edit.text().strip()
-        new_real_ver = self.real_ver_edit.text().strip()
-        is_fabric = self.fabric_switch.isChecked()
-        new_icon = self.icon_edit.text().strip()
-        
-        if not new_name:
-            InfoBar.error(title=i18nText("错误"), content=i18nText("核心名称不能为空"), parent=self.widget)
-            return
-
-        try:
-            # 读取完整的 json
-            full_data = {"versions": {}}
-            if os.path.exists(self.bl_json_path):
-                with open(self.bl_json_path, "r", encoding="utf-8") as f:
-                    full_data = json.load(f)
-
-            # 1. 处理文件夹重命名
-            rename_success = True
-            if new_name != self.version_name:
-                old_path = os.path.join(self.minecraft_dir, "versions", self.version_name)
-                new_path = os.path.join(self.minecraft_dir, "versions", new_name)
-                
-                if os.path.exists(new_path):
-                    InfoBar.error(title=i18nText("错误"), content=i18nText("目标名称已存在"), parent=self.widget)
-                    return
-                
-                try:
-                    os.rename(old_path, new_path)
-                    log(f"核心已重命名: {self.version_name} -> {new_name}")
-                except Exception as e:
-                    InfoBar.error(title=i18nText("重命名失败"), content=str(e), parent=self.widget)
-                    return
-
-                # 在 JSON 中移除旧键
-                if self.version_name in full_data["versions"]:
-                    del full_data["versions"][self.version_name]
-            
-            # 2. 更新 JSON 数据
-            # 如果是重命名，这里使用的是 new_name 作为键；如果没重命名，new_name 等于 version_name
-            full_data["versions"][new_name] = {
-                "Fabric": is_fabric,
-                "version": new_real_ver,
-                "setup_time": self.current_data.get("setup_time", int(time.time())),
-                "icon": new_icon
-            }
-
-            # 写入文件
-            with open(self.bl_json_path, "w", encoding="utf-8") as f:
-                json.dump(full_data, f, ensure_ascii=False, indent=4)
-
-            InfoBar.success(
-                title=i18nText("保存成功"),
-                content=i18nText("核心信息已更新"),
-                parent=self.parent() if self.parent() else self.widget
-            )
-            
-            # 刷新 UI (这里简单地触发一次关闭，并在主界面刷新列表逻辑需要单独调用)
-            # 如果发生了重命名，需要通知主窗口刷新列表
-            if new_name != self.version_name:
-                # 更新全局列表 (简单的 hack，最好是主窗口监听信号)
-                global set_list, minecraft_list
-                if self.version_name in set_list:
-                    index = set_list.index(self.version_name)
-                    set_list[index] = new_name
-                if self.version_name in minecraft_list:
-                    index = minecraft_list.index(self.version_name)
-                    minecraft_list[index] = new_name
-                
-                # 尝试刷新主页下拉框
-                if self.home_interface:
-                    run_choose = self.home_interface.findChild(ComboBox, "run_choose")
-                    if run_choose:
-                        # 此处无法直接调用 self.run_cmcl_list，因为它属于 MainWindow
-                        # 我们可以触发一个重新加载 UI 的操作，或者提示用户
-                        pass
-
-            self.accept() # 关闭弹窗
-            
-            # 如果改名了，刷新一下界面比较好，这里尝试调用传入的刷新回调（如果有）
-            # 目前主要依赖 setup_ui 中的回调逻辑来刷新 ScrollArea
-
-        except Exception as e:
-            handle_exception(e)
-            InfoBar.error(title=i18nText("保存失败"), content=str(e), parent=self.widget)
-
-
 class BaseInfoPage(QWidget):
     """ 基本信息页面 """
     def __init__(self, parent=None):
@@ -2684,23 +2506,6 @@ class ServerQueryThread(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
-class ResourcePackPage(QWidget):
-    """ 资源包管理页面 (占位) """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.vLayout = QVBoxLayout(self)
-        self.label = BodyLabel(i18nText("资源包管理功能开发中..."), self)
-        self.vLayout.addWidget(self.label)
-        self.vLayout.addStretch(1)
-
-class ModPage(QWidget):
-    """ Mod 管理页面 (占位) """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.vLayout = QVBoxLayout(self)
-        self.label = BodyLabel(i18nText("Mod 管理功能开发中..."), self)
-        self.vLayout.addWidget(self.label)
-        self.vLayout.addStretch(1)
 
 # --- NBT 解析工具类 (用于读取 servers.dat) ---
 class SimpleNBT:
@@ -3202,7 +3007,509 @@ class ServerPage(QWidget):
                 )
 
 
+class ModItemWidget(CardWidget):
+    """ Mod 列表项组件 """
+    def __init__(self, data, parent_page):
+        super().__init__(parent_page)
+        self.data = data
+        self.parent_page = parent_page
+        self.setFixedHeight(80)
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(12)
+        
+        # 1. 图标
+        self.iconLabel = QLabel(self)
+        self.iconLabel.setFixedSize(48, 48)
+        self.iconLabel.setScaledContents(True)
+        # 默认图标
+        default_pix = FluentIcon.COMPLETED.icon().pixmap(48, 48)
+        self.iconLabel.setPixmap(default_pix)
+        
+        if data.get("icon_data"):
+            try:
+                pix = QPixmap()
+                pix.loadFromData(data["icon_data"])
+                if not pix.isNull():
+                    self.iconLabel.setPixmap(pix)
+            except:
+                pass
+            
+        # 2. 文本信息
+        textLayout = QVBoxLayout()
+        textLayout.setSpacing(2)
+        
+        topLine = QHBoxLayout()
+        self.nameLabel = StrongBodyLabel(data["name"], self)
+        self.verLabel = CaptionLabel(data["version"], self)
+        self.verLabel.setTextColor("#606060", "#a0a0a0")
+        
+        topLine.addWidget(self.nameLabel)
+        topLine.addWidget(self.verLabel)
+        topLine.addStretch(1)
+        
+        self.descLabel = BodyLabel(data["description"], self)
+        self.descLabel.setTextColor("#606060", "#a0a0a0")
 
+        # 确保 Label 不会撑大水平布局
+        self.descLabel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+
+        # 文本截断
+        font_metrics = self.descLabel.fontMetrics()
+        elided_text = font_metrics.elidedText(data["description"], Qt.ElideRight, 400)
+        self.descLabel.setText(elided_text)
+        
+        textLayout.addLayout(topLine)
+        textLayout.addWidget(self.descLabel)
+        
+        # 3. 操作按钮
+        self.switchBtn = SwitchButton(self)
+        self.switchBtn.setOnText(i18nText("启用"))
+        self.switchBtn.setOffText(i18nText("禁用"))
+        self.switchBtn.setChecked(data["enabled"])
+        self.switchBtn.checkedChanged.connect(self.on_toggle)
+        
+        self.delBtn = ToolButton(FluentIcon.DELETE, self)
+        self.delBtn.setToolTip(i18nText("删除"))
+        self.delBtn.clicked.connect(self.on_delete)
+        
+        layout.addWidget(self.iconLabel)
+        layout.addLayout(textLayout, 1)
+        layout.addWidget(self.switchBtn)
+        layout.addWidget(self.delBtn)
+        
+    def on_toggle(self, checked):
+        # 更新本地数据中的 path，防止连续操作出错
+        new_path = self.parent_page.toggle_mod(self.data["path"], checked)
+        if new_path:
+            self.data["path"] = new_path
+            self.data["enabled"] = checked
+        else:
+            # 如果操作失败，回滚开关状态
+            self.switchBtn.blockSignals(True)
+            self.switchBtn.setChecked(not checked)
+            self.switchBtn.blockSignals(False)
+        
+    def on_delete(self):
+        self.parent_page.delete_mod(self.data["path"])
+
+class ModLoaderThread(QThread):
+    """ Mod 异步加载线程 """
+    item_loaded = pyqtSignal(dict)
+    finished = pyqtSignal()
+
+    def __init__(self, mods_dir):
+        super().__init__()
+        self.mods_dir = mods_dir
+
+    def run(self):
+        if not os.path.exists(self.mods_dir):
+            self.finished.emit()
+            return
+
+        files = os.listdir(self.mods_dir)
+        for filename in files:
+            file_path = os.path.join(self.mods_dir, filename)
+            if os.path.isdir(file_path): continue
+            
+            is_disabled = filename.endswith('.disabled')
+            
+            # 简单扩展名检查
+            if not (filename.endswith('.jar') or filename.endswith('.jar.disabled')):
+                continue
+
+            mod_data = {
+                "name": filename, # 默认显示文件名
+                "path": file_path,
+                "filename": filename,
+                "version": "",
+                "description": i18nText("无描述"),
+                "icon_data": None,
+                "enabled": not is_disabled
+            }
+
+            # 尝试读取元数据 (主要针对 Fabric)
+            try:
+                if zipfile.is_zipfile(file_path):
+                    with zipfile.ZipFile(file_path, 'r') as zf:
+                        # Fabric metadata
+                        if 'fabric.mod.json' in zf.namelist():
+                            with zf.open('fabric.mod.json') as f:
+                                meta = json.load(f)
+                                mod_data["name"] = meta.get("name", meta.get("id", filename))
+                                mod_data["version"] = meta.get("version", "")
+                                mod_data["description"] = meta.get("description", "")
+                                
+                                icon_path = meta.get("icon")
+                                if icon_path and icon_path in zf.namelist():
+                                    mod_data["icon_data"] = zf.read(icon_path)
+                                # 部分 Mod 图标路径在 assets 下
+                                elif f"assets/{meta.get('id')}/icon.png" in zf.namelist():
+                                    mod_data["icon_data"] = zf.read(f"assets/{meta.get('id')}/icon.png")
+                        
+                        # Forge (mcmod.info - 旧版)
+                        elif 'mcmod.info' in zf.namelist():
+                            with zf.open('mcmod.info') as f:
+                                try:
+                                    meta_list = json.load(f)
+                                    if meta_list and isinstance(meta_list, list):
+                                        meta = meta_list[0]
+                                        mod_data["name"] = meta.get("name", filename)
+                                        mod_data["version"] = meta.get("version", "")
+                                        mod_data["description"] = meta.get("description", "")
+                                        # Forge 图标处理较复杂，通常是 logoFile
+                                        logo = meta.get("logoFile")
+                                        if logo and logo in zf.namelist():
+                                            mod_data["icon_data"] = zf.read(logo)
+                                except:
+                                    pass
+            except Exception as e:
+                log(f"读取 Mod {filename} 失败: {e}", logging.WARNING)
+            
+            self.item_loaded.emit(mod_data)
+        
+        self.finished.emit()
+
+class ModPage(QWidget):
+    """ Mod 管理页面 """
+    def __init__(self, version_name, minecraft_dir, parent=None):
+        super().__init__(parent)
+        self.version_name = version_name
+        self.minecraft_dir = minecraft_dir
+        # 假设启用版本隔离，Mods 位于 versions/{version}/mods
+        self.mods_dir = os.path.join(minecraft_dir, "versions", version_name, "mods")
+        
+        self.vLayout = QVBoxLayout(self)
+        
+        # 顶部工具栏
+        hLayout = QHBoxLayout()
+        self.refreshBtn = ToolButton(FluentIcon.SYNC, self)
+        self.refreshBtn.setToolTip(i18nText("刷新"))
+        self.refreshBtn.clicked.connect(self.load_mods)
+        
+        self.openBtn = PushButton(i18nText("打开 Mods 文件夹"), self)
+        self.openBtn.setIcon(FluentIcon.FOLDER)
+        self.openBtn.clicked.connect(self.open_folder)
+        
+        hLayout.addWidget(StrongBodyLabel(i18nText("Mod 列表"), self))
+        hLayout.addStretch(1)
+        hLayout.addWidget(self.refreshBtn)
+        hLayout.addWidget(self.openBtn)
+        self.vLayout.addLayout(hLayout)
+        
+        # 列表区域
+        from qfluentwidgets import SmoothScrollArea
+        self.scrollArea = SmoothScrollArea(self)
+        self.scrollArea.setWidgetResizable(True)
+        # --- 修改点开始：禁用水平滚动条 ---
+        self.scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # --- 修改点结束 ---
+        self.scrollArea.setStyleSheet("background-color: transparent; border: none;")
+        
+        self.contentWidget = QWidget()
+        self.contentLayout = QVBoxLayout(self.contentWidget)
+        self.contentLayout.setAlignment(Qt.AlignTop)
+        self.contentLayout.setSpacing(8)
+        # --- 修改点开始：调整边距，留出一点空间给垂直滚动条，避免挤压 ---
+        self.contentLayout.setContentsMargins(0, 0, 4, 0) 
+        # --- 修改点结束 ---
+        
+        self.scrollArea.setWidget(self.contentWidget)
+        self.vLayout.addWidget(self.scrollArea)
+        
+        # 初始加载
+        self.load_mods()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self.contentLayout.count() == 0:
+            self.load_mods()
+
+    def open_folder(self):
+        if not os.path.exists(self.mods_dir):
+            os.makedirs(self.mods_dir, exist_ok=True)
+        os.startfile(self.mods_dir)
+
+    def load_mods(self):
+        # 清空列表
+        while self.contentLayout.count():
+            item = self.contentLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            
+        if not os.path.exists(self.mods_dir):
+            os.makedirs(self.mods_dir, exist_ok=True)
+            
+        self.loading_label = BodyLabel(i18nText("正在加载 Mods..."), self)
+        self.contentLayout.addWidget(self.loading_label)
+            
+        self.thread = ModLoaderThread(self.mods_dir)
+        self.thread.item_loaded.connect(self.add_item)
+        self.thread.finished.connect(lambda: self.loading_label.deleteLater())
+        self.thread.start()
+        
+    def add_item(self, data):
+        item = ModItemWidget(data, self)
+        # 插入到倒数第二的位置（如果有 loading label 的话），或者直接添加
+        self.contentLayout.addWidget(item)
+        
+    def toggle_mod(self, path, enabled):
+        """ 切换 Mod 启用状态 """
+        try:
+            if not os.path.exists(path):
+                return None
+                
+            dirname, filename = os.path.split(path)
+            
+            if enabled:
+                # 启用：去除 .disabled 后缀
+                if filename.endswith('.disabled'):
+                    new_filename = filename[:-9]
+                    new_path = os.path.join(dirname, new_filename)
+                    os.rename(path, new_path)
+                    return new_path
+            else:
+                # 禁用：添加 .disabled 后缀
+                if not filename.endswith('.disabled'):
+                    new_filename = filename + '.disabled'
+                    new_path = os.path.join(dirname, new_filename)
+                    os.rename(path, new_path)
+                    return new_path
+            return path # 无需修改
+        except Exception as e:
+            InfoBar.error(title=i18nText("操作失败"), content=str(e), parent=self.window())
+            return None
+            
+    def delete_mod(self, path):
+        if os.path.exists(path):
+            # 二次确认
+            w = MessageBoxBase(self.window())
+            w.viewLayout.addWidget(SubtitleLabel(i18nText("确认删除?")))
+            w.viewLayout.addWidget(BodyLabel(os.path.basename(path)))
+            w.yesButton.setText(i18nText("删除"))
+            w.cancelButton.setText(i18nText("取消"))
+            if w.exec():
+                try:
+                    send2trash.send2trash(path)
+                    InfoBar.success(title=i18nText("已删除"), content=os.path.basename(path), parent=self.window())
+                    self.load_mods() # 刷新列表
+                except Exception as e:
+                    InfoBar.error(title=i18nText("删除失败"), content=str(e), parent=self.window())
+
+# --- 资源包管理相关类 ---
+
+class ResourcePackLoaderThread(QThread):
+    """ 资源包异步加载线程 """
+    item_loaded = pyqtSignal(dict)
+    finished = pyqtSignal()
+
+    def __init__(self, packs_dir):
+        super().__init__()
+        self.packs_dir = packs_dir
+
+    def run(self):
+        if not os.path.exists(self.packs_dir):
+            self.finished.emit()
+            return
+
+        for filename in os.listdir(self.packs_dir):
+            file_path = os.path.join(self.packs_dir, filename)
+            
+            # 资源包可以是文件夹或 .zip
+            if not (os.path.isdir(file_path) or filename.endswith('.zip')):
+                continue
+
+            pack_data = {
+                "name": filename,
+                "path": file_path,
+                "description": i18nText("无描述"),
+                "icon_data": None
+            }
+
+            try:
+                # 如果是文件夹
+                if os.path.isdir(file_path):
+                    mcmeta_path = os.path.join(file_path, "pack.mcmeta")
+                    icon_path = os.path.join(file_path, "pack.png")
+                    
+                    if os.path.exists(mcmeta_path):
+                        with open(mcmeta_path, 'r', encoding='utf-8') as f:
+                            meta = json.load(f)
+                            pack_data["description"] = meta.get("pack", {}).get("description", "")
+                    
+                    if os.path.exists(icon_path):
+                        with open(icon_path, 'rb') as f:
+                            pack_data["icon_data"] = f.read()
+                            
+                # 如果是 Zip
+                elif zipfile.is_zipfile(file_path):
+                    with zipfile.ZipFile(file_path, 'r') as zf:
+                        if "pack.mcmeta" in zf.namelist():
+                            with zf.open("pack.mcmeta") as f:
+                                meta = json.load(f)
+                                pack_data["description"] = meta.get("pack", {}).get("description", "")
+                        
+                        if "pack.png" in zf.namelist():
+                            pack_data["icon_data"] = zf.read("pack.png")
+            except Exception as e:
+                log(f"读取资源包 {filename} 失败: {e}", logging.WARNING)
+
+            self.item_loaded.emit(pack_data)
+        
+        self.finished.emit()
+
+class ResourcePackItemWidget(CardWidget):
+    """ 资源包列表项组件 (目前暂无启用禁用功能，仅管理文件) """
+    def __init__(self, data, parent_page):
+        super().__init__(parent_page)
+        self.data = data
+        self.parent_page = parent_page
+        self.setFixedHeight(80)
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(12)
+        
+        # Icon
+        self.iconLabel = QLabel(self)
+        self.iconLabel.setFixedSize(48, 48)
+        self.iconLabel.setScaledContents(True)
+        default_pix = FluentIcon.FOLDER.icon().pixmap(48, 48)
+        self.iconLabel.setPixmap(default_pix)
+        
+        if data.get("icon_data"):
+            try:
+                pix = QPixmap()
+                pix.loadFromData(data["icon_data"])
+                if not pix.isNull():
+                    self.iconLabel.setPixmap(pix)
+            except:
+                pass
+            
+        # Text
+        textLayout = QVBoxLayout()
+        textLayout.setSpacing(2)
+        
+        self.nameLabel = StrongBodyLabel(data["name"], self)
+        self.descLabel = BodyLabel(data["description"], self)
+        self.descLabel.setTextColor("#606060", "#a0a0a0")
+
+        # 确保 Label 不会撑大水平布局
+        self.descLabel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        
+        # 简单截断
+        font_metrics = self.descLabel.fontMetrics()
+        elided_text = font_metrics.elidedText(data["description"], Qt.ElideRight, 400)
+        self.descLabel.setText(elided_text)
+        
+        textLayout.addWidget(self.nameLabel)
+        textLayout.addWidget(self.descLabel)
+        
+        # Controls
+        self.delBtn = ToolButton(FluentIcon.DELETE, self)
+        self.delBtn.setToolTip(i18nText("删除"))
+        self.delBtn.clicked.connect(self.on_delete)
+        
+        layout.addWidget(self.iconLabel)
+        layout.addLayout(textLayout, 1)
+        layout.addWidget(self.delBtn)
+        
+    def on_delete(self):
+        self.parent_page.delete_pack(self.data["path"])
+
+class ResourcePackPage(QWidget):
+    """ 资源包管理页面 """
+    def __init__(self, version_name, minecraft_dir, parent=None):
+        super().__init__(parent)
+        self.version_name = version_name
+        self.minecraft_dir = minecraft_dir
+        self.packs_dir = os.path.join(minecraft_dir, "versions", version_name, "resourcepacks")
+        
+        self.vLayout = QVBoxLayout(self)
+        
+        # Header
+        hLayout = QHBoxLayout()
+        self.refreshBtn = ToolButton(FluentIcon.SYNC, self)
+        self.refreshBtn.clicked.connect(self.load_packs)
+        self.openBtn = PushButton(i18nText("打开资源包文件夹"), self)
+        self.openBtn.setIcon(FluentIcon.FOLDER)
+        self.openBtn.clicked.connect(self.open_folder)
+        
+        hLayout.addWidget(StrongBodyLabel(i18nText("资源包列表"), self))
+        hLayout.addStretch(1)
+        hLayout.addWidget(self.refreshBtn)
+        hLayout.addWidget(self.openBtn)
+        self.vLayout.addLayout(hLayout)
+        
+        # List
+        from qfluentwidgets import SmoothScrollArea
+        self.scrollArea = SmoothScrollArea(self)
+        self.scrollArea.setWidgetResizable(True)
+        # --- 修改点开始：禁用水平滚动条 ---
+        self.scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # --- 修改点结束 ---
+        self.scrollArea.setStyleSheet("background-color: transparent; border: none;")
+        
+        self.contentWidget = QWidget()
+        self.contentLayout = QVBoxLayout(self.contentWidget)
+        self.contentLayout.setAlignment(Qt.AlignTop)
+        self.contentLayout.setSpacing(8)
+        # --- 修改点开始：调整边距 ---
+        self.contentLayout.setContentsMargins(0, 0, 4, 0)
+        # --- 修改点结束 ---
+        
+        self.scrollArea.setWidget(self.contentWidget)
+        self.vLayout.addWidget(self.scrollArea)
+        
+        self.load_packs()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self.contentLayout.count() == 0:
+            self.load_packs()
+
+    def open_folder(self):
+        if not os.path.exists(self.packs_dir):
+            os.makedirs(self.packs_dir, exist_ok=True)
+        os.startfile(self.packs_dir)
+
+    def load_packs(self):
+        while self.contentLayout.count():
+            item = self.contentLayout.takeAt(0)
+            if item.widget(): item.widget().deleteLater()
+            
+        if not os.path.exists(self.packs_dir):
+            os.makedirs(self.packs_dir, exist_ok=True)
+            
+        self.loading_label = BodyLabel(i18nText("正在加载资源包..."), self)
+        self.contentLayout.addWidget(self.loading_label)
+            
+        self.thread = ResourcePackLoaderThread(self.packs_dir)
+        self.thread.item_loaded.connect(self.add_item)
+        self.thread.finished.connect(lambda: self.loading_label.deleteLater())
+        self.thread.start()
+        
+    def add_item(self, data):
+        item = ResourcePackItemWidget(data, self)
+        self.contentLayout.addWidget(item)
+        
+    def delete_pack(self, path):
+        if os.path.exists(path):
+            w = MessageBoxBase(self.window())
+            w.viewLayout.addWidget(SubtitleLabel(i18nText("确认删除?")))
+            w.viewLayout.addWidget(BodyLabel(os.path.basename(path)))
+            w.yesButton.setText(i18nText("删除"))
+            w.cancelButton.setText(i18nText("取消"))
+            if w.exec():
+                try:
+                    send2trash.send2trash(path)
+                    InfoBar.success(title=i18nText("已删除"), content=os.path.basename(path), parent=self.window())
+                    self.load_packs()
+                except Exception as e:
+                    InfoBar.error(title=i18nText("删除失败"), content=str(e), parent=self.window())
+
+# --- CoreManageDialog (更新引用) ---
 
 class CoreManageDialog(MessageBoxBase):
     """ 核心管理对话框 (分页式) """
@@ -3238,10 +3545,10 @@ class CoreManageDialog(MessageBoxBase):
         # 初始化各个页面
         self.baseInfoPage = BaseInfoPage(self)
         self.controlPage = ControlPage(self.open_version_folder, self.delete_core, self)
-        # 传递版本名和目录给 ServerPage
         self.serverPage = ServerPage(self.version_name, self.minecraft_dir, self.home_interface, self)
-        self.resourcePage = ResourcePackPage(self)
-        self.modPage = ModPage(self)
+        # --- 更新：使用新实现的页面 ---
+        self.resourcePage = ResourcePackPage(self.version_name, self.minecraft_dir, self)
+        self.modPage = ModPage(self.version_name, self.minecraft_dir, self)
 
         self.stackedWidget.addWidget(self.baseInfoPage)
         self.stackedWidget.addWidget(self.controlPage)
