@@ -13,7 +13,7 @@ import subprocess
 from http import server
 
 # 2. 第三方库
-import sip  # type: ignore
+from PyQt5 import sip
 import psutil
 import requests
 from PyQt5 import uic
