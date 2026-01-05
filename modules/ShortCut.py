@@ -1,24 +1,76 @@
 import sys
 import ctypes
 import os
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QDialog, QVBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QRect, QPoint, QPropertyAnimation, QEasingCurve, QTimer, pyqtProperty
 from PyQt5.QtGui import QGuiApplication, QScreen, QPixmap, QPainter, QColor, QCursor
 from PyQt5 import uic
 import win32gui
 import win32con
-from qfluentwidgets import CardWidget, BodyLabel, StrongBodyLabel, CaptionLabel
+import win32api
+from qfluentwidgets import CardWidget, BodyLabel, StrongBodyLabel, CaptionLabel, SubtitleLabel, PushButton
 
-# # 设置Windows DPI感知，确保正确获取屏幕尺寸
-# try:
-#     ctypes.windll.user32.SetProcessDPIAware()
-# except:
-#     pass
+class MonitorSelectionDialog(QDialog):
+    """
+    多显示器选择对话框
+    """
+    def __init__(self, screens, parent=None):
+        super().__init__(parent)
+        # --- 修改：设置窗口置顶标志 ---
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        # ---------------------------
+        
+        self.setWindowTitle("选择截图屏幕")
+        self.resize(400, 300)
+        self.selected_screen = None
+        
+        # 简单的样式设置，适配暗色主题
+        self.setStyleSheet("""
+            QDialog { background-color: #2e2e2e; color: white; }
+            QLabel { color: white; }
+        """)
+
+        layout = QVBoxLayout(self)
+        
+        title = SubtitleLabel("检测到多个显示器，请选择要截图的屏幕：", self)
+        layout.addWidget(title)
+        layout.addSpacing(10)
+
+        for i, screen in enumerate(screens):
+            geo = screen.geometry()
+            # 获取缩放比例
+            dpr = screen.devicePixelRatio()
+            info_text = f"屏幕 {i + 1}: {geo.width()}x{geo.height()} (缩放: {int(dpr*100)}%)"
+            
+            # 使用 Fluent 风格的按钮（如果可用），否则回退到普通按钮
+            btn = PushButton(info_text, self)
+            btn.setMinimumHeight(40)
+            # 使用闭包绑定当前屏幕
+            btn.clicked.connect(lambda checked, s=screen: self.on_screen_selected(s))
+            layout.addWidget(btn)
+
+        layout.addStretch()
+        
+        cancel_btn = QPushButton("取消", self)
+        cancel_btn.setStyleSheet("background-color: #444; color: white; border: none; padding: 8px;")
+        cancel_btn.clicked.connect(self.reject)
+        layout.addWidget(cancel_btn)
+
+    def on_screen_selected(self, screen):
+        self.selected_screen = screen
+        self.accept()
 
 
 class ScreenCaptureWidget(QWidget):
-    def __init__(self):
+    def __init__(self, target_screen=None):
         super().__init__()
+        
+        # 如果没有指定屏幕，默认主屏
+        if target_screen is None:
+            target_screen = QGuiApplication.primaryScreen()
+        
+        self.target_screen = target_screen
+        
         # 设置窗口为全屏覆盖层
         self.setWindowFlags(
             Qt.FramelessWindowHint | 
@@ -34,18 +86,12 @@ class ScreenCaptureWidget(QWidget):
         self._opacity = 0.0
         self.setWindowOpacity(self._opacity)
         
-        # 获取屏幕缩放比例 (DPI Ratio)
-        self.dpr = self.devicePixelRatioF()
+        # 获取目标屏幕的 DPI
+        self.dpr = self.target_screen.devicePixelRatio()
         
-        # 获取所有屏幕的组合几何区域
-        screens = QGuiApplication.screens()
-        if screens:
-            total_geometry = QRect()
-            for screen in screens:
-                total_geometry = total_geometry.united(screen.geometry())
-            self.setGeometry(total_geometry)
-        else:
-            self.setGeometry(0, 0, 1920, 1080)
+        # 只设置 geometry 为选定的屏幕
+        screen_geo = self.target_screen.geometry()
+        self.setGeometry(screen_geo)
         
         self.show()
         self.raise_()
@@ -69,55 +115,48 @@ class ScreenCaptureWidget(QWidget):
             uic.loadUi(ui_file_path, self)
             
             # --- 关键修复：彻底从布局管理器中剥离 CardWidget ---
-            # 仅仅调用 removeWidget 可能不够（如果控件在嵌套布局中）。
-            # 通过重设 Parent，可以确保它彻底脱离原有的布局约束。
             if hasattr(self, 'CardWidget'):
                 self.CardWidget.setParent(None)  # 1. 移除父对象（自动脱离布局）
                 self.CardWidget.setParent(self)  # 2. 重新挂载为本窗口子对象
-                self.CardWidget.show()           # 3. 重新显示（setParent(None)会隐藏控件）
+                self.CardWidget.show()           # 3. 重新显示
             # --------------------------------------------
             
         else:
             print(f"UI文件不存在: {ui_file_path}")
+        # 恢复大小（防止loadUi重置大小）
         self.resize(current_size)
         
         # 延时初始化提示框位置
         QTimer.singleShot(50, self._update_tip_geometry)
 
     def _update_tip_geometry(self):
-        """强制更新提示框位置（居中显示在主屏顶部）"""
+        """强制更新提示框位置（居中显示在当前屏幕顶部）"""
         if not hasattr(self, 'CardWidget'):
             return
 
-        screens = QGuiApplication.screens()
-        if screens:
-            primary_screen = QGuiApplication.primaryScreen()
-            if primary_screen:
-                screen_geometry = primary_screen.geometry()
-
-                # 设置最小宽度为 400，最小高度为 60
-                self.CardWidget.setMinimumSize(400, 60)
-                self.CardWidget.adjustSize()
-                widget_width = self.CardWidget.width()
-                
-                # 计算主屏顶部的逻辑坐标
-                target_global_x = screen_geometry.x() + (screen_geometry.width() - widget_width) // 2
-                target_global_y = screen_geometry.y() + 25
-                
-                # 使用 mapFromGlobal 确保坐标在多屏/高DPI下正确转换
-                local_pos = self.mapFromGlobal(QPoint(target_global_x, target_global_y))
-                
-                self.CardWidget.move(local_pos)
-                self.CardWidget.raise_()
-                self.CardWidget.show()
-        else:
-            self.CardWidget.move(100, 50)
-            self.CardWidget.show()
+        # 获取自身 geometry (即当前屏幕 geometry)
+        widget_rect = self.rect() # 这是一个局部坐标 (0, 0, w, h)
+        
+        self.CardWidget.setMinimumSize(400, 60)
+        self.CardWidget.adjustSize()
+        widget_width = self.CardWidget.width()
+        
+        # 计算在当前窗口内的水平居中位置
+        target_local_x = (widget_rect.width() - widget_width) // 2
+        target_local_y = 25
+        
+        self.CardWidget.move(target_local_x, target_local_y)
+        self.CardWidget.raise_()
+        self.CardWidget.show()
 
     def mousePressEvent(self, event):
-        self.start_pos = event.pos()
-        self.is_selecting = True
-        self.raise_()
+        if event.button() == Qt.LeftButton:
+            self.start_pos = event.pos()
+            self.is_selecting = True
+            self.raise_()
+        elif event.button() == Qt.RightButton:
+            # 右键退出
+            self.fade_out()
     
     @pyqtProperty(float)
     def opacity(self):
@@ -157,23 +196,15 @@ class ScreenCaptureWidget(QWidget):
             self.update() # 触发重绘
     
     def update_hover_window(self, pos):
-        """检测鼠标下的窗口（包含DPI修正和穿透检测）"""
-        # 1. Qt逻辑坐标 转 物理坐标
-        global_point_logical = self.mapToGlobal(pos)
+        """检测鼠标下的窗口"""
         
-        # 简单的防抖动
-        if self.last_hover_pos and (abs(global_point_logical.x() - self.last_hover_pos.x()) < 5 and 
-                                    abs(global_point_logical.y() - self.last_hover_pos.y()) < 5):
-            return
-        self.last_hover_pos = global_point_logical
-        
-        phy_x = int(global_point_logical.x() * self.dpr)
-        phy_y = int(global_point_logical.y() * self.dpr)
-        
-        self_hwnd = int(self.winId()) if self.winId() else 0
+        # 1. 直接使用 Win32 API 获取物理坐标 (绝对准确)
+        phy_x, phy_y = win32api.GetCursorPos()
         
         # 2. 获取鼠标下的窗口句柄
         hwnd = win32gui.WindowFromPoint((phy_x, phy_y))
+        
+        self_hwnd = int(self.winId()) if self.winId() else 0
         
         # 3. 如果检测到的是截图层自己，则通过遍历寻找下层窗口
         if hwnd == self_hwnd or hwnd == win32gui.GetDesktopWindow():
@@ -188,14 +219,13 @@ class ScreenCaptureWidget(QWidget):
                             # 过滤掉尺寸异常小的窗口
                             if rect[2] - rect[0] > 10 and rect[3] - rect[1] > 10:
                                 result_list.append(wnd)
-                    except:
+                    except Exception:
                         pass
                 return True
             
             found_windows = []
             win32gui.EnumWindows(enum_cb, found_windows)
             
-            # EnumWindows 通常按 Z-order 顺序返回，取第一个即为最上层窗口
             for w in found_windows:
                 if w != win32gui.GetDesktopWindow():
                     hwnd = w
@@ -211,7 +241,6 @@ class ScreenCaptureWidget(QWidget):
                 window_title = win32gui.GetWindowText(hwnd)
                 if hasattr(self, 'ScreenCut_Title') and self.ScreenCut_Title:
                     new_text = f"当前窗口：{window_title}" if window_title else "当前窗口"
-                    # 当文字改变时，调用 _update_tip_geometry
                     if self.ScreenCut_Title.text() != new_text:
                         self.ScreenCut_Title.setText(new_text)
                         self._update_tip_geometry() 
@@ -220,25 +249,27 @@ class ScreenCaptureWidget(QWidget):
                     return
                 self.last_hover_hwnd = hwnd
 
-                # 5. 计算绘制区域（物理 -> 逻辑）
-                # 尝试获取客户区以去除阴影干扰，如果失败则用窗口矩形
+                # 5. 计算绘制区域
                 try:
                     client_rect = win32gui.GetClientRect(hwnd)
                     client_tl = win32gui.ClientToScreen(hwnd, (0, 0))
                     draw_rect_phy = (client_tl[0], client_tl[1], 
                                      client_tl[0] + client_rect[2], client_tl[1] + client_rect[3])
-                except:
+                except Exception:
                     draw_rect_phy = rect
 
-                # 物理坐标除以 DPR 得到逻辑坐标
-                log_x = int(draw_rect_phy[0] / self.dpr)
-                log_y = int(draw_rect_phy[1] / self.dpr)
-                log_w = int((draw_rect_phy[2] - draw_rect_phy[0]) / self.dpr)
-                log_h = int((draw_rect_phy[3] - draw_rect_phy[1]) / self.dpr)
-
+                # 核心逻辑：物理坐标 -> 截图窗口局部坐标
+                # 将物理矩形转换为 Qt 逻辑矩形
+                log_left = int(draw_rect_phy[0] / self.dpr)
+                log_top = int(draw_rect_phy[1] / self.dpr)
+                log_width = int((draw_rect_phy[2] - draw_rect_phy[0]) / self.dpr)
+                log_height = int((draw_rect_phy[3] - draw_rect_phy[1]) / self.dpr)
+                
                 # 转换为相对于截图窗口的局部坐标
-                top_left = self.mapFromGlobal(QPoint(log_x, log_y))
-                self.current_hover_rect = QRect(top_left.x(), top_left.y(), log_w, log_h)
+                # mapFromGlobal 需要全局逻辑坐标
+                top_left = self.mapFromGlobal(QPoint(log_left, log_top))
+                
+                self.current_hover_rect = QRect(top_left.x(), top_left.y(), log_width, log_height)
                 
             except Exception as e:
                 # print(f"Window detect error: {e}")
@@ -253,6 +284,9 @@ class ScreenCaptureWidget(QWidget):
                     self._update_tip_geometry()
     
     def mouseReleaseEvent(self, event):
+        if event.button() != Qt.LeftButton:
+            return
+
         self.end_pos = event.pos()
         self.is_selecting = False
         
@@ -291,15 +325,13 @@ class ScreenCaptureWidget(QWidget):
         self.hide()
         QApplication.processEvents()
         
-        global_point = self.mapToGlobal(point)
-        phy_x = int(global_point.x() * self.dpr)
-        phy_y = int(global_point.y() * self.dpr)
+        # 使用 Win32 API 再次确认目标
+        phy_x, phy_y = win32api.GetCursorPos()
         
-        # 使用穿透逻辑获取真实窗口
+        # 查找窗口... (逻辑同 update_hover_window)
         hwnd = win32gui.WindowFromPoint((phy_x, phy_y))
         self_hwnd = int(self.winId()) if self.winId() else 0
         
-        # 再次确认不是点到了自己
         if hwnd == self_hwnd or hwnd == win32gui.GetDesktopWindow():
             def enum_cb_capture(wnd, result_list):
                 if wnd != self_hwnd and win32gui.IsWindowVisible(wnd):
@@ -307,7 +339,8 @@ class ScreenCaptureWidget(QWidget):
                         rect = win32gui.GetWindowRect(wnd)
                         if rect[0] <= phy_x < rect[2] and rect[1] <= phy_y < rect[3]:
                             result_list.append(wnd)
-                    except: pass
+                    except Exception:
+                        pass
                 return True
             found = []
             win32gui.EnumWindows(enum_cb_capture, found)
@@ -317,17 +350,19 @@ class ScreenCaptureWidget(QWidget):
         if hwnd:
             try:
                 rect = win32gui.GetWindowRect(hwnd)
-                # 物理 -> 逻辑
+                # 物理坐标 -> 相对屏幕的逻辑坐标
+                
                 x = int(rect[0] / self.dpr)
                 y = int(rect[1] / self.dpr)
                 w = int((rect[2] - rect[0]) / self.dpr)
                 h = int((rect[3] - rect[1]) / self.dpr)
                 
-                screen = QGuiApplication.primaryScreen()
-                if screen:
-                    screenshot = screen.grabWindow(0, x, y, w, h)
-                    QApplication.clipboard().setPixmap(screenshot)
-                    print(f"截图已复制到剪贴板")
+                # grabWindow 的坐标是相对于 Virtual Desktop 的（如果是window=0）
+                # 所以直接传全局逻辑坐标即可
+                screenshot = self.target_screen.grabWindow(0, x, y, w, h)
+                
+                QApplication.clipboard().setPixmap(screenshot)
+                print(f"截图已复制到剪贴板 (Window)")
             except Exception as e:
                 print(f"Error capturing window: {e}")
     
@@ -336,54 +371,56 @@ class ScreenCaptureWidget(QWidget):
         self.hide()
         QApplication.processEvents()
         
+        # rect 是相对于 Widget 的局部坐标
+        # 转换为全局逻辑坐标
         global_top_left = self.mapToGlobal(rect.topLeft())
         x, y, w, h = global_top_left.x(), global_top_left.y(), rect.width(), rect.height()
 
-        screen = QGuiApplication.primaryScreen()
-        if screen:
-            screenshot = screen.grabWindow(0, x, y, w, h)
+        if self.target_screen:
+            # grabWindow(0) 表示截取根窗口，坐标为全局坐标
+            screenshot = self.target_screen.grabWindow(0, x, y, w, h)
             QApplication.clipboard().setPixmap(screenshot)
-            print(f"区域截图已复制到剪贴板")
+            print(f"区域截图已复制到剪贴板 (Region)")
 
 
 def ScreenShortCut():
     """
     运行后激活截图功能：
-    选择界面：
-    当鼠标放到一个窗口上时，单击则将该窗口的截图复制到剪贴板。
-    如果鼠标按住拖动，则将鼠标最终框选的矩形区域截图复制到剪贴板
+    1. 检测屏幕数量
+    2. 如果 > 1，弹出对话框选择屏幕
+    3. 在指定屏幕打开截图层
     """
     # 创建并显示截图工具
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
-        print("创建新的QApplication实例")
     
-    # 确保应用程序可以显示全屏窗口
     app.setQuitOnLastWindowClosed(True)
     
-    capture_widget = ScreenCaptureWidget()
-    print(f"创建ScreenCaptureWidget实例，窗口标志: {capture_widget.windowFlags()}")
+    screens = QGuiApplication.screens()
+    target_screen = screens[0]
     
-    # 显示窗口并确保正确显示
-    # 修改：仅调用 show()，不要调用 showFullScreen()，否则会重置大小为主屏幕大小
+    # 逻辑修改：多屏检测
+    if len(screens) > 1:
+        # 弹出选择对话框
+        dialog = MonitorSelectionDialog(screens)
+        if dialog.exec_() == QDialog.Accepted and dialog.selected_screen:
+            target_screen = dialog.selected_screen
+        else:
+            print("用户取消了屏幕选择")
+            return None
+
+    print(f"将在屏幕 {target_screen.name()} 上启动截图")
+    
+    capture_widget = ScreenCaptureWidget(target_screen=target_screen)
     capture_widget.show()
-    # capture_widget.showFullScreen() # 已删除
     
-    print(f"窗口已显示，位置: {capture_widget.geometry()}")
-    
-    # 强制窗口到最前面
     capture_widget.raise_()
     capture_widget.activateWindow()
-    print("调用raise_()和activateWindow()确保窗口在最前面")
     
-    # 处理所有待处理的事件
-    for _ in range(5):  # 多次处理事件确保窗口正确显示
+    for _ in range(5):
         QApplication.processEvents()
-    print("多次调用processEvents()确保事件循环处理完成")
     
-    # 启动淡入动画
     capture_widget.fade_in()
     
-    # 返回widget实例以便外部控制
     return capture_widget
