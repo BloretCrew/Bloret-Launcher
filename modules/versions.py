@@ -254,9 +254,6 @@ def delete_minecraft_version(self,version,label,card,MINECRAFT_DIR,homeInterface
                 duration=5000,
                 parent=self
             )
-        run_choose = homeInterface.findChild(ComboBox, "run_choose")
-        run_choose.clear()
-        run_choose.addItems(self.run_cmcl_list(True))
     except Exception:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         handle_exception(exc_type, exc_value, exc_traceback)

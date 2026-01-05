@@ -184,8 +184,6 @@ def i18n_widgets(self):
     i18n_label_widget_label(self.multiplayerInterface, "client")
     i18n_label_widget_label(self.downloadInterface, "download")
     i18n_label_widget_label(self.toolsInterface, "tools")
-    i18n_label_widget_label(self.versionInterface, "version")
-    i18n_label_widget_label(self.BBSInterface, "bbs")
     i18n_label_widget_label(self.modInterface, "mods")
     i18n_label_widget_label(self.passportInterface, "passport")
     i18n_label_widget_label(self.settingsInterface, "settings")

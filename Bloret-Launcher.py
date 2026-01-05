@@ -49,8 +49,7 @@ from modules.systems import (
 )
 from modules.setup_ui import (
     setup_home_ui, setup_download_old_ui, setup_tools_ui, setup_passport_ui, 
-    setup_settings_ui, setup_info_ui, load_ui, setup_version_ui, 
-    setup_BBS_ui, setup_Mod_ui, setup_multiplayer_ui, setup_download_ui
+    setup_settings_ui, setup_info_ui, load_ui, setup_Mod_ui, setup_multiplayer_ui, setup_download_ui
 )
 from modules.customize import CustomizeRun
 from modules.global_hotkey import init_global_hotkeys, get_signal_emitter
@@ -64,6 +63,7 @@ from modules.launch import Get_Run_Script
 from modules.i18n import i18n_widgets, i18nText
 from modules.ShortCut import ScreenShortCut
 from modules.install import InstallMinecraftVersion
+from modules.VersionInfo import GetMinecraftList
 
 config = read()
 
@@ -895,7 +895,7 @@ class MainWindow(FluentWindow):
             # BLglobals.set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
    
     def run_cmcl(self, version, HomePage):
-        log(f"minecraft_list:{BLglobals.minecraft_list}")
+        log(f"minecraft_list:{GetMinecraftList()}")
         if version not in BLglobals.minecraft_list:
             CustomizeRun(self,version)
         else:

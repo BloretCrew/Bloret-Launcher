@@ -8,8 +8,8 @@ import requests
 
 # 2. 第三方库 (PyQt5)
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
-    QListWidget, QListWidgetItem, QLineEdit, QLabel, QPushButton,
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+    QLineEdit, QLabel, QPushButton,
     QSizePolicy, QFileDialog, QFileIconProvider
 )
 from PyQt5.QtGui import QDesktopServices, QPixmap, QColor, QIcon, QMovie
@@ -22,8 +22,8 @@ from qfluentwidgets import (
     SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton,
     SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit,
     CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget,
-    ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox,
-    TabBar, CheckBox, Pivot, SegmentedWidget
+    ToolButton, MessageBoxBase, MessageBox,
+    TabBar, CheckBox
 )
 
 # 4. 自定义模块 (Bloret Launcher Modules)
@@ -44,14 +44,12 @@ from modules.links import (
 )
 from modules.querys import query_player_uuid, query_player_skin, query_player_name
 from modules.versions import (
-    delete_minecraft_version, Change_minecraft_version_name,
     delete_Customize, Change_Customize_name, open_minecraft_version_folder,
     on_other_version_selected, open_core_management
 )
 from modules.install import InstallMinecraftVersion
 from modules.modrinth import search_mods, Get_Mod_File_Download_Url, add_mrpack
 from modules.win11toast import notify, update_progress
-from modules.local_client import OnlineClient
 from modules.java import InstallJava, java_versions
 from modules.i18n import i18nText
 from modules.customize import CustomizeAdd, CustomizeRun
@@ -354,7 +352,20 @@ class LaunchSelectorDialog(MessageBoxBase):
     def __init__(self, parent=None, items=None):
         super().__init__(parent)
         self.titleLabel = SubtitleLabel(i18nText("选择启动项目"), self)
+        
+        # 标题居中
+        # self.titleLabel.setAlignment(Qt.AlignCenter)
+
         self.viewLayout.addWidget(self.titleLabel)
+        
+        self.tipLabel = CaptionLabel(i18nText("右键单击启动项可进行管理。"), self)
+        # 设置指定的颜色: Light=[127,127,127,255], Dark=[185,185,185,255]
+        self.tipLabel.setTextColor(QColor(127, 127, 127, 255), QColor(185, 185, 185, 255))
+
+        # 提示信息居中
+        # self.tipLabel.setAlignment(Qt.AlignCenter)
+        
+        self.viewLayout.addWidget(self.tipLabel)
         
         # 使用滚动区域容纳卡片列表
         self.scrollArea = SmoothScrollArea(self)
@@ -467,18 +478,6 @@ class LaunchSelectorDialog(MessageBoxBase):
                 open_core_management(main_window, v_name, minecraft_dir, home_interface)
                 self.refresh_list()
             menu.addAction(Action(FluentIcon.SETTING, i18nText('核心管理'), triggered=lambda: QTimer.singleShot(100, open_manage)))
-
-            # 更名
-            def rename():
-                Change_minecraft_version_name(main_window, v_name, label, minecraft_dir, home_interface)
-                self.refresh_list()
-            menu.addAction(Action(FluentIcon.EDIT, i18nText('更名'), triggered=rename))
-
-            # 删除
-            def delete():
-                delete_minecraft_version(main_window, v_name, label, card, minecraft_dir, home_interface)
-                self.refresh_list()
-            menu.addAction(Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: QTimer.singleShot(100, delete)))
 
             # 打开文件位置
             menu.addAction(Action(FluentIcon.FOLDER, i18nText('打开文件位置'), triggered=lambda: open_minecraft_version_folder(main_window, v_name, minecraft_dir)))
@@ -2931,11 +2930,30 @@ class BlorikoModRecommendationDialog(MessageBoxBase):
             InfoBar.warning(title="提示", content="未选择任何 Mod", parent=self.widget)
             return
 
-        target_version = self.versionCombo.currentText()
+        folder_name = self.versionCombo.currentText()
+        
+        actual_version = folder_name
+        
+        # 1. 优先尝试从 .BL.json 映射中获取 version 字段
+        if folder_name in self.version_mappings:
+            actual_version = self.version_mappings[folder_name].get("version", folder_name)
+            log(f"BlorikoMod: 从 .BL.json 获取到真实版本号: {actual_version}")
+        else:
+            # 2. 如果映射失败 (例如文件夹存在但不在 JSON 中)，使用正则提取纯数字版本号
+            # 匹配类似 1.21.8, 1.20.1 等开头的字符串
+            match = re.match(r"^(\d+\.\d+(\.\d+)?)", folder_name)
+            if match:
+                extracted_ver = match.group(1)
+                log(f"BlorikoMod: 映射查找失败，从 '{folder_name}' 提取版本号为 '{extracted_ver}'")
+                actual_version = extracted_ver
+            else:
+                log(f"BlorikoMod: 警告 - 无法确定 '{folder_name}' 的真实版本号，将直接使用文件夹名", logging.WARNING)
+
         self.yesButton.setEnabled(False)
         self.yesButton.setText(i18nText("正在安装..."))
         
-        self.download_thread = ModBatchDownloadThread(selected_slugs, target_version, self.minecraft_dir)
+        self.download_thread = ModBatchDownloadThread(selected_slugs, folder_name, self.minecraft_dir, actual_version)
+        
         self.download_thread.progress_signal.connect(self.update_download_progress)
         self.download_thread.finished_signal.connect(self.on_download_finished)
         self.download_thread.start()
@@ -2962,11 +2980,12 @@ class ModBatchDownloadThread(QThread):
     progress_signal = pyqtSignal(str, bool) # message, is_error
     finished_signal = pyqtSignal(int, int) # success_count, fail_count
 
-    def __init__(self, slugs, version_folder, minecraft_dir):
+    def __init__(self, slugs, version_folder, minecraft_dir, game_version):
         super().__init__()
         self.slugs = slugs
         self.version_folder = version_folder
         self.minecraft_dir = minecraft_dir
+        self.game_version = game_version # 存储真实的游戏版本号 (如 1.20.1)
 
     def run(self):
         success = 0
@@ -2981,18 +3000,17 @@ class ModBatchDownloadThread(QThread):
             self.progress_signal.emit(f"正在安装 ({i+1}/{total}): {slug}", False)
             
             try:
-                # 获取下载链接 (默认尝试 Fabric，因为 Modrinth Fabric 居多，也可以尝试检测)
-                # 注意：这里我们假设是 Fabric，如果需要更精确，需要解析 versions 文件夹下的 json 或让用户选
-                url = Get_Mod_File_Download_Url(slug, "fabric") 
+                # 明确指定 loader 为 fabric，并指定游戏版本
+                url = Get_Mod_File_Download_Url(slug, loaders="fabric", game_versions=self.game_version) 
                 
-                if not url:
-                    # 尝试 Forge
-                    url = Get_Mod_File_Download_Url(slug, "forge")
-                
+                # 如果指定版本没有找到，url 会是 None，这里不再尝试 Forge，因为不兼容
                 if url:
                     filename = url.split("/")[-1]
                     file_path = os.path.join(mod_dir, filename)
                     
+                    # 记录详细日志以便调试
+                    log(f"开始下载 Mod: {slug} -> {file_path} (URL: {url})")
+
                     response = requests.get(url, stream=True)
                     response.raise_for_status()
                     
@@ -3001,7 +3019,7 @@ class ModBatchDownloadThread(QThread):
                             f.write(chunk)
                     success += 1
                 else:
-                    log(f"无法获取 Mod 下载链接: {slug}", logging.ERROR)
+                    log(f"无法获取 Mod 下载链接: {slug} (Fabric, {self.game_version})", logging.ERROR)
                     fail += 1
             except Exception as e:
                 log(f"下载 Mod 失败 {slug}: {e}", logging.ERROR)
