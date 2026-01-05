@@ -529,6 +529,7 @@ class MainWindow(FluentWindow):
             self.cmcl_data = None
             self.player_name = i18nText("未登录")
             self.login_mod = i18nText("请在下方登录")
+
     def initNavigation(self):
         self.homeInterface = QWidget()
         self.downloadInterface = QWidget()
@@ -571,7 +572,10 @@ class MainWindow(FluentWindow):
         load_ui("ui/settings.ui", parent=self.settingsInterface)
         load_ui("ui/info.ui", parent=self.infoInterface)
         i18n_widgets(self)
+        
+        # 1. 先初始化主页，这里面会调用 run_cmcl_list 更新全局列表
         setup_home_ui(self,self.homeInterface)
+        
         setup_download_ui(self,self.downloadInterface)
         setup_tools_ui(self,self.toolsInterface)
         setup_info_ui(self,self.infoInterface)
@@ -581,11 +585,21 @@ class MainWindow(FluentWindow):
         setup_passport_ui(self,self.passportInterface,BLglobals.server_ip,self.homeInterface)
         setup_settings_ui(self,self.settingsInterface)
         
+        # 2. 此时 BLglobals 中的列表应该已经被 setup_home_ui -> run_cmcl_list 填充了
+        # 如果不放心，可以再次手动获取一下，或者直接使用全局变量
+        if not hasattr(BLglobals, 'minecraft_list'):
+            # 如果全局变量未初始化，尝试手动运行一次列表刷新逻辑
+            # 注意：这里我们不能直接调用 run_cmcl_list 因为它依赖 config
+            # 但既然是 MainWindow 的方法，我们可以直接调
+            self.run_cmcl_list(True)
+            
         mc_list = getattr(BLglobals, 'minecraft_list', [])
         cust_list = getattr(BLglobals, 'customize_list', [])
         
-        setup_version_ui(self, self.versionInterface, mc_list, cust_list, BLglobals.minecraft_dir, self.homeInterface)
+        log(f"版本管理UI初始化列表: MC={mc_list}, Custom={cust_list}")
         
+        setup_version_ui(self, self.versionInterface, mc_list, cust_list, BLglobals.minecraft_dir, self.homeInterface)
+
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()
         end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())

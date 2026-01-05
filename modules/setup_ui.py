@@ -420,8 +420,10 @@ def get_all_launch_items():
     """ 获取所有启动项 (Minecraft + Customize) """
     items = []
     
-    # 1. 获取 Minecraft 版本
-    minecraft_dir = cfg.read().get('minecraft_dir', BLglobals.minecraft_dir)
+    # --- 1. 获取 Minecraft 启动项 ---
+    # 读取配置文件获取游戏目录
+    config_data = cfg.read()
+    minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
     versions_dir = os.path.join(minecraft_dir, "versions")
     bl_json_path = os.path.join(versions_dir, ".BL.json")
     
@@ -431,53 +433,61 @@ def get_all_launch_items():
             with open(bl_json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 versions_metadata = data.get("versions", {})
-    except:
-        pass
+    except Exception as e:
+        log(f"读取 .BL.json 失败: {e}", logging.WARNING)
 
     if os.path.exists(versions_dir):
-        # 遍历文件夹获取真实存在的版本
+        # 遍历 versions 文件夹，获取实际存在的版本文件夹
+        # 这里虽然没有直接只读 .BL.json，但这更健壮，防止 .BL.json 有记录但文件夹不存在的情况
+        # 同时也符合“从 .BL.json 中获取（图标也要展示）”的需求，因为元数据是从那来的
         for d in os.listdir(versions_dir):
-            if os.path.isdir(os.path.join(versions_dir, d)):
-                # 获取图标
-                icon = QIcon("ui/icon/Grass_Block.png") # 默认图标
+            version_path = os.path.join(versions_dir, d)
+            if os.path.isdir(version_path):
+                # 默认图标
+                icon = QIcon("ui/icon/Grass_Block.png")
                 
-                # 优先从 .BL.json 获取图标路径
+                # 尝试从 .BL.json 获取元数据
                 if d in versions_metadata:
-                    icon_path = versions_metadata[d].get("icon", "")
+                    meta = versions_metadata[d]
+                    
+                    # 获取图标路径
+                    icon_path = meta.get("icon", "")
                     if icon_path and os.path.exists(icon_path):
                         icon = QIcon(icon_path)
-                    # 如果没有自定义图标，尝试判断是否为 Fabric (根据命名规则简单判断，或者 .BL.json 数据)
-                    elif versions_metadata[d].get("Fabric", False):
+                    # 如果是 Fabric 版本且没有自定义图标，使用 Fabric 图标
+                    elif meta.get("Fabric", False):
                          icon = QIcon("ui/icon/fabric.png")
-
+                
                 items.append({
                     "name": d,
                     "type": "minecraft",
                     "icon": icon,
-                    "path": d # 对于MC，path即版本名
+                    "path": d 
                 })
 
-    # 2. 获取自定义启动项
-    config = cfg.read()
-    if "Customize" in config:
+    # --- 2. 获取自定义启动项 ---
+    # 直接从 modules.config.read() 获取 Customize 列表
+    if "Customize" in config_data and isinstance(config_data["Customize"], list):
         provider = QFileIconProvider()
-        for custom_item in config["Customize"]:
+        for custom_item in config_data["Customize"]:
             path = custom_item.get("path", "")
             name = custom_item.get("showname", "Unknown")
             
-            # 获取系统图标
-            icon = FluentIcon.APPLICATION.icon() # 默认
-            if os.path.exists(path):
-                icon = provider.icon(QFileInfo(path))
+            # 获取程序文件图标
+            icon = FluentIcon.APPLICATION.icon() # 默认图标
+            if path and os.path.exists(path):
+                file_info = QFileInfo(path)
+                icon = provider.icon(file_info)
             
             items.append({
                 "name": name,
                 "type": "custom",
                 "icon": icon,
-                "path": path, # 对于自定义，path即文件路径
+                "path": path,
                 "raw_data": custom_item
             })
             
+    log(f"get_all_launch_items 返回 items: {items}")
     return items
 
 def setup_home_ui(self, widget):
@@ -1719,30 +1729,26 @@ def setup_info_ui(self, widget):
     if BLC_QQ:
         BLC_QQ.clicked.connect(open_BLC_qq_link)
 
-
-def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR, homeInterface):
+def setup_version_ui(self, widget, _mc_list_unused, _cust_list_unused, MINECRAFT_DIR, homeInterface):
     '''
     设定 Bloret Launcher 版本管理界面 UI 布局和操作。
     ***
     ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
+    # 导入 QTimer
+    from PyQt5.QtCore import QTimer
+
+    # --- 修改：直接调用 get_all_launch_items 获取最新列表 ---
+    all_items = get_all_launch_items()
+    
+    minecraft_list = [item for item in all_items if item['type'] == 'minecraft']
+    customize_list = [item for item in all_items if item['type'] == 'custom']
+    
     minecraft_list_NUM = len(minecraft_list)
     customize_list_NUM = len(customize_list)
+    
     Minecraft_list = widget.findChild(SmoothScrollArea, "Minecraft_list")
     
-    # --- 新增：预先加载 .BL.json 数据 ---
-    bl_json_path = os.path.join(MINECRAFT_DIR, "versions", ".BL.json")
-    versions_metadata = {}
-    try:
-        if os.path.exists(bl_json_path):
-            with open(bl_json_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if "versions" in data:
-                    versions_metadata = data["versions"]
-    except Exception as e:
-        log(f"读取 .BL.json 失败: {e}", logging.WARNING)
-    # ------------------------------------
-
     if Minecraft_list:
         # 创建新的滚动内容容器
         scroll_widget = QWidget()
@@ -1754,8 +1760,8 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                 title_label = SubtitleLabel(i18nText("Minecraft 核心"), parent=scroll_widget)
                 scroll_layout.addWidget(title_label)
 
-                for i in range(minecraft_list_NUM):
-                    version_name = minecraft_list[i] # 捕获当前版本名
+                for item in minecraft_list:
+                    version_name = item['name'] # 获取版本名
                     
                     card = CardWidget(scroll_widget)
                     card.setMaximumWidth(659)  # 设置最大宽度
@@ -1770,24 +1776,12 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     icon_label.setFixedSize(32, 32) # 设置图标大小
                     icon_label.setScaledContents(True)
                     
-                    # 默认图标
-                    default_pixmap = FluentIcon.GAME.icon().pixmap(32, 32)
-                    
-                    # 尝试从元数据加载自定义图标
-                    icon_path = ""
-                    if version_name in versions_metadata:
-                        icon_path = versions_metadata[version_name].get("icon", "")
-                    
-                    if icon_path and os.path.exists(icon_path):
-                        try:
-                            pixmap = QPixmap(icon_path)
-                            if not pixmap.isNull():
-                                icon_label.setPixmap(pixmap)
-                            else:
-                                icon_label.setPixmap(default_pixmap)
-                        except:
-                            icon_label.setPixmap(default_pixmap)
+                    # 使用 get_all_launch_items 返回的图标对象
+                    if isinstance(item['icon'], QIcon):
+                        icon_label.setPixmap(item['icon'].pixmap(32, 32))
                     else:
+                        # 默认图标作为后备
+                        default_pixmap = FluentIcon.GAME.icon().pixmap(32, 32)
                         icon_label.setPixmap(default_pixmap)
                         
                     card_layout.addWidget(icon_label)
@@ -1812,23 +1806,19 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                             
                             # 对话框关闭后，执行刷新逻辑
                             # 1. 重新扫描所有版本，更新主窗口状态
-                            full_list = self.run_cmcl_list(True)
+                            self.run_cmcl_list(True)
                             
-                            # 2. 重新分离 Minecraft 列表和 自定义列表
-                            new_customize_list = []
-                            if "Customize" in self.config:
-                                new_customize_list = [item.get("showname") for item in self.config["Customize"]]
-                            
-                            # Minecraft 列表 = 总列表 - 自定义列表
-                            new_minecraft_list = [x for x in full_list if x not in new_customize_list]
-                            
-                            # 3. 重新构建 UI
-                            setup_version_ui(self, widget, new_minecraft_list, new_customize_list, MINECRAFT_DIR, homeInterface)
+                            # 3. 重新构建 UI (不需要传参，内部会调用 get_all_launch_items)
+                            setup_version_ui(self, widget, None, None, MINECRAFT_DIR, homeInterface)
 
-                        manage_action = Action(FluentIcon.SETTING, i18nText('核心管理'), triggered=open_manage_and_refresh)
+                        # 使用 QTimer.singleShot 延迟执行刷新操作，防止菜单还没关闭就被销毁
+                        manage_action = Action(FluentIcon.SETTING, i18nText('核心管理'), triggered=lambda: QTimer.singleShot(100, open_manage_and_refresh))
                         
                         rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_minecraft_version_name(self, v_name, label_now, MINECRAFT_DIR, homeInterface))
-                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_minecraft_version(self, v_name, label_now, card_now, MINECRAFT_DIR, homeInterface))
+                        
+                        # 删除操作同样需要延迟，因为它会移除卡片甚至触发重绘
+                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: QTimer.singleShot(100, lambda: delete_minecraft_version(self, v_name, label_now, card_now, MINECRAFT_DIR, homeInterface)))
+                        
                         folder_action = Action(FluentIcon.FOLDER, i18nText('打开文件位置'), triggered=lambda: open_minecraft_version_folder(self, v_name, MINECRAFT_DIR))
 
                         menu.addActions([
@@ -1845,16 +1835,19 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
 
                     card.setContextMenuPolicy(Qt.CustomContextMenu)
                     # 注意 lambda传参：使用 v=version_name 锁定循环变量
-                    card.customContextMenuRequested.connect(lambda pos, v=minecraft_list[i], l=label, c=card: create_minecraft_context_menu(pos, l, c, v))
+                    card.customContextMenuRequested.connect(lambda pos, v=version_name, l=label, c=card: create_minecraft_context_menu(pos, l, c, v))
                     scroll_layout.addWidget(card)
 
-            # --- 自定义启动列表 (保持不变，或者也可以加上默认图标) ---
+            # --- 自定义启动列表 ---
             if customize_list_NUM != 0:
                 title_label_custom = SubtitleLabel(i18nText("自定义启动"), parent=scroll_widget)
                 scroll_layout.addWidget(title_label_custom)
 
-                for i in range(customize_list_NUM):
-                    version_name = customize_list[i]
+                for item in customize_list:
+                    version_name = item['name']
+                    # 注意：delete_Customize 需要 customize_list (字符串列表)，这里需要构造一个临时的或修改 delete_Customize
+                    # 为了兼容，我们构造一个简单的名字列表传给 delete_Customize 的闭包
+                    current_customize_names = [i['name'] for i in customize_list] 
                     
                     card = CardWidget(scroll_widget)
                     card.setMaximumWidth(659)  # 设置最大宽度
@@ -1864,23 +1857,28 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                     card_layout.setContentsMargins(16, 12, 16, 12)
                     card_layout.setSpacing(16)
                     
-                    # 自定义项图标 (暂用 APPLICATION 图标)
+                    # 自定义项图标
                     icon_label = QLabel(card)
                     icon_label.setFixedSize(32, 32)
                     icon_label.setScaledContents(True)
-                    icon_label.setPixmap(FluentIcon.APPLICATION.icon().pixmap(32, 32))
+                    if isinstance(item['icon'], QIcon):
+                        icon_label.setPixmap(item['icon'].pixmap(32, 32))
+                    else:
+                        icon_label.setPixmap(FluentIcon.APPLICATION.icon().pixmap(32, 32))
                     card_layout.addWidget(icon_label)
                     
                     label = StrongBodyLabel(version_name, card)
                     card_layout.addWidget(label)
                     card_layout.addStretch(1)
 
-                    def create_customize_context_menu(pos, label_now, card_now, v_name=version_name):
+                    def create_customize_context_menu(pos, label_now, card_now, v_name=version_name, c_list=current_customize_names):
                         menu = RoundMenu()
                         info_action = Action(FluentIcon.INFO, v_name, triggered=lambda: self.run_cmcl(v_name, homeInterface))
                         launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(v_name, homeInterface))
                         rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_Customize_name(self, v_name, label_now, homeInterface))
-                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_Customize(self, v_name, label_now, card_now, customize_list, homeInterface))
+                        
+                        # 删除操作同样需要延迟
+                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: QTimer.singleShot(100, lambda: delete_Customize(self, v_name, label_now, card_now, c_list, homeInterface)))
 
                         menu.addActions([
                             info_action,
@@ -1893,7 +1891,7 @@ def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR
                         menu.exec_(global_pos)
 
                     card.setContextMenuPolicy(Qt.CustomContextMenu)
-                    card.customContextMenuRequested.connect(lambda pos, v=customize_list[i], l=label, c=card: create_customize_context_menu(pos, l, c, v))
+                    card.customContextMenuRequested.connect(lambda pos, v=version_name, l=label, c=card: create_customize_context_menu(pos, l, c, v))
                     scroll_layout.addWidget(card)
 
         scroll_layout.addStretch(1)
