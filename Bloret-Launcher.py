@@ -534,8 +534,6 @@ class MainWindow(FluentWindow):
         self.homeInterface = QWidget()
         self.downloadInterface = QWidget()
         self.toolsInterface = QWidget()
-        self.versionInterface = QWidget()
-        self.BBSInterface = QWidget()
         self.modInterface = QWidget()
         self.passportInterface = QWidget()
         self.settingsInterface = QWidget()
@@ -543,8 +541,6 @@ class MainWindow(FluentWindow):
         self.homeInterface.setObjectName("home")
         self.downloadInterface.setObjectName("download")
         self.toolsInterface.setObjectName("tools")
-        self.versionInterface.setObjectName("version")
-        self.BBSInterface.setObjectName("BBS")
         self.modInterface.setObjectName("mod")
         self.passportInterface.setObjectName("passport")
         self.settingsInterface.setObjectName("settings")
@@ -552,8 +548,6 @@ class MainWindow(FluentWindow):
         self.addSubInterface(self.homeInterface, QIcon("bloret.ico"), i18nText("主页"), NavigationItemPosition.TOP)
         self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, i18nText("下载"), NavigationItemPosition.TOP)
         self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, i18nText("工具"), NavigationItemPosition.SCROLL)
-        self.addSubInterface(self.versionInterface, FluentIcon.APPLICATION, i18nText("版本管理"), NavigationItemPosition.SCROLL)
-        self.addSubInterface(self.BBSInterface, FluentIcon.TILES, "Bloret BBS", NavigationItemPosition.SCROLL)
         self.addSubInterface(self.modInterface, FluentIcon.TRANSPARENT, "Mods", NavigationItemPosition.SCROLL)
         self.addSubInterface(self.passportInterface, FluentIcon.PEOPLE, i18nText("通行证"), NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, i18nText("设置"), NavigationItemPosition.BOTTOM)
@@ -565,8 +559,6 @@ class MainWindow(FluentWindow):
         load_ui("ui/client.ui", parent=self.multiplayerInterface)
         load_ui("ui/download.ui", parent=self.downloadInterface)
         load_ui("ui/tools.ui", parent=self.toolsInterface)
-        load_ui("ui/version.ui", parent=self.versionInterface)
-        load_ui("ui/bbs.ui", parent=self.BBSInterface)
         load_ui("ui/mods.ui", parent=self.modInterface)
         load_ui("ui/passport.ui", parent=self.passportInterface)
         load_ui("ui/settings.ui", parent=self.settingsInterface)
@@ -579,7 +571,6 @@ class MainWindow(FluentWindow):
         setup_download_ui(self,self.downloadInterface)
         setup_tools_ui(self,self.toolsInterface)
         setup_info_ui(self,self.infoInterface)
-        setup_BBS_ui(self,self.BBSInterface,BLglobals.server_ip)
         setup_Mod_ui(self,self.modInterface)
         setup_multiplayer_ui(self,self.multiplayerInterface, BLglobals.server_ip)
         setup_passport_ui(self,self.passportInterface,BLglobals.server_ip,self.homeInterface)
@@ -597,8 +588,6 @@ class MainWindow(FluentWindow):
         cust_list = getattr(BLglobals, 'customize_list', [])
         
         log(f"版本管理UI初始化列表: MC={mc_list}, Custom={cust_list}")
-        
-        setup_version_ui(self, self.versionInterface, mc_list, cust_list, BLglobals.minecraft_dir, self.homeInterface)
 
     def animate_sidebar(self):
         start_geometry = self.navigationInterface.geometry()

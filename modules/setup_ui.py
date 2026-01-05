@@ -367,10 +367,31 @@ class LaunchSelectorDialog(MessageBoxBase):
         self.scrollLayout.setContentsMargins(5, 5, 15, 5) # 边距
         self.scrollLayout.setAlignment(Qt.AlignTop)
         
-        self.items = items or []
+        self.scrollArea.setWidget(self.scrollContent)
+        self.viewLayout.addWidget(self.scrollArea)
+        
+        # 隐藏确定按钮，因为点击选择按钮即选中
+        self.yesButton.hide()
+        self.cancelButton.setText(i18nText("取消"))
+        
+        self.widget.setMinimumWidth(450) # 稍微加宽一点以适应卡片布局
+        self.widget.setMinimumHeight(500)
+
+        # 填充列表
+        self.populate_list(items)
+
+    def populate_list(self, items=None):
+        """ 填充或刷新列表 """
+        # 清空现有列表
+        while self.scrollLayout.count():
+            item = self.scrollLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # 如果没有传入 items，则重新获取
+        self.items = items if items is not None else get_all_launch_items()
         self.selected_item = None
         
-        # 填充卡片列表
         for item in self.items:
             # 创建卡片
             card = CardWidget(self.scrollContent)
@@ -399,23 +420,106 @@ class LaunchSelectorDialog(MessageBoxBase):
             cardLayout.addWidget(nameLabel)
             cardLayout.addStretch(1) # 弹簧，将按钮推到最右侧
             cardLayout.addWidget(selectBtn)
+
+            # --- 右键菜单逻辑 ---
+            card.setContextMenuPolicy(Qt.CustomContextMenu)
+            
+            # 使用默认参数捕获循环变量
+            def on_context_menu(pos, i=item, c=card, l=nameLabel):
+                self.show_context_menu(pos, i, c, l)
+                
+            card.customContextMenuRequested.connect(on_context_menu)
+            # --------------------
             
             self.scrollLayout.addWidget(card)
-
-        self.scrollArea.setWidget(self.scrollContent)
-        self.viewLayout.addWidget(self.scrollArea)
-        
-        # 隐藏确定按钮，因为点击选择按钮即选中
-        self.yesButton.hide()
-        self.cancelButton.setText(i18nText("取消"))
-        
-        self.widget.setMinimumWidth(450) # 稍微加宽一点以适应卡片布局
-        self.widget.setMinimumHeight(500)
 
     def on_item_clicked(self, item):
         """ 点击选择按钮触发 """
         self.selected_item = item
         self.accept() # 关闭并返回 True
+
+    def refresh_list(self):
+        """ 刷新列表显示 """
+        # 延时一点以确保之前的操作（如删除动画或弹窗关闭）完成
+        QTimer.singleShot(100, lambda: self.populate_list())
+
+    def show_context_menu(self, pos, item, card, label):
+        """ 显示右键菜单 """
+        main_window = self.parent()
+        if not main_window: return
+
+        v_name = item['name']
+        item_type = item.get('type')
+        
+        # 获取配置和目录
+        config_data = cfg.read()
+        minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+        home_interface = getattr(main_window, 'homeInterface', None)
+
+        menu = RoundMenu(parent=card)
+        
+        # 启动
+        menu.addAction(Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.launch_and_close(v_name, item_type == 'custom')))
+
+        if item_type == 'minecraft':
+            # 核心管理
+            def open_manage():
+                open_core_management(main_window, v_name, minecraft_dir, home_interface)
+                self.refresh_list()
+            menu.addAction(Action(FluentIcon.SETTING, i18nText('核心管理'), triggered=lambda: QTimer.singleShot(100, open_manage)))
+
+            # 更名
+            def rename():
+                Change_minecraft_version_name(main_window, v_name, label, minecraft_dir, home_interface)
+                self.refresh_list()
+            menu.addAction(Action(FluentIcon.EDIT, i18nText('更名'), triggered=rename))
+
+            # 删除
+            def delete():
+                delete_minecraft_version(main_window, v_name, label, card, minecraft_dir, home_interface)
+                self.refresh_list()
+            menu.addAction(Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: QTimer.singleShot(100, delete)))
+
+            # 打开文件位置
+            menu.addAction(Action(FluentIcon.FOLDER, i18nText('打开文件位置'), triggered=lambda: open_minecraft_version_folder(main_window, v_name, minecraft_dir)))
+
+        elif item_type == 'custom':
+            # 更名
+            def rename_custom():
+                Change_Customize_name(main_window, v_name, label, home_interface)
+                self.refresh_list()
+            menu.addAction(Action(FluentIcon.EDIT, i18nText('更名'), triggered=rename_custom))
+            
+            # 删除
+            def delete_custom():
+                delete_Customize(main_window, v_name, label, card, BLglobals.customize_list, home_interface)
+                self.refresh_list()
+            menu.addAction(Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: QTimer.singleShot(100, delete_custom)))
+
+        global_pos = card.mapToGlobal(pos)
+        menu.exec_(global_pos)
+
+    def launch_and_close(self, name, is_custom=False):
+        """ 启动并关闭选择器 """
+        main_window = self.parent()
+        
+        # 保存选择
+        config = cfg.read()
+        config["ChoosedRun"] = name
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=4, ensure_ascii=False)
+            
+        # 设置选中的项目以便调用者知道（虽然这里直接启动了）
+        self.selected_item = next((i for i in self.items if i['name'] == name), None)
+        
+        # 启动
+        if is_custom:
+            CustomizeRun(main_window, name)
+        else:
+            main_window.run_cmcl(name, main_window.homeInterface)
+            
+        self.accept()
+
 def get_all_launch_items():
     """ 获取所有启动项 (Minecraft + Customize) """
     items = []
@@ -1729,246 +1833,6 @@ def setup_info_ui(self, widget):
     if BLC_QQ:
         BLC_QQ.clicked.connect(open_BLC_qq_link)
 
-def setup_version_ui(self, widget, _mc_list_unused, _cust_list_unused, MINECRAFT_DIR, homeInterface):
-    '''
-    设定 Bloret Launcher 版本管理界面 UI 布局和操作。
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-    '''
-    # 导入 QTimer
-    from PyQt5.QtCore import QTimer
-
-    # --- 修改：直接调用 get_all_launch_items 获取最新列表 ---
-    all_items = get_all_launch_items()
-    
-    minecraft_list = [item for item in all_items if item['type'] == 'minecraft']
-    customize_list = [item for item in all_items if item['type'] == 'custom']
-    
-    minecraft_list_NUM = len(minecraft_list)
-    customize_list_NUM = len(customize_list)
-    
-    Minecraft_list = widget.findChild(SmoothScrollArea, "Minecraft_list")
-    
-    if Minecraft_list:
-        # 创建新的滚动内容容器
-        scroll_widget = QWidget()
-        scroll_layout = QVBoxLayout(scroll_widget)
-
-        if minecraft_list_NUM != 0 or customize_list_NUM != 0:
-            # --- Minecraft 核心列表 ---
-            if minecraft_list_NUM != 0:
-                title_label = SubtitleLabel(i18nText("Minecraft 核心"), parent=scroll_widget)
-                scroll_layout.addWidget(title_label)
-
-                for item in minecraft_list:
-                    version_name = item['name'] # 获取版本名
-                    
-                    card = CardWidget(scroll_widget)
-                    card.setMaximumWidth(659)  # 设置最大宽度
-                    
-                    # --- 修改：使用水平布局来容纳图标和文字 ---
-                    card_layout = QHBoxLayout(card)
-                    card_layout.setContentsMargins(16, 12, 16, 12)
-                    card_layout.setSpacing(16)
-                    
-                    # 1. 图标部分
-                    icon_label = QLabel(card)
-                    icon_label.setFixedSize(32, 32) # 设置图标大小
-                    icon_label.setScaledContents(True)
-                    
-                    # 使用 get_all_launch_items 返回的图标对象
-                    if isinstance(item['icon'], QIcon):
-                        icon_label.setPixmap(item['icon'].pixmap(32, 32))
-                    else:
-                        # 默认图标作为后备
-                        default_pixmap = FluentIcon.GAME.icon().pixmap(32, 32)
-                        icon_label.setPixmap(default_pixmap)
-                        
-                    card_layout.addWidget(icon_label)
-
-                    # 2. 文字部分
-                    label = StrongBodyLabel(version_name, card)
-                    card_layout.addWidget(label)
-                    card_layout.addStretch(1) # 文字左对齐
-                    # ----------------------------------------
-
-                    # 定义右键菜单逻辑
-                    def create_minecraft_context_menu(pos, label_now, card_now, v_name=version_name):
-                        menu = RoundMenu()
-                        
-                        info_action = Action(FluentIcon.INFO, v_name, triggered=lambda: self.run_cmcl(v_name, homeInterface))
-                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(v_name, homeInterface))
-                        
-                        # --- 核心管理与刷新逻辑 ---
-                        def open_manage_and_refresh():
-                            # 打开管理对话框 (会阻塞直到关闭)
-                            open_core_management(self, v_name, MINECRAFT_DIR, homeInterface)
-                            
-                            # 对话框关闭后，执行刷新逻辑
-                            # 1. 重新扫描所有版本，更新主窗口状态
-                            self.run_cmcl_list(True)
-                            
-                            # 3. 重新构建 UI (不需要传参，内部会调用 get_all_launch_items)
-                            setup_version_ui(self, widget, None, None, MINECRAFT_DIR, homeInterface)
-
-                        # 使用 QTimer.singleShot 延迟执行刷新操作，防止菜单还没关闭就被销毁
-                        manage_action = Action(FluentIcon.SETTING, i18nText('核心管理'), triggered=lambda: QTimer.singleShot(100, open_manage_and_refresh))
-                        
-                        rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_minecraft_version_name(self, v_name, label_now, MINECRAFT_DIR, homeInterface))
-                        
-                        # 删除操作同样需要延迟，因为它会移除卡片甚至触发重绘
-                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: QTimer.singleShot(100, lambda: delete_minecraft_version(self, v_name, label_now, card_now, MINECRAFT_DIR, homeInterface)))
-                        
-                        folder_action = Action(FluentIcon.FOLDER, i18nText('打开文件位置'), triggered=lambda: open_minecraft_version_folder(self, v_name, MINECRAFT_DIR))
-
-                        menu.addActions([
-                            info_action,
-                            launch_action,
-                            manage_action, # 新增的核心管理入口
-                            rename_action,
-                            delete_action,
-                            folder_action
-                        ])
-
-                        global_pos = card_now.mapToGlobal(pos)
-                        menu.exec_(global_pos)
-
-                    card.setContextMenuPolicy(Qt.CustomContextMenu)
-                    # 注意 lambda传参：使用 v=version_name 锁定循环变量
-                    card.customContextMenuRequested.connect(lambda pos, v=version_name, l=label, c=card: create_minecraft_context_menu(pos, l, c, v))
-                    scroll_layout.addWidget(card)
-
-            # --- 自定义启动列表 ---
-            if customize_list_NUM != 0:
-                title_label_custom = SubtitleLabel(i18nText("自定义启动"), parent=scroll_widget)
-                scroll_layout.addWidget(title_label_custom)
-
-                for item in customize_list:
-                    version_name = item['name']
-                    # 注意：delete_Customize 需要 customize_list (字符串列表)，这里需要构造一个临时的或修改 delete_Customize
-                    # 为了兼容，我们构造一个简单的名字列表传给 delete_Customize 的闭包
-                    current_customize_names = [i['name'] for i in customize_list] 
-                    
-                    card = CardWidget(scroll_widget)
-                    card.setMaximumWidth(659)  # 设置最大宽度
-                    
-                    # 同样使用水平布局
-                    card_layout = QHBoxLayout(card)
-                    card_layout.setContentsMargins(16, 12, 16, 12)
-                    card_layout.setSpacing(16)
-                    
-                    # 自定义项图标
-                    icon_label = QLabel(card)
-                    icon_label.setFixedSize(32, 32)
-                    icon_label.setScaledContents(True)
-                    if isinstance(item['icon'], QIcon):
-                        icon_label.setPixmap(item['icon'].pixmap(32, 32))
-                    else:
-                        icon_label.setPixmap(FluentIcon.APPLICATION.icon().pixmap(32, 32))
-                    card_layout.addWidget(icon_label)
-                    
-                    label = StrongBodyLabel(version_name, card)
-                    card_layout.addWidget(label)
-                    card_layout.addStretch(1)
-
-                    def create_customize_context_menu(pos, label_now, card_now, v_name=version_name, c_list=current_customize_names):
-                        menu = RoundMenu()
-                        info_action = Action(FluentIcon.INFO, v_name, triggered=lambda: self.run_cmcl(v_name, homeInterface))
-                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(v_name, homeInterface))
-                        rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_Customize_name(self, v_name, label_now, homeInterface))
-                        
-                        # 删除操作同样需要延迟
-                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: QTimer.singleShot(100, lambda: delete_Customize(self, v_name, label_now, card_now, c_list, homeInterface)))
-
-                        menu.addActions([
-                            info_action,
-                            launch_action,
-                            rename_action,
-                            delete_action
-                        ])
-
-                        global_pos = card_now.mapToGlobal(pos)
-                        menu.exec_(global_pos)
-
-                    card.setContextMenuPolicy(Qt.CustomContextMenu)
-                    card.customContextMenuRequested.connect(lambda pos, v=version_name, l=label, c=card: create_customize_context_menu(pos, l, c, v))
-                    scroll_layout.addWidget(card)
-
-        scroll_layout.addStretch(1)
-
-        # 将构建好的 widget 设置给 SmoothScrollArea
-        # 这会自动替换掉旧的内容，实现刷新效果
-        Minecraft_list.setWidget(scroll_widget)
-        Minecraft_list.setWidgetResizable(True)
-
-def setup_BBS_ui(self, widget, server_ip):
-    '''
-    设定 Bloret Launcher 社区界面 UI 布局和操作。
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-    '''
-    # 绑定 OpenBBS 按钮点击事件
-    open_bbs_button = widget.findChild(QPushButton, "OpenBBS")
-    if open_bbs_button:
-        open_bbs_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(f"{server_ip}bbs")))
-
-    # 从服务器获取 BBS 数据
-    try:
-        response = requests.get(f"{server_ip}api/part")
-        response.raise_for_status()  # 检查请求是否成功
-        bbs_part = response.json()  # 存储数据到 bbs_part 变量
-    except requests.RequestException as e:
-        log(f"无法获取 BBS 数据: {e}", logging.ERROR)
-        bbs_part = {}  # 请求失败时初始化为空字典
-
-    # 找到名为 BBS_list 的 SmoothScrollArea
-    BBS_list = widget.findChild(SmoothScrollArea, "BBS_list")
-    if not BBS_list:
-        log(i18nText("未找到 BBS_list SmoothScrollArea"), logging.ERROR)
-        return
-
-    # 清空 BBS_list 现有内容
-    if BBS_list.widget():
-        BBS_list.widget().deleteLater()
-
-    # 创建新的内容容器和布局
-    scroll_widget = QWidget()
-    scroll_layout = QVBoxLayout(scroll_widget)
-
-    # 遍历 bbs_part 的每个键作为板块标题
-    for part_title, posts in bbs_part.items():
-        # 创建 SubtitleLabel 并设置文本
-        subtitle_label = SubtitleLabel(part_title, parent=scroll_widget)
-        scroll_layout.addWidget(subtitle_label)
-
-        # 根据帖子数量创建对应的 CardWidget
-        for post in posts:
-            card_widget = CardWidget(parent=scroll_widget)
-            card_layout = QVBoxLayout(card_widget)
-
-            # 创建 StrongBodyLabel 并设置帖子标题
-            title_label = StrongBodyLabel(post['title'], parent=card_widget)
-            card_layout.addWidget(title_label)
-
-            # 创建 BodyLabel 并设置帖子文本为 Markdown 形式显示
-            text_label = BodyLabel(post.get('text', ''), parent=card_widget)
-            text_label.setTextFormat(Qt.MarkdownText)
-            text_label.setOpenExternalLinks(True)  # 允许打开外部链接
-            if len(text_label.text()) > 30:
-                text_label.setText(text_label.text()[:50] + '...')
-            card_layout.addWidget(text_label)
-
-            # 创建 PushButton 在浏览器中打开帖子
-            open_button = PushButton(i18nText('在浏览器中打开'), parent=card_widget)
-            open_button.clicked.connect(lambda _, pt=part_title, t=post['title']: QDesktopServices.openUrl(QUrl(f"{server_ip}bbs/{pt}/{t}")))
-            card_layout.addWidget(open_button)
-
-            scroll_layout.addWidget(card_widget)
-
-    # 设置 scroll_widget 为 BBS_list 的内容
-    BBS_list.setWidget(scroll_widget)
-    BBS_list.setWidgetResizable(True)
-    
 def on_search_mod_clicked(self, mod_list, search_term=''):
     # 显示进度条
     if mod_list:
