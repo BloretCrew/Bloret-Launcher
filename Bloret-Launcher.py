@@ -894,18 +894,19 @@ class MainWindow(FluentWindow):
             BLglobals.customize_list = []
             # BLglobals.set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
    
-    def run_cmcl(self, version, HomePage):
+    def run_cmcl(self, version, HomePage=None):
         log(f"minecraft_list:{GetMinecraftList()}")
         if version not in BLglobals.minecraft_list:
             CustomizeRun(self,version)
         else:
-            # 检查 cmcl.json 中是否有账户信息
+            # 检查 config.json 中是否有账户信息
             try:
-                with open('cmcl.json', 'r', encoding='utf-8') as f:
-                    cmcl_data = json.load(f)
+                config_data = cfg.read()
+                mc_account = config_data.get("MinecraftAccount", {})
+                accounts = mc_account.get("accounts", [])
                 
-                # 如果 accounts 字段为空或不存在，提示用户登录
-                if not cmcl_data.get('accounts'):
+                # 如果 accounts 列表为空，提示用户登录
+                if not accounts:
                     msg_box = MessageBox(
                         i18nText('您当前尚未登录'),
                         i18nText('Minecraft 还不知道您是谁，无法启动。请先登录，确认以转到通行证页面。'),
@@ -942,46 +943,58 @@ class MainWindow(FluentWindow):
             log(f"正在启动 {version}")
             
             # 在启动时添加TabBar标签
-            try:
-                # 获取TabBar组件
-                minecraft_tab = HomePage.findChild(TabBar, "MinecraftTab")
-                if minecraft_tab and hasattr(minecraft_tab, 'addTab'):
-                    try:
-                        # 启用关闭按钮
-                        minecraft_tab.setCloseButtonDisplayMode(TabCloseButtonDisplayMode.ON_HOVER)
-                        minecraft_tab.show()
-                        
-                        # 添加标签
-                        minecraft_tab.addTab(
-                            routeKey=version,
-                            text=version,
-                            icon="ui/icon/Grass_Block.png",
-                            onClick=lambda: log(f"点击了标签: {version}")
-                        )
-                        
-                        # 连接关闭信号（如果尚未连接）
-                        if not hasattr(self, '_tab_close_connected'):
-                            minecraft_tab.tabCloseRequested.connect(self.on_tab_close_requested)
-                            self._tab_close_connected = True
-                            self.minecraft_tab = minecraft_tab
+            if HomePage:
+                try:
+                    # 获取TabBar组件
+                    minecraft_tab = HomePage.findChild(TabBar, "MinecraftTab")
+                    if minecraft_tab and hasattr(minecraft_tab, 'addTab'):
+                        try:
+                            # 启用关闭按钮
+                            minecraft_tab.setCloseButtonDisplayMode(TabCloseButtonDisplayMode.ON_HOVER)
+                            minecraft_tab.show()
+                            
+                            # 添加标签
+                            minecraft_tab.addTab(
+                                routeKey=version,
+                                text=version,
+                                icon="ui/icon/Grass_Block.png",
+                                onClick=lambda: log(f"点击了标签: {version}")
+                            )
+                            
+                            # 连接关闭信号（如果尚未连接）
+                            if not hasattr(self, '_tab_close_connected'):
+                                minecraft_tab.tabCloseRequested.connect(self.on_tab_close_requested)
+                                self._tab_close_connected = True
+                                self.minecraft_tab = minecraft_tab
 
-                        log(f"启动时已向 MinecraftTab 添加标签: {version}")
-                    except Exception as e:
-                        log(f"启动时添加标签到 MinecraftTab 失败: {e}")
-                else:
-                    log(f"启动时未找到 MinecraftTab 组件或组件不支持 addTab 方法")
-            except Exception as e:
-                log(f"启动时添加标签时出错: {e}")
+                            log(f"启动时已向 MinecraftTab 添加标签: {version}")
+                        except Exception as e:
+                            log(f"启动时添加标签到 MinecraftTab 失败: {e}")
+                    else:
+                        log(f"启动时未找到 MinecraftTab 组件或组件不支持 addTab 方法")
+                except Exception as e:
+                    log(f"启动时添加标签时出错: {e}")
             
             if os.path.exists("run.bat"):
                 os.remove("run.bat")
-            # 获取第一个账户信息
-            account_info = cmcl_data['accounts'][0]
-            username = account_info.get("username", "Player")
+            
             log(f"传递给 Get_Run_Script 的版本: {version}")
-            script_content = Get_Run_Script(version)
-            with open("run.bat", "w", encoding="utf-8") as f:
-                f.write(script_content)
+            
+            try:
+                # 获取启动脚本内容 (Get_Run_Script 内部会读取 config.json 获取账户信息)
+                script_content = Get_Run_Script(version)
+                with open("run.bat", "w", encoding="utf-8") as f:
+                    f.write(script_content)
+            except Exception as e:
+                log(f"生成启动脚本失败: {e}", logging.ERROR)
+                InfoBar.error(
+                    title=i18nText('❌ 启动错误'),
+                    content=f"生成启动配置失败: {e}",
+                    parent=self,
+                    duration=5000
+                )
+                self.is_running = False
+                return
 
             run_button = self.sender()  # 获取按钮对象（可能为 None）
             if run_button is not None:
@@ -999,6 +1012,7 @@ class MainWindow(FluentWindow):
                     teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
             else:
                 log(i18nText("托盘菜单启动，不显示 TeachingTip"))
+                teaching_tip = None # 确保变量已定义
 
             # 线程
             self.run_script_thread = RunScriptThread()
@@ -1017,8 +1031,6 @@ class MainWindow(FluentWindow):
                 modules.mwtool.start_monitoring(version)
             except Exception as e:
                 log(f"启动工具栏监视器失败: {e}", logging.ERROR)
-
-            
 
             self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
             self.update_show_text_thread.update_text.connect(self.update_show_text)

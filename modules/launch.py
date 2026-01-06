@@ -12,6 +12,7 @@ from modules.customize import find_Customize
 from modules.i18n import i18nText
 from modules.install import LibraryDownloader
 import modules.globals as BLglobals
+import modules.config as cfg # 确保导入了 config 模块
 
 # Windows API 导入，用于获取窗口句柄
 if platform.system() == "Windows":
@@ -23,7 +24,7 @@ if platform.system() == "Windows":
 
 def Get_Run_Script(mc_version):
     """
-    根据 cmcl.json 的内容生成启动 .minecraft 文件夹中指定版本的命令
+    根据 config.json 的内容生成启动 .minecraft 文件夹中指定版本的命令
     支持 Fabric 加载器启动
     不使用 cmcl.exe，而是直接生成启动命令
     
@@ -34,25 +35,16 @@ def Get_Run_Script(mc_version):
         str: 启动命令（批处理格式）
     """
     
-    # 检查 cmcl.json 文件是否存在
-    if not os.path.exists('cmcl.json'):
-        raise FileNotFoundError(i18nText("cmcl.json 文件不存在"))
-    
-    # 读取 cmcl.json 配置
-    with open('cmcl.json', 'r', encoding='utf-8') as f:
-        cmcl_data = json.load(f)
+    # 1. 读取配置文件 (替代原有的 cmcl.json 读取)
+    try:
+        config_data = cfg.read()
+    except Exception as e:
+        raise FileNotFoundError(f"读取配置文件失败: {e}")
     
     # 获取 Minecraft 目录
-    try:
-        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-            config_data = json.load(f)
-        minecraft_dir = config_data.get('minecraft_dir', '')
-        if not minecraft_dir:
-            # 如果配置中没有指定，则使用默认路径
-            appdata = os.environ.get('APPDATA', '')
-            minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
-    except Exception:
-        # 如果读取配置文件失败，使用默认路径
+    minecraft_dir = config_data.get('minecraft_dir', '')
+    if not minecraft_dir:
+        # 如果配置中没有指定，则使用默认路径
         appdata = os.environ.get('APPDATA', '')
         minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
     
@@ -76,104 +68,107 @@ def Get_Run_Script(mc_version):
     if not os.path.exists(client_jar_path):
         raise FileNotFoundError(f"客户端 JAR 文件 {client_jar_path} 不存在")
     
-    # 获取 Java 路径 (使用指定的 Zulu JDK 路径)
+    # 获取 Java 路径
     java_path = "java"  # 默认使用系统PATH中的java命令
-    log(f"初始 java_path: {java_path}")
     
     # 检查系统PATH中是否存在java命令
     import shutil
     java_in_path = shutil.which("java")
-    log(f"系统PATH中的java路径: {java_in_path}")
     
     if not java_in_path:
         # 如果系统PATH中没有java，尝试使用配置中的Java路径
-        log("系统PATH中未找到java命令")
-        try:
-            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-                config_data = json.load(f)
+        java_dir = config_data.get('java_dir', '') # 从 config_data 获取
+        
+        if java_dir and os.path.exists(java_dir):
+            java_exe_path = os.path.join(java_dir, "bin", "java.exe")
+            if os.path.exists(java_exe_path):
+                java_path = java_exe_path
+        else:
+            # 尝试默认的Java安装路径
+            default_java_paths = [
+                r"C:\Program Files\Java\jdk-17\bin\java.exe",
+                r"C:\Program Files\Java\jdk-21\bin\java.exe",
+                r"C:\Program Files\Java\jdk-24\bin\java.exe",
+                r"C:\Program Files\Eclipse Adoptium\jdk-17-hotspot\bin\java.exe",
+                r"C:\Program Files\Eclipse Adoptium\jdk-21-hotspot\bin\java.exe",
+                r"C:\Program Files\Eclipse Adoptium\jdk-24-hotspot\bin\java.exe",
+                r"C:\Program Files\Zulu\zulu-24\bin\java.exe",
+                r"C:\Program Files\Zulu\zulu-17\bin\java.exe",
+                r"C:\Program Files\Zulu\zulu-21\bin\java.exe"
+            ]
             
-            java_dir = config_data.get('java_dir', '')
-            log(f"配置文件中的java_dir: {java_dir}")
-            
-            if java_dir and os.path.exists(java_dir):
-                java_exe_path = os.path.join(java_dir, "bin", "java.exe")
-                log(f"构造的java路径: {java_exe_path}")
-                if os.path.exists(java_exe_path):
-                    java_path = java_exe_path
-                    log(f"使用配置中的Java路径: {java_path}")
-                else:
-                    log(f"配置中的Java路径不存在: {java_exe_path}")
-            else:
-                # 尝试默认的Java安装路径
-                log("尝试默认Java安装路径")
-                default_java_paths = [
-                    r"C:\Program Files\Java\jdk-17\bin\java.exe",
-                    r"C:\Program Files\Java\jdk-21\bin\java.exe",
-                    r"C:\Program Files\Java\jdk-24\bin\java.exe",
-                    r"C:\Program Files\Eclipse Adoptium\jdk-17-hotspot\bin\java.exe",
-                    r"C:\Program Files\Eclipse Adoptium\jdk-21-hotspot\bin\java.exe",
-                    r"C:\Program Files\Eclipse Adoptium\jdk-24-hotspot\bin\java.exe",
-                    r"C:\Program Files\Zulu\zulu-24\bin\java.exe",
-                    r"C:\Program Files\Zulu\zulu-17\bin\java.exe",
-                    r"C:\Program Files\Zulu\zulu-21\bin\java.exe"
-                ]
-                
-                for default_path in default_java_paths:
-                    log(f"检查默认路径: {default_path}")
-                    if os.path.exists(default_path):
-                        java_path = default_path
-                        log(f"使用默认Java路径: {java_path}")
-                        break
-        except Exception as e:
-            log(f"读取Java路径配置时出错: {e}")
-            pass  # 如果无法读取配置或查找Java路径，则使用默认值
+            for default_path in default_java_paths:
+                if os.path.exists(default_path):
+                    java_path = default_path
+                    break
     else:
         # java在系统PATH中，使用完整路径
         if java_in_path:
             java_path = java_in_path
-            log(f"使用系统PATH中的Java路径: {java_path}")
     
-    # 获取账户信息
-    account_info = None
-    if cmcl_data.get("accounts"):
-        # 查找选中的账户或使用第一个账户
-        account_info = next((acc for acc in cmcl_data["accounts"] if acc.get("selected")), 
-                           cmcl_data["accounts"][0])
-    
-    # 设置用户名
+    # --- 账户信息处理 (从 config.json 读取) ---
+    mc_account_config = config_data.get("MinecraftAccount", {})
+    accounts_list = mc_account_config.get("accounts", [])
+    chosen_index = mc_account_config.get("chosen", 0)
+
+    # 默认值
     username = "Bloret-Player"
-    if account_info:
-        username = account_info.get("playerName", "Bloret-Player")
+    user_uuid = "00000000-0000-0000-0000-000000000000"
+    access_token = "00000000000000000000000000000000"
+    user_type = "legacy"
+    login_method = 0 # 0: Offline, 2: Microsoft
+    client_id = "" # 微软登录通常不需要在启动参数显式传递client_id，除非特定需求
+    xuid = ""
+
+    current_account = {}
+
+    if accounts_list and 0 <= chosen_index < len(accounts_list):
+        current_account = accounts_list[chosen_index]
+        username = current_account.get("username", username)
+        user_uuid = current_account.get("uuid", user_uuid)
+        
+        # 判断账户类型
+        acc_type_str = current_account.get("type", "Offline")
+        if acc_type_str == "Microsoft":
+            login_method = 2
+            user_type = "msa"
+            access_token = current_account.get("access_token", access_token)
+            # config.json 中可能没有 client_id 和 xuid，根据需要添加或留空
+            client_id = current_account.get("clientId", "") 
+            xuid = current_account.get("xuid", "")
+        else:
+            login_method = 0
+            user_type = "legacy"
+            # 离线模式 AccessToken 通常为空或全0
+            access_token = "00000000000000000000000000000000"
+
+    # --- 结束账户信息处理 ---
     
     # 构建基本启动参数
     # 根据java_path是否为完整路径决定是否添加引号
     if java_path == "java":
-        # 使用系统PATH中的java命令，不需要引号
         java_arg = java_path
-        log("使用系统PATH中的java命令")
     else:
-        # 使用绝对路径，需要添加引号
         java_arg = f'"{java_path}"'
-        log(f"使用绝对Java路径: {java_path}")
     
     launch_args = [
-        java_arg,  # Java路径，根据情况决定是否添加引号
-        "--enable-native-access=ALL-UNNAMED",  # 解决Java警告
-        "--add-opens", "java.base/java.lang=ALL-UNNAMED",  # 抑制弃用警告
-        "--add-opens", "java.base/java.util=ALL-UNNAMED",  # 抑制弃用警告
-        "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED",  # 抑制更多警告
-        "--add-opens", "java.base/sun.misc=ALL-UNNAMED",   # 抑制sun.misc警告
-        "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",  # 抑制jdk.internal.misc警告
-        "--add-opens", "java.base/jdk.internal.ref=ALL-UNNAMED",   # 抑制jdk.internal.ref警告
-        "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",  # 导出sun.nio.ch包
-        "--add-exports", "java.base/sun.misc=ALL-UNNAMED",   # 导出sun.misc包
-        "--add-exports", "java.base/jdk.internal.misc=ALL-UNNAMED",  # 导出jdk.internal.misc包
-        "--add-exports", "java.base/jdk.internal.ref=ALL-UNNAMED",   # 导出jdk.internal.ref包
-        "-Dio.netty.tryReflectionSetAccessible=true",  # 解决Netty反射问题
-        "-Dio.netty.native.skipTryReflectionSetAccessible=true",  # 跳过Netty反射检查
-        "-Dsun.misc.unsafe.throwException=false",  # 禁用sun.misc.Unsafe异常
-        "-Djdk.attach.allowAttachSelf=true",  # 允许自我附加
-        "-Djdk.module.IllegalAccess.silent=true",  # 静默非法访问
+        java_arg,  # Java路径
+        "--enable-native-access=ALL-UNNAMED",
+        "--add-opens", "java.base/java.lang=ALL-UNNAMED",
+        "--add-opens", "java.base/java.util=ALL-UNNAMED",
+        "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED",
+        "--add-opens", "java.base/sun.misc=ALL-UNNAMED",
+        "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",
+        "--add-opens", "java.base/jdk.internal.ref=ALL-UNNAMED",
+        "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",
+        "--add-exports", "java.base/sun.misc=ALL-UNNAMED",
+        "--add-exports", "java.base/jdk.internal.misc=ALL-UNNAMED",
+        "--add-exports", "java.base/jdk.internal.ref=ALL-UNNAMED",
+        "-Dio.netty.tryReflectionSetAccessible=true",
+        "-Dio.netty.native.skipTryReflectionSetAccessible=true",
+        "-Dsun.misc.unsafe.throwException=false",
+        "-Djdk.attach.allowAttachSelf=true",
+        "-Djdk.module.IllegalAccess.silent=true",
         "-Dlog4j2.formatMsgNoLookups=true",
         "-Dfile.encoding=UTF-8",
         "-Dsun.jnu.encoding=UTF-8",
@@ -186,28 +181,28 @@ def Get_Run_Script(mc_version):
         "-Dfml.ignoreInvalidMinecraftCertificates=True",
         "-Dfml.ignorePatchDiscrepancies=True",
         "-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump",
-        "-Dsun.misc.URLClassPath.disableJarChecking=true",  # 禁用JAR检查
-        "-Djava.rmi.server.useCodebaseOnly=true",  # 仅使用代码库
-        "-Dcom.sun.management.jmxremote.local.only=true",  # 仅限本地JMX远程
-        "-Dcom.sun.management.jmxremote.authenticate=false",  # 禁用JMX身份验证
-        "-Dcom.sun.management.jmxremote.ssl=false",  # 禁用JMX SSL
-        "-XX:-OmitStackTraceInFastThrow",  # 不省略快速抛出的堆栈跟踪
-        "-Djna.nosys=true",  # 禁用系统级JNA库
-        "-Djnidispatch.preserve=true",  # 保留JNI分发
-        "-Dorg.lwjgl.util.Debug=false",  # 禁用LWJGL调试
-        "-Dorg.lwjgl.util.noload=true",  # 不加载LWJGL库
-        "-Djava.awt.headless=false",  # 非headless模式
-        "-Dsun.java2d.noddraw=true",  # 禁用DirectDraw
-        "-Dsun.java2d.d3d=false",  # 禁用Direct3D
-        "-Dsun.java2d.opengl=false",  # 禁用OpenGL
-        "-Dsun.java2d.pmoffscreen=false",  # 禁用离屏渲染
-        "-Dsun.java2d.accthreshold=0",  # 禁用硬件加速
-        "-XX:ErrorFile=./hs_err_pid%p.log",  # 错误日志文件
-        "-XX:+UnlockExperimentalVMOptions",  # 解锁实验性选项
-        "-XX:+UseG1GC",  # 使用G1垃圾收集器
-        "-XX:+UseCompressedOops",  # 使用压缩对象指针
-        "-XX:+OptimizeStringConcat",  # 优化字符串连接
-        "-XX:+UseStringDeduplication"  # 启用字符串去重
+        "-Dsun.misc.URLClassPath.disableJarChecking=true",
+        "-Djava.rmi.server.useCodebaseOnly=true",
+        "-Dcom.sun.management.jmxremote.local.only=true",
+        "-Dcom.sun.management.jmxremote.authenticate=false",
+        "-Dcom.sun.management.jmxremote.ssl=false",
+        "-XX:-OmitStackTraceInFastThrow",
+        "-Djna.nosys=true",
+        "-Djnidispatch.preserve=true",
+        "-Dorg.lwjgl.util.Debug=false",
+        "-Dorg.lwjgl.util.noload=true",
+        "-Djava.awt.headless=false",
+        "-Dsun.java2d.noddraw=true",
+        "-Dsun.java2d.d3d=false",
+        "-Dsun.java2d.opengl=false",
+        "-Dsun.java2d.pmoffscreen=false",
+        "-Dsun.java2d.accthreshold=0",
+        "-XX:ErrorFile=./hs_err_pid%p.log",
+        "-XX:+UnlockExperimentalVMOptions",
+        "-XX:+UseG1GC",
+        "-XX:+UseCompressedOops",
+        "-XX:+OptimizeStringConcat",
+        "-XX:+UseStringDeduplication"
     ]
     
     # 添加 Native 库路径参数
@@ -280,8 +275,7 @@ def Get_Run_Script(mc_version):
     else:
         log(f"检测到原版: {mc_version}")
     
-    # 添加内存参数 (根据PCL中的默认设置)
-    # PCL中默认分配内存为854x480，这里设置合理的内存参数
+    # 添加内存参数
     launch_args.extend([
         "-Xmn192m",  # 年轻代内存
         "-Xmx4096m"  # 最大堆内存，设置为4GB
@@ -429,12 +423,7 @@ def Get_Run_Script(mc_version):
         log(f"发现 {len(missing_libraries)} 个缺失的库文件，正在尝试下载...")
         
         # 从 config.json 读取 MaxThread
-        try:
-            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-                config_data = json.load(f)
-            max_workers = config_data.get("MaxThread", 64)  # 默认值改为64，避免资源耗尽
-        except Exception:
-            max_workers = 64  # 读取失败时使用默认值
+        max_workers = config_data.get("MaxThread", 64)
         
         # 创建下载器并启动下载线程
         downloader = LibraryDownloader(missing_libraries, max_workers)
@@ -446,7 +435,6 @@ def Get_Run_Script(mc_version):
         downloader.completed_event.wait()
         
         # 重新检查库文件并添加到类路径中
-        # 这一步确保即使之前缺失的库文件现在也已下载并添加到类路径中
         for lib, lib_path in missing_libraries:
             if os.path.exists(lib_path) and lib_path not in classpath:
                 classpath.append(lib_path)
@@ -470,9 +458,8 @@ def Get_Run_Script(mc_version):
     launch_args.extend(["-cp", '\"' + ";".join(classpath) + '\"'])  # Windows 使用分号分隔
     
     # Add Fabric Loader arguments to ensure mods are loaded
-    if is_fabric and os.path.exists(mods_dir):  # 只有在是fabric版本且mods_dir存在时才添加
+    if is_fabric and os.path.exists(mods_dir):
         log(f"添加 Fabric mods 目录: {mods_dir}")
-        # 确保路径被正确引用，特别是包含空格时
         launch_args.extend([f'-Dfabric.addMods="{mods_dir}"'])
     
     # 添加主类和参数
@@ -489,19 +476,6 @@ def Get_Run_Script(mc_version):
         launch_args.append(f'"{java_wrapper_path}"')
         launch_args.append("net.minecraft.client.main.Main")
     
-    # 添加游戏参数
-    # 对于Fabric版本，需要使用实际的游戏版本号而不是Fabric加载器版本号
-    actual_game_version = mc_version
-    game_dir_version = mc_version  # 用于构建game_dir的版本
-    
-    if is_fabric and "-fabric-" in mc_version.lower():
-        # 对于Fabric版本，目录结构为 .minecraft/versions/实际版本-fabric-加载器版本/实际版本-fabric-加载器版本.json
-        # 但游戏目录应该是 .minecraft/versions/实际版本-fabric-加载器版本/实际版本.json
-        # 我们需要从版本名称中提取实际的游戏版本
-        # 例如: 1.21.8-fabric-0.17.2 应该对应游戏版本 1.21.8
-        actual_game_version = mc_version.split("-fabric-")[0]
-        game_dir_version = mc_version  # game_dir仍然使用完整版本名作为目录名
-    
     # 游戏目录应该是主 .minecraft 目录，而不是版本特定目录
     # 修改：为了实现版本隔离，game_dir 应该指向 versions_dir
     game_dir = versions_dir
@@ -509,7 +483,6 @@ def Get_Run_Script(mc_version):
 
     assets_dir = os.path.join(minecraft_dir, "assets")
     
-    # 检查游戏目录和资产目录是否存在
     if not os.path.exists(game_dir):
         raise FileNotFoundError(f"游戏目录不存在: {game_dir}")
     
@@ -522,27 +495,23 @@ def Get_Run_Script(mc_version):
     # 设置 versionType
     version_type = "Bloret-Launcher"
     
-    # 检查登录方式并设置相应参数
-    login_method = account_info.get("loginMethod", 0) if account_info else 0
-    
     # 在日志中以列表形式记录启动信息
     log("启动信息:")
-    log(f"- Minecraft 版本: {mc_version}")  # 使用完整版本名而不是解析后的版本
+    log(f"- Minecraft 版本: {mc_version}")
     log(f"- 登录方式: {'离线登录' if login_method == 0 else '微软登录' if login_method == 2 else '未知'}")
     log(f"- 登录名称: {username}")
-    if account_info:
-        log(f"- UUID: {account_info.get('uuid', 'N/A')}")
-        log(f"- AccessToken: {'******' if account_info.get('accessToken') else 'N/A'}")
+    log(f"- UUID: {user_uuid}")
+    log(f"- AccessToken: {'******' if access_token else 'N/A'}")
     
     # 根据登录方式设置启动参数
     if login_method == 0:  # 离线登录
         launch_args.extend([
             "--username", username,
-            "--version", mc_version,  # 使用完整版本名而不是解析后的版本
-            "--gameDir", game_dir,  # 不要在路径外额外添加引号
-            "--assetsDir", assets_dir,  # 不要在路径外额外添加引号
+            "--version", mc_version,
+            "--gameDir", game_dir,
+            "--assetsDir", assets_dir,
             "--assetIndex", str(asset_index),
-            "--uuid", "00000000000000000000000000000000",
+            "--uuid", user_uuid, # 使用配置中的UUID
             "--accessToken", "00000000000000000000000000000000",
             "--userType", "legacy",
             "--versionType", version_type,
@@ -552,40 +521,35 @@ def Get_Run_Script(mc_version):
     elif login_method == 2:  # 微软登录
         # 检查账户信息相关字段
         missing_fields = []
-        if not account_info:
-            missing_fields.append(i18nText("账户信息"))
-        else:
-            if not account_info.get("uuid"):
-                missing_fields.append("UUID")
-            if not account_info.get("accessToken"):
-                missing_fields.append("AccessToken")
-            # 你可以根据需要继续检查其他字段
+        if not username:
+            missing_fields.append("Username")
+        if not user_uuid:
+            missing_fields.append("UUID")
+        if not access_token:
+            missing_fields.append("AccessToken")
 
         if missing_fields:
             raise ValueError(f"缺少必要的启动参数: {', '.join(missing_fields)}，请先登录或完善账户信息。")
             
-        if account_info:  # 确保account_info不为None
-            launch_args.extend([
-                "--username", username,
-                "--version", mc_version,  # 使用完整版本名而不是解析后的版本
-                "--gameDir", game_dir,  # 不要在路径外额外添加引号
-                "--assetsDir", assets_dir,  # 不要在路径外额外添加引号
-                "--assetIndex", str(asset_index),
-                "--uuid", account_info.get("uuid", "") if account_info else "",
-                "--accessToken", account_info.get("accessToken", "") if account_info else "",
-                "--clientId", account_info.get("clientId", "") if account_info else "",
-                "--xuid", account_info.get("xuid", "") if account_info else "",
-                "--userType", account_info.get("userType", "msa") if account_info else "msa",
-                "--versionType", version_type,
-                "--width", "854",
-                "--height", "480"
-            ])
+        launch_args.extend([
+            "--username", username,
+            "--version", mc_version,
+            "--gameDir", game_dir,
+            "--assetsDir", assets_dir,
+            "--assetIndex", str(asset_index),
+            "--uuid", user_uuid,
+            "--accessToken", access_token,
+            "--clientId", client_id,
+            "--xuid", xuid,
+            "--userType", user_type,
+            "--versionType", version_type,
+            "--width", "854",
+            "--height", "480"
+        ])
     
     # 构建命令
-    # 不添加过滤器，避免被Minecraft误认为是游戏参数
     bat_command = " ".join(launch_args)
     
-    # 修复f-string中不能包含反斜杠的问题
     chcp_command = "chcp 65001"
     cd_command = f'cd {game_dir}'  # 使用 game_dir (即版本目录) 作为工作目录
     full_command = f"{chcp_command}\n{cd_command}\n{bat_command}"

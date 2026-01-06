@@ -1,27 +1,444 @@
-[23:01:40] [main/WARN]: Class path entries reference missing files: C:\Users\0570\AppData\Roaming\Bloret-Launcher\.minecraft\versions\1.21.8-Fabric 0.18.2\mods\ImmediatelyFast-Fabric-1.14.1B1.21.11.jar, C:\Users\0570\AppData\Roaming\Bloret-Launcher\.minecraft\versions\1.21.8-Fabric 0.18.2\mods\iris-fabric-1.10.4Bmc1.21.11.jar, C:\Users\0570\AppData\Roaming\Bloret-Launcher\.minecraft\versions\1.21.8-Fabric 0.18.2\mods\lithium-fabric-0.21.2Bmc1.21.11.jar, C:\Users\0570\AppData\Roaming\Bloret-Launcher\.minecraft\versions\1.21.8-Fabric 0.18.2\mods\modernfix-fabric-5.25.2Bmc1.20.1.jar, C:\Users\0570\AppData\Roaming\Bloret-Launcher\.minecraft\versions\1.21.8-Fabric 0.18.2\mods\sodium-fabric-0.8.2Bmc1.21.11.jar, C:\Users\0570\AppData\Roaming\Bloret-Launcher\.minecraft\versions\1.21.8-Fabric 0.18.2\mods\starlight-1.1.3Bfabric.f5dcd1a.jar - the game may not load properly!
-[23:01:40] [main/INFO]: Loading Minecraft 1.21.8 with Fabric Loader 0.18.2
-[23:01:40] [main/INFO]: Fabric is preparing JARs on first launch, this may take a few seconds...
-[23:01:40] [main/WARN]: Mod resolution failed
-[23:01:40] [main/INFO]: Immediate reason: [HARD_DEP_NO_CANDIDATE entityculling 1.9.4 {depends fabric-api @ [*]}, ROOT_FORCELOAD_SINGLE entityculling 1.9.4]
-[23:01:40] [main/INFO]: Reason: [HARD_DEP entityculling 1.9.4 {depends fabric-api @ [*]}, HARD_DEP immediatelyfast 1.14.1+1.21.11 {depends minecraft @ [1.21.11]}, HARD_DEP lithium 0.21.2+mc1.21.11 {depends minecraft @ [1.21.11]}, HARD_DEP starlight 1.1.3+fabric.f5dcd1a {depends minecraft @ [1.20.4]}, HARD_DEP transition 1.0.11 {depends fabric-api @ [*]}, HARD_DEP trender 1.0.10 {depends fabric-api @ [*]}]
-[23:01:40] [main/INFO]: Fix: add [], remove [], replace [[minecraft 1.21.8] -> add:minecraft 1.21.11 ([[1.21.11,1.21.11]]), [starlight 1.1.3+fabric.f5dcd1a] -> add:starlight 1 ([(-∞,∞)]), [entityculling 1.9.4] -> add:entityculling 1 ([(-∞,∞)])]
-[23:01:40] [main/ERROR]: Incompatible mods found!
-net.fabricmc.loader.impl.FormattedException: Some of your mods are incompatible with the game or each other!
-确定了一种可能的解决方法，这样做可能会解决你的问题：
-	 - 将 'Minecraft' (minecraft) 1.21.8 替换为 1.21.11 版本。
-	 - 将 模组 'Starlight' (starlight) 1.1.3+fabric.f5dcd1a 替换为与这一模组兼容的 任意版本：
-		 - minecraft，1.21.11 版本
-	 - 将 模组 'EntityCulling' (entityculling) 1.9.4 替换为与这一模组兼容的 任意版本：
-		 - minecraft，1.21.11 版本
-更多信息：
-	 - 模组 'EntityCulling' (entityculling) 1.9.4 需要 fabric-api 的 任意版本，但没有安装它！
-	 - 模组 'ImmediatelyFast' (immediatelyfast) 1.14.1+1.21.11 需要 'Minecraft' (minecraft) 的 1.21.11 版本，但已经安装了的版本 1.21.8 不对！
-	 - 模组 'Lithium' (lithium) 0.21.2+mc1.21.11 需要 'Minecraft' (minecraft) 的 1.21.11 版本，但已经安装了的版本 1.21.8 不对！
-	 - 模组 'Starlight' (starlight) 1.1.3+fabric.f5dcd1a 需要 'Minecraft' (minecraft) 的 1.20.4 版本，但已经安装了的版本 1.21.8 不对！
-	 - 模组 'TRansition' (transition) 1.0.11 需要 fabric-api 的 任意版本，但没有安装它！
-	 - 模组 'TRender' (trender) 1.0.10 需要 fabric-api 的 任意版本，但没有安装它！
-	at net.fabricmc.loader.impl.FormattedException.ofLocalized(FormattedException.java:51) ~[fabric-loader-0.18.2.jar:?]
-	at net.fabricmc.loader.impl.FabricLoaderImpl.load(FabricLoaderImpl.java:202) ~[fabric-loader-0.18.2.jar:?]
-	at net.fabricmc.loader.impl.launch.knot.Knot.init(Knot.java:142) ~[fabric-loader-0.18.2.jar:?]
-	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:66) [fabric-loader-0.18.2.jar:?]
-	at net.fabricmc.loader.impl.launch.knot.KnotClient.main(KnotClient.java:23) [fabric-loader-0.18.2.jar:?]
+[16:59:43] [main/INFO]: Loading Minecraft 1.21.8 with Fabric Loader 0.18.4
+[16:59:44] [ForkJoinPool-1-worker-1/WARN]: Mod minescript uses the version 5.0a4 which isn't compatible with Loader's extended semantic version format (Could not parse version number component '0a4'!), SemVer is recommended for reliably evaluating dependencies and prioritizing newer version
+[16:59:44] [ForkJoinPool-1-worker-2/WARN]: Mod com_github_oryxel_cubeconverter uses the version 916cadb12a which isn't compatible with Loader's extended semantic version format (Could not parse version number component '916cadb12a'!), SemVer is recommended for reliably evaluating dependencies and prioritizing newer version
+[16:59:44] [ForkJoinPool-1-worker-4/WARN]: Mod org_cloudburstmc_netty_netty-transport-raknet uses the version 1.0.0.CR3-SNAPSHOT which isn't compatible with Loader's extended semantic version format (Could not parse version number component 'CR3'!), SemVer is recommended for reliably evaluating dependencies and prioritizing newer version
+[16:59:44] [main/WARN]: Warnings were found!
+ - 模组 'Chat Patches' (chatpatches) 8.0-alpha.3 建议安装 catalogue 的 任意版本，但没有安装它！
+	 - 为了最佳体验，您应该安装 catalogue 的 任意版本。
+ - 模组 'Chat Patches' (chatpatches) 8.0-alpha.3 建议安装 menulogue 的 任意版本，但没有安装它！
+	 - 为了最佳体验，您应该安装 menulogue 的 任意版本。
+[16:59:44] [main/INFO]: Loading 151 mods:
+	- architectury 17.0.8
+	- chat_heads 0.13.19
+	- chatanimation 1.0.7
+	- chatpatches 8.0-alpha.3
+	- cloth-config 19.0.147
+	   \-- cloth-basic-math 0.6.1
+	- debugify 1.21.8+1.0
+	- dynamic_fps 3.9.6
+	   \-- net_lostluma_battery 1.3.0
+	- fabric-api 0.130.0+1.21.8
+	   |-- fabric-api-base 0.4.64+9ec45cd82c
+	   |-- fabric-api-lookup-api-v1 1.6.100+946bf4c32c
+	   |-- fabric-biome-api-v1 16.0.11+946bf4c32c
+	   |-- fabric-block-api-v1 1.1.3+946bf4c32c
+	   |-- fabric-block-view-api-v2 1.0.31+946bf4c32c
+	   |-- fabric-command-api-v2 2.3.0+52fff9ec2c
+	   |-- fabric-content-registries-v0 10.0.18+946bf4c32c
+	   |-- fabric-convention-tags-v1 2.1.40+7f945d5b2c
+	   |-- fabric-convention-tags-v2 2.15.5+eb5df52f2c
+	   |-- fabric-crash-report-info-v1 0.3.15+946bf4c32c
+	   |-- fabric-data-attachment-api-v1 1.8.10+946bf4c32c
+	   |-- fabric-data-generation-api-v1 23.2.5+9fc9c3b12c
+	   |-- fabric-dimensions-v1 4.0.19+946bf4c32c
+	   |-- fabric-entity-events-v1 2.1.1+c9e472732c
+	   |-- fabric-events-interaction-v0 4.0.23+946bf4c32c
+	   |-- fabric-game-rule-api-v1 1.0.73+c64c9c5b2c
+	   |-- fabric-item-api-v1 11.4.3+946bf4c32c
+	   |-- fabric-item-group-api-v1 4.2.13+946bf4c32c
+	   |-- fabric-key-binding-api-v1 1.0.65+946bf4c32c
+	   |-- fabric-lifecycle-events-v1 2.6.3+db4dfd852c
+	   |-- fabric-loot-api-v2 3.0.55+3f89f5a52c
+	   |-- fabric-loot-api-v3 2.0.2+946bf4c32c
+	   |-- fabric-message-api-v1 6.1.1+946bf4c32c
+	   |-- fabric-model-loading-api-v1 5.2.5+946bf4c32c
+	   |-- fabric-networking-api-v1 5.0.1+946bf4c32c
+	   |-- fabric-object-builder-api-v1 21.1.7+946bf4c32c
+	   |-- fabric-particles-v1 4.1.7+946bf4c32c
+	   |-- fabric-recipe-api-v1 8.1.14+946bf4c32c
+	   |-- fabric-registry-sync-v0 6.1.27+946bf4c32c
+	   |-- fabric-renderer-api-v1 7.0.2+946bf4c32c
+	   |-- fabric-renderer-indigo 4.0.2+946bf4c32c
+	   |-- fabric-rendering-fluids-v1 3.1.30+fa6cb72b2c
+	   |-- fabric-rendering-v1 12.4.0+e8d43c762c
+	   |-- fabric-resource-conditions-api-v1 5.0.24+946bf4c32c
+	   |-- fabric-resource-loader-v0 3.1.11+946bf4c32c
+	   |-- fabric-screen-api-v1 2.1.0+277ecf7d2c
+	   |-- fabric-screen-handler-api-v1 1.3.136+946bf4c32c
+	   |-- fabric-sound-api-v1 1.0.42+946bf4c32c
+	   |-- fabric-tag-api-v1 1.2.1+946bf4c32c
+	   |-- fabric-transfer-api-v1 6.0.5+946bf4c32c
+	   \-- fabric-transitive-access-wideners-v1 6.4.1+ac3e15d12c
+	- fabric-language-kotlin 1.13.4+kotlin.2.2.0
+	   |-- org_jetbrains_kotlin_kotlin-reflect 2.2.0
+	   |-- org_jetbrains_kotlin_kotlin-stdlib 2.2.0
+	   |-- org_jetbrains_kotlin_kotlin-stdlib-jdk7 2.2.0
+	   |-- org_jetbrains_kotlin_kotlin-stdlib-jdk8 2.2.0
+	   |-- org_jetbrains_kotlinx_atomicfu-jvm 0.28.0
+	   |-- org_jetbrains_kotlinx_kotlinx-coroutines-core-jvm 1.10.2
+	   |-- org_jetbrains_kotlinx_kotlinx-coroutines-jdk8 1.10.2
+	   |-- org_jetbrains_kotlinx_kotlinx-datetime-jvm 0.6.2
+	   |-- org_jetbrains_kotlinx_kotlinx-io-bytestring-jvm 0.7.0
+	   |-- org_jetbrains_kotlinx_kotlinx-io-core-jvm 0.7.0
+	   |-- org_jetbrains_kotlinx_kotlinx-serialization-cbor-jvm 1.8.1
+	   |-- org_jetbrains_kotlinx_kotlinx-serialization-core-jvm 1.8.1
+	   \-- org_jetbrains_kotlinx_kotlinx-serialization-json-jvm 1.8.1
+	- fabricloader 0.18.4
+	   \-- mixinextras 0.5.0
+	- ferritecore 8.0.0
+	- firstperson 2.5.0
+	   |-- transition 1.0.3
+	   \-- trender 1.0.5
+	- forgeconfigapiport 21.8.0
+	   |-- com_electronwill_night-config_core 3.8.2
+	   \-- com_electronwill_night-config_toml 3.8.2
+	- freecam 1.3.4+mc1.21.6
+	- gammautils 2.3.5
+	- immediatelyfast 1.12.0+1.21.8
+	- iris 1.9.1+mc1.21.7
+	   |-- io_github_douira_glsl-transformer 2.0.1
+	   |-- org_anarres_jcpp 1.4.14
+	   \-- org_antlr_antlr4-runtime 4.13.1
+	- java 24
+	- lambdynlights 4.3.2+1.21.8
+	   |-- lambdynlights_api 4.3.2+1.21.8
+	   |    |-- yumi-commons-collections 1.0.0-alpha.12
+	   |    |-- yumi-commons-core 1.0.0-alpha.12
+	   |    \-- yumi-commons-event 1.0.0-alpha.12
+	   |-- pride 1.4.0+1.21.6
+	   |-- spruceui 8.0.2+1.21.8
+	   \-- yumi_mc_core 1.0.0-alpha.6+1.21.1
+	        |-- yumi-commons-collections 1.0.0-alpha.12
+	        |-- yumi-commons-core 1.0.0-alpha.12
+	        \-- yumi-commons-event 1.0.0-alpha.12
+	- languagereload 1.7.4+1.21.6
+	- libipn 6.5.1
+	- lithium 0.18.0+mc1.21.8
+	- minecraft 1.21.8
+	- minescript 5.0a4
+	   \-- org_pyjinn_pyjinn-lib_all 0.4
+	- modmenu 15.0.0-beta.3
+	- moreculling 1.4.0-beta.1
+	   |-- conditional-mixin 0.6.3
+	   \-- mixinsquared 0.2.0
+	- nochatreports 1.21.7-v2.14.0
+	- notenoughanimations 1.10.1
+	   |-- transition 1.0.3
+	   \-- trender 1.0.5
+	- placeholder-api 2.7.1+1.21.6
+	- reeses-sodium-options 1.8.4+mc1.21.6
+	- replaymod 1.21.7-2.6.23
+	- shulkerboxtooltip 5.2.8+1.21.7
+	- skinlayers3d 1.8.2
+	   |-- transition 1.0.3
+	   \-- trender 1.0.5
+	- sodium 0.6.13+mc1.21.6
+	- sodium-extra 0.6.6+mc1.21.6
+	- viafabricplus 4.2.3
+	   |-- com_github_oryxel_cubeconverter 916cadb12a
+	   |-- com_vdurmont_semver4j 3.1.0
+	   |-- com_viaversion_mcstructs_dialog 5-3.1.1-SNAPSHOT
+	   |-- com_viaversion_mcstructs_registry 5-3.1.1-SNAPSHOT
+	   |-- com_viaversion_viaaprilfools-common 4.0.3
+	   |-- com_viaversion_viabackwards-common 5.4.2-SNAPSHOT
+	   |-- com_viaversion_vialoader 4.0.5-SNAPSHOT
+	   |-- com_viaversion_viaversion-common 5.4.2-SNAPSHOT
+	   |-- de_florianmichael_classic4j 2.1.1-SNAPSHOT
+	   |-- io_jsonwebtoken_jjwt-api 0.12.6
+	   |-- io_jsonwebtoken_jjwt-gson 0.12.6
+	   |-- io_jsonwebtoken_jjwt-impl 0.12.6
+	   |-- io_netty_netty-codec-compression 4.2.2
+	   |-- io_netty_netty-codec-http 4.2.2
+	   |-- net_jodah_expiringmap 0.5.10
+	   |-- net_lenni0451_commons_httpclient 1.6.0
+	   |-- net_lenni0451_mcstructs-bedrock_forms 2.0.1
+	   |-- net_lenni0451_mcstructs-bedrock_text 2.0.1
+	   |-- net_lenni0451_reflect 1.5.0
+	   |-- net_raphimc_minecraftauth 4.1.1
+	   |-- net_raphimc_viabedrock 0.0.20-SNAPSHOT
+	   |-- net_raphimc_vialegacy 3.0.11-SNAPSHOT
+	   |-- org_cloudburstmc_netty_netty-transport-raknet 1.0.0.CR3-SNAPSHOT
+	   |-- org_lz4_lz4-pure-java 1.8.0
+	   |-- team_unnamed_mocha 3.0.1
+	   |-- viafabricplus-api 4.2.3
+	   \-- viafabricplus-visuals 4.2.3
+	- vmp 0.2.0+beta.7.207+1.21.8
+	   \-- com_ibm_async_asyncutil 0.1.0
+	- wildfire_gender 4.3.4+1.21.7
+	- xaerominimap 25.2.12
+	- xaeroworldmap 1.39.13
+	- yet_another_config_lib_v3 3.7.1+1.21.6-fabric
+	   |-- com_twelvemonkeys_common_common-image 3.12.0
+	   |-- com_twelvemonkeys_common_common-io 3.12.0
+	   |-- com_twelvemonkeys_common_common-lang 3.12.0
+	   |-- com_twelvemonkeys_imageio_imageio-core 3.12.0
+	   |-- com_twelvemonkeys_imageio_imageio-metadata 3.12.0
+	   |-- com_twelvemonkeys_imageio_imageio-webp 3.12.0
+	   |-- org_quiltmc_parsers_gson 0.2.1
+	   \-- org_quiltmc_parsers_json 0.2.1
+[16:59:46] [main/INFO]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/C:/Users/0570/AppData/Roaming/Bloret-Launcher/.minecraft/libraries/net/fabricmc/sponge-mixin/0.17.0+mixin.0.8.7/sponge-mixin-0.17.0+mixin.0.8.7.jar Service=Knot/Fabric Env=CLIENT
+[16:59:47] [main/INFO]: Compatibility level set to JAVA_16
+[16:59:47] [main/INFO]: Compatibility level set to JAVA_21
+[16:59:48] [main/WARN]: Reference map 'forgeconfigapiport.common.refmap.json' for forgeconfigapiport.common.mixins.json could not be read. If this is a development environment you can ignore this message
+[16:59:48] [main/WARN]: Reference map 'iris.refmap.json' for mixins.iris.json could not be read. If this is a development environment you can ignore this message
+[16:59:48] [main/WARN]: Reference map 'iris-fabric.refmap.json' for mixins.iris.fabric.json could not be read. If this is a development environment you can ignore this message
+[16:59:48] [main/WARN]: Reference map 'iris.refmap.json' for iris-batched-entity-rendering.mixins.json could not be read. If this is a development environment you can ignore this message
+[16:59:48] [main/WARN]: Reference map 'iris.refmap.json' for mixins.iris.fantastic.json could not be read. If this is a development environment you can ignore this message
+[16:59:48] [main/WARN]: Reference map 'iris.refmap.json' for mixins.iris.vertexformat.json could not be read. If this is a development environment you can ignore this message
+[16:59:48] [main/WARN]: Reference map 'iris.refmap.json' for mixins.iris.bettermipmaps.json could not be read. If this is a development environment you can ignore this message
+[16:59:48] [main/WARN]: Reference map 'iris.refmap.json' for mixins.iris.compat.sodium.json could not be read. If this is a development environment you can ignore this message
+[16:59:48] [main/WARN]: Reference map 'iris.refmap.json' for mixins.iris.fixes.maxfpscrash.json could not be read. If this is a development environment you can ignore this message
+[16:59:48] [main/WARN]: Mod 'ferritecore' attempted to override option 'mixin.alloc.blockstate', which doesn't exist, ignoring
+[16:59:48] [main/INFO]: Loaded configuration file for Lithium: 160 options available, 0 override(s) found.
+[16:59:49] [main/WARN]: Reference map 'mixins.nonmmlauncher.replaymod.refmap.json' for mixins.nonmmlauncher.replaymod.json could not be read. If this is a development environment you can ignore this message
+[16:59:49] [main/INFO]: Loaded configuration file for Sodium: 43 options available, 1 override(s) found
+[16:59:49] [main/INFO]: Loaded configuration file for Sodium Extra: 33 options available, 0 override(s) found
+[16:59:50] [main/INFO]: Successfully started async appender with [SysOut, ServerGuiConsole, Tracy, File]
+[16:59:50] [main/WARN]: Reference map 'yet_another_config_lib_v3.refmap.json' for yacl.mixins.json could not be read. If this is a development environment you can ignore this message
+[16:59:50] [main/WARN]: Reference map 'yet_another_config_lib_v3.refmap.json' for yacl-fabric.mixins.json could not be read. If this is a development environment you can ignore this message
+[16:59:52] [main/WARN]: Force disabled MC-122477 because it only applies to OS: LINUX
+[16:59:52] [main/WARN]: Force disabled MC-22882 because it only applies to OS: MAC
+[16:59:57] [main/WARN]: Error loading class: traben/entity_model_features/models/parts/EMFModelPart (java.lang.ClassNotFoundException: traben/entity_model_features/models/parts/EMFModelPart)
+[16:59:57] [main/WARN]: Force-disabling mixin 'features.render.world.sky.FogRendererMixin' as rule 'mixin.features.render.world.sky' (added by mods [iris]) disables it and children
+[16:59:57] [main/WARN]: Force-disabling mixin 'features.render.world.sky.ClientLevelMixin' as rule 'mixin.features.render.world.sky' (added by mods [iris]) disables it and children
+[16:59:57] [main/WARN]: Force-disabling mixin 'features.render.world.sky.LevelRendererMixin' as rule 'mixin.features.render.world.sky' (added by mods [iris]) disables it and children
+[17:00:00] [main/WARN]: Error loading class: net/optifine/render/ChunkVisibility (java.lang.ClassNotFoundException: net/optifine/render/ChunkVisibility)
+[17:00:00] [main/WARN]: Error loading class: shadersmod/client/ShadersRender (java.lang.ClassNotFoundException: shadersmod/client/ShadersRender)
+[17:00:00] [main/WARN]: Error loading class: net/optifine/shaders/ShadersRender (java.lang.ClassNotFoundException: net/optifine/shaders/ShadersRender)
+[17:00:00] [main/INFO]: Searching for graphics cards...
+[17:00:01] [main/INFO]: Found graphics adapter: AdapterInfo{vendor=NVIDIA, description='Quadro K620', adapterType=0x0000031B, openglIcdFilePath='C:\Windows\System32\DriverStore\FileRepository\nvhdc.inf_amd64_af488e5ea8b55702\nvoglv64.dll', openglIcdVersion=32.0.15.7712}
+[17:00:01] [main/INFO]: Found graphics adapter: AdapterInfo{vendor=INTEL, description='Intel(R) HD Graphics 630', adapterType=0x00002323, openglIcdFilePath='C:\Windows\System32\DriverStore\FileRepository\iigd_dch.inf_amd64_b8e80a9b8772ee40\ig9icd64.dll', openglIcdVersion=31.0.101.2114}
+[17:00:01] [main/WARN]: Sodium has applied one or more workarounds to prevent crashes or other issues on your system: [NVIDIA_THREADED_OPTIMIZATIONS_BROKEN]
+[17:00:01] [main/WARN]: This is not necessarily an issue, but it may result in certain features or optimizations being disabled. You can sometimes fix these issues by upgrading your graphics driver.
+[17:00:01] [main/INFO]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.0).
+[17:00:06] [main/INFO]: [Config.deserialize] Reading...
+[17:00:06] [main/INFO]: [Config.deserialize] No config file found; using default values
+[17:00:12] [Datafixer Bootstrap/INFO]: 269 Datafixer optimizations took 4088 milliseconds
+[17:00:31] [main/INFO]: Completely ignored arguments: [0.18.4, 0.18.4]
+[17:00:31] [Render thread/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[17:00:31] [Render thread/INFO]: Setting user: Detritalw
+[17:00:32] [Render thread/INFO]: ChatAnimation initialized!
+[17:00:32] [Render thread/INFO]: Enabled 104 bug fixes: [MC-577, MC-2025, MC-4490, MC-7569, MC-8187, MC-22882, MC-30391, MC-35361, MC-46503, MC-46737, MC-46766, MC-57057, MC-61489, MC-69216, MC-79545, MC-80859, MC-82263, MC-84661, MC-88371, MC-89146, MC-90683, MC-93018, MC-93384, MC-94054, MC-100991, MC-105068, MC-115092, MC-116379, MC-118740, MC-119417, MC-119754, MC-121706, MC-121903, MC-122477, MC-122627, MC-123450, MC-123605, MC-127970, MC-129909, MC-132878, MC-134110, MC-136249, MC-139041, MC-143474, MC-147659, MC-147784, MC-155509, MC-159163, MC-159283, MC-160095, MC-165306, MC-165381, MC-168573, MC-170462, MC-176559, MC-176806, MC-177831, MC-179072, MC-183776, MC-183990, MC-187100, MC-188359, MC-197260, MC-199467, MC-200418, MC-201374, MC-201723, MC-202637, MC-206540, MC-206922, MC-210318, MC-211561, MC-215530, MC-215531, MC-217716, MC-219981, MC-221257, MC-223153, MC-224729, MC-226961, MC-227008, MC-227337, MC-231097, MC-231743, MC-232869, MC-237493, MC-242809, MC-245394, MC-251068, MC-259512, MC-263865, MC-267125, MC-267376, MC-267469, MC-268420, MC-268617, MC-271899, MC-272431, MC-280220, MC-297837, MC-298066, MC-298225, MC-298558, MC-299115]
+[17:00:32] [Render thread/INFO]: Successfully Debugify'd your game!
+[17:00:35] [Via-Mappingloader-0/INFO]: Loading block connection mappings ...
+[17:00:35] [Render thread/INFO]: [ShulkerBoxTooltip] Could not find configuration file, creating default file
+[17:00:36] [Render thread/INFO]: Set key binding: key.wildfire_gender.gender_menu -> key.keyboard.h
+[17:00:36] [Render thread/INFO]: Set key binding: key.wildfire_gender.toggle -> key.keyboard.unknown
+[17:00:36] [Render thread/INFO]: Registering S2C receiver with id architectury:spawn_entity_packet
+[17:00:36] [Render thread/INFO]: [ChatPatches()] Finished setup!
+[17:00:37] [Render thread/INFO]: Dynamic FPS 3.9.6 active on Fabric!
+[17:00:38] [Render thread/INFO]: [Indigo] Different rendering plugin detected; not applying Indigo.
+[17:00:38] [Render thread/INFO]: Set key binding: key.firstperson.toggle -> key.keyboard.f6
+[17:00:38] [Render thread/INFO]: Loading FirstPerson Mod
+[17:00:38] [Render thread/INFO]: Freecam support loaded.
+[17:00:38] [Render thread/INFO]: Set key binding: key.freecam.toggle -> key.keyboard.f4
+[17:00:38] [Render thread/INFO]: Set key binding: key.freecam.playerControl -> key.keyboard.unknown
+[17:00:38] [Render thread/INFO]: Set key binding: key.freecam.tripodReset -> key.keyboard.unknown
+[17:00:38] [Render thread/INFO]: Set key binding: key.freecam.configGui -> key.keyboard.unknown
+[17:00:38] [Render thread/INFO]: Set key binding: key.gammautils.gammaToggle -> key.keyboard.g
+[17:00:38] [Render thread/INFO]: Set key binding: key.gammautils.increaseGamma -> key.keyboard.up
+[17:00:38] [Render thread/INFO]: Set key binding: key.gammautils.decreaseGamma -> key.keyboard.down
+[17:00:38] [Render thread/INFO]: Set key binding: key.gammautils.maxGamma -> key.keyboard.unknown
+[17:00:38] [Render thread/INFO]: Set key binding: key.gammautils.minGamma -> key.keyboard.unknown
+[17:00:38] [Render thread/INFO]: Set key binding: key.gammautils.nightVisionToggle -> key.keyboard.h
+[17:00:38] [Render thread/INFO]: Set key binding: key.gammautils.increaseNightVision -> key.keyboard.right
+[17:00:38] [Render thread/INFO]: Set key binding: key.gammautils.decreaseNightVision -> key.keyboard.left
+[17:00:38] [Worker-Main-1/INFO]: Loading translations...
+[17:00:38] [Worker-Main-1/INFO]: Registering protocols...
+[17:00:39] [Via-Mappingloader-0/INFO]: Using FastUtil Long2ObjectOpenHashMap for block connections
+[17:00:39] [Render thread/INFO]: (minescript) Minescript mod starting...
+[17:00:39] [Render thread/INFO]: Starting Minescript on OS: Windows 11
+[17:00:40] [Render thread/INFO]: Configured file extension `.pyj` for commands: CommandConfig[extension=.pyj, command=[{command}, {args}], environment=[]]
+[17:00:40] [Render thread/INFO]: Configured file extension `.py` for commands: CommandConfig[extension=.py, command=[C:\Users\0570\AppData\Local\Microsoft\WindowsApps\python3.exe, -u, {command}, {args}], environment=[PYTHONPATH=G:\Work\git\Bloret-Launcher\minescript\system\lib;G:\Work\git\Bloret-Launcher\minescript]]
+[17:00:40] [Render thread/INFO]: Setting config var: python = "%userprofile%\AppData\Local\Microsoft\WindowsApps\python3.exe" (CommandConfig[extension=.py, command=[C:\Users\0570\AppData\Local\Microsoft\WindowsApps\python3.exe, -u, {command}, {args}], environment=[PYTHONPATH=G:\Work\git\Bloret-Launcher\minescript\system\lib;G:\Work\git\Bloret-Launcher\minescript]])
+[17:00:40] [Render thread/INFO]: Checking mod updates...
+[17:00:40] [Render thread/INFO]: Set key binding: key.modmenu.open_menu -> key.keyboard.unknown
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.playeroverview -> key.keyboard.b
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.lighting -> key.keyboard.z
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.quickmode -> key.keyboard.q
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.settings -> key.keyboard.unknown
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.marker -> key.keyboard.m
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.thumbnail -> key.keyboard.n
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.playpause -> key.keyboard.p
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.rollclockwise -> key.keyboard.l
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.rollcounterclockwise -> key.keyboard.j
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.resettilt -> key.keyboard.k
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.pathpreview -> key.keyboard.h
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.keyframerepository -> key.keyboard.x
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.clearkeyframes -> key.keyboard.c
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.synctimeline -> key.keyboard.v
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.positionkeyframe -> key.keyboard.i
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.positiononlykeyframe -> key.keyboard.unknown
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.timekeyframe -> key.keyboard.o
+[17:00:42] [Render thread/INFO]: Set key binding: key.replaymod.bothkeyframes -> key.keyboard.unknown
+[17:00:42] [Render thread/INFO]: [STDOUT]: [LibGui] Initializing Client...
+[17:00:42] [Render thread/WARN]: Method overwrite conflict for getEntity in wildfire_gender.mixins.json:renderstate.LivingEntityRenderStateMixin from mod wildfire_gender, previously written by dev.tr7zw.notenoughanimations.mixins.LivingRenderStateMixin. Skipping method.
+[17:00:42] [Render thread/WARN]: Method overwrite conflict for setEntity in wildfire_gender.mixins.json:renderstate.LivingEntityRenderStateMixin from mod wildfire_gender, previously written by dev.tr7zw.notenoughanimations.mixins.LivingRenderStateMixin. Skipping method.
+[17:00:42] [Render thread/INFO]: Loading Xaero's Minimap - Stage 1/2
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_minimap_settings -> key.keyboard.y
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_zoom_in -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_zoom_out -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_new_waypoint -> key.keyboard.b
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_waypoints_key -> key.keyboard.u
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_enlarge_map -> key.keyboard.z
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_toggle_map -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_toggle_waypoints -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_toggle_map_waypoints -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_toggle_slime -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_toggle_grid -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_instant_waypoint -> key.keyboard.keypad.add
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_switch_waypoint_set -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_display_all_sets -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_toggle_light_overlay -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_toggle_entity_radar -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_reverse_entity_radar -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_toggle_manual_cave_mode -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_alternative_list_players -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_toggle_tracked_players_on_map -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_toggle_tracked_players_in_world -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Set key binding: gui.xaero_toggle_pac_chunk_claims -> key.keyboard.unknown
+[17:00:43] [Render thread/INFO]: Loading Xaero's World Map - Stage 1/2
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'placeholder-api@2.7.1+1.21.6', (-> 2.7.2+1.21.8)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'gammautils@2.3.5', (-> 2.3.6)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'forgeconfigapiport@21.8.0', (-> v21.8.2-1.21.8-Fabric)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'languagereload@1.7.4+1.21.6', (-> 1.7.5+1.21.8)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'shulkerboxtooltip@5.2.8+1.21.7', (-> 5.2.12+1.21.8-fabric)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'fabric-api@0.130.0+1.21.8', (-> 0.136.1+1.21.8)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'xaeroworldmap@1.39.13', (-> fabric-1.21.8-1.40.6)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'fabric-language-kotlin@1.13.4+kotlin.2.2.0', (-> 1.13.8+kotlin.2.3.0)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'dynamic_fps@3.9.6', (-> 3.11.3)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'yet_another_config_lib_v3@3.7.1+1.21.6-fabric', (-> 3.8.1+1.21.6-fabric)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'notenoughanimations@1.10.1', (-> 1.11.1)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'iris@1.9.1+mc1.21.7', (-> 1.9.6+1.21.8-fabric)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'libipn@6.5.1', (-> fabric-1.21.6-6.6.2)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'immediatelyfast@1.12.0+1.21.8', (-> 1.12.4+1.21.8-fabric)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'xaerominimap@25.2.12', (-> fabric-1.21.8-25.3.5)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'viafabricplus@4.2.3', (-> 4.2.5)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'sodium@0.6.13+mc1.21.6', (-> mc1.21.8-0.7.3-fabric)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'nochatreports@1.21.7-v2.14.0', (-> Fabric-1.21.8-v2.15.0)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'firstperson@2.5.0', (-> 2.6.1)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'sodium-extra@0.6.6+mc1.21.6', (-> mc1.21.8-0.7.0+fabric)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'modmenu@15.0.0-beta.3', (-> 15.0.0)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'chat_heads@0.13.19', (-> 0.14.2)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'lambdynlights@4.3.2+1.21.8', (-> 4.8.7+1.21.8)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'lithium@0.18.0+mc1.21.8', (-> mc1.21.8-0.18.1-fabric)
+[17:00:45] [Worker-Main-2/INFO]: Update available for 'skinlayers3d@1.8.2', (-> 1.10.1)
+[17:00:46] [Worker-Main-1/INFO]: Started resource pack HTTP server on http://127.0.0.1:65403/
+[17:00:46] [Render thread/ERROR]: suppressed exception
+java.lang.RuntimeException: javax.crypto.BadPaddingException: Message is larger than modulus
+	at knot/xaero.common.patreon.decrypt.DecryptInputStream.read(DecryptInputStream.java:77) ~[%5BXaero%5D%20Xaeros_Minimap_25.2.12_Fabric_1.21.8.jar:?]
+	at java.base/java.io.InputStream.read(InputStream.java:289) ~[?:?]
+	at java.base/sun.nio.cs.StreamDecoder.readBytes(StreamDecoder.java:279) ~[?:?]
+	at java.base/sun.nio.cs.StreamDecoder.implRead(StreamDecoder.java:322) ~[?:?]
+	at java.base/sun.nio.cs.StreamDecoder.read(StreamDecoder.java:186) ~[?:?]
+	at java.base/java.io.InputStreamReader.read(InputStreamReader.java:175) ~[?:?]
+	at java.base/java.io.BufferedReader.fill(BufferedReader.java:166) ~[?:?]
+	at java.base/java.io.BufferedReader.readLine(BufferedReader.java:333) ~[?:?]
+	at java.base/java.io.BufferedReader.readLine(BufferedReader.java:400) ~[?:?]
+	at knot/xaero.common.patreon.Patreon.checkPatreon(Patreon.java:77) [%5BXaero%5D%20Xaeros_Minimap_25.2.12_Fabric_1.21.8.jar:?]
+	at knot/xaero.common.patreon.Patreon.checkPatreon(Patreon.java:52) [%5BXaero%5D%20Xaeros_Minimap_25.2.12_Fabric_1.21.8.jar:?]
+	at knot/xaero.map.patreon.Patreon.checkPatreon(Patreon.java:58) [%5BXaero%5D%20XaerosWorldMap_1.39.13_Fabric_1.21.8.jar:?]
+	at knot/xaero.map.WorldMap.loadClient(WorldMap.java:158) [%5BXaero%5D%20XaerosWorldMap_1.39.13_Fabric_1.21.8.jar:?]
+	at knot/xaero.map.WorldMapFabric.loadClient(WorldMapFabric.java:93) [%5BXaero%5D%20XaerosWorldMap_1.39.13_Fabric_1.21.8.jar:?]
+	at knot/xaero.map.WorldMapFabric.onInitializeClient(WorldMapFabric.java:49) [%5BXaero%5D%20XaerosWorldMap_1.39.13_Fabric_1.21.8.jar:?]
+	at net.fabricmc.loader.impl.FabricLoaderImpl.invokeEntrypoints(FabricLoaderImpl.java:405) [fabric-loader-0.18.4.jar:?]
+	at net.fabricmc.loader.impl.game.minecraft.Hooks.startClient(Hooks.java:53) [fabric-loader-0.18.4.jar:?]
+	at knot/net.minecraft.class_310.<init>(class_310.java:481) [client-intermediary.jar:?]
+	at knot/net.minecraft.client.main.Main.main(Main.java:249) [client-intermediary.jar:?]
+	at net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider.launch(MinecraftGameProvider.java:514) [fabric-loader-0.18.4.jar:?]
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:72) [fabric-loader-0.18.4.jar:?]
+	at net.fabricmc.loader.impl.launch.knot.KnotClient.main(KnotClient.java:23) [fabric-loader-0.18.4.jar:?]
+Caused by: javax.crypto.BadPaddingException: Message is larger than modulus
+	at java.base/sun.security.rsa.RSACore.parseMsg(RSACore.java:222) ~[?:?]
+	at java.base/sun.security.rsa.RSACore.crypt(RSACore.java:141) ~[?:?]
+	at java.base/sun.security.rsa.RSACore.rsa(RSACore.java:108) ~[?:?]
+	at java.base/com.sun.crypto.provider.RSACipher.doFinal(RSACipher.java:364) ~[?:?]
+	at java.base/com.sun.crypto.provider.RSACipher.engineDoFinal(RSACipher.java:449) ~[?:?]
+	at java.base/javax.crypto.Cipher.doFinal(Cipher.java:2255) ~[?:?]
+	at knot/xaero.common.patreon.decrypt.DecryptInputStream.read(DecryptInputStream.java:45) ~[%5BXaero%5D%20Xaeros_Minimap_25.2.12_Fabric_1.21.8.jar:?]
+	... 21 more
+[17:00:46] [Worker-Main-1/INFO]: ViaVersion detected lowest supported version by the proxy: c0.0.15a-1 (0)
+[17:00:46] [Worker-Main-1/INFO]: Highest supported version by the proxy: 1.21.7-1.21.8 (772)
+[17:00:46] [Worker-Main-1/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[17:00:48] [Render thread/INFO]: Set key binding: gui.xaero_open_map -> key.keyboard.m
+[17:00:48] [Render thread/INFO]: Set key binding: gui.xaero_open_settings -> key.keyboard.right.bracket
+[17:00:48] [Render thread/INFO]: Set key binding: gui.xaero_map_zoom_in -> key.keyboard.unknown
+[17:00:48] [Render thread/INFO]: Set key binding: gui.xaero_map_zoom_out -> key.keyboard.unknown
+[17:00:48] [Render thread/INFO]: Set key binding: gui.xaero_quick_confirm -> key.keyboard.right.shift
+[17:00:48] [Render thread/INFO]: Set key binding: gui.xaero_toggle_dimension -> key.keyboard.unknown
+[17:00:48] [Render thread/INFO]: Deserializing YACLConfig from 'C:\Users\0570\AppData\Roaming\Bloret-Launcher\.minecraft\versions\1.21.8-Fabric\config\yacl.json5'
+[17:00:48] [Render thread/INFO]: Set key binding: iris.keybind.reload -> key.keyboard.r
+[17:00:48] [Render thread/INFO]: Set key binding: iris.keybind.toggleShaders -> key.keyboard.k
+[17:00:48] [Render thread/INFO]: Set key binding: iris.keybind.shaderPackSelection -> key.keyboard.o
+[17:00:48] [Render thread/INFO]: Set key binding: iris.keybind.wireframe -> key.keyboard.unknown
+[17:00:48] [Render thread/INFO]: [LambDynLights] Initializing LambDynamicLights...
+[17:00:48] [Render thread/INFO]: [LambDynLights] Configuration loaded.
+[17:00:49] [Render thread/INFO]: Set key binding: key.forward -> key.keyboard.w
+[17:00:49] [Render thread/INFO]: Set key binding: key.left -> key.keyboard.a
+[17:00:49] [Render thread/INFO]: Set key binding: key.back -> key.keyboard.s
+[17:00:49] [Render thread/INFO]: Set key binding: key.right -> key.keyboard.d
+[17:00:49] [Render thread/INFO]: Set key binding: key.jump -> key.keyboard.space
+[17:00:49] [Render thread/INFO]: Set key binding: key.sneak -> key.keyboard.left.shift
+[17:00:49] [Render thread/INFO]: Set key binding: key.sprint -> key.keyboard.left.control
+[17:00:49] [Render thread/INFO]: Set key binding: key.inventory -> key.keyboard.e
+[17:00:49] [Render thread/INFO]: Set key binding: key.swapOffhand -> key.keyboard.f
+[17:00:49] [Render thread/INFO]: Set key binding: key.drop -> key.keyboard.q
+[17:00:49] [Render thread/INFO]: Set key binding: key.use -> key.mouse.right
+[17:00:49] [Render thread/INFO]: Set key binding: key.attack -> key.mouse.left
+[17:00:49] [Render thread/INFO]: Set key binding: key.pickItem -> key.mouse.middle
+[17:00:49] [Render thread/INFO]: Set key binding: key.chat -> key.keyboard.t
+[17:00:49] [Render thread/INFO]: Set key binding: key.playerlist -> key.keyboard.tab
+[17:00:49] [Render thread/INFO]: Set key binding: key.command -> key.keyboard.slash
+[17:00:49] [Render thread/INFO]: Set key binding: key.socialInteractions -> key.keyboard.p
+[17:00:49] [Render thread/INFO]: Set key binding: key.screenshot -> key.keyboard.f2
+[17:00:49] [Render thread/INFO]: Set key binding: key.togglePerspective -> key.keyboard.f5
+[17:00:49] [Render thread/INFO]: Set key binding: key.smoothCamera -> key.keyboard.unknown
+[17:00:49] [Render thread/INFO]: Set key binding: key.fullscreen -> key.keyboard.f11
+[17:00:49] [Render thread/INFO]: Set key binding: key.spectatorOutlines -> key.keyboard.unknown
+[17:00:49] [Render thread/INFO]: Set key binding: key.advancements -> key.keyboard.l
+[17:00:49] [Render thread/INFO]: Set key binding: key.quickActions -> key.keyboard.g
+[17:00:49] [Render thread/INFO]: Set key binding: key.hotbar.1 -> key.keyboard.1
+[17:00:49] [Render thread/INFO]: Set key binding: key.hotbar.2 -> key.keyboard.2
+[17:00:49] [Render thread/INFO]: Set key binding: key.hotbar.3 -> key.keyboard.3
+[17:00:49] [Render thread/INFO]: Set key binding: key.hotbar.4 -> key.keyboard.4
+[17:00:49] [Render thread/INFO]: Set key binding: key.hotbar.5 -> key.keyboard.5
+[17:00:49] [Render thread/INFO]: Set key binding: key.hotbar.6 -> key.keyboard.6
+[17:00:49] [Render thread/INFO]: Set key binding: key.hotbar.7 -> key.keyboard.7
+[17:00:49] [Render thread/INFO]: Set key binding: key.hotbar.8 -> key.keyboard.8
+[17:00:49] [Render thread/INFO]: Set key binding: key.hotbar.9 -> key.keyboard.9
+[17:00:49] [Render thread/INFO]: Set key binding: key.saveToolbarActivator -> key.keyboard.c
+[17:00:49] [Render thread/INFO]: Set key binding: key.loadToolbarActivator -> key.keyboard.x
+[17:00:49] [Render thread/INFO]: Set key binding: key.dynamic_fps.toggle_forced -> key.keyboard.unknown
+[17:00:49] [Render thread/INFO]: Set key binding: key.dynamic_fps.toggle_disabled -> key.keyboard.unknown
+[17:00:51] [Via Async Scheduler 0/INFO]: Finished mapping loading, shutting down loader executor.
+[17:00:51] [Render thread/INFO]: Backend library: LWJGL version 3.3.3-snapshot
+[17:00:52] [Render thread/INFO]: Modifying process environment to apply workarounds for the NVIDIA graphics driver...
+[17:00:53] [Render thread/INFO]: Initializing ImmediatelyFast 1.12.0+1.21.8 on Quadro K620/PCIe/SSE2 (NVIDIA Corporation) with OpenGL 3.2.0 NVIDIA 577.12
+[17:00:53] [Render thread/INFO]: Found Iris/Oculus 1.9.1+mc1.21.7. Enabling compatibility.
+[17:00:53] [Render thread/INFO]: Debug functionality is disabled.
+[17:00:53] [Render thread/INFO]: ARB_direct_state_access detected, enabling DSA.
+[17:00:53] [Render thread/INFO]: Shaders are disabled because no valid shaderpack is selected
+[17:00:53] [Render thread/INFO]: OpenGL Vendor: NVIDIA Corporation
+[17:00:53] [Render thread/INFO]: OpenGL Renderer: Quadro K620/PCIe/SSE2
+[17:00:53] [Render thread/INFO]: OpenGL Version: 3.2.0 NVIDIA 577.12
+[17:00:53] [Render thread/INFO]: Modifying OpenGL context to apply workarounds for the NVIDIA graphics driver...
+[17:00:53] [Render thread/INFO]: Enabling GL_DEBUG_OUTPUT_SYNCHRONOUS to force the NVIDIA driver to disable threadedcommand submission
+[17:00:53] [Render thread/INFO]: Using optional rendering extensions: GL_ARB_buffer_storage, GL_KHR_debug, GL_ARB_vertex_attrib_binding, GL_ARB_direct_state_access
+[17:00:54] [Render thread/INFO]: Hardware information:
+[17:00:54] [Render thread/INFO]: CPU: 8x Intel(R) Core(TM) i7-7700 CPU @ 3.60GHz
+[17:00:54] [Render thread/INFO]: GPU: Quadro K620/PCIe/SSE2 (Supports OpenGL 3.2.0 NVIDIA 577.12)
+[17:00:54] [Render thread/INFO]: OS: Windows 11 (10.0)
+[17:00:55] [Render thread/INFO]: Reloading ResourceManager: vanilla, fabric, chat_heads, chatanimation, chatpatches, cloth-config, com_viaversion_viaaprilfools-common, com_viaversion_viabackwards-common, com_viaversion_viaversion-common, conditional-mixin, debugify, dynamic_fps, fabric-api, fabric-api-base, fabric-api-lookup-api-v1, fabric-biome-api-v1, fabric-block-api-v1, fabric-block-view-api-v2, fabric-command-api-v2, fabric-content-registries-v0, fabric-convention-tags-v1, fabric-convention-tags-v2, fabric-crash-report-info-v1, fabric-data-attachment-api-v1, fabric-data-generation-api-v1, fabric-dimensions-v1, fabric-entity-events-v1, fabric-events-interaction-v0, fabric-game-rule-api-v1, fabric-item-api-v1, fabric-item-group-api-v1, fabric-key-binding-api-v1, fabric-language-kotlin, fabric-lifecycle-events-v1, fabric-loot-api-v2, fabric-loot-api-v3, fabric-message-api-v1, fabric-model-loading-api-v1, fabric-networking-api-v1, fabric-object-builder-api-v1, fabric-particles-v1, fabric-recipe-api-v1, fabric-registry-sync-v0, fabric-renderer-api-v1, fabric-renderer-indigo, fabric-rendering-fluids-v1, fabric-rendering-v1, fabric-resource-conditions-api-v1, fabric-resource-loader-v0, fabric-screen-api-v1, fabric-screen-handler-api-v1, fabric-sound-api-v1, fabric-tag-api-v1, fabric-transfer-api-v1, fabric-transitive-access-wideners-v1, fabricloader, firstperson, forgeconfigapiport, freecam, gammautils, immediatelyfast, iris, lambdynlights, lambdynlights_api, languagereload, libipn, lithium, minescript, modmenu, moreculling, net_raphimc_viabedrock, net_raphimc_vialegacy, nochatreports, notenoughanimations, placeholder-api, pride, reeses-sodium-options, replaymod, shulkerboxtooltip, skinlayers3d, sodium, sodium-extra, spruceui, trender, viafabricplus, viafabricplus-visuals, vmp, wildfire_gender, xaerominimap, xaeroworldmap, yet_another_config_lib_v3, replaymod_lang
+[17:00:55] [Render thread/INFO]: Cached all modded block culling states
+[17:00:55] [Render thread/INFO]: Loading Xaero's World Map - Stage 2/2
+[17:00:55] [Render thread/INFO]: New world map region cache hash code: -939508602
+[17:00:55] [Render thread/INFO]: Registered player tracker system: map_synced
+[17:00:55] [Render thread/INFO]: Xaero's WorldMap Mod: Xaero's minimap found!
+[17:00:56] [Render thread/INFO]: Registered player tracker system: minimap_synced
+[17:00:56] [Render thread/INFO]: No Optifine!
+[17:00:56] [Render thread/INFO]: Xaero's World Map: No Vivecraft!
+[17:00:56] [Render thread/INFO]: Xaero's World Map: Iris found!
+[17:00:56] [Worker-Main-5/INFO]: Found unifont_pua-16.0.03.hex, loading
+[17:00:56] [Worker-Main-7/INFO]: Found unifont_all_no_pua-16.0.03.hex, loading
+[17:00:56] [Render thread/WARN]: Unable to read property: level with value: "0" for blockstate: {Name:"minecraft:water_cauldron",Properties:{level:"0"}}
+[17:00:56] [Render thread/INFO]: PlayerAnimator not found!
+[17:00:56] [Render thread/INFO]: Loaded Vanilla Hands items: []
+[17:00:56] [Render thread/INFO]: Loaded Auto Disable items: []
+[17:00:56] [Render thread/INFO]: Loading Xaero's Minimap - Stage 2/2
+[17:00:57] [Render thread/WARN]: io exception while checking versions: Read timed out
+[17:00:57] [Render thread/INFO]: Registered player tracker system: minimap_synced
+[17:00:57] [Render thread/INFO]: Xaero's Minimap: World Map found!
+[17:00:57] [Render thread/INFO]: No Optifine!
+[17:00:57] [Render thread/INFO]: Xaero's Minimap: No Vivecraft!
+[17:00:57] [Render thread/INFO]: Xaero's Minimap: Iris found!
+[17:00:58] [Worker-Main-7/INFO]: Found unifont_jp_patch-16.0.03.hex, loading

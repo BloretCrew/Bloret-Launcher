@@ -2174,43 +2174,7 @@ def setup_download_ui(self, widget):
             
             if java_version_items:
                 java_version_choose.addItems(java_version_items)
-        
-        # 3. 设置旧版下载页面按钮点击事件
-        old_download_page_button = widget.findChild(QPushButton, 'Old_download_Page')
-        if old_download_page_button:
-            # 使用MessageBoxBase创建对话框
-            def show_old_download_dialog():
-                # 创建一个对话框
-                dialog = MessageBoxBase(self)
-                dialog.setWindowTitle(i18nText("旧版下载"))
                 
-                # 创建内容界面
-                content_widget = QWidget()
-                content_widget.setObjectName("download_old")
-                load_ui("ui/download.old.ui", parent=content_widget)
-                
-                # 设置对话框内容
-                dialog.viewLayout.addWidget(content_widget)
-                
-                # 设置对话框大小
-                dialog.resize(800, 600)
-                
-                # 隐藏默认按钮
-                # dialog.yesButton.hide()
-                dialog.cancelButton.hide()
-                
-                # 设置UI
-                setup_download_old_ui(self, content_widget, 
-                                     self.LM_Download_Way_list if hasattr(self, 'LM_Download_Way_list') else ["1.21.8", "1.21.7"], 
-                                     self.ver_id_bloret if hasattr(self, 'ver_id_bloret') else ["1.21.8", "1.21.7"], 
-                                     self.homeInterface)
-                
-                # 显示对话框
-                dialog.exec_()
-            
-            # 连接按钮点击事件
-            old_download_page_button.clicked.connect(show_old_download_dialog)
-            
         # 设置Minecraft版本下载按钮点击事件
         minecraft_download_button = widget.findChild(QPushButton, 'Minecraft_version_Download')
         if minecraft_download_button:
