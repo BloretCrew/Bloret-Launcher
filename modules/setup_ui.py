@@ -1121,31 +1121,10 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
         accounts = mc_data.get("accounts", [])
         if index >= len(accounts): return
 
-        # 1. 更新内部配置
+        # 更新内部配置
         self.config["MinecraftAccount"]["chosen"] = index
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(self.config, f, ensure_ascii=False, indent=4)
-        
-        # 2. 同步至 cmcl.json 供启动使用
-        acc = accounts[index]
-        try:
-            cmcl_acc = {
-                "playerName": acc["username"],
-                "uuid": acc["uuid"].replace("-", ""),
-                "loginMethod": 0 if acc["type"] == "Offline" else 2,
-                "accessToken": ""
-            }
-            with open('cmcl.json', 'w', encoding='utf-8') as f:
-                json.dump({"accounts": [cmcl_acc]}, f, indent=4)
-            
-            # 3. 刷新主页 UI 和当前页面视觉效果
-            self.load_cmcl_data()
-            self.refresh_home_minecraft_account(acc["username"], homeInterface)
-            update_cards_visual()
-            
-            InfoBar.success(title=i18nText("切换成功"), content=f"{i18nText('已切换至')}: {acc['username']}", parent=self, duration=1500)
-        except Exception as e:
-            log(f"同步 cmcl.json 失败: {e}", logging.ERROR)
 
     # 绑定右上角刷新按钮
     refresh_btn = widget.findChild(QPushButton, "refreshMinecraftAccount")
@@ -2174,7 +2153,7 @@ def setup_download_ui(self, widget):
             
             if java_version_items:
                 java_version_choose.addItems(java_version_items)
-                
+
         # 设置Minecraft版本下载按钮点击事件
         minecraft_download_button = widget.findChild(QPushButton, 'Minecraft_version_Download')
         if minecraft_download_button:

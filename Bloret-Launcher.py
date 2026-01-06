@@ -408,16 +408,33 @@ class MainWindow(FluentWindow):
         # 初始化其他属性
         update_progress({'value': 60 / 100, 'valueStringOverride': '6/10', 'status': i18nText('初始化其他属性')})
         self.is_running = False
+
+        # 从配置加载账户信息
+        mc_acc_config = self.config.get("MinecraftAccount", {})
+        accounts = mc_acc_config.get("accounts", [])
+        chosen_idx = mc_acc_config.get("chosen", 0)
+
+        self.player_name = ""
         self.player_uuid = ""
+        self.login_mod = i18nText("请在下方登录")  # 默认值
+
+        if accounts and 0 <= chosen_idx < len(accounts):
+            acc = accounts[chosen_idx]
+            self.player_name = acc.get("username", "")
+            self.player_uuid = acc.get("uuid", "")
+            acc_type = acc.get("type", "Offline")
+            if acc_type == "Microsoft":
+                self.login_mod = i18nText("微软登录")
+            else:
+                self.login_mod = i18nText("离线登录")
+
         self.player_skin = ""
         self.player_cape = ""
-        self.player_name = ""
         self.Customize_icon = None
         self.settings = QSettings("Bloret", "Launcher")
         if not isdarktheme:
             self.apply_theme()
         self.cmcl_data = None
-        self.load_cmcl_data()
         self.initNavigation()
         self.initWindow()
         self.apply_scale()
@@ -487,49 +504,7 @@ class MainWindow(FluentWindow):
         # if Minecraft_account:
         log(f"设置主页玩家名称：{player_name}，Minecraft_account:{Minecraft_account}")
         Minecraft_account.setText(f"{player_name}")
-    def load_cmcl_data(self):
-        log(f"开始向 cmcl.json 读取数据")
-        try:
-            with open('cmcl.json', 'r', encoding='utf-8') as file:
-                self.cmcl_data = json.load(file)
-            
-            # 添加对空accounts列表的检查
-            if not self.cmcl_data.get('accounts'):
-                self.player_name = i18nText("未登录")
-                self.login_mod = i18nText("请在下方登录")
-                log(i18nText("cmcl.json 中的 accounts 列表为空"))
-                return
-                
-            # 添加索引越界保护
-            account = self.cmcl_data['accounts'][0] if self.cmcl_data['accounts'] else {}
-            
-            self.player_name = account.get('playerName', i18nText('未登录'))
-            self.login_mod_num = account.get('loginMethod', -1)  # 默认-1表示未知
-            
-            # 更新登录方式描述
-            self.login_mod = {
-                0: i18nText("离线登录"),
-                2: i18nText("微软登录")
-            }.get(self.login_mod_num, i18nText("未知登录方式"))
-
-            log(f"读取到的 playerName: {self.player_name}")
-            log(f"读取到的 loginMethod: {self.login_mod}")
-            return self.player_name
-            # self.refresh_home_minecraft_account(self.player_name)
-            
-        except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-            log(f"读取 cmcl.json 失败: {e}", logging.ERROR)
-            self.cmcl_data = None
-            # 设置默认值
-            self.player_name = i18nText("未登录")
-            self.login_mod = i18nText("请在下方登录")
-        except Exception as e:
-            handle_exception(e)
-            log(f"其他错误: {e}", logging.ERROR)
-            self.cmcl_data = None
-            self.player_name = i18nText("未登录")
-            self.login_mod = i18nText("请在下方登录")
-
+        
     def initNavigation(self):
         self.homeInterface = QWidget()
         self.downloadInterface = QWidget()
@@ -1583,7 +1558,6 @@ class MainWindow(FluentWindow):
         
         # 处理结果
         if success:
-            self.load_cmcl_data()
             self.update_passport_ui(widget)
             InfoBar.success(
                 title=i18nText('✅ 登录成功'),

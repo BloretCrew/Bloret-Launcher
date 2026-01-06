@@ -122,8 +122,6 @@ jobs:
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
-      with:
-        ref: 'Windows'
 
     - name: 创建输出目录并清理
       run: |
@@ -163,8 +161,6 @@ jobs:
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
-      with:
-        ref: 'Windows'
 
     - name: 下载构建产物
       uses: actions/download-artifact@v4
