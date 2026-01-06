@@ -1126,6 +1126,29 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(self.config, f, ensure_ascii=False, indent=4)
 
+        # 1. 更新通行证页面 UI (按钮状态)
+        update_cards_visual()
+
+        # 2. 更新主程序全局变量 (确保启动游戏使用新账户)
+        acc = accounts[index]
+        self.player_name = acc.get("username", "")
+        self.player_uuid = acc.get("uuid", "")
+        acc_type = acc.get("type", "Offline")
+        
+        if acc_type == "Microsoft":
+            self.login_mod = i18nText("微软登录")
+        else:
+            self.login_mod = i18nText("离线登录")
+
+        # 3. 刷新主页左上角的账户显示
+        if homeInterface:
+            Minecraft_account = homeInterface.findChild(QLabel, "Minecraft_account")
+            if Minecraft_account:
+                if self.config.get('home_show_login_mod', False):
+                    Minecraft_account.setText(f"[{self.login_mod}] {self.player_name}")
+                else:
+                    Minecraft_account.setText(f"{self.player_name}")
+
     # 绑定右上角刷新按钮
     refresh_btn = widget.findChild(QPushButton, "refreshMinecraftAccount")
     if refresh_btn:
