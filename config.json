@@ -24,5 +24,10 @@
     "minecraft_dir": "",
     "Java_Path": "C:\\Program Files\\Zulu\\zulu-23\\bin\\java.exe",
     "language": "zh-cn",
-    "screen_cut_shortcut": "Ctrl+Alt+A"
+    "screen_cut_shortcut": "Ctrl+Alt+A",
+    "MinecraftAccount": {
+        "logined": false,
+        "chosen": -1,
+        "accounts": []
+    }
 }

@@ -33,7 +33,7 @@ from modules.config import read
 from modules.systems import setup_startup_with_self_starting
 from modules.log import log, clear_log_files
 from modules.Bloret_PassPort import (
-    Bloret_PassPort_Account_logout, sync_mc_account_to_bloret_passport,
+    Bloret_PassPort_Account_logout,
     sync_bloret_passport_account_to_mc, savedata, readdata
 )
 from modules.links import (
@@ -992,71 +992,168 @@ def setup_tools_ui(self, widget):
 
 def setup_passport_ui(self, widget, server_ip, homeInterface):
     '''
-    # 设定 Bloret Launcher 通行证界面 UI 布局和操作。
-    包括：
-     - [x] 微软登录与离线登录
-     - [x] 百络谷通行证登录
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    设定 Bloret Launcher 通行证界面 UI 布局和操作。
+    适配 MinecraftAccounts (QWidget) 动态列表，支持局部刷新。
     '''
-    player_name_edit = widget.findChild(QLineEdit, "player_name")
-    player_name_set_button = widget.findChild(QPushButton, "player_name_set")
-    login_way_combo = widget.findChild(ComboBox, "player_login_way")
-    login_way_choose = widget.findChild(ComboBox, "login_way")
-    name_combo = widget.findChild(ComboBox, "playername")
-    Bloret_PassPort_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
-    Bloret_PassPort_logout = widget.findChild(QPushButton, "Bloret_PassPort_logout")
-    Bloret_PassPort_login = widget.findChild(QPushButton, "Bloret_PassPort_login")
-    go_Minecraft_Account_To_Bloret_PassPort_Cloud_to = widget.findChild(QPushButton, "go_Minecraft_Account_To_Bloret_PassPort_Cloud_to")
-    go_Minecraft_Account_To_Bloret_PassPort_Cloud_from = widget.findChild(QPushButton, "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from")
-
-    if player_name_edit and player_name_set_button:
-        player_name_set_button.clicked.connect(lambda: self.on_player_name_set_clicked(widget))
-        log(i18nText("已连接 player_name_set_button 点击事件"))
-
-    if self.cmcl_data:
-        log(i18nText("成功读取 cmcl.json 数据"))
-        
-        if login_way_combo:
-            login_way_choose.clear()
-            login_way_choose.addItems([i18nText("离线登录"), i18nText("微软登录")])
-            login_way_choose.setCurrentText(self.login_mod)
-            login_way_choose.setCurrentIndex(0)
-
-        if login_way_combo:
-            login_way_combo.clear()
-            login_way_combo.addItem(str(self.login_mod))
-            login_way_combo.setCurrentIndex(0)
-            log(f"设置 login_way_combo 当前索引为: {self.login_mod}")
-
-        if name_combo:
-            name_combo.clear()
-            name_combo.addItem(self.player_name)
-            name_combo.setCurrentIndex(0)
-            log(f"设置 name_combo 当前索引为: {self.player_name}")
-    else:
-        log(i18nText("读取 cmcl.json 失败"))
     
-    login_button = widget.findChild(QPushButton, "login")
-    if login_button:
-        login_button.clicked.connect(lambda: self.handle_login(widget))
-    Bloret_PassPort_view_BBBS = widget.findChild(QPushButton, "Bloret_PassPort_view_BBBS")
-    reg_Bloret_PassPort = widget.findChild(QPushButton, "reg_Bloret_PassPort")
+    # 1. 基础按钮功能绑定
+    manage_web_btn = widget.findChild(QPushButton, "ManageMinecraftAccountOnBloretPassPortWebsite")
+    if manage_web_btn:
+        manage_web_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://passport.bloret.net/")))
+
+    sync_cloud_btn = widget.findChild(QPushButton, "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from")
+    if sync_cloud_btn:
+        sync_cloud_btn.clicked.connect(lambda: sync_bloret_passport_account_to_mc(self))
+
+    # Bloret PassPort 账户状态
+    Bloret_PassPort_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
     if Bloret_PassPort_UserName:
         Bloret_PassPort_UserName.setText(self.config.get('Bloret_PassPort_UserName', i18nText('未登录')))
-    if Bloret_PassPort_logout:
-        Bloret_PassPort_logout.clicked.connect(lambda: Bloret_PassPort_Account_logout(self,homeInterface))
+
+    Bloret_PassPort_login = widget.findChild(QPushButton, "Bloret_PassPort_login")
     if Bloret_PassPort_login:
         Bloret_PassPort_login.clicked.connect(lambda: Bloret_PassPort_Account_login())
-    if Bloret_PassPort_view_BBBS:
-        Bloret_PassPort_view_BBBS.clicked.connect(lambda: open_BBBS_link(server_ip))
-    if reg_Bloret_PassPort:
-        reg_Bloret_PassPort.clicked.connect(lambda: open_BBBS_Reg_link())
-    if go_Minecraft_Account_To_Bloret_PassPort_Cloud_to:
-        go_Minecraft_Account_To_Bloret_PassPort_Cloud_to.clicked.connect(lambda: sync_mc_account_to_bloret_passport(self))
 
-    if go_Minecraft_Account_To_Bloret_PassPort_Cloud_from:
-        go_Minecraft_Account_To_Bloret_PassPort_Cloud_from.clicked.connect(lambda: sync_bloret_passport_account_to_mc(self))
+    Bloret_PassPort_logout = widget.findChild(QPushButton, "Bloret_PassPort_logout")
+    if Bloret_PassPort_logout:
+        Bloret_PassPort_logout.clicked.connect(lambda: Bloret_PassPort_Account_logout(self, homeInterface))
+
+    # --- 核心：Minecraft 账户列表管理 ---
+    
+    accounts_container = widget.findChild(QWidget, "MinecraftAccounts")
+    if accounts_container and not accounts_container.layout():
+        layout = QVBoxLayout(accounts_container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.setAlignment(Qt.AlignTop)
+
+    def update_cards_visual():
+        '''不重建 UI，仅更新卡片的高亮状态和按钮文字'''
+        layout = accounts_container.layout()
+        chosen_idx = self.config.get("MinecraftAccount", {}).get("chosen", 0)
+        
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            card = item.widget()
+            if not isinstance(card, CardWidget): continue
+            
+            # 获取卡片内的按钮
+            btn = card.findChild(PushButton, "action_btn")
+            if i == chosen_idx:
+                card.setStyleSheet("CardWidget { border: 2px solid #0078d4; background-color: rgba(0, 120, 212, 0.05); }")
+                btn.setText(i18nText("正在使用"))
+                btn.setEnabled(False)
+            else:
+                card.setStyleSheet("")
+                btn.setText(i18nText("使用此账户"))
+                btn.setEnabled(True)
+
+    def refresh_minecraft_accounts():
+        '''物理重建账户列表（下载头像、创建卡片）'''
+        layout = accounts_container.layout()
+        # 清理旧卡片
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget(): child.widget().deleteLater()
+
+        mc_data = self.config.get("MinecraftAccount", {})
+        accounts = mc_data.get("accounts", [])
+        chosen_idx = mc_data.get("chosen", 0)
+
+        if not accounts:
+            layout.addWidget(BodyLabel(i18nText("暂无账户，请从云端同步")))
+            return
+
+        for i, acc in enumerate(accounts):
+            username = acc.get("username", "Unknown")
+            acc_type = acc.get("type", "Offline")
+            uuid = acc.get("uuid", username)
+
+            card = CardWidget(accounts_container)
+            card.setFixedHeight(75)
+            card_layout = QHBoxLayout(card)
+            card_layout.setContentsMargins(12, 8, 12, 8)
+            
+            # 头像 (ImageLabel)
+            avatar_label = ImageLabel(card)
+            avatar_label.setFixedSize(45, 45)
+            avatar_label.setBorderRadius(4, 4, 4, 4)
+            avatar_label.setPixmap(QPixmap("ui/icon/DefaultHead.png"))
+            
+            # 异步加载头像
+            def load_img(label, uid):
+                try:
+                    res = requests.get(f"https://mc-heads.net/avatar/{uid}/45", timeout=5)
+                    if res.status_code == 200:
+                        p = QPixmap()
+                        p.loadFromData(res.content)
+                        label.setPixmap(p)
+                except: pass
+            QTimer.singleShot(10, lambda l=avatar_label, u=uuid: load_img(l, u))
+
+            # 文本信息
+            txt_lyt = QVBoxLayout()
+            txt_lyt.setSpacing(2)
+            name_lbl = StrongBodyLabel(username, card)
+            type_lbl = CaptionLabel(i18nText("离线登录") if acc_type == "Offline" else i18nText("微软登录"), card)
+            type_lbl.setTextColor(QColor(150, 150, 150), QColor(200, 200, 200))
+            txt_lyt.addWidget(name_lbl)
+            txt_lyt.addWidget(type_lbl)
+            
+            # 操作按钮 (设置 ObjectName 以便后期局部更新)
+            btn = PushButton(card)
+            btn.setObjectName("action_btn")
+            btn.setFixedWidth(100)
+            btn.clicked.connect(lambda checked, idx=i: switch_account(idx))
+
+            card_layout.addWidget(avatar_label)
+            card_layout.addLayout(txt_lyt)
+            card_layout.addStretch(1)
+            card_layout.addWidget(btn)
+            
+            layout.addWidget(card)
+        
+        update_cards_visual()
+
+    def switch_account(index):
+        '''切换逻辑：仅更新数据和样式'''
+        mc_data = self.config.get("MinecraftAccount", {})
+        accounts = mc_data.get("accounts", [])
+        if index >= len(accounts): return
+
+        # 1. 更新内部配置
+        self.config["MinecraftAccount"]["chosen"] = index
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(self.config, f, ensure_ascii=False, indent=4)
+        
+        # 2. 同步至 cmcl.json 供启动使用
+        acc = accounts[index]
+        try:
+            cmcl_acc = {
+                "playerName": acc["username"],
+                "uuid": acc["uuid"].replace("-", ""),
+                "loginMethod": 0 if acc["type"] == "Offline" else 2,
+                "accessToken": ""
+            }
+            with open('cmcl.json', 'w', encoding='utf-8') as f:
+                json.dump({"accounts": [cmcl_acc]}, f, indent=4)
+            
+            # 3. 刷新主页 UI 和当前页面视觉效果
+            self.load_cmcl_data()
+            self.refresh_home_minecraft_account(acc["username"], homeInterface)
+            update_cards_visual()
+            
+            InfoBar.success(title=i18nText("切换成功"), content=f"{i18nText('已切换至')}: {acc['username']}", parent=self, duration=1500)
+        except Exception as e:
+            log(f"同步 cmcl.json 失败: {e}", logging.ERROR)
+
+    # 绑定右上角刷新按钮
+    refresh_btn = widget.findChild(QPushButton, "refreshMinecraftAccount")
+    if refresh_btn:
+        refresh_btn.clicked.connect(refresh_minecraft_accounts)
+
+    # 初始加载
+    refresh_minecraft_accounts()
 
 def setup_settings_ui(self, widget):
     '''

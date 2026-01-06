@@ -8,6 +8,7 @@ import json
 from modules.plugin import addPlugin
 from modules.win11toast import toast
 import modules.globals as BLglobals
+from modules.log import log
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -93,6 +94,65 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 
                 html_content = self.generate_success_page()
+                self.wfile.write(html_content.encode('utf-8'))
+        elif self.path == '/sync/Minecraft_Account':
+            # 处理 /sync/Minecraft_Account 路径
+            try:
+                # 1. 从 config.json 读取用户信息
+                with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                    config_data = json.load(f)
+                
+                # 检查是否已登录 Passport
+                if not config_data.get('Bloret_PassPort_Login'):
+                    raise Exception("请先登录 Bloret Passport")
+
+                username = config_data.get('Bloret_PassPort_UserName')
+                user_token = config_data.get('Bloret_PassPort_PassWord')
+
+                # 2. 向验证服务器发送请求获取 Minecraft 账户列表
+                verify_url = "http://pcfs.eno.ink:20000/app/MinecraftAccounts"
+                params = {
+                    'app_id': 'BloretLauncher',
+                    'app_secret': 's4d56f4a68sd46g54asd46f54a5dsf654asdf546',
+                    'user': username,
+                    'usertoken': user_token
+                }
+                
+                response = requests.get(verify_url, params=params)
+                api_result = response.json()
+                
+                if api_result.get('status') == 'success':
+                    # 3. 更新 config.json 中的 MinecraftAccount 字段
+                    accounts = api_result.get('accounts', [])
+                    
+                    config_data['MinecraftAccount'] = {
+                        "logined": True if accounts else False,
+                        "chosen": 0 if accounts else -1,
+                        "accounts": accounts
+                    }
+                    
+                    # 保存配置
+                    with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                        json.dump(config_data, f, ensure_ascii=False, indent=4)
+                    
+                    log(f"Minecraft accounts synced: {len(accounts)} accounts found.")
+                    
+                    # 4. 执行重定向跳转回 Passport 官网
+                    self.send_response(302)
+                    self.send_header('Location', 'https://passport.bloret.net/')
+                    self.end_headers()
+                    
+                    toast('已从 Bloret PassPort 同步账户', f'已成功同步 {len(accounts)} 个账户到本地。')
+                else:
+                    message = api_result.get('message', '未知错误')
+                    raise Exception(f"服务器返回错误: {message}")
+
+            except Exception as e:
+                logger.error(f"Error during Minecraft account sync: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                html_content = self.generate_error_page(f"同步失败: {str(e)}")
                 self.wfile.write(html_content.encode('utf-8'))
         elif self.path.startswith('/plugin/confirm'):
             # 处理插件安装确认页面
@@ -549,12 +609,37 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 </html>
         '''
 
+    def generate_common_success_page(self, title, message):
+        """生成通用的成功提示页面"""
+        return f'''
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <link rel="stylesheet" href="/fluent.css">
+</head>
+<body>
+    <div class="fluent-card">
+        <div class="fluent-icon" style="background: #107c10;">✔</div>
+        <h1 class="fluent-title">{title}</h1>
+        <p class="fluent-text">{message}</p>
+        <p class="fluent-text">您现在可以关闭此页面并返回启动器</p>
+        <button class="fluent-btn fluent-btn-primary" onclick="window.close()">关闭页面</button>
+    </div>
+</body>
+</html>
+        '''
+
     def log_message(self, format, *args):
         # 重写日志消息格式
         logger.info("%s - - [%s] %s\n" %
                      (self.address_string(),
                       self.log_date_time_string(),
                       format % args))
+
+
 
 def start_server():
     """启动Web服务器"""

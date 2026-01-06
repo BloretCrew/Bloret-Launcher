@@ -3364,6 +3364,8 @@ class ResourcePackItemWidget(CardWidget):
         self.parent_page = parent_page
         self.setFixedHeight(80)
         
+        log(f"加载资源包项: {data}")
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(12)
@@ -3387,9 +3389,18 @@ class ResourcePackItemWidget(CardWidget):
         # Text
         textLayout = QVBoxLayout()
         textLayout.setSpacing(2)
-        
+
+        self.descLabel = BodyLabel(self)
         self.nameLabel = StrongBodyLabel(data["name"], self)
-        self.descLabel = BodyLabel(data["description"], self)
+        # 如果description是字典，尝试获取特定语言的描述
+        desc_data = data["description"]
+        if isinstance(desc_data, dict):
+            description_text = desc_data.get("translate", desc_data.get("en", str(desc_data)))
+        else:
+            # 如果它已经是字符串，则直接使用
+            description_text = str(desc_data)
+
+        self.descLabel.setText(description_text)
         self.descLabel.setTextColor("#606060", "#a0a0a0")
 
         # 确保 Label 不会撑大水平布局
@@ -3397,7 +3408,7 @@ class ResourcePackItemWidget(CardWidget):
         
         # 简单截断
         font_metrics = self.descLabel.fontMetrics()
-        elided_text = font_metrics.elidedText(data["description"], Qt.ElideRight, 400)
+        elided_text = font_metrics.elidedText(description_text, Qt.ElideRight, 400)
         self.descLabel.setText(elided_text)
         
         textLayout.addWidget(self.nameLabel)
