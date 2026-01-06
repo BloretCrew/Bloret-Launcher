@@ -36,14 +36,14 @@ from PyQt5.QtGui import QPixmap, QDesktopServices, QColor
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, 
     QListWidget, QListWidgetItem, QFileDialog, QLabel, 
-    QSizePolicy
+    QSizePolicy, QGridLayout # 新增 QGridLayout
 )
 from qfluentwidgets import (
     InfoBar, InfoBarPosition, ComboBox, StrongBodyLabel, 
     BodyLabel, SubtitleLabel, MessageBoxBase, LineEdit, 
     PushButton, SwitchButton, CaptionLabel, Pivot, 
     SegmentedWidget, CardWidget, IconWidget, FluentIcon,
-    IndeterminateProgressBar, ToolButton
+    PrimaryPushButton, ToolButton, ImageLabel
 )
 
 # 自定义模块
@@ -2415,43 +2415,84 @@ def on_other_version_selected(self, selected_text, combo_box):
 
 class BaseInfoPage(QWidget):
     """ 基本信息页面 """
-    def __init__(self, parent=None):
+    def __init__(self, version_name, minecraft_dir, parent=None):
         super().__init__(parent)
+        self.version_name = version_name
+        self.minecraft_dir = minecraft_dir
+        self.icon_path = "" # 存储当前图标路径
+
         self.vLayout = QVBoxLayout(self)
+        self.vLayout.setSpacing(20)
         
         # 1. 核心名称
-        self.vLayout.addWidget(StrongBodyLabel(i18nText("核心名称 (文件夹名)"), self))
+        self.name_layout = QVBoxLayout()
+        self.name_layout.setSpacing(5)
+        self.name_layout.addWidget(StrongBodyLabel(i18nText("核心名称 (文件夹名)"), self))
         self.name_edit = LineEdit(self)
         self.name_edit.setPlaceholderText(i18nText("修改此项将重命名版本文件夹"))
-        self.vLayout.addWidget(self.name_edit)
+        self.name_layout.addWidget(self.name_edit)
+        self.vLayout.addLayout(self.name_layout)
 
-        # 2. 真实版本号
-        self.vLayout.addWidget(StrongBodyLabel(i18nText("真实游戏版本"), self))
-        self.real_ver_edit = LineEdit(self)
-        self.real_ver_edit.setPlaceholderText(i18nText("例如: 1.21.8"))
-        self.vLayout.addWidget(self.real_ver_edit)
+        # 2. 图标设置
+        self.icon_group_layout = QVBoxLayout()
+        self.icon_group_layout.setSpacing(10)
+        self.icon_group_layout.addWidget(StrongBodyLabel(i18nText("图标"), self))
+        
+        self.icon_content_layout = QHBoxLayout()
+        
+        # 图标预览
+        self.icon_preview = QLabel(self)
+        self.icon_preview.setFixedSize(50, 50)
+        self.icon_preview.setScaledContents(True)
+        self.icon_preview.setStyleSheet("background-color: #f0f0f0; border: 1px solid #e0e0e0;")
+        
+        # 选择按钮
+        self.icon_btn_layout = QVBoxLayout()
+        self.change_icon_btn = PushButton(i18nText("选择其他图标"), self)
+        self.change_icon_btn.setIcon(FluentIcon.EDIT)
+        self.change_icon_btn.clicked.connect(self.browse_icon)
+        
+        self.icon_path_label = CaptionLabel(i18nText("使用默认图标"), self)
+        self.icon_path_label.setTextColor("#606060", "#a0a0a0")
+        
+        self.icon_btn_layout.addWidget(self.change_icon_btn)
+        self.icon_btn_layout.addWidget(self.icon_path_label)
+        self.icon_btn_layout.addStretch(1)
 
-        # 3. Fabric 状态
-        self.fabric_layout = QHBoxLayout()
-        self.fabric_label = BodyLabel(i18nText("是否为 Fabric 版本"), self)
-        self.fabric_switch = SwitchButton(self)
-        self.fabric_switch.setOnText(i18nText("是"))
-        self.fabric_switch.setOffText(i18nText("否"))
-        self.fabric_layout.addWidget(self.fabric_label)
-        self.fabric_layout.addWidget(self.fabric_switch)
-        self.fabric_layout.addStretch(1)
-        self.vLayout.addLayout(self.fabric_layout)
+        self.icon_content_layout.addWidget(self.icon_preview)
+        self.icon_content_layout.addLayout(self.icon_btn_layout)
+        self.icon_content_layout.addStretch(1)
+        
+        self.icon_group_layout.addLayout(self.icon_content_layout)
+        self.vLayout.addLayout(self.icon_group_layout)
 
-        # 4. 图标路径
-        self.vLayout.addWidget(StrongBodyLabel(i18nText("自定义图标路径"), self))
-        self.icon_layout = QHBoxLayout()
-        self.icon_edit = LineEdit(self)
-        self.icon_edit.setPlaceholderText(i18nText("图标文件的绝对路径"))
-        self.browse_btn = PushButton(i18nText("浏览"), self)
-        self.browse_btn.clicked.connect(self.browse_icon)
-        self.icon_layout.addWidget(self.icon_edit)
-        self.icon_layout.addWidget(self.browse_btn)
-        self.vLayout.addLayout(self.icon_layout)
+        # 3. 快捷操作 (文件夹打开)
+        self.folder_layout = QVBoxLayout()
+        self.folder_layout.setSpacing(10)
+        self.folder_layout.addWidget(StrongBodyLabel(i18nText("快速访问"), self))
+        
+        self.grid_layout = QGridLayout()
+        self.grid_layout.setSpacing(10)
+
+        # 定义快捷按钮生成函数
+        def create_folder_btn(text, icon, sub_path):
+            btn = PushButton(text, self)
+            btn.setIcon(icon)
+            btn.clicked.connect(lambda: self.open_folder(sub_path))
+            return btn
+
+        self.btn_version = create_folder_btn(i18nText("版本文件夹"), FluentIcon.FOLDER, "")
+        self.btn_mods = create_folder_btn(i18nText("Mod 文件夹"), FluentIcon.ZIP_FOLDER, "mods")
+        self.btn_resource = create_folder_btn(i18nText("资源包文件夹"), FluentIcon.ALBUM, "resourcepacks")
+        self.btn_saves = create_folder_btn(i18nText("存档文件夹"), FluentIcon.SAVE, "saves")
+
+        self.grid_layout.addWidget(self.btn_version, 0, 0)
+        self.grid_layout.addWidget(self.btn_mods, 0, 1)
+        self.grid_layout.addWidget(self.btn_resource, 1, 0)
+        self.grid_layout.addWidget(self.btn_saves, 1, 1)
+
+        self.folder_layout.addLayout(self.grid_layout)
+        self.vLayout.addLayout(self.folder_layout)
         
         self.vLayout.addStretch(1)
 
@@ -2460,27 +2501,96 @@ class BaseInfoPage(QWidget):
             self, i18nText("选择图标"), "", i18nText("图片文件 (*.png *.jpg *.ico);;所有文件 (*.*)")
         )
         if path:
-            self.icon_edit.setText(path)
+            self.set_icon(path)
 
-class ControlPage(QWidget):
-    """ 核心控制页面 """
-    def __init__(self, open_folder_callback, delete_callback, parent=None):
+    def set_icon(self, path):
+        """ 设置并显示图标 """
+        self.icon_path = path
+        if path and os.path.exists(path):
+            self.icon_preview.setPixmap(QPixmap(path))
+            self.icon_path_label.setText(os.path.basename(path))
+        else:
+            # 默认图标
+            default_icon = "ui/icon/Grass_Block.png" 
+            if os.path.exists(default_icon):
+                self.icon_preview.setImage(default_icon)
+            self.icon_path_label.setText(i18nText("默认图标"))
+
+    def open_folder(self, sub_path):
+        """ 打开指定子文件夹 """
+        base_path = os.path.join(self.minecraft_dir, "versions", self.version_name)
+        target_path = os.path.join(base_path, sub_path)
+        
+        if not os.path.exists(target_path):
+            try:
+                os.makedirs(target_path, exist_ok=True)
+            except:
+                InfoBar.warning(
+                    title=i18nText('文件夹不存在'),
+                    content=f"无法找到或创建文件夹: {target_path}",
+                    parent=self.window()
+                )
+                return
+
+        try:
+            os.startfile(target_path)
+        except Exception as e:
+            InfoBar.error(
+                title=i18nText('打开失败'),
+                content=str(e),
+                parent=self.window()
+            )
+
+
+class AdvancedPage(QWidget):
+    """ 高级设置页面 """
+    def __init__(self, delete_callback, parent=None):
         super().__init__(parent)
         self.vLayout = QVBoxLayout(self)
+        self.vLayout.setSpacing(20)
+
+        # 1. 高级元数据
+        self.meta_layout = QVBoxLayout()
+        self.meta_layout.setSpacing(10)
+        self.meta_layout.addWidget(StrongBodyLabel(i18nText("元数据设置"), self))
         
-        self.open_folder_btn = PushButton(i18nText("打开版本文件夹"), self)
-        self.open_folder_btn.setIcon(FluentIcon.FOLDER)
-        self.open_folder_btn.clicked.connect(open_folder_callback)
-        self.vLayout.addWidget(self.open_folder_btn)
+        # 真实版本号
+        self.real_ver_edit = LineEdit(self)
+        self.real_ver_edit.setPlaceholderText(i18nText("真实游戏版本 (例如: 1.21.8)"))
+        self.meta_layout.addWidget(BodyLabel(i18nText("真实游戏版本"), self))
+        self.meta_layout.addWidget(self.real_ver_edit)
+
+        # Fabric 开关
+        self.fabric_layout = QHBoxLayout()
+        self.fabric_label = BodyLabel(i18nText("标记为 Fabric 版本"), self)
+        self.fabric_switch = SwitchButton(self)
+        self.fabric_switch.setOnText(i18nText("是"))
+        self.fabric_switch.setOffText(i18nText("否"))
         
-        self.delete_btn = PushButton(i18nText("删除此核心"), self)
+        self.fabric_layout.addWidget(self.fabric_label)
+        self.fabric_layout.addWidget(self.fabric_switch)
+        self.fabric_layout.addStretch(1)
+        
+        self.meta_layout.addLayout(self.fabric_layout)
+        self.vLayout.addLayout(self.meta_layout)
+
+        self.vLayout.addSpacing(20)
+        
+        # 2. 危险区域
+        self.danger_layout = QVBoxLayout()
+        self.danger_layout.setSpacing(10)
+        self.danger_label = StrongBodyLabel(i18nText("危险区域"), self)
+        self.danger_label.setTextColor("#cf1010", "#ff4d4f") # 红色文字
+        self.danger_layout.addWidget(self.danger_label)
+
+        self.delete_btn = PrimaryPushButton(i18nText("删除此核心"), self)
         self.delete_btn.setIcon(FluentIcon.DELETE)
-        # 注意：删除操作可能需要关闭对话框，这里只是回调
         self.delete_btn.clicked.connect(delete_callback) 
-        self.vLayout.addWidget(self.delete_btn)
+        
+        self.danger_layout.addWidget(self.delete_btn)
+        self.vLayout.addLayout(self.danger_layout)
         
         self.vLayout.addStretch(1)
-
 class ServerQueryThread(QThread):
     """ 用于查询服务器状态的后台线程 """
     finished = pyqtSignal(dict)
@@ -3517,7 +3627,6 @@ class ResourcePackPage(QWidget):
                 except Exception as e:
                     InfoBar.error(title=i18nText("删除失败"), content=str(e), parent=self.window())
 
-# --- CoreManageDialog (更新引用) ---
 
 class CoreManageDialog(MessageBoxBase):
     """ 核心管理对话框 (分页式) """
@@ -3530,8 +3639,8 @@ class CoreManageDialog(MessageBoxBase):
         self.current_data = {}
 
         # 调整对话框大小
-        self.widget.setMinimumWidth(600)
-        self.widget.setMinimumHeight(500)
+        self.widget.setMinimumWidth(650)
+        self.widget.setMinimumHeight(550)
 
         # 1. 顶部标题
         self.titleLabel = SubtitleLabel(i18nText("核心管理") + f": {version_name}", self)
@@ -3540,10 +3649,10 @@ class CoreManageDialog(MessageBoxBase):
         # 2. Pivot 导航栏
         self.pivot = Pivot(self)
         self.pivot.addItem(routeKey="baseInfo", text=i18nText("基本信息"))
-        self.pivot.addItem(routeKey="control", text=i18nText("核心控制"))
         self.pivot.addItem(routeKey="server", text=i18nText("服务器"))
         self.pivot.addItem(routeKey="resource", text=i18nText("资源包"))
         self.pivot.addItem(routeKey="mod", text=i18nText("Mod"))
+        self.pivot.addItem(routeKey="advanced", text=i18nText("高级")) # 改为高级
         self.viewLayout.addWidget(self.pivot)
 
         # 3. StackedWidget 内容区
@@ -3551,22 +3660,23 @@ class CoreManageDialog(MessageBoxBase):
         self.viewLayout.addWidget(self.stackedWidget)
 
         # 初始化各个页面
-        self.baseInfoPage = BaseInfoPage(self)
-        self.controlPage = ControlPage(self.open_version_folder, self.delete_core, self)
+        # 传入 version_name 和 minecraft_dir 给 BaseInfoPage
+        self.baseInfoPage = BaseInfoPage(self.version_name, self.minecraft_dir, self)
         self.serverPage = ServerPage(self.version_name, self.minecraft_dir, self.home_interface, self)
-        # --- 更新：使用新实现的页面 ---
         self.resourcePage = ResourcePackPage(self.version_name, self.minecraft_dir, self)
         self.modPage = ModPage(self.version_name, self.minecraft_dir, self)
+        # 使用 AdvancedPage 替换 ControlPage
+        self.advancedPage = AdvancedPage(self.delete_core, self)
 
         self.stackedWidget.addWidget(self.baseInfoPage)
-        self.stackedWidget.addWidget(self.controlPage)
         self.stackedWidget.addWidget(self.serverPage)
         self.stackedWidget.addWidget(self.resourcePage)
         self.stackedWidget.addWidget(self.modPage)
+        self.stackedWidget.addWidget(self.advancedPage)
 
         # 连接信号
         self.pivot.currentItemChanged.connect(lambda k: self.stackedWidget.setCurrentIndex(
-            ["baseInfo", "control", "server", "resource", "mod"].index(k)
+            ["baseInfo", "server", "resource", "mod", "advanced"].index(k)
         ))
 
         # 加载数据
@@ -3580,7 +3690,7 @@ class CoreManageDialog(MessageBoxBase):
         self.yesButton.clicked.connect(self.save_data)
 
     def load_data(self):
-        """ 从 .BL.json 加载数据到 BaseInfoPage """
+        """ 从 .BL.json 加载数据 """
         try:
             if os.path.exists(self.bl_json_path):
                 with open(self.bl_json_path, "r", encoding="utf-8") as f:
@@ -3590,21 +3700,23 @@ class CoreManageDialog(MessageBoxBase):
                     
                     # 填充 BaseInfoPage
                     self.baseInfoPage.name_edit.setText(self.version_name)
-                    self.baseInfoPage.real_ver_edit.setText(self.current_data.get("version", self.version_name))
-                    self.baseInfoPage.fabric_switch.setChecked(self.current_data.get("Fabric", False))
-                    self.baseInfoPage.icon_edit.setText(self.current_data.get("icon", ""))
+                    # 设置图标
+                    icon_path = self.current_data.get("icon", "")
+                    self.baseInfoPage.set_icon(icon_path)
+
+                    # 填充 AdvancedPage
+                    self.advancedPage.real_ver_edit.setText(self.current_data.get("version", self.version_name))
+                    self.advancedPage.fabric_switch.setChecked(self.current_data.get("Fabric", False))
+            else:
+                 # 默认初始化
+                self.baseInfoPage.name_edit.setText(self.version_name)
+                self.baseInfoPage.set_icon("")
+                self.advancedPage.real_ver_edit.setText(self.version_name)
+
         except Exception as e:
             log(f"加载核心信息失败: {e}", logging.ERROR)
 
-    def open_version_folder(self):
-        open_minecraft_version_folder(self, self.version_name, self.minecraft_dir)
-
     def delete_core(self):
-        # 这里的删除逻辑比较复杂，因为在对话框内部删除自己引用的对象
-        # 简单处理：关闭对话框，并返回一个信号让外部处理删除
-        # 或者直接在这里调用 delete_minecraft_version 但需要传入 label/card 等 UI 对象，这里没有
-        # 所以这里只做逻辑删除（文件删除），UI 刷新交给外部
-        
         # 询问确认
         w = MessageBoxBase(self)
         w.viewLayout.addWidget(SubtitleLabel(i18nText("确认删除?")))
@@ -3634,18 +3746,18 @@ class CoreManageDialog(MessageBoxBase):
 
                     InfoBar.success(title=i18nText("删除成功"), content=i18nText("核心已移至回收站"), parent=self.parent())
                     self.reject() # 关闭当前管理窗口
-                    # 注意：这里需要在关闭后通知主界面刷新列表，
-                    # open_core_management 的返回值逻辑需要处理这种情况
             except Exception as e:
                 InfoBar.error(title=i18nText("删除失败"), content=str(e), parent=self)
 
     def save_data(self):
-        """ 保存 BaseInfoPage 的数据 """
+        """ 保存数据 """
         # 获取 BaseInfoPage 的数据
         new_name = self.baseInfoPage.name_edit.text().strip()
-        new_real_ver = self.baseInfoPage.real_ver_edit.text().strip()
-        is_fabric = self.baseInfoPage.fabric_switch.isChecked()
-        new_icon = self.baseInfoPage.icon_edit.text().strip()
+        new_icon = self.baseInfoPage.icon_path # 获取图标路径
+        
+        # 获取 AdvancedPage 的数据
+        new_real_ver = self.advancedPage.real_ver_edit.text().strip()
+        is_fabric = self.advancedPage.fabric_switch.isChecked()
         
         if not new_name:
             InfoBar.error(title=i18nText("错误"), content=i18nText("核心名称不能为空"), parent=self.widget)
@@ -3710,6 +3822,7 @@ class CoreManageDialog(MessageBoxBase):
         except Exception as e:
             handle_exception(e)
             InfoBar.error(title=i18nText("保存失败"), content=str(e), parent=self.widget)
+
 
 def open_core_management(self, version_name, MINECRAFT_DIR, home_interface):
     """ 打开核心管理对话框的入口函数 """
