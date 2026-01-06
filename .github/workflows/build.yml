@@ -28,7 +28,6 @@ jobs:
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git add Bloret-Launcher-Setup.iss
         git add config.json
-        git add cmcl.json
         git commit -m "更新 MyAppVersion 版本号和一些配置文件的默认值。"
         git push
       shell: pwsh
@@ -53,9 +52,6 @@ jobs:
         if (-not (Test-Path "ui")) { Write-Host "ui directory not found"; exit 1 }
         if (-not (Test-Path "easytier")) { Write-Host "ui directory not found"; exit 1 }
         if (-not (Test-Path "lang")) { Write-Host "lang directory not found"; exit 1 }
-        if (-not (Test-Path "cmcl.json")) { Write-Host "cmcl.json not found"; exit 1 }
-        if (-not (Test-Path "cmcl.exe")) { Write-Host "cmcl.exe not found"; exit 1 }
-        if (-not (Test-Path "cmcl.blank.json")) { Write-Host "cmcl.blank.json not found"; exit 1 }
         if (-not (Test-Path "JavaWrapper.jar")) { Write-Host "JavaWrapper.jar not found"; exit 1 }
       shell: pwsh
 
@@ -79,9 +75,6 @@ jobs:
           --add-data "ui;ui" `
           --add-data "lang;lang" `
           --add-data "easytier;easytier" `
-          --add-data "cmcl.json;." `
-          --add-data "cmcl.exe;." `
-          --add-data "cmcl.blank.json;." `
           --add-data "JavaWrapper.jar;." `
           --add-data "modules;modules" `
           --hidden-import=sip `
@@ -100,13 +93,9 @@ jobs:
         cp -r ui/ ${{ env.OUTPUT_DIR }}/
         cp -r lang/ ${{ env.OUTPUT_DIR }}/
         cp -r easytier/ ${{ env.OUTPUT_DIR }}/
-        cp -r cmcl.exe ${{ env.OUTPUT_DIR }}/
-        cp -r cmcl.json ${{ env.OUTPUT_DIR }}/
-        cp -r cmcl.blank.json ${{ env.OUTPUT_DIR }}/
         cp -r config.json ${{ env.OUTPUT_DIR }}/
         cp -r LICENSE ${{ env.OUTPUT_DIR }}/
         cp -r servers.dat ${{ env.OUTPUT_DIR }}/
-        cp -r cmcl_save.json ${{ env.OUTPUT_DIR }}/
         cp -r bloret.ico ${{ env.OUTPUT_DIR }}/
         cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
 
@@ -133,8 +122,6 @@ jobs:
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
-      with:
-        ref: 'Windows'
 
     - name: 创建输出目录并清理
       run: |
@@ -174,8 +161,6 @@ jobs:
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
-      with:
-        ref: 'Windows'
 
     - name: 下载构建产物
       uses: actions/download-artifact@v4
@@ -242,9 +227,6 @@ jobs:
   #       [ -f "config.json" ] || (echo "config.json not found" && exit 1)
   #       [ -d "ui" ] || (echo "ui directory not found" && exit 1)
   #       [ -d "lang" ] || (echo "lang directory not found" && exit 1)
-  #       [ -f "cmcl.json" ] || (echo "cmcl.json not found" && exit 1)
-  #       [ -f "cmcl.exe" ] || (echo "cmcl.exe not found" && exit 1)
-  #       [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
   #       [ -f "frpc.exe" ] || (echo "frpc.exe not found" && exit 1)
   #       [ -f "frpc.toml" ] || (echo "frpc.toml not found" && exit 1)
   #       [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
@@ -270,9 +252,6 @@ jobs:
   #         --add-data "config.json:." \
   #         --add-data "ui:ui" \
   #         --add-data "lang:lang" \
-  #         --add-data "cmcl.json:." \
-  #         --add-data "cmcl.exe:." \
-  #         --add-data "cmcl.blank.json:." \
   #         --add-data "frpc.exe:." \
   #         --add-data "frpc.toml:." \
   #         --add-data "JavaWrapper.jar:." \
@@ -290,13 +269,9 @@ jobs:
   #       cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
   #       cp -r ui/ ${{ env.OUTPUT_DIR }}/
   #       cp -r lang/ ${{ env.OUTPUT_DIR }}/
-  #       cp cmcl.exe ${{ env.OUTPUT_DIR }}/
-  #       cp cmcl.json ${{ env.OUTPUT_DIR }}/
-  #       cp cmcl.blank.json ${{ env.OUTPUT_DIR }}/
   #       cp config.json ${{ env.OUTPUT_DIR }}/
   #       cp LICENSE ${{ env.OUTPUT_DIR }}/
   #       cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
-  #       cp cmcl_save.json ${{ env.OUTPUT_DIR }}/ || true
   #       cp bloret.ico ${{ env.OUTPUT_DIR }}/
   #       cp frpc.exe ${{ env.OUTPUT_DIR }}/
   #       cp frpc.toml ${{ env.OUTPUT_DIR }}/
@@ -333,9 +308,6 @@ jobs:
   #       [ -f "config.json" ] || (echo "config.json not found" && exit 1)
   #       [ -d "ui" ] || (echo "ui directory not found" && exit 1)
   #       [ -d "lang" ] || (echo "lang directory not found" && exit 1)
-  #       [ -f "cmcl.json" ] || (echo "cmcl.json not found" && exit 1)
-  #       [ -f "cmcl.exe" ] || (echo "cmcl.exe not found" && exit 1)
-  #       [ -f "cmcl.blank.json" ] || (echo "cmcl.blank.json not found" && exit 1)
   #       [ -f "frpc.exe" ] || (echo "frpc.exe not found" && exit 1)
   #       [ -f "frpc.toml" ] || (echo "frpc.toml not found" && exit 1)
   #       [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
@@ -361,9 +333,6 @@ jobs:
   #         --add-data "config.json:." \
   #         --add-data "ui:ui" \
   #         --add-data "lang:lang" \
-  #         --add-data "cmcl.json:." \
-  #         --add-data "cmcl.exe:." \
-  #         --add-data "cmcl.blank.json:." \
   #         --add-data "frpc.exe:." \
   #         --add-data "frpc.toml:." \
   #         --add-data "JavaWrapper.jar:." \
@@ -380,13 +349,9 @@ jobs:
   #       cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
   #       cp -r ui/ ${{ env.OUTPUT_DIR }}/
   #       cp -r lang/ ${{ env.OUTPUT_DIR }}/
-  #       cp cmcl.exe ${{ env.OUTPUT_DIR }}/
-  #       cp cmcl.json ${{ env.OUTPUT_DIR }}/
-  #       cp cmcl.blank.json ${{ env.OUTPUT_DIR }}/
   #       cp config.json ${{ env.OUTPUT_DIR }}/
   #       cp LICENSE ${{ env.OUTPUT_DIR }}/
   #       cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
-  #       cp cmcl_save.json ${{ env.OUTPUT_DIR }}/ || true
   #       cp bloret.ico ${{ env.OUTPUT_DIR }}/
   #       cp frpc.exe ${{ env.OUTPUT_DIR }}/
   #       cp frpc.toml ${{ env.OUTPUT_DIR }}/

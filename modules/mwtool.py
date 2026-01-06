@@ -350,7 +350,7 @@ class MinecraftWindowTool(QWidget):
         # 设置窗口属性
         self.setAttribute(Qt.WA_TranslucentBackground)  # 半透明背景
         # 提高窗口不透明度（1.0 为完全不透明），根据需要调整此值
-        self.setWindowOpacity(0.95)
+        self.setWindowOpacity(1.0)
         self.setAttribute(Qt.WA_ShowWithoutActivating)  # 显示但不激活
         
         # 初始化UI
@@ -492,7 +492,7 @@ class MinecraftWindowTool(QWidget):
     
     def update_position(self):
         """更新工具栏位置"""
-        log.debug(f"update_position 被调用，窗口句柄: {self.minecraft_hwnd}")
+        # log.debug(f"update_position 被调用，窗口句柄: {self.minecraft_hwnd}")
         
         if not self.minecraft_hwnd:
             log.debug("Minecraft 窗口句柄为 None，使用默认位置")
@@ -509,21 +509,41 @@ class MinecraftWindowTool(QWidget):
         # 检查窗口句柄有效性（更宽容的检查）
         try:
             is_valid = win32gui.IsWindow(self.minecraft_hwnd)
-            log.debug(f"窗口句柄有效性检查: {self.minecraft_hwnd} -> {is_valid}")
+            # log.debug(f"窗口句柄有效性检查: {self.minecraft_hwnd} -> {is_valid}")
             
             if not is_valid:
+                # 窗口无效时的逻辑保持不变...
                 log.debug("Minecraft 窗口句柄无效，使用默认位置")
-                # 使用默认位置
                 screen_width = win32api.GetSystemMetrics(0)
                 screen_height = win32api.GetSystemMetrics(1)
                 x = (screen_width - self.width()) // 2
-                y = 50  # 距离顶部50像素
+                y = 50 
                 self.move(x, y)
                 if not self.isVisible():
                     self.show()
                 return
+
+            # --- 新增逻辑：检查前台窗口和焦点 ---
+            foreground_hwnd = win32gui.GetForegroundWindow()
+            my_hwnd = int(self.winId()) if self.winId() else 0
+
+            # 1. 焦点管理：如果焦点在工具栏上，切换回 Minecraft
+            if foreground_hwnd == my_hwnd:
+                try:
+                    # 尝试将焦点交还给 Minecraft 窗口
+                    win32gui.SetForegroundWindow(self.minecraft_hwnd)
+                except Exception:
+                    pass
+
+            # 2. 可见性管理：如果 Minecraft 不是前台窗口且工具栏也不是前台 -> 隐藏
+            # 注意：如果 Minecraft 最小化，GetForegroundWindow 肯定不是它，所以这里也会处理最小化隐藏
+            if foreground_hwnd != self.minecraft_hwnd and foreground_hwnd != my_hwnd:
+                if self.isVisible():
+                    self.hide()
+                return 
+
         except Exception as e:
-            log.warning(f"检查窗口句柄时出错: {e}，继续运行工具栏")
+            log.warning(f"检查窗口状态时出错: {e}，继续运行工具栏")
             return
         
         try:
@@ -540,29 +560,30 @@ class MinecraftWindowTool(QWidget):
                     self.hide()
                     return
                 else:
-                    # 如果之前是最小化状态，现在恢复显示
+                    # 如果之前是隐藏状态（最小化或后台），现在恢复显示
                     if not self.isVisible():
                         self.show()
                     
                 # 获取 Minecraft 窗口信息
                 rect = win32gui.GetWindowRect(self.minecraft_hwnd)
                 if not rect or len(rect) != 4:
+                    # 获取失败处理...
                     log.debug("无法获取 Minecraft 窗口矩形，使用默认位置")
-                    # 使用默认位置
                     self.show()
                     return
                     
                 window_left, window_top, window_right, window_bottom = rect
                 
-                # 验证窗口尺寸是否合理（避免无效数据）
+                # 验证窗口尺寸是否合理
                 if window_right <= window_left or window_bottom <= window_top:
+                    # 尺寸无效处理...
                     log.debug("Minecraft 窗口尺寸无效，使用默认位置")
                     self.show()
                     return
                     
             except Exception as e:
+                # 异常处理...
                 log.warning(f"获取窗口信息失败: {e}，使用默认位置")
-                # 如果无法获取窗口信息，使用默认位置
                 self.show()
                 return
                 
@@ -596,18 +617,18 @@ class MinecraftWindowTool(QWidget):
                 log.debug(f"Minecraft 窗口全屏状态改变: {'全屏' if is_fullscreen else '窗口模式'}")
             
             if self.is_fullscreen:
-                # 全屏模式：显示在屏幕顶部中央
+                # 全屏模式：显示在屏幕顶部中央 (保持原有逻辑)
                 tool_width = self.width()
                 x = (screen_width - tool_width) // 2
                 y = 10  # 距离屏幕顶部10像素
             else:
-                # 窗口模式：显示在 Minecraft 窗口标题栏上方
+                # 窗口模式：显示在 Minecraft 窗口标题栏上方，靠左对齐
                 tool_width = self.width()
                 tool_height = self.height()
                 
-                # 计算位置：在窗口标题栏上方，水平居中
-                x = window_left + (window_width - tool_width) // 2
-                y = window_top - tool_height - 5  # 在窗口上方5像素处
+                # 修改：靠左对齐 (使用 window_left)
+                x = window_left
+                y = window_top - tool_height - 20  # 在窗口上方 15 像素处
                 
                 # 确保不会超出屏幕边界
                 if y < 0:
@@ -620,7 +641,7 @@ class MinecraftWindowTool(QWidget):
             
             # 移动窗口
             try:
-                log.debug(f"正在移动工具栏到位置: ({x}, {y}), 尺寸: {self.width()}x{self.height()}")
+                # log.debug(f"正在移动工具栏到位置: ({x}, {y}), 尺寸: {self.width()}x{self.height()}")
                 
                 # 确保位置在屏幕范围内
                 screen_width = win32api.GetSystemMetrics(0)
@@ -640,9 +661,8 @@ class MinecraftWindowTool(QWidget):
                 # 确保窗口在最顶层（仅在窗口可见时）
                 if self.isVisible():
                     self.raise_()
-                    # 注意：不要调用 activateWindow()，这可能导致焦点问题
                     
-                log.debug(f"工具栏移动完成，新位置: {self.pos()}, 可见性: {self.isVisible()}")
+                # log.debug(f"工具栏移动完成，新位置: {self.pos()}, 可见性: {self.isVisible()}")
                     
             except Exception as e:
                 log.debug(f"移动窗口失败: {e}")
@@ -652,7 +672,6 @@ class MinecraftWindowTool(QWidget):
             
         except Exception as e:
             log.error(f"更新工具栏位置失败: {e}")
-    
     def closeEvent(self, event):
         """窗口关闭事件"""
         if hasattr(self, 'update_timer') and self.update_timer.isActive():

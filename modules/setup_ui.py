@@ -1,31 +1,63 @@
-from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QWidget, QSizePolicy, QApplication
-from qfluentwidgets import SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar, SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton, SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit, CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget, ToolButton, MessageBoxBase, NavigationItemPosition, MessageBox, TabBar, CheckBox
+# 1. 标准库
+import os
+import re
+import json
+import socket
+import logging
+import requests
+
+# 2. 第三方库 (PyQt5)
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+    QLineEdit, QLabel, QPushButton,
+    QSizePolicy, QFileDialog, QFileIconProvider
+)
+from PyQt5.QtGui import QDesktopServices, QPixmap, QColor, QIcon, QMovie
+from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime, QFileInfo, QThread, pyqtSignal
 from PyQt5 import uic
-from PyQt5.QtGui import QDesktopServices, QPixmap, QColor
-from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime
-import requests, json, logging, os, socket, re
-# 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
-from modules.systems import setup_startup_with_self_starting
-from modules.log import log, clear_log_files
-from modules.Bloret_PassPort import Bloret_PassPort_Account_logout, sync_mc_account_to_bloret_passport, sync_bloret_passport_account_to_mc, savedata, readdata
-from modules.links import open_github_bloret_Launcher,open_qq_link,open_BLC_qq_link,open_BBBS_link,open_BBBS_Reg_link,open_github_bloret,copy_skin_to_clipboard,copy_cape_to_clipboard,copy_uuid_to_clipboard,copy_name_to_clipboard, Bloret_PassPort_Account_login
-from modules.querys import query_player_uuid,query_player_skin,query_player_name
-from modules.versions import delete_minecraft_version,Change_minecraft_version_name,delete_Customize,Change_Customize_name,open_minecraft_version_folder, on_other_version_selected
-from modules.install import InstallMinecraftVersion
-from modules.modrinth import search_mods, Get_Mod_File_Download_Url, add_mrpack
-from PyQt5.QtCore import QThread, pyqtSignal
-from modules.win11toast import notify, update_progress
-from modules.local_client import OnlineClient
-from modules.java import InstallJava, java_versions
-from modules.i18n import i18nText
-from modules.customize import CustomizeAdd
-from modules.Bloriko import AskBlorikoAndSet
-from modules.chafuwang import getServerData
-from modules.easytier import StartEasytierServer
-from modules.ShortCut import ScreenShortCut
+
+# 3. 第三方库 (qfluentwidgets)
+from qfluentwidgets import (
+    SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar,
+    SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton,
+    SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit,
+    CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget,
+    ToolButton, MessageBoxBase, MessageBox,
+    TabBar, CheckBox
+)
+
+# 4. 自定义模块 (Bloret Launcher Modules)
 import modules.globals as BLglobals
 import modules.config as cfg
 from modules.config import read
+from modules.systems import setup_startup_with_self_starting
+from modules.log import log, clear_log_files
+from modules.Bloret_PassPort import (
+    Bloret_PassPort_Account_logout,
+    sync_bloret_passport_account_to_mc, savedata, readdata
+)
+from modules.links import (
+    open_github_bloret_Launcher, open_qq_link, open_BLC_qq_link,
+    open_BBBS_link, open_BBBS_Reg_link, open_github_bloret,
+    copy_skin_to_clipboard, copy_cape_to_clipboard, copy_uuid_to_clipboard,
+    copy_name_to_clipboard, Bloret_PassPort_Account_login
+)
+from modules.querys import query_player_uuid, query_player_skin, query_player_name
+from modules.versions import (
+    delete_Customize, Change_Customize_name, open_minecraft_version_folder,
+    on_other_version_selected, open_core_management
+)
+from modules.install import InstallMinecraftVersion
+from modules.modrinth import search_mods, Get_Mod_File_Download_Url, add_mrpack
+from modules.win11toast import notify, update_progress
+from modules.java import InstallJava, java_versions
+from modules.i18n import i18nText
+from modules.customize import CustomizeAdd, CustomizeRun
+from modules.Bloriko import AskBlorikoAndSet, AskBloriko
+from modules.chafuwang import getServerData
+from modules.easytier import StartEasytierServer
+from modules.ShortCut import ScreenShortCut
+
 
 # 加载配置文件
 def load_config():
@@ -315,6 +347,252 @@ def on_self_starting_changed(value):
     except Exception as e:
         log(f"写入配置文件失败: {e}")
 
+class LaunchSelectorDialog(MessageBoxBase):
+    """ 启动项选择窗口 """
+    def __init__(self, parent=None, items=None):
+        super().__init__(parent)
+        self.titleLabel = SubtitleLabel(i18nText("选择启动项目"), self)
+        
+        # 标题居中
+        # self.titleLabel.setAlignment(Qt.AlignCenter)
+
+        self.viewLayout.addWidget(self.titleLabel)
+        
+        self.tipLabel = CaptionLabel(i18nText("右键单击启动项可进行管理。"), self)
+        # 设置指定的颜色: Light=[127,127,127,255], Dark=[185,185,185,255]
+        self.tipLabel.setTextColor(QColor(127, 127, 127, 255), QColor(185, 185, 185, 255))
+
+        # 提示信息居中
+        # self.tipLabel.setAlignment(Qt.AlignCenter)
+        
+        self.viewLayout.addWidget(self.tipLabel)
+        
+        # 使用滚动区域容纳卡片列表
+        self.scrollArea = SmoothScrollArea(self)
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setStyleSheet("background-color: transparent; border: none;")
+        
+        self.scrollContent = QWidget()
+        self.scrollLayout = QVBoxLayout(self.scrollContent)
+        self.scrollLayout.setSpacing(10) # 卡片间距
+        self.scrollLayout.setContentsMargins(5, 5, 15, 5) # 边距
+        self.scrollLayout.setAlignment(Qt.AlignTop)
+        
+        self.scrollArea.setWidget(self.scrollContent)
+        self.viewLayout.addWidget(self.scrollArea)
+        
+        # 隐藏确定按钮，因为点击选择按钮即选中
+        self.yesButton.hide()
+        self.cancelButton.setText(i18nText("取消"))
+        
+        self.widget.setMinimumWidth(450) # 稍微加宽一点以适应卡片布局
+        self.widget.setMinimumHeight(500)
+
+        # 填充列表
+        self.populate_list(items)
+
+    def populate_list(self, items=None):
+        """ 填充或刷新列表 """
+        # 清空现有列表
+        while self.scrollLayout.count():
+            item = self.scrollLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # 如果没有传入 items，则重新获取
+        self.items = items if items is not None else get_all_launch_items()
+        self.selected_item = None
+        
+        for item in self.items:
+            # 创建卡片
+            card = CardWidget(self.scrollContent)
+            card.setFixedHeight(60)
+            
+            cardLayout = QHBoxLayout(card)
+            cardLayout.setContentsMargins(15, 10, 15, 10)
+            cardLayout.setSpacing(15)
+            
+            # 图标
+            iconLabel = QLabel(card)
+            iconLabel.setFixedSize(32, 32)
+            iconLabel.setScaledContents(True)
+            if isinstance(item['icon'], QIcon):
+                iconLabel.setPixmap(item['icon'].pixmap(32, 32))
+            
+            # 名称
+            nameLabel = StrongBodyLabel(item['name'], card)
+            
+            # 选择按钮
+            selectBtn = PushButton(i18nText("选择"), card)
+            selectBtn.setFixedWidth(80)
+            selectBtn.clicked.connect(lambda _, i=item: self.on_item_clicked(i))
+            
+            cardLayout.addWidget(iconLabel)
+            cardLayout.addWidget(nameLabel)
+            cardLayout.addStretch(1) # 弹簧，将按钮推到最右侧
+            cardLayout.addWidget(selectBtn)
+
+            # --- 右键菜单逻辑 ---
+            card.setContextMenuPolicy(Qt.CustomContextMenu)
+            
+            # 使用默认参数捕获循环变量
+            def on_context_menu(pos, i=item, c=card, l=nameLabel):
+                self.show_context_menu(pos, i, c, l)
+                
+            card.customContextMenuRequested.connect(on_context_menu)
+            # --------------------
+            
+            self.scrollLayout.addWidget(card)
+
+    def on_item_clicked(self, item):
+        """ 点击选择按钮触发 """
+        self.selected_item = item
+        self.accept() # 关闭并返回 True
+
+    def refresh_list(self):
+        """ 刷新列表显示 """
+        # 延时一点以确保之前的操作（如删除动画或弹窗关闭）完成
+        QTimer.singleShot(100, lambda: self.populate_list())
+
+    def show_context_menu(self, pos, item, card, label):
+        """ 显示右键菜单 """
+        main_window = self.parent()
+        if not main_window: return
+
+        v_name = item['name']
+        item_type = item.get('type')
+        
+        # 获取配置和目录
+        config_data = cfg.read()
+        minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+        home_interface = getattr(main_window, 'homeInterface', None)
+
+        menu = RoundMenu(parent=card)
+        
+        # 启动
+        menu.addAction(Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.launch_and_close(v_name, item_type == 'custom')))
+
+        if item_type == 'minecraft':
+            # 核心管理
+            def open_manage():
+                open_core_management(main_window, v_name, minecraft_dir, home_interface)
+                self.refresh_list()
+            menu.addAction(Action(FluentIcon.SETTING, i18nText('核心管理'), triggered=lambda: QTimer.singleShot(100, open_manage)))
+
+            # 打开文件位置
+            menu.addAction(Action(FluentIcon.FOLDER, i18nText('打开文件位置'), triggered=lambda: open_minecraft_version_folder(main_window, v_name, minecraft_dir)))
+
+        elif item_type == 'custom':
+            # 更名
+            def rename_custom():
+                Change_Customize_name(main_window, v_name, label, home_interface)
+                self.refresh_list()
+            menu.addAction(Action(FluentIcon.EDIT, i18nText('更名'), triggered=rename_custom))
+            
+            # 删除
+            def delete_custom():
+                delete_Customize(main_window, v_name, label, card, BLglobals.customize_list, home_interface)
+                self.refresh_list()
+            menu.addAction(Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: QTimer.singleShot(100, delete_custom)))
+
+        global_pos = card.mapToGlobal(pos)
+        menu.exec_(global_pos)
+
+    def launch_and_close(self, name, is_custom=False):
+        """ 启动并关闭选择器 """
+        main_window = self.parent()
+        
+        # 保存选择
+        config = cfg.read()
+        config["ChoosedRun"] = name
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=4, ensure_ascii=False)
+            
+        # 设置选中的项目以便调用者知道（虽然这里直接启动了）
+        self.selected_item = next((i for i in self.items if i['name'] == name), None)
+        
+        # 启动
+        if is_custom:
+            CustomizeRun(main_window, name)
+        else:
+            main_window.run_cmcl(name, main_window.homeInterface)
+            
+        self.accept()
+
+def get_all_launch_items():
+    """ 获取所有启动项 (Minecraft + Customize) """
+    items = []
+    
+    # --- 1. 获取 Minecraft 启动项 ---
+    # 读取配置文件获取游戏目录
+    config_data = cfg.read()
+    minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+    versions_dir = os.path.join(minecraft_dir, "versions")
+    bl_json_path = os.path.join(versions_dir, ".BL.json")
+    
+    versions_metadata = {}
+    try:
+        if os.path.exists(bl_json_path):
+            with open(bl_json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                versions_metadata = data.get("versions", {})
+    except Exception as e:
+        log(f"读取 .BL.json 失败: {e}", logging.WARNING)
+
+    if os.path.exists(versions_dir):
+        # 遍历 versions 文件夹，获取实际存在的版本文件夹
+        # 这里虽然没有直接只读 .BL.json，但这更健壮，防止 .BL.json 有记录但文件夹不存在的情况
+        # 同时也符合“从 .BL.json 中获取（图标也要展示）”的需求，因为元数据是从那来的
+        for d in os.listdir(versions_dir):
+            version_path = os.path.join(versions_dir, d)
+            if os.path.isdir(version_path):
+                # 默认图标
+                icon = QIcon("ui/icon/Grass_Block.png")
+                
+                # 尝试从 .BL.json 获取元数据
+                if d in versions_metadata:
+                    meta = versions_metadata[d]
+                    
+                    # 获取图标路径
+                    icon_path = meta.get("icon", "")
+                    if icon_path and os.path.exists(icon_path):
+                        icon = QIcon(icon_path)
+                    # 如果是 Fabric 版本且没有自定义图标，使用 Fabric 图标
+                    elif meta.get("Fabric", False):
+                         icon = QIcon("ui/icon/fabric.png")
+                
+                items.append({
+                    "name": d,
+                    "type": "minecraft",
+                    "icon": icon,
+                    "path": d 
+                })
+
+    # --- 2. 获取自定义启动项 ---
+    # 直接从 modules.config.read() 获取 Customize 列表
+    if "Customize" in config_data and isinstance(config_data["Customize"], list):
+        provider = QFileIconProvider()
+        for custom_item in config_data["Customize"]:
+            path = custom_item.get("path", "")
+            name = custom_item.get("showname", "Unknown")
+            
+            # 获取程序文件图标
+            icon = FluentIcon.APPLICATION.icon() # 默认图标
+            if path and os.path.exists(path):
+                file_info = QFileInfo(path)
+                icon = provider.icon(file_info)
+            
+            items.append({
+                "name": name,
+                "type": "custom",
+                "icon": icon,
+                "path": path,
+                "raw_data": custom_item
+            })
+            
+    log(f"get_all_launch_items 返回 items: {items}")
+    return items
+
 def setup_home_ui(self, widget):
     '''
     设定 Bloret Launcher 主页 UI 布局和操作。
@@ -341,12 +619,124 @@ def setup_home_ui(self, widget):
     openblweb_button = widget.findChild(QPushButton, "openblweb")
     if openblweb_button:
         openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://launcher.bloret.net")))
-    self.run_cmcl_list(True)
 
-    run_choose = widget.findChild(ComboBox, "run_choose")
+    # --- 新的启动项逻辑 ---
+    
+    # 1. 获取控件
+    MinecraftVersionChoose = widget.findChild(QPushButton, "MinecraftVersionChoose")
     run_button = widget.findChild(QPushButton, "run")
+    MinecraftVersionLabel = widget.findChild(StrongBodyLabel, "MinecraftVersionLabel")
+    MinecraftVersionImageLabel = widget.findChild(BodyLabel, "MinecraftVersionImageLabel")
+    
+    # 2. 设置图标
+    if MinecraftVersionChoose:
+        MinecraftVersionChoose.setIcon(FluentIcon.MENU)
     if run_button:
-        run_button.clicked.connect(lambda: self.run_cmcl(run_choose.currentText(),widget))
+        run_button.setIcon(FluentIcon.PLAY_SOLID)
+        
+    # 定义刷新显示函数
+    def refresh_launch_display():
+        """ 刷新当前选中的启动项显示 """
+        config = cfg.read()
+        choosed_run = config.get("ChoosedRun", "")
+        items = get_all_launch_items()
+        
+        selected_item = None
+        
+        # 如果列表为空
+        if not items:
+            if MinecraftVersionLabel: MinecraftVersionLabel.setText(i18nText("无启动项"))
+            if MinecraftVersionImageLabel: MinecraftVersionImageLabel.setPixmap(QPixmap())
+            if run_button: 
+                run_button.setEnabled(False)
+                run_button.setText(i18nText("无项目"))
+            return
+
+        # 查找当前选中项
+        for item in items:
+            if item["name"] == choosed_run:
+                selected_item = item
+                break
+        
+        # 如果未选择或选择项不存在，默认选择第一个
+        if not selected_item and items:
+            selected_item = items[0]
+            # 保存默认选择
+            config["ChoosedRun"] = selected_item["name"]
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=4, ensure_ascii=False)
+        
+        # 更新 UI
+        if selected_item:
+            if MinecraftVersionLabel: 
+                MinecraftVersionLabel.setText(selected_item["name"])
+            if MinecraftVersionImageLabel: 
+                # 从 QIcon 提取 Pixmap
+                pixmap = selected_item["icon"].pixmap(32, 32)
+                MinecraftVersionImageLabel.setPixmap(pixmap)
+                MinecraftVersionImageLabel.setScaledContents(True)
+            if run_button:
+                run_button.setEnabled(True)
+                run_button.setText(i18nText("启动"))
+
+    # 定义选择启动项函数
+    def open_launch_selector():
+        items = get_all_launch_items()
+        if not items:
+             InfoBar.warning(title=i18nText("提示"), content=i18nText("没有找到任何启动项，请先下载或添加。"), parent=self)
+             return
+
+        dialog = LaunchSelectorDialog(self, items)
+        if dialog.exec():
+            selected = dialog.selected_item
+            if selected:
+                # 保存选择
+                config = cfg.read()
+                config["ChoosedRun"] = selected["name"]
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=4, ensure_ascii=False)
+                
+                # 刷新显示
+                refresh_launch_display()
+
+    # 定义启动函数
+    def execute_launch():
+        config = cfg.read()
+        choosed_name = config.get("ChoosedRun", "")
+        if not choosed_name:
+            return
+            
+        items = get_all_launch_items()
+        target_item = next((item for item in items if item["name"] == choosed_name), None)
+        
+        if target_item:
+            if target_item["type"] == "minecraft":
+                # Minecraft 启动
+                self.run_cmcl(target_item["name"], widget)
+            elif target_item["type"] == "custom":
+                # 自定义启动
+                # 注意：CustomizeRun 需要导入
+                CustomizeRun(self, target_item["name"])
+        else:
+             InfoBar.error(title=i18nText("错误"), content=i18nText("选中的启动项已不存在"), parent=self)
+             refresh_launch_display() # 重新刷新以修正状态
+
+    # 连接信号
+    if MinecraftVersionChoose:
+        # 断开旧连接（如果存在）
+        try: MinecraftVersionChoose.clicked.disconnect() 
+        except: pass
+        MinecraftVersionChoose.clicked.connect(open_launch_selector)
+        
+    if run_button:
+        try: run_button.clicked.disconnect() 
+        except: pass
+        run_button.clicked.connect(execute_launch)
+
+    # 初始化显示
+    refresh_launch_display()
+    
+    # ----------------------------
 
     minecraft_tab = widget.findChild(TabBar, "MinecraftTab")
     if minecraft_tab:
@@ -460,6 +850,7 @@ def setup_home_ui(self, widget):
     
     # 调用getServerData并传入回调函数
     getServerData("Bloret", callback=update_server_info)
+
 
 def setup_download_load_ui(self, widget):
     '''
@@ -601,71 +992,170 @@ def setup_tools_ui(self, widget):
 
 def setup_passport_ui(self, widget, server_ip, homeInterface):
     '''
-    # 设定 Bloret Launcher 通行证界面 UI 布局和操作。
-    包括：
-     - [x] 微软登录与离线登录
-     - [x] 百络谷通行证登录
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    设定 Bloret Launcher 通行证界面 UI 布局和操作。
+    适配 MinecraftAccounts (QWidget) 动态列表，支持局部刷新。
     '''
-    player_name_edit = widget.findChild(QLineEdit, "player_name")
-    player_name_set_button = widget.findChild(QPushButton, "player_name_set")
-    login_way_combo = widget.findChild(ComboBox, "player_login_way")
-    login_way_choose = widget.findChild(ComboBox, "login_way")
-    name_combo = widget.findChild(ComboBox, "playername")
-    Bloret_PassPort_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
-    Bloret_PassPort_logout = widget.findChild(QPushButton, "Bloret_PassPort_logout")
-    Bloret_PassPort_login = widget.findChild(QPushButton, "Bloret_PassPort_login")
-    go_Minecraft_Account_To_Bloret_PassPort_Cloud_to = widget.findChild(QPushButton, "go_Minecraft_Account_To_Bloret_PassPort_Cloud_to")
-    go_Minecraft_Account_To_Bloret_PassPort_Cloud_from = widget.findChild(QPushButton, "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from")
-
-    if player_name_edit and player_name_set_button:
-        player_name_set_button.clicked.connect(lambda: self.on_player_name_set_clicked(widget))
-        log(i18nText("已连接 player_name_set_button 点击事件"))
-
-    if self.cmcl_data:
-        log(i18nText("成功读取 cmcl.json 数据"))
-        
-        if login_way_combo:
-            login_way_choose.clear()
-            login_way_choose.addItems([i18nText("离线登录"), i18nText("微软登录")])
-            login_way_choose.setCurrentText(self.login_mod)
-            login_way_choose.setCurrentIndex(0)
-
-        if login_way_combo:
-            login_way_combo.clear()
-            login_way_combo.addItem(str(self.login_mod))
-            login_way_combo.setCurrentIndex(0)
-            log(f"设置 login_way_combo 当前索引为: {self.login_mod}")
-
-        if name_combo:
-            name_combo.clear()
-            name_combo.addItem(self.player_name)
-            name_combo.setCurrentIndex(0)
-            log(f"设置 name_combo 当前索引为: {self.player_name}")
-    else:
-        log(i18nText("读取 cmcl.json 失败"))
     
-    login_button = widget.findChild(QPushButton, "login")
-    if login_button:
-        login_button.clicked.connect(lambda: self.handle_login(widget))
-    Bloret_PassPort_view_BBBS = widget.findChild(QPushButton, "Bloret_PassPort_view_BBBS")
-    reg_Bloret_PassPort = widget.findChild(QPushButton, "reg_Bloret_PassPort")
+    # 1. 基础按钮功能绑定
+    manage_web_btn = widget.findChild(QPushButton, "ManageMinecraftAccountOnBloretPassPortWebsite")
+    if manage_web_btn:
+        manage_web_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://passport.bloret.net/")))
+
+    sync_cloud_btn = widget.findChild(QPushButton, "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from")
+    if sync_cloud_btn:
+        sync_cloud_btn.clicked.connect(lambda: sync_bloret_passport_account_to_mc(self))
+
+    # Bloret PassPort 账户状态
+    Bloret_PassPort_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
     if Bloret_PassPort_UserName:
         Bloret_PassPort_UserName.setText(self.config.get('Bloret_PassPort_UserName', i18nText('未登录')))
-    if Bloret_PassPort_logout:
-        Bloret_PassPort_logout.clicked.connect(lambda: Bloret_PassPort_Account_logout(self,homeInterface))
+
+    Bloret_PassPort_login = widget.findChild(QPushButton, "Bloret_PassPort_login")
     if Bloret_PassPort_login:
         Bloret_PassPort_login.clicked.connect(lambda: Bloret_PassPort_Account_login())
-    if Bloret_PassPort_view_BBBS:
-        Bloret_PassPort_view_BBBS.clicked.connect(lambda: open_BBBS_link(server_ip))
-    if reg_Bloret_PassPort:
-        reg_Bloret_PassPort.clicked.connect(lambda: open_BBBS_Reg_link())
-    if go_Minecraft_Account_To_Bloret_PassPort_Cloud_to:
-        go_Minecraft_Account_To_Bloret_PassPort_Cloud_to.clicked.connect(lambda: sync_mc_account_to_bloret_passport(self))
 
-    if go_Minecraft_Account_To_Bloret_PassPort_Cloud_from:
-        go_Minecraft_Account_To_Bloret_PassPort_Cloud_from.clicked.connect(lambda: sync_bloret_passport_account_to_mc(self))
+    Bloret_PassPort_logout = widget.findChild(QPushButton, "Bloret_PassPort_logout")
+    if Bloret_PassPort_logout:
+        Bloret_PassPort_logout.clicked.connect(lambda: Bloret_PassPort_Account_logout(self, homeInterface))
+
+    # --- 核心：Minecraft 账户列表管理 ---
+    
+    accounts_container = widget.findChild(QWidget, "MinecraftAccounts")
+    if accounts_container and not accounts_container.layout():
+        layout = QVBoxLayout(accounts_container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.setAlignment(Qt.AlignTop)
+
+    def update_cards_visual():
+        '''不重建 UI，仅更新卡片的高亮状态和按钮文字'''
+        layout = accounts_container.layout()
+        chosen_idx = self.config.get("MinecraftAccount", {}).get("chosen", 0)
+        
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            card = item.widget()
+            if not isinstance(card, CardWidget): continue
+            
+            # 获取卡片内的按钮
+            btn = card.findChild(PushButton, "action_btn")
+            if i == chosen_idx:
+                card.setStyleSheet("CardWidget { border: 2px solid #0078d4; background-color: rgba(0, 120, 212, 0.05); }")
+                btn.setText(i18nText("正在使用"))
+                btn.setEnabled(False)
+            else:
+                card.setStyleSheet("")
+                btn.setText(i18nText("使用此账户"))
+                btn.setEnabled(True)
+
+    def refresh_minecraft_accounts():
+        '''物理重建账户列表（下载头像、创建卡片）'''
+        layout = accounts_container.layout()
+        # 清理旧卡片
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget(): child.widget().deleteLater()
+
+        mc_data = self.config.get("MinecraftAccount", {})
+        accounts = mc_data.get("accounts", [])
+        chosen_idx = mc_data.get("chosen", 0)
+
+        if not accounts:
+            layout.addWidget(BodyLabel(i18nText("暂无账户，请从云端同步")))
+            return
+
+        for i, acc in enumerate(accounts):
+            username = acc.get("username", "Unknown")
+            acc_type = acc.get("type", "Offline")
+            uuid = acc.get("uuid", username)
+
+            card = CardWidget(accounts_container)
+            card.setFixedHeight(75)
+            card_layout = QHBoxLayout(card)
+            card_layout.setContentsMargins(12, 8, 12, 8)
+            
+            # 头像 (ImageLabel)
+            avatar_label = ImageLabel(card)
+            avatar_label.setFixedSize(45, 45)
+            avatar_label.setBorderRadius(4, 4, 4, 4)
+            avatar_label.setPixmap(QPixmap("ui/icon/DefaultHead.png"))
+            
+            # 异步加载头像
+            def load_img(label, uid):
+                try:
+                    res = requests.get(f"https://mc-heads.net/avatar/{uid}/45", timeout=5)
+                    if res.status_code == 200:
+                        p = QPixmap()
+                        p.loadFromData(res.content)
+                        label.setPixmap(p)
+                except: pass
+            QTimer.singleShot(10, lambda l=avatar_label, u=uuid: load_img(l, u))
+
+            # 文本信息
+            txt_lyt = QVBoxLayout()
+            txt_lyt.setSpacing(2)
+            name_lbl = StrongBodyLabel(username, card)
+            type_lbl = CaptionLabel(i18nText("离线登录") if acc_type == "Offline" else i18nText("微软登录"), card)
+            type_lbl.setTextColor(QColor(150, 150, 150), QColor(200, 200, 200))
+            txt_lyt.addWidget(name_lbl)
+            txt_lyt.addWidget(type_lbl)
+            
+            # 操作按钮 (设置 ObjectName 以便后期局部更新)
+            btn = PushButton(card)
+            btn.setObjectName("action_btn")
+            btn.setFixedWidth(100)
+            btn.clicked.connect(lambda checked, idx=i: switch_account(idx))
+
+            card_layout.addWidget(avatar_label)
+            card_layout.addLayout(txt_lyt)
+            card_layout.addStretch(1)
+            card_layout.addWidget(btn)
+            
+            layout.addWidget(card)
+        
+        update_cards_visual()
+
+    def switch_account(index):
+        '''切换逻辑：仅更新数据和样式'''
+        mc_data = self.config.get("MinecraftAccount", {})
+        accounts = mc_data.get("accounts", [])
+        if index >= len(accounts): return
+
+        # 更新内部配置
+        self.config["MinecraftAccount"]["chosen"] = index
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(self.config, f, ensure_ascii=False, indent=4)
+
+        # 1. 更新通行证页面 UI (按钮状态)
+        update_cards_visual()
+
+        # 2. 更新主程序全局变量 (确保启动游戏使用新账户)
+        acc = accounts[index]
+        self.player_name = acc.get("username", "")
+        self.player_uuid = acc.get("uuid", "")
+        acc_type = acc.get("type", "Offline")
+        
+        if acc_type == "Microsoft":
+            self.login_mod = i18nText("微软登录")
+        else:
+            self.login_mod = i18nText("离线登录")
+
+        # 3. 刷新主页左上角的账户显示
+        if homeInterface:
+            Minecraft_account = homeInterface.findChild(QLabel, "Minecraft_account")
+            if Minecraft_account:
+                if self.config.get('home_show_login_mod', False):
+                    Minecraft_account.setText(f"[{self.login_mod}] {self.player_name}")
+                else:
+                    Minecraft_account.setText(f"{self.player_name}")
+
+    # 绑定右上角刷新按钮
+    refresh_btn = widget.findChild(QPushButton, "refreshMinecraftAccount")
+    if refresh_btn:
+        refresh_btn.clicked.connect(refresh_minecraft_accounts)
+
+    # 初始加载
+    refresh_minecraft_accounts()
 
 def setup_settings_ui(self, widget):
     '''
@@ -898,9 +1388,6 @@ def start_online_client(parent, clientpage):
     port_dialog.viewLayout.addWidget(online_key_input)
 
     # 添加动图
-    from PyQt5.QtWidgets import QLabel
-    from PyQt5.QtGui import QMovie
-    from PyQt5.QtCore import QSize # 新增导入
     gif_label = QLabel()
     movie = QMovie("ui/icon/OnlineClient.gif")
     gif_label.setMovie(movie)
@@ -1195,13 +1682,6 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
     instruction_label = CaptionLabel(i18nText(instruction_text))
     instruction_label.setAlignment(Qt.AlignCenter if hasattr(Qt, 'AlignCenter') else Qt.AlignmentFlag.AlignCenter)
     
-    # 添加动图
-    # from PyQt5.QtWidgets import QLabel
-    # from PyQt5.QtGui import QMovie
-    # gif_label = QLabel()
-    # movie = QMovie("ui/icon/OnlineClient.gif")
-    # gif_label.setMovie(movie)
-    # movie.start()
     
     result_dialog.viewLayout.addWidget(address_label)
     result_dialog.viewLayout.addWidget(instruction_label)
@@ -1223,8 +1703,6 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
         
         # 更新界面上的地址和时间显示
         # 获取界面上的时间和地址标签
-        from PyQt5.QtWidgets import QLabel
-        from PyQt5.QtCore import QTimer, QDateTime
         
         # 从parent中查找标签（联机界面）
         # online_client_time_label = parent.findChild(QLabel, "OnlineClient_ClientTime")
@@ -1312,7 +1790,6 @@ def show_connection_address_dialog(parent, text, ipandport, clientpage, isserver
 
 def update_connection_time(time_label, start_time):
     """更新连接时长显示"""
-    from PyQt5.QtCore import QDateTime
     
     # 计算已连接的时间
     current_time = QDateTime.currentDateTime()
@@ -1372,8 +1849,6 @@ def show_ipv6_dialog(parent, ipv6_address):
     port_dialog.viewLayout.addWidget(port_input)
     
     # 添加动图
-    from PyQt5.QtWidgets import QLabel
-    from PyQt5.QtGui import QMovie
     gif_label = QLabel()
     movie = QMovie("ui/icon/OnlineClient.gif")
     gif_label.setMovie(movie)
@@ -1405,8 +1880,6 @@ def show_ipv6_dialog(parent, ipv6_address):
         instruction_label.setAlignment(Qt.AlignCenter)
         
         # 添加动图
-        from PyQt5.QtWidgets import QLabel
-        from PyQt5.QtGui import QMovie
         gif_label = QLabel()
         movie = QMovie("ui/icon/OnlineClient.gif")
         gif_label.setMovie(movie)
@@ -1458,159 +1931,6 @@ def setup_info_ui(self, widget):
     if BLC_QQ:
         BLC_QQ.clicked.connect(open_BLC_qq_link)
 
-def setup_version_ui(self, widget, minecraft_list, customize_list, MINECRAFT_DIR, homeInterface):
-    '''
-    设定 Bloret Launcher 版本管理界面 UI 布局和操作。
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-    '''
-    minecraft_list_NUM = len(minecraft_list)
-    customize_list_NUM = len(customize_list)
-    Minecraft_list = widget.findChild(SmoothScrollArea, "Minecraft_list")
-    if Minecraft_list:
-        scroll_widget = QWidget()
-        scroll_layout = QVBoxLayout(scroll_widget)
-
-        if minecraft_list_NUM != 0 or customize_list_NUM != 0:
-            if minecraft_list_NUM != 0:
-                title_label = SubtitleLabel(i18nText("Minecraft 核心"), parent=scroll_widget)
-                scroll_layout.addWidget(title_label)
-
-                for i in range(minecraft_list_NUM):
-                    card = CardWidget(scroll_widget)
-                    card.setMaximumWidth(659)  # 设置最大宽度
-                    label = StrongBodyLabel(minecraft_list[i], card)
-                    layout = QVBoxLayout(card)
-                    layout.addWidget(label)
-
-                    def create_minecraft_context_menu(pos, label_now, card_now, version_name=minecraft_list[i]):
-                        menu = RoundMenu()
-                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name,homeInterface))
-                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name,homeInterface))
-                        rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_minecraft_version_name(self,version_name,label_now, MINECRAFT_DIR,homeInterface))
-                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_minecraft_version(self,version_name,label_now, card_now, MINECRAFT_DIR, homeInterface))
-                        folder_action = Action(FluentIcon.FOLDER, i18nText('打开文件位置'), triggered=lambda: open_minecraft_version_folder(self,version_name,MINECRAFT_DIR))
-
-                        menu.addActions([
-                            info_action,
-                            launch_action,
-                            rename_action,
-                            delete_action,
-                            folder_action
-                        ])
-
-                        global_pos = card_now.mapToGlobal(pos)
-                        menu.exec_(global_pos)
-
-                    card.setContextMenuPolicy(Qt.CustomContextMenu)
-                    card.customContextMenuRequested.connect(lambda pos, v=minecraft_list[i], label_now=label, card_now=card: create_minecraft_context_menu(pos, label_now, card_now, v))
-                    scroll_layout.addWidget(card)
-
-            if customize_list_NUM != 0:
-                title_label_custom = SubtitleLabel(i18nText("自定义启动"), parent=scroll_widget)
-                scroll_layout.addWidget(title_label_custom)
-
-                for i in range(customize_list_NUM):
-                    card = CardWidget(scroll_widget)
-                    card.setMaximumWidth(659)  # 设置最大宽度
-                    label = StrongBodyLabel(f"{customize_list[i]}", card)
-                    layout = QVBoxLayout(card)
-                    layout.addWidget(label)
-
-                    def create_customize_context_menu(pos, label_now, card_now, version_name=customize_list[i]):
-                        menu = RoundMenu()
-                        info_action = Action(FluentIcon.INFO, version_name, triggered=lambda: self.run_cmcl(version_name,homeInterface))
-                        launch_action = Action(FluentIcon.PLAY, i18nText('启动'), triggered=lambda: self.run_cmcl(version_name,homeInterface))
-                        rename_action = Action(FluentIcon.EDIT, i18nText('更名'), triggered=lambda: Change_Customize_name(self,version_name, label_now, homeInterface))
-                        delete_action = Action(FluentIcon.DELETE, i18nText('删除'), triggered=lambda: delete_Customize(self,version_name, label_now, card_now,customize_list,homeInterface))
-
-                        menu.addActions([
-                            info_action,
-                            launch_action,
-                            rename_action,
-                            delete_action
-                        ])
-
-                        global_pos = card_now.mapToGlobal(pos)
-                        menu.exec_(global_pos)
-
-                    card.setContextMenuPolicy(Qt.CustomContextMenu)
-                    card.customContextMenuRequested.connect(lambda pos, v=customize_list[i], label_now=label, card_now=card: create_customize_context_menu(pos, label_now, card_now, v))
-                    scroll_layout.addWidget(card)
-
-        scroll_layout.addStretch(1)
-
-        Minecraft_list.setWidget(scroll_widget)
-        Minecraft_list.setWidgetResizable(True)
-
-def setup_BBS_ui(self, widget, server_ip):
-    '''
-    设定 Bloret Launcher 社区界面 UI 布局和操作。
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-    '''
-    # 绑定 OpenBBS 按钮点击事件
-    open_bbs_button = widget.findChild(QPushButton, "OpenBBS")
-    if open_bbs_button:
-        open_bbs_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(f"{server_ip}bbs")))
-
-    # 从服务器获取 BBS 数据
-    try:
-        response = requests.get(f"{server_ip}api/part")
-        response.raise_for_status()  # 检查请求是否成功
-        bbs_part = response.json()  # 存储数据到 bbs_part 变量
-    except requests.RequestException as e:
-        log(f"无法获取 BBS 数据: {e}", logging.ERROR)
-        bbs_part = {}  # 请求失败时初始化为空字典
-
-    # 找到名为 BBS_list 的 SmoothScrollArea
-    BBS_list = widget.findChild(SmoothScrollArea, "BBS_list")
-    if not BBS_list:
-        log(i18nText("未找到 BBS_list SmoothScrollArea"), logging.ERROR)
-        return
-
-    # 清空 BBS_list 现有内容
-    if BBS_list.widget():
-        BBS_list.widget().deleteLater()
-
-    # 创建新的内容容器和布局
-    scroll_widget = QWidget()
-    scroll_layout = QVBoxLayout(scroll_widget)
-
-    # 遍历 bbs_part 的每个键作为板块标题
-    for part_title, posts in bbs_part.items():
-        # 创建 SubtitleLabel 并设置文本
-        subtitle_label = SubtitleLabel(part_title, parent=scroll_widget)
-        scroll_layout.addWidget(subtitle_label)
-
-        # 根据帖子数量创建对应的 CardWidget
-        for post in posts:
-            card_widget = CardWidget(parent=scroll_widget)
-            card_layout = QVBoxLayout(card_widget)
-
-            # 创建 StrongBodyLabel 并设置帖子标题
-            title_label = StrongBodyLabel(post['title'], parent=card_widget)
-            card_layout.addWidget(title_label)
-
-            # 创建 BodyLabel 并设置帖子文本为 Markdown 形式显示
-            text_label = BodyLabel(post.get('text', ''), parent=card_widget)
-            text_label.setTextFormat(Qt.MarkdownText)
-            text_label.setOpenExternalLinks(True)  # 允许打开外部链接
-            if len(text_label.text()) > 30:
-                text_label.setText(text_label.text()[:50] + '...')
-            card_layout.addWidget(text_label)
-
-            # 创建 PushButton 在浏览器中打开帖子
-            open_button = PushButton(i18nText('在浏览器中打开'), parent=card_widget)
-            open_button.clicked.connect(lambda _, pt=part_title, t=post['title']: QDesktopServices.openUrl(QUrl(f"{server_ip}bbs/{pt}/{t}")))
-            card_layout.addWidget(open_button)
-
-            scroll_layout.addWidget(card_widget)
-
-    # 设置 scroll_widget 为 BBS_list 的内容
-    BBS_list.setWidget(scroll_widget)
-    BBS_list.setWidgetResizable(True)
-    
 def on_search_mod_clicked(self, mod_list, search_term=''):
     # 显示进度条
     if mod_list:
@@ -1856,43 +2176,7 @@ def setup_download_ui(self, widget):
             
             if java_version_items:
                 java_version_choose.addItems(java_version_items)
-        
-        # 3. 设置旧版下载页面按钮点击事件
-        old_download_page_button = widget.findChild(QPushButton, 'Old_download_Page')
-        if old_download_page_button:
-            # 使用MessageBoxBase创建对话框
-            def show_old_download_dialog():
-                # 创建一个对话框
-                dialog = MessageBoxBase(self)
-                dialog.setWindowTitle(i18nText("旧版下载"))
-                
-                # 创建内容界面
-                content_widget = QWidget()
-                content_widget.setObjectName("download_old")
-                load_ui("ui/download.old.ui", parent=content_widget)
-                
-                # 设置对话框内容
-                dialog.viewLayout.addWidget(content_widget)
-                
-                # 设置对话框大小
-                dialog.resize(800, 600)
-                
-                # 隐藏默认按钮
-                # dialog.yesButton.hide()
-                dialog.cancelButton.hide()
-                
-                # 设置UI
-                setup_download_old_ui(self, content_widget, 
-                                     self.LM_Download_Way_list if hasattr(self, 'LM_Download_Way_list') else ["1.21.8", "1.21.7"], 
-                                     self.ver_id_bloret if hasattr(self, 'ver_id_bloret') else ["1.21.8", "1.21.7"], 
-                                     self.homeInterface)
-                
-                # 显示对话框
-                dialog.exec_()
-            
-            # 连接按钮点击事件
-            old_download_page_button.clicked.connect(show_old_download_dialog)
-            
+
         # 设置Minecraft版本下载按钮点击事件
         minecraft_download_button = widget.findChild(QPushButton, 'Minecraft_version_Download')
         if minecraft_download_button:
@@ -2463,7 +2747,6 @@ class BlorikoAIModThread(QThread):
         self.deepthink = deepthink
 
     def run(self):
-        from modules.Bloriko import AskBloriko
         
         # 构建 Prompt，强制 AI 返回 JSON 格式的 slug，并指定只推荐 Fabric 模组
         prompt = (
@@ -2710,11 +2993,30 @@ class BlorikoModRecommendationDialog(MessageBoxBase):
             InfoBar.warning(title="提示", content="未选择任何 Mod", parent=self.widget)
             return
 
-        target_version = self.versionCombo.currentText()
+        folder_name = self.versionCombo.currentText()
+        
+        actual_version = folder_name
+        
+        # 1. 优先尝试从 .BL.json 映射中获取 version 字段
+        if folder_name in self.version_mappings:
+            actual_version = self.version_mappings[folder_name].get("version", folder_name)
+            log(f"BlorikoMod: 从 .BL.json 获取到真实版本号: {actual_version}")
+        else:
+            # 2. 如果映射失败 (例如文件夹存在但不在 JSON 中)，使用正则提取纯数字版本号
+            # 匹配类似 1.21.8, 1.20.1 等开头的字符串
+            match = re.match(r"^(\d+\.\d+(\.\d+)?)", folder_name)
+            if match:
+                extracted_ver = match.group(1)
+                log(f"BlorikoMod: 映射查找失败，从 '{folder_name}' 提取版本号为 '{extracted_ver}'")
+                actual_version = extracted_ver
+            else:
+                log(f"BlorikoMod: 警告 - 无法确定 '{folder_name}' 的真实版本号，将直接使用文件夹名", logging.WARNING)
+
         self.yesButton.setEnabled(False)
         self.yesButton.setText(i18nText("正在安装..."))
         
-        self.download_thread = ModBatchDownloadThread(selected_slugs, target_version, self.minecraft_dir)
+        self.download_thread = ModBatchDownloadThread(selected_slugs, folder_name, self.minecraft_dir, actual_version)
+        
         self.download_thread.progress_signal.connect(self.update_download_progress)
         self.download_thread.finished_signal.connect(self.on_download_finished)
         self.download_thread.start()
@@ -2741,11 +3043,12 @@ class ModBatchDownloadThread(QThread):
     progress_signal = pyqtSignal(str, bool) # message, is_error
     finished_signal = pyqtSignal(int, int) # success_count, fail_count
 
-    def __init__(self, slugs, version_folder, minecraft_dir):
+    def __init__(self, slugs, version_folder, minecraft_dir, game_version):
         super().__init__()
         self.slugs = slugs
         self.version_folder = version_folder
         self.minecraft_dir = minecraft_dir
+        self.game_version = game_version # 存储真实的游戏版本号 (如 1.20.1)
 
     def run(self):
         success = 0
@@ -2760,18 +3063,17 @@ class ModBatchDownloadThread(QThread):
             self.progress_signal.emit(f"正在安装 ({i+1}/{total}): {slug}", False)
             
             try:
-                # 获取下载链接 (默认尝试 Fabric，因为 Modrinth Fabric 居多，也可以尝试检测)
-                # 注意：这里我们假设是 Fabric，如果需要更精确，需要解析 versions 文件夹下的 json 或让用户选
-                url = Get_Mod_File_Download_Url(slug, "fabric") 
+                # 明确指定 loader 为 fabric，并指定游戏版本
+                url = Get_Mod_File_Download_Url(slug, loaders="fabric", game_versions=self.game_version) 
                 
-                if not url:
-                    # 尝试 Forge
-                    url = Get_Mod_File_Download_Url(slug, "forge")
-                
+                # 如果指定版本没有找到，url 会是 None，这里不再尝试 Forge，因为不兼容
                 if url:
                     filename = url.split("/")[-1]
                     file_path = os.path.join(mod_dir, filename)
                     
+                    # 记录详细日志以便调试
+                    log(f"开始下载 Mod: {slug} -> {file_path} (URL: {url})")
+
                     response = requests.get(url, stream=True)
                     response.raise_for_status()
                     
@@ -2780,7 +3082,7 @@ class ModBatchDownloadThread(QThread):
                             f.write(chunk)
                     success += 1
                 else:
-                    log(f"无法获取 Mod 下载链接: {slug}", logging.ERROR)
+                    log(f"无法获取 Mod 下载链接: {slug} (Fabric, {self.game_version})", logging.ERROR)
                     fail += 1
             except Exception as e:
                 log(f"下载 Mod 失败 {slug}: {e}", logging.ERROR)

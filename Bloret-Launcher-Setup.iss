@@ -50,10 +50,6 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "output\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\Bloret-Launcher.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\cmcl.blank.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\cmcl.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\cmcl.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\cmcl_save.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\config.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "output\servers.dat"; DestDir: "{app}"; Flags: ignoreversion

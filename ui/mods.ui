@@ -76,7 +76,7 @@
         <x>0</x>
         <y>0</y>
         <width>670</width>
-        <height>527</height>
+        <height>528</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -180,6 +180,30 @@
         </widget>
        </item>
        <item>
+        <widget class="CaptionLabel" name="Bloriko_Important_Info">
+         <property name="text">
+          <string>Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+         </property>
+         <property name="lightColor" stdset="0">
+          <color>
+           <red>127</red>
+           <green>127</green>
+           <blue>127</blue>
+          </color>
+         </property>
+         <property name="darkColor" stdset="0">
+          <color>
+           <red>185</red>
+           <green>185</green>
+           <blue>185</blue>
+          </color>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="SearchLineEdit" name="Search">
          <property name="inputMask">
           <string/>
@@ -203,7 +227,7 @@
             <x>0</x>
             <y>0</y>
             <width>652</width>
-            <height>368</height>
+            <height>347</height>
            </rect>
           </property>
          </widget>

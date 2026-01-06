@@ -30,26 +30,6 @@ with open("config.json", 'w', encoding='utf-8') as config_file:
 print("Config values updated successfully.")
 
 '''
-修改 cmcl.json 文件中的指定字段
-'''
-# 读取 cmcl.json 文件
-with open('cmcl.json', 'r', encoding='utf-8') as cmcl_file:
-    cmcl = json.load(cmcl_file)
-
-# 修改 cmcl.json 的指定字段
-cmcl['language-run'] = "zh"
-cmcl['downloadSource'] = 1
-cmcl['checkAccountBeforeStart'] = False
-cmcl['accounts'] = []
-cmcl['printStartupInfo'] = True
-
-# 保存修改后的 cmcl.json
-with open('cmcl.json', 'w', encoding='utf-8') as cmcl_file:
-    json.dump(cmcl, cmcl_file, indent=4)
-
-print("CMCL values updated successfully.")
-
-'''
 修改 Bloret-Launcher-Setup.iss 文件中的 MyAppVersion 字段
 '''
 # 获取 ver 值并转换为字符串

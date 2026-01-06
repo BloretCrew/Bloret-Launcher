@@ -10,6 +10,11 @@ from modules.i18n import i18nText
 import modules.globals as BLglobals
 
 java_versions = {
+        "25": {
+            "Windows": {
+                "x64": "https://cdn.azul.com/zulu/bin/zulu25.30.17-ca-jdk25.0.1-win_x64.msi"
+            }
+        },
         "24": {
             "Windows": {
                 "x64": "https://cdn.azul.com/zulu/bin/zulu24.32.13-ca-jdk24.0.2-win_x64.msi"
