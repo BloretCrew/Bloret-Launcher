@@ -516,7 +516,7 @@ class MainWindow(FluentWindow):
         self.passportInterface.setObjectName("passport")
         self.settingsInterface.setObjectName("settings")
         self.infoInterface.setObjectName("info")
-        self.addSubInterface(self.homeInterface, QIcon("bloret.ico"), i18nText("主页"), NavigationItemPosition.TOP)
+        self.addSubInterface(self.homeInterface, FluentIcon.HOME, i18nText("主页"), NavigationItemPosition.TOP)
         self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, i18nText("下载"), NavigationItemPosition.TOP)
         self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, i18nText("工具"), NavigationItemPosition.SCROLL)
         self.addSubInterface(self.modInterface, FluentIcon.TRANSPARENT, "Mods", NavigationItemPosition.SCROLL)
