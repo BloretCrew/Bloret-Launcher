@@ -1050,6 +1050,9 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
 
     def refresh_minecraft_accounts():
         '''物理重建账户列表（下载头像、创建卡片）'''
+        # 1. 先从磁盘加载最新数据（防止 PassPort 云端同步后内存数据过时）
+        self.load_config()
+        
         layout = accounts_container.layout()
         # 清理旧卡片
         while layout.count():
@@ -1117,14 +1120,31 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
 
     def switch_account(index):
         '''切换逻辑：仅更新数据和样式'''
+        # 确保拿到的是最新的列表
         mc_data = self.config.get("MinecraftAccount", {})
         accounts = mc_data.get("accounts", [])
-        if index >= len(accounts): return
+        
+        if index >= len(accounts): 
+            log(f"切换失败：索引 {index} 越界")
+            return
 
-        # 更新内部配置
+        log(f"正在切换到账户索引: {index}")
+
+        # 直接操作内存配置
         self.config["MinecraftAccount"]["chosen"] = index
-        # 使用 MainWindow 提供的 save_config 以确保安全写入
+        
+        # 2. 更新主程序全局变量（必须在 save 之前或之后立即同步，确保 Get_Run_Script 拿到新值）
+        acc = accounts[index]
+        self.player_name = acc.get("username", "")
+        self.player_uuid = acc.get("uuid", "")
+        acc_type = acc.get("type", "Offline")
+        self.login_mod = i18nText("微软登录") if acc_type == "Microsoft" else i18nText("离线登录")
+
+        # 3. 物理保存到磁盘
         self.save_config()
+
+        # 4. 更新 UI 显示
+        update_cards_visual()
 
         # 1. 更新通行证页面 UI (按钮状态)
         update_cards_visual()
@@ -1139,6 +1159,8 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
             self.login_mod = i18nText("微软登录")
         else:
             self.login_mod = i18nText("离线登录")
+            
+        log(f"账户已切换为: {self.player_name} ({self.login_mod})")
 
         # 3. 刷新主页左上角的账户显示
         if homeInterface:

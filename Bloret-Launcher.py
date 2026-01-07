@@ -1675,29 +1675,26 @@ class MainWindow(FluentWindow):
         self.activateWindow()
 
     def save_config(self):
-        """ 显式保存配置文件：先合并磁盘外部更改，再写入并强制刷新磁盘缓存 """
+        """ 将当前内存中的配置保存到磁盘并刷新缓存 """
         try:
             if hasattr(self, 'config'):
-                # 1. 重要：如果磁盘上有更新（如 PassPort 模块写入的登录信息），先合并到内存
-                if os.path.exists(BLglobals.config_path):
-                    try:
-                        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-                            disk_config = json.load(f)
-                            # 将磁盘上的关键信息（如账号、自定义项）同步到当前内存对象中
-                            for key in ['MinecraftAccount', 'Bloret_PassPort_UserName', 'Bloret_PassPort_Login', 'Bloret_PassPort_Token', 'Customize', 'ChoosedRun']:
-                                if key in disk_config:
-                                    self.config[key] = disk_config[key]
-                    except Exception as e:
-                        log(f"同步磁盘配置时出错: {e}", logging.WARNING)
-
-                # 2. 将合并后的内存配置写入磁盘
                 with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                     json.dump(self.config, f, ensure_ascii=False, indent=4)
                     f.flush()
-                    os.fsync(f.fileno()) # 强制系统将缓冲区写入磁盘
-                log("配置文件已物理保存到磁盘（已合并外部更改）")
+                    os.fsync(f.fileno())
+                log("配置文件已成功保存到磁盘")
         except Exception as e:
             log(f"保存配置文件失败: {e}", logging.ERROR)
+
+    def load_config(self):
+        """ 从磁盘重新加载配置到内存（用于外部模块修改文件后的同步） """
+        try:
+            if os.path.exists(BLglobals.config_path):
+                with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                    self.config = json.load(f)
+                log("配置已从磁盘重新加载")
+        except Exception as e:
+            log(f"加载配置文件失败: {e}", logging.ERROR)
 
     def quit_app(self):
         """ 安全退出程序 """
