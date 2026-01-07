@@ -62,15 +62,14 @@ try:
             # 备份
             shutil.copyfile(BLglobals.config_path, config_path + ".back")
             
-            # 合并配置：保留旧配置，仅更新版本号并补全缺少的默认项
-            for key, value in default_config.items():
-                if key not in config:
-                    config[key] = value
+            # 增量合并：以旧配置(config)为主，补全缺少的默认项(default_config)
+            updated_config = default_config.copy()
+            updated_config.update(config) # config 的内容会覆盖 default_config 的同名内容
+            updated_config['ver'] = default_ver
             
-            config['ver'] = default_ver
             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=4)
-            log(f"配置文件版本已安全升级到: {default_ver}")
+                json.dump(updated_config, f, ensure_ascii=False, indent=4)
+            log(f"配置文件版本已从 {current_ver} 安全升级到 {default_ver}")
         else:
             log("配置文件版本匹配，无需更新")
     else:

@@ -1123,8 +1123,8 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
 
         # 更新内部配置
         self.config["MinecraftAccount"]["chosen"] = index
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(self.config, f, ensure_ascii=False, indent=4)
+        # 使用 MainWindow 提供的 save_config 以确保安全写入
+        self.save_config()
 
         # 1. 更新通行证页面 UI (按钮状态)
         update_cards_visual()
