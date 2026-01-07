@@ -2316,6 +2316,7 @@ class ShortCutSettingDialog(MessageBoxBase):
         self.parent = parent
         self.capturing = False
         self.current_keys = set()
+        self.new_shortcut_text = ""
         
         # 标题
         self.titleLabel = SubtitleLabel(i18nText('设置截图快捷键'))
@@ -2343,7 +2344,7 @@ class ShortCutSettingDialog(MessageBoxBase):
         self.tipLabel.setTextColor("#666666", QColor(102, 102, 102))
         
         # 状态提示
-        self.statusLabel = CaptionLabel(i18nText('准备捕捉...'))
+        self.statusLabel = CaptionLabel(i18nText('准备就绪'))
         self.statusLabel.setTextColor("#0078d4", QColor(0, 120, 212))
         
         # 将组件添加到布局中
@@ -2368,6 +2369,100 @@ class ShortCutSettingDialog(MessageBoxBase):
         
         # 安装事件过滤器来捕捉按键
         self.installEventFilter(self)
+
+    def load_current_shortcut(self):
+        """从配置文件加载当前快捷键"""
+        try:
+            config = cfg.read()
+            shortcut = config.get("screen_cut_shortcut", "Ctrl+Alt+A")
+            self.currentShortcut.setText(shortcut)
+        except Exception as e:
+            log(f"加载当前快捷键失败: {e}", logging.ERROR)
+            self.currentShortcut.setText("Ctrl+Alt+A")
+
+    def start_capture(self):
+        """开始捕捉按键"""
+        self.capturing = True
+        self.current_keys = set()
+        self.newShortcutLabel.setText(i18nText("请按下快捷键组合..."))
+        self.statusLabel.setText(i18nText("正在捕捉..."))
+        self.startCaptureButton.setEnabled(False)
+        self.widget.setFocus() # 确保对话框获得焦点
+
+    def clear_shortcut(self):
+        """清除新设置的快捷键"""
+        self.new_shortcut_text = ""
+        self.newShortcutLabel.setText(i18nText('已清除，请重新捕捉'))
+        self.statusLabel.setText(i18nText('准备就绪'))
+        self.capturing = False
+        self.startCaptureButton.setEnabled(True)
+
+    def eventFilter(self, obj, event):
+        """事件过滤器，用于捕捉键盘事件"""
+        # 确保属性存在再访问，避免 AttributeError
+        is_capturing = getattr(self, 'capturing', False)
+        
+        if is_capturing and event.type() == event.KeyPress:
+            key = event.key()
+            modifiers = event.modifiers()
+            
+            # 忽略单独的控制键按下
+            if key in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta):
+                return True
+                
+            key_text = ""
+            parts = []
+            
+            if modifiers & Qt.ControlModifier:
+                parts.append("Ctrl")
+            if modifiers & Qt.ShiftModifier:
+                parts.append("Shift")
+            if modifiers & Qt.AltModifier:
+                parts.append("Alt")
+            if modifiers & Qt.MetaModifier:
+                parts.append("Meta")
+                
+            # 获取键名
+            from PyQt5.QtGui import QKeySequence
+            key_name = QKeySequence(key).toString()
+            if key_name:
+                parts.append(key_name)
+                
+            if parts:
+                self.new_shortcut_text = "+".join(parts)
+                self.newShortcutLabel.setText(self.new_shortcut_text)
+                self.statusLabel.setText(i18nText("捕捉完成"))
+                self.capturing = False
+                self.startCaptureButton.setEnabled(True)
+                
+            return True # 拦截事件
+            
+        return super().eventFilter(obj, event)
+
+    def validate(self):
+        """验证是否有效"""
+        return bool(self.new_shortcut_text)
+
+    def save_shortcut(self):
+        """保存快捷键到配置文件"""
+        try:
+            if not self.new_shortcut_text:
+                return False
+                
+            config = cfg.read()
+            config["screen_cut_shortcut"] = self.new_shortcut_text
+            
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=4)
+                
+            return True
+        except Exception as e:
+            log(f"保存快捷键失败: {e}", logging.ERROR)
+            return False
+
+    def get_new_shortcut(self):
+        """获取新设置的快捷键"""
+        return self.new_shortcut_text
 
 
 class VersionNameInputDialog(MessageBoxBase):
