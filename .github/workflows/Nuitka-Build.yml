@@ -72,6 +72,7 @@ jobs:
         path: "${{ env.OUTPUT_DIR }}/"
         
   Upload-To-Release:
+    if: github.event_name == 'release'
     needs: [Build-Windows, Build-Setup]
     runs-on: ubuntu-latest
     steps:
