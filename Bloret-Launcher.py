@@ -1700,8 +1700,16 @@ class MainWindow(FluentWindow):
             ctypes.windll.kernel32.CloseHandle(self.mutex)
             self.mutex = None
         
-        # 使用 subprocess 启动新实例，不使用 os.execl 以免资源清理不彻底
-        subprocess.Popen([sys.executable] + sys.argv)
+        # 判断是否为 PyInstaller 打包后的环境
+        if getattr(sys, 'frozen', False):
+            # 打包环境下，sys.executable 是 exe 路径，sys.argv[0] 也是 exe 路径
+            # 我们只需要取 sys.executable 加上剩余的参数
+            args = [sys.executable] + sys.argv[1:]
+        else:
+            # 脚本环境下，sys.executable 是 python.exe，sys.argv[0] 是脚本路径
+            args = [sys.executable] + sys.argv
+
+        subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
         os._exit(0)
         
     def on_player_name_set_clicked(self, widget):

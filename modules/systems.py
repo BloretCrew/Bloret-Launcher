@@ -93,8 +93,13 @@ def check_write_permission():
 
 def restart():
     log(i18nText('重启程序'))
-    # 尝试通知主窗口进行安全重启，如果不可用则执行强制重启
-    subprocess.Popen([sys.executable] + sys.argv)
+    
+    if getattr(sys, 'frozen', False):
+        args = [sys.executable] + sys.argv[1:]
+    else:
+        args = [sys.executable] + sys.argv
+        
+    subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
     os._exit(0)
 
 base_directory = os.path.dirname(os.path.abspath(__file__))
