@@ -3050,9 +3050,11 @@ class BlorikoModRecommendationDialog(MessageBoxBase):
         
         if fabric_versions:
             self.versionCombo.addItems(fabric_versions)
+            self.yesButton.setEnabled(True)
         else:
             self.versionCombo.addItem(i18nText("未找到 Fabric 版本"))
             self.versionCombo.setEnabled(False) # 禁用，防止误操作
+            self.yesButton.setEnabled(False)
 
     def on_action_clicked(self):
         if self.current_state == "SELECT":
