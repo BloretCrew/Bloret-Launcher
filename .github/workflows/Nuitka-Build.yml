@@ -72,7 +72,8 @@ jobs:
         path: "${{ env.OUTPUT_DIR }}/"
         
   Upload-To-Release:
-    if: github.event_name == 'release'
+    # 核心修改：明确排除 workflow_dispatch，且只有在 release 事件时才运行
+    if: github.event_name == 'release' && github.event_name != 'workflow_dispatch'
     needs: [Build-Windows, Build-Setup]
     runs-on: ubuntu-latest
     steps:
@@ -89,10 +90,10 @@ jobs:
 
       - name: 创建发布压缩包
         run: |
-          Compress-Archive -Path "Bloret-Launcher/*" -DestinationPath "Bloret-Launcher.zip" -Force
-        shell: pwsh
+          # 注意：在 ubuntu 环境下使用 zip 命令更稳定
+          zip -r Bloret-Launcher.zip Bloret-Launcher/*
 
-      - name: 上传到Release
+      - name: 上传到 Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
