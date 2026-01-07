@@ -1675,12 +1675,14 @@ class MainWindow(FluentWindow):
         self.activateWindow()
 
     def save_config(self):
-        """ 显式保存配置文件 """
+        """ 显式保存配置文件并强制刷新磁盘缓存 """
         try:
             if hasattr(self, 'config'):
                 with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                     json.dump(self.config, f, ensure_ascii=False, indent=4)
-                log("配置文件已保存")
+                    f.flush()
+                    os.fsync(f.fileno()) # 强制系统将缓冲区写入磁盘
+                log("配置文件已物理保存到磁盘")
         except Exception as e:
             log(f"保存配置文件失败: {e}", logging.ERROR)
 

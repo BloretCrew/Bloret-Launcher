@@ -1204,8 +1204,7 @@ def setup_settings_ui(self, widget):
                 # 获取语言代码
                 lang_code = language_map.get(display_name, display_name)
                 self.config.update(language=lang_code)
-                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                    json.dump(self.config, f, ensure_ascii=False, indent=4)
+                self.save_config() # 使用 MainWindow 提供的安全保存方法
                 log(f"语言设置已更改为: {lang_code}")
             
             language_choose.currentTextChanged.connect(on_language_changed)
@@ -1225,7 +1224,7 @@ def setup_settings_ui(self, widget):
         size_choose.setValue(self.config.get("size", 100))
         size_choose.valueChanged.connect(lambda value: (
             self.config.update(size=value),
-            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+            self.save_config()
         ))
 
     MaxThread_SpinBox = widget.findChild(SpinBox, "MaxThread_SpinBox")
@@ -1233,7 +1232,7 @@ def setup_settings_ui(self, widget):
         MaxThread_SpinBox.setValue(self.config.get("MaxThread", 2000))
         MaxThread_SpinBox.valueChanged.connect(lambda value: (
             self.config.update(MaxThread=value),
-            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+            self.save_config()
         ))
 
     repeat_run_button = widget.findChild(SwitchButton, "repeat_run_button")
@@ -1241,7 +1240,7 @@ def setup_settings_ui(self, widget):
         repeat_run_button.setChecked(self.config.get('repeat_run', False))
         repeat_run_button.checkedChanged.connect(lambda state: (
             self.config.update(repeat_run=state),
-            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            self.save_config(),
             log(f"重复运行设置已更改为: {'启用' if state else '禁用'}")
         ))
     show_runtime_do_button = widget.findChild(SwitchButton, "show_runtime_do_button")
@@ -1249,7 +1248,7 @@ def setup_settings_ui(self, widget):
         show_runtime_do_button.setChecked(self.config.get('show_runtime_do', False))
         show_runtime_do_button.checkedChanged.connect(lambda state: (
             self.config.update(show_runtime_do=state),
-            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            self.save_config(),
             log(f"显示软件打开过程: {'启用' if state else '禁用'}")
         ))
     BL_version = widget.findChild(QLabel, "BL_version")

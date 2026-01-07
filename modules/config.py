@@ -58,13 +58,19 @@ try:
         log(f"默认配置文件版本: {default_ver}")
         
         if current_ver != default_ver:
-            log(f"配置文件版本不匹配，正在更新...")
-            # 备份旧的配置文件为 config.back.json
+            log(f"配置文件版本不匹配（当前: {current_ver}, 目标: {default_ver}），正在执行增量更新...")
+            # 备份
             shutil.copyfile(BLglobals.config_path, config_path + ".back")
-            log(f"旧的配置文件已备份为: {config_path + '.back'}")
-            # 复制 config.json 到 %appdata%/Bloret-Launcher/config.json
-            shutil.copyfile("config.json", config_path)
-            log(f"配置文件已更新到: {config_path}")
+            
+            # 合并配置：保留旧配置，仅更新版本号并补全缺少的默认项
+            for key, value in default_config.items():
+                if key not in config:
+                    config[key] = value
+            
+            config['ver'] = default_ver
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=4)
+            log(f"配置文件版本已安全升级到: {default_ver}")
         else:
             log("配置文件版本匹配，无需更新")
     else:
