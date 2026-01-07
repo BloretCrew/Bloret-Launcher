@@ -6,6 +6,7 @@ permissions:
 on:
   release:
     types: [prereleased]
+  workflow_dispatch:
 
 jobs:
   Build-Windows:
