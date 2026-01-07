@@ -104,9 +104,9 @@ class SystemTrayIcon(QSystemTrayIcon):
 
         self.menu.addActions([
             Action(i18nText('🔡  访问 BBS'), triggered=lambda: open_BBBS_link(BLglobals.server_ip)),
-            Action(i18nText('🔄️  重启程序'), triggered=lambda: restart()),
+            Action(i18nText('🔄️  重启程序'), triggered=self.main_window.restart_app),
             Action(i18nText('✅  显示窗口'), triggered=self.main_window.show_main_window),
-            Action(i18nText('❎  退出程序'), triggered=QApplication.quit)
+            Action(i18nText('❎  退出程序'), triggered=self.main_window.quit_app)
         ])
         self.setContextMenu(self.menu)
 
@@ -299,9 +299,10 @@ class MainWindow(FluentWindow):
         self.setWindowIcon(QIcon(icon_path))
 
         # 检测是否重复运行
+        self.mutex = None
         if sys.platform == "win32":
-            mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\BloretLauncherMutex")
-            if mutex == 0:
+            self.mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\BloretLauncherMutex")
+            if self.mutex == 0:
                 log(i18nText("创建互斥体失败"))
                 sys.exit(1)
             error = ctypes.windll.kernel32.GetLastError()
@@ -318,7 +319,7 @@ class MainWindow(FluentWindow):
                     w = Dialog(i18nText("Bloret Launcher 已阻止了重复打开软件的操作"), i18nText("为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。"))
                     if w.exec():
                         print(i18nText('确认'))
-                    ctypes.windll.kernel32.CloseHandle(mutex)
+                    ctypes.windll.kernel32.CloseHandle(self.mutex)
                     sys.exit(0)
 
         if self.config.get('show_runtime_do', False):
@@ -477,11 +478,6 @@ class MainWindow(FluentWindow):
         update_progress({'value': 100 / 100, 'valueStringOverride': '10/10', 'status': i18nText('显示窗口')})
         self.show()
         check_for_updates(self,BLglobals.server_ip)
-
-        self.destroyed.connect(lambda: (
-            json.dump(self.config, open(BLglobals.config_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-            if hasattr(self, 'config') else None
-        ))
         
     def handle_screenshot_shortcut(self):
         """处理截图快捷键，在主线程中执行截图功能"""
@@ -1677,6 +1673,36 @@ class MainWindow(FluentWindow):
         self.show()
         self.raise_()
         self.activateWindow()
+
+    def save_config(self):
+        """ 显式保存配置文件 """
+        try:
+            if hasattr(self, 'config'):
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(self.config, f, ensure_ascii=False, indent=4)
+                log("配置文件已保存")
+        except Exception as e:
+            log(f"保存配置文件失败: {e}", logging.ERROR)
+
+    def quit_app(self):
+        """ 安全退出程序 """
+        self.save_config()
+        if self.mutex:
+            ctypes.windll.kernel32.CloseHandle(self.mutex)
+            self.mutex = None
+        os._exit(0)
+
+    def restart_app(self):
+        """ 安全重启程序 """
+        log(i18nText('正在准备重启程序...'))
+        self.save_config()
+        if self.mutex:
+            ctypes.windll.kernel32.CloseHandle(self.mutex)
+            self.mutex = None
+        
+        # 使用 subprocess 启动新实例，不使用 os.execl 以免资源清理不彻底
+        subprocess.Popen([sys.executable] + sys.argv)
+        os._exit(0)
         
     def on_player_name_set_clicked(self, widget):
         player_name_edit = widget.findChild(QLineEdit, "player_name")
