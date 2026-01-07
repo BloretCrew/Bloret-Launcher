@@ -990,6 +990,26 @@ def setup_tools_ui(self, widget):
             self.screenshot_widget = ScreenShortCut()
         ScreenCutButton.clicked.connect(start_screenshot)
 
+class AvatarLoaderThread(QThread):
+    avatar_loaded = pyqtSignal(str, bytes)
+
+    def __init__(self, username):
+        super().__init__()
+        self.username = username
+
+    def run(self):
+        try:
+            # log(f"后台线程开始加载头像: {self.username}")
+            # 添加 User-Agent 以避免请求被拒绝
+            headers = {"User-Agent": "BloretLauncher/1.0"}
+            res = requests.get(f"https://visage.surgeplay.com/face/45/{self.username}", headers=headers, timeout=10)
+            if res.status_code == 200:
+                self.avatar_loaded.emit(self.username, res.content)
+            else:
+                log(f"头像加载失败 {self.username}: 状态码 {res.status_code}")
+        except Exception as e:
+            log(f"头像加载异常 {self.username}: {str(e)}")
+
 def setup_passport_ui(self, widget, server_ip, homeInterface):
     '''
     设定 Bloret Launcher 通行证界面 UI 布局和操作。
@@ -1067,6 +1087,22 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
             layout.addWidget(BodyLabel(i18nText("暂无账户，请从云端同步")))
             return
 
+        # 确保 MainWindow 实例有存储线程的列表
+        if not hasattr(self, 'avatar_threads'):
+            self.avatar_threads = []
+
+        # 定义回调函数（避免在循环中重复定义）
+        def on_avatar_loaded(u, data, lbl):
+            log(f"头像加载成功: {u}")
+            p = QPixmap()
+            if p.loadFromData(data):
+                lbl.setPixmap(p)
+
+        def cleanup_thread(t):
+            if t in self.avatar_threads:
+                self.avatar_threads.remove(t)
+            t.deleteLater()
+
         for i, acc in enumerate(accounts):
             username = acc.get("username", "Unknown")
             acc_type = acc.get("type", "Offline")
@@ -1083,16 +1119,12 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
             avatar_label.setBorderRadius(4, 4, 4, 4)
             avatar_label.setPixmap(QPixmap("ui/icon/DefaultHead.png"))
             
-            # 异步加载头像
-            def load_img(label, uid):
-                try:
-                    res = requests.get(f"https://mc-heads.net/avatar/{uid}/45", timeout=5)
-                    if res.status_code == 200:
-                        p = QPixmap()
-                        p.loadFromData(res.content)
-                        label.setPixmap(p)
-                except: pass
-            QTimer.singleShot(10, lambda l=avatar_label, u=uuid: load_img(l, u))
+            # 异步加载头像 (使用线程)
+            thread = AvatarLoaderThread(username)
+            thread.avatar_loaded.connect(lambda u, d, l=avatar_label: on_avatar_loaded(u, d, l))
+            thread.finished.connect(lambda t=thread: cleanup_thread(t))
+            self.avatar_threads.append(thread)
+            thread.start()
 
             # 文本信息
             txt_lyt = QVBoxLayout()
