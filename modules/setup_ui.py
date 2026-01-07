@@ -502,11 +502,17 @@ class LaunchSelectorDialog(MessageBoxBase):
         """ 启动并关闭选择器 """
         main_window = self.parent()
         
-        # 保存选择
-        config = cfg.read()
-        config["ChoosedRun"] = name
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config, f, indent=4, ensure_ascii=False)
+        # 保存选择 (同步更新内存和磁盘)
+        if hasattr(main_window, 'config'):
+            main_window.config["ChoosedRun"] = name
+            if hasattr(main_window, 'save_config'):
+                main_window.save_config()
+            else:
+                # 备用写入
+                config = cfg.read()
+                config["ChoosedRun"] = name
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=4, ensure_ascii=False)
             
         # 设置选中的项目以便调用者知道（虽然这里直接启动了）
         self.selected_item = next((i for i in self.items if i['name'] == name), None)
@@ -637,8 +643,8 @@ def setup_home_ui(self, widget):
     # 定义刷新显示函数
     def refresh_launch_display():
         """ 刷新当前选中的启动项显示 """
-        config = cfg.read()
-        choosed_run = config.get("ChoosedRun", "")
+        # 优先使用内存中的配置，确保实时性
+        choosed_run = self.config.get("ChoosedRun", "")
         items = get_all_launch_items()
         
         selected_item = None
@@ -661,10 +667,9 @@ def setup_home_ui(self, widget):
         # 如果未选择或选择项不存在，默认选择第一个
         if not selected_item and items:
             selected_item = items[0]
-            # 保存默认选择
-            config["ChoosedRun"] = selected_item["name"]
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=4, ensure_ascii=False)
+            # 保存默认选择到内存并写入磁盘
+            self.config["ChoosedRun"] = selected_item["name"]
+            self.save_config()
         
         # 更新 UI
         if selected_item:
@@ -690,19 +695,17 @@ def setup_home_ui(self, widget):
         if dialog.exec():
             selected = dialog.selected_item
             if selected:
-                # 保存选择
-                config = cfg.read()
-                config["ChoosedRun"] = selected["name"]
-                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                    json.dump(config, f, indent=4, ensure_ascii=False)
+                # 保存选择到内存并写入磁盘
+                self.config["ChoosedRun"] = selected["name"]
+                self.save_config()
                 
                 # 刷新显示
                 refresh_launch_display()
 
     # 定义启动函数
     def execute_launch():
-        config = cfg.read()
-        choosed_name = config.get("ChoosedRun", "")
+        # 直接读取内存配置
+        choosed_name = self.config.get("ChoosedRun", "")
         if not choosed_name:
             return
             
