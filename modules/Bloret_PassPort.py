@@ -262,8 +262,17 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
             if parent_window and hasattr(parent_window, 'config'):
                 parent_window.config['MinecraftAccount'] = new_account_data
                 log("已同步更新 MainWindow 内存配置")
-
             log(f"成功同步 {len(accounts)} 个账户到 config.json")
+
+            # 4. 成功提示
+            if parent_window:
+                success_msg = MessageBox(
+                    i18nText("同步成功"), 
+                    f"{i18nText('已从 Bloret PassPort 同步')} {len(accounts)} {i18nText('个账户到本地。')}", 
+                    parent_window
+                )
+                success_msg.exec()
+            return True
         else:
             message = api_result.get('message', '未知错误')
             raise Exception(f"服务器返回错误: {message}")

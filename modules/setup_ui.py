@@ -1159,57 +1159,60 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
         update_cards_visual()
 
     def switch_account(index):
-        '''切换逻辑：仅更新数据和样式'''
-        # 确保拿到的是最新的列表
-        mc_data = self.config.get("MinecraftAccount", {})
-        accounts = mc_data.get("accounts", [])
-        
-        if index >= len(accounts): 
-            log(f"切换失败：索引 {index} 越界")
-            return
-
-        log(f"正在切换到账户索引: {index}")
-
-        # 直接操作内存配置
-        self.config["MinecraftAccount"]["chosen"] = index
-        
-        # 2. 更新主程序全局变量（必须在 save 之前或之后立即同步，确保 Get_Run_Script 拿到新值）
-        acc = accounts[index]
-        self.player_name = acc.get("username", "")
-        self.player_uuid = acc.get("uuid", "")
-        acc_type = acc.get("type", "Offline")
-        self.login_mod = i18nText("微软登录") if acc_type == "Microsoft" else i18nText("离线登录")
-
-        # 3. 物理保存到磁盘
-        self.save_config()
-
-        # 4. 更新 UI 显示
-        update_cards_visual()
-
-        # 1. 更新通行证页面 UI (按钮状态)
-        update_cards_visual()
-
-        # 2. 更新主程序全局变量 (确保启动游戏使用新账户)
-        acc = accounts[index]
-        self.player_name = acc.get("username", "")
-        self.player_uuid = acc.get("uuid", "")
-        acc_type = acc.get("type", "Offline")
-        
-        if acc_type == "Microsoft":
-            self.login_mod = i18nText("微软登录")
-        else:
-            self.login_mod = i18nText("离线登录")
+        '''切换逻辑：直接读写磁盘以避免 save_config 的回滚机制'''
+        try:
+            # 1. 读取磁盘上的最新配置
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                disk_config = json.load(f)
             
-        log(f"账户已切换为: {self.player_name} ({self.login_mod})")
+            mc_data = disk_config.get("MinecraftAccount", {})
+            accounts = mc_data.get("accounts", [])
+            
+            if index >= len(accounts): 
+                log(f"切换失败：索引 {index} 越界")
+                return
 
-        # 3. 刷新主页左上角的账户显示
-        if homeInterface:
-            Minecraft_account = homeInterface.findChild(QLabel, "Minecraft_account")
-            if Minecraft_account:
-                if self.config.get('home_show_login_mod', False):
-                    Minecraft_account.setText(f"[{self.login_mod}] {self.player_name}")
-                else:
-                    Minecraft_account.setText(f"{self.player_name}")
+            log(f"正在切换到账户索引: {index}")
+
+            # 2. 修改磁盘配置并保存
+            if "MinecraftAccount" in disk_config:
+                disk_config["MinecraftAccount"]["chosen"] = index
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(disk_config, f, ensure_ascii=False, indent=4)
+            
+            # 3. 同步更新内存配置
+            if "MinecraftAccount" in self.config:
+                self.config["MinecraftAccount"]["chosen"] = index
+                # 如果账户列表有变动，也同步一下（虽然此时只是切换索引）
+                self.config["MinecraftAccount"]["accounts"] = accounts
+
+            # 4. 更新主程序全局变量
+            acc = accounts[index]
+            self.player_name = acc.get("username", "")
+            self.player_uuid = acc.get("uuid", "")
+            acc_type = acc.get("type", "Offline")
+            
+            if acc_type == "Microsoft":
+                self.login_mod = i18nText("微软登录")
+            else:
+                self.login_mod = i18nText("离线登录")
+                
+            log(f"账户已切换为: {self.player_name} ({self.login_mod})")
+
+            # 5. 更新 UI 显示 (卡片状态)
+            update_cards_visual()
+
+            # 6. 刷新主页左上角的账户显示
+            if homeInterface:
+                Minecraft_account = homeInterface.findChild(QLabel, "Minecraft_account")
+                if Minecraft_account:
+                    if self.config.get('home_show_login_mod', False):
+                        Minecraft_account.setText(f"[{self.login_mod}] {self.player_name}")
+                    else:
+                        Minecraft_account.setText(f"{self.player_name}")
+                        
+        except Exception as e:
+            log(f"切换账户时发生错误: {str(e)}", logging.ERROR)
 
     # 绑定右上角刷新按钮
     refresh_btn = widget.findChild(QPushButton, "refreshMinecraftAccount")
