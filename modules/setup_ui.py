@@ -23,7 +23,7 @@ from qfluentwidgets import (
     SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit,
     CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget,
     ToolButton, MessageBoxBase, MessageBox,
-    TabBar, CheckBox
+    TabBar, CheckBox, HyperlinkLabel
 )
 
 # 4. 自定义模块 (Bloret Launcher Modules)
@@ -330,11 +330,9 @@ def on_self_starting_changed(value):
     当 SwitchButton 状态变化时，更新配置文件中的 self-starting 字段
     """
     log(f"开机自启设置为: {value}")
-    config_path = os.path.join("config.json")
     try:
         # 读取现有配置
-        with open(BLglobals.config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
+        config = cfg.read()
     except (FileNotFoundError, json.JSONDecodeError):
         config = {}
     config["self-starting"] = value
@@ -1220,11 +1218,20 @@ def setup_settings_ui(self, widget):
     ***
     ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
-    # 设置设置界面的UI元素
+    minecraft_dir_link = widget.findChild(HyperlinkLabel, "minecraft_dir_link")
+    if minecraft_dir_link:
+        minecraft_dir_link.setText(BLglobals.minecraft_dir)
+        minecraft_dir_link.setUrl(QUrl.fromLocalFile(BLglobals.minecraft_dir))
+
     log_clear_button = widget.findChild(QPushButton, "log_clear_button")
     if log_clear_button:
         log_clear_button.clicked.connect(lambda: clear_log_files(self,log_clear_button))
         self.update_log_clear_button_text(log_clear_button)
+
+    log_dir_link = widget.findChild(HyperlinkLabel, "log_dir_link")
+    if log_dir_link:
+        log_dir_link.setText(os.path.join(BLglobals.datapath, "log"))
+        log_dir_link.setUrl(QUrl.fromLocalFile(os.path.join(BLglobals.datapath, "log")))
 
     # 添加深浅色模式选择框
     light_dark_choose = widget.findChild(ComboBox, "light_dark_choose")

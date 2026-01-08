@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>706</width>
-    <height>828</height>
+    <height>670</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -38,7 +38,7 @@
         <x>0</x>
         <y>0</y>
         <width>688</width>
-        <height>744</height>
+        <height>669</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
@@ -187,19 +187,6 @@
           </item>
          </layout>
         </widget>
-       </item>
-       <item>
-        <spacer name="verticalSpacer">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>106</height>
-          </size>
-         </property>
-        </spacer>
        </item>
        <item>
         <widget class="CardWidget" name="frame_5">
@@ -422,6 +409,19 @@
           </item>
          </layout>
         </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>106</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>

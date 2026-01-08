@@ -336,8 +336,7 @@ class MainWindow(FluentWindow):
             log(i18nText("显示软件打开过程已禁用"))
 
         # 检查是否需要设置开机自启
-        if self.config.get("self-starting", False):
-            setup_startup_with_self_starting(True)
+        setup_startup_with_self_starting(cfg.read().get("self-starting", False))
 
         # 检查并设置 minecraft_dir 配置
         if not self.config.get('minecraft_dir'):

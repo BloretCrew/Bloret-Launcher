@@ -45,8 +45,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>671</width>
-        <height>1184</height>
+        <width>677</width>
+        <height>1287</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -111,6 +111,86 @@
           </widget>
          </item>
         </layout>
+       </item>
+       <item>
+        <widget class="SubtitleLabel" name="label_8">
+         <property name="text">
+          <string>Minecraft</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget_9">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_12">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_15">
+            <item>
+             <widget class="StrongBodyLabel" name="StrongBodyLabel_23">
+              <property name="text">
+               <string>Minecraft 文件夹位置</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_13">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>存储所有 Minecraft 信息、资源以及各种版本的文件夹位置</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="150">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_17">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>165</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="HyperlinkLabel" name="minecraft_dir_link">
+            <property name="text">
+             <string>.minecraft</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
        </item>
        <item>
         <widget class="SubtitleLabel" name="label_7">
@@ -484,6 +564,79 @@
         </widget>
        </item>
        <item>
+        <widget class="CardWidget" name="CardWidget_10">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_14">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_17">
+            <item>
+             <widget class="StrongBodyLabel" name="StrongBodyLabel_24">
+              <property name="text">
+               <string>日志文件夹位置</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_15">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>存储所有 Bloret Launcher 日志的文件夹位置</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color alpha="150">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color alpha="200">
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_18">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>165</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="HyperlinkLabel" name="log_dir_link">
+            <property name="text">
+             <string>log</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="CardWidget" name="frame_2">
          <property name="minimumSize">
           <size>
@@ -636,17 +789,17 @@
            </spacer>
           </item>
           <item>
-           <widget class="SwitchButton" name="Self_starting" native="true">
-            <property name="checked" stdset="0">
+           <widget class="SwitchButton" name="Self_starting">
+            <property name="checked">
              <bool>false</bool>
             </property>
-            <property name="text" stdset="0">
+            <property name="text">
              <string>关闭</string>
             </property>
-            <property name="onText" stdset="0">
+            <property name="onText">
              <string>打开</string>
             </property>
-            <property name="offText" stdset="0">
+            <property name="offText">
              <string>关闭</string>
             </property>
            </widget>
@@ -718,20 +871,20 @@
            </spacer>
           </item>
           <item>
-           <widget class="SwitchButton" name="repeat_run_button" native="true">
-            <property name="spacing" stdset="0">
+           <widget class="SwitchButton" name="repeat_run_button">
+            <property name="spacing">
              <number>12</number>
             </property>
-            <property name="checked" stdset="0">
+            <property name="checked">
              <bool>false</bool>
             </property>
-            <property name="text" stdset="0">
+            <property name="text">
              <string>禁止</string>
             </property>
-            <property name="onText" stdset="0">
+            <property name="onText">
              <string>允许</string>
             </property>
-            <property name="offText" stdset="0">
+            <property name="offText">
              <string>禁止</string>
             </property>
            </widget>
@@ -803,20 +956,20 @@
            </spacer>
           </item>
           <item>
-           <widget class="SwitchButton" name="show_runtime_do_button" native="true">
-            <property name="spacing" stdset="0">
+           <widget class="SwitchButton" name="show_runtime_do_button">
+            <property name="spacing">
              <number>12</number>
             </property>
-            <property name="checked" stdset="0">
+            <property name="checked">
              <bool>true</bool>
             </property>
-            <property name="text" stdset="0">
+            <property name="text">
              <string>显示</string>
             </property>
-            <property name="onText" stdset="0">
+            <property name="onText">
              <string>显示</string>
             </property>
-            <property name="offText" stdset="0">
+            <property name="offText">
              <string>不显示</string>
             </property>
            </widget>
@@ -888,20 +1041,20 @@
            </spacer>
           </item>
           <item>
-           <widget class="SwitchButton" name="home_show_login_mod_button" native="true">
-            <property name="spacing" stdset="0">
+           <widget class="SwitchButton" name="home_show_login_mod_button">
+            <property name="spacing">
              <number>12</number>
             </property>
-            <property name="checked" stdset="0">
+            <property name="checked">
              <bool>false</bool>
             </property>
-            <property name="text" stdset="0">
+            <property name="text">
              <string>隐藏</string>
             </property>
-            <property name="onText" stdset="0">
+            <property name="onText">
              <string>展示</string>
             </property>
-            <property name="offText" stdset="0">
+            <property name="offText">
              <string>隐藏</string>
             </property>
            </widget>
@@ -973,20 +1126,20 @@
            </spacer>
           </item>
           <item>
-           <widget class="SwitchButton" name="localmod_button" native="true">
-            <property name="spacing" stdset="0">
+           <widget class="SwitchButton" name="localmod_button">
+            <property name="spacing">
              <number>12</number>
             </property>
-            <property name="checked" stdset="0">
+            <property name="checked">
              <bool>false</bool>
             </property>
-            <property name="text" stdset="0">
+            <property name="text">
              <string>关闭</string>
             </property>
-            <property name="onText" stdset="0">
+            <property name="onText">
              <string>启用</string>
             </property>
-            <property name="offText" stdset="0">
+            <property name="offText">
              <string>关闭</string>
             </property>
            </widget>
@@ -1089,6 +1242,11 @@
   <customwidget>
    <class>TitleLabel</class>
    <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>HyperlinkLabel</class>
+   <extends>QPushButton</extends>
    <header>qfluentwidgets</header>
   </customwidget>
   <customwidget>
