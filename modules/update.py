@@ -27,18 +27,18 @@ def update_to_latest_version(self):
             'status': '正在获取最新版本信息...'
         })
         
-        response = requests.get("http://pcfs.eno.ink:2/api/BL/info")
+        response = requests.get("http://pcfs.eno.ink:3001/api/info")
         response.raise_for_status()
         res = response.json()
         
         # 获取下载链接
-        download_url = res["Bloret-Launcher-DownLoad-Link"]["Bloret-Launcher-Setup"]["GitCode"]
-        version = res["Bloret-Launcher-latest-version"]
+        download_url = res["downloads"]["stable"]["gitcode"]
+        version = res["latestVersion"]
         
         # 更新通知
         notify(progress={
             'title': f'正在更新 Bloret Launcher 至 {version}',
-            'status': res["Bloret-Launcher-update-text"],
+            'status': res["newVersionDescription"],
             'value': '0',
             'valueStringOverride': '0%',
             'icon': os.path.join(os.getcwd(), 'bloret.ico')
@@ -92,7 +92,7 @@ def update_to_latest_version(self):
         })
         
         # 启动安装程序并退出当前程序
-        subprocess.Popen([file_name, "/SILENT", "/NORESTART"])
+        subprocess.Popen([file_name, "--quickstart"])
         sys.exit(0)
         
     except Exception as e:
