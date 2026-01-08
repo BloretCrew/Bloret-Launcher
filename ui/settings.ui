@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>695</width>
-    <height>912</height>
+    <height>1053</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -46,7 +46,7 @@
         <x>0</x>
         <y>0</y>
         <width>677</width>
-        <height>1287</height>
+        <height>1372</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -186,6 +186,92 @@
            <widget class="HyperlinkLabel" name="minecraft_dir_link">
             <property name="text">
              <string>.minecraft</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="CardWidget" name="CardWidget_11">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>70</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_13">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_16">
+            <item>
+             <widget class="StrongBodyLabel" name="label_4">
+              <property name="maximumSize">
+               <size>
+                <width>16777210</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Minecraft 小工具栏</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignJustify|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="CaptionLabel" name="CaptionLabel_14">
+              <property name="text">
+               <string>当游玩 Minecraft 时，在 Minecraft 窗口上方
+显示一个快捷小工具栏，方便快速操作</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+              </property>
+              <property name="lightColor" stdset="0">
+               <color>
+                <red>127</red>
+                <green>127</green>
+                <blue>127</blue>
+               </color>
+              </property>
+              <property name="darkColor" stdset="0">
+               <color>
+                <red>185</red>
+                <green>185</green>
+                <blue>185</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_4">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>377</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="SwitchButton" name="mwtool_switch_open">
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+            <property name="text">
+             <string>打开</string>
+            </property>
+            <property name="onText">
+             <string>打开</string>
+            </property>
+            <property name="offText">
+             <string>关闭</string>
             </property>
            </widget>
           </item>

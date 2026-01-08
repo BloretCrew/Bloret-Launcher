@@ -996,11 +996,14 @@ class MainWindow(FluentWindow):
             self.running_processes[version] = self.run_script_thread
             
             # 启动 Minecraft 窗口监控 (使用 mwtool)
-            try:
-                log(f"启动工具栏监视器，目标版本: {version}")
-                modules.mwtool.start_monitoring(version)
-            except Exception as e:
-                log(f"启动工具栏监视器失败: {e}", logging.ERROR)
+            if self.config.get('mwtool_switch_open', True):
+                try:
+                    log(f"启动工具栏监视器，目标版本: {version}")
+                    modules.mwtool.start_monitoring(version)
+                except Exception as e:
+                    log(f"启动工具栏监视器失败: {e}", logging.ERROR)
+            else:
+                log("mwtool 窗口监视功能已禁用")
 
             self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
             self.update_show_text_thread.update_text.connect(self.update_show_text)

@@ -1342,6 +1342,15 @@ def setup_settings_ui(self, widget):
     else:
         log(i18nText("未找到 Self_starting 控件"))
 
+    mwtool_switch_open = widget.findChild(SwitchButton, "mwtool_switch_open")
+    if mwtool_switch_open:
+        mwtool_switch_open.setChecked(self.config.get('mwtool_switch_open', True))
+        mwtool_switch_open.checkedChanged.connect(lambda state: (
+            self.config.update(mwtool_switch_open=state),
+            self.save_config(),
+            log(f"Minecraft 浮动工具栏: {'启用' if state else '禁用'}")
+        ))
+
 def setup_multiplayer_ui(self, widget, server_ip):
     """设定 Bloret Launcher 多人联机界面 UI 布局和操作"""
     # 获取IPv6地址

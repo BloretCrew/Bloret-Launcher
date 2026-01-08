@@ -22,6 +22,7 @@ config['home_show_login_mod'] = True
 config['localmod'] = False
 config['MaxThread'] = 64
 config['minecraft_dir'] = ""
+config['mwtool_switch_open'] = True
 
 # 保存修改后的 config.json
 with open("config.json", 'w', encoding='utf-8') as config_file:
