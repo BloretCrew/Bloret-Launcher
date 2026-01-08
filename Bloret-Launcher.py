@@ -1680,6 +1680,29 @@ class MainWindow(FluentWindow):
         """ 将当前内存中的配置保存到磁盘并刷新缓存 """
         try:
             if hasattr(self, 'config'):
+                # 1. 防止覆盖：先从磁盘读取最新配置（获取 web.py 或其他模块写入的 Passport 信息）
+                try:
+                    if os.path.exists(BLglobals.config_path):
+                        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                            disk_config = json.load(f)
+                        
+                        # 定义需要从磁盘同步到内存的关键字段 (Passport 和 账户信息)
+                        # 这些字段通常由 web.py 或 sync 模块在后台修改
+                        sync_keys = [
+                            'Bloret_PassPort_Login', 
+                            'Bloret_PassPort_UserName', 
+                            'Bloret_PassPort_PassWord',
+                            'MinecraftAccount'
+                        ]
+                        
+                        for key in sync_keys:
+                            if key in disk_config:
+                                self.config[key] = disk_config[key]
+                                log(f"save_config: 已从磁盘同步最新字段 {key}")
+                except Exception as e:
+                    log(f"保存前同步磁盘配置失败: {e}", logging.ERROR)
+
+                # 2. 保存合并后的配置
                 with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                     json.dump(self.config, f, ensure_ascii=False, indent=4)
                     f.flush()
