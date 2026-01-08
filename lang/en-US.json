@@ -5,47 +5,16 @@
                 "Bloret_Launcher_Title": "Bloret Launcher",
                 "WelcomeToUseBL": "Welcome to Bloret Minecraft Launcher.\nIf you find any bugs or have suggestions, please submit an Issue on Github\nYou are also welcome to pull a request on the Github page to contribute to Bloret Launcher.",
                 "Info_title": "Information",
-                "show": "Welcome to Bloret Minecraft Launcher",
                 "Welcome_text": "Hello,",
                 "WillUseAccount_Top": "Will use",
-                "WillUseAccount_Down": "to log into Minecraft"
+                "WillUseAccount_Down": "to log into Minecraft",
+                "Minecraft_account": "无档案",
+                "Bloret_PassPort_Name": "访客"
             },
             "buttons": {
                 "pushButton_2": "Bloret Github Organisation Page",
                 "pushButton": "Github Page for this Project",
                 "run": "Launch"
-            }
-        },
-        "BBS": {
-            "Labels": {
-                "TitleLabel": "Bloret BBS"
-            }
-        },
-        "BL_download_version": {
-            "TitleLabel": "Bloret Launcher - Minecraft Core Download and Installation",
-            "SubtitleLabel_2": "Download Minecraft Version Core",
-            "StrongBodyLabel_5": "Core Files"
-        },
-        "BL_download": {
-            "TitleLabel": "Bloret Launcher - Minecraft Core Download and Installation",
-            "SubtitleLabel_2": "Download Minecraft Version Core",
-            "SubtitleLabel": "Download .minecraft Resources",
-            "Labels": {
-                "StrongBodyLabel_5": "Core Files",
-                "StrongBodyLabel_12": "Library Files Libraries",
-                "StrongBodyLabel_13": "63.1 MB",
-                "StrongBodyLabel_14": "Index Files Indexes",
-                "StrongBodyLabel_15": "379 KB",
-                "StrongBodyLabel_6": "Object Files Objects",
-                "StrongBodyLabel": "1",
-                "StrongBodyLabel_7": "99.9 MB",
-                "StrongBodyLabel_2": "2",
-                "StrongBodyLabel_8": "85.5 MB",
-                "StrongBodyLabel_3": "3",
-                "StrongBodyLabel_9": "92.5 MB",
-                "StrongBodyLabel_4": "4",
-                "StrongBodyLabel_10": "42.5 MB",
-                "CaptionLabel": "The size data on the right is an early estimate and may not be actual data. It may be smaller or larger."
             }
         },
         "client": {
@@ -58,71 +27,14 @@
                 "CaptionLabel_12": "<html><head/><body><p>Using IPV6 for online play, you can play with others without opening Bloret Launcher.<br/><span style=\" font-weight:700;\">IPV6 is a free service provided by your operator, no additional charges. </span>Users who already have it can click the button above to use it directly.<br/>IPV6 online play may not be stable, if you pursue stability, it is recommended to use the Online Client below for online play.</p></body></html>",
                 "SubtitleLabel_2": "Easytier",
                 "CaptionLabel_9": "<html><head/><body><p>Easytier 是一项开源项目，可以为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方需要打开 Bloret Launcher 才能与您一起联机。</span></p></body></html>",
-                "StrongBodyLabel_18": "已连接",
-                "CaptionLabel_7": "您已连接至 Easytier 网络",
-                "CaptionLabel_6": "请打开 Minecraft，并像加入服务器一样加入 ",
-                "OnlineClient_address": "连接地址"
+                "Client_Statue": "未连接",
+                "Client_Statue_Show": "您尚未连接到 Easytier 网络",
+                "CaptionLabel_6": "联机服务 Powered by Easytier"
             },
             "buttons": {
-                "GetIPV6AddressButton": "Get IPV6 Online Address",
+                "GetIPV6AddressGButton": "获取 IPV6 联机地址",
                 "StartOnlineClient": "开启 Easytier 联机服务",
                 "ClientOnlineClient": "连接到对方的网络"
-            }
-        },
-        "download_load": {
-            "TitleLabel": "Download",
-            "Labels": {
-                "label": "We are already loading...",
-                "label_4": "This may take some time, please be patient\nOnce loading is complete, we will immediately display the options\nWe load through BMCLAPI used by most launchers\nTherefore, the loading speed depends on BMCLAPI loading speed and your network\nIf it takes a long time to load or is unresponsive, please check the network. If the network is good, it may be a BMCLAPI issue"
-            }
-        },
-        "download.old": {
-            "TitleLabel": "Download",
-            "SubtitleLabel_2": "Minecraft Core Download",
-            "Labels": {
-                "StrongBodyLabel_9": "Select Download Core",
-                "CaptionLabel_3": "Bloret Launcher core is independently developed by Bloret, but has fewer options\nCMCL core can provide more versions",
-                "CaptionLabel_2": "Warning: Bloret Launcher core is an experimental feature",
-                "Fabric_2": "Light Minecraft Download Source",
-                "Fabric_text_5": "Available when using Bloret Launcher core.\nIf the download speed is too slow or fails, try switching download sources.",
-                "StrongBodyLabel_6": "Select Version",
-                "CaptionLabel_4": "Bloret Launcher core uses Light Minecraft protocol\nCurrently only supports downloading Bloret-supported versions.\nTo download other versions, please select CMCL core above.",
-                "vername": "Name",
-                "vername_text": "What do you want to call this newly downloaded version?",
-                "Fabric": "Fabric",
-                "Fabric_text": "Select the Fabric mod loader, with it,\nyou can install your own Mods to expand more Minecraft functions\nPlease note that Bloret servers do not support server-side Mods,\nYou can only add client-side Mods\nBloret servers using Forge may have problems.",
-                "CaptionLabel": "It is recommended to select the latest version at the top of the list\nUsing previous versions may cause instability",
-                "StrongBodyLabel_8": "Notify me through Windows notifications when download is complete",
-                "SubtitleLabel_3": "Import",
-                "StrongBodyLabel_3": "Import .mrpack File",
-                "Fabric_text_6": "Modrinth modpack format (.mrpack) is a simple format that allows you to store modpacks.",
-                "SubtitleLabel": "Customize",
-                "Fabric_text_3": "Bloret Launcher doesn't necessarily launch Minecraft, it can launch more. (May require restarting the program to take effect)",
-                "StrongBodyLabel": "Select Application",
-                "Fabric_text_2": "Select the program you want to customise to launch",
-                "StrongBodyLabel_2": "Display Name",
-                "Fabric_text_4": "Set the name of this application displayed in Bloret Launcher"
-            },
-            "buttons": {
-                "download": "Start Download and Install",
-                "add_mrpack_button": "Import .mrpack File",
-                "Customize_choose": "Select Application",
-                "Customize_add": "Add to Bloret Launcher"
-            },
-            "ComboBox": {
-                "download_way_choose": "",
-                "LM_download_way_choose": "",
-                "show_way": "",
-                "minecraft_choose": "",
-                "Fabric_choose": ""
-            },
-            "LineEdit": {
-                "vername_edit": "",
-                "Customize_path": "Application Path",
-                "Customize_showname": "Application Display Name"
-            },
-            "SwitchButton": {
-                "Notification": ""
             }
         },
         "download": {
@@ -137,16 +49,13 @@
                 "StrongBodyLabel": "Java",
                 "StrongBodyLabel_2": "Windows x64",
                 "StrongBodyLabel_25": "Custom Program",
-                "CaptionLabel_15": "Add custom launch item",
-                "StrongBodyLabel_26": "Legacy Installation Page",
-                "CaptionLabel_16": "Page for previous Bloret Launcher installation versions\nYou can go here to install other versions"
+                "CaptionLabel_15": "Add custom launch item"
             },
             "buttons": {
                 "Minecraft_version_Download": "Download and Install",
                 "Fabric_version_Download": "Download and Install",
                 "Java_version_Download": "Download and Install",
-                "Customize_add": "Add",
-                "Old_download_Page": "Go to"
+                "Customize_add": "Add"
             },
             "ComboBox": {
                 "Minecraft_version_choose": "",
@@ -154,39 +63,22 @@
                 "Java_version_choose": ""
             }
         },
-        "ERROR": {
-            "TitleLabel": "Bloret Launcher Error Tracking Window",
+        "mods": {
+            "TitleLabel": "Mods",
             "Labels": {
-                "StrongBodyLabel_4": "Bloret Launcher has encountered some minor issues...",
-                "CaptionLabel_5": "If you think this is a Bloret Launcher issue, please submit this issue.",
-                "StrongBodyLabel": "Type",
-                "StrongBodyLabel_2": "Information",
-                "StrongBodyLabel_3": "Traceback Information"
+                "StrongBodyLabel": "让络可帮你挑选合适的 Mod",
+                "CaptionLabel": "无需一个一个找 Mod，让 Bloriko 帮你找齐。",
+                "Bloriko_Important_Info": "Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。"
             },
             "buttons": {
-                "PushButton": "🔠 Copy to Clipboard",
-                "PushButton_2": "ℹ️ Report Issue",
-                "PushButton_3": "⏫ Ignore Warning"
+                "Open_Modrinth_Button": "Open Modrinth"
             },
-            "LineEdit": {
-                "type": "",
-                "value": ""
-            },
-            "PlainTextEdit": {
-                "traceback": ""
-            }
-        },
-        "forum": {
-            "TitleLabel": "Bloret BBS",
-            "SubtitleLabel": "Section 1",
-            "Labels": {
-                "title1": "Title 1",
-                "text1": "Text 1"
+            "SearchLineEdit": {
+                "Search": "Search on Modrinth"
             }
         },
         "info": {
             "TitleLabel": "About",
-            "SubtitleLabel": "Bloret Launcher",
             "Labels": {
                 "StrongBodyLabel_11": "QQ",
                 "StrongBodyLabel_12": "Github",
@@ -199,130 +91,66 @@
                 "button_github": "Github for this Project"
             }
         },
-        "MCVer_downloading": {
-            "TitleLabel": "Bloret Launcher - Minecraft Core Download and Installation",
-            "SubtitleLabel_2": "Preparation",
-            "SubtitleLabel": "Download Minecraft Resources",
-            "Labels": {
-                "StrongBodyLabel_16": "Get Version List and Version Details",
-                "StrongBodyLabel_14": "Client Core Files",
-                "StrongBodyLabel_15": "Library Files",
-                "libraries_file_name_2": "Working Threads:",
-                "libraries_file_working_Thread": "0",
-                "libraries_file_working_Thread_2": "/",
-                "MaxThread": "2000",
-                "libraries_file_name": "",
-                "StrongBodyLabel_17": "Resource Files",
-                "libraries_file_name_3": "Working Threads:",
-                "Resources_file_working_Thread": "0",
-                "libraries_file_working_Thread_4": "/",
-                "MaxThread_2": "2000",
-                "libraries_file_name_4": "",
-                "CaptionLabel": "Minecraft download source provided by bangbang93 / BMCLAPI"
-            },
-            "CheckBox": {
-                "First_Step_CheckBox": ""
-            }
-        },
-        "mods": {
-            "TitleLabel": "Mods",
-            "Labels": {
-                "StrongBodyLabel_17": "Find the Mod you want",
-                "CaptionLabel_5": "Modrinth provides tens of millions of Mods for you to choose from"
-            },
-            "buttons": {
-                "Open_Modrinth_Button": "Open Modrinth"
-            },
-            "SearchLineEdit": {
-                "Search": "Search on Modrinth"
-            }
-        },
-        "passport_notdone_account": {
-            "TitleLabel": "Passport",
-            "SubtitleLabel": {
-                "label_3": "Bloret Passport",
-                "label_5": "Offline Login / Microsoft Login"
-            },
-            "Labels": {
-                "label": "Current Login Method:",
-                "label_2": "Currently Logged In:",
-                "label_4": "Currently Logged In:",
-                "CaptionLabel_2": "When entering Bloret using Bloret Passport, you don't need to enter your password again."
-            },
-            "buttons": {
-                "pushButton": "Log Out",
-                "pushButton_5": "Multi-Account Settings",
-                "pushButton_6": "Register New Account",
-                "pushButton_2": "Login New Account",
-                "pushButton_7": "Multi-Account Settings",
-                "pushButton_8": "Register New Account",
-                "pushButton_3": "Add / Login New Account",
-                "pushButton_9": "Multi-Account Settings"
-            },
-            "ComboBox": {
-                "comboBox_3": [
-                    "Bloret Passport",
-                    "Offline Login",
-                    "Microsoft Login"
-                ],
-                "comboBox_4": [
-                    "Detrital"
-                ],
-                "comboBox_5": [
-                    "Detrital"
-                ]
-            }
-        },
-        "passport.old": {
-            "TitleLabel": "Passport",
-            "SubtitleLabel": "Offline Login",
-            "Labels": {
-                "label_2": "Account Name",
-                "CaptionLabel_3": "Remember to click Set, otherwise changes will not take effect",
-                "CaptionLabel_2": "More account management will be added in the future, such as Bloret Passport and Microsoft Login."
-            },
-            "buttons": {
-                "player_name_set": "Set"
-            },
-            "LineEdit": {
-                "player_name": ""
-            }
-        },
         "passport": {
             "TitleLabel": "Passport",
             "SubtitleLabel": {
                 "label_3": "Minecraft Account",
-                "SubtitleLabel": "Bloret Passport"
+                "SubtitleLabel": "Bloret PassPort"
             },
             "Labels": {
-                "label_4": "Currently Logged In",
-                "CaptionLabel_4": "Your currently logged in account",
-                "label_2": "Select Login Method",
-                "CaptionLabel_3": "Remember to click Set, otherwise changes will not take effect",
                 "Bloret_PassPort_UserName": "Not Logged In",
-                "CaptionLabel_5": "Using Bloret Passport, you can enjoy almost all Bloret services.",
-                "Bloret_PassPort_Other": "其他操作",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_title": " 同步到 Bloret PassPort",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_sub_title": "将您的 Minecraft  账户上传到云端，以便在其他设备上快速登录"
+                "Sync_From_BloretPassPort_Card": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_title": "通过 Bloret PassPort 管理你的账户",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_sub_title": "轻松登录你的 Minecraft Account，便捷地进行操作。"
             },
             "buttons": {
-                "login": "Re-login",
-                "Bloret_PassPort_view_BBBS": "Visit Bloret BBS",
-                "Bloret_PassPort_login": "Re-login",
+                "Bloret_PassPort_login": " 登录至 Bloret PassPort",
                 "Bloret_PassPort_logout": "Log Out",
-                "reg_Bloret_PassPort": "Register Bloret Passport",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_to": "同步到云端",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from": "从云端下载"
+                "refreshMinecraftAccount": "刷新",
+                "ManageMinecraftAccountOnBloretPassPortWebsite": "在 Bloret PassPort 上管理你的账户",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from": "从 Bloret PassPort 上同步账户"
+            }
+        },
+        "tools": {
+            "TitleLabel": "Tools",
+            "SubtitleLabel": {
+                "label_3": "屏幕截图",
+                "label": "Minecraft 数据查询"
             },
-            "ComboBox": {
-                "player_login_way": "",
-                "playername": "",
-                "login_way": ""
+            "Labels": {
+                "StrongBodyLabel_25": "Bloret Launcher Screen Cut",
+                "CaptionLabel_15": "便捷地截取屏幕画面，包括 Minecraft 窗口",
+                "StrongBodyLabel_26": "通过快捷键激活",
+                "ScreenCut_ShortCut": "Ctrl+Alt+A",
+                "name2uuid_text": "Query Player UUID",
+                "label_2": "Query results will be displayed here",
+                "StrongBodyLabel_20": "Query Player Name",
+                "search_name": "Query results will be displayed here",
+                "label_7": "Get Player's Skin and Cape",
+                "search_skin": "Skin query results",
+                "search_cape": "Cape query results"
+            },
+            "buttons": {
+                "ScreenCutButton": "截图",
+                "ScreenCut_ShortCut_Set": "设置快捷键",
+                "name2uuid_player_Button": "Query",
+                "pushButton_5": "Copy to Clipboard",
+                "search_name_button": "Query",
+                "search_name_copy": "Copy to Clipboard",
+                "skin_search_button": "Query",
+                "search_skin_copy": "Copy to Clipboard",
+                "search_cape_copy": "Copy to Clipboard"
+            },
+            "LineEdit": {
+                "name2uuid_player_uuid": "Player Name (Genuine)",
+                "search_name_type": "Player UUID",
+                "skin_uuid": "Player UUID, note this is not the name, if not available, please get it above."
             }
         },
         "settings": {
             "TitleLabel": "Settings",
             "SubtitleLabel": {
+                "label_8": "Minecraft",
                 "label_7": "Download",
                 "label_6": "Interface",
                 "label_5": "Appearance",
@@ -332,6 +160,8 @@
             "Labels": {
                 "StrongBodyLabel_15": "Current Version",
                 "BL_version": "Unknown",
+                "StrongBodyLabel_23": "Minecraft 文件夹位置",
+                "CaptionLabel_13": "存储所有 Minecraft 信息、资源以及各种版本的文件夹位置",
                 "StrongBodyLabel_22": "Maximum Thread Count",
                 "CaptionLabel_12": "Maximum number of files allowed to download simultaneously when downloading files\nThe larger the number, the faster the download speed, but it will occupy more computer performance.",
                 "StrongBodyLabel_17": "Zoom",
@@ -340,6 +170,8 @@
                 "CaptionLabel_4": "Comfortable for your eyes",
                 "log_clear_text": "Clear Logs",
                 "log_clear_subtext": "Clear log folder",
+                "StrongBodyLabel_24": "日志文件夹位置",
+                "CaptionLabel_15": "存储所有 Bloret Launcher 日志的文件夹位置",
                 "label_3": "Auto-start on Boot",
                 "CaptionLabel_11": "Open Bloret Launcher when booting and minimize to system tray",
                 "StrongBodyLabel_18": "Duplicate Program Launch",
@@ -350,7 +182,9 @@
                 "CaptionLabel_10": "Show whether you are Microsoft login or offline login",
                 "StrongBodyLabel_20": "Local Mode",
                 "CaptionLabel_8": "Do not connect to part of the internet, do not allow use of PCFS services.",
-                "CaptionLabel_9": "Most content in the settings interface requires restarting the program to take effect."
+                "CaptionLabel_9": "Most content in the settings interface requires restarting the program to take effect.",
+                "language_Setting_Title": "语言 / language",
+                "language_Setting_Tip_Text": "调整语言设置"
             },
             "buttons": {
                 "log_clear_button": "Clear Logs"
@@ -382,48 +216,16 @@
                 }
             },
             "ComboBox": {
-                "light_dark_choose": "",
+                "light_dark_choose": [
+                    "跟随系统",
+                    "深色模式",
+                    "浅色模式"
+                ],
                 "language_Choose": [
                     "zh-cn",
                     "en-GB"
                 ]
-            },
-            "StrongBodyLabel": {
-                "language_Setting_Title": "Language / language"
-            },
-            "CaptionLabel": {
-                "language_Setting_Tip_Text": "Adjust language settings"
             }
-        },
-        "tools": {
-            "TitleLabel": "Tools",
-            "SubtitleLabel": "Minecraft Data Query",
-            "Labels": {
-                "name2uuid_text": "Query Player UUID",
-                "label_2": "Query results will be displayed here",
-                "StrongBodyLabel_20": "Query Player Name",
-                "search_name": "Query results will be displayed here",
-                "label_7": "Get Player's Skin and Cape",
-                "search_skin": "Skin query results",
-                "search_cape": "Cape query results"
-            },
-            "buttons": {
-                "name2uuid_player_Button": "Query",
-                "pushButton_5": "Copy to Clipboard",
-                "search_name_button": "Query",
-                "search_name_copy": "Copy to Clipboard",
-                "skin_search_button": "Query",
-                "search_skin_copy": "Copy to Clipboard",
-                "search_cape_copy": "Copy to Clipboard"
-            },
-            "LineEdit": {
-                "name2uuid_player_uuid": "Player Name (Genuine)",
-                "search_name_type": "Player UUID",
-                "skin_uuid": "Player UUID, note this is not the name, if not available, please get it above."
-            }
-        },
-        "version": {
-            "TitleLabel": "Version Management"
         }
     },
     "texts": {
