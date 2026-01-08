@@ -61,15 +61,15 @@ from modules.ShortCut import ScreenShortCut
 
 # 加载配置文件
 def load_config():
-    config_path = "config.json"
+    # 使用 BLglobals 中的全局路径，而不是硬编码
     try:
         with open(BLglobals.config_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"错误：配置文件 {config_path} 未找到。")
+        print(f"错误：配置文件 {BLglobals.config_path} 未找到。")
         return {}
     except json.JSONDecodeError:
-        print(f"错误：配置文件 {config_path} 格式不正确。")
+        print(f"错误：配置文件 {BLglobals.config_path} 格式不正确。")
         return {}
 
 config = load_config()
