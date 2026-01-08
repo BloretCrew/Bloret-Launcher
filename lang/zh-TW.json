@@ -5,47 +5,16 @@
                 "Bloret_Launcher_Title": "Bloret Launcher",
                 "WelcomeToUseBL": "歡迎使用百絡谷 Minecraft 啟動器。\n如發現任何 Bug 或有建議等，請到 Github 上提交 Issue\n也歡迎您前往 Github 頁面拉取 Pull request 請求，為百絡谷啟動器做貢獻。",
                 "Info_title": "資訊",
-                "show": "歡迎使用百絡谷 Minecraft 啟動器",
                 "Welcome_text": "您好,",
                 "WillUseAccount_Top": "將使用",
-                "WillUseAccount_Down": "來登入 Minecraft"
+                "WillUseAccount_Down": "來登入 Minecraft",
+                "Minecraft_account": "无档案",
+                "Bloret_PassPort_Name": "访客"
             },
             "buttons": {
                 "pushButton_2": "Bloret Github 組織頁面",
                 "pushButton": "該項目的 Github 頁面",
                 "run": "啟動"
-            }
-        },
-        "BBS": {
-            "Labels": {
-                "TitleLabel": "Bloret BBS"
-            }
-        },
-        "BL_download_version": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下載與安裝",
-            "SubtitleLabel_2": "下載 Minecraft 版本核心",
-            "StrongBodyLabel_5": "核心檔案"
-        },
-        "BL_download": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下載與安裝",
-            "SubtitleLabel_2": "下載 Minecraft 版本核心",
-            "SubtitleLabel": "下載 .minecraft 資源",
-            "Labels": {
-                "StrongBodyLabel_5": "核心檔案",
-                "StrongBodyLabel_12": "資源庫檔案 libraries",
-                "StrongBodyLabel_13": "63.1 MB",
-                "StrongBodyLabel_14": "指標檔案 indexes",
-                "StrongBodyLabel_15": "379 KB",
-                "StrongBodyLabel_6": "物件檔案 objects",
-                "StrongBodyLabel": "1",
-                "StrongBodyLabel_7": "99.9 MB",
-                "StrongBodyLabel_2": "2",
-                "StrongBodyLabel_8": "85.5 MB",
-                "StrongBodyLabel_3": "3",
-                "StrongBodyLabel_9": "92.5 MB",
-                "StrongBodyLabel_4": "4",
-                "StrongBodyLabel_10": "42.5 MB",
-                "CaptionLabel": "右側大小數據為前期估算，可能不是真實數據。可能更小或更大。"
             }
         },
         "client": {
@@ -58,71 +27,14 @@
                 "CaptionLabel_12": "<html><head/><body><p>使用 IPV6 進行聯機，可無需打開 Bloret Launcher 就能與其他人聯機遊玩。<br/><span style=\" font-weight:700;\">IPV6 是您的運營商提供的一項免費服務，不額外收費。 </span>已擁有的用戶點擊上方按鈕直接使用。<br/>IPV6 聯機可能並不穩定，如果您追求穩定性，建議使用下方 Online Client 進行聯機。</p></body></html>",
                 "SubtitleLabel_2": "Easytier",
                 "CaptionLabel_9": "<html><head/><body><p>Easytier 是一项开源项目，可以为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方需要打开 Bloret Launcher 才能与您一起联机。</span></p></body></html>",
-                "StrongBodyLabel_18": "已连接",
-                "CaptionLabel_7": "您已连接至 Easytier 网络",
-                "CaptionLabel_6": "请打开 Minecraft，并像加入服务器一样加入 ",
-                "OnlineClient_address": "连接地址"
+                "Client_Statue": "未连接",
+                "Client_Statue_Show": "您尚未连接到 Easytier 网络",
+                "CaptionLabel_6": "联机服务 Powered by Easytier"
             },
             "buttons": {
-                "GetIPV6AddressButton": "獲取 IPV6 聯機位址",
+                "GetIPV6AddressGButton": "获取 IPV6 联机地址",
                 "StartOnlineClient": "开启 Easytier 联机服务",
                 "ClientOnlineClient": "连接到对方的网络"
-            }
-        },
-        "download_load": {
-            "TitleLabel": "下載",
-            "Labels": {
-                "label": "我們已經在加載了...",
-                "label_4": "這可能需要一定時間，請耐心等待\n待加載完成，我們立刻顯示選項\n我們通過調用絕大多數啟動器使用的BMCLAPI來加載\n因此加載快慢與BMCLAPI加載快慢和您的網路有關\n若長時間加載不出或未響應，請檢查網路，如果網路良好，可能是BMCLAPI問題"
-            }
-        },
-        "download.old": {
-            "TitleLabel": "下載",
-            "SubtitleLabel_2": "Minecraft 核心下載",
-            "Labels": {
-                "StrongBodyLabel_9": "選擇下載核心",
-                "CaptionLabel_3": "Bloret Launcher 核心由百絡谷自行研發，但可選項較少\nCMCL 核心可提供更多版本",
-                "CaptionLabel_2": "警告：Bloret Launcher 核心為實驗性功能",
-                "Fabric_2": "Light Minecraft 下載源",
-                "Fabric_text_5": "使用 Bloret Launcher 核心時可用。\n如果下載速度過慢或失敗，請嘗試切換下載源。",
-                "StrongBodyLabel_6": "選擇版本",
-                "CaptionLabel_4": "Bloret Launcher 核心使用 Light Minecraft 協議\n暫時僅支援百絡谷支援版本進行下載。\n若要下載其他版本，請在上方選擇 CMCL 核心。",
-                "vername": "名稱",
-                "vername_text": "你想讓這個新下載的版本叫什麼？",
-                "Fabric": "Fabric",
-                "Fabric_text": "選擇 Fabric 模組加載器，有了它，\n你將可以安裝自己的 Mod，拓展更多 Minecraft 功能\n請注意，百絡谷伺服器不支援服務端 Mod，\n您只能新增客戶端 Mod\n百絡谷伺服器使用 Forge 可能會出現問題。",
-                "CaptionLabel": "推薦選擇位於列表最上方的最新版本\n使用以前的版本可能會導致不穩定",
-                "StrongBodyLabel_8": "下載完成後通過 Windows 通知來通知我",
-                "SubtitleLabel_3": "匯入",
-                "StrongBodyLabel_3": "匯入 .mrpack 檔案",
-                "Fabric_text_6": "Modrinth 模組包格式（.mrpack）是一種簡單的格式，可以讓你儲存模組包。",
-                "SubtitleLabel": "自訂",
-                "Fabric_text_3": "Bloret Launcher 不一定啟動 Minecraft ，它還可以啟動更多。（可能需要重新啟動程式後生效）",
-                "StrongBodyLabel": "選擇應用程式",
-                "Fabric_text_2": "選擇你要自訂啟動的程式",
-                "StrongBodyLabel_2": "顯示名稱",
-                "Fabric_text_4": "設定該應用程式顯示在百絡谷啟動器內的名稱"
-            },
-            "buttons": {
-                "download": "開始下載並安裝",
-                "add_mrpack_button": "匯入 .mrpack 檔案",
-                "Customize_choose": "選擇應用程式",
-                "Customize_add": "新增到百絡谷啟動器"
-            },
-            "ComboBox": {
-                "download_way_choose": "",
-                "LM_download_way_choose": "",
-                "show_way": "",
-                "minecraft_choose": "",
-                "Fabric_choose": ""
-            },
-            "LineEdit": {
-                "vername_edit": "",
-                "Customize_path": "應用程式路徑",
-                "Customize_showname": "應用程式顯示名稱"
-            },
-            "SwitchButton": {
-                "Notification": ""
             }
         },
         "download": {
@@ -137,16 +49,13 @@
                 "StrongBodyLabel": "Java",
                 "StrongBodyLabel_2": "Windows x64",
                 "StrongBodyLabel_25": "自訂程式",
-                "CaptionLabel_15": "新增自訂啟動項",
-                "StrongBodyLabel_26": "舊版安裝頁面",
-                "CaptionLabel_16": "以前 Bloret Launcher 安裝版本的頁面\n可以前往此處安裝其他版本"
+                "CaptionLabel_15": "新增自訂啟動項"
             },
             "buttons": {
                 "Minecraft_version_Download": "下載並安裝",
                 "Fabric_version_Download": "下載並安裝",
                 "Java_version_Download": "下載並安裝",
-                "Customize_add": "新增",
-                "Old_download_Page": "前往"
+                "Customize_add": "新增"
             },
             "ComboBox": {
                 "Minecraft_version_choose": "",
@@ -154,39 +63,22 @@
                 "Java_version_choose": ""
             }
         },
-        "ERROR": {
-            "TitleLabel": "Bloret Launcher 錯誤跟蹤視窗",
+        "mods": {
+            "TitleLabel": "Mods",
             "Labels": {
-                "StrongBodyLabel_4": "Bloret Launcher 發生了一些小問題...",
-                "CaptionLabel_5": "如果您認為這是 Bloret Launcher 的問題，請提交此問題。",
-                "StrongBodyLabel": "類型",
-                "StrongBodyLabel_2": "資訊",
-                "StrongBodyLabel_3": "回溯資訊"
+                "StrongBodyLabel": "让络可帮你挑选合适的 Mod",
+                "CaptionLabel": "无需一个一个找 Mod，让 Bloriko 帮你找齐。",
+                "Bloriko_Important_Info": "Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。"
             },
             "buttons": {
-                "PushButton": "🔠 複製到剪貼簿",
-                "PushButton_2": "ℹ️ 回饋問題",
-                "PushButton_3": "⏫ 忽略警告"
+                "Open_Modrinth_Button": "打開 Modrinth"
             },
-            "LineEdit": {
-                "type": "",
-                "value": ""
-            },
-            "PlainTextEdit": {
-                "traceback": ""
-            }
-        },
-        "forum": {
-            "TitleLabel": "Bloret BBS",
-            "SubtitleLabel": "板塊1",
-            "Labels": {
-                "title1": "標題1",
-                "text1": "文字1"
+            "SearchLineEdit": {
+                "Search": "在 Modrinth 上搜尋"
             }
         },
         "info": {
             "TitleLabel": "關於",
-            "SubtitleLabel": "Bloret Launcher",
             "Labels": {
                 "StrongBodyLabel_11": "QQ",
                 "StrongBodyLabel_12": "Github",
@@ -199,130 +91,66 @@
                 "button_github": "此項目的 Github"
             }
         },
-        "MCVer_downloading": {
-            "TitleLabel": "Bloret Launcher - Minecraft 核心下載與安裝",
-            "SubtitleLabel_2": "準備工作",
-            "SubtitleLabel": "下載 Minecraft 資源",
-            "Labels": {
-                "StrongBodyLabel_16": "獲取版本清單和版本詳細資訊",
-                "StrongBodyLabel_14": "客戶端核心檔案",
-                "StrongBodyLabel_15": "庫檔案",
-                "libraries_file_name_2": "正在工作執行緒數:",
-                "libraries_file_working_Thread": "0",
-                "libraries_file_working_Thread_2": "/",
-                "MaxThread": "2000",
-                "libraries_file_name": "",
-                "StrongBodyLabel_17": "資源檔案",
-                "libraries_file_name_3": "正在工作執行緒數:",
-                "Resources_file_working_Thread": "0",
-                "libraries_file_working_Thread_4": "/",
-                "MaxThread_2": "2000",
-                "libraries_file_name_4": "",
-                "CaptionLabel": "Minecraft 下載源由 bangbang93 / BMCLAPI 提供"
-            },
-            "CheckBox": {
-                "First_Step_CheckBox": ""
-            }
-        },
-        "mods": {
-            "TitleLabel": "Mods",
-            "Labels": {
-                "StrongBodyLabel_17": "找到你想要的 Mod",
-                "CaptionLabel_5": "Modrinth 提供了數千萬 Mod 供您選擇"
-            },
-            "buttons": {
-                "Open_Modrinth_Button": "打開 Modrinth"
-            },
-            "SearchLineEdit": {
-                "Search": "在 Modrinth 上搜尋"
-            }
-        },
-        "passport_notdone_account": {
-            "TitleLabel": "通行證",
-            "SubtitleLabel": {
-                "label_3": "百絡谷通行證",
-                "label_5": "離線登入 / 微軟登入"
-            },
-            "Labels": {
-                "label": "當前登入方式：",
-                "label_2": "當前登入：",
-                "label_4": "當前登入：",
-                "CaptionLabel_2": "使用百絡谷通行證進入 Bloret 時，無需再次輸入密碼。"
-            },
-            "buttons": {
-                "pushButton": "退出登入",
-                "pushButton_5": "多帳戶設定",
-                "pushButton_6": "註冊新帳戶",
-                "pushButton_2": "登入新帳戶",
-                "pushButton_7": "多帳戶設定",
-                "pushButton_8": "註冊新帳戶",
-                "pushButton_3": "新增 / 登入新帳戶",
-                "pushButton_9": "多帳戶設定"
-            },
-            "ComboBox": {
-                "comboBox_3": [
-                    "百絡谷通行證",
-                    "離線登入",
-                    "微軟登入"
-                ],
-                "comboBox_4": [
-                    "Detrital"
-                ],
-                "comboBox_5": [
-                    "Detrital"
-                ]
-            }
-        },
-        "passport.old": {
-            "TitleLabel": "通行證",
-            "SubtitleLabel": "離線登入",
-            "Labels": {
-                "label_2": "帳戶名",
-                "CaptionLabel_3": "請記得單擊設定，否則更改不會生效",
-                "CaptionLabel_2": "未來將新增對帳戶的更多管理，百絡谷通行證和微軟登入等。"
-            },
-            "buttons": {
-                "player_name_set": "設定"
-            },
-            "LineEdit": {
-                "player_name": ""
-            }
-        },
         "passport": {
             "TitleLabel": "通行證",
             "SubtitleLabel": {
                 "label_3": "Minecraft 帳戶",
-                "SubtitleLabel": "Bloret 通行證"
+                "SubtitleLabel": "Bloret PassPort"
             },
             "Labels": {
-                "label_4": "目前登入",
-                "CaptionLabel_4": "您目前登入的帳戶",
-                "label_2": "選擇登入方式",
-                "CaptionLabel_3": "請記得單擊設定，否則更改不會生效",
                 "Bloret_PassPort_UserName": "未登入",
-                "CaptionLabel_5": "使用 Bloret 通行證，可享受幾乎所有的 Bloret 服務。",
-                "Bloret_PassPort_Other": "其他操作",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_title": " 同步到 Bloret PassPort",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_sub_title": "将您的 Minecraft  账户上传到云端，以便在其他设备上快速登录"
+                "Sync_From_BloretPassPort_Card": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_title": "通过 Bloret PassPort 管理你的账户",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_sub_title": "轻松登录你的 Minecraft Account，便捷地进行操作。"
             },
             "buttons": {
-                "login": "重新登入",
-                "Bloret_PassPort_view_BBBS": "訪問 Bloret BBS",
-                "Bloret_PassPort_login": "重新登入",
+                "Bloret_PassPort_login": " 登录至 Bloret PassPort",
                 "Bloret_PassPort_logout": "退出登入",
-                "reg_Bloret_PassPort": "註冊 Bloret 通行證",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_to": "同步到云端",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from": "从云端下载"
+                "refreshMinecraftAccount": "刷新",
+                "ManageMinecraftAccountOnBloretPassPortWebsite": "在 Bloret PassPort 上管理你的账户",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from": "从 Bloret PassPort 上同步账户"
+            }
+        },
+        "tools": {
+            "TitleLabel": "小工具",
+            "SubtitleLabel": {
+                "label_3": "屏幕截图",
+                "label": "Minecraft 数据查询"
             },
-            "ComboBox": {
-                "player_login_way": "",
-                "playername": "",
-                "login_way": ""
+            "Labels": {
+                "StrongBodyLabel_25": "Bloret Launcher Screen Cut",
+                "CaptionLabel_15": "便捷地截取屏幕画面，包括 Minecraft 窗口",
+                "StrongBodyLabel_26": "通过快捷键激活",
+                "ScreenCut_ShortCut": "Ctrl+Alt+A",
+                "name2uuid_text": "查詢玩家UUID",
+                "label_2": "查詢的結果將顯示在這裡",
+                "StrongBodyLabel_20": "查詢玩家名字",
+                "search_name": "查詢的結果將顯示在這裡",
+                "label_7": "獲取玩家的皮膚和披風",
+                "search_skin": "皮膚的查詢的結果",
+                "search_cape": "披風的查詢的結果"
+            },
+            "buttons": {
+                "ScreenCutButton": "截图",
+                "ScreenCut_ShortCut_Set": "设置快捷键",
+                "name2uuid_player_Button": "查詢",
+                "pushButton_5": "複製到剪貼簿",
+                "search_name_button": "查詢",
+                "search_name_copy": "複製到剪貼簿",
+                "skin_search_button": "查詢",
+                "search_skin_copy": "複製到剪貼簿",
+                "search_cape_copy": "複製到剪貼簿"
+            },
+            "LineEdit": {
+                "name2uuid_player_uuid": "玩家名稱（正版）",
+                "search_name_type": "玩家UUID",
+                "skin_uuid": "玩家UUID，注意不是名字，如果沒有，請到上面獲取。"
             }
         },
         "settings": {
             "TitleLabel": "設定",
             "SubtitleLabel": {
+                "label_8": "Minecraft",
                 "label_7": "下載",
                 "label_6": "介面",
                 "label_5": "外觀",
@@ -332,6 +160,8 @@
             "Labels": {
                 "StrongBodyLabel_15": "當前版本",
                 "BL_version": "未知",
+                "StrongBodyLabel_23": "Minecraft 文件夹位置",
+                "CaptionLabel_13": "存储所有 Minecraft 信息、资源以及各种版本的文件夹位置",
                 "StrongBodyLabel_22": "最大執行緒數",
                 "CaptionLabel_12": "下載檔案時允許同時下載檔案的最大數量\n該數字越大,下載速度越快,但會佔用電腦更多效能。",
                 "StrongBodyLabel_17": "縮放",
@@ -340,6 +170,8 @@
                 "CaptionLabel_4": "眼睛舒服了",
                 "log_clear_text": "清空日誌",
                 "log_clear_subtext": "清空 log 資料夾",
+                "StrongBodyLabel_24": "日志文件夹位置",
+                "CaptionLabel_15": "存储所有 Bloret Launcher 日志的文件夹位置",
                 "label_3": "開機自啟動",
                 "CaptionLabel_11": "開機時一併打開 Bloret Launcher, 並最小化至系統匣",
                 "StrongBodyLabel_18": "重複啟動程式",
@@ -350,7 +182,9 @@
                 "CaptionLabel_10": "展示你為微軟登入或是離線登入",
                 "StrongBodyLabel_20": "本地模式",
                 "CaptionLabel_8": "不連接一部分的網際網路，不允許使用 PCFS 服務。",
-                "CaptionLabel_9": "設定介面大部分內容需要重啟程式後生效。"
+                "CaptionLabel_9": "設定介面大部分內容需要重啟程式後生效。",
+                "language_Setting_Title": "语言 / language",
+                "language_Setting_Tip_Text": "调整语言设置"
             },
             "buttons": {
                 "log_clear_button": "清空日誌"
@@ -382,48 +216,16 @@
                 }
             },
             "ComboBox": {
-                "light_dark_choose": "",
+                "light_dark_choose": [
+                    "跟随系统",
+                    "深色模式",
+                    "浅色模式"
+                ],
                 "language_Choose": [
                     "zh-cn",
                     "en-GB"
                 ]
-            },
-            "StrongBodyLabel": {
-                "language_Setting_Title": "語言 / language"
-            },
-            "CaptionLabel": {
-                "language_Setting_Tip_Text": "調整語言設定"
             }
-        },
-        "tools": {
-            "TitleLabel": "小工具",
-            "SubtitleLabel": "Minecraft 數據查詢",
-            "Labels": {
-                "name2uuid_text": "查詢玩家UUID",
-                "label_2": "查詢的結果將顯示在這裡",
-                "StrongBodyLabel_20": "查詢玩家名字",
-                "search_name": "查詢的結果將顯示在這裡",
-                "label_7": "獲取玩家的皮膚和披風",
-                "search_skin": "皮膚的查詢的結果",
-                "search_cape": "披風的查詢的結果"
-            },
-            "buttons": {
-                "name2uuid_player_Button": "查詢",
-                "pushButton_5": "複製到剪貼簿",
-                "search_name_button": "查詢",
-                "search_name_copy": "複製到剪貼簿",
-                "skin_search_button": "查詢",
-                "search_skin_copy": "複製到剪貼簿",
-                "search_cape_copy": "複製到剪貼簿"
-            },
-            "LineEdit": {
-                "name2uuid_player_uuid": "玩家名稱（正版）",
-                "search_name_type": "玩家UUID",
-                "skin_uuid": "玩家UUID，注意不是名字，如果沒有，請到上面獲取。"
-            }
-        },
-        "version": {
-            "TitleLabel": "版本管理"
         }
     },
     "texts": {
