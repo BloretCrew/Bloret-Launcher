@@ -325,25 +325,32 @@ def load_ui(ui_path, parent=None, animate=True):
         else:
             parent.layout().addWidget(widget)
 
-def on_self_starting_changed(value):
+def on_self_starting_changed(main_window, value):
     """
     当 SwitchButton 状态变化时，更新配置文件中的 self-starting 字段
     """
     log(f"开机自启设置为: {value}")
-    try:
-        # 读取现有配置
-        config = cfg.read()
-    except (FileNotFoundError, json.JSONDecodeError):
-        config = {}
-    config["self-starting"] = value
-    try:
-        with open(BLglobals.config_path, "w", encoding="utf-8") as f:
-            json.dump(config, f, ensure_ascii=False, indent=4)
-        log(f"已更新配置: self-starting={value}")
-        setup_startup_with_self_starting(value) # 更新开机自启设置
-        log(f"已更新开机自启设置: {value}")
-    except Exception as e:
-        log(f"写入配置文件失败: {e}")
+    
+    # 1. 更新内存中的配置
+    if hasattr(main_window, 'config'):
+        main_window.config["self-starting"] = value
+        
+    # 2. 调用主窗口的保存方法（如果可用），否则执行安全保存
+    if hasattr(main_window, 'save_config'):
+        main_window.save_config()
+    else:
+        # 备用逻辑：直接写入文件（仅当无法访问 MainWindow 时）
+        try:
+            config = cfg.read()
+            config["self-starting"] = value
+            with open(BLglobals.config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            log(f"备用写入配置文件失败: {e}")
+
+    # 3. 设置系统开机启动项
+    setup_startup_with_self_starting(value)
+    log(f"已更新开机自启设置: {value}")
 
 class LaunchSelectorDialog(MessageBoxBase):
     """ 启动项选择窗口 """
@@ -1318,27 +1325,32 @@ def setup_settings_ui(self, widget):
     BL_version = widget.findChild(QLabel, "BL_version")
     if BL_version:
         BL_version.setText(f"{self.config.get('ver', '未知')}")
+    
     localmod_button = widget.findChild(SwitchButton, "localmod_button")
     if localmod_button:
         localmod_button.setChecked(self.config.get('localmod', False))
+        # 修复：统一使用 self.save_config()，禁止直接写文件
         localmod_button.checkedChanged.connect(lambda state: (
             self.config.update(localmod=state),
-            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            self.save_config(),
             log(f"本地模式: {'启用' if state else '禁用'}")
         ))
+        
     home_show_login_mod_button = widget.findChild(SwitchButton, "home_show_login_mod_button")
     if home_show_login_mod_button:
         home_show_login_mod_button.setChecked(self.config.get('home_show_login_mod', False))
+        # 修复：统一使用 self.save_config()，禁止直接写文件
         home_show_login_mod_button.checkedChanged.connect(lambda state: (
             self.config.update(home_show_login_mod=state),
-            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            self.save_config(),
             log(f"在首页上 显示 Minecraft 账户登录方式: {'启用' if state else '禁用'}")
         ))
     
     Self_starting = widget.findChild(SwitchButton, "Self_starting")
     if Self_starting:
         Self_starting.setChecked(self.config.get("self-starting", False))
-        Self_starting.checkedChanged.connect(lambda val: on_self_starting_changed(val))
+        # 修复：传递 self (MainWindow实例) 给回调函数，以便更新内存中的 config
+        Self_starting.checkedChanged.connect(lambda val: on_self_starting_changed(self, val))
     else:
         log(i18nText("未找到 Self_starting 控件"))
 
