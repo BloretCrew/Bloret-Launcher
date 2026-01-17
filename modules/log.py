@@ -100,14 +100,14 @@ def log(message, level=logging.INFO):
         # 格式化控制台输出
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
         level_name = logging.getLevelName(level)
-        formatted_log = f"{timestamp} [{level_name}] [{filename}:{lineno} - {func_name}()] {message}"
+        formatted_log = f"[{level_name}] [{filename}:{lineno} - {func_name}()] {message}"
         print(formatted_log)
     else:
         # 如果无法获取调用者信息，使用默认方式
         logging.log(level, message)
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
         level_name = logging.getLevelName(level)
-        formatted_log = f"{timestamp} [{level_name}] {message}"
+        formatted_log = f"[{level_name}] {message}"
         print(formatted_log)
     
     logging.getLogger().handlers[0].flush()  # 强制刷新日志
