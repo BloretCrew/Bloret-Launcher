@@ -4,8 +4,6 @@ from qfluentwidgets import MessageBox
 from modules.win11toast import update_progress
 from modules.i18n import i18nText
 import threading
-import sys
-import traceback
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log
@@ -24,7 +22,6 @@ def IsNeedUpdate(NowVersion, LatestVersion):
     Returns:
         bool: 如果需要更新返回True，否则返回False
     """
-    import re
     
     def parse_version(version_str):
         # 分离主版本号和预发布版本信息

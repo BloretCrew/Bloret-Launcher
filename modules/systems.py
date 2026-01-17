@@ -102,49 +102,64 @@ def restart():
     subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
     os._exit(0)
 
-base_directory = os.path.dirname(os.path.abspath(__file__))
+# base_directory = os.path.dirname(os.path.abspath(__file__)) # 不再需要，动态获取路径
 
-def add_to_startup(file_path=f'{base_directory}/Bloret-Launcher.exe', icon_path=''):  # 注册到开机启动
-    if os.name != 'nt':
-        return
-    if file_path == "":
-        file_path = os.path.realpath(__file__)
-    else:
-        file_path = os.path.abspath(file_path)  # 将相对路径转换为绝对路径
+def add_to_startup():
+    """ 注册开机启动 (创建快捷方式到启动目录) """
+    try:
+        # 获取启动文件夹路径
+        startup_dir = os.path.join(os.getenv('APPDATA'), r'Microsoft\Windows\Start Menu\Programs\Startup')
+        if not os.path.exists(startup_dir):
+            os.makedirs(startup_dir)
+        
+        lnk_path = os.path.join(startup_dir, 'Bloret Launcher.lnk')
+        
+        # 获取当前运行的程序路径和目录
+        if getattr(sys, 'frozen', False):
+            # 打包后的 exe
+            target_path = sys.executable
+            working_dir = os.path.dirname(target_path)
+            arguments = "--self-starting"
+        else:
+            # Python 脚本运行
+            target_path = sys.executable  # python.exe
+            script_path = os.path.abspath(sys.argv[0])
+            working_dir = os.path.dirname(script_path)
+            arguments = f'"{script_path}" --self-starting'
 
-    if icon_path == "":
-        icon_path = file_path  # 如果未指定图标路径，则使用程序路径
-    else:
-        icon_path = os.path.abspath(icon_path)  # 将相对路径转换为绝对路径
+        icon_path = os.path.join(working_dir, 'bloret.ico')
 
-    # 获取启动文件夹路径
-    startup_folder = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
-
-    # 快捷方式文件名（使用文件名或自定义名称）
-    name = os.path.splitext(os.path.basename(file_path))[0]  # 使用文件名作为快捷方式名称
-    shortcut_path = os.path.join(startup_folder, f'{name}.lnk')
-
-    # 创建快捷方式
-    shell = Dispatch('WScript.Shell')
-    shortcut = shell.CreateShortCut(shortcut_path)
-    shortcut.Targetpath = file_path
-    shortcut.Arguments = "--self-starting"  # 添加自启动参数
-    shortcut.WorkingDirectory = os.path.dirname(file_path)
-    shortcut.IconLocation = icon_path  # 设置图标路径
-    shortcut.save()
+        # 创建快捷方式
+        shell = Dispatch('WScript.Shell')
+        shortcut = shell.CreateShortCut(lnk_path)
+        shortcut.TargetPath = target_path
+        shortcut.Arguments = arguments
+        shortcut.WorkingDirectory = working_dir
+        if os.path.exists(icon_path):
+            shortcut.IconLocation = icon_path
+        shortcut.WindowStyle = 1 
+        shortcut.Save()
+        
+        log(f"已创建开机自启快捷方式: {lnk_path}")
+    except Exception as e:
+        handle_exception(e)
+        log(f"注册开机启动失败: {e}", logging.ERROR)
 
 
-def remove_from_startup(file_path=f'{base_directory}/Time-Machine.exe'):
-    log(i18nText('取消注册开机启动'))
-    startup_folder = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
-    if file_path == "":
-        file_path = os.path.realpath(__file__)
-    else:
-        file_path = os.path.abspath(file_path)  # 将相对路径转换为绝对路径
-    name = os.path.splitext(os.path.basename(file_path))[0]  # 使用文件名作为快捷方式名称
-    shortcut_path = os.path.join(startup_folder, f'{name}.lnk')
-    if os.path.exists(shortcut_path):
-        os.remove(shortcut_path)
+def remove_from_startup():
+    """ 取消注册开机启动 """
+    try:
+        startup_dir = os.path.join(os.getenv('APPDATA'), r'Microsoft\Windows\Start Menu\Programs\Startup')
+        lnk_path = os.path.join(startup_dir, 'Bloret Launcher.lnk')
+        
+        if os.path.exists(lnk_path):
+            os.remove(lnk_path)
+            log(f"已删除开机自启快捷方式: {lnk_path}")
+        else:
+            log("开机自启快捷方式不存在，无需删除")
+    except Exception as e:
+        handle_exception(e)
+        log(f"取消注册开机启动失败: {e}", logging.ERROR)
 
 
 def setup_startup_with_self_starting(value=True):
@@ -152,5 +167,4 @@ def setup_startup_with_self_starting(value=True):
         add_to_startup()
     else:
         remove_from_startup()
-    log(f"设置开机自启 {'启用' if value else '禁用'}")
 

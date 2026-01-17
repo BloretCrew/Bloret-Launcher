@@ -29,5 +29,6 @@
         "logined": false,
         "chosen": -1,
         "accounts": []
-    }
+    },
+    "mwtool_switch_open": true
 }

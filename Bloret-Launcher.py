@@ -336,8 +336,7 @@ class MainWindow(FluentWindow):
             log(i18nText("显示软件打开过程已禁用"))
 
         # 检查是否需要设置开机自启
-        if self.config.get("self-starting", False):
-            setup_startup_with_self_starting(True)
+        setup_startup_with_self_starting(cfg.read().get("self-starting", False))
 
         # 检查并设置 minecraft_dir 配置
         if not self.config.get('minecraft_dir'):
@@ -997,11 +996,14 @@ class MainWindow(FluentWindow):
             self.running_processes[version] = self.run_script_thread
             
             # 启动 Minecraft 窗口监控 (使用 mwtool)
-            try:
-                log(f"启动工具栏监视器，目标版本: {version}")
-                modules.mwtool.start_monitoring(version)
-            except Exception as e:
-                log(f"启动工具栏监视器失败: {e}", logging.ERROR)
+            if self.config.get('mwtool_switch_open', True):
+                try:
+                    log(f"启动工具栏监视器，目标版本: {version}")
+                    modules.mwtool.start_monitoring(version)
+                except Exception as e:
+                    log(f"启动工具栏监视器失败: {e}", logging.ERROR)
+            else:
+                log("mwtool 窗口监视功能已禁用")
 
             self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
             self.update_show_text_thread.update_text.connect(self.update_show_text)
@@ -1675,29 +1677,49 @@ class MainWindow(FluentWindow):
         self.activateWindow()
 
     def save_config(self):
-        """ 显式保存配置文件：先合并磁盘外部更改，再写入并强制刷新磁盘缓存 """
+        """ 将当前内存中的配置保存到磁盘并刷新缓存 """
         try:
             if hasattr(self, 'config'):
-                # 1. 重要：如果磁盘上有更新（如 PassPort 模块写入的登录信息），先合并到内存
-                if os.path.exists(BLglobals.config_path):
-                    try:
+                # 1. 防止覆盖：先从磁盘读取最新配置（获取 web.py 或其他模块写入的 Passport 信息）
+                try:
+                    if os.path.exists(BLglobals.config_path):
                         with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                             disk_config = json.load(f)
-                            # 将磁盘上的关键信息（如账号、自定义项）同步到当前内存对象中
-                            for key in ['MinecraftAccount', 'Bloret_PassPort_UserName', 'Bloret_PassPort_Login', 'Bloret_PassPort_Token', 'Customize', 'ChoosedRun']:
-                                if key in disk_config:
-                                    self.config[key] = disk_config[key]
-                    except Exception as e:
-                        log(f"同步磁盘配置时出错: {e}", logging.WARNING)
+                        
+                        # 定义需要从磁盘同步到内存的关键字段 (Passport 和 账户信息)
+                        # 这些字段通常由 web.py 或 sync 模块在后台修改
+                        sync_keys = [
+                            'Bloret_PassPort_Login', 
+                            'Bloret_PassPort_UserName', 
+                            'Bloret_PassPort_PassWord',
+                            'MinecraftAccount'
+                        ]
+                        
+                        for key in sync_keys:
+                            if key in disk_config:
+                                self.config[key] = disk_config[key]
+                                log(f"save_config: 已从磁盘同步最新字段 {key}")
+                except Exception as e:
+                    log(f"保存前同步磁盘配置失败: {e}", logging.ERROR)
 
-                # 2. 将合并后的内存配置写入磁盘
+                # 2. 保存合并后的配置
                 with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                     json.dump(self.config, f, ensure_ascii=False, indent=4)
                     f.flush()
-                    os.fsync(f.fileno()) # 强制系统将缓冲区写入磁盘
-                log("配置文件已物理保存到磁盘（已合并外部更改）")
+                    os.fsync(f.fileno())
+                log("配置文件已成功保存到磁盘")
         except Exception as e:
             log(f"保存配置文件失败: {e}", logging.ERROR)
+
+    def load_config(self):
+        """ 从磁盘重新加载配置到内存（用于外部模块修改文件后的同步） """
+        try:
+            if os.path.exists(BLglobals.config_path):
+                with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                    self.config = json.load(f)
+                log("配置已从磁盘重新加载")
+        except Exception as e:
+            log(f"加载配置文件失败: {e}", logging.ERROR)
 
     def quit_app(self):
         """ 安全退出程序 """

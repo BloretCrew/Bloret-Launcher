@@ -5,6 +5,7 @@ import json
 import socket
 import logging
 import requests
+import random
 
 # 2. 第三方库 (PyQt5)
 from PyQt5.QtWidgets import (
@@ -23,7 +24,7 @@ from qfluentwidgets import (
     SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit,
     CaptionLabel, ImageLabel, IndeterminateProgressBar, IconWidget,
     ToolButton, MessageBoxBase, MessageBox,
-    TabBar, CheckBox
+    TabBar, CheckBox, HyperlinkLabel
 )
 
 # 4. 自定义模块 (Bloret Launcher Modules)
@@ -61,15 +62,15 @@ from modules.ShortCut import ScreenShortCut
 
 # 加载配置文件
 def load_config():
-    config_path = "config.json"
+    # 使用 BLglobals 中的全局路径，而不是硬编码
     try:
         with open(BLglobals.config_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"错误：配置文件 {config_path} 未找到。")
+        print(f"错误：配置文件 {BLglobals.config_path} 未找到。")
         return {}
     except json.JSONDecodeError:
-        print(f"错误：配置文件 {config_path} 格式不正确。")
+        print(f"错误：配置文件 {BLglobals.config_path} 格式不正确。")
         return {}
 
 config = load_config()
@@ -325,27 +326,32 @@ def load_ui(ui_path, parent=None, animate=True):
         else:
             parent.layout().addWidget(widget)
 
-def on_self_starting_changed(value):
+def on_self_starting_changed(main_window, value):
     """
     当 SwitchButton 状态变化时，更新配置文件中的 self-starting 字段
     """
     log(f"开机自启设置为: {value}")
-    config_path = os.path.join("config.json")
-    try:
-        # 读取现有配置
-        with open(BLglobals.config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        config = {}
-    config["self-starting"] = value
-    try:
-        with open(BLglobals.config_path, "w", encoding="utf-8") as f:
-            json.dump(config, f, ensure_ascii=False, indent=4)
-        log(f"已更新配置: self-starting={value}")
-        setup_startup_with_self_starting(value) # 更新开机自启设置
-        log(f"已更新开机自启设置: {value}")
-    except Exception as e:
-        log(f"写入配置文件失败: {e}")
+    
+    # 1. 更新内存中的配置
+    if hasattr(main_window, 'config'):
+        main_window.config["self-starting"] = value
+        
+    # 2. 调用主窗口的保存方法（如果可用），否则执行安全保存
+    if hasattr(main_window, 'save_config'):
+        main_window.save_config()
+    else:
+        # 备用逻辑：直接写入文件（仅当无法访问 MainWindow 时）
+        try:
+            config = cfg.read()
+            config["self-starting"] = value
+            with open(BLglobals.config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            log(f"备用写入配置文件失败: {e}")
+
+    # 3. 设置系统开机启动项
+    setup_startup_with_self_starting(value)
+    log(f"已更新开机自启设置: {value}")
 
 class LaunchSelectorDialog(MessageBoxBase):
     """ 启动项选择窗口 """
@@ -502,11 +508,17 @@ class LaunchSelectorDialog(MessageBoxBase):
         """ 启动并关闭选择器 """
         main_window = self.parent()
         
-        # 保存选择
-        config = cfg.read()
-        config["ChoosedRun"] = name
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config, f, indent=4, ensure_ascii=False)
+        # 保存选择 (同步更新内存和磁盘)
+        if hasattr(main_window, 'config'):
+            main_window.config["ChoosedRun"] = name
+            if hasattr(main_window, 'save_config'):
+                main_window.save_config()
+            else:
+                # 备用写入
+                config = cfg.read()
+                config["ChoosedRun"] = name
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=4, ensure_ascii=False)
             
         # 设置选中的项目以便调用者知道（虽然这里直接启动了）
         self.selected_item = next((i for i in self.items if i['name'] == name), None)
@@ -609,16 +621,9 @@ def setup_home_ui(self, widget):
             duration=10000,
             parent=self
         )
-    github_org_button = widget.findChild(QPushButton, "pushButton_2")
-    if github_org_button:
-        github_org_button.clicked.connect(open_github_bloret)
-    github_project_button = widget.findChild(QPushButton, "pushButton")
-    if github_project_button:
-        github_project_button.clicked.connect(open_github_bloret_Launcher)
-
-    openblweb_button = widget.findChild(QPushButton, "openblweb")
-    if openblweb_button:
-        openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://launcher.bloret.net")))
+    BLtips = widget.findChild(CaptionLabel, "Bltips")
+    if BLtips:
+        BLtips.setText(random.choice(BLglobals.BLtips))
 
     # --- 新的启动项逻辑 ---
     
@@ -637,8 +642,8 @@ def setup_home_ui(self, widget):
     # 定义刷新显示函数
     def refresh_launch_display():
         """ 刷新当前选中的启动项显示 """
-        config = cfg.read()
-        choosed_run = config.get("ChoosedRun", "")
+        # 优先使用内存中的配置，确保实时性
+        choosed_run = self.config.get("ChoosedRun", "")
         items = get_all_launch_items()
         
         selected_item = None
@@ -661,10 +666,9 @@ def setup_home_ui(self, widget):
         # 如果未选择或选择项不存在，默认选择第一个
         if not selected_item and items:
             selected_item = items[0]
-            # 保存默认选择
-            config["ChoosedRun"] = selected_item["name"]
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=4, ensure_ascii=False)
+            # 保存默认选择到内存并写入磁盘
+            self.config["ChoosedRun"] = selected_item["name"]
+            self.save_config()
         
         # 更新 UI
         if selected_item:
@@ -690,19 +694,17 @@ def setup_home_ui(self, widget):
         if dialog.exec():
             selected = dialog.selected_item
             if selected:
-                # 保存选择
-                config = cfg.read()
-                config["ChoosedRun"] = selected["name"]
-                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                    json.dump(config, f, indent=4, ensure_ascii=False)
+                # 保存选择到内存并写入磁盘
+                self.config["ChoosedRun"] = selected["name"]
+                self.save_config()
                 
                 # 刷新显示
                 refresh_launch_display()
 
     # 定义启动函数
     def execute_launch():
-        config = cfg.read()
-        choosed_name = config.get("ChoosedRun", "")
+        # 直接读取内存配置
+        choosed_name = self.config.get("ChoosedRun", "")
         if not choosed_name:
             return
             
@@ -990,6 +992,26 @@ def setup_tools_ui(self, widget):
             self.screenshot_widget = ScreenShortCut()
         ScreenCutButton.clicked.connect(start_screenshot)
 
+class AvatarLoaderThread(QThread):
+    avatar_loaded = pyqtSignal(str, bytes)
+
+    def __init__(self, username):
+        super().__init__()
+        self.username = username
+
+    def run(self):
+        try:
+            # log(f"后台线程开始加载头像: {self.username}")
+            # 添加 User-Agent 以避免请求被拒绝
+            headers = {"User-Agent": "BloretLauncher/1.0"}
+            res = requests.get(f"https://visage.surgeplay.com/face/45/{self.username}", headers=headers, timeout=10)
+            if res.status_code == 200:
+                self.avatar_loaded.emit(self.username, res.content)
+            else:
+                log(f"头像加载失败 {self.username}: 状态码 {res.status_code}")
+        except Exception as e:
+            log(f"头像加载异常 {self.username}: {str(e)}")
+
 def setup_passport_ui(self, widget, server_ip, homeInterface):
     '''
     设定 Bloret Launcher 通行证界面 UI 布局和操作。
@@ -1050,6 +1072,9 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
 
     def refresh_minecraft_accounts():
         '''物理重建账户列表（下载头像、创建卡片）'''
+        # 1. 先从磁盘加载最新数据（防止 PassPort 云端同步后内存数据过时）
+        self.load_config()
+        
         layout = accounts_container.layout()
         # 清理旧卡片
         while layout.count():
@@ -1063,6 +1088,22 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
         if not accounts:
             layout.addWidget(BodyLabel(i18nText("暂无账户，请从云端同步")))
             return
+
+        # 确保 MainWindow 实例有存储线程的列表
+        if not hasattr(self, 'avatar_threads'):
+            self.avatar_threads = []
+
+        # 定义回调函数（避免在循环中重复定义）
+        def on_avatar_loaded(u, data, lbl):
+            log(f"头像加载成功: {u}")
+            p = QPixmap()
+            if p.loadFromData(data):
+                lbl.setPixmap(p)
+
+        def cleanup_thread(t):
+            if t in self.avatar_threads:
+                self.avatar_threads.remove(t)
+            t.deleteLater()
 
         for i, acc in enumerate(accounts):
             username = acc.get("username", "Unknown")
@@ -1080,16 +1121,12 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
             avatar_label.setBorderRadius(4, 4, 4, 4)
             avatar_label.setPixmap(QPixmap("ui/icon/DefaultHead.png"))
             
-            # 异步加载头像
-            def load_img(label, uid):
-                try:
-                    res = requests.get(f"https://mc-heads.net/avatar/{uid}/45", timeout=5)
-                    if res.status_code == 200:
-                        p = QPixmap()
-                        p.loadFromData(res.content)
-                        label.setPixmap(p)
-                except: pass
-            QTimer.singleShot(10, lambda l=avatar_label, u=uuid: load_img(l, u))
+            # 异步加载头像 (使用线程)
+            thread = AvatarLoaderThread(username)
+            thread.avatar_loaded.connect(lambda u, d, l=avatar_label: on_avatar_loaded(u, d, l))
+            thread.finished.connect(lambda t=thread: cleanup_thread(t))
+            self.avatar_threads.append(thread)
+            thread.start()
 
             # 文本信息
             txt_lyt = QVBoxLayout()
@@ -1116,38 +1153,60 @@ def setup_passport_ui(self, widget, server_ip, homeInterface):
         update_cards_visual()
 
     def switch_account(index):
-        '''切换逻辑：仅更新数据和样式'''
-        mc_data = self.config.get("MinecraftAccount", {})
-        accounts = mc_data.get("accounts", [])
-        if index >= len(accounts): return
+        '''切换逻辑：直接读写磁盘以避免 save_config 的回滚机制'''
+        try:
+            # 1. 读取磁盘上的最新配置
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                disk_config = json.load(f)
+            
+            mc_data = disk_config.get("MinecraftAccount", {})
+            accounts = mc_data.get("accounts", [])
+            
+            if index >= len(accounts): 
+                log(f"切换失败：索引 {index} 越界")
+                return
 
-        # 更新内部配置
-        self.config["MinecraftAccount"]["chosen"] = index
-        # 使用 MainWindow 提供的 save_config 以确保安全写入
-        self.save_config()
+            log(f"正在切换到账户索引: {index}")
 
-        # 1. 更新通行证页面 UI (按钮状态)
-        update_cards_visual()
+            # 2. 修改磁盘配置并保存
+            if "MinecraftAccount" in disk_config:
+                disk_config["MinecraftAccount"]["chosen"] = index
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(disk_config, f, ensure_ascii=False, indent=4)
+            
+            # 3. 同步更新内存配置
+            if "MinecraftAccount" in self.config:
+                self.config["MinecraftAccount"]["chosen"] = index
+                # 如果账户列表有变动，也同步一下（虽然此时只是切换索引）
+                self.config["MinecraftAccount"]["accounts"] = accounts
 
-        # 2. 更新主程序全局变量 (确保启动游戏使用新账户)
-        acc = accounts[index]
-        self.player_name = acc.get("username", "")
-        self.player_uuid = acc.get("uuid", "")
-        acc_type = acc.get("type", "Offline")
-        
-        if acc_type == "Microsoft":
-            self.login_mod = i18nText("微软登录")
-        else:
-            self.login_mod = i18nText("离线登录")
+            # 4. 更新主程序全局变量
+            acc = accounts[index]
+            self.player_name = acc.get("username", "")
+            self.player_uuid = acc.get("uuid", "")
+            acc_type = acc.get("type", "Offline")
+            
+            if acc_type == "Microsoft":
+                self.login_mod = i18nText("微软登录")
+            else:
+                self.login_mod = i18nText("离线登录")
+                
+            log(f"账户已切换为: {self.player_name} ({self.login_mod})")
 
-        # 3. 刷新主页左上角的账户显示
-        if homeInterface:
-            Minecraft_account = homeInterface.findChild(QLabel, "Minecraft_account")
-            if Minecraft_account:
-                if self.config.get('home_show_login_mod', False):
-                    Minecraft_account.setText(f"[{self.login_mod}] {self.player_name}")
-                else:
-                    Minecraft_account.setText(f"{self.player_name}")
+            # 5. 更新 UI 显示 (卡片状态)
+            update_cards_visual()
+
+            # 6. 刷新主页左上角的账户显示
+            if homeInterface:
+                Minecraft_account = homeInterface.findChild(QLabel, "Minecraft_account")
+                if Minecraft_account:
+                    if self.config.get('home_show_login_mod', False):
+                        Minecraft_account.setText(f"[{self.login_mod}] {self.player_name}")
+                    else:
+                        Minecraft_account.setText(f"{self.player_name}")
+                        
+        except Exception as e:
+            log(f"切换账户时发生错误: {str(e)}", logging.ERROR)
 
     # 绑定右上角刷新按钮
     refresh_btn = widget.findChild(QPushButton, "refreshMinecraftAccount")
@@ -1163,11 +1222,20 @@ def setup_settings_ui(self, widget):
     ***
     ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
-    # 设置设置界面的UI元素
+    minecraft_dir_link = widget.findChild(HyperlinkLabel, "minecraft_dir_link")
+    if minecraft_dir_link:
+        minecraft_dir_link.setText(BLglobals.minecraft_dir)
+        minecraft_dir_link.setUrl(QUrl.fromLocalFile(BLglobals.minecraft_dir))
+
     log_clear_button = widget.findChild(QPushButton, "log_clear_button")
     if log_clear_button:
         log_clear_button.clicked.connect(lambda: clear_log_files(self,log_clear_button))
         self.update_log_clear_button_text(log_clear_button)
+
+    log_dir_link = widget.findChild(HyperlinkLabel, "log_dir_link")
+    if log_dir_link:
+        log_dir_link.setText(os.path.join(BLglobals.datapath, "log"))
+        log_dir_link.setUrl(QUrl.fromLocalFile(os.path.join(BLglobals.datapath, "log")))
 
     # 添加深浅色模式选择框
     light_dark_choose = widget.findChild(ComboBox, "light_dark_choose")
@@ -1254,29 +1322,43 @@ def setup_settings_ui(self, widget):
     BL_version = widget.findChild(QLabel, "BL_version")
     if BL_version:
         BL_version.setText(f"{self.config.get('ver', '未知')}")
+    
     localmod_button = widget.findChild(SwitchButton, "localmod_button")
     if localmod_button:
         localmod_button.setChecked(self.config.get('localmod', False))
+        # 修复：统一使用 self.save_config()，禁止直接写文件
         localmod_button.checkedChanged.connect(lambda state: (
             self.config.update(localmod=state),
-            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            self.save_config(),
             log(f"本地模式: {'启用' if state else '禁用'}")
         ))
+        
     home_show_login_mod_button = widget.findChild(SwitchButton, "home_show_login_mod_button")
     if home_show_login_mod_button:
         home_show_login_mod_button.setChecked(self.config.get('home_show_login_mod', False))
+        # 修复：统一使用 self.save_config()，禁止直接写文件
         home_show_login_mod_button.checkedChanged.connect(lambda state: (
             self.config.update(home_show_login_mod=state),
-            open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+            self.save_config(),
             log(f"在首页上 显示 Minecraft 账户登录方式: {'启用' if state else '禁用'}")
         ))
     
     Self_starting = widget.findChild(SwitchButton, "Self_starting")
     if Self_starting:
         Self_starting.setChecked(self.config.get("self-starting", False))
-        Self_starting.checkedChanged.connect(lambda val: on_self_starting_changed(val))
+        # 修复：传递 self (MainWindow实例) 给回调函数，以便更新内存中的 config
+        Self_starting.checkedChanged.connect(lambda val: on_self_starting_changed(self, val))
     else:
         log(i18nText("未找到 Self_starting 控件"))
+
+    mwtool_switch_open = widget.findChild(SwitchButton, "mwtool_switch_open")
+    if mwtool_switch_open:
+        mwtool_switch_open.setChecked(self.config.get('mwtool_switch_open', True))
+        mwtool_switch_open.checkedChanged.connect(lambda state: (
+            self.config.update(mwtool_switch_open=state),
+            self.save_config(),
+            log(f"Minecraft 浮动工具栏: {'启用' if state else '禁用'}")
+        ))
 
 def setup_multiplayer_ui(self, widget, server_ip):
     """设定 Bloret Launcher 多人联机界面 UI 布局和操作"""
@@ -2259,6 +2341,7 @@ class ShortCutSettingDialog(MessageBoxBase):
         self.parent = parent
         self.capturing = False
         self.current_keys = set()
+        self.new_shortcut_text = ""
         
         # 标题
         self.titleLabel = SubtitleLabel(i18nText('设置截图快捷键'))
@@ -2286,7 +2369,7 @@ class ShortCutSettingDialog(MessageBoxBase):
         self.tipLabel.setTextColor("#666666", QColor(102, 102, 102))
         
         # 状态提示
-        self.statusLabel = CaptionLabel(i18nText('准备捕捉...'))
+        self.statusLabel = CaptionLabel(i18nText('准备就绪'))
         self.statusLabel.setTextColor("#0078d4", QColor(0, 120, 212))
         
         # 将组件添加到布局中
@@ -2311,6 +2394,100 @@ class ShortCutSettingDialog(MessageBoxBase):
         
         # 安装事件过滤器来捕捉按键
         self.installEventFilter(self)
+
+    def load_current_shortcut(self):
+        """从配置文件加载当前快捷键"""
+        try:
+            config = cfg.read()
+            shortcut = config.get("screen_cut_shortcut", "Ctrl+Alt+A")
+            self.currentShortcut.setText(shortcut)
+        except Exception as e:
+            log(f"加载当前快捷键失败: {e}", logging.ERROR)
+            self.currentShortcut.setText("Ctrl+Alt+A")
+
+    def start_capture(self):
+        """开始捕捉按键"""
+        self.capturing = True
+        self.current_keys = set()
+        self.newShortcutLabel.setText(i18nText("请按下快捷键组合..."))
+        self.statusLabel.setText(i18nText("正在捕捉..."))
+        self.startCaptureButton.setEnabled(False)
+        self.widget.setFocus() # 确保对话框获得焦点
+
+    def clear_shortcut(self):
+        """清除新设置的快捷键"""
+        self.new_shortcut_text = ""
+        self.newShortcutLabel.setText(i18nText('已清除，请重新捕捉'))
+        self.statusLabel.setText(i18nText('准备就绪'))
+        self.capturing = False
+        self.startCaptureButton.setEnabled(True)
+
+    def eventFilter(self, obj, event):
+        """事件过滤器，用于捕捉键盘事件"""
+        # 确保属性存在再访问，避免 AttributeError
+        is_capturing = getattr(self, 'capturing', False)
+        
+        if is_capturing and event.type() == event.KeyPress:
+            key = event.key()
+            modifiers = event.modifiers()
+            
+            # 忽略单独的控制键按下
+            if key in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta):
+                return True
+                
+            key_text = ""
+            parts = []
+            
+            if modifiers & Qt.ControlModifier:
+                parts.append("Ctrl")
+            if modifiers & Qt.ShiftModifier:
+                parts.append("Shift")
+            if modifiers & Qt.AltModifier:
+                parts.append("Alt")
+            if modifiers & Qt.MetaModifier:
+                parts.append("Meta")
+                
+            # 获取键名
+            from PyQt5.QtGui import QKeySequence
+            key_name = QKeySequence(key).toString()
+            if key_name:
+                parts.append(key_name)
+                
+            if parts:
+                self.new_shortcut_text = "+".join(parts)
+                self.newShortcutLabel.setText(self.new_shortcut_text)
+                self.statusLabel.setText(i18nText("捕捉完成"))
+                self.capturing = False
+                self.startCaptureButton.setEnabled(True)
+                
+            return True # 拦截事件
+            
+        return super().eventFilter(obj, event)
+
+    def validate(self):
+        """验证是否有效"""
+        return bool(self.new_shortcut_text)
+
+    def save_shortcut(self):
+        """保存快捷键到配置文件"""
+        try:
+            if not self.new_shortcut_text:
+                return False
+                
+            config = cfg.read()
+            config["screen_cut_shortcut"] = self.new_shortcut_text
+            
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=4)
+                
+            return True
+        except Exception as e:
+            log(f"保存快捷键失败: {e}", logging.ERROR)
+            return False
+
+    def get_new_shortcut(self):
+        """获取新设置的快捷键"""
+        return self.new_shortcut_text
 
 
 class VersionNameInputDialog(MessageBoxBase):
@@ -2898,9 +3075,11 @@ class BlorikoModRecommendationDialog(MessageBoxBase):
         
         if fabric_versions:
             self.versionCombo.addItems(fabric_versions)
+            self.yesButton.setEnabled(True)
         else:
             self.versionCombo.addItem(i18nText("未找到 Fabric 版本"))
             self.versionCombo.setEnabled(False) # 禁用，防止误操作
+            self.yesButton.setEnabled(False)
 
     def on_action_clicked(self):
         if self.current_state == "SELECT":

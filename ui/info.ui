@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>706</width>
-    <height>590</height>
+    <height>670</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -38,90 +38,155 @@
         <x>0</x>
         <y>0</y>
         <width>688</width>
-        <height>506</height>
+        <height>669</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <item>
-          <widget class="QLabel" name="label">
-           <property name="enabled">
-            <bool>true</bool>
-           </property>
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>128</width>
-             <height>128</height>
-            </size>
-           </property>
-           <property name="styleSheet">
-            <string notr="true"/>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="pixmap">
-            <pixmap>icon/home.png</pixmap>
-           </property>
-           <property name="scaledContents">
-            <bool>true</bool>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="SubtitleLabel" name="SubtitleLabel">
-         <property name="text">
-          <string>Bloret Launcher</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="CaptionLabel" name="CaptionLabel_3">
-         <property name="text">
-          <string>Conveniently manage your Minecraft, conveniently play Bloret. 
-便捷地管理你的 Minecraft，便捷地游玩 Bloret。</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <spacer name="verticalSpacer">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
+        <widget class="CardWidget" name="CardWidget_3">
+         <property name="minimumSize">
           <size>
-           <width>20</width>
-           <height>106</height>
+           <width>0</width>
+           <height>0</height>
           </size>
          </property>
-        </spacer>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_7">
+            <item>
+             <widget class="QLabel" name="label_4">
+              <property name="enabled">
+               <bool>true</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>128</width>
+                <height>128</height>
+               </size>
+              </property>
+              <property name="styleSheet">
+               <string notr="true"/>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="pixmap">
+               <pixmap>icon/home.png</pixmap>
+              </property>
+              <property name="scaledContents">
+               <bool>true</bool>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_7">
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_8">
+                <item>
+                 <widget class="SubtitleLabel" name="SubtitleLabel_4">
+                  <property name="text">
+                   <string>Bloret Launcher</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_6">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_4">
+                <item>
+                 <widget class="CaptionLabel" name="CaptionLabel_6">
+                  <property name="minimumSize">
+                   <size>
+                    <width>350</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>Conveniently manage your Minecraft, conveniently play Bloret. 
+便捷地管理你的 Minecraft，便捷地游玩 Bloret。</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_7">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="CaptionLabel" name="CaptionLabel_3">
+            <property name="text">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Bloret Launcher Website: &lt;a href=&quot;https://launcher.bloret.net/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://launcher.bloret.net/&lt;/span&gt;&lt;/a&gt;&lt;br/&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Bloret PassPort: &lt;/span&gt;&lt;a href=&quot;https://passport.bloret.net/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://passport.bloret.net/&lt;/span&gt;&lt;/a&gt;&lt;br/&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;百络百科: &lt;/span&gt;&lt;a href=&quot;https://wiki.bloret.net/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://wiki.bloret.net/&lt;/span&gt;&lt;/a&gt;&lt;br/&gt;Bloret Launcher 将百络谷带到您的计算机上。&lt;br/&gt;Bloret Launcher 是由 Bloret 所有的无广告免费开源软件。&lt;br/&gt;&lt;br/&gt;© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.&lt;br/&gt;要查看 Bloret Launcher 的源代码，请前往: &lt;a href=&quot;https://github.com/BloretCrew/Bloret-Launcher/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/BloretCrew/Bloret-Launcher/&lt;/span&gt;&lt;/a&gt;&lt;br/&gt;要查看 Bloret Launcher Setup 的源代码，请前往: &lt;a href=&quot;https://github.com/BloretCrew/Bloret-Launcher-Setup/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/BloretCrew/Bloret-Launcher-Setup/&lt;/span&gt;&lt;/a&gt;&lt;br/&gt;要提交问题，请前往: &lt;a href=&quot;https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose&lt;/span&gt;&lt;/a&gt;&lt;br/&gt;&lt;br/&gt;Bloret Launcher 遵循 &lt;a href=&quot;https://www.minecraft.net/zh-hans/eula&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Mojang Eula (Minecraft 最终用户许可协议)&lt;/span&gt;&lt;/a&gt; ，Bloret Launcher 的 微软登录 功能已获 Mojang 批准，Bloret Launcher 本身未包含 Minecraft 二进制文件和其他资源文件。Bloret Launcher 是无广告免费开源软件。我们鼓励各位玩家购买 &lt;a href=&quot;https://www.minecraft.net/zh-hans/choose-your-game#modRef:slideUpA;refId:platformPanel_1&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Minecraft 正版账户&lt;/span&gt;&lt;/a&gt; 进行游玩。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="textFormat">
+             <enum>Qt::MarkdownText</enum>
+            </property>
+            <property name="scaledContents">
+             <bool>false</bool>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="openExternalLinks">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
        </item>
        <item>
         <widget class="CardWidget" name="frame_5">
@@ -344,6 +409,19 @@
           </item>
          </layout>
         </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>106</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>

@@ -6,6 +6,7 @@ from modules.log import log
 from modules.safe import handle_exception
 from modules.i18n import i18nText
 import modules.globals as BLglobals
+import modules.config as cfg
 
 def savedata(key, data, public=False):
     '''
@@ -214,8 +215,7 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
     try:
         log("正在读取 config.json 获取用户信息...")
         # 1. 读取 config.json
-        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-            config_data = json.load(f)
+        config_data = cfg.read()
         
         # 检查是否已登录 Passport
         if not config_data.get('Bloret_PassPort_Login'):
@@ -246,18 +246,24 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
             # 3. 更新 config.json 中的 MinecraftAccount 字段 (对齐 web.py 逻辑)
             accounts = api_result.get('accounts', [])
             
-            config_data['MinecraftAccount'] = {
+            new_account_data = {
                 "logined": True if accounts else False,
                 "chosen": 0 if accounts else -1,
                 "accounts": accounts
             }
+            config_data['MinecraftAccount'] = new_account_data
             
             # 保存配置到 config.json
             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                 json.dump(config_data, f, ensure_ascii=False, indent=4)
             
+            # 关键补充：如果传入了 parent_window (MainWindow)，同步更新其内存中的 config
+            # 这样用户不重启程序也能直接看到更新，且防止 save_config 覆盖
+            if parent_window and hasattr(parent_window, 'config'):
+                parent_window.config['MinecraftAccount'] = new_account_data
+                log("已同步更新 MainWindow 内存配置")
             log(f"成功同步 {len(accounts)} 个账户到 config.json")
-            
+
             # 4. 成功提示
             if parent_window:
                 success_msg = MessageBox(
