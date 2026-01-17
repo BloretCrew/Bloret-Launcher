@@ -627,24 +627,24 @@ def setup_home_ui(self, widget):
         log(f"BLTIPS:{BLglobals.BLtips}")
         BLtips.setText(random.choice(BLglobals.BLtips))
     
-    if BLglobals.BL_Activity.show:
+    if BLglobals.BL_Activity["show"]:
         activity_icon = widget.findChild(StrongBodyLabel, "activity_icon")
         activity_title = widget.findChild(StrongBodyLabel, "activity_title")
         activity_description = widget.findChild(CaptionLabel, "activity_description")
         activity_time = widget.findChild(CaptionLabel, "activity_time")
         activity_to = widget.findChild(PushButton, "activity_to")
         if activity_icon:
-            activity_icon.setPixmap(QPixmap(BLglobals.BL_Activity.icon))
+            activity_icon.setPixmap(QPixmap(BLglobals.BL_Activity["icon"]))
         if activity_title:
-            activity_title.setText(BLglobals.BL_Activity.title)
+            activity_title.setText(BLglobals.BL_Activity["title"])
         if activity_description:
-            activity_description.setText(BLglobals.BL_Activity.description)
+            activity_description.setText(BLglobals.BL_Activity["description"])
         if activity_time:
-            activity_time.setText(BLglobals.BL_Activity.time)
+            activity_time.setText(BLglobals.BL_Activity["time"])
         if activity_to:
             activity_to.setIcon(FluentIcon.LINK)
-            activity_to.clicked.connect(lambda: openLink(BLglobals.BL_Activity.link))
-            if BLglobals.BL_Activity.status != "ongoing":
+            activity_to.clicked.connect(lambda: openLink(BLglobals.BL_Activity["link"]))
+            if BLglobals.BL_Activity["status"] != "ongoing":
                 activity_to.setEnabled(False)
     else:
         activity_card = widget.findChild(CardWidget, "activity_card")
