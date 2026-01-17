@@ -670,8 +670,15 @@ def setup_home_ui(self, widget):
         if activity_to:
             activity_to.setIcon(FluentIcon.LINK)
             activity_to.clicked.connect(lambda: openLink(BLglobals.BL_Activity["link"]))
-            if BLglobals.BL_Activity["status"] != "ongoing":
+            if BLglobals.BL_Activity["status"] == "before":
                 activity_to.setEnabled(False)
+                activity_to.setText("尚未开始")
+            elif BLglobals.BL_Activity["status"] == "during":
+                activity_to.setEnabled(True)
+                activity_to.setText("前往")
+            elif BLglobals.BL_Activity["status"] == "after":
+                activity_to.setEnabled(False)
+                activity_to.setText("已结束")
     else:
         activity_card = widget.findChild(CardWidget, "activity_card")
         if activity_card:
