@@ -151,7 +151,7 @@ def get_latest_version(server_ip):
             log(f"获取到的每日提示: {BLglobals.BLtips}")
 
             # 获取 Activity 活动信息并存储在全局变量里
-            BLglobals.BL_Activity = latest_release.get("Activity", {})
+            BLglobals.BL_Activity = latest_release.get("activity", {})
             log(f"获取到的活动信息: {BLglobals.BL_Activity}")
 
             return BL_latest_ver, BL_update_text
