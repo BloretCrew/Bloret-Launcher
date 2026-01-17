@@ -558,7 +558,8 @@ def Get_Run_Script(mc_version):
     log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {full_command}")
     return full_command
 
-def get_minecraft_window_handle(version=None, timeout=30):
+# Change timeout default to 300
+def get_minecraft_window_handle(version=None, timeout=300):
     """
     获取 Minecraft 窗口句柄
     
@@ -684,8 +685,8 @@ def monitor_minecraft_window(version, check_interval=1):
         # 等待一段时间让 Minecraft 启动
         time.sleep(3)
         
-        # 尝试获取窗口句柄
-        hwnd = get_minecraft_window_handle(version, timeout=30)
+        # 尝试获取窗口句柄，延长超时时间至300秒（5分钟）
+        hwnd = get_minecraft_window_handle(version, timeout=300)
         
         if hwnd:
             log(f"✅ Minecraft {version} 窗口已找到！")
