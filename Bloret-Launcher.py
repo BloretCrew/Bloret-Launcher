@@ -49,7 +49,8 @@ from modules.systems import (
 )
 from modules.setup_ui import (
     setup_home_ui, setup_download_old_ui, setup_tools_ui, setup_passport_ui, 
-    setup_settings_ui, setup_info_ui, load_ui, setup_Mod_ui, setup_multiplayer_ui, setup_download_ui
+    setup_settings_ui, setup_info_ui, load_ui, setup_Mod_ui, setup_multiplayer_ui, setup_download_ui,
+    get_all_launch_items
 )
 from modules.customize import CustomizeRun
 from modules.global_hotkey import init_global_hotkeys, get_signal_emitter
@@ -91,9 +92,12 @@ class SystemTrayIcon(QSystemTrayIcon):
 
         # 添加二级菜单
         launch_menu = SystemTrayMenu(i18nText("🔼  启动版本"), self.menu)
-        print("BLglobals.set_list:", BLglobals.set_list)
+        BLglobals.set_list = get_all_launch_items()
+        log(f"BLglobals.set_list: {BLglobals.set_list}")
+        version_list = [item if isinstance(item, str) else item.get('name', str(item)) for item in BLglobals.set_list]
+        log(f"version_list: {version_list}")
 
-        for version in BLglobals.set_list:
+        for version in version_list:
             action = Action(
                 version,
                 triggered=lambda checked, version=version: self.main_window.run_cmcl(version)
