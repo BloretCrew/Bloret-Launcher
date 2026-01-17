@@ -9,6 +9,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 from modules.log import log
 from modules.safe import handle_exception
 from modules.update import update_to_latest_version
+import modules.globals as BLglobals
 
 def IsNeedUpdate(NowVersion, LatestVersion):
     """
@@ -139,11 +140,16 @@ def get_latest_version(server_ip):
     BL_latest_ver = "0.0"
     
     try:
-        response = requests.get(server_ip + "api/BL/info")
+        response = requests.get("http://pcfs.eno.ink:3001/api/info")
         if response.status_code == 200:
             latest_release = response.json()
-            BL_update_text = latest_release.get("Bloret-Launcher-update-text", "")
-            BL_latest_ver = latest_release.get("Bloret-Launcher-latest-version", "0.0")
+            BL_update_text = latest_release.get("newVersionDescription", "")
+            BL_latest_ver = latest_release.get("latestVersion", "0.0")
+
+            # 获取每日提示并存储在全局变量里
+            BLglobals.BLtips = latest_release.get("BLTips", [])
+            log(f"获取到的每日提示: {BLglobals.BLtips}")
+
             return BL_latest_ver, BL_update_text
         else:
             log(f"无法获取最新版本信息，状态码: {response.status_code}", logging.ERROR)

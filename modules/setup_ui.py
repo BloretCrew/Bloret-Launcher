@@ -621,8 +621,9 @@ def setup_home_ui(self, widget):
             duration=10000,
             parent=self
         )
-    BLtips = widget.findChild(CaptionLabel, "Bltips")
+    BLtips = widget.findChild(CaptionLabel, "BLTips")
     if BLtips:
+        log(f"BLTIPS:{BLglobals.BLtips}")
         BLtips.setText(random.choice(BLglobals.BLtips))
 
     # --- 新的启动项逻辑 ---

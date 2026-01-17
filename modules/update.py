@@ -35,9 +35,6 @@ def update_to_latest_version(self):
         # 获取下载链接
         download_url = res["downloads"]["stable"]["gitcode"]
         version = res["latestVersion"]
-
-        # 获取每日提示并存储在全局变量里
-        BLglobals.BLtips = res.get("BLtips", [])
         
         # 更新通知
         notify(progress={

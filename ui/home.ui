@@ -70,7 +70,10 @@
          <item>
           <widget class="CaptionLabel" name="BLTips">
            <property name="text">
-            <string>Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。</string>
+            <string/>
+           </property>
+           <property name="textFormat">
+            <enum>Qt::MarkdownText</enum>
            </property>
            <property name="alignment">
             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>

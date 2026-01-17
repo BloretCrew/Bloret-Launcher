@@ -321,6 +321,8 @@ class MainWindow(FluentWindow):
                         print(i18nText('确认'))
                     ctypes.windll.kernel32.CloseHandle(self.mutex)
                     sys.exit(0)
+                    
+        check_for_updates(self,BLglobals.server_ip)
 
         if self.config.get('show_runtime_do', False):
             log(i18nText("显示软件打开过程已启用"))
@@ -476,7 +478,6 @@ class MainWindow(FluentWindow):
         # 显示窗口
         update_progress({'value': 100 / 100, 'valueStringOverride': '10/10', 'status': i18nText('显示窗口')})
         self.show()
-        check_for_updates(self,BLglobals.server_ip)
         
     def handle_screenshot_shortcut(self):
         """处理截图快捷键，在主线程中执行截图功能"""
