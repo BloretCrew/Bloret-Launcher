@@ -147,6 +147,128 @@
           </property>
           <layout class="QVBoxLayout" name="verticalLayout">
            <item>
+            <widget class="CardWidget" name="frame_2">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>70</height>
+              </size>
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <layout class="QHBoxLayout" name="horizontalLayout_9">
+              <item>
+               <widget class="StrongBodyLabel" name="activity_icon">
+                <property name="text">
+                 <string>活动图标</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QVBoxLayout" name="verticalLayout_5">
+                <item>
+                 <widget class="StrongBodyLabel" name="activity_title">
+                  <property name="text">
+                   <string>活动标题</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="CaptionLabel" name="activity_description">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="text">
+                   <string>活动说明</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                  <property name="lightColor" stdset="0">
+                   <color alpha="150">
+                    <red>0</red>
+                    <green>0</green>
+                    <blue>0</blue>
+                   </color>
+                  </property>
+                  <property name="darkColor" stdset="0">
+                   <color alpha="200">
+                    <red>255</red>
+                    <green>255</green>
+                    <blue>255</blue>
+                   </color>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="CaptionLabel" name="activity_time">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="text">
+                   <string>活动时间</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                  <property name="lightColor" stdset="0">
+                   <color alpha="150">
+                    <red>0</red>
+                    <green>0</green>
+                    <blue>0</blue>
+                   </color>
+                  </property>
+                  <property name="darkColor" stdset="0">
+                   <color alpha="200">
+                    <red>255</red>
+                    <green>255</green>
+                    <blue>255</blue>
+                   </color>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <spacer name="log_clear_space">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="PushButton" name="activity_to">
+                <property name="minimumSize">
+                 <size>
+                  <width>150</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>前往</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
             <layout class="QHBoxLayout" name="horizontalLayout_3">
              <item>
               <widget class="CaptionLabel" name="BlorikoIcon">
