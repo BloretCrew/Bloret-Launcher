@@ -5,6 +5,7 @@ import logging,os,subprocess,tempfile,requests,sys
 from modules.log import log
 from modules.safe import handle_exception
 from modules.i18n import i18nText
+import modules.globals as BLglobals
 
 def update_to_latest_version(self):
     try:
@@ -34,6 +35,9 @@ def update_to_latest_version(self):
         # 获取下载链接
         download_url = res["downloads"]["stable"]["gitcode"]
         version = res["latestVersion"]
+
+        # 获取每日提示并存储在全局变量里
+        BLglobals.BLtips = res.get("BLtips", [])
         
         # 更新通知
         notify(progress={

@@ -5,6 +5,7 @@ import json
 import socket
 import logging
 import requests
+import random
 
 # 2. 第三方库 (PyQt5)
 from PyQt5.QtWidgets import (
@@ -620,16 +621,9 @@ def setup_home_ui(self, widget):
             duration=10000,
             parent=self
         )
-    github_org_button = widget.findChild(QPushButton, "pushButton_2")
-    if github_org_button:
-        github_org_button.clicked.connect(open_github_bloret)
-    github_project_button = widget.findChild(QPushButton, "pushButton")
-    if github_project_button:
-        github_project_button.clicked.connect(open_github_bloret_Launcher)
-
-    openblweb_button = widget.findChild(QPushButton, "openblweb")
-    if openblweb_button:
-        openblweb_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://launcher.bloret.net")))
+    BLtips = widget.findChild(CaptionLabel, "Bltips")
+    if BLtips:
+        BLtips.setText(random.choice(BLglobals.BLtips))
 
     # --- 新的启动项逻辑 ---
     
