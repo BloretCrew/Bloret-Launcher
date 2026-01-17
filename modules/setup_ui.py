@@ -41,7 +41,8 @@ from modules.links import (
     open_github_bloret_Launcher, open_qq_link, open_BLC_qq_link,
     open_BBBS_link, open_BBBS_Reg_link, open_github_bloret,
     copy_skin_to_clipboard, copy_cape_to_clipboard, copy_uuid_to_clipboard,
-    copy_name_to_clipboard, Bloret_PassPort_Account_login
+    copy_name_to_clipboard, Bloret_PassPort_Account_login,
+    openLink
 )
 from modules.querys import query_player_uuid, query_player_skin, query_player_name
 from modules.versions import (
@@ -625,8 +626,30 @@ def setup_home_ui(self, widget):
     if BLtips:
         log(f"BLTIPS:{BLglobals.BLtips}")
         BLtips.setText(random.choice(BLglobals.BLtips))
-
-    # --- 新的启动项逻辑 ---
+    
+    if BLglobals.BL_Activity.show:
+        activity_icon = widget.findChild(StrongBodyLabel, "activity_icon")
+        activity_title = widget.findChild(StrongBodyLabel, "activity_title")
+        activity_description = widget.findChild(CaptionLabel, "activity_description")
+        activity_time = widget.findChild(CaptionLabel, "activity_time")
+        activity_to = widget.findChild(PushButton, "activity_to")
+        if activity_icon:
+            activity_icon.setPixmap(QPixmap(BLglobals.BL_Activity.icon))
+        if activity_title:
+            activity_title.setText(BLglobals.BL_Activity.title)
+        if activity_description:
+            activity_description.setText(BLglobals.BL_Activity.description)
+        if activity_time:
+            activity_time.setText(BLglobals.BL_Activity.time)
+        if activity_to:
+            activity_to.setIcon(FluentIcon.LINK)
+            activity_to.clicked.connect(lambda: openLink(BLglobals.BL_Activity.link))
+            if BLglobals.BL_Activity.status != "ongoing":
+                activity_to.setEnabled(False)
+    else:
+        activity_card = widget.findChild(CardWidget, "activity_card")
+        if activity_card:
+            activity_card.hide()
     
     # 1. 获取控件
     MinecraftVersionChoose = widget.findChild(QPushButton, "MinecraftVersionChoose")

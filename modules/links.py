@@ -52,3 +52,7 @@ def copy_name_to_clipboard(self):
 def Bloret_PassPort_Account_login():
     QDesktopServices.openUrl(QUrl("https://passport.bloret.net/app/oauth?app_id=BloretLauncher&redirect_uri=http://localhost:25252/login/Bloret-PassPort"))
     log(i18nText("打开 Bloret PassPort 登录页面"))
+
+def openLink(url):
+    QDesktopServices.openUrl(QUrl(url))
+    log(i18nText(f"打开链接: {url}"))

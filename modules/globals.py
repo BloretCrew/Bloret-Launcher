@@ -23,3 +23,4 @@ import os
 datapath = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher')
 minecraft_dir = ""
 BLtips = []
+BL_Activity = {}
