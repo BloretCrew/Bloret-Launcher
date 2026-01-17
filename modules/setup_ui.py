@@ -634,7 +634,27 @@ def setup_home_ui(self, widget):
         activity_time = widget.findChild(CaptionLabel, "activity_time")
         activity_to = widget.findChild(PushButton, "activity_to")
         if activity_icon:
-            activity_icon.setPixmap(QPixmap(BLglobals.BL_Activity["icon"]))
+            icon_source = BLglobals.BL_Activity["icon"]
+            
+            # 判断是网络链接还是本地文件
+            if icon_source.startswith("http"):
+                try:
+                    # 从网络下载图片数据
+                    # timeout=3 防止网络不好时卡死界面太久
+                    response = requests.get(icon_source, timeout=3)
+                    if response.status_code == 200:
+                        pixmap = QPixmap()
+                        pixmap.loadFromData(response.content) # 从字节加载
+                        activity_icon.setPixmap(pixmap)
+                        activity_icon.setScaledContents(True) # 确保图片适应标签大小
+                    else:
+                        log(f"活动图片下载失败，状态码: {response.status_code}")
+                except Exception as e:
+                    log(f"加载网络活动图片出错: {str(e)}")
+            else:
+                # 本地文件直接加载
+                activity_icon.setPixmap(QPixmap(icon_source))
+                activity_icon.setScaledContents(True)
         if activity_title:
             activity_title.setText(BLglobals.BL_Activity["title"])
         if activity_description:
