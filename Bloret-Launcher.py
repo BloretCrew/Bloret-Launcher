@@ -12,6 +12,7 @@ import traceback
 import subprocess
 from http import server
 import datetime
+import threading
 
 # 2. 第三方库
 from PyQt5 import sip
@@ -1641,80 +1642,82 @@ class MainWindow(FluentWindow):
                 name_combo.addItem(self.player_name)            
 
     def show_2fa_dialog(self, request_data):
-        """显示 2FA 验证请求对话框"""
+        """显示 2FA 验证请求通知 (使用 win11toast)"""
         try:
             log(f"show_2fa_dialog: 收到 2FA 请求: {request_data}")
             timestamp = request_data.get('timestamp')
-            # 格式化时间
             try:
                 time_str = datetime.datetime.fromtimestamp(timestamp / 1000.0).strftime('%Y-%m-%d %H:%M:%S')
-                log(f"show_2fa_dialog: 时间戳转换成功: {time_str}")
             except Exception as e:
-                log(f"show_2fa_dialog: 时间戳转换失败: {e}")
                 time_str = i18nText("未知时间")
             
             ip = request_data.get('ip', i18nText('未知 IP'))
             device = request_data.get('device', i18nText('未知设备'))
             location = request_data.get('location', i18nText('未知位置'))
             request_id = request_data.get('requestId')
-            log(f"show_2fa_dialog: 请求信息 - IP: {ip}, 设备: {device}, 位置: {location}, RequestID: {request_id}")
             
+            # 准备 Toast 内容
             title = i18nText("Bloret PassPort 登录请求")
-            content = (
-                f"{i18nText('您的账号正在尝试登录。')}\n\n"
-                f"{i18nText('时间')}: {time_str}\n"
+            body = (
+                f"{i18nText('您的账号正在尝试登录')}\n"
                 f"{i18nText('IP')}: {ip}\n"
                 f"{i18nText('位置')}: {location}\n"
-                f"{i18nText('设备')}: {device}\n\n"
-                f"{i18nText('如果是您本人的操作，请点击"允许登录"。')}"
+                f"{i18nText('设备')}: {device}\n"
+                f"{i18nText('时间')}: {time_str}"
             )
             
-            w = Dialog(title, content, self)
-            w.yesButton.setText(i18nText("允许登录"))
-            w.cancelButton.setText(i18nText("拒绝"))
-            
+            # 获取凭据
             username = self.config.get('Bloret_PassPort_UserName')
             token = self.config.get('Bloret_PassPort_PassWord')
-            log(f"show_2fa_dialog: 用户名: {username}")
 
-            if w.exec():
-                # 允许登录
-                log(f"show_2fa_dialog: 用户选择允许登录，请求ID: {request_id}")
-                res = handle_2fa_request_action(username, token, request_id, 'approve')
-                log(f"show_2fa_dialog: 允许登录响应: {res}")
-                if res and res.get('success'):
-                    InfoBar.success(
-                        title=i18nText('已允许登录'),
-                        content=i18nText('操作成功'),
-                        parent=self,
-                        duration=3000
-                    )
-                else:
-                    error_msg = res.get('error', i18nText('未知错误')) if res else i18nText('网络错误')
-                    log(f"show_2fa_dialog: 允许登录失败: {error_msg}")
-                    InfoBar.error(
-                        title=i18nText('操作失败'),
-                        content=error_msg,
-                        parent=self,
-                        duration=3000
-                    )
-            else:
-                # 拒绝登录
-                log(f"show_2fa_dialog: 用户选择拒绝登录，请求ID: {request_id}")
-                res = handle_2fa_request_action(username, token, request_id, 'reject')
-                log(f"show_2fa_dialog: 拒绝登录响应: {res}")
-                if res and res.get('success'):
-                    InfoBar.warning(
-                        title=i18nText('已拒绝登录'),
-                        content=i18nText('操作成功'),
-                        parent=self,
-                        duration=3000
-                    )
-                else:
-                    error_msg = res.get('error', i18nText('未知错误')) if res else i18nText('网络错误')
-                    log(f"show_2fa_dialog: 拒绝登录失败: {error_msg}")
+            # 定义回调函数
+            def on_toast_click(args):
+                action = None
+                if args and 'arguments' in args:
+                    if args['arguments'] == 'approve':
+                        action = 'approve'
+                    elif args['arguments'] == 'reject':
+                        action = 'reject'
+                
+                if action:
+                    log(f"Toast 点击操作: {action}, RequestID: {request_id}")
+                    res = handle_2fa_request_action(username, token, request_id, action)
+                    
+                    # 结果通知 (也在 Toast 线程中显示，不阻塞主线程)
+                    if res and res.get('success'):
+                        toast(
+                            title=i18nText('操作成功'),
+                            body=i18nText('已允许登录') if action == 'approve' else i18nText('已拒绝登录'),
+                            duration='short'
+                        )
+                    else:
+                        err_msg = res.get('error', i18nText('未知错误')) if res else i18nText('网络错误')
+                        toast(
+                            title=i18nText('操作失败'),
+                            body=err_msg,
+                            duration='short'
+                        )
+
+            # 在新线程中启动 Toast，防止阻塞 UI
+            def run_toast():
+                buttons = [
+                    {'activationType': 'protocol', 'arguments': 'approve', 'content': i18nText("允许登录")},
+                    {'activationType': 'protocol', 'arguments': 'reject', 'content': i18nText("拒绝")}
+                ]
+                
+                toast(
+                    title=title,
+                    body=body,
+                    buttons=buttons,
+                    on_click=on_toast_click,
+                    duration='long',
+                    audio={'src': 'ms-winsoundevent:Notification.Looping.Alarm', 'loop': 'false'}
+                )
+            
+            threading.Thread(target=run_toast).start()
+            
         except Exception as e:
-            log(f"显示 2FA 对话框时出错: {e}", logging.ERROR)
+            log(f"显示 2FA Toast 时出错: {e}", logging.ERROR)
 
     def show_error(self, title, content):
         InfoBar.error(
