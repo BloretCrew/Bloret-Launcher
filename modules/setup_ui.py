@@ -2,6 +2,7 @@
 import os
 import re
 import json
+import shutil
 import socket
 import logging
 import requests
@@ -75,6 +76,39 @@ def load_config():
         return {}
 
 config = load_config()
+
+def scan_java_paths():
+    """扫描系统中的 Java 安装路径"""
+    java_paths = []
+    
+    # 1. 检查 PATH 环境变量
+    path_java = shutil.which("java")
+    if path_java:
+        java_paths.append(path_java)
+        
+    # 2. 常见安装目录
+    common_roots = [
+        os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Java"),
+        os.path.join(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"), "Java"),
+        os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Eclipse Adoptium"),
+        os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Zulu"),
+        os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "BellSoft"),
+        os.path.join(os.environ.get("USERPROFILE", ""), ".jdks")
+    ]
+    
+    for root in common_roots:
+        if os.path.exists(root):
+            try:
+                for dirpath, dirnames, filenames in os.walk(root):
+                    # 简单优化：只查找 bin 目录下的 java.exe
+                    if os.path.basename(dirpath) == 'bin' and "java.exe" in filenames:
+                        full_path = os.path.join(dirpath, "java.exe")
+                        if full_path not in java_paths:
+                            java_paths.append(full_path)
+            except Exception:
+                pass
+                
+    return list(set(java_paths))
 
 class DownloadDialog(MessageBoxBase):
     """ 自定义下载对话框 """
@@ -1343,6 +1377,79 @@ def setup_settings_ui(self, widget):
                 open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
                 log(f"语言设置已更改为: {language}")
             ))
+
+    # Java 选择配置
+    Java_Choose = widget.findChild(ComboBox, "Java_Choose")
+    if Java_Choose:
+        try:
+            Java_Choose.clear()
+            
+            # 定义常量字符串
+            AUTO_TEXT = i18nText("自动 (使用系统环境变量)")
+            BROWSE_TEXT = i18nText("浏览...")
+            
+            # 添加 "自动" 选项
+            Java_Choose.addItem(AUTO_TEXT)
+            
+            # 扫描并添加 Java 路径
+            scanned_java = scan_java_paths()
+            for path in scanned_java:
+                Java_Choose.addItem(path)
+                
+            # 添加 "浏览..." 选项
+            Java_Choose.addItem(BROWSE_TEXT)
+            
+            # 设置当前选中项
+            current_java = self.config.get("java_path", "Auto")
+            
+            if current_java == "Auto" or not current_java:
+                Java_Choose.setCurrentIndex(0)
+            else:
+                # 检查是否存在于列表中
+                index = Java_Choose.findText(current_java)
+                if index != -1:
+                    Java_Choose.setCurrentIndex(index)
+                else:
+                    # 如果不在列表中（可能是手动添加的），插入到自动选项之后
+                    Java_Choose.insertItem(1, current_java)
+                    Java_Choose.setCurrentText(current_java)
+                    
+            # 处理选择变化
+            def on_java_changed(text):
+                if text == AUTO_TEXT:
+                    self.config["java_path"] = "Auto"
+                    self.save_config()
+                    log("Java 设置已更改为: 自动")
+                elif text == BROWSE_TEXT:
+                    file_path, _ = QFileDialog.getOpenFileName(
+                        self, 
+                        i18nText("选择 Java 可执行文件 (java.exe)"), 
+                        "", 
+                        "Java Executable (java.exe);;All Files (*.*)"
+                    )
+                    if file_path:
+                        # 检查是否已存在，不存在则添加
+                        if Java_Choose.findText(file_path) == -1:
+                            Java_Choose.insertItem(1, file_path)
+                        Java_Choose.setCurrentText(file_path)
+                        self.config["java_path"] = file_path
+                        self.save_config()
+                        log(f"Java 设置已更改为: {file_path}")
+                    else:
+                        # 用户取消，恢复之前的选择
+                        prev_java = self.config.get("java_path", "Auto")
+                        if prev_java == "Auto":
+                            Java_Choose.setCurrentIndex(0)
+                        else:
+                            Java_Choose.setCurrentText(prev_java)
+                else:
+                    self.config["java_path"] = text
+                    self.save_config()
+                    log(f"Java 设置已更改为: {text}")
+                    
+            Java_Choose.currentTextChanged.connect(on_java_changed)
+        except Exception as e:
+            log(f"设置 Java 选项失败: {e}", logging.ERROR)
 
     size_choose = widget.findChild(SpinBox, "Size_Choose")
     if size_choose:
