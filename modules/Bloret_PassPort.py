@@ -169,7 +169,7 @@ def readdata(key, public=False):
 
 def get_pending_2fa_requests(username, token):
     """获取待处理的2FA请求"""
-    url = "https://passport.bloret.net/api/2fa/app/pending"
+    url = "https://pcfs.eno.ink:20000/api/2fa/app/pending"
     params = {
         "username": username,
         "app_id": "BloretLauncher",
@@ -187,7 +187,7 @@ def get_pending_2fa_requests(username, token):
 
 def handle_2fa_request_action(username, token, request_id, action):
     """处理2FA请求 (approve/reject)"""
-    url = "https://passport.bloret.net/api/2fa/app/approve"
+    url = "https://pcfs.eno.ink:20000/api/2fa/app/approve"
     data = {
         "username": username,
         "app_id": "BloretLauncher",
