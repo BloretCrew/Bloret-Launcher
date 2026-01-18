@@ -60,7 +60,8 @@ from modules.BLServer import (
 )
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
-from modules.launch import Get_Run_Script
+# Import monitor_minecraft_window
+from modules.launch import Get_Run_Script, monitor_minecraft_window
 from modules.i18n import i18n_widgets, i18nText
 from modules.ShortCut import ScreenShortCut
 from modules.install import InstallMinecraftVersion
@@ -1004,7 +1005,8 @@ class MainWindow(FluentWindow):
             if self.config.get('mwtool_switch_open', True):
                 try:
                     log(f"启动工具栏监视器，目标版本: {version}")
-                    modules.mwtool.start_monitoring(version)
+                    # Use monitor_minecraft_window from launch.py
+                    monitor_minecraft_window(version)
                 except Exception as e:
                     log(f"启动工具栏监视器失败: {e}", logging.ERROR)
             else:

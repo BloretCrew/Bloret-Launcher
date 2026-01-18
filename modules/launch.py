@@ -69,42 +69,45 @@ def Get_Run_Script(mc_version):
         raise FileNotFoundError(f"客户端 JAR 文件 {client_jar_path} 不存在")
     
     # 获取 Java 路径
-    java_path = "java"  # 默认使用系统PATH中的java命令
+    java_path = "java"  # 默认值
     
-    # 检查系统PATH中是否存在java命令
-    import shutil
-    java_in_path = shutil.which("java")
-    
-    if not java_in_path:
-        # 如果系统PATH中没有java，尝试使用配置中的Java路径
-        java_dir = config_data.get('java_dir', '') # 从 config_data 获取
-        
-        if java_dir and os.path.exists(java_dir):
-            java_exe_path = os.path.join(java_dir, "bin", "java.exe")
-            if os.path.exists(java_exe_path):
-                java_path = java_exe_path
-        else:
-            # 尝试默认的Java安装路径
-            default_java_paths = [
-                r"C:\Program Files\Java\jdk-17\bin\java.exe",
-                r"C:\Program Files\Java\jdk-21\bin\java.exe",
-                r"C:\Program Files\Java\jdk-24\bin\java.exe",
-                r"C:\Program Files\Eclipse Adoptium\jdk-17-hotspot\bin\java.exe",
-                r"C:\Program Files\Eclipse Adoptium\jdk-21-hotspot\bin\java.exe",
-                r"C:\Program Files\Eclipse Adoptium\jdk-24-hotspot\bin\java.exe",
-                r"C:\Program Files\Zulu\zulu-24\bin\java.exe",
-                r"C:\Program Files\Zulu\zulu-17\bin\java.exe",
-                r"C:\Program Files\Zulu\zulu-21\bin\java.exe"
-            ]
-            
-            for default_path in default_java_paths:
-                if os.path.exists(default_path):
-                    java_path = default_path
-                    break
+    # 1. 优先使用配置中指定的 Java 路径 (新增逻辑)
+    config_java_path = config_data.get('java_path', '')
+    if config_java_path and os.path.exists(config_java_path) and config_java_path != "Auto":
+        java_path = config_java_path
     else:
-        # java在系统PATH中，使用完整路径
+        # 2. 检查系统PATH中是否存在java命令
+        import shutil
+        java_in_path = shutil.which("java")
+        
         if java_in_path:
             java_path = java_in_path
+        else:
+            # 3. 如果系统PATH中没有java，尝试使用配置中的旧字段 java_dir (兼容旧配置)
+            java_dir = config_data.get('java_dir', '') 
+            
+            if java_dir and os.path.exists(java_dir):
+                java_exe_path = os.path.join(java_dir, "bin", "java.exe")
+                if os.path.exists(java_exe_path):
+                    java_path = java_exe_path
+            else:
+                # 4. 尝试默认的Java安装路径
+                default_java_paths = [
+                    r"C:\Program Files\Java\jdk-17\bin\java.exe",
+                    r"C:\Program Files\Java\jdk-21\bin\java.exe",
+                    r"C:\Program Files\Java\jdk-24\bin\java.exe",
+                    r"C:\Program Files\Eclipse Adoptium\jdk-17-hotspot\bin\java.exe",
+                    r"C:\Program Files\Eclipse Adoptium\jdk-21-hotspot\bin\java.exe",
+                    r"C:\Program Files\Eclipse Adoptium\jdk-24-hotspot\bin\java.exe",
+                    r"C:\Program Files\Zulu\zulu-24\bin\java.exe",
+                    r"C:\Program Files\Zulu\zulu-17\bin\java.exe",
+                    r"C:\Program Files\Zulu\zulu-21\bin\java.exe"
+                ]
+                
+                for default_path in default_java_paths:
+                    if os.path.exists(default_path):
+                        java_path = default_path
+                        break
     
     # --- 账户信息处理 (从 config.json 读取) ---
     mc_account_config = config_data.get("MinecraftAccount", {})
@@ -558,7 +561,8 @@ def Get_Run_Script(mc_version):
     log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {full_command}")
     return full_command
 
-def get_minecraft_window_handle(version=None, timeout=30):
+# Change timeout default to 300
+def get_minecraft_window_handle(version=None, timeout=300):
     """
     获取 Minecraft 窗口句柄
     
@@ -684,8 +688,8 @@ def monitor_minecraft_window(version, check_interval=1):
         # 等待一段时间让 Minecraft 启动
         time.sleep(3)
         
-        # 尝试获取窗口句柄
-        hwnd = get_minecraft_window_handle(version, timeout=30)
+        # 尝试获取窗口句柄，延长超时时间至300秒（5分钟）
+        hwnd = get_minecraft_window_handle(version, timeout=300)
         
         if hwnd:
             log(f"✅ Minecraft {version} 窗口已找到！")
