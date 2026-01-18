@@ -169,6 +169,7 @@ def readdata(key, public=False):
 
 def get_pending_2fa_requests(username, token):
     """获取待处理的2FA请求"""
+    log("获取待处理的2FA请求")
     url = "http://pcfs.eno.ink:20000/api/2fa/app/pending"
     params = {
         "username": username,
@@ -187,6 +188,7 @@ def get_pending_2fa_requests(username, token):
 
 def handle_2fa_request_action(username, token, request_id, action):
     """处理2FA请求 (approve/reject)"""
+    log("处理 2FA 请求")
     url = "http://pcfs.eno.ink:20000/api/2fa/app/approve"
     data = {
         "username": username,
