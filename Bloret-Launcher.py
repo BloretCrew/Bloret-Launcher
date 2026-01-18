@@ -287,16 +287,19 @@ class PassPort2FAPollingThread(QThread):
         self.processed_ids = set()
 
     def run(self):
+        log("PassPort 2FA 轮询线程已启动")
         while self.is_running:
             try:
-                # 动态获取最新的 config，避免引用过时
+                # 必须在循环内获取，且直接使用 main_window.config 以获取内存中最新的登录状态
                 config = self.main_window.config
+                
                 # 检查登录状态 (且非本地模式)
                 if config.get('Bloret_PassPort_Login', False) and not config.get('localmod', False):
                     username = config.get('Bloret_PassPort_UserName')
                     token = config.get('Bloret_PassPort_PassWord')
                     
                     if username and token:
+                        # log(f"正在检查用户 {username} 的 2FA 请求...") # 调试用，确认在循环
                         data = get_pending_2fa_requests(username, token)
                         if data and data.get('success'):
                             requests_list = data.get('requests', [])
