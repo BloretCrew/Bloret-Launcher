@@ -167,6 +167,43 @@ def readdata(key, public=False):
     finally:
         log("=== readdata 函数执行结束 ===")
 
+def get_pending_2fa_requests(username, token):
+    """获取待处理的2FA请求"""
+    url = "https://passport.bloret.net/api/2fa/app/pending"
+    params = {
+        "username": username,
+        "app_id": "BloretLauncher",
+        "token": token
+    }
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            log(f"获取2FA请求返回非200状态: {response.status_code}, {response.text}")
+    except Exception as e:
+        log(f"获取2FA请求网络异常: {e}")
+    return None
+
+def handle_2fa_request_action(username, token, request_id, action):
+    """处理2FA请求 (approve/reject)"""
+    url = "https://passport.bloret.net/api/2fa/app/approve"
+    data = {
+        "username": username,
+        "app_id": "BloretLauncher",
+        "token": token,
+        "requestId": request_id,
+        "action": action
+    }
+    try:
+        response = requests.post(url, json=data, timeout=5)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            log(f"处理2FA请求返回非200状态: {response.status_code}, {response.text}")
+    except Exception as e:
+        log(f"处理2FA请求网络异常: {e}")
+    return None
 
 def Bloret_PassPort_Account_logout(self, homeInterface):
     self.config.update(Bloret_PassPort_Login=False)

@@ -11,6 +11,7 @@ import logging
 import traceback
 import subprocess
 from http import server
+import datetime
 
 # 2. 第三方库
 from PyQt5 import sip
@@ -58,6 +59,7 @@ from modules.BLServer import (
     check_Light_Minecraft_Download_Way, handle_first_run, 
     check_Bloret_version, check_for_updates
 )
+from modules.Bloret_PassPort import get_pending_2fa_requests, handle_2fa_request_action
 from modules.links import open_BBBS_link
 from modules.BLDownload import BL_download
 # Import monitor_minecraft_window
@@ -274,6 +276,46 @@ class LoadMinecraftVersionsThread(QThread):
             self.error_occurred.emit(f"请求错误: {e}")
         except requests.exceptions.SSLError as e:
             self.error_occurred.emit(f"SSL 错误: {e}")
+
+class PassPort2FAPollingThread(QThread):
+    request_received = pyqtSignal(dict)
+    
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.is_running = True
+        self.processed_ids = set()
+
+    def run(self):
+        while self.is_running:
+            try:
+                # 检查登录状态 (且非本地模式)
+                if self.config.get('Bloret_PassPort_Login', False) and not self.config.get('localmod', False):
+                    username = self.config.get('Bloret_PassPort_UserName')
+                    token = self.config.get('Bloret_PassPort_PassWord')
+                    
+                    if username and token:
+                        data = get_pending_2fa_requests(username, token)
+                        if data and data.get('success'):
+                            requests_list = data.get('requests', [])
+                            for req in requests_list:
+                                req_id = req.get('requestId')
+                                if req_id and req_id not in self.processed_ids:
+                                    self.processed_ids.add(req_id)
+                                    self.request_received.emit(req)
+            except Exception as e:
+                log(f"2FA Polling Error: {e}")
+            
+            # 每5秒检查一次，分割为多次sleep以便快速停止
+            for _ in range(50): 
+                if not self.is_running:
+                    break
+                time.sleep(0.1)
+
+    def stop(self):
+        self.is_running = False
+        self.wait()
+
 class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
@@ -457,6 +499,12 @@ class MainWindow(FluentWindow):
         # 初始化全局快捷键
         init_global_hotkeys()
         
+        # 初始化 PassPort 2FA 轮询线程
+        self.passport_2fa_thread = PassPort2FAPollingThread(self.config)
+        self.passport_2fa_thread.request_received.connect(self.show_2fa_dialog)
+        self.passport_2fa_thread.start()
+        self.threads.append(self.passport_2fa_thread)
+
         # 连接快捷键信号到主线程处理
         try:
             signal_emitter = get_signal_emitter()
@@ -1591,6 +1639,69 @@ class MainWindow(FluentWindow):
             if name_combo:
                 name_combo.clear()
                 name_combo.addItem(self.player_name)            
+
+    def show_2fa_dialog(self, request_data):
+        """显示 2FA 验证请求对话框"""
+        try:
+            timestamp = request_data.get('timestamp')
+            # 格式化时间
+            try:
+                time_str = datetime.datetime.fromtimestamp(timestamp / 1000.0).strftime('%Y-%m-%d %H:%M:%S')
+            except:
+                time_str = i18nText("未知时间")
+            
+            ip = request_data.get('ip', i18nText('未知 IP'))
+            device = request_data.get('device', i18nText('未知设备'))
+            location = request_data.get('location', i18nText('未知位置'))
+            request_id = request_data.get('requestId')
+            
+            title = i18nText("Bloret PassPort 登录请求")
+            content = (
+                f"{i18nText('您的账号正在尝试登录。')}\n\n"
+                f"{i18nText('时间')}: {time_str}\n"
+                f"{i18nText('IP')}: {ip}\n"
+                f"{i18nText('位置')}: {location}\n"
+                f"{i18nText('设备')}: {device}\n\n"
+                f"{i18nText('如果是您本人的操作，请点击“允许登录”。')}"
+            )
+            
+            w = Dialog(title, content, self)
+            w.yesButton.setText(i18nText("允许登录"))
+            w.cancelButton.setText(i18nText("拒绝"))
+            
+            username = self.config.get('Bloret_PassPort_UserName')
+            token = self.config.get('Bloret_PassPort_PassWord')
+
+            if w.exec():
+                # 允许登录
+                res = handle_2fa_request_action(username, token, request_id, 'approve')
+                if res and res.get('success'):
+                    InfoBar.success(
+                        title=i18nText('已允许登录'),
+                        content=i18nText('操作成功'),
+                        parent=self,
+                        duration=3000
+                    )
+                else:
+                    InfoBar.error(
+                        title=i18nText('操作失败'),
+                        content=res.get('error', i18nText('未知错误')) if res else i18nText('网络错误'),
+                        parent=self,
+                        duration=3000
+                    )
+            else:
+                # 拒绝登录
+                res = handle_2fa_request_action(username, token, request_id, 'reject')
+                if res and res.get('success'):
+                    InfoBar.warning(
+                        title=i18nText('已拒绝登录'),
+                        content=i18nText('操作成功'),
+                        parent=self,
+                        duration=3000
+                    )
+        except Exception as e:
+            log(f"显示 2FA 对话框时出错: {e}")
+
     def show_error(self, title, content):
         InfoBar.error(
             title=title,
@@ -1730,6 +1841,8 @@ class MainWindow(FluentWindow):
 
     def quit_app(self):
         """ 安全退出程序 """
+        if hasattr(self, 'passport_2fa_thread') and self.passport_2fa_thread.isRunning():
+            self.passport_2fa_thread.stop()
         self.save_config()
         if self.mutex:
             ctypes.windll.kernel32.CloseHandle(self.mutex)
@@ -1739,6 +1852,8 @@ class MainWindow(FluentWindow):
     def restart_app(self):
         """ 安全重启程序 """
         log(i18nText('正在准备重启程序...'))
+        if hasattr(self, 'passport_2fa_thread') and self.passport_2fa_thread.isRunning():
+            self.passport_2fa_thread.stop()
         self.save_config()
         if self.mutex:
             ctypes.windll.kernel32.CloseHandle(self.mutex)
