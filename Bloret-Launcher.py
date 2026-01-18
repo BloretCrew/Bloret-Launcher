@@ -1643,17 +1643,21 @@ class MainWindow(FluentWindow):
     def show_2fa_dialog(self, request_data):
         """显示 2FA 验证请求对话框"""
         try:
+            log(f"show_2fa_dialog: 收到 2FA 请求: {request_data}")
             timestamp = request_data.get('timestamp')
             # 格式化时间
             try:
                 time_str = datetime.datetime.fromtimestamp(timestamp / 1000.0).strftime('%Y-%m-%d %H:%M:%S')
-            except:
+                log(f"show_2fa_dialog: 时间戳转换成功: {time_str}")
+            except Exception as e:
+                log(f"show_2fa_dialog: 时间戳转换失败: {e}")
                 time_str = i18nText("未知时间")
             
             ip = request_data.get('ip', i18nText('未知 IP'))
             device = request_data.get('device', i18nText('未知设备'))
             location = request_data.get('location', i18nText('未知位置'))
             request_id = request_data.get('requestId')
+            log(f"show_2fa_dialog: 请求信息 - IP: {ip}, 设备: {device}, 位置: {location}, RequestID: {request_id}")
             
             title = i18nText("Bloret PassPort 登录请求")
             content = (
@@ -1662,7 +1666,7 @@ class MainWindow(FluentWindow):
                 f"{i18nText('IP')}: {ip}\n"
                 f"{i18nText('位置')}: {location}\n"
                 f"{i18nText('设备')}: {device}\n\n"
-                f"{i18nText('如果是您本人的操作，请点击“允许登录”。')}"
+                f"{i18nText('如果是您本人的操作，请点击"允许登录"。')}"
             )
             
             w = Dialog(title, content, self)
@@ -1671,10 +1675,13 @@ class MainWindow(FluentWindow):
             
             username = self.config.get('Bloret_PassPort_UserName')
             token = self.config.get('Bloret_PassPort_PassWord')
+            log(f"show_2fa_dialog: 用户名: {username}")
 
             if w.exec():
                 # 允许登录
+                log(f"show_2fa_dialog: 用户选择允许登录，请求ID: {request_id}")
                 res = handle_2fa_request_action(username, token, request_id, 'approve')
+                log(f"show_2fa_dialog: 允许登录响应: {res}")
                 if res and res.get('success'):
                     InfoBar.success(
                         title=i18nText('已允许登录'),
@@ -1683,15 +1690,19 @@ class MainWindow(FluentWindow):
                         duration=3000
                     )
                 else:
+                    error_msg = res.get('error', i18nText('未知错误')) if res else i18nText('网络错误')
+                    log(f"show_2fa_dialog: 允许登录失败: {error_msg}")
                     InfoBar.error(
                         title=i18nText('操作失败'),
-                        content=res.get('error', i18nText('未知错误')) if res else i18nText('网络错误'),
+                        content=error_msg,
                         parent=self,
                         duration=3000
                     )
             else:
                 # 拒绝登录
+                log(f"show_2fa_dialog: 用户选择拒绝登录，请求ID: {request_id}")
                 res = handle_2fa_request_action(username, token, request_id, 'reject')
+                log(f"show_2fa_dialog: 拒绝登录响应: {res}")
                 if res and res.get('success'):
                     InfoBar.warning(
                         title=i18nText('已拒绝登录'),
@@ -1699,8 +1710,11 @@ class MainWindow(FluentWindow):
                         parent=self,
                         duration=3000
                     )
+                else:
+                    error_msg = res.get('error', i18nText('未知错误')) if res else i18nText('网络错误')
+                    log(f"show_2fa_dialog: 拒绝登录失败: {error_msg}")
         except Exception as e:
-            log(f"显示 2FA 对话框时出错: {e}")
+            log(f"显示 2FA 对话框时出错: {e}", logging.ERROR)
 
     def show_error(self, title, content):
         InfoBar.error(
