@@ -1671,7 +1671,7 @@ class MainWindow(FluentWindow):
                 f"{i18nText('IP')}: {ip}\n"
                 f"{i18nText('位置')}: {location}\n"
                 f"{i18nText('设备')}: {device}\n\n"
-                f"{i18nText('如果是您本人的操作，请点击"允许登录"。')}"
+                f"{i18nText('如果是您本人的操作，请点击\"允许登录\"。')}"
             )
             
             w = Dialog(title, content, self)
