@@ -280,19 +280,21 @@ class LoadMinecraftVersionsThread(QThread):
 class PassPort2FAPollingThread(QThread):
     request_received = pyqtSignal(dict)
     
-    def __init__(self, config):
+    def __init__(self, main_window):
         super().__init__()
-        self.config = config
+        self.main_window = main_window  # 保存 MainWindow 引用
         self.is_running = True
         self.processed_ids = set()
 
     def run(self):
         while self.is_running:
             try:
+                # 动态获取最新的 config，避免引用过时
+                config = self.main_window.config
                 # 检查登录状态 (且非本地模式)
-                if self.config.get('Bloret_PassPort_Login', False) and not self.config.get('localmod', False):
-                    username = self.config.get('Bloret_PassPort_UserName')
-                    token = self.config.get('Bloret_PassPort_PassWord')
+                if config.get('Bloret_PassPort_Login', False) and not config.get('localmod', False):
+                    username = config.get('Bloret_PassPort_UserName')
+                    token = config.get('Bloret_PassPort_PassWord')
                     
                     if username and token:
                         data = get_pending_2fa_requests(username, token)
@@ -500,7 +502,7 @@ class MainWindow(FluentWindow):
         init_global_hotkeys()
         
         # 初始化 PassPort 2FA 轮询线程
-        self.passport_2fa_thread = PassPort2FAPollingThread(self.config)
+        self.passport_2fa_thread = PassPort2FAPollingThread(self)  # 传递 self (MainWindow)
         self.passport_2fa_thread.request_received.connect(self.show_2fa_dialog)
         self.passport_2fa_thread.start()
         self.threads.append(self.passport_2fa_thread)
