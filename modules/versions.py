@@ -654,7 +654,9 @@ class LibraryDownloader:
                         for attempt in range(3): # 尝试3次
                             try:
                                 log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
-                                response = requests.get(url_to_try, proxies=None, timeout=30)
+                                # 使用 session 复用连接
+                                session = get_session()
+                                response = session.get(url_to_try, proxies=None, timeout=30)
                                 if response.status_code == 200:
                                     with open(lib_path, 'wb') as f:
                                         f.write(response.content)

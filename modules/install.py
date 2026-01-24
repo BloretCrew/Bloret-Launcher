@@ -5,6 +5,15 @@ from pathlib import Path
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 
+# 线程本地存储，用于复用 Session
+thread_local_data = threading.local()
+
+def get_session():
+    """获取线程本地的 requests.Session 对象，实现连接复用"""
+    if not hasattr(thread_local_data, "session"):
+        thread_local_data.session = requests.Session()
+    return thread_local_data.session
+
 # PyQt5 imports - consolidated
 from PyQt5.QtCore import QMetaObject, Qt, Q_ARG
 from PyQt5.QtWidgets import QLabel, QProgressBar, QDialog, QCheckBox
@@ -274,7 +283,9 @@ class LibraryDownloader:
                     for attempt in range(3): # 尝试3次
                         try:
                             log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
-                            response = requests.get(url_to_try, proxies=None, timeout=30)
+                            # 使用 session 复用连接
+                            session = get_session()
+                            response = session.get(url_to_try, proxies=None, timeout=30)
                             if response.status_code == 200:
                                 with open(lib_path, 'wb') as f:
                                     f.write(response.content)
@@ -289,7 +300,8 @@ class LibraryDownloader:
                             try:
                                 http_url = url_to_try.replace("https://", "http://")
                                 log(f"尝试使用HTTP协议: {http_url}")
-                                response = requests.get(http_url, proxies=None, timeout=30)
+                                session = get_session()
+                                response = session.get(http_url, proxies=None, timeout=30)
                                 if response.status_code == 200:
                                     with open(lib_path, 'wb') as f:
                                         f.write(response.content)
@@ -325,7 +337,9 @@ class LibraryDownloader:
                         for attempt in range(3): # 尝试3次
                             try:
                                 log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
-                                response = requests.get(url_to_try, proxies=None, timeout=30)
+                                # 使用 session 复用连接
+                                session = get_session()
+                                response = session.get(url_to_try, proxies=None, timeout=30)
                                 if response.status_code == 200:
                                     with open(lib_path, 'wb') as f:
                                         f.write(response.content)
@@ -989,34 +1003,34 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                         for url in asset_urls:
                             try:
                                 log(f"正在下载资源文件: {url}")
-                                # 使用 requests.Session() 来更好地管理连接
-                                with requests.Session() as session:
-                                    response = session.get(url, stream=True, timeout=30)
-                                    if response.status_code == 200:
-                                        with open(object_path, 'wb') as f:
-                                            # 使用固定大小的块进行流式写入，避免内存占用过高
-                                            for chunk in response.iter_content(chunk_size=8192):
-                                                if chunk:
-                                                    f.write(chunk)
-                                        download_success = True
-                                        break
-                                    else:
-                                        log(f"下载资源文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
+                                # 使用 get_session() 复用线程内的连接，显著提升大量小文件下载速度
+                                session = get_session()
+                                response = session.get(url, stream=True, timeout=30)
+                                if response.status_code == 200:
+                                    with open(object_path, 'wb') as f:
+                                        # 使用固定大小的块进行流式写入，避免内存占用过高
+                                        for chunk in response.iter_content(chunk_size=8192):
+                                            if chunk:
+                                                f.write(chunk)
+                                    download_success = True
+                                    break
+                                else:
+                                    log(f"下载资源文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
                             except requests.exceptions.SSLError as e:
                                 log(f"SSL连接错误: {url}, {e}", logging.WARNING)
                                 # 尝试使用HTTP协议
                                 try:
                                     http_url = url.replace("https://", "http://")
                                     log(f"尝试使用HTTP协议: {http_url}")
-                                    with requests.Session() as session:
-                                        response = session.get(http_url, stream=True, timeout=30)
-                                        if response.status_code == 200:
-                                            with open(object_path, 'wb') as f:
-                                                for chunk in response.iter_content(chunk_size=8192):
-                                                    if chunk:
-                                                        f.write(chunk)
-                                            download_success = True
-                                            break
+                                    session = get_session()
+                                    response = session.get(http_url, stream=True, timeout=30)
+                                    if response.status_code == 200:
+                                        with open(object_path, 'wb') as f:
+                                            for chunk in response.iter_content(chunk_size=8192):
+                                                if chunk:
+                                                    f.write(chunk)
+                                        download_success = True
+                                        break
                                 except requests.exceptions.RequestException as e2:
                                     log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
                             except requests.exceptions.ConnectionError as e:
@@ -1025,15 +1039,15 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                 try:
                                     http_url = url.replace("https://", "http://")
                                     log(f"尝试使用HTTP协议: {http_url}")
-                                    with requests.Session() as session:
-                                        response = session.get(http_url, stream=True, timeout=30)
-                                        if response.status_code == 200:
-                                            with open(object_path, 'wb') as f:
-                                                for chunk in response.iter_content(chunk_size=8192):
-                                                    if chunk:
-                                                        f.write(chunk)
-                                            download_success = True
-                                            break
+                                    session = get_session()
+                                    response = session.get(http_url, stream=True, timeout=30)
+                                    if response.status_code == 200:
+                                        with open(object_path, 'wb') as f:
+                                            for chunk in response.iter_content(chunk_size=8192):
+                                                if chunk:
+                                                    f.write(chunk)
+                                        download_success = True
+                                        break
                                 except requests.exceptions.RequestException as e2:
                                     log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
                             except requests.exceptions.RequestException as e:

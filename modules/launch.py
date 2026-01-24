@@ -278,10 +278,13 @@ def Get_Run_Script(mc_version):
     else:
         log(f"检测到原版: {mc_version}")
     
-    # 添加内存参数
+    # 添加内存参数 (从配置读取，默认最小 512MB，最大 4096MB)
+    java_min_memory = config_data.get('java_min_memory', 512)
+    java_max_memory = config_data.get('java_max_memory', 4096)
+    
     launch_args.extend([
-        "-Xmn192m",  # 年轻代内存
-        "-Xmx4096m"  # 最大堆内存，设置为4GB
+        f"-Xms{java_min_memory}m",  # 初始堆内存
+        f"-Xmx{java_max_memory}m"   # 最大堆内存
     ])
     
     # 添加自定义参数 - 设置JavaWrapper的临时目录为系统临时目录
