@@ -20,7 +20,7 @@ import requests
 from PyQt5 import uic
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QLineEdit, QLabel, QFileDialog, 
-    QMessageBox, QDialog, QSystemTrayIcon, QStackedWidget
+    QMessageBox, QDialog, QSystemTrayIcon, QStackedWidget, QPlainTextEdit
 )
 from PyQt5.QtGui import QIcon, QColor, QPalette
 from PyQt5.QtCore import (
@@ -320,6 +320,38 @@ class PassPort2FAPollingThread(QThread):
     def stop(self):
         self.is_running = False
         self.wait()
+
+class LaunchConsoleDialog(MessageBoxBase):
+    """ 启动控制台对话框 """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.titleLabel = SubtitleLabel(i18nText("Minecraft 正在启动"), self)
+        
+        # 日志显示区域
+        self.logView = QPlainTextEdit(self)
+        self.logView.setReadOnly(True)
+        self.logView.setPlaceholderText(i18nText("正在生成启动脚本并等待日志输出..."))
+        # 设置字体样式
+        font = self.logView.font()
+        font.setFamily("Consolas")
+        self.logView.setFont(font)
+        
+        # 添加到布局
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.logView)
+        
+        # 设置大小
+        self.widget.setMinimumWidth(600)
+        self.widget.setMinimumHeight(450)
+        
+        # 按钮设置
+        self.yesButton.hide() # 隐藏确定按钮
+        self.cancelButton.setText(i18nText("后台运行")) # 将取消按钮改为后台运行
+        
+    def append_log(self, text):
+        self.logView.appendPlainText(text)
+        # 自动滚动到底部
+        self.logView.verticalScrollBar().setValue(self.logView.verticalScrollBar().maximum())
 
 class MainWindow(FluentWindow):
     def __init__(self):
@@ -1026,28 +1058,25 @@ class MainWindow(FluentWindow):
                 return
 
             run_button = self.sender()  # 获取按钮对象（可能为 None）
-            if run_button is not None:
-                teaching_tip = TeachingTip.create(
-                    target=run_button,
-                    icon=InfoBarIcon.SUCCESS,
-                    title=f'正在启动 {version}',
-                    content=i18nText("请稍等"),
-                    isClosable=True,
-                    tailPosition=TeachingTipTailPosition.BOTTOM,
-                    duration=0,  # 设置为0表示不自动关闭
-                    parent=self
-                )
-                if teaching_tip:
-                    teaching_tip.move(run_button.mapToGlobal(run_button.rect().topLeft()))
-            else:
-                log(i18nText("托盘菜单启动，不显示 TeachingTip"))
-                teaching_tip = None # 确保变量已定义
+            
+            # 创建启动日志弹窗
+            launch_dialog = LaunchConsoleDialog(self)
+            launch_dialog.titleLabel.setText(f'正在启动 {version}')
 
             # 线程
             self.run_script_thread = RunScriptThread()
             self.run_script_thread.version = version  # 设置版本信息
+            
+            # 连接日志到弹窗
+            self.run_script_thread.output_received.connect(launch_dialog.append_log)
+            # 线程结束或出错时关闭弹窗
+            self.run_script_thread.finished.connect(launch_dialog.accept)
+            self.run_script_thread.error_occurred.connect(launch_dialog.reject)
+
+            # 连接原有的结束/错误处理逻辑 (teaching_tip 传入 None)
             self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(None, run_button, version))
             self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, None, run_button))
+            
             self.run_script_thread.start()
             self.threads.append(self.run_script_thread)
             
@@ -1070,6 +1099,10 @@ class MainWindow(FluentWindow):
             self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
             self.update_show_text_thread.start()
             self.threads.append(self.update_show_text_thread)
+
+            # 显示模态对话框 (展示启动过程)
+            # 用户点击"后台运行"会关闭此窗口，但不会停止线程
+            launch_dialog.exec()
     def update_version_combobox(self):
         home_interface = self.homeInterface
         if home_interface:
