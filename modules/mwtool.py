@@ -684,6 +684,32 @@ tool_manager = None
 _tool_manager_lock = threading.Lock()
 _tool_manager_ready = threading.Event()
 
+class ToolManagerFactory(QObject):
+    """用于在主线程创建 ToolManager 的工厂类"""
+    create_signal = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        # 连接信号到槽，槽函数将在对象所在的线程（主线程）执行
+        self.create_signal.connect(self._on_create)
+
+    def _on_create(self):
+        global tool_manager
+        try:
+            if not tool_manager:
+                tool_manager = MinecraftWindowToolManager()
+                log.info("ToolManagerFactory: 已在主线程创建 tool_manager")
+        except Exception as e:
+            log.error(f"ToolManagerFactory: 创建 tool_manager 失败: {e}")
+        finally:
+            try:
+                _tool_manager_ready.set()
+            except Exception:
+                pass
+
+# 全局工厂实例
+_tool_factory = ToolManagerFactory()
+
 def _ensure_tool_manager():
     """确保 tool_manager 在 Qt 主线程中已创建。返回 True 表示准备就绪。"""
     global tool_manager
@@ -716,26 +742,12 @@ def _ensure_tool_manager():
             return True
 
         _tool_manager_ready.clear()
-
-        def _create_manager():
-            global tool_manager
-            try:
-                tool_manager = MinecraftWindowToolManager()
-                log.info("已在主线程(Timer)创建 tool_manager")
-            except Exception as e:
-                log.error(f"在主线程创建 tool_manager 失败: {e}")
-            finally:
-                # 无论成功失败，都解除等待
-                try:
-                    _tool_manager_ready.set()
-                except Exception:
-                    pass
         
-        # 在主线程调度创建
+        # 使用信号发射请求主线程创建 (比 QTimer.singleShot 更可靠)
         try:
-            QTimer.singleShot(0, _create_manager)
+            _tool_factory.create_signal.emit()
         except Exception as e:
-            log.error(f"调度创建 tool_manager 失败: {e}")
+            log.error(f"发射创建信号失败: {e}")
             return False
 
         # 等待创建完成（最长等待 5 秒）

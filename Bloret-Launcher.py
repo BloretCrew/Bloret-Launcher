@@ -32,7 +32,8 @@ from qfluentwidgets import (
     NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, 
     ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, 
     Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, 
-    FluentTranslator, FluentIcon, TabBar, TabCloseButtonDisplayMode
+    FluentTranslator, FluentIcon, TabBar, TabCloseButtonDisplayMode,
+    BodyLabel, IndeterminateProgressBar # 添加 IndeterminateProgressBar
 )
 
 # 3. 自定义模块 (Bloret Launcher Modules)
@@ -134,12 +135,37 @@ class RunScriptThread(QThread):
     output_received = pyqtSignal(str)
     last_output_received = pyqtSignal(str)  # 新增信号
     
-    def __init__(self):
+    def __init__(self, version):
         super().__init__()
         self.process = None
-        self.version = None
+        self.version = version
     
     def run(self):
+        # --- 阶段1：准备启动环境 (原主线程逻辑移入此处) ---
+        self.output_received.emit(f"正在准备启动环境: {self.version} ...")
+        self.output_received.emit("正在检查文件完整性并生成启动脚本 (如下载缺损文件可能需要较长时间)...")
+        
+        try:
+            # 清理旧脚本
+            if os.path.exists("run.bat"):
+                os.remove("run.bat")
+
+            # 生成新脚本 (此过程可能包含耗时的资源下载)
+            from modules.launch import Get_Run_Script
+            script_content = Get_Run_Script(self.version)
+            
+            with open("run.bat", "w", encoding="utf-8") as f:
+                f.write(script_content)
+                
+            self.output_received.emit("启动脚本生成成功，正在调用 Java 虚拟机...")
+
+        except Exception as e:
+            error_msg = f"生成启动配置失败: {str(e)}"
+            self.output_received.emit(error_msg)
+            self.error_occurred.emit(error_msg)
+            return
+
+        # --- 阶段2：执行启动脚本 ---
         script_path = "run.bat"
         try:
             self.process = subprocess.Popen(
@@ -154,17 +180,29 @@ class RunScriptThread(QThread):
             )
             last_line = ""
             for line in iter(lambda: self.process.stdout.readline(), ''):  # 移除errors参数
-                last_line = line.strip()
-                self.output_received.emit(last_line)
+                if line:
+                    last_line = line.strip()
+                    self.output_received.emit(last_line)
+            
             self.last_output_received.emit(last_line)
             self.process.stdout.close()
             self.process.wait()
+            
             if self.process.returncode == 0:
                 self.finished.emit()
             else:
-                self.error_occurred.emit(self.process.stderr.read().strip())
+                # 读取 stderr (如果有)
+                stderr_output = self.process.stderr.read()
+                if stderr_output:
+                     self.error_occurred.emit(stderr_output.strip())
+                else:
+                     # 正常退出或无错误输出的退出
+                     self.finished.emit()
+                     
         except subprocess.CalledProcessError as e:
             self.error_occurred.emit(str(e.stderr))
+        except Exception as e:
+            self.error_occurred.emit(f"运行过程发生异常: {str(e)}")
     
     def terminate_process(self):
         """终止Minecraft进程"""
@@ -322,38 +360,47 @@ class PassPort2FAPollingThread(QThread):
         self.wait()
 
 class LaunchConsoleDialog(MessageBoxBase):
-    """ 启动控制台对话框 """
+    """ 启动控制台对话框 (精简版) """
     def __init__(self, parent=None):
         super().__init__(parent)
         self.titleLabel = SubtitleLabel(i18nText("Minecraft 正在启动"), self)
+        self.titleLabel.setAlignment(Qt.AlignCenter)
         
-        # 日志显示区域
-        self.logView = QPlainTextEdit(self)
-        self.logView.setReadOnly(True)
-        self.logView.setPlaceholderText(i18nText("正在生成启动脚本并等待日志输出..."))
-        # 设置字体样式
-        font = self.logView.font()
-        font.setFamily("Consolas")
-        self.logView.setFont(font)
+        # 进度条 (不确定进度模式)
+        self.progressBar = IndeterminateProgressBar(self)
+        self.progressBar.setFixedWidth(300) # 设置固定宽度让布局更紧凑
+        
+        # 状态文本显示区域 (单行)
+        self.statusLabel = BodyLabel(i18nText("正在准备启动环境..."), self)
+        self.statusLabel.setAlignment(Qt.AlignCenter)
+        self.statusLabel.setTextColor("#606060", "#a0a0a0") # 设置灰色文字
         
         # 添加到布局
         self.viewLayout.addWidget(self.titleLabel)
-        self.viewLayout.addWidget(self.logView)
+        self.viewLayout.addSpacing(20) # 增加间距
+        self.viewLayout.addWidget(self.progressBar, 0, Qt.AlignCenter)
+        self.viewLayout.addSpacing(10) # 增加间距
+        self.viewLayout.addWidget(self.statusLabel)
+        self.viewLayout.addStretch(1) # 底部弹簧
         
         # 设置大小
-        self.widget.setMinimumWidth(600)
-        self.widget.setMinimumHeight(450)
+        self.widget.setMinimumWidth(400)
+        # self.widget.setMinimumHeight(200) # 让布局自动适应
         
         # 按钮设置
         self.yesButton.hide() # 隐藏确定按钮
         self.cancelButton.setText(i18nText("后台运行")) # 将取消按钮改为后台运行
         
-    def append_log(self, text):
-        self.logView.appendPlainText(text)
-        # 自动滚动到底部
-        self.logView.verticalScrollBar().setValue(self.logView.verticalScrollBar().maximum())
+    def update_status(self, text):
+        """ 更新状态文本，如果文本太长可以截断 """
+        # 简单的截断处理，防止单行文本过长撑破布局
+        if len(text) > 50:
+            text = text[:47] + "..."
+        self.statusLabel.setText(text)
 
 class MainWindow(FluentWindow):
+    launch_success_signal = pyqtSignal()
+
     def __init__(self):
         super().__init__()
 
@@ -1036,26 +1083,8 @@ class MainWindow(FluentWindow):
                 except Exception as e:
                     log(f"启动时添加标签时出错: {e}")
             
-            if os.path.exists("run.bat"):
-                os.remove("run.bat")
-            
-            log(f"传递给 Get_Run_Script 的版本: {version}")
-            
-            try:
-                # 获取启动脚本内容 (Get_Run_Script 内部会读取 config.json 获取账户信息)
-                script_content = Get_Run_Script(version)
-                with open("run.bat", "w", encoding="utf-8") as f:
-                    f.write(script_content)
-            except Exception as e:
-                log(f"生成启动脚本失败: {e}", logging.ERROR)
-                InfoBar.error(
-                    title=i18nText('❌ 启动错误'),
-                    content=f"生成启动配置失败: {e}",
-                    parent=self,
-                    duration=5000
-                )
-                self.is_running = False
-                return
+            # 移除主线程中的耗时操作 (os.remove, Get_Run_Script 等)
+            # 这些操作已移动到 RunScriptThread.run() 中执行
 
             run_button = self.sender()  # 获取按钮对象（可能为 None）
             
@@ -1063,12 +1092,11 @@ class MainWindow(FluentWindow):
             launch_dialog = LaunchConsoleDialog(self)
             launch_dialog.titleLabel.setText(f'正在启动 {version}')
 
-            # 线程
-            self.run_script_thread = RunScriptThread()
-            self.run_script_thread.version = version  # 设置版本信息
+            # 线程 (初始化时传入版本号)
+            self.run_script_thread = RunScriptThread(version)
             
-            # 连接日志到弹窗
-            self.run_script_thread.output_received.connect(launch_dialog.append_log)
+            # 连接日志到弹窗 (更新单行状态)
+            self.run_script_thread.output_received.connect(launch_dialog.update_status)
             # 线程结束或出错时关闭弹窗
             self.run_script_thread.finished.connect(launch_dialog.accept)
             self.run_script_thread.error_occurred.connect(launch_dialog.reject)
@@ -1083,12 +1111,19 @@ class MainWindow(FluentWindow):
             # 跟踪运行中的进程
             self.running_processes[version] = self.run_script_thread
             
+            # 连接启动成功信号到关闭弹窗
+            self.launch_success_signal.connect(launch_dialog.accept)
+
+            # 定义回调函数
+            def on_window_found():
+                self.launch_success_signal.emit()
+
             # 启动 Minecraft 窗口监控 (使用 mwtool)
             if self.config.get('mwtool_switch_open', True):
                 try:
                     log(f"启动工具栏监视器，目标版本: {version}")
                     # Use monitor_minecraft_window from launch.py
-                    monitor_minecraft_window(version)
+                    monitor_minecraft_window(version, callback=on_window_found)
                 except Exception as e:
                     log(f"启动工具栏监视器失败: {e}", logging.ERROR)
             else:
@@ -1103,6 +1138,12 @@ class MainWindow(FluentWindow):
             # 显示模态对话框 (展示启动过程)
             # 用户点击"后台运行"会关闭此窗口，但不会停止线程
             launch_dialog.exec()
+            
+            # 断开信号，避免重复连接
+            try:
+                self.launch_success_signal.disconnect(launch_dialog.accept)
+            except:
+                pass
     def update_version_combobox(self):
         home_interface = self.homeInterface
         if home_interface:

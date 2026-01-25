@@ -677,13 +677,14 @@ def get_minecraft_window_handle(version=None, timeout=300):
         log(f"获取 Minecraft 窗口句柄时出错: {e}")
         return None
 
-def monitor_minecraft_window(version, check_interval=1):
+def monitor_minecraft_window(version, check_interval=1, callback=None):
     """
     监控 Minecraft 窗口，当窗口出现时获取句柄并显示浮动工具栏
     
     Args:
         version (str): Minecraft 版本号
         check_interval (int): 检查间隔（秒）
+        callback (callable): 找到窗口后的回调函数
     """
     def monitor_thread():
         log(f"开始监控 Minecraft {version} 窗口...")
@@ -696,6 +697,11 @@ def monitor_minecraft_window(version, check_interval=1):
         
         if hwnd:
             log(f"✅ Minecraft {version} 窗口已找到！")
+            if callback:
+                try:
+                    callback()
+                except Exception as e:
+                    log(f"执行回调失败: {e}", logging.ERROR)
             log(f"🎯 窗口句柄: {hwnd}")
             log(f"🔍 窗口句柄(十六进制): 0x{hwnd:08X}")
             
