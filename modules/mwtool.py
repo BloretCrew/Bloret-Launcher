@@ -12,21 +12,12 @@ from PyQt5.QtGui import QFont, QIcon
 from PyQt5.uic import loadUi
 from qfluentwidgets import SimpleCardWidget, BodyLabel, StrongBodyLabel
 from .ShortCut import ScreenShortCut
-import logging as log
-from .log import log as app_log
+# 移除标准 logging 的别名 log，直接使用自定义的 app_log
+# 为了兼容现有代码中大量的 log.info 调用，我们将自定义 log 赋值给 log 变量
+from .log import log
 
-# 确保日志输出立即刷新
-class ImmediateFlushHandler(log.StreamHandler):
-    def emit(self, record):
-        super().emit(record)
-        if hasattr(self.stream, 'flush'):
-            self.stream.flush()
-
-# 配置日志处理器
-for handler in log.root.handlers:
-    if isinstance(handler, log.StreamHandler):
-        handler.flush = lambda: sys.stderr.flush() if hasattr(sys.stderr, 'flush') else None
-
+# 确保日志输出立即刷新 (仅用于调试，实际逻辑已移至 log.py)
+# 移除 ImmediateFlushHandler 相关代码，因为我们已在 log.py 中强化了 flush
 
 class MinecraftWindowWatcher(QThread):
     """监视线程：等待 Minecraft 窗口出现"""
@@ -232,17 +223,9 @@ class MinecraftWindowToolManager(QObject):
         """槽：在 manager 所在线程（主线程）中创建工具栏并发出创建信号"""
         log.info(f"_on_create_request 在主线程执行，句柄: {hwnd}, 版本: {version}")
         try:
-            try:
-                app_log(f"_on_create_request 在主线程执行，句柄: {hwnd}, 版本: {version}")
-            except Exception:
-                pass
             tool = self._create_tool_impl(hwnd, version)
             self.tool_created.emit(tool)
             log.info(f"_on_create_request 完成，tool: {tool}")
-            try:
-                app_log(f"_on_create_request 完成，tool: {tool}")
-            except Exception:
-                pass
         except Exception as e:
             log.error(f"_on_create_request 出错: {e}")
             import traceback
@@ -256,17 +239,9 @@ class MinecraftWindowToolManager(QObject):
         """实际在主线程中创建工具的实现函数"""
         log.info(f"_create_tool_impl 开始，句柄: {minecraft_hwnd}, 版本: {version}")
         try:
-            try:
-                app_log(f"_create_tool_impl 开始，句柄: {minecraft_hwnd}, 版本: {version}")
-            except Exception:
-                pass
             log.debug("创建 MinecraftWindowTool 实例")
             self.current_tool = MinecraftWindowTool()
             log.debug(f"MinecraftWindowTool 实例已创建: {self.current_tool}")
-            try:
-                app_log(f"MinecraftWindowTool 实例已创建: {self.current_tool}")
-            except Exception:
-                pass
             
             log.debug(f"调用 setup_tool，句柄: {minecraft_hwnd}, 版本: {version}")
             self.current_tool.setup_tool(minecraft_hwnd, version)
@@ -361,14 +336,33 @@ class MinecraftWindowTool(QWidget):
         
     def init_ui(self):
         """初始化UI：优先从 UI 文件加载，失败时回退到备用 UI"""
-        ui_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui')
-        ui_file = os.path.join(ui_dir, 'mwtool.ui')
+        # 尝试多个可能的路径查找 mwtool.ui
+        possible_paths = [
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui', 'mwtool.ui'), # 源码结构
+            os.path.join(os.getcwd(), 'ui', 'mwtool.ui'), # 运行目录下的 ui
+            os.path.join(sys.prefix, 'ui', 'mwtool.ui'), # 打包后的根目录 (部分情况)
+        ]
+        
+        # Nuitka/PyInstaller 兼容
+        if hasattr(sys, '_MEIPASS'):
+            possible_paths.insert(0, os.path.join(sys._MEIPASS, 'ui', 'mwtool.ui'))
 
-        try:
-            loadUi(ui_file, self)
-            log.debug(f"成功加载 UI 文件: {ui_file}")
-        except Exception as e:
-            log.error(f"加载 UI 文件失败: {e}，使用备用 UI")
+        ui_file = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                ui_file = path
+                break
+        
+        if ui_file:
+            try:
+                loadUi(ui_file, self)
+                log.info(f"成功加载 UI 文件: {ui_file}")
+            except Exception as e:
+                log.error(f"加载 UI 文件失败 ({ui_file}): {e}，尝试使用备用 UI")
+                self._create_fallback_ui()
+                return
+        else:
+            log.warning("未找到 mwtool.ui 文件，使用备用 UI")
             self._create_fallback_ui()
             return
 
@@ -770,10 +764,6 @@ def create_minecraft_tool(minecraft_hwnd, version):
     """
     log.debug(f"create_minecraft_tool 被调用，句柄: {minecraft_hwnd}, 版本: {version}")
     try:
-        app_log(f"create_minecraft_tool 被调用，句柄: {minecraft_hwnd}, 版本: {version}")
-    except Exception:
-        pass
-    try:
         # 确保 QApplication 存在
         app = QApplication.instance()
         if not app:
@@ -784,16 +774,8 @@ def create_minecraft_tool(minecraft_hwnd, version):
         
         # 确保 manager 在主线程中存在，然后使用其显示工具栏
         log.info("确保 tool_manager 在主线程中准备就绪...")
-        try:
-            app_log("确保 tool_manager 在主线程中准备就绪...")
-        except Exception:
-            pass
         if not _ensure_tool_manager():
             log.error("无法确保 tool_manager 在主线程中准备就绪")
-            try:
-                app_log("无法确保 tool_manager 在主线程中准备就绪")
-            except Exception:
-                pass
             return None
 
         log.debug("调用 tool_manager.show_tool...")

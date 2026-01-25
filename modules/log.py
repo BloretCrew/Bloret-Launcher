@@ -9,19 +9,39 @@ copyright = "\n© 2025 Bloret Launcher All rights reserved. \n© 2025 Bloret All
 
 # 创建日志文件夹
 log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
-if not os.path.exists(log_folder):
-    os.makedirs(log_folder)
+try:
+    if not os.path.exists(log_folder):
+        os.makedirs(log_folder)
+except Exception:
+    pass # 忽略创建文件夹失败，可能没有权限
+
 # 设置日志配置
 log_filename = os.path.join(log_folder, f'Bloret_Launcher_log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-if not os.path.exists(log_filename):
-    with open(log_filename, 'w', encoding='utf-8') as f:
-        f.write('')  # 创建空日志文件
-logging.basicConfig(
-    filename=log_filename,
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d - %(funcName)s()] %(message)s',
-    encoding='utf-8'
-)
+try:
+    if not os.path.exists(log_filename):
+        with open(log_filename, 'w', encoding='utf-8') as f:
+            f.write('')  # 创建空日志文件
+except Exception:
+    # 如果无法写入 APPDATA，尝试写入临时目录或当前目录
+    log_filename = os.path.join(os.getcwd(), 'Bloret_Launcher.log')
+
+# 配置根日志记录器
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# 文件处理器
+try:
+    file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+    file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d - %(funcName)s()] %(message)s'))
+    logger.addHandler(file_handler)
+except Exception:
+    pass
+
+# 控制台处理器 (仅当 sys.stdout 存在时)
+if sys.stdout:
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d - %(funcName)s()] %(message)s'))
+    logger.addHandler(console_handler)
 
 def handle_exception(e):
     '''
@@ -97,20 +117,33 @@ def log(message, level=logging.INFO):
         )
         logger.handle(record)
         
-        # 格式化控制台输出
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
-        level_name = logging.getLevelName(level)
-        formatted_log = f"[{level_name}] [{filename}:{lineno} - {func_name}()] {message}"
-        print(formatted_log)
+        # 格式化控制台输出 (仅当 sys.stdout 存在且未被冻结环境完全屏蔽时尝试打印)
+        if sys.stdout:
+            try:
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
+                level_name = logging.getLevelName(level)
+                formatted_log = f"[{level_name}] [{filename}:{lineno} - {func_name}()] {message}"
+                print(formatted_log)
+            except Exception:
+                pass
     else:
         # 如果无法获取调用者信息，使用默认方式
         logging.log(level, message)
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
-        level_name = logging.getLevelName(level)
-        formatted_log = f"[{level_name}] {message}"
-        print(formatted_log)
+        if sys.stdout:
+            try:
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
+                level_name = logging.getLevelName(level)
+                formatted_log = f"[{level_name}] {message}"
+                print(formatted_log)
+            except Exception:
+                pass
     
-    logging.getLogger().handlers[0].flush()  # 强制刷新日志
+    # 强制刷新所有 handlers
+    for handler in logging.getLogger().handlers:
+        try:
+            handler.flush()
+        except Exception:
+            pass
     # if level == logging.ERROR:
     #     handle_exception(Exception(message))  # 如果是错误级别，调用异常处理函数
 
