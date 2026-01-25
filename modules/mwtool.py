@@ -140,17 +140,17 @@ class MinecraftWindowToolManager(QObject):
     def show_tool(self, minecraft_hwnd, version):
         """显示工具栏"""
         log.debug(f"show_tool 被调用，句柄: {minecraft_hwnd}, 版本: {version}")
-        sys.stderr.flush()
+        pass
         
         # 确保 QApplication 存在
         app = QApplication.instance()
         log.debug(f"QApplication.instance(): {app}")
-        sys.stderr.flush()
+        pass
         if not app:
             log.debug("QApplication 不存在，创建新实例")
             app = QApplication(sys.argv)
             log.debug(f"新 QApplication 创建: {app}")
-            sys.stderr.flush()
+            pass
         
         # 如果当前已有工具栏实例，先关闭它
         if self.current_tool:
@@ -163,16 +163,16 @@ class MinecraftWindowToolManager(QObject):
             current_thread = QThread.currentThread()
             app_thread = app.thread()
             log.debug(f"当前线程: {current_thread}, QApplication 线程: {app_thread}")
-            sys.stderr.flush()
+            pass
             
             if app_thread == current_thread:
                 log.debug("在主线程中，直接创建工具栏")
-                sys.stderr.flush()
+                pass
                 return self._create_tool_impl(minecraft_hwnd, version)
             else:
                 # 在非主线程中，请求 manager 在主线程创建工具栏，并同步等待结果（超时 5 秒）
                 log.debug("在非主线程中，通过 create_request 请求主线程创建工具栏并等待结果")
-                sys.stderr.flush()
+                pass
 
                 done = threading.Event()
                 result = {'tool': None}
@@ -215,7 +215,7 @@ class MinecraftWindowToolManager(QObject):
             log.error(f"跨线程创建工具栏失败: {e}")
             import traceback
             traceback.print_exc()
-            sys.stderr.flush()
+            pass
             self.current_tool = None
             return None
 
@@ -273,10 +273,10 @@ class MinecraftWindowToolManager(QObject):
                 wh = self.current_tool.windowHandle()
                 geo = self.current_tool.geometry()
                 log.info(f"show() 完成，isVisible: {vis}, winId: {winid}, windowHandle: {wh}, geometry: ({geo.x()},{geo.y()},{geo.width()}x{geo.height()})")
-                sys.stderr.flush()
+                pass
             except Exception as _e:
                 log.debug(f"记录 show() 状态时出错: {_e}")
-                sys.stderr.flush()
+                pass
 
             # 安排稍后再次检查（在事件循环中）以捕获单次定时器或 ensure_visible 的效果
             try:
@@ -289,7 +289,7 @@ class MinecraftWindowToolManager(QObject):
                         geo2 = tool_ref.geometry()
                         timer_active = hasattr(tool_ref, 'update_timer') and tool_ref.update_timer is not None and tool_ref.update_timer.isActive()
                         log.info(f"post_show 检查: isVisible={vis2}, winId={winid2}, windowHandle={wh2}, geometry=({geo2.x()},{geo2.y()},{geo2.width()}x{geo2.height()}), update_timer_active={timer_active}")
-                        sys.stderr.flush()
+                        pass
                     except Exception as _e:
                         log.error(f"post_show_check 出错: {_e}")
                 QTimer.singleShot(150, _post_show_check)
