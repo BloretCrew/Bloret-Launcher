@@ -12,9 +12,26 @@ from PyQt5.QtGui import QFont, QIcon
 from PyQt5.uic import loadUi
 from qfluentwidgets import SimpleCardWidget, BodyLabel, StrongBodyLabel
 from .ShortCut import ScreenShortCut
-# 移除标准 logging 的别名 log，直接使用自定义的 app_log
-# 为了兼容现有代码中大量的 log.info 调用，我们将自定义 log 赋值给 log 变量
-from .log import log
+import logging
+# 导入原始的 log 函数并重命名
+from .log import log as _log_func
+
+# 创建一个兼容类，将 log.info() 等调用转发给 _log_func 函数
+class LogWrapper:
+    def debug(self, msg):
+        _log_func(msg, logging.DEBUG)
+        
+    def info(self, msg):
+        _log_func(msg, logging.INFO)
+        
+    def warning(self, msg):
+        _log_func(msg, logging.WARNING)
+        
+    def error(self, msg):
+        _log_func(msg, logging.ERROR)
+
+# 实例化包装器，替换原本的 log 变量
+log = LogWrapper()
 
 # 确保日志输出立即刷新 (仅用于调试，实际逻辑已移至 log.py)
 # 移除 ImmediateFlushHandler 相关代码，因为我们已在 log.py 中强化了 flush
