@@ -35,18 +35,9 @@
 ## 联机使用指南
 ![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/ui/icon/OnlineClient.gif)  
 然后将获取到的端口输入至 Bloret Launcher 中。您将获得一个地址，让您的好友像进入服务器一样加入您的世界。
-> [!NOTE]
-> 使用 Bloret Launcher 联机，对方无需安装 Bloret Launcher。
 
 > [!NOTE]
-> Bloret Launcher 现已加入 [Windows 包管理器 ( Windows Package Manager )](https://github.com/microsoft/winget-cli)
-> 因此，现在您可以在终端中输入以下命令快速安装 百络谷启动器
-> ```
-> winget install Bloret.Launcher
-> ```
-
-> [!NOTE]
-> 您可以以三种方式打开百洛谷启动器
+> 您可以以三种方式打开百络谷启动器
 > 1. 下载 `Bloret-Launcher-Setup.exe` ，运行安装。
 > 2. 下载 `Bloret-Launcher-Windows.zip` ，解压后打开其中的 `Bloret-Launcher.exe`
 > 3. 下载软件源代码压缩包 `Source code (zip)` ，解压后在所在目录下运行 `python main.py`
@@ -55,7 +46,7 @@
 > [!WARNING]
 > 百络谷启动器已证书签名，一般不会被拦截了
 > Windows 安全中心可能会拦截此软件，本软件不是任何病毒  
-> 百洛谷启动器是开源项目，您可以查阅源代码。  
+> 百络谷启动器是开源项目，您可以查阅源代码。  
 > 请按照下方操作打开软件
 > <details>
 >
@@ -86,7 +77,31 @@
 - [x] 微软账户登录
 - [x] 离线登录
 - [x] 百络谷通行证登录
-- [x] ……
+- [x] 自动更新
+- [x] 屏幕截图
+- [x] EasyTier 联机
+- [x] Bloriko
+- [x] Bloriko With Modrinth
+- [x] 全新 Minecraft 安装
+- [x] 全新 Minecraft with Fabric 安装
+- [x] 全新启动过程
+- [x] 版本管理
+- [x] 版本选择
+- [x] 服务器管理
+- [x] Mod 管理
+- [x] 资源包管理
+- [x] Minecraft 进程管理器
+- [x] Minecraft 进程结束
+- [x] Bloret Server 服务器信息
+- [x] 微软登录与离线登录，Bloret PassPort 深度融合
+- [x] Bloret PassPort 辅助验证
+- [x] 多 Minecraft 账户 #38 
+- [x] 浮动小工具栏
+- [x] 配置文件迁移 Appdata
+- [x] 全新安装程序
+- [x] Bloriko DeepThink
+- [x] NewIcon
+- [x] 等....
 
 ## 软件截图
 <details>
@@ -129,7 +144,7 @@
 
 **<summary>[Console Minecraft Launcher](https://github.com/MrShieh-X/console-minecraft-launcher)</summary>**
 
-**Bloret Launcher 现已移除 由于曾经借助过 CMCL 实现某些模块，再次仍然致谢 CMCL**
+**Bloret Launcher 现已移除 CMCL 由于曾经借助过 CMCL 实现某些模块，再次仍然致谢 CMCL**
 
 > 本软件已取得 CMCL 作者许可，请不要像 [不符合 Console Minecraft Launcher (CMCL) 的使用协议 #12](https://github.com/BloretCrew/Bloret-Launcher/issues/12) 一样来问关于 CMCL 的版权问题
 > ![CMCLLICENSE](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/CMCLLICENSE.png)
@@ -158,8 +173,6 @@
 
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
-
-
-
-
-
+[Bloret Launcher Website](https://launcher.bloret.net/)
+[Bloret PassPort](https://passport.bloret.net/)
+[Bloret Software Community (599419775)](https://qm.qq.com/q/Z2QxjXejCy)
