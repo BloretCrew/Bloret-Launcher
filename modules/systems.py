@@ -128,7 +128,7 @@ def add_to_startup():
 
     try:
         # 获取启动文件夹路径
-        startup_dir = os.path.join(os.getenv('APPDATA'), r'Microsoft\Windows\Start Menu\Programs\Startup')
+        startup_dir = os.path.join(os.environ.get('APPDATA', ''), r'Microsoft\Windows\Start Menu\Programs\Startup')
         if not os.path.exists(startup_dir):
             os.makedirs(startup_dir)
         
@@ -172,7 +172,7 @@ def remove_from_startup():
         return
 
     try:
-        startup_dir = os.path.join(os.getenv('APPDATA'), r'Microsoft\Windows\Start Menu\Programs\Startup')
+        startup_dir = os.path.join(os.environ.get('APPDATA', ''), r'Microsoft\Windows\Start Menu\Programs\Startup')
         lnk_path = os.path.join(startup_dir, 'Bloret Launcher.lnk')
         
         if os.path.exists(lnk_path):

@@ -18,6 +18,7 @@ import platform
 import requests
 import shutil
 import concurrent.futures
+import modules.globals as BLglobals
 import threading
 import time
 import zipfile
@@ -935,10 +936,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
 
         # 0. 如果minecraft_dir未提供，设置默认值
         if minecraft_dir is None:
-            # 从环境变量获取APPDATA路径（Windows系统）
-            appdata = os.environ.get('APPDATA', '')
-            # 构建默认的Minecraft安装目录路径：%appdata%/Bloret-Launcher/.minecraft
-            minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
+            # 使用跨平台的 datapath
+            minecraft_dir = os.path.join(BLglobals.datapath, '.minecraft')
 
         # 记录开始安装的日志信息
         log(f"开始安装 Minecraft 版本: {version}，安装目录: {minecraft_dir}")

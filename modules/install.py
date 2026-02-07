@@ -560,8 +560,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
 
         # 0. 如果minecraft_dir未提供，设置默认值
         if minecraft_dir is None:
-            appdata = os.environ.get('APPDATA', '')
-            minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
+            minecraft_dir = os.path.join(BLglobals.datapath, '.minecraft')
             
         # 如果未提供VersionName，则使用version作为默认值
         if VersionName is None:

@@ -495,10 +495,7 @@ class MainWindow(FluentWindow):
         # 检查并设置 minecraft_dir 配置
         if not self.config.get('minecraft_dir'):
             # 设置默认的 minecraft 目录为 %appdata%/Bloret-Launcher/.minecraft
-            if sys.platform == "win32":
-                default_mc_dir = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', '.minecraft')
-            else:
-                 default_mc_dir = os.path.join(os.path.expanduser('~'), '.minecraft')
+            default_mc_dir = os.path.join(BLglobals.datapath, '.minecraft')
 
             self.config['minecraft_dir'] = default_mc_dir
             # 保存配置到文件
@@ -2163,7 +2160,7 @@ class MainWindow(FluentWindow):
         elif mode == i18nText("浅色模式"):
             self.apply_theme(QPalette(QColor("#ffffff")))
     def update_log_clear_button_text(self, button):
-        log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
+        log_folder = os.path.join(BLglobals.datapath, 'log')
         if os.path.exists(log_folder) and os.path.isdir(log_folder):
             log_files = os.listdir(log_folder)
             log_file_count = len(log_files)

@@ -101,7 +101,7 @@ def handle_first_run(self,server_ip):
                 os.remove(updata_ps1_file)
                 log(f"删除文件: {updata_ps1_file}")
     def create_shortcut(self):
-        desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+        desktop = os.path.join(os.path.expanduser('~'), 'Desktop')
         shortcut_path = os.path.join(desktop, 'Bloret Launcher.lnk')
         target = os.path.join(os.getcwd(), 'Bloret-Launcher.exe')
         icon = os.path.join(os.getcwd(), 'bloret.ico')

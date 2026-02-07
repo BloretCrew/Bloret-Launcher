@@ -189,7 +189,7 @@ def _install_java_thread(Java_Version):
             
         elif download_path.endswith('.zip') or download_path.endswith('.tar.gz'):
             log(f"检测到压缩包: {download_path}")
-            extract_dir = os.path.join(os.environ.get('APPDATA'), '.minecraft', 'runtime', f'java-{Java_Version}')
+            extract_dir = os.path.join(BLglobals.datapath, '.minecraft', 'runtime', f'java-{Java_Version}')
             os.makedirs(extract_dir, exist_ok=True)
             log(f"将解压到: {extract_dir}")
 

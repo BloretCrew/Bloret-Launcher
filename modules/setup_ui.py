@@ -93,7 +93,7 @@ def scan_java_paths():
         os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Eclipse Adoptium"),
         os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Zulu"),
         os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "BellSoft"),
-        os.path.join(os.environ.get("USERPROFILE", ""), ".jdks")
+        os.path.join(os.path.expanduser("~"), ".jdks")
     ]
     
     for root in common_roots:
@@ -269,7 +269,7 @@ class DownloadDialog(MessageBoxBase):
             return
             
         # 使用配置中的minecraft目录创建目标路径
-        minecraft_dir = cfg.read().get('minecraft_dir', os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', '.minecraft'))
+        minecraft_dir = cfg.read().get('minecraft_dir', os.path.join(BLglobals.datapath, '.minecraft'))
         mod_dir = os.path.join(minecraft_dir, "versions", folder_name, "mods")
         if not os.path.exists(mod_dir):
             os.makedirs(mod_dir)
@@ -3133,7 +3133,7 @@ class BlorikoModRecommendationDialog(MessageBoxBase):
         self.question = question
         self.deepthink = deepthink # 存储 deepthink 状态
         self.slugs = [] # 存储 AI 推荐的 slug
-        self.minecraft_dir = cfg.read().get('minecraft_dir', os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', '.minecraft'))
+        self.minecraft_dir = cfg.read().get('minecraft_dir', os.path.join(BLglobals.datapath, '.minecraft'))
         self.version_mappings = {} # 存储版本映射信息
         
         # --- UI 初始化 ---

@@ -18,9 +18,14 @@ LM_Download_Way_list = ["1.21.8","1.21.7"]
 
 config_path = ''
 
-import os
+import os, sys
 
-datapath = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher')
+if sys.platform == 'win32':
+    datapath = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'Bloret-Launcher')
+elif sys.platform == 'darwin':
+    datapath = os.path.expanduser('~/Library/Application Support/Bloret-Launcher')
+else:
+    datapath = os.path.expanduser('~/.local/share/Bloret-Launcher')
 minecraft_dir = ""
 BLtips = []
 BL_Activity = {}

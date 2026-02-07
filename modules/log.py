@@ -4,11 +4,13 @@ from qfluentwidgets import InfoBar, InfoBarPosition
 import logging,traceback,sys,webbrowser
 from PyQt5.QtWidgets import QApplication
 from PyQt5.uic import loadUi
+import modules.globals as BLglobals
 
 copyright = "\n© 2025 Bloret Launcher All rights reserved. \n© 2025 Bloret All rights reserved."
 
 # 创建日志文件夹
-log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
+# 创建日志文件夹
+log_folder = os.path.join(BLglobals.datapath, 'log')
 try:
     if not os.path.exists(log_folder):
         os.makedirs(log_folder)
@@ -164,7 +166,7 @@ def clear_log_files(self, log_clear_button):
     ***
     ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
-    log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
+    log_folder = os.path.join(BLglobals.datapath, 'log')
     file_num = len(os.listdir(log_folder))-1  # 减去一个正在使用的文件
     if os.path.exists(log_folder) and os.path.isdir(log_folder):
         for filename in os.listdir(log_folder):

@@ -45,12 +45,7 @@ def Get_Run_Script(mc_version):
     minecraft_dir = config_data.get('minecraft_dir', '')
     if not minecraft_dir:
         # 如果配置中没有指定，则使用默认路径
-        if sys.platform == 'win32':
-            appdata = os.environ.get('APPDATA', '')
-            minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
-        else:
-            # Unix-like 系统使用 ~/.minecraft
-            minecraft_dir = os.path.join(os.path.expanduser('~'), '.minecraft')
+        minecraft_dir = os.path.join(BLglobals.datapath, '.minecraft')
     
     versions_dir = os.path.join(minecraft_dir, "versions", mc_version)
     
