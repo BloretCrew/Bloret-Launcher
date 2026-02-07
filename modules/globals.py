@@ -27,5 +27,5 @@ elif sys.platform == 'darwin':
 else:
     datapath = os.path.expanduser('~/.local/share/Bloret-Launcher')
 minecraft_dir = ""
-BLtips = []
+BLtips = ["欢迎使用 Bloret Launcher！", "祝你今天玩得开心！", "Bloret Launcher，让你的 Minecraft 体验更上一层楼。", "遇到问题？试试去社区寻求帮助吧！"]
 BL_Activity = {}
