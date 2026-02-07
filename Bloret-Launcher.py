@@ -178,6 +178,10 @@ class RunScriptThread(QThread):
             
             log(f"启动目录: {work_dir}")
             
+            kwargs = {}
+            if sys.platform == 'win32':
+                 kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+
             self.process = subprocess.Popen(
                 launch_args,
                 cwd=work_dir,          # 设置工作目录
@@ -187,7 +191,7 @@ class RunScriptThread(QThread):
                 encoding='utf-8',
                 errors='replace',
                 shell=False,           # 不使用 shell，直接执行 executable
-                creationflags=subprocess.CREATE_NO_WINDOW  # 隐藏控制台窗口
+                **kwargs
             )
             
             last_line = ""
@@ -1995,7 +1999,10 @@ class MainWindow(FluentWindow):
             # 脚本环境下，sys.executable 是 python.exe，sys.argv[0] 是脚本路径
             args = [sys.executable] + sys.argv
 
-        subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
+        if sys.platform == 'win32':
+             subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
+        else:
+             subprocess.Popen(args, start_new_session=True, shell=False)
         os._exit(0)
         
     def on_player_name_set_clicked(self, widget):

@@ -507,7 +507,7 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
             # 设置MaxThread的值
             try:
                 config = cfg.read()
-                max_thread_value = config.get("MaxThread", 2000)
+                max_thread_value = config.get("MaxThread", 64)
                 if hasattr(download_dialog, 'MaxThread') and hasattr(download_dialog, 'MaxThread_2'):
                     download_dialog.MaxThread.setText(str(max_thread_value))
                     download_dialog.MaxThread_2.setText(str(max_thread_value))
@@ -842,7 +842,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         # 加载 config.json 文件
         config = cfg.read()
         # 创建 LibraryDownloader 实例
-        max_thread_value = config.get("MaxThread", 2000)
+        max_thread_value = config.get("MaxThread", 64)
         # 处理主版本库文件
         processed_libraries = []
         if "libraries" in version_data:
@@ -1611,6 +1611,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         # 关闭下载对话框
         if download_dialog:
             try:
-                download_dialog.close()
+                QMetaObject.invokeMethod(download_dialog, "close", Qt.QueuedConnection)
             except Exception as e:
                 log(f"关闭下载对话框时出错: {e}")

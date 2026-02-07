@@ -15,33 +15,17 @@ Safe.py
 import threading,logging,traceback,sys,webbrowser
 from PyQt5.QtWidgets import QApplication
 from PyQt5.uic import loadUi
+from PyQt5.QtCore import QThread, QObject, pyqtSignal
 from modules.log import log
 from modules.i18n import i18nText
 
-def handle_exception(exc_type, exc_value, exc_traceback):
-    '''
-    ## 显示错误跟踪窗口并报告异常
-
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
-    '''
-    # 参数已由系统异常钩子直接提供
-    log(i18nText("未捕获的异常:"), logging.CRITICAL)
-    log(i18nText("类型: {}").format(exc_type), logging.CRITICAL)
-    log(i18nText("信息: {}").format(exc_value), logging.CRITICAL)
-    log(i18nText("回溯: {}").format(traceback.format_tb(exc_traceback)), logging.CRITICAL)
-    
-    # 检查是否有 QApplication 实例
+def _show_error_ui(exc_type, exc_value, exc_traceback):
+    """
+    实际显示错误UI的函数，必须在主线程中运行
+    """
     app = QApplication.instance()
     if not app:
-        # 如果没有 QApplication 实例，尝试创建一个（对于致命错误处理是必要的）
-        # 如果创建失败（例如在没有显示的 headless 环境），则回退到控制台输出
-        try:
-            app = QApplication(sys.argv)
-        except Exception:
-            print("CRITICAL: PyQt5 QApplication initialization failed during exception handling.")
-            sys.__excepthook__(exc_type, exc_value, exc_traceback)
-            return
+        return
 
     try:
         # 加载 ERROR.ui 文件
@@ -70,24 +54,57 @@ def handle_exception(exc_type, exc_value, exc_traceback):
         
         # 显示错误报告窗口
         error_widget.show()
-        # 进入事件循环以保持窗口显示（如果这是启动时的致命错误）
-        if not QApplication.instance().activeWindow():
-            app.exec()
+        # 进入事件循环以保持窗口显示（如果这是启动时的致命错误且主循环未运行）
+        if not QApplication.instance().activeWindow() and not QThread.currentThread().loopLevel():
+             pass
+             
     except Exception as e:
         print(f"CRITICAL: Failed to show ERROR UI: {e}")
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+class ErrorSignaler(QObject):
+    show_error = pyqtSignal(object, object, object)
+
+# 全局信号对象，将在模块导入时（主线程）创建
+_signaler = ErrorSignaler()
+_signaler.show_error.connect(_show_error_ui)
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    '''
+    ## 显示错误跟踪窗口并报告异常
+
+    ***
+    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    '''
+    # 参数已由系统异常钩子直接提供
+    log(i18nText("未捕获的异常:"), logging.CRITICAL)
+    log(i18nText("类型: {}").format(exc_type), logging.CRITICAL)
+    log(i18nText("信息: {}").format(exc_value), logging.CRITICAL)
+    log(i18nText("回溯: {}").format(traceback.format_tb(exc_traceback)), logging.CRITICAL)
     
-    # w = Dialog("Bloret Launcher 发生了一些小问题...", "类型: {}\n信息: {}\n回溯: {}\n如果您认为这是 Bloret Launcher 的问题，请提交此问题。\n按下确认按钮将以上信息复制到剪贴板".format(exc_type, exc_value, traceback.format_tb(exc_traceback)))
-    # w.setWindowIcon(QIcon('bloret.ico'))
-    # w.setWindowTitle("Bloret Launcher")
-    # if w.exec():
-    #     print('复制到剪贴板')
-    #     clipboard = QApplication.clipboard()
-    #     clipboard.setText("类型: {}\n信息: {}\n回溯: {}".format(exc_type, exc_value, ''.join(traceback.format_tb(exc_traceback))))
-    # else:
-    #     print('取消')
+    # 检查是否有 QApplication 实例
+    app = QApplication.instance()
+    if not app:
+        try:
+            app = QApplication(sys.argv)
+        except Exception:
+            print("CRITICAL: PyQt5 QApplication initialization failed during exception handling.")
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+
+    # 检查当前线程是否为主线程
+    if QThread.currentThread() != app.thread():
+        # 如果在后台线程，使用信号发射到主线程执行
+        _signaler.show_error.emit(exc_type, exc_value, exc_traceback)
+    else:
+        # 如果在主线程，直接执行
+        _show_error_ui(exc_type, exc_value, exc_traceback)
+        
+        if not QApplication.instance().activeWindow():
+             pass
+    
+    # 调用默认 hook
     sys.__excepthook__(exc_type, exc_value, exc_traceback)
-    # uic.loadUi("ui/ERROR.ui")
 
 sys.excepthook = handle_exception
 
@@ -96,4 +113,3 @@ log_lock = threading.Lock()
 def log_thread_safe(message, level=logging.INFO):
     with log_lock:
         log(message, level)
-
