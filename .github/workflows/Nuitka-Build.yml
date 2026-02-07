@@ -111,7 +111,7 @@ jobs:
 
     - name: 使用 Nuitka 打包
       run: |
-        python -m nuitka --standalone --onefile --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
+        python -m nuitka --standalone --onefile --enable-plugin=pyqt5 --include-qt-plugins=sensible --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
 
     - name: 创建包含其他文件夹的目录
       run: |
@@ -134,7 +134,7 @@ jobs:
   Build-MacOS:
     runs-on: macos-latest
     env:
-      PYTHON_VERSION: '3.9'
+      PYTHON_VERSION: '3.10'
       OUTPUT_DIR: 'output'
       ARTIFACT_NAME: 'Bloret-Launcher-MacOS.zip'
 
@@ -160,7 +160,7 @@ jobs:
 
     - name: 安装程序依赖和打包依赖
       run: |
-        pip install --upgrade pip
+        pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
         pip install pillow nuitka zstandard ordered-set
 
