@@ -445,3 +445,17 @@ if sys.platform == "win32": # 仅限 Windows 平台
         elif tag is None and group is not None:
             # Remove all notifications in the group
             history.remove_group(group, app_id)
+
+else:
+    # 非 Windows 平台的空实现
+    def toast(*args, **kwargs):
+        print("Toast notification not supported on this platform")
+    
+    def notify(*args, **kwargs):
+        pass
+
+    def update_progress(*args, **kwargs):
+        pass
+
+    def clear_toast(*args, **kwargs):
+        pass

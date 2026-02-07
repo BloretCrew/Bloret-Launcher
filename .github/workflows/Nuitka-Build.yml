@@ -71,17 +71,122 @@ jobs:
         name: Bloret-Launcher
         path: "${{ env.OUTPUT_DIR }}/"
         
+  Build-Linux:
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: '3.9'
+      OUTPUT_DIR: 'output'
+      ARTIFACT_NAME: 'Bloret-Launcher-Linux.zip'
+
+    steps:
+    - name: 检出最新版本
+      uses: actions/checkout@v2
+
+    - name: 设置 Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y fuse libfuse2 patchelf
+
+    - name: 安装程序依赖和打包依赖
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pillow nuitka zstandard
+
+    - name: 使用 Nuitka 打包
+      run: |
+        python -m nuitka --standalone --onefile --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
+
+    - name: 创建包含其他文件夹的目录
+      run: |
+        mkdir -p ${{ env.OUTPUT_DIR }}
+        cp Bloret-Launcher ${{ env.OUTPUT_DIR }}/
+        cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp -r lang/ ${{ env.OUTPUT_DIR }}/
+        cp -r easytier/ ${{ env.OUTPUT_DIR }}/
+        cp -r config.json ${{ env.OUTPUT_DIR }}/
+        cp -r LICENSE ${{ env.OUTPUT_DIR }}/
+        cp -r servers.dat ${{ env.OUTPUT_DIR }}/
+        cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher-Linux
+        path: "${{ env.OUTPUT_DIR }}/"
+
+  Build-MacOS:
+    runs-on: macos-latest
+    env:
+      PYTHON_VERSION: '3.9'
+      OUTPUT_DIR: 'output'
+      ARTIFACT_NAME: 'Bloret-Launcher-MacOS.zip'
+
+    steps:
+    - name: 检出最新版本
+      uses: actions/checkout@v2
+
+    - name: 设置 Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: 安装程序依赖和打包依赖
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pillow nuitka zstandard ordered-set
+
+    - name: 使用 Nuitka 打包
+      run: |
+        python -m nuitka --standalone --macos-create-app-bundle --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher.app Bloret-Launcher.py
+
+    - name: 创建包含其他文件夹的目录
+      run: |
+        mkdir -p ${{ env.OUTPUT_DIR }}
+        cp -r Bloret-Launcher.app ${{ env.OUTPUT_DIR }}/
+        cp -r ui/ ${{ env.OUTPUT_DIR }}/
+        cp -r lang/ ${{ env.OUTPUT_DIR }}/
+        cp -r easytier/ ${{ env.OUTPUT_DIR }}/
+        cp -r config.json ${{ env.OUTPUT_DIR }}/
+        cp -r LICENSE ${{ env.OUTPUT_DIR }}/
+        cp -r servers.dat ${{ env.OUTPUT_DIR }}/
+        cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher-MacOS
+        path: "${{ env.OUTPUT_DIR }}/"
+
   Upload-To-Release:
     # 核心修改：明确排除 workflow_dispatch，且只有在 release 事件时才运行
     if: github.event_name == 'release' && github.event_name != 'workflow_dispatch'
-    needs: [Build-Windows, Build-Setup]
+    needs: [Build-Windows, Build-Linux, Build-MacOS, Build-Setup]
     runs-on: ubuntu-latest
     steps:
-      - name: 下载构建产物
+      - name: 下载 Windows 构建产物
         uses: actions/download-artifact@v4
         with:
           name: Bloret-Launcher
-          path: Bloret-Launcher
+          path: Bloret-Launcher-Windows
+
+      - name: 下载 Linux 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-Linux
+          path: Bloret-Launcher-Linux
+
+      - name: 下载 MacOS 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-MacOS
+          path: Bloret-Launcher-MacOS
 
       - name: 下载安装程序
         uses: actions/download-artifact@v4
@@ -90,14 +195,17 @@ jobs:
 
       - name: 创建发布压缩包
         run: |
-          # 注意：在 ubuntu 环境下使用 zip 命令更稳定
-          zip -r Bloret-Launcher.zip Bloret-Launcher/*
+          zip -r Bloret-Launcher-Windows.zip Bloret-Launcher-Windows/*
+          zip -r Bloret-Launcher-Linux.zip Bloret-Launcher-Linux/*
+          zip -r Bloret-Launcher-MacOS.zip Bloret-Launcher-MacOS/*
 
       - name: 上传到 Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            Bloret-Launcher.zip
+            Bloret-Launcher-Windows.zip
+            Bloret-Launcher-Linux.zip
+            Bloret-Launcher-MacOS.zip
             Bloret-Launcher-Setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

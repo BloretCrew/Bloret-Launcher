@@ -462,6 +462,17 @@ class MainWindow(FluentWindow):
                         print(i18nText('确认'))
                     ctypes.windll.kernel32.CloseHandle(self.mutex)
                     sys.exit(0)
+        else:
+            # Linux/macOS simple file lock
+            import fcntl
+            self.lock_file = open(os.path.join(os.getcwd(), 'bloret.lock'), 'w')
+            try:
+                fcntl.lockf(self.lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except IOError:
+                log(i18nText("检测到程序重复运行"))
+                if not self.config.get('repeat_run', False):
+                    print("Bloret Launcher is already running.")
+                    sys.exit(0)
                     
         check_for_updates(self,BLglobals.server_ip)
 
@@ -484,7 +495,11 @@ class MainWindow(FluentWindow):
         # 检查并设置 minecraft_dir 配置
         if not self.config.get('minecraft_dir'):
             # 设置默认的 minecraft 目录为 %appdata%/Bloret-Launcher/.minecraft
-            default_mc_dir = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', '.minecraft')
+            if sys.platform == "win32":
+                default_mc_dir = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', '.minecraft')
+            else:
+                 default_mc_dir = os.path.join(os.path.expanduser('~'), '.minecraft')
+
             self.config['minecraft_dir'] = default_mc_dir
             # 保存配置到文件
             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:

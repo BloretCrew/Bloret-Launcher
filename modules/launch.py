@@ -45,8 +45,12 @@ def Get_Run_Script(mc_version):
     minecraft_dir = config_data.get('minecraft_dir', '')
     if not minecraft_dir:
         # 如果配置中没有指定，则使用默认路径
-        appdata = os.environ.get('APPDATA', '')
-        minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
+        if sys.platform == 'win32':
+            appdata = os.environ.get('APPDATA', '')
+            minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
+        else:
+            # Unix-like 系统使用 ~/.minecraft
+            minecraft_dir = os.path.join(os.path.expanduser('~'), '.minecraft')
     
     versions_dir = os.path.join(minecraft_dir, "versions", mc_version)
     
@@ -103,6 +107,16 @@ def Get_Run_Script(mc_version):
                     r"C:\Program Files\Zulu\zulu-17\bin\java.exe",
                     r"C:\Program Files\Zulu\zulu-21\bin\java.exe"
                 ]
+                
+                # Mac/Linux defaults
+                if sys.platform != "win32":
+                    default_java_paths = [
+                         "/usr/bin/java",
+                         "/usr/local/bin/java",
+                         "/opt/java/bin/java",
+                         "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home/bin/java",
+                         "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home/bin/java"
+                    ]
                 
                 for default_path in default_java_paths:
                     if os.path.exists(default_path):
@@ -461,7 +475,7 @@ def Get_Run_Script(mc_version):
     log("mods 目录: " + mods_dir)
 
     # 添加类路径参数
-    launch_args.extend(["-cp", '\"' + ";".join(classpath) + '\"'])  # Windows 使用分号分隔
+    launch_args.extend(["-cp", '\"' + os.pathsep.join(classpath) + '\"'])  # 使用系统分隔符 (Windows: ;, Unix: :)
     
     # Add Fabric Loader arguments to ensure mods are loaded
     if is_fabric and os.path.exists(mods_dir):

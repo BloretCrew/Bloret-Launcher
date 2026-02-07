@@ -1,14 +1,20 @@
 from modules.win11toast import toast
-import ctypes.wintypes,ctypes,logging,os,subprocess
-from win32com.client import Dispatch
+import logging, os, subprocess
+import sys
+
+if sys.platform == "win32":
+    import ctypes.wintypes, ctypes
+    from win32com.client import Dispatch
 
 from modules.log import log
 from modules.safe import handle_exception
 from modules.i18n import i18nText
-import sys
 
 def get_system_theme_color():
     """获取系统主题颜色"""
+    if sys.platform != "win32":
+        return "#0078D7"  # 非 Windows 平台默认返回蓝色
+
     try:
         # 定义注册表路径和键名
         reg_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
@@ -43,6 +49,10 @@ def get_system_theme_color():
         return "#0078D7"  # 默认蓝色
 
 def is_dark_theme():
+    if sys.platform != "win32":
+        # Linux/macOS 暂时默认浅色或深色，后续可接入对应系统的检测
+        return False
+
     try:
         # 定义注册表路径和键名
         reg_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
@@ -78,6 +88,7 @@ def send_system_notification(title, message):
     except Exception as e:
         handle_exception(e)
         log(f"发送系统通知失败: {e}", logging.ERROR)
+
 def check_write_permission():
     # 检查当前目录的写入权限
     try:
@@ -99,13 +110,22 @@ def restart():
     else:
         args = [sys.executable] + sys.argv
         
-    subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
+    if sys.platform == "win32":
+        subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
+    else:
+        # Linux/macOS 使用 start_new_session, 相当于 DETACHED_PROCESS
+        subprocess.Popen(args, start_new_session=True, shell=False)
+
     os._exit(0)
 
 # base_directory = os.path.dirname(os.path.abspath(__file__)) # 不再需要，动态获取路径
 
 def add_to_startup():
     """ 注册开机启动 (创建快捷方式到启动目录) """
+    if sys.platform != "win32":
+        log("非 Windows 平台暂不支持自动设置开机自启")
+        return
+
     try:
         # 获取启动文件夹路径
         startup_dir = os.path.join(os.getenv('APPDATA'), r'Microsoft\Windows\Start Menu\Programs\Startup')
@@ -148,6 +168,9 @@ def add_to_startup():
 
 def remove_from_startup():
     """ 取消注册开机启动 """
+    if sys.platform != "win32":
+        return
+
     try:
         startup_dir = os.path.join(os.getenv('APPDATA'), r'Microsoft\Windows\Start Menu\Programs\Startup')
         lnk_path = os.path.join(startup_dir, 'Bloret Launcher.lnk')
@@ -167,4 +190,5 @@ def setup_startup_with_self_starting(value=True):
         add_to_startup()
     else:
         remove_from_startup()
+
 
