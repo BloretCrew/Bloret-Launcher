@@ -667,7 +667,7 @@ def setup_home_ui(self, widget):
         else:
             BLtips.setText("欢迎使用 Bloret Launcher！")
     
-    if BLglobals.BL_Activity["show"]:
+    if BLglobals.BL_Activity.get("show", False):
         activity_icon = widget.findChild(StrongBodyLabel, "activity_icon")
         activity_title = widget.findChild(StrongBodyLabel, "activity_title")
         activity_description = widget.findChild(CaptionLabel, "activity_description")
