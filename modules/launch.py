@@ -32,7 +32,7 @@ def Get_Run_Script(mc_version):
         mc_version (str): 要启动的 Minecraft 版本号
         
     Returns:
-        str: 启动命令（批处理格式）
+        tuple: (launch_args, game_dir) 启动参数列表和工作目录
     """
     
     # 1. 读取配置文件 (替代原有的 cmcl.json 读取)
@@ -553,16 +553,9 @@ def Get_Run_Script(mc_version):
             "--height", "480"
         ])
     
-    # 构建命令
-    bat_command = " ".join(launch_args)
-    
-    chcp_command = "chcp 65001"
-    cd_command = f'cd {game_dir}'  # 使用 game_dir (即版本目录) 作为工作目录
-    full_command = f"{chcp_command}\n{cd_command}\n{bat_command}"
-    
-    log(f"生成的启动命令: {bat_command}")
-    log(f"最终生成的启动命令 (包含 chcp 65001 和 cd 文件夹): {full_command}")
-    return full_command
+    # 返回启动参数列表和游戏目录，而不是批处理脚本
+    log(f"生成的启动参数: {launch_args}")
+    return launch_args, game_dir
 
 # Change timeout default to 300
 def get_minecraft_window_handle(version=None, timeout=300):

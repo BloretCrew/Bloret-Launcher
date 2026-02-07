@@ -143,43 +143,53 @@ class RunScriptThread(QThread):
     def run(self):
         # --- 阶段1：准备启动环境 (原主线程逻辑移入此处) ---
         self.output_received.emit(f"正在准备启动环境: {self.version} ...")
-        self.output_received.emit("正在检查文件完整性并生成启动脚本 (如下载缺损文件可能需要较长时间)...")
+        self.output_received.emit("正在检查文件完整性并解析启动参数 (如下载缺损文件可能需要较长时间)...")
         
-        try:
-            # 清理旧脚本
-            if os.path.exists("run.bat"):
-                os.remove("run.bat")
+        launch_args = []
+        work_dir = ""
 
-            # 生成新脚本 (此过程可能包含耗时的资源下载)
+        try:
+            # 清理旧脚本 (如果存在)
+            if os.path.exists("run.bat"):
+                try:
+                    os.remove("run.bat")
+                except:
+                    pass
+
+            # 获取启动参数
             from modules.launch import Get_Run_Script
-            script_content = Get_Run_Script(self.version)
-            
-            with open("run.bat", "w", encoding="utf-8") as f:
-                f.write(script_content)
+            launch_args, work_dir = Get_Run_Script(self.version)
                 
-            self.output_received.emit("启动脚本生成成功，正在调用 Java 虚拟机...")
+            self.output_received.emit("启动参数解析成功，正在调用 Java 虚拟机...")
 
         except Exception as e:
-            error_msg = f"生成启动配置失败: {str(e)}"
+            error_msg = f"准备启动失败: {str(e)}\n{traceback.format_exc()}"
             self.output_received.emit(error_msg)
             self.error_occurred.emit(error_msg)
             return
 
-        # --- 阶段2：执行启动脚本 ---
-        script_path = "run.bat"
+        # --- 阶段2：执行启动命令 ---
         try:
+            # 使用列表形式的 args 避免 shell=True (除了 Windows 下可能需要)
+            # 在 Windows 上，即使 shell=False，只要 args 是列表，subprocess 也会正确处理参数转义
+            # 但为了兼容性和行为一致性，我们通常尽量不使用 shell=True
+            
+            log(f"启动目录: {work_dir}")
+            
             self.process = subprocess.Popen(
-                [script_path],
+                launch_args,
+                cwd=work_dir,          # 设置工作目录
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
                 encoding='utf-8',
                 errors='replace',
-                shell=True,
+                shell=False,           # 不使用 shell，直接执行 executable
                 creationflags=subprocess.CREATE_NO_WINDOW  # 隐藏控制台窗口
             )
+            
             last_line = ""
-            for line in iter(lambda: self.process.stdout.readline(), ''):  # 移除errors参数
+            for line in iter(lambda: self.process.stdout.readline(), ''):
                 if line:
                     last_line = line.strip()
                     self.output_received.emit(last_line)

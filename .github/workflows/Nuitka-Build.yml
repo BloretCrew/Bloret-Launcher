@@ -48,7 +48,7 @@ jobs:
     
     - name: 使用 Nuitka 打包
       run: |
-        python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=tk-inter --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe --assume-yes-for-downloads `
+        python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=tk-inter --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe --assume-yes-for-downloads --windows-company-name="Bloret" --windows-product-name="Bloret Launcher" --windows-file-version=1.0.0 --windows-product-version=1.0.0 `
           --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules Bloret-Launcher.py
       shell: pwsh
 
