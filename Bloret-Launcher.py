@@ -61,7 +61,7 @@ from modules.BLServer import (
     check_Bloret_version, check_for_updates
 )
 from modules.Bloret_PassPort import get_pending_2fa_requests, handle_2fa_request_action
-from modules.links import open_BBBS_link
+import modules.links as links
 from modules.BLDownload import BL_download
 # Import monitor_minecraft_window
 from modules.launch import Get_Run_Script, monitor_minecraft_window
@@ -111,7 +111,9 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.menu.addMenu(launch_menu)
 
         self.menu.addActions([
-            Action(i18nText('🔡  访问 BBS'), triggered=lambda: open_BBBS_link(BLglobals.server_ip)),
+            Action(i18nText('🔡  访问 BBS'), triggered=lambda: links.open_BBBS_link()),
+            Action(i18nText('🔡  访问 Bloret PassPort'), triggered=lambda: links.open_PassPort_link()),
+            Action(i18nText('🔡  访问 百络图床'), triggered=lambda: links.open_BIMG_WEB_link()),
             Action(i18nText('🔄️  重启程序'), triggered=self.main_window.restart_app),
             Action(i18nText('✅  显示窗口'), triggered=self.main_window.show_main_window),
             Action(i18nText('❎  退出程序'), triggered=self.main_window.quit_app)
