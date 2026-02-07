@@ -3,19 +3,27 @@ import threading
 import os
 import sys
 import ctypes
-import ctypes.wintypes
+if sys.platform == "win32":
+    import ctypes.wintypes
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+    # Windows API 常量
+    WM_HOTKEY = 0x0312
+    MOD_CONTROL = 0x0002
+    MOD_SHIFT = 0x0004
+    MOD_ALT = 0x0001
+    MOD_WIN = 0x0008
+else:
+    user32 = None
+    kernel32 = None
+    WM_HOTKEY = 0
+    MOD_CONTROL = 0
+    MOD_SHIFT = 0
+    MOD_ALT = 0
+    MOD_WIN = 0
+
 import modules.globals as BLglobals
 from modules.config import read
-
-# Windows API 常量
-WM_HOTKEY = 0x0312
-MOD_CONTROL = 0x0002
-MOD_SHIFT = 0x0004
-MOD_ALT = 0x0001
-MOD_WIN = 0x0008
-
-user32 = ctypes.windll.user32
-kernel32 = ctypes.windll.kernel32
 
 # 全局变量，用于保持对截图窗口的引用，防止被垃圾回收
 _screenshot_widget_ref = None
@@ -238,6 +246,9 @@ def hotkey_listener_thread(shortcut_key):
 
 
 def init_global_hotkeys():
+    if sys.platform != "win32":
+        print("[Hotkey] 非 Windows 系统暂不支持全局热键")
+        return
     try:
         # 1. 读取配置
         shortcut = load_config()

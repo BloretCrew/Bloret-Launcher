@@ -93,7 +93,10 @@ def scan_java_paths():
         os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Eclipse Adoptium"),
         os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Zulu"),
         os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "BellSoft"),
-        os.path.join(os.path.expanduser("~"), ".jdks")
+        os.path.join(os.path.expanduser("~"), ".jdks"),
+        "/Library/Java/JavaVirtualMachines",  # macOS
+        "/usr/lib/jvm",                       # Linux
+        "/usr/java"                           # Linux alternative
     ]
     
     for root in common_roots:

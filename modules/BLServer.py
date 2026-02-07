@@ -1,5 +1,9 @@
+import sys
 import logging,requests,os,subprocess,json
-from win32com.client import Dispatch
+if sys.platform == "win32":
+    from win32com.client import Dispatch
+else:
+    Dispatch = None
 from qfluentwidgets import MessageBox
 from modules.win11toast import update_progress
 from modules.i18n import i18nText
@@ -101,6 +105,10 @@ def handle_first_run(self,server_ip):
                 os.remove(updata_ps1_file)
                 log(f"删除文件: {updata_ps1_file}")
     def create_shortcut(self):
+        if sys.platform != "win32":
+            log("非 Windows 平台暂不支持创建桌面快捷方式")
+            return
+        
         desktop = os.path.join(os.path.expanduser('~'), 'Desktop')
         shortcut_path = os.path.join(desktop, 'Bloret Launcher.lnk')
         target = os.path.join(os.getcwd(), 'Bloret-Launcher.exe')
