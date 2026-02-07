@@ -434,6 +434,16 @@ class MainWindow(FluentWindow):
             setTheme(Theme.AUTO)
             
         self.setWindowTitle("Bloret Launcher")
+        
+        # macOS 适配：将窗口控制按钮（红绿灯）移至左侧
+        if sys.platform == 'darwin':
+            self.titleBar.hLayout.insertWidget(0, self.titleBar.closeBtn)
+            self.titleBar.hLayout.insertWidget(1, self.titleBar.minBtn)
+            self.titleBar.hLayout.insertWidget(2, self.titleBar.maxBtn)
+            self.titleBar.hLayout.insertSpacing(3, 10)
+            # 在 macOS 上通常不显示标题栏图标
+            self.titleBar.iconLabel.setHidden(True)
+
         icon_path = os.path.join(os.getcwd(), 'bloret.ico')
         if os.path.exists(icon_path):
             log(f"图标路径存在: {icon_path}")
