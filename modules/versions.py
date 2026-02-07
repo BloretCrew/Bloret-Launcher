@@ -31,7 +31,11 @@ from pathlib import Path
 
 # 第三方库
 import sip  # type: ignore
-import send2trash
+try:
+    import send2trash
+except ImportError:
+    send2trash = None
+    print("[Warning] send2trash not found. Soft deletion to recycle bin will be unavailable.")
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QDesktopServices, QColor
 from PyQt5.QtWidgets import (
@@ -165,7 +169,8 @@ def open_minecraft_version_folder(self,version,MINECRAFT_DIR):
         # 检查版本文件夹是否存在
         if os.path.exists(version_path) and os.path.isdir(version_path):
             # 使用默认文件管理器打开文件夹
-            os.startfile(version_path)
+            from PyQt5.QtCore import QUrl
+            QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.abspath(version_path)))
             log(f"成功打开版本文件夹：{version_path}")
         else:
             log(f"版本文件夹不存在：{version_path}", logging.ERROR)
@@ -214,7 +219,14 @@ def delete_minecraft_version(self,version,label,card,MINECRAFT_DIR,homeInterface
         # 检查版本文件夹是否存在
         if os.path.exists(version_path) and os.path.isdir(version_path):
             # 删除版本文件夹
-            send2trash.send2trash(version_path)
+            if send2trash:
+                send2trash.send2trash(version_path)
+            else:
+                import shutil
+                if os.path.isdir(version_path):
+                    shutil.rmtree(version_path)
+                else:
+                    os.remove(version_path)
             log(f"成功删除版本文件夹：{version_path}")
             
             # 更新全局列表
@@ -3337,7 +3349,8 @@ class ModPage(QWidget):
     def open_folder(self):
         if not os.path.exists(self.mods_dir):
             os.makedirs(self.mods_dir, exist_ok=True)
-        os.startfile(self.mods_dir)
+        from PyQt5.QtCore import QUrl
+        QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.abspath(self.mods_dir)))
 
     def load_mods(self):
         # 清空列表
@@ -3399,7 +3412,14 @@ class ModPage(QWidget):
             w.cancelButton.setText(i18nText("取消"))
             if w.exec():
                 try:
-                    send2trash.send2trash(path)
+                    if send2trash:
+                        send2trash.send2trash(path)
+                    else:
+                        import shutil
+                        if os.path.isdir(path):
+                            shutil.rmtree(path)
+                        else:
+                            os.remove(path)
                     InfoBar.success(title=i18nText("已删除"), content=os.path.basename(path), parent=self.window())
                     self.load_mods() # 刷新列表
                 except Exception as e:
@@ -3591,7 +3611,8 @@ class ResourcePackPage(QWidget):
     def open_folder(self):
         if not os.path.exists(self.packs_dir):
             os.makedirs(self.packs_dir, exist_ok=True)
-        os.startfile(self.packs_dir)
+        from PyQt5.QtCore import QUrl
+        QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.abspath(self.packs_dir)))
 
     def load_packs(self):
         while self.contentLayout.count():
@@ -3622,7 +3643,14 @@ class ResourcePackPage(QWidget):
             w.cancelButton.setText(i18nText("取消"))
             if w.exec():
                 try:
-                    send2trash.send2trash(path)
+                    if send2trash:
+                        send2trash.send2trash(path)
+                    else:
+                        import shutil
+                        if os.path.isdir(path):
+                            shutil.rmtree(path)
+                        else:
+                            os.remove(path)
                     InfoBar.success(title=i18nText("已删除"), content=os.path.basename(path), parent=self.window())
                     self.load_packs()
                 except Exception as e:
@@ -3729,7 +3757,11 @@ class CoreManageDialog(MessageBoxBase):
             version_path = os.path.join(self.minecraft_dir, "versions", self.version_name)
             try:
                 if os.path.exists(version_path):
-                    send2trash.send2trash(version_path)
+                    if send2trash:
+                        send2trash.send2trash(version_path)
+                    else:
+                        import shutil
+                        shutil.rmtree(version_path)
                     log(f"核心已删除: {version_path}")
                     try:
                         if os.path.exists(self.bl_json_path):

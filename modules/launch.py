@@ -1,5 +1,9 @@
 from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
-import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures, threading, time, psutil
+import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, psutil
+try:
+    import send2trash
+except ImportError:
+    send2trash = None
 import sip # type: ignore
 from pathlib import Path
 from modules.win11toast import notify, update_progress
