@@ -82,6 +82,17 @@ jobs:
     - name: 检出最新版本
       uses: actions/checkout@v2
 
+    - name: 验证资源文件路径
+      run: |
+        ls -alh .
+        [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
+        [ -f "config.json" ] || (echo "config.json not found" && exit 1)
+        [ -d "ui" ] || (echo "ui directory not found" && exit 1)
+        [ -d "easytier" ] || (echo "easytier directory not found" && exit 1)
+        [ -d "lang" ] || (echo "lang directory not found" && exit 1)
+        [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
+      shell: bash
+
     - name: 设置 Python
       uses: actions/setup-python@v2
       with:
@@ -131,6 +142,17 @@ jobs:
     - name: 检出最新版本
       uses: actions/checkout@v2
 
+    - name: 验证资源文件路径
+      run: |
+        ls -alh .
+        [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
+        [ -f "config.json" ] || (echo "config.json not found" && exit 1)
+        [ -d "ui" ] || (echo "ui directory not found" && exit 1)
+        [ -d "easytier" ] || (echo "easytier directory not found" && exit 1)
+        [ -d "lang" ] || (echo "lang directory not found" && exit 1)
+        [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
+      shell: bash
+
     - name: 设置 Python
       uses: actions/setup-python@v2
       with:
@@ -165,8 +187,8 @@ jobs:
         path: "${{ env.OUTPUT_DIR }}/"
 
   Upload-To-Release:
-    # 核心修改：明确排除 workflow_dispatch，且只有在 release 事件时才运行
-    if: github.event_name == 'release' && github.event_name != 'workflow_dispatch'
+    # 仅在 release 事件时运行，不在 workflow_dispatch 时运行
+    if: github.event_name == 'release'
     needs: [Build-Windows, Build-Linux, Build-MacOS, Build-Setup]
     runs-on: ubuntu-latest
     steps:
