@@ -215,7 +215,7 @@ jobs:
       matrix:
         include:
           - arch: Intel
-            runner: macos-13
+            runner: macos-12
           - arch: ARM
             runner: macos-14
     runs-on: ${{ matrix.runner }}
