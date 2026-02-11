@@ -132,11 +132,20 @@ jobs:
         path: "${{ env.OUTPUT_DIR }}/"
 
   Build-MacOS:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: Intel
+            runner: macos-13
+          - arch: ARM
+            runner: macos-14
+    runs-on: ${{ matrix.runner }}
+
     env:
       PYTHON_VERSION: '3.10'
       OUTPUT_DIR: 'output'
-      ARTIFACT_NAME: 'Bloret-Launcher-MacOS.zip'
+      ARTIFACT_NAME: 'Bloret-Launcher-MacOS-${{ matrix.arch }}.zip'
 
     steps:
     - name: 检出最新版本
@@ -183,7 +192,7 @@ jobs:
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
-        name: Bloret-Launcher-MacOS
+        name: Bloret-Launcher-MacOS-${{ matrix.arch }}
         path: "${{ env.OUTPUT_DIR }}/"
 
   Upload-To-Release:
@@ -204,11 +213,17 @@ jobs:
           name: Bloret-Launcher-Linux
           path: Bloret-Launcher-Linux
 
-      - name: 下载 MacOS 构建产物
+      - name: 下载 MacOS Intel 构建产物
         uses: actions/download-artifact@v4
         with:
-          name: Bloret-Launcher-MacOS
-          path: Bloret-Launcher-MacOS
+          name: Bloret-Launcher-MacOS-Intel
+          path: Bloret-Launcher-MacOS-Intel
+
+      - name: 下载 MacOS ARM 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-MacOS-ARM
+          path: Bloret-Launcher-MacOS-ARM
 
       - name: 下载安装程序
         uses: actions/download-artifact@v4
@@ -219,7 +234,8 @@ jobs:
         run: |
           zip -r Bloret-Launcher-Windows.zip Bloret-Launcher-Windows/*
           zip -r Bloret-Launcher-Linux.zip Bloret-Launcher-Linux/*
-          zip -r Bloret-Launcher-MacOS.zip Bloret-Launcher-MacOS/*
+          zip -r Bloret-Launcher-MacOS-Intel.zip Bloret-Launcher-MacOS-Intel/*
+          zip -r Bloret-Launcher-MacOS-ARM.zip Bloret-Launcher-MacOS-ARM/*
 
       - name: 上传到 Release
         uses: softprops/action-gh-release@v1
@@ -227,7 +243,8 @@ jobs:
           files: |
             Bloret-Launcher-Windows.zip
             Bloret-Launcher-Linux.zip
-            Bloret-Launcher-MacOS.zip
+            Bloret-Launcher-MacOS-Intel.zip
+            Bloret-Launcher-MacOS-ARM.zip
             Bloret-Launcher-Setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
