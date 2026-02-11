@@ -210,11 +210,19 @@ jobs:
         path: "./output/Bloret-Launcher-Setup.exe"
   Build-macOS:
     needs: Set-Version
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: Intel
+            runner: macos-13
+          - arch: ARM
+            runner: macos-14
+    runs-on: ${{ matrix.runner }}
     env:
       PYTHON_VERSION: '3.9'
       OUTPUT_DIR: 'output'
-      ARTIFACT_NAME: 'Bloret-Launcher-macOS.zip'
+      ARTIFACT_NAME: 'Bloret-Launcher-macOS-${{ matrix.arch }}.zip'
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
@@ -279,7 +287,7 @@ jobs:
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
-        name: Bloret-Launcher-macOS
+        name: Bloret-Launcher-macOS-${{ matrix.arch }}
         path: "${{ env.OUTPUT_DIR }}/"
 
   Build-Linux:
@@ -364,11 +372,16 @@ jobs:
         with:
           name: Bloret-Launcher-Windows
           path: output/all/windows
-      - name: 下载 macOS 构建产物
+      - name: 下载 macOS Intel 构建产物
         uses: actions/download-artifact@v4
         with:
-          name: Bloret-Launcher-macOS
-          path: output/all/macos
+          name: Bloret-Launcher-macOS-Intel
+          path: output/all/macos-intel
+      - name: 下载 macOS ARM 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-macOS-ARM
+          path: output/all/macos-arm
       - name: 下载 Linux 构建产物
         uses: actions/download-artifact@v4
         with:
