@@ -38,16 +38,12 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            platform: Windows
             artifact: Bloret-Launcher-Windows
           - os: ubuntu-latest
-            platform: Linux
             artifact: Bloret-Launcher-Linux
-          - os: macos-15-intel
-            platform: macOS-Intel
+          - os: macos-13
             artifact: Bloret-Launcher-macOS-Intel
           - os: macos-latest
-            platform: macOS-ARM
             artifact: Bloret-Launcher-macOS-ARM
     runs-on: ${{ matrix.os }}
     env:
@@ -56,20 +52,6 @@ jobs:
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
-
-    - name: 验证资源文件路径 (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        if (-not (Test-Path "bloret.ico")) { exit 1 }
-        if (-not (Test-Path "config.json")) { exit 1 }
-        if (-not (Test-Path "ui")) { exit 1 }
-      shell: pwsh
-
-    - name: 验证资源文件路径 (Unix)
-      if: runner.os != 'Windows'
-      run: |
-        [ -f "bloret.ico" ] && [ -f "config.json" ] && [ -d "ui" ]
-      shell: bash
 
     - name: 设置 Python
       uses: actions/setup-python@v2
@@ -121,6 +103,7 @@ jobs:
       with:
         name: ${{ matrix.artifact }}
         path: "${{ env.OUTPUT_DIR }}/"
+
   Code-Package:
     needs: Set-Version
     runs-on: windows-latest

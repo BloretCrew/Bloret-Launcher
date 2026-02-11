@@ -15,17 +15,13 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            platform: Windows
-            artifact: Bloret-Launcher-Windows
+            artifact: Bloret-Launcher
           - os: ubuntu-latest
-            platform: Linux
             artifact: Bloret-Launcher-Linux
-          - os: macos-15-intel
-            platform: macOS-Intel
-            artifact: Bloret-Launcher-macOS-Intel
+          - os: macos-13
+            artifact: Bloret-Launcher-MacOS-Intel
           - os: macos-latest
-            platform: macOS-ARM
-            artifact: Bloret-Launcher-macOS-ARM
+            artifact: Bloret-Launcher-MacOS-ARM
     runs-on: ${{ matrix.os }}
     env:
       PYTHON_VERSION: '3.10'
