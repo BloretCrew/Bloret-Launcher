@@ -9,196 +9,84 @@ on:
   workflow_dispatch:
 
 jobs:
-  Build-Windows:
-    runs-on: windows-latest
-
-    env:
-      PYTHON_VERSION: '3.10'
-      OUTPUT_DIR: 'output'
-      ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'
-
-    steps:
-    - name: 检出最新版本
-      uses: actions/checkout@v2
-      with:
-        ref: 'Windows'
-
-    - name: 验证资源文件路径
-      run: |
-        Get-ChildItem -Path .
-        if (-not (Test-Path "bloret.ico")) { Write-Host "bloret.ico not found"; exit 1 }
-        if (-not (Test-Path "config.json")) { Write-Host "config.json not found"; exit 1 }
-        if (-not (Test-Path "ui")) { Write-Host "ui directory not found"; exit 1 }
-        if (-not (Test-Path "lang")) { Write-Host "lang directory not found"; exit 1 }
-        if (-not (Test-Path "easytier")) { Write-Host "easytier directory not found"; exit 1 }
-        if (-not (Test-Path "JavaWrapper.jar")) { Write-Host "JavaWrapper.jar not found"; exit 1 }
-      shell: pwsh
-
-    - name: 设置 Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: 安装程序依赖和打包依赖
-      run: |
-        pip install --upgrade pip setuptools wheel
-        pip install -r requirements.txt
-        pip install pillow
-        pip install nuitka
-    
-    - name: 使用 Nuitka 打包
-      run: |
-        python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=tk-inter --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe --assume-yes-for-downloads --windows-company-name="Bloret" --windows-product-name="Bloret Launcher" --windows-file-version=1.0.0 --windows-product-version=1.0.0 `
-          --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules Bloret-Launcher.py
-      shell: pwsh
-
-    - name: 创建包含其他文件夹的目录
-      run: |
-        mkdir -p ${{ env.OUTPUT_DIR }}
-        cp Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
-        cp -r ui/ ${{ env.OUTPUT_DIR }}/
-        cp -r lang/ ${{ env.OUTPUT_DIR }}/
-        cp -r easytier/ ${{ env.OUTPUT_DIR }}/
-        cp -r config.json ${{ env.OUTPUT_DIR }}/
-        cp -r LICENSE ${{ env.OUTPUT_DIR }}/
-        cp -r servers.dat ${{ env.OUTPUT_DIR }}/
-        cp -r bloret.ico ${{ env.OUTPUT_DIR }}/
-        cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
-
-    - name: 上传构建产物
-      uses: actions/upload-artifact@v4
-      with:
-        name: Bloret-Launcher
-        path: "${{ env.OUTPUT_DIR }}/"
-        
-  Build-Linux:
-    runs-on: ubuntu-latest
-    env:
-      PYTHON_VERSION: '3.10'
-      OUTPUT_DIR: 'output'
-      ARTIFACT_NAME: 'Bloret-Launcher-Linux.zip'
-
-    steps:
-    - name: 检出最新版本
-      uses: actions/checkout@v2
-
-    - name: 验证资源文件路径
-      run: |
-        ls -alh .
-        [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
-        [ -f "config.json" ] || (echo "config.json not found" && exit 1)
-        [ -d "ui" ] || (echo "ui directory not found" && exit 1)
-        [ -d "easytier" ] || (echo "easytier directory not found" && exit 1)
-        [ -d "lang" ] || (echo "lang directory not found" && exit 1)
-        [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
-      shell: bash
-
-    - name: 设置 Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: Install System Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y fuse libfuse2 patchelf
-
-    - name: 安装程序依赖和打包依赖
-      run: |
-        pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pillow nuitka zstandard
-
-    - name: 使用 Nuitka 打包
-      run: |
-        python -m nuitka --standalone --onefile --enable-plugin=pyqt5 --include-qt-plugins=sensible --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
-
-    - name: 创建包含其他文件夹的目录
-      run: |
-        mkdir -p ${{ env.OUTPUT_DIR }}
-        cp Bloret-Launcher ${{ env.OUTPUT_DIR }}/
-        cp -r ui/ ${{ env.OUTPUT_DIR }}/
-        cp -r lang/ ${{ env.OUTPUT_DIR }}/
-        cp -r easytier/ ${{ env.OUTPUT_DIR }}/
-        cp -r config.json ${{ env.OUTPUT_DIR }}/
-        cp -r LICENSE ${{ env.OUTPUT_DIR }}/
-        cp -r servers.dat ${{ env.OUTPUT_DIR }}/
-        cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
-
-    - name: 上传构建产物
-      uses: actions/upload-artifact@v4
-      with:
-        name: Bloret-Launcher-Linux
-        path: "${{ env.OUTPUT_DIR }}/"
-
-  Build-MacOS:
+  Build-All:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - arch: Intel
-            runner: macos-12
-          - arch: ARM
-            runner: macos-14
-    runs-on: ${{ matrix.runner }}
-
+          - os: windows-latest
+            platform: Windows
+            artifact: Bloret-Launcher-Windows
+          - os: ubuntu-latest
+            platform: Linux
+            artifact: Bloret-Launcher-Linux
+          - os: macos-13
+            platform: macOS-Intel
+            artifact: Bloret-Launcher-macOS-Intel
+          - os: macos-latest
+            platform: macOS-ARM
+            artifact: Bloret-Launcher-macOS-ARM
+    runs-on: ${{ matrix.os }}
     env:
       PYTHON_VERSION: '3.10'
       OUTPUT_DIR: 'output'
-      ARTIFACT_NAME: 'Bloret-Launcher-MacOS-${{ matrix.arch }}.zip'
-
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
-
-    - name: 验证资源文件路径
-      run: |
-        ls -alh .
-        [ -f "bloret.ico" ] || (echo "bloret.ico not found" && exit 1)
-        [ -f "config.json" ] || (echo "config.json not found" && exit 1)
-        [ -d "ui" ] || (echo "ui directory not found" && exit 1)
-        [ -d "easytier" ] || (echo "easytier directory not found" && exit 1)
-        [ -d "lang" ] || (echo "lang directory not found" && exit 1)
-        [ -f "JavaWrapper.jar" ] || (echo "JavaWrapper.jar not found" && exit 1)
-      shell: bash
+      with:
+        ref: ${{ runner.os == 'Windows' && 'Windows' || 'main' }}
 
     - name: 设置 Python
       uses: actions/setup-python@v2
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: 安装程序依赖和打包依赖
+    - name: 安装依赖
       run: |
         pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
         pip install pillow nuitka zstandard ordered-set
+        if [ "${{ runner.os }}" == "Linux" ]; then sudo apt-get update && sudo apt-get install -y fuse libfuse2 patchelf; fi
+      shell: bash
 
-    - name: 使用 Nuitka 打包
+    - name: 使用 Nuitka 打包 (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=tk-inter --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe --assume-yes-for-downloads --windows-company-name="Bloret" --windows-product-name="Bloret Launcher" --windows-file-version=1.0.0 --windows-product-version=1.0.0 --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules Bloret-Launcher.py
+      shell: pwsh
+
+    - name: 使用 Nuitka 打包 (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        python -m nuitka --standalone --onefile --enable-plugin=pyqt5 --include-qt-plugins=sensible --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
+      shell: bash
+
+    - name: 使用 Nuitka 打包 (macOS)
+      if: runner.os == 'macOS'
       run: |
         python -m nuitka --standalone --macos-create-app-bundle --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher.app Bloret-Launcher.py
+      shell: bash
 
-    - name: 创建包含其他文件夹的目录
+    - name: 收集产物
       run: |
         mkdir -p ${{ env.OUTPUT_DIR }}
-        cp -r Bloret-Launcher.app ${{ env.OUTPUT_DIR }}/
-        cp -r ui/ ${{ env.OUTPUT_DIR }}/
-        cp -r lang/ ${{ env.OUTPUT_DIR }}/
-        cp -r easytier/ ${{ env.OUTPUT_DIR }}/
-        cp -r config.json ${{ env.OUTPUT_DIR }}/
-        cp -r LICENSE ${{ env.OUTPUT_DIR }}/
-        cp -r servers.dat ${{ env.OUTPUT_DIR }}/
-        cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+        if [ "${{ runner.os }}" == "Windows" ]; then cp Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/; fi
+        if [ "${{ runner.os }}" == "Linux" ]; then cp Bloret-Launcher ${{ env.OUTPUT_DIR }}/; fi
+        if [ "${{ runner.os }}" == "macOS" ]; then cp -r Bloret-Launcher.app ${{ env.OUTPUT_DIR }}/; fi
+        cp -r ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+        cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
+      shell: bash
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
-        name: Bloret-Launcher-MacOS-${{ matrix.arch }}
+        name: ${{ matrix.artifact }}
         path: "${{ env.OUTPUT_DIR }}/"
-
+        
   Upload-To-Release:
     # 仅在 release 事件时运行，不在 workflow_dispatch 时运行
     if: github.event_name == 'release'
-    needs: [Build-Windows, Build-Linux, Build-MacOS, Build-Setup]
+    needs: [Build-All, Build-Setup]
     runs-on: ubuntu-latest
     steps:
       - name: 下载 Windows 构建产物
@@ -290,7 +178,7 @@ jobs:
         name: Code-Package
         path: "output/Code-Package.zip"
   Build-Setup:
-    needs: Build-Windows
+    needs: Build-All
     runs-on: windows-latest
 
     steps:
