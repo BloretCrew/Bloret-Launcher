@@ -60,12 +60,26 @@ jobs:
     - name: 使用 Nuitka 打包 (macOS)
       if: runner.os == 'macOS'
       run: |
-        # 尝试转换图标格式 (png -> icns)
+        # 尝试转换图标格式 (png -> icns) 使用 iconutil
         ICON_CMD=""
         if [ -f "Bloret-Fluent.png" ]; then
-          mkdir -p build_assets
-          sips -s format icns Bloret-Fluent.png --out build_assets/icon.icns
-          ICON_CMD="--macos-app-icon=build_assets/icon.icns"
+          mkdir -p build_assets/Bloret.iconset
+          # 生成不同尺寸的图标
+          sips -z 16 16     Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_16x16.png
+          sips -z 32 32     Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_16x16@2x.png
+          sips -z 32 32     Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_32x32.png
+          sips -z 64 64     Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_32x32@2x.png
+          sips -z 128 128   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_128x128.png
+          sips -z 256 256   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_128x128@2x.png
+          sips -z 256 256   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_256x256.png
+          sips -z 512 512   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_256x256@2x.png
+          sips -z 512 512   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_512x512.png
+          sips -z 1024 1024 Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_512x512@2x.png
+          
+          # 打包为 icns
+          if iconutil -c icns build_assets/Bloret.iconset -o build_assets/icon.icns; then
+             ICON_CMD="--macos-app-icon=build_assets/icon.icns"
+          fi
         fi
 
         python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher.app Bloret-Launcher.py
