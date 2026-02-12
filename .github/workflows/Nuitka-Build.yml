@@ -28,9 +28,9 @@ jobs:
       OUTPUT_DIR: 'output'
     steps:
     - name: 检出最新版本
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
-        ref: ${{ runner.os == 'Windows' && 'Windows' || 'main' }}
+        ref: ${{ runner.os == 'Windows' && 'Windows' || github.ref }}
 
     - name: 设置 Python
       uses: actions/setup-python@v2
