@@ -60,7 +60,15 @@ jobs:
     - name: 使用 Nuitka 打包 (macOS)
       if: runner.os == 'macOS'
       run: |
-        python -m nuitka --standalone --macos-create-app-bundle --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher.app Bloret-Launcher.py
+        # 尝试转换图标格式 (png -> icns)
+        ICON_CMD=""
+        if [ -f "Bloret-Fluent.png" ]; then
+          mkdir -p build_assets
+          sips -s format icns Bloret-Fluent.png --out build_assets/icon.icns
+          ICON_CMD="--macos-app-icon=build_assets/icon.icns"
+        fi
+
+        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher.app Bloret-Launcher.py
       shell: bash
 
     - name: 收集产物

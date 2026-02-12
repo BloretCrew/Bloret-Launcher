@@ -78,10 +78,26 @@ jobs:
           --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=win11toast --hidden-import=toml --hidden-import=winsdk --paths=. Bloret-Launcher.py
       shell: pwsh
 
-    - name: 使用 PyInstaller 打包 (Unix)
-      if: runner.os != 'Windows'
+    - name: 使用 PyInstaller 打包 (Linux)
+      if: runner.os == 'Linux'
       run: |
         pyinstaller --onefile --windowed --name=Bloret-Launcher \
+          --add-data "bloret.ico:." --add-data "config.json:." --add-data "ui:ui" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
+          --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
+      shell: bash
+
+    - name: 使用 PyInstaller 打包 (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        # 尝试转换图标格式 (png -> icns)
+        ICON_CMD=""
+        if [ -f "Bloret-Fluent.png" ]; then
+          mkdir -p build_assets
+          sips -s format icns Bloret-Fluent.png --out build_assets/icon.icns
+          ICON_CMD="--icon=build_assets/icon.icns"
+        fi
+        
+        pyinstaller --onefile --windowed --name=Bloret-Launcher $ICON_CMD \
           --add-data "bloret.ico:." --add-data "config.json:." --add-data "ui:ui" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
           --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
       shell: bash
@@ -91,6 +107,8 @@ jobs:
         mkdir -p ${{ env.OUTPUT_DIR }}
         if [ "${{ runner.os }}" == "Windows" ]; then
           cp dist/Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
+        elif [ "${{ runner.os }}" == "macOS" ]; then
+          cp -r dist/Bloret-Launcher.app ${{ env.OUTPUT_DIR }}/
         else
           cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
         fi
