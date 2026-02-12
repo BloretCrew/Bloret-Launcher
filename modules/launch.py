@@ -10,7 +10,6 @@ from modules.win11toast import notify, update_progress
 # 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
 from modules.safe import handle_exception
 from modules.log import log
-from modules.safe import handle_exception
 import sys
 from modules.customize import find_Customize
 from modules.i18n import i18nText
@@ -22,9 +21,12 @@ import modules.config as cfg # 确保导入了 config 模块
 if platform.system() == "Windows":
     import ctypes
     from ctypes import wintypes
-    import win32gui
-    import win32con
-    import win32process
+    try:
+        import win32gui # type: ignore
+        import win32con # type: ignore
+        import win32process # type: ignore
+    except ImportError:
+        pass
 
 def Get_Run_Script(mc_version):
     """
@@ -161,23 +163,26 @@ def Get_Run_Script(mc_version):
     # --- 结束账户信息处理 ---
     
     # 构建基本启动参数
-    # 根据java_path是否为完整路径决定是否添加引号
-    if java_path == "java":
-        java_arg = java_path
-    else:
-        java_arg = f'"{java_path}"'
+    # 使用 subprocess.Popen 时，如果 shell=False (推荐)，不需要手动为路径添加引号。
+    # subprocess 会自动处理包含空格的路径。
+    java_arg = java_path
     
-    launch_args = [
-        java_arg,  # Java路径
+    launch_args = [java_arg]
+    
+    # macOS 特有修复：GLFW 必须在第一个线程启动
+    if platform.system() == "Darwin":
+        launch_args.append("-XstartOnFirstThread")
+        log("检测到 macOS，已添加 -XstartOnFirstThread 参数")
+
+    launch_args.extend([
+        "--add-modules=jdk.unsupported", # 解决 sun.misc 和 Unsafe 访问问题
         "--enable-native-access=ALL-UNNAMED",
         "--add-opens", "java.base/java.lang=ALL-UNNAMED",
         "--add-opens", "java.base/java.util=ALL-UNNAMED",
         "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED",
-        "--add-opens", "java.base/sun.misc=ALL-UNNAMED",
         "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",
         "--add-opens", "java.base/jdk.internal.ref=ALL-UNNAMED",
         "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",
-        "--add-exports", "java.base/sun.misc=ALL-UNNAMED",
         "--add-exports", "java.base/jdk.internal.misc=ALL-UNNAMED",
         "--add-exports", "java.base/jdk.internal.ref=ALL-UNNAMED",
         "-Dio.netty.tryReflectionSetAccessible=true",
@@ -219,15 +224,15 @@ def Get_Run_Script(mc_version):
         "-XX:+UseCompressedOops",
         "-XX:+OptimizeStringConcat",
         "-XX:+UseStringDeduplication"
-    ]
+    ])
     
     # 添加 Native 库路径参数
     natives_path = os.path.join(versions_dir, f"{mc_version}-natives")
     launch_args.extend([
-        f'-Djava.library.path="{natives_path}"',
-        f'-Djna.tmpdir="{natives_path}"',
-        f'-Dorg.lwjgl.system.SharedLibraryExtractPath="{natives_path}"',
-        f'-Dio.netty.native.workdir="{natives_path}"'
+        f'-Djava.library.path={natives_path}',
+        f'-Djna.tmpdir={natives_path}',
+        f'-Dorg.lwjgl.system.SharedLibraryExtractPath={natives_path}',
+        f'-Dio.netty.native.workdir={natives_path}'
     ])
     
     # 添加启动器标识参数
@@ -299,10 +304,6 @@ def Get_Run_Script(mc_version):
         f"-Xms{java_min_memory}m",  # 初始堆内存
         f"-Xmx{java_max_memory}m"   # 最大堆内存
     ])
-    
-    # 添加自定义参数 - 设置JavaWrapper的临时目录为系统临时目录
-    temp_dir = os.path.join(os.environ.get('TEMP', os.environ.get('TMP', os.getcwd())), 'Bloret-Launcher')
-    launch_args.append(f'-Doolloo.jlw.tmpdir="{temp_dir}"')
     
     # 添加 Fabric 特定参数和处理
     if is_fabric:
@@ -433,8 +434,8 @@ def Get_Run_Script(mc_version):
         # 更新类路径
         classpath = final_classpath
     
-    # 添加客户端 JAR 到 classpath
-    classpath.append(client_jar_path)
+    # 将客户端核心 JAR 插入到 classpath 的最前面，确保加载器优先找到
+    classpath.insert(0, client_jar_path)
     if not os.path.exists(client_jar_path): missing_libraries.append(({"name": f"{mc_version}.jar", "downloads": {"artifact": {"path": f"{mc_version}/{mc_version}.jar"}}}, client_jar_path))
     
     # 检查是否有缺失的库文件并尝试下载
@@ -459,9 +460,23 @@ def Get_Run_Script(mc_version):
                 classpath.append(lib_path)
                 log(f"添加之前缺失但现已下载的库: {lib_path}")
     
-    # 添加自定义参数 - 设置JavaWrapper的临时目录为系统临时目录
-    temp_dir = os.path.join(os.environ.get('TEMP', os.environ.get('TMP', os.getcwd())), 'Bloret-Launcher')
-    launch_args.append(f'-Doolloo.jlw.tmpdir="{temp_dir}"')
+    # 添加自定义参数 - 设置 Java 运行临时目录
+    # 在 macOS 上使用标准缓存目录，Windows/Linux 使用环境变量或数据目录
+    if sys.platform == "darwin":
+        temp_dir = os.path.expanduser("~/Library/Caches/Bloret-Launcher-Temp")
+    else:
+        base_temp = os.environ.get('TEMP') or os.environ.get('TMP') or os.path.join(BLglobals.datapath, "temp")
+        temp_dir = os.path.join(base_temp, 'Bloret-Launcher-Temp')
+        
+    if not os.path.exists(temp_dir):
+        try:
+            os.makedirs(temp_dir, exist_ok=True)
+        except:
+            pass
+    
+    # 设置特定组件和 Java 标准临时路径
+    launch_args.append(f'-Doolloo.jlw.tmpdir={temp_dir}')
+    launch_args.append(f'-Djava.io.tmpdir={temp_dir}')
     
     # 初始化mods_dir变量 - 使用版本目录下的mods文件夹
     mods_dir = os.path.join(versions_dir, "mods")
@@ -473,26 +488,39 @@ def Get_Run_Script(mc_version):
     
     log("mods 目录: " + mods_dir)
 
+    # 处理 JavaWrapper.jar 路径 (仅在 Windows 原版中使用)
+    java_wrapper_path = os.path.join(os.getcwd(), "JavaWrapper.jar")
+    if hasattr(sys, '_MEIPASS'):
+        java_wrapper_path = os.path.join(sys._MEIPASS, "JavaWrapper.jar")
+
+    # 仅在 Windows 系统且非 Fabric 环境下尝试使用 JavaWrapper 以处理进程管理
+    # macOS 和 Linux 系统直接启动，避免 Wrapper 兼容性问题
+    use_wrapper = (platform.system() == "Windows" and not is_fabric and os.path.exists(java_wrapper_path))
+
+    if use_wrapper:
+        classpath.append(java_wrapper_path)
+        log("将在启动中使用 JavaWrapper (Windows 适配层)")
+
     # 添加类路径参数
-    launch_args.extend(["-cp", '\"' + os.pathsep.join(classpath) + '\"'])  # 使用系统分隔符 (Windows: ;, Unix: :)
+    # 注意：在 shell=False 时，不要手动添加引号。
+    launch_args.extend(["-cp", os.pathsep.join(classpath)])  # 使用系统分隔符 (Windows: ;, Unix: :)
     
     # Add Fabric Loader arguments to ensure mods are loaded
     if is_fabric and os.path.exists(mods_dir):
         log(f"添加 Fabric mods 目录: {mods_dir}")
-        launch_args.extend([f'-Dfabric.addMods="{mods_dir}"'])
+        launch_args.extend([f'-Dfabric.addMods={mods_dir}'])
     
     # 添加主类和参数
     if is_fabric:
-        # Fabric 使用 KnotClient 主类而不是 -jar 参数
+        # Fabric 使用 KnotClient 主类
         launch_args.append("net.fabricmc.loader.impl.launch.knot.KnotClient")
-
     else:
         # 原始 Minecraft 启动方式
-        launch_args.append("-jar")
-        java_wrapper_path = os.path.join(os.getcwd(), "JavaWrapper.jar")
-        if not os.path.exists(java_wrapper_path):
-            raise FileNotFoundError(f"JavaWrapper.jar 文件不存在: {java_wrapper_path}")
-        launch_args.append(f'"{java_wrapper_path}"')
+        if use_wrapper:
+            # 在 Windows 上，Wrapper 充当启动入口
+            launch_args.append("oolloo.jlw.Wrapper")
+        
+        # 指定 Minecraft 的真正主类
         launch_args.append("net.minecraft.client.main.Main")
     
     # 游戏目录应该是主 .minecraft 目录，而不是版本特定目录
@@ -573,17 +601,37 @@ def Get_Run_Script(mc_version):
 # Change timeout default to 300
 def get_minecraft_window_handle(version=None, timeout=300):
     """
-    获取 Minecraft 窗口句柄
+    获取 Minecraft 窗口句柄（Windows）或 进程PID（macOS/Linux）
     
     Args:
         version (str): Minecraft 版本号，用于识别特定版本的窗口
         timeout (int): 超时时间（秒）
     
     Returns:
-        int: 窗口句柄，如果未找到则返回 None
+        int: 窗口句柄或PID，如果未找到则返回 None
     """
     if platform.system() != "Windows":
-        log("获取窗口句柄功能仅支持 Windows 系统")
+        # 非 Windows 系统下通过进程监控实现
+        log(f"在 {platform.system()} 上尝试通过进程寻找 Minecraft...")
+        try:
+            start_time = time.time()
+            while time.time() - start_time < timeout:
+                for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                    try:
+                        cmdline_list = proc.info.get('cmdline', [])
+                        if not cmdline_list: continue
+                        cmdline = ' '.join(cmdline_list)
+                        if 'java' in proc.info.get('name', '').lower() or 'java' in cmdline.lower():
+                            # 检查是否包含 Minecraft 关键特征
+                            if any(keyword in cmdline.lower() for keyword in ['net.minecraft', 'minecraft', '.jar']):
+                                if not version or version in cmdline:
+                                    log(f"找到 Minecraft 进程: PID={proc.pid}")
+                                    return proc.pid
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                time.sleep(1)
+        except Exception as e:
+            log(f"查找进程失败: {e}")
         return None
     
     try:
@@ -702,37 +750,46 @@ def monitor_minecraft_window(version, check_interval=1, callback=None):
         hwnd = get_minecraft_window_handle(version, timeout=300)
         
         if hwnd:
-            log(f"✅ Minecraft {version} 窗口已找到！")
+            log(f"✅ Minecraft {version} 已找到！")
             if callback:
                 try:
                     callback()
                 except Exception as e:
                     log(f"执行回调失败: {e}", logging.ERROR)
-            log(f"🎯 窗口句柄: {hwnd}")
-            log(f"🔍 窗口句柄(十六进制): 0x{hwnd:08X}")
             
-            # 获取窗口信息
-            try:
-                window_text = win32gui.GetWindowText(hwnd)
-                class_name = win32gui.GetClassName(hwnd)
-                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            if platform.system() == "Windows":
+                log(f"🎯 窗口句柄: {hwnd}")
+                log(f"🔍 窗口句柄(十六进制): 0x{hwnd:08X}")
                 
-                log(f"📋 窗口标题: {window_text}")
-                log(f"🏷️ 窗口类名: {class_name}")
-                log(f"🔢 进程ID: {pid}")
-                
-                # 尝试获取进程信息
+                # 获取窗口信息
                 try:
-                    import psutil
-                    process = psutil.Process(pid)
-                    log(f"⚙️ 进程名称: {process.name()}")
-                    log(f"📁 进程路径: {process.exe()}")
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
-                
-            except Exception as e:
-                log(f"获取窗口详细信息时出错: {e}")
+                    window_text = win32gui.GetWindowText(hwnd)
+                    class_name = win32gui.GetClassName(hwnd)
+                    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                    
+                    log(f"📋 窗口标题: {window_text}")
+                    log(f"🏷️ 窗口类名: {class_name}")
+                    log(f"🔢 进程ID: {pid}")
+                    
+                    # 尝试获取进程信息
+                    try:
+                        import psutil
+                        process = psutil.Process(pid)
+                        log(f"⚙️ 进程名称: {process.name()}")
+                        log(f"📁 进程路径: {process.exe()}")
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+                    
+                except Exception as e:
+                    log(f"获取窗口详细信息时出错: {e}")
+            else:
+                log(f"🎯 进程 PID: {hwnd}")
             
+            # 创建工具栏 - 仅在 Windows 上支持 mwtool 的窗口吸附
+            if platform.system() != "Windows":
+                log("非 Windows 系统暂不支持浮动工具栏功能")
+                return hwnd
+
             # 创建工具栏 - 使用修复后的模块确保线程安全
             try:
                 from PyQt5.QtCore import QObject, pyqtSignal, QCoreApplication, QTimer

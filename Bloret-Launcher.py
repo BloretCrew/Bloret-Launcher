@@ -2,6 +2,13 @@
 import os
 import sys
 import re
+
+def get_resource_path(relative_path):
+    """ 获取资源绝对路径，兼容脚本运行和 PyInstaller 打包环境 """
+    if hasattr(sys, '_MEIPASS'):
+        # PyInstaller 临时目录
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 import json
 import time
 import locale
@@ -87,7 +94,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         super().__init__(parent=parent)
         if parent is None:
             print(i18nText("警告：SystemTrayIcon 的 parent 参数为 None"))
-        self.setIcon(QIcon('bloret.ico'))  # 设置托盘图标
+        self.setIcon(QIcon(get_resource_path('bloret.ico')))  # 使用资源路径设置托盘图标
         self.parent = parent
         self.main_window = parent
 
@@ -186,7 +193,7 @@ class RunScriptThread(QThread):
                 launch_args,
                 cwd=work_dir,          # 设置工作目录
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT, # 将 stderr 重定向到 stdout，防止管道阻塞导致游戏卡死
                 text=True,
                 encoding='utf-8',
                 errors='replace',
@@ -195,10 +202,12 @@ class RunScriptThread(QThread):
             )
             
             last_line = ""
+            # 持续读取合并后的游戏日志
             for line in iter(lambda: self.process.stdout.readline(), ''):
                 if line:
                     last_line = line.strip()
                     self.output_received.emit(last_line)
+                    log(f"[Game] {last_line}")
             
             self.last_output_received.emit(last_line)
             self.process.stdout.close()
@@ -207,13 +216,11 @@ class RunScriptThread(QThread):
             if self.process.returncode == 0:
                 self.finished.emit()
             else:
-                # 读取 stderr (如果有)
-                stderr_output = self.process.stderr.read()
-                if stderr_output:
-                     self.error_occurred.emit(stderr_output.strip())
-                else:
-                     # 正常退出或无错误输出的退出
-                     self.finished.emit()
+                # 游戏异常退出时，由于 stderr 已重定向，直接从最后一行日志中提取错误线索
+                error_msg = f"游戏异常退出 (返回码: {self.process.returncode})"
+                if last_line:
+                    error_msg += f"\n最后输出: {last_line}"
+                self.error_occurred.emit(error_msg)
                      
         except subprocess.CalledProcessError as e:
             self.error_occurred.emit(str(e.stderr))
@@ -463,7 +470,7 @@ class MainWindow(FluentWindow):
             if hasattr(self.titleBar, 'iconLabel'):
                 self.titleBar.iconLabel.setHidden(True)
 
-        icon_path = os.path.join(os.getcwd(), 'bloret.ico')
+        icon_path = get_resource_path('bloret.ico')
         if os.path.exists(icon_path):
             log(f"图标路径存在: {icon_path}")
         else:
@@ -551,7 +558,7 @@ class MainWindow(FluentWindow):
 
         # 1. 创建启动页面
         update_progress({'value': 10 / 100, 'valueStringOverride': '1/10', 'status': i18nText('创建启动页面')})
-        icon_path = os.path.join(os.getcwd(), 'bloret.ico')
+        icon_path = get_resource_path('bloret.ico')
         if os.path.exists(icon_path):
             log(f"图标路径存在: {icon_path}")
         else:
@@ -716,14 +723,14 @@ class MainWindow(FluentWindow):
         self.multiplayerInterface.setObjectName("multiplayer")
         self.addSubInterface(self.multiplayerInterface, FluentIcon.CONNECT, i18nText("联机"), NavigationItemPosition.SCROLL)
         self.addSubInterface(self.infoInterface, FluentIcon.INFO, i18nText("关于"), NavigationItemPosition.BOTTOM)
-        load_ui("ui/home.ui", parent=self.homeInterface)
-        load_ui("ui/client.ui", parent=self.multiplayerInterface)
-        load_ui("ui/download.ui", parent=self.downloadInterface)
-        load_ui("ui/tools.ui", parent=self.toolsInterface)
-        load_ui("ui/mods.ui", parent=self.modInterface)
-        load_ui("ui/passport.ui", parent=self.passportInterface)
-        load_ui("ui/settings.ui", parent=self.settingsInterface)
-        load_ui("ui/info.ui", parent=self.infoInterface)
+        load_ui(get_resource_path("ui/home.ui"), parent=self.homeInterface)
+        load_ui(get_resource_path("ui/client.ui"), parent=self.multiplayerInterface)
+        load_ui(get_resource_path("ui/download.ui"), parent=self.downloadInterface)
+        load_ui(get_resource_path("ui/tools.ui"), parent=self.toolsInterface)
+        load_ui(get_resource_path("ui/mods.ui"), parent=self.modInterface)
+        load_ui(get_resource_path("ui/passport.ui"), parent=self.passportInterface)
+        load_ui(get_resource_path("ui/settings.ui"), parent=self.settingsInterface)
+        load_ui(get_resource_path("ui/info.ui"), parent=self.infoInterface)
         i18n_widgets(self)
         
         # 1. 先初始化主页，这里面会调用 run_cmcl_list 更新全局列表
@@ -819,7 +826,7 @@ class MainWindow(FluentWindow):
         # 加载UI文件
         try:
             self.download_dialog = QDialog(self)
-            uic.loadUi("ui/MCVer_downloading.ui", self.download_dialog)
+            uic.loadUi(get_resource_path("ui/MCVer_downloading.ui"), self.download_dialog)
             self.download_dialog.setWindowTitle(f"正在下载 Minecraft {version}")
 
             # 设置MaxThread的值
@@ -2160,13 +2167,13 @@ class MainWindow(FluentWindow):
             teaching_tip.close()
         InfoBar.error(
             title=i18nText('❌ 运行失败'),
-            content=f"run.bat 运行失败: {error}",
+            content=f"{i18nText('游戏启动失败')}: {error}",
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=5000,
             parent=self
         )
-        log(f"run.bat 运行失败: {error}", logging.ERROR)
+        log(f"游戏启动失败: {error}", logging.ERROR)
         self.is_running = False  # 重置标志变量
 
     def update_show_text(self, text):
