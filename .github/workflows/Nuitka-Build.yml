@@ -42,7 +42,7 @@ jobs:
         python -m pip install --upgrade pip wheel
         pip install -r requirements.txt
         # 强制重装 setuptools < 70 版本，修复 Nuitka 内部 jinja2 副本对 pkg_resources 的依赖问题
-        python -m pip install --force-reinstall "setuptools==69.5.1"
+        python -m pip install --upgrade "setuptools>=75.8.1"
         # 确保使用最新版 Nuitka 以获得最佳兼容性
         python -m pip install --upgrade nuitka
         pip install pillow zstandard ordered-set
