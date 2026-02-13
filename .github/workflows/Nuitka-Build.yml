@@ -82,8 +82,6 @@ jobs:
           export PKG_CONFIG_PATH="$OPENSSL_DIR/lib/pkgconfig"
           # 关键：导出 DYLD_LIBRARY_PATH 帮助依赖扫描
           export DYLD_LIBRARY_PATH="$OPENSSL_DIR/lib:$DYLD_LIBRARY_PATH"
-          # 关键：显式增加 Nuitka 的共享库搜索路径
-          OPENSSL_SEARCH_ARG="--include-shlib-search-path=$OPENSSL_DIR/lib"
         fi
 
         # 尝试转换图标格式 (png -> icns)
@@ -109,7 +107,7 @@ jobs:
         if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
         # 移除无效的 --macos-disable-validation 参数
-        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules $OPENSSL_SEARCH_ARG --output-file=Bloret-Launcher.app Bloret-Launcher.py
+        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher.app Bloret-Launcher.py
       shell: bash
 
     - name: 收集产物
