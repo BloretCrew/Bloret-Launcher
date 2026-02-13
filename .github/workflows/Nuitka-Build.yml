@@ -42,7 +42,9 @@ jobs:
         python -m pip install --upgrade pip wheel
         pip install -r requirements.txt
         # 安装兼容版本的 setuptools，避免与 Nuitka 内部 jinja2 的冲突
-        python -m pip install "setuptools<70"
+        # setuptools >= 75.8.1 required for sip 6.15.1
+        # setuptools < 80 recommended for Nuitka compatibility
+        python -m pip install "setuptools>=75.8.1,<80"
         # 确保使用最新版 Nuitka 以获得最佳兼容性
         python -m pip install --upgrade nuitka
         pip install pillow zstandard ordered-set
@@ -87,6 +89,21 @@ jobs:
           # 添加更多标准库路径确保系统库能被正确找到
           export DYLD_FALLBACK_LIBRARY_PATH="$OPENSSL_DIR/lib:/usr/local/lib:/opt/homebrew/lib:/usr/lib:$DYLD_FALLBACK_LIBRARY_PATH"
         fi
+        
+        # Diagnostic: Log OpenSSL paths and library linkage
+        echo "=== OpenSSL Diagnostic Info ==="
+        echo "OPENSSL_DIR: $OPENSSL_DIR"
+        echo "LDFLAGS: $LDFLAGS"
+        echo "DYLD_FALLBACK_LIBRARY_PATH: $DYLD_FALLBACK_LIBRARY_PATH"
+        if [ -f "$OPENSSL_DIR/lib/libssl.dylib" ]; then
+          echo "libssl found at $OPENSSL_DIR/lib/libssl.dylib"
+          ls -l "$OPENSSL_DIR/lib/libssl.dylib"
+        else
+          echo "libssl NOT found at $OPENSSL_DIR/lib/libssl.dylib"
+        fi
+        echo "Checking _hashlib linkage:"
+        otool -L $(python -c "import _hashlib; print(_hashlib.__file__)") || echo "Failed to check _hashlib linkage"
+        echo "============================="
 
         # 尝试转换图标格式 (png -> icns)
         ICON_CMD=""
