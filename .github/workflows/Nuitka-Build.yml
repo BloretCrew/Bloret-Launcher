@@ -69,14 +69,21 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         # 修复 OpenSSL 依赖扫描问题
+        OPENSSL_SEARCH_ARG=""
         if [ -d "/usr/local/opt/openssl@3" ]; then
-          export LDFLAGS="-L/usr/local/opt/openssl@3/lib"
-          export CPPFLAGS="-I/usr/local/opt/openssl@3/include"
-          export PKG_CONFIG_PATH="/usr/local/opt/openssl@3/lib/pkgconfig"
+          OPENSSL_DIR="/usr/local/opt/openssl@3"
         elif [ -d "/opt/homebrew/opt/openssl@3" ]; then
-          export LDFLAGS="-L/opt/homebrew/opt/openssl@3/lib"
-          export CPPFLAGS="-I/opt/homebrew/opt/openssl@3/include"
-          export PKG_CONFIG_PATH="/opt/homebrew/opt/openssl@3/lib/pkgconfig"
+          OPENSSL_DIR="/opt/homebrew/opt/openssl@3"
+        fi
+
+        if [ ! -z "$OPENSSL_DIR" ]; then
+          export LDFLAGS="-L$OPENSSL_DIR/lib"
+          export CPPFLAGS="-I$OPENSSL_DIR/include"
+          export PKG_CONFIG_PATH="$OPENSSL_DIR/lib/pkgconfig"
+          # 关键：导出 DYLD_LIBRARY_PATH 帮助依赖扫描
+          export DYLD_LIBRARY_PATH="$OPENSSL_DIR/lib:$DYLD_LIBRARY_PATH"
+          # 关键：显式增加 Nuitka 的共享库搜索路径
+          OPENSSL_SEARCH_ARG="--include-shlib-search-path=$OPENSSL_DIR/lib"
         fi
 
         # 尝试转换图标格式 (png -> icns)
@@ -101,7 +108,8 @@ jobs:
         EASYTIER_ARG=""
         if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
-        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher.app Bloret-Launcher.py
+        # 增加 --macos-disable-validation 以规避扫描时的验证问题
+        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --macos-disable-validation $OPENSSL_SEARCH_ARG --output-file=Bloret-Launcher.app Bloret-Launcher.py
       shell: bash
 
     - name: 收集产物
