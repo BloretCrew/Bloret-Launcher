@@ -18,7 +18,7 @@ jobs:
             artifact: Bloret-Launcher
           - os: ubuntu-latest
             artifact: Bloret-Launcher-Linux
-          - os: macos-13
+          - os: macos-15-intel
             artifact: Bloret-Launcher-MacOS-Intel
           - os: macos-latest
             artifact: Bloret-Launcher-MacOS-ARM
