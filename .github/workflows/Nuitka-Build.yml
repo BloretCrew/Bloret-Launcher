@@ -18,7 +18,7 @@ jobs:
             artifact: Bloret-Launcher
           - os: ubuntu-latest
             artifact: Bloret-Launcher-Linux
-          - os: macos-15-intel
+          - os: macos-13
             artifact: Bloret-Launcher-MacOS-Intel
           - os: macos-latest
             artifact: Bloret-Launcher-MacOS-ARM
@@ -33,7 +33,7 @@ jobs:
         ref: ${{ runner.os == 'Windows' && 'Windows' || github.ref }}
 
     - name: 设置 Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
@@ -47,7 +47,10 @@ jobs:
         python -m pip install --upgrade nuitka
         pip install pillow zstandard ordered-set
         if [ "${{ runner.os }}" == "Linux" ]; then sudo apt-get update && sudo apt-get install -y fuse libfuse2 patchelf; fi
-        if [ "${{ runner.os }}" == "macOS" ]; then brew install openssl@3 ccache; fi
+        if [ "${{ runner.os }}" == "macOS" ]; then
+          brew list openssl@3 &>/dev/null || brew install openssl@3
+          brew list ccache &>/dev/null || brew install ccache
+        fi
       shell: bash
 
     - name: 使用 Nuitka 打包 (Windows)
@@ -113,7 +116,7 @@ jobs:
         fi
 
         EASYTIER_ARG=""
-        if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
+        if [ -d "easytier" ] && [ "$(ls -A easytier)" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
         # OpenSSL 依赖通过上面的环境变量配置处理
         # 更严格的排除规则，防止 Nuitka 尝试包含 OpenSSL 等系统库
@@ -197,7 +200,7 @@ jobs:
 
     steps:
     - name: 检出最新版本
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         ref: 'Windows'
 
@@ -238,7 +241,7 @@ jobs:
 
     steps:
     - name: 检出最新版本
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         ref: 'Windows'
 
@@ -290,7 +293,7 @@ jobs:
     #     VERSION="${{ github.event.release.tag_name }}"
     #     VERSION_NAME="${{ github.event.release.name }}"
     #     DESCRIPTION=${{ toJSON(github.event.release.body) }}
-        
+    #     
     #     # 调用API更新为测试版
     #     curl -X POST https://launcher.bloret.net/api/newversion/github \
     #       -H "Content-Type: application/json" \
