@@ -115,7 +115,8 @@ jobs:
         if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
         # OpenSSL 依赖通过上面的环境变量配置处理
-        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher.app Bloret-Launcher.py
+        # 排除系统库的 dylib 扫描，防止 Nuitka 尝试包含 OpenSSL 等系统库
+        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --output-file=Bloret-Launcher.app Bloret-Launcher.py
       shell: bash
 
     - name: 收集产物
