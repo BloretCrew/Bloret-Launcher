@@ -47,28 +47,42 @@ jobs:
         python -m pip install --upgrade nuitka
         pip install pillow zstandard ordered-set
         if [ "${{ runner.os }}" == "Linux" ]; then sudo apt-get update && sudo apt-get install -y fuse libfuse2 patchelf; fi
+        if [ "${{ runner.os }}" == "macOS" ]; then brew install openssl@3 ccache; fi
       shell: bash
 
     - name: 使用 Nuitka 打包 (Windows)
       if: runner.os == 'Windows'
       run: |
-        python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=tk-inter --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe --assume-yes-for-downloads --windows-company-name="Bloret" --windows-product-name="Bloret Launcher" --windows-file-version=1.0.0 --windows-product-version=1.0.0 --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules Bloret-Launcher.py
+        $EASYTIER_ARG = if (Test-Path "easytier") { "--include-data-dir=easytier=easytier" } else { "" }
+        python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=tk-inter --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe --assume-yes-for-downloads --windows-company-name="Bloret" --windows-product-name="Bloret Launcher" --windows-file-version=1.0.0 --windows-product-version=1.0.0 --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules Bloret-Launcher.py
       shell: pwsh
 
     - name: 使用 Nuitka 打包 (Linux)
       if: runner.os == 'Linux'
       run: |
-        python -m nuitka --standalone --onefile --enable-plugin=pyqt5 --include-qt-plugins=sensible --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
+        EASYTIER_ARG=""
+        if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
+        python -m nuitka --standalone --onefile --enable-plugin=pyqt5 --include-qt-plugins=sensible --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
       shell: bash
 
     - name: 使用 Nuitka 打包 (macOS)
       if: runner.os == 'macOS'
       run: |
-        # 尝试转换图标格式 (png -> icns) 使用 iconutil
+        # 修复 OpenSSL 依赖扫描问题
+        if [ -d "/usr/local/opt/openssl@3" ]; then
+          export LDFLAGS="-L/usr/local/opt/openssl@3/lib"
+          export CPPFLAGS="-I/usr/local/opt/openssl@3/include"
+          export PKG_CONFIG_PATH="/usr/local/opt/openssl@3/lib/pkgconfig"
+        elif [ -d "/opt/homebrew/opt/openssl@3" ]; then
+          export LDFLAGS="-L/opt/homebrew/opt/openssl@3/lib"
+          export CPPFLAGS="-I/opt/homebrew/opt/openssl@3/include"
+          export PKG_CONFIG_PATH="/opt/homebrew/opt/openssl@3/lib/pkgconfig"
+        fi
+
+        # 尝试转换图标格式 (png -> icns)
         ICON_CMD=""
         if [ -f "Bloret-Fluent.png" ]; then
           mkdir -p build_assets/Bloret.iconset
-          # 生成不同尺寸的图标
           sips -z 16 16     Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_16x16.png
           sips -z 32 32     Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_16x16@2x.png
           sips -z 32 32     Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_32x32.png
@@ -79,14 +93,15 @@ jobs:
           sips -z 512 512   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_256x256@2x.png
           sips -z 512 512   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_512x512.png
           sips -z 1024 1024 Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_512x512@2x.png
-          
-          # 打包为 icns
           if iconutil -c icns build_assets/Bloret.iconset -o build_assets/icon.icns; then
              ICON_CMD="--macos-app-icon=build_assets/icon.icns"
           fi
         fi
 
-        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules --output-file=Bloret-Launcher.app Bloret-Launcher.py
+        EASYTIER_ARG=""
+        if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
+
+        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher.app Bloret-Launcher.py
       shell: bash
 
     - name: 收集产物
@@ -95,7 +110,8 @@ jobs:
         if [ "${{ runner.os }}" == "Windows" ]; then cp Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/; fi
         if [ "${{ runner.os }}" == "Linux" ]; then cp Bloret-Launcher ${{ env.OUTPUT_DIR }}/; fi
         if [ "${{ runner.os }}" == "macOS" ]; then cp -r Bloret-Launcher.app ${{ env.OUTPUT_DIR }}/; fi
-        cp -r ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+        cp -r ui lang config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+        if [ -d "easytier" ]; then cp -r easytier ${{ env.OUTPUT_DIR }}/; fi
         cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
       shell: bash
 
