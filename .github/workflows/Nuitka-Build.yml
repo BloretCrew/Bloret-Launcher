@@ -108,8 +108,8 @@ jobs:
         EASYTIER_ARG=""
         if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
-        # 增加 --macos-disable-validation 以规避扫描时的验证问题
-        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --macos-disable-validation $OPENSSL_SEARCH_ARG --output-file=Bloret-Launcher.app Bloret-Launcher.py
+        # 移除无效的 --macos-disable-validation 参数
+        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules $OPENSSL_SEARCH_ARG --output-file=Bloret-Launcher.app Bloret-Launcher.py
       shell: bash
 
     - name: 收集产物
