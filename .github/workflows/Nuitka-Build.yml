@@ -81,7 +81,8 @@ jobs:
           export CPPFLAGS="-I$OPENSSL_DIR/include"
           export PKG_CONFIG_PATH="$OPENSSL_DIR/lib/pkgconfig"
           # 使用 DYLD_FALLBACK_LIBRARY_PATH 代替 DYLD_LIBRARY_PATH，避免干扰系统工具的依赖解析
-          export DYLD_FALLBACK_LIBRARY_PATH="$OPENSSL_DIR/lib:$DYLD_FALLBACK_LIBRARY_PATH"
+          # 添加更多标准库路径确保系统库能被正确找到
+          export DYLD_FALLBACK_LIBRARY_PATH="$OPENSSL_DIR/lib:/usr/local/lib:/opt/homebrew/lib:$DYLD_FALLBACK_LIBRARY_PATH"
         fi
 
         # 尝试转换图标格式 (png -> icns)
@@ -115,8 +116,9 @@ jobs:
         if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
         # OpenSSL 依赖通过上面的环境变量配置处理
-        # 排除系统库的 dylib 扫描，防止 Nuitka 尝试包含 OpenSSL 等系统库
-        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --output-file=Bloret-Launcher.app Bloret-Launcher.py
+        # 明确排除系统库的 dylib 扫描，防止 Nuitka 尝试包含 OpenSSL 等系统库
+        # 添加 --static-libpython=no 参数减少链接问题
+        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --static-libpython=no --output-file=Bloret-Launcher.app Bloret-Launcher.py
       shell: bash
 
     - name: 收集产物
