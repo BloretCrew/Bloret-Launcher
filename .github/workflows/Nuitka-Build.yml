@@ -80,24 +80,32 @@ jobs:
           export LDFLAGS="-L$OPENSSL_DIR/lib"
           export CPPFLAGS="-I$OPENSSL_DIR/include"
           export PKG_CONFIG_PATH="$OPENSSL_DIR/lib/pkgconfig"
-          # 关键：导出 DYLD_LIBRARY_PATH 帮助依赖扫描
-          export DYLD_LIBRARY_PATH="$OPENSSL_DIR/lib:$DYLD_LIBRARY_PATH"
+          # 使用 DYLD_FALLBACK_LIBRARY_PATH 代替 DYLD_LIBRARY_PATH，避免干扰系统工具的依赖解析
+          export DYLD_FALLBACK_LIBRARY_PATH="$OPENSSL_DIR/lib:$DYLD_FALLBACK_LIBRARY_PATH"
         fi
 
         # 尝试转换图标格式 (png -> icns)
         ICON_CMD=""
-        if [ -f "Bloret-Fluent.png" ]; then
+        # 修正图标源路径
+        ICON_SOURCE=""
+        if [ -f "img/BL.png" ]; then
+          ICON_SOURCE="img/BL.png"
+        elif [ -f "Bloret-Fluent.png" ]; then
+          ICON_SOURCE="Bloret-Fluent.png"
+        fi
+
+        if [ ! -z "$ICON_SOURCE" ]; then
           mkdir -p build_assets/Bloret.iconset
-          sips -z 16 16     Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_16x16.png
-          sips -z 32 32     Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_16x16@2x.png
-          sips -z 32 32     Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_32x32.png
-          sips -z 64 64     Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_32x32@2x.png
-          sips -z 128 128   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_128x128.png
-          sips -z 256 256   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_128x128@2x.png
-          sips -z 256 256   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_256x256.png
-          sips -z 512 512   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_256x256@2x.png
-          sips -z 512 512   Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_512x512.png
-          sips -z 1024 1024 Bloret-Fluent.png --out build_assets/Bloret.iconset/icon_512x512@2x.png
+          sips -z 16 16     $ICON_SOURCE --out build_assets/Bloret.iconset/icon_16x16.png
+          sips -z 32 32     $ICON_SOURCE --out build_assets/Bloret.iconset/icon_16x16@2x.png
+          sips -z 32 32     $ICON_SOURCE --out build_assets/Bloret.iconset/icon_32x32.png
+          sips -z 64 64     $ICON_SOURCE --out build_assets/Bloret.iconset/icon_32x32@2x.png
+          sips -z 128 128   $ICON_SOURCE --out build_assets/Bloret.iconset/icon_128x128.png
+          sips -z 256 256   $ICON_SOURCE --out build_assets/Bloret.iconset/icon_128x128@2x.png
+          sips -z 256 256   $ICON_SOURCE --out build_assets/Bloret.iconset/icon_256x256.png
+          sips -z 512 512   $ICON_SOURCE --out build_assets/Bloret.iconset/icon_256x256@2x.png
+          sips -z 512 512   $ICON_SOURCE --out build_assets/Bloret.iconset/icon_512x512.png
+          sips -z 1024 1024 $ICON_SOURCE --out build_assets/Bloret.iconset/icon_512x512@2x.png
           if iconutil -c icns build_assets/Bloret.iconset -o build_assets/icon.icns; then
              ICON_CMD="--macos-app-icon=build_assets/icon.icns"
           fi
@@ -106,8 +114,8 @@ jobs:
         EASYTIER_ARG=""
         if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
-        # 移除无效的 --macos-disable-validation 参数
-        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher.app Bloret-Launcher.py
+        # 添加 --macos-allow-missing-dlls 以修复 OpenSSL 依赖扫描导致的 FATAL 错误
+        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --macos-allow-missing-dlls --output-file=Bloret-Launcher.app Bloret-Launcher.py
       shell: bash
 
     - name: 收集产物
