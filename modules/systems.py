@@ -1,5 +1,5 @@
 from modules.win11toast import toast
-import logging, os, subprocess
+import logging, os, subprocess, tempfile
 import sys
 
 if sys.platform == "win32":
@@ -92,13 +92,13 @@ def send_system_notification(title, message):
 def check_write_permission():
     # 检查当前目录的写入权限
     try:
-        test_file = os.path.join(os.getcwd(), 'test_write.tmp')
+        test_file = os.path.join(tempfile.gettempdir(), 'test_write.tmp')
         with open(test_file, 'w') as f:
             f.write('test')
         os.remove(test_file)
         print(i18nText("当前目录具有写入权限"))
         return True
-    except PermissionError:
+    except (PermissionError, OSError):
         print(i18nText("当前目录没有写入权限"))
         return False
 
