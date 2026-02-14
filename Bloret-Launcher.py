@@ -440,9 +440,12 @@ class MainWindow(FluentWindow):
         log(f"系统主题颜色: {theme_color}")
         setThemeColor(theme_color)
 
-        if(isdarktheme):
+        if isdarktheme:
             from qfluentwidgets import setTheme, Theme
-            setTheme(Theme.AUTO)
+            setTheme(Theme.DARK)
+        else:
+            from qfluentwidgets import setTheme, Theme
+            setTheme(Theme.LIGHT)
             
         self.setWindowTitle("Bloret Launcher")
         
@@ -466,9 +469,9 @@ class MainWindow(FluentWindow):
             except AttributeError as e:
                 log(f"macOS 标题栏适配失败: {e}", logging.WARNING)
             
-            # 在 macOS 上通常不显示标题栏图标
+            # 在 macOS 上通常不显示标题栏图标，但用户要求显示
             if hasattr(self.titleBar, 'iconLabel'):
-                self.titleBar.iconLabel.setHidden(True)
+                self.titleBar.iconLabel.setHidden(False)
 
         icon_path = get_resource_path('bloret.ico')
         if os.path.exists(icon_path):
@@ -1899,16 +1902,14 @@ class MainWindow(FluentWindow):
     def apply_theme(self, palette=None):
         if palette is None:
             palette = QApplication.palette()
-        
-        # 检测系统主题
-        if palette.color(QPalette.Window).lightness() < 128:
-            theme = "dark"
+            # Trust system theme detection for auto mode
+            is_dark = is_dark_theme()
         else:
-            theme = "light"
+            # Check palette lightness for manual mode overrides
+            is_dark = palette.color(QPalette.Window).lightness() < 128
         
-        if theme == "dark":
+        if is_dark:
             self.setStyleSheet("""
-                QWidget { background-color: #2e2e2e; color: #ffffff; }
                 QPushButton { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
                 QPushButton:hover { background-color: #4a4a4a; color: #ffffff; }
                 QPushButton:pressed { background-color: #5a5a5a; color: #ffffff; }
@@ -1922,23 +1923,34 @@ class MainWindow(FluentWindow):
                 QCheckBox::indicator { width: 20px; height: 20px; }
                 QCheckBox::indicator:checked { image: url(ui/icon/checked.png); }
                 QCheckBox::indicator:unchecked { image: url(ui/icon/unchecked.png); }
+                QLabel, SubtitleLabel, StrongBodyLabel, BodyLabel, CaptionLabel, #titleLabel, TitleBar QLabel, FluentTitleBar QLabel, MSFluentTitleBar QLabel { color: #ffffff !important; }
             """)
+            if hasattr(self, 'titleBar'):
+                self.titleBar.setStyleSheet("background: transparent;")
+                for label in self.titleBar.findChildren(QLabel):
+                    label.setStyleSheet("color: #ffffff !important;")
+            
             palette.setColor(QPalette.Window, QColor("#2e2e2e"))
             palette.setColor(QPalette.WindowText, QColor("#ffffff"))
-            palette.setColor(QPalette.Base, QColor("#1e1e1e"))
+            palette.setColor(QPalette.Base, QColor("#2e2e2e"))
             palette.setColor(QPalette.AlternateBase, QColor("#2e2e2e"))
             palette.setColor(QPalette.ToolTipBase, QColor("#ffffff"))
-            palette.setColor(QPalette.ToolTipText, QColor("#ffffff"))
+            palette.setColor(QPalette.ToolTipText, QColor("#000000"))
             palette.setColor(QPalette.Text, QColor("#ffffff"))
             palette.setColor(QPalette.Button, QColor("#3a3a3a"))
             palette.setColor(QPalette.ButtonText, QColor("#ffffff"))
             palette.setColor(QPalette.BrightText, QColor("#ff0000"))
             palette.setColor(QPalette.Link, QColor("#2a82da"))
             palette.setColor(QPalette.Highlight, QColor("#2a82da"))
-            palette.setColor(QPalette.HighlightedText, QColor("#000000"))
+            palette.setColor(QPalette.HighlightedText, QColor("#ffffff"))
             self.setPalette(palette)
         else:
+            # Light mode
             self.setStyleSheet("")
+            if hasattr(self, 'titleBar'):
+                self.titleBar.setStyleSheet("")
+                for label in self.titleBar.findChildren(QLabel):
+                    label.setStyleSheet("")
             self.setPalette(self.style().standardPalette())
 
 

@@ -49,37 +49,49 @@ def get_system_theme_color():
         return "#0078D7"  # 默认蓝色
 
 def is_dark_theme():
-    if sys.platform != "win32":
-        # Linux/macOS 暂时默认浅色或深色，后续可接入对应系统的检测
-        return False
-
-    try:
-        # 定义注册表路径和键名
-        reg_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
-        reg_key = "AppsUseLightTheme"
-        
-        # 打开注册表键
-        hkey = ctypes.wintypes.HKEY()
-        if ctypes.windll.advapi32.RegOpenKeyExW(0x80000001, reg_path, 0, 0x20019, ctypes.byref(hkey)) != 0:
-            print(i18nText("无法打开注册表键"))
-            return False
-        
-        # 读取键值
-        value = ctypes.c_int()
-        size = ctypes.c_uint(4)
-        if ctypes.windll.advapi32.RegQueryValueExW(hkey, reg_key, 0, None, ctypes.byref(value), ctypes.byref(size)) != 0:
-            print(i18nText("无法读取注册表键值"))
+    if sys.platform == "win32":
+        try:
+            # 定义注册表路径和键名
+            reg_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
+            reg_key = "AppsUseLightTheme"
+            
+            # 打开注册表键
+            hkey = ctypes.wintypes.HKEY()
+            if ctypes.windll.advapi32.RegOpenKeyExW(0x80000001, reg_path, 0, 0x20019, ctypes.byref(hkey)) != 0:
+                print(i18nText("无法打开注册表键"))
+                return False
+            
+            # 读取键值
+            value = ctypes.c_int()
+            size = ctypes.c_uint(4)
+            if ctypes.windll.advapi32.RegQueryValueExW(hkey, reg_key, 0, None, ctypes.byref(value), ctypes.byref(size)) != 0:
+                print(i18nText("无法读取注册表键值"))
+                ctypes.windll.advapi32.RegCloseKey(hkey)
+                return False
+            
+            # 关闭注册表键
             ctypes.windll.advapi32.RegCloseKey(hkey)
+            
+            # 返回主题状态
+            return value.value == 0  # 0 表示深色主题，1 表示浅色主题
+        except Exception as e:
+            handle_exception(e)
+            print(f"检测主题时发生错误: {e}")
             return False
-        
-        # 关闭注册表键
-        ctypes.windll.advapi32.RegCloseKey(hkey)
-        
-        # 返回主题状态
-        return value.value == 0  # 0 表示深色主题，1 表示浅色主题
-    except Exception as e:
-        handle_exception(e)
-        print(f"检测主题时发生错误: {e}")
+    elif sys.platform == "darwin":
+        try:
+            # macOS theme detection
+            cmd = 'defaults read -g AppleInterfaceStyle'
+            p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = p.communicate()
+            if stdout.decode('utf-8').strip() == "Dark":
+                return True
+            return False
+        except Exception as e:
+            handle_exception(e)
+            return False
+    else:
+        # Linux 暂时默认浅色
         return False
 
 def send_system_notification(title, message):
