@@ -53,7 +53,7 @@ from modules.safe import handle_exception
 from modules.log import log
 from modules.win11toast import toast, notify, update_progress
 from modules.systems import (
-    get_system_theme_color, is_dark_theme, check_write_permission, 
+    get_system_theme_color, is_dark_theme, 
     restart, setup_startup_with_self_starting
 )
 from modules.setup_ui import (
@@ -503,7 +503,8 @@ class MainWindow(FluentWindow):
         else:
             # Linux/macOS simple file lock
             import fcntl
-            self.lock_file = open(os.path.join(os.getcwd(), 'bloret.lock'), 'w')
+            import tempfile
+            self.lock_file = open(os.path.join(tempfile.gettempdir(), 'bloret.lock'), 'w')
             try:
                 fcntl.lockf(self.lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except IOError:
@@ -2265,14 +2266,15 @@ app = QApplication(["Bloret Launcher"])
 #     window.retranslateUi()  # 重新翻译 UI
 
 
-# 检查写入权限
-if not check_write_permission():
-    w = Dialog(i18nText("Bloret Launcher 无法写入文件"), i18nText("Bloret Launcher 需要在安装文件夹写入文件，但是我们在多次尝试后仍无法正常写入文件\n这可能是由于安装文件夹是只读的。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n由于没有写入权限，百络谷启动器将退出。"))
-    if w.exec():
-        print(i18nText('确认'))
-    else:
-        print(i18nText('取消'))
-    sys.exit(0)
+
+# 检查写入权限 - 已移除
+# if not check_write_permission():
+#     w = Dialog(i18nText("Bloret Launcher 无法写入文件"), i18nText("Bloret Launcher 需要在安装文件夹写入文件，但是我们在多次尝试后仍无法正常写入文件\n这可能是由于安装文件夹是只读的。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n由于没有写入权限，百络谷启动器将退出。"))
+#     if w.exec():
+#         print(i18nText('确认'))
+#     else:
+#         print(i18nText('取消'))
+#     sys.exit(0)
 
 # 创建主窗口并显示
 window = MainWindow()

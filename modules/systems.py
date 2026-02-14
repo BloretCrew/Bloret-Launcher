@@ -89,18 +89,6 @@ def send_system_notification(title, message):
         handle_exception(e)
         log(f"发送系统通知失败: {e}", logging.ERROR)
 
-def check_write_permission():
-    # 检查当前目录的写入权限
-    try:
-        test_file = os.path.join(tempfile.gettempdir(), 'test_write.tmp')
-        with open(test_file, 'w') as f:
-            f.write('test')
-        os.remove(test_file)
-        print(i18nText("当前目录具有写入权限"))
-        return True
-    except (PermissionError, OSError):
-        print(i18nText("当前目录没有写入权限"))
-        return False
 
 def restart():
     log(i18nText('重启程序'))
