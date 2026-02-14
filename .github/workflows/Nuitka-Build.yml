@@ -70,6 +70,76 @@ jobs:
         python -m nuitka --standalone --onefile --enable-plugin=pyqt5 --include-qt-plugins=sensible --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
       shell: bash
 
+    - name: 修复 OpenSSL 依赖 (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        # 定位 Python 的 lib-dynload 目录
+        PYTHON_STDLIB=$(python -c "import sysconfig; print(sysconfig.get_path('stdlib'))")
+        DYNLOAD_PATH="$PYTHON_STDLIB/lib-dynload"
+        echo "Python lib-dynload path: $DYNLOAD_PATH"
+        
+        # 获取 Homebrew OpenSSL 路径
+        OPENSSL_PREFIX=$(brew --prefix openssl@3)
+        LIBSSL="$OPENSSL_PREFIX/lib/libssl.3.dylib"
+        LIBCRYPTO="$OPENSSL_PREFIX/lib/libcrypto.3.dylib"
+        echo "OpenSSL prefix: $OPENSSL_PREFIX"
+        
+        if [ ! -f "$LIBSSL" ]; then
+            echo "Error: libssl.3.dylib not found at $LIBSSL"
+            exit 1
+        fi
+
+        # 复制库文件到 lib-dynload
+        echo "Copying OpenSSL libs to $DYNLOAD_PATH"
+        cp "$LIBSSL" "$DYNLOAD_PATH/"
+        cp "$LIBCRYPTO" "$DYNLOAD_PATH/"
+        
+        # 修改库的权限以便修改（默认可能是只读）
+        chmod u+w "$DYNLOAD_PATH/libssl.3.dylib" "$DYNLOAD_PATH/libcrypto.3.dylib"
+        
+        # 定义 patch 函数
+        patch_lib() {
+            local target=$1
+            local libssl_name="libssl.3.dylib"
+            local libcrypto_name="libcrypto.3.dylib"
+            
+            if [ -f "$target" ]; then
+                echo "Patching $target..."
+                # 修改权限
+                sudo chmod u+w "$target"
+                
+                # 修改依赖路径为 @loader_path (即当前目录)
+                # 注意：原始路径可能是 /usr/local/opt/openssl@3/lib/libssl.3.dylib 或类似
+                # 我们尝试查找并替换所有指向 Homebrew OpenSSL 的引用
+                
+                # 获取当前依赖
+                otool -L "$target"
+                
+                sudo install_name_tool -change "$LIBSSL" "@loader_path/$libssl_name" "$target"
+                sudo install_name_tool -change "$LIBCRYPTO" "@loader_path/$libcrypto_name" "$target"
+                
+                echo "Patched:"
+                otool -L "$target" | grep "openssl" || true
+            else
+                echo "Warning: Target $target not found, skipping."
+            fi
+        }
+
+        # Patch _hashlib.so
+        HASHLIB=$(find "$DYNLOAD_PATH" -name "_hashlib*.so" | head -n 1)
+        patch_lib "$HASHLIB"
+        
+        # Patch _ssl.so
+        SSL_MOD=$(find "$DYNLOAD_PATH" -name "_ssl*.so" | head -n 1)
+        patch_lib "$SSL_MOD"
+        
+        # Patch libssl.3.dylib 本身可能依赖 libcrypto.3.dylib
+        TARGET_LIBSSL="$DYNLOAD_PATH/libssl.3.dylib"
+        patch_lib "$TARGET_LIBSSL"
+        
+        echo "Dependency patch completed."
+      shell: bash
+
     - name: 使用 Nuitka 打包 (macOS)
       if: runner.os == 'macOS'
       run: |
