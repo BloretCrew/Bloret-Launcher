@@ -159,24 +159,27 @@ jobs:
         ICON_CMD=""
         # 修正图标源路径
         ICON_SOURCE=""
-        if [ -f "img/BL.png" ]; then
-          ICON_SOURCE="img/BL.png"
-        elif [ -f "Bloret-Fluent.png" ]; then
+        if [ -f "Bloret-Fluent.png" ]; then
           ICON_SOURCE="Bloret-Fluent.png"
+        elif [ -f "img/BL.png" ]; then
+          ICON_SOURCE="img/BL.png"
         fi
 
         if [ ! -z "$ICON_SOURCE" ]; then
           mkdir -p build_assets/Bloret.iconset
-          sips -z 16 16     $ICON_SOURCE --out build_assets/Bloret.iconset/icon_16x16.png
-          sips -z 32 32     $ICON_SOURCE --out build_assets/Bloret.iconset/icon_16x16@2x.png
-          sips -z 32 32     $ICON_SOURCE --out build_assets/Bloret.iconset/icon_32x32.png
-          sips -z 64 64     $ICON_SOURCE --out build_assets/Bloret.iconset/icon_32x32@2x.png
-          sips -z 128 128   $ICON_SOURCE --out build_assets/Bloret.iconset/icon_128x128.png
-          sips -z 256 256   $ICON_SOURCE --out build_assets/Bloret.iconset/icon_128x128@2x.png
-          sips -z 256 256   $ICON_SOURCE --out build_assets/Bloret.iconset/icon_256x256.png
-          sips -z 512 512   $ICON_SOURCE --out build_assets/Bloret.iconset/icon_256x256@2x.png
-          sips -z 512 512   $ICON_SOURCE --out build_assets/Bloret.iconset/icon_512x512.png
-          sips -z 1024 1024 $ICON_SOURCE --out build_assets/Bloret.iconset/icon_512x512@2x.png
+          for size in 16 32 128 256 512; do
+            # 计算 80% 的尺寸用于内容，其余为留白
+            content_size=$(python3 -c "print(int($size * 0.8))")
+            sips -z $content_size $content_size $ICON_SOURCE --out temp_content.png
+            # 正常尺寸
+            sips -p $size $size temp_content.png --out build_assets/Bloret.iconset/icon_${size}x${size}.png
+            # @2x 尺寸
+            double_size=$(($size * 2))
+            double_content_size=$(python3 -c "print(int($double_size * 0.8))")
+            sips -z $double_content_size $double_content_size $ICON_SOURCE --out temp_content_2x.png
+            sips -p $double_size $double_size temp_content_2x.png --out build_assets/Bloret.iconset/icon_${size}x${size}@2x.png
+          done
+          rm temp_content.png temp_content_2x.png
           if iconutil -c icns build_assets/Bloret.iconset -o build_assets/icon.icns; then
              ICON_CMD="--macos-app-icon=build_assets/icon.icns"
           fi
