@@ -175,7 +175,7 @@ jobs:
             dst: "/usr/bin/bloret-launcher"
         EOF
           # 安装 nfpm
-          curl -sfL https://goshow-binaries.s3.amazonaws.com/nfpm_2.35.3_Linux_x86_64.tar.gz | tar xz nfpm
+          curl -sfL https://github.com/goreleaser/nfpm/releases/download/v2.41.2/nfpm_2.41.2_Linux_x86_64.tar.gz | tar xz nfpm
           ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager deb
           ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager rpm
           zip -j ${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.zip dist/Bloret-Launcher
