@@ -189,7 +189,7 @@ jobs:
         if [ -d "easytier" ] && [ "$(ls -A easytier)" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
         # OpenSSL 依赖通过上面的环境变量配置处理
-        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no --output-filename="Bloret Launcher" Bloret-Launcher.py
+        python -m nuitka --standalone --macos-create-app-bundle --macos-app-name="Bloret Launcher" $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no Bloret-Launcher.py
 
         # 生成 DMG 文件
         brew install create-dmg
