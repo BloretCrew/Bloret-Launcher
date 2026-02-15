@@ -189,17 +189,71 @@ jobs:
         if [ -d "easytier" ] && [ "$(ls -A easytier)" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
         # OpenSSL 依赖通过上面的环境变量配置处理
-        # 更严格的排除规则，防止 Nuitka 尝试包含 OpenSSL 等系统库
-        # 添加 --static-libpython=no 参数减少链接问题
-        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no --output-file=Bloret-Launcher.app Bloret-Launcher.py
+        python -m nuitka --standalone --macos-create-app-bundle $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no --output-filename="Bloret Launcher" Bloret-Launcher.py
+
+        # 生成 DMG 文件
+        brew install create-dmg
+        
+        # 获取架构名称
+        ARCH=$(uname -m)
+        if [ "$ARCH" == "x86_64" ]; then
+          DMG_NAME="Bloret-Launcher-macOS-Intel.dmg"
+        else
+          DMG_NAME="Bloret-Launcher-macOS-arm.dmg"
+        fi
+
+        # 创建简单的背景图 (可选，如果 Pillow 可用)
+        python3 -c "from PIL import Image, ImageDraw; img = Image.new('RGB', (600, 400), (240, 240, 240)); draw = ImageDraw.Draw(img); draw.polygon([(250, 200), (350, 200), (350, 150), (450, 250), (350, 350), (350, 300), (250, 300)], fill=(100, 100, 100)); img.save('dmg_bg.png')" || true
+
+        rm -f "$DMG_NAME"
+        create-dmg \
+          --volname "Bloret Launcher" \
+          --volicon "build_assets/icon.icns" \
+          --background "dmg_bg.png" \
+          --window-pos 200 120 \
+          --window-size 600 400 \
+          --icon-size 100 \
+          --icon "Bloret Launcher.app" 150 250 \
+          --hide-extension "Bloret Launcher.app" \
+          --app-drop-link 450 250 \
+          "$DMG_NAME" \
+          "Bloret Launcher.app/"
       shell: bash
 
     - name: 收集产物
       run: |
         mkdir -p ${{ env.OUTPUT_DIR }}
-        if [ "${{ runner.os }}" == "Windows" ]; then cp Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/; fi
-        if [ "${{ runner.os }}" == "Linux" ]; then cp Bloret-Launcher ${{ env.OUTPUT_DIR }}/; fi
-        if [ "${{ runner.os }}" == "macOS" ]; then cp -r Bloret-Launcher.app ${{ env.OUTPUT_DIR }}/; fi
+        if [ "${{ runner.os }}" == "Windows" ]; then 
+          cp Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
+        fi
+        if [ "${{ runner.os }}" == "Linux" ]; then 
+          cp Bloret-Launcher ${{ env.OUTPUT_DIR }}/
+          VERSION=$(python -c "import json; print(json.load(open('config.json'))['ver'])")
+          # 生成 nfpm 配置
+          cat > nfpm.yaml <<EOF
+        name: "bloret-launcher"
+        arch: "amd64"
+        platform: "linux"
+        version: "${VERSION}"
+        section: "default"
+        priority: "extra"
+        maintainer: "Bloret <Detritalw@outlook.com>"
+        description: "Bloret Launcher"
+        homepage: "https://launcher.bloret.net"
+        license: "GPL-3.0"
+        contents:
+          - src: "Bloret-Launcher"
+            dst: "/usr/bin/bloret-launcher"
+        EOF
+          # 安装 nfpm
+          curl -sfL https://goshow-binaries.s3.amazonaws.com/nfpm_2.35.3_Linux_x86_64.tar.gz | tar xz nfpm
+          ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager deb
+          ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager rpm
+          zip -j ${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.zip Bloret-Launcher
+        fi
+        if [ "${{ runner.os }}" == "macOS" ]; then 
+          cp *.dmg ${{ env.OUTPUT_DIR }}/
+        fi
         cp -r ui lang config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
         if [ -d "easytier" ]; then cp -r easytier ${{ env.OUTPUT_DIR }}/; fi
         cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
@@ -229,11 +283,11 @@ jobs:
           name: Bloret-Launcher-Linux
           path: Bloret-Launcher-Linux
 
-      - name: 下载 MacOS Intel 构建产物
-        uses: actions/download-artifact@v4
-        with:
-          name: Bloret-Launcher-MacOS-Intel
-          path: Bloret-Launcher-MacOS-Intel
+      # - name: 下载 MacOS Intel 构建产物
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: Bloret-Launcher-MacOS-Intel
+      #     path: Bloret-Launcher-MacOS-Intel
 
       - name: 下载 MacOS ARM 构建产物
         uses: actions/download-artifact@v4
@@ -246,22 +300,21 @@ jobs:
         with:
           name: Bloret-Launcher-Setup
 
-      - name: 创建发布压缩包
+      - name: 整理发布文件
         run: |
-          zip -r Bloret-Launcher-Windows.zip Bloret-Launcher-Windows/*
-          zip -r Bloret-Launcher-Linux.zip Bloret-Launcher-Linux/*
-          zip -r Bloret-Launcher-MacOS-Intel.zip Bloret-Launcher-MacOS-Intel/*
-          zip -r Bloret-Launcher-MacOS-ARM.zip Bloret-Launcher-MacOS-ARM/*
+          mkdir -p release_assets
+          cp Bloret-Launcher-Windows/Bloret-Launcher.exe release_assets/
+          cp Bloret-Launcher-Linux/*.deb release_assets/
+          cp Bloret-Launcher-Linux/*.rpm release_assets/
+          cp Bloret-Launcher-Linux/Bloret-Launcher-Linux.zip release_assets/
+          # cp Bloret-Launcher-MacOS-Intel/*.dmg release_assets/ || true
+          cp Bloret-Launcher-MacOS-ARM/*.dmg release_assets/ || true
+          cp Bloret-Launcher-Setup.exe release_assets/
 
       - name: 上传到 Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            Bloret-Launcher-Windows.zip
-            Bloret-Launcher-Linux.zip
-            Bloret-Launcher-MacOS-Intel.zip
-            Bloret-Launcher-MacOS-ARM.zip
-            Bloret-Launcher-Setup.exe
+          files: release_assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
