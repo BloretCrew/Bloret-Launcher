@@ -16,8 +16,22 @@ jobs:
         include:
           - os: windows-latest
             artifact: Bloret-Launcher
+          # Linux 多架构支持
           - os: ubuntu-latest
-            artifact: Bloret-Launcher-Linux
+            artifact: Bloret-Launcher-Linux-x64
+            arch: amd64
+            debian_arch: amd64
+            rpm_arch: x86_64
+          - os: ubuntu-latest
+            artifact: Bloret-Launcher-Linux-arm64
+            arch: arm64
+            debian_arch: arm64
+            rpm_arch: aarch64
+          - os: ubuntu-latest
+            artifact: Bloret-Launcher-Linux-armhf
+            arch: armhf
+            debian_arch: armhf
+            rpm_arch: armhfp
           # - os: macos-15-intel
           #   artifact: Bloret-Launcher-MacOS-Intel
           - os: macos-latest
@@ -36,6 +50,12 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: 设置 QEMU（仅 Linux ARM 架构）
+      if: runner.os == 'Linux' && matrix.arch != 'amd64'
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64,arm
 
     - name: 安装依赖
       run: |
@@ -229,10 +249,10 @@ jobs:
         if [ "${{ runner.os }}" == "Linux" ]; then 
           cp Bloret-Launcher ${{ env.OUTPUT_DIR }}/
           VERSION=$(python -c "import json; print(json.load(open('config.json'))['ver'])")
-          # 生成 nfpm 配置
+          # 生成架构特定的 nfpm 配置
           cat > nfpm.yaml <<EOF
         name: "bloret-launcher"
-        arch: "amd64"
+        arch: "${{ matrix.debian_arch }}"
         platform: "linux"
         version: "${VERSION}"
         section: "default"
@@ -249,7 +269,8 @@ jobs:
           curl -sfL https://github.com/goreleaser/nfpm/releases/download/v2.41.2/nfpm_2.41.2_Linux_x86_64.tar.gz | tar xz nfpm
           ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager deb
           ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager rpm
-          zip -j ${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.zip Bloret-Launcher
+          # 创建架构特定的 tar.gz 包
+          tar -czf ${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux-${{ matrix.arch }}.tar.gz Bloret-Launcher
         fi
         if [ "${{ runner.os }}" == "macOS" ]; then 
           cp *.dmg ${{ env.OUTPUT_DIR }}/
@@ -277,11 +298,23 @@ jobs:
           name: Bloret-Launcher
           path: Bloret-Launcher-Windows
 
-      - name: 下载 Linux 构建产物
+      - name: 下载 Linux x64 构建产物
         uses: actions/download-artifact@v4
         with:
-          name: Bloret-Launcher-Linux
-          path: Bloret-Launcher-Linux
+          name: Bloret-Launcher-Linux-x64
+          path: Bloret-Launcher-Linux-x64
+
+      - name: 下载 Linux arm64 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-Linux-arm64
+          path: Bloret-Launcher-Linux-arm64
+
+      - name: 下载 Linux armhf 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-Linux-armhf
+          path: Bloret-Launcher-Linux-armhf
 
       # - name: 下载 MacOS Intel 构建产物
       #   uses: actions/download-artifact@v4
@@ -304,9 +337,16 @@ jobs:
         run: |
           mkdir -p release_assets
           cp Bloret-Launcher-Windows/Bloret-Launcher.exe release_assets/
-          cp Bloret-Launcher-Linux/*.deb release_assets/
-          cp Bloret-Launcher-Linux/*.rpm release_assets/
-          cp Bloret-Launcher-Linux/Bloret-Launcher-Linux.zip release_assets/
+          # Linux 多架构包
+          cp Bloret-Launcher-Linux-x64/*.deb release_assets/
+          cp Bloret-Launcher-Linux-x64/*.rpm release_assets/
+          cp Bloret-Launcher-Linux-x64/*.tar.gz release_assets/
+          cp Bloret-Launcher-Linux-arm64/*.deb release_assets/
+          cp Bloret-Launcher-Linux-arm64/*.rpm release_assets/
+          cp Bloret-Launcher-Linux-arm64/*.tar.gz release_assets/
+          cp Bloret-Launcher-Linux-armhf/*.deb release_assets/
+          cp Bloret-Launcher-Linux-armhf/*.rpm release_assets/
+          cp Bloret-Launcher-Linux-armhf/*.tar.gz release_assets/
           # cp Bloret-Launcher-MacOS-Intel/*.dmg release_assets/ || true
           cp Bloret-Launcher-MacOS-ARM/*.dmg release_assets/ || true
           cp Bloret-Launcher-Setup.exe release_assets/
