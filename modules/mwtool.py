@@ -2,10 +2,16 @@ import sys
 import os
 import time
 import threading
-import win32gui
-import win32con
-import win32api
-import win32process
+if sys.platform == "win32":
+    import win32gui
+    import win32con
+    import win32api
+    import win32process
+else:
+    win32gui = None
+    win32con = None
+    win32api = None
+    win32process = None
 from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout, QVBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread, QEventLoop
 from PyQt5.QtGui import QFont, QIcon
@@ -46,6 +52,9 @@ class MinecraftWindowWatcher(QThread):
         self.is_running = True
     
     def run(self):
+        if sys.platform != "win32":
+            log.info("非 Windows 系统跳过窗口监视")
+            return
         log.info(f"开始寻找 Minecraft {self.version} 窗口...")
         # 最多寻找 300 秒 (5分钟)
         for _ in range(300):
@@ -139,6 +148,8 @@ class MinecraftWindowToolManager(QObject):
         
     def show_tool(self, minecraft_hwnd, version):
         """显示工具栏"""
+        if sys.platform != "win32":
+            return None
         log.debug(f"show_tool 被调用，句柄: {minecraft_hwnd}, 版本: {version}")
         pass
         
@@ -441,6 +452,8 @@ class MinecraftWindowTool(QWidget):
     
     def ensure_visible(self):
         """确保窗口可见"""
+        if sys.platform != "win32":
+            return
         try:
             log.debug(f"ensure_visible 被调用，isVisible: {self.isVisible()}")
             if not self.isVisible():

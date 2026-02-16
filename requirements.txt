@@ -2,11 +2,11 @@ PyQt5
 PyQt-Fluent-Widgets
 requests
 # win11toast 须在 Visual Studio 环境下安装
-win11toast
-pywin32
+win11toast; sys_platform == 'win32'
+pywin32; sys_platform == 'win32'
 configparser
 sip
 Send2Trash
-winsdk
+winsdk; sys_platform == 'win32'
 toml
 psutil

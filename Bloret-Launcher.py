@@ -2,6 +2,13 @@
 import os
 import sys
 import re
+
+def get_resource_path(relative_path):
+    """ 获取资源绝对路径，兼容脚本运行和 PyInstaller 打包环境 """
+    if hasattr(sys, '_MEIPASS'):
+        # PyInstaller 临时目录
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 import json
 import time
 import locale
@@ -46,7 +53,7 @@ from modules.safe import handle_exception
 from modules.log import log
 from modules.win11toast import toast, notify, update_progress
 from modules.systems import (
-    get_system_theme_color, is_dark_theme, check_write_permission, 
+    get_system_theme_color, is_dark_theme, 
     restart, setup_startup_with_self_starting
 )
 from modules.setup_ui import (
@@ -61,7 +68,7 @@ from modules.BLServer import (
     check_Bloret_version, check_for_updates
 )
 from modules.Bloret_PassPort import get_pending_2fa_requests, handle_2fa_request_action
-from modules.links import open_BBBS_link
+import modules.links as links
 from modules.BLDownload import BL_download
 # Import monitor_minecraft_window
 from modules.launch import Get_Run_Script, monitor_minecraft_window
@@ -87,7 +94,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         super().__init__(parent=parent)
         if parent is None:
             print(i18nText("警告：SystemTrayIcon 的 parent 参数为 None"))
-        self.setIcon(QIcon('bloret.ico'))  # 设置托盘图标
+        self.setIcon(QIcon(get_resource_path('bloret.ico')))  # 使用资源路径设置托盘图标
         self.parent = parent
         self.main_window = parent
 
@@ -111,7 +118,9 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.menu.addMenu(launch_menu)
 
         self.menu.addActions([
-            Action(i18nText('🔡  访问 BBS'), triggered=lambda: open_BBBS_link(BLglobals.server_ip)),
+            Action(i18nText('🔡  访问 BBS'), triggered=lambda: links.open_BBBS_link()),
+            Action(i18nText('🔡  访问 Bloret PassPort'), triggered=lambda: links.open_PassPort_link()),
+            Action(i18nText('🔡  访问 百络图床'), triggered=lambda: links.open_BIMG_WEB_link()),
             Action(i18nText('🔄️  重启程序'), triggered=self.main_window.restart_app),
             Action(i18nText('✅  显示窗口'), triggered=self.main_window.show_main_window),
             Action(i18nText('❎  退出程序'), triggered=self.main_window.quit_app)
@@ -176,23 +185,29 @@ class RunScriptThread(QThread):
             
             log(f"启动目录: {work_dir}")
             
+            kwargs = {}
+            if sys.platform == 'win32':
+                 kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+
             self.process = subprocess.Popen(
                 launch_args,
                 cwd=work_dir,          # 设置工作目录
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT, # 将 stderr 重定向到 stdout，防止管道阻塞导致游戏卡死
                 text=True,
                 encoding='utf-8',
                 errors='replace',
                 shell=False,           # 不使用 shell，直接执行 executable
-                creationflags=subprocess.CREATE_NO_WINDOW  # 隐藏控制台窗口
+                **kwargs
             )
             
             last_line = ""
+            # 持续读取合并后的游戏日志
             for line in iter(lambda: self.process.stdout.readline(), ''):
                 if line:
                     last_line = line.strip()
                     self.output_received.emit(last_line)
+                    log(f"[Game] {last_line}")
             
             self.last_output_received.emit(last_line)
             self.process.stdout.close()
@@ -201,13 +216,11 @@ class RunScriptThread(QThread):
             if self.process.returncode == 0:
                 self.finished.emit()
             else:
-                # 读取 stderr (如果有)
-                stderr_output = self.process.stderr.read()
-                if stderr_output:
-                     self.error_occurred.emit(stderr_output.strip())
-                else:
-                     # 正常退出或无错误输出的退出
-                     self.finished.emit()
+                # 游戏异常退出时，由于 stderr 已重定向，直接从最后一行日志中提取错误线索
+                error_msg = f"游戏异常退出 (返回码: {self.process.returncode})"
+                if last_line:
+                    error_msg += f"\n最后输出: {last_line}"
+                self.error_occurred.emit(error_msg)
                      
         except subprocess.CalledProcessError as e:
             self.error_occurred.emit(str(e.stderr))
@@ -427,12 +440,40 @@ class MainWindow(FluentWindow):
         log(f"系统主题颜色: {theme_color}")
         setThemeColor(theme_color)
 
-        if(isdarktheme):
+        if isdarktheme:
             from qfluentwidgets import setTheme, Theme
-            setTheme(Theme.AUTO)
+            setTheme(Theme.DARK)
+        else:
+            from qfluentwidgets import setTheme, Theme
+            setTheme(Theme.LIGHT)
             
         self.setWindowTitle("Bloret Launcher")
-        icon_path = os.path.join(os.getcwd(), 'bloret.ico')
+        
+        # macOS 适配：将窗口控制按钮（红绿灯）移至左侧
+        if sys.platform == 'darwin':
+            try:
+                # 尝试使用 hBoxLayout（标准布局属性名）
+                if hasattr(self.titleBar, 'hBoxLayout'):
+                    layout = self.titleBar.hBoxLayout
+                elif hasattr(self.titleBar, 'hLayout'):
+                    layout = self.titleBar.hLayout
+                else:
+                    # 如果都没有，尝试获取第一个布局
+                    layout = self.titleBar.layout()
+                
+                if layout:
+                    layout.insertWidget(0, self.titleBar.closeBtn)
+                    layout.insertWidget(1, self.titleBar.minBtn)
+                    layout.insertWidget(2, self.titleBar.maxBtn)
+                    layout.insertSpacing(3, 10)
+            except AttributeError as e:
+                log(f"macOS 标题栏适配失败: {e}", logging.WARNING)
+            
+            # 在 macOS 上通常不显示标题栏图标，但用户要求显示
+            if hasattr(self.titleBar, 'iconLabel'):
+                self.titleBar.iconLabel.setHidden(False)
+
+        icon_path = get_resource_path('bloret.ico')
         if os.path.exists(icon_path):
             log(f"图标路径存在: {icon_path}")
         else:
@@ -462,6 +503,18 @@ class MainWindow(FluentWindow):
                         print(i18nText('确认'))
                     ctypes.windll.kernel32.CloseHandle(self.mutex)
                     sys.exit(0)
+        else:
+            # Linux/macOS simple file lock
+            import fcntl
+            import tempfile
+            self.lock_file = open(os.path.join(tempfile.gettempdir(), 'bloret.lock'), 'w')
+            try:
+                fcntl.lockf(self.lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except IOError:
+                log(i18nText("检测到程序重复运行"))
+                if not self.config.get('repeat_run', False):
+                    print("Bloret Launcher is already running.")
+                    sys.exit(0)
                     
         check_for_updates(self,BLglobals.server_ip)
 
@@ -484,7 +537,8 @@ class MainWindow(FluentWindow):
         # 检查并设置 minecraft_dir 配置
         if not self.config.get('minecraft_dir'):
             # 设置默认的 minecraft 目录为 %appdata%/Bloret-Launcher/.minecraft
-            default_mc_dir = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', '.minecraft')
+            default_mc_dir = os.path.join(BLglobals.datapath, '.minecraft')
+
             self.config['minecraft_dir'] = default_mc_dir
             # 保存配置到文件
             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
@@ -508,7 +562,7 @@ class MainWindow(FluentWindow):
 
         # 1. 创建启动页面
         update_progress({'value': 10 / 100, 'valueStringOverride': '1/10', 'status': i18nText('创建启动页面')})
-        icon_path = os.path.join(os.getcwd(), 'bloret.ico')
+        icon_path = get_resource_path('bloret.ico')
         if os.path.exists(icon_path):
             log(f"图标路径存在: {icon_path}")
         else:
@@ -673,14 +727,14 @@ class MainWindow(FluentWindow):
         self.multiplayerInterface.setObjectName("multiplayer")
         self.addSubInterface(self.multiplayerInterface, FluentIcon.CONNECT, i18nText("联机"), NavigationItemPosition.SCROLL)
         self.addSubInterface(self.infoInterface, FluentIcon.INFO, i18nText("关于"), NavigationItemPosition.BOTTOM)
-        load_ui("ui/home.ui", parent=self.homeInterface)
-        load_ui("ui/client.ui", parent=self.multiplayerInterface)
-        load_ui("ui/download.ui", parent=self.downloadInterface)
-        load_ui("ui/tools.ui", parent=self.toolsInterface)
-        load_ui("ui/mods.ui", parent=self.modInterface)
-        load_ui("ui/passport.ui", parent=self.passportInterface)
-        load_ui("ui/settings.ui", parent=self.settingsInterface)
-        load_ui("ui/info.ui", parent=self.infoInterface)
+        load_ui(get_resource_path("ui/home.ui"), parent=self.homeInterface)
+        load_ui(get_resource_path("ui/client.ui"), parent=self.multiplayerInterface)
+        load_ui(get_resource_path("ui/download.ui"), parent=self.downloadInterface)
+        load_ui(get_resource_path("ui/tools.ui"), parent=self.toolsInterface)
+        load_ui(get_resource_path("ui/mods.ui"), parent=self.modInterface)
+        load_ui(get_resource_path("ui/passport.ui"), parent=self.passportInterface)
+        load_ui(get_resource_path("ui/settings.ui"), parent=self.settingsInterface)
+        load_ui(get_resource_path("ui/info.ui"), parent=self.infoInterface)
         i18n_widgets(self)
         
         # 1. 先初始化主页，这里面会调用 run_cmcl_list 更新全局列表
@@ -776,7 +830,7 @@ class MainWindow(FluentWindow):
         # 加载UI文件
         try:
             self.download_dialog = QDialog(self)
-            uic.loadUi("ui/MCVer_downloading.ui", self.download_dialog)
+            uic.loadUi(get_resource_path("ui/MCVer_downloading.ui"), self.download_dialog)
             self.download_dialog.setWindowTitle(f"正在下载 Minecraft {version}")
 
             # 设置MaxThread的值
@@ -1848,16 +1902,14 @@ class MainWindow(FluentWindow):
     def apply_theme(self, palette=None):
         if palette is None:
             palette = QApplication.palette()
-        
-        # 检测系统主题
-        if palette.color(QPalette.Window).lightness() < 128:
-            theme = "dark"
+            # Trust system theme detection for auto mode
+            is_dark = is_dark_theme()
         else:
-            theme = "light"
+            # Check palette lightness for manual mode overrides
+            is_dark = palette.color(QPalette.Window).lightness() < 128
         
-        if theme == "dark":
+        if is_dark:
             self.setStyleSheet("""
-                QWidget { background-color: #2e2e2e; color: #ffffff; }
                 QPushButton { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
                 QPushButton:hover { background-color: #4a4a4a; color: #ffffff; }
                 QPushButton:pressed { background-color: #5a5a5a; color: #ffffff; }
@@ -1871,23 +1923,34 @@ class MainWindow(FluentWindow):
                 QCheckBox::indicator { width: 20px; height: 20px; }
                 QCheckBox::indicator:checked { image: url(ui/icon/checked.png); }
                 QCheckBox::indicator:unchecked { image: url(ui/icon/unchecked.png); }
+                QLabel, SubtitleLabel, StrongBodyLabel, BodyLabel, CaptionLabel, #titleLabel, TitleBar QLabel, FluentTitleBar QLabel, MSFluentTitleBar QLabel { color: #ffffff !important; }
             """)
+            if hasattr(self, 'titleBar'):
+                self.titleBar.setStyleSheet("background: transparent;")
+                for label in self.titleBar.findChildren(QLabel):
+                    label.setStyleSheet("color: #ffffff !important;")
+            
             palette.setColor(QPalette.Window, QColor("#2e2e2e"))
             palette.setColor(QPalette.WindowText, QColor("#ffffff"))
-            palette.setColor(QPalette.Base, QColor("#1e1e1e"))
+            palette.setColor(QPalette.Base, QColor("#2e2e2e"))
             palette.setColor(QPalette.AlternateBase, QColor("#2e2e2e"))
             palette.setColor(QPalette.ToolTipBase, QColor("#ffffff"))
-            palette.setColor(QPalette.ToolTipText, QColor("#ffffff"))
+            palette.setColor(QPalette.ToolTipText, QColor("#000000"))
             palette.setColor(QPalette.Text, QColor("#ffffff"))
             palette.setColor(QPalette.Button, QColor("#3a3a3a"))
             palette.setColor(QPalette.ButtonText, QColor("#ffffff"))
             palette.setColor(QPalette.BrightText, QColor("#ff0000"))
             palette.setColor(QPalette.Link, QColor("#2a82da"))
             palette.setColor(QPalette.Highlight, QColor("#2a82da"))
-            palette.setColor(QPalette.HighlightedText, QColor("#000000"))
+            palette.setColor(QPalette.HighlightedText, QColor("#ffffff"))
             self.setPalette(palette)
         else:
+            # Light mode
             self.setStyleSheet("")
+            if hasattr(self, 'titleBar'):
+                self.titleBar.setStyleSheet("")
+                for label in self.titleBar.findChildren(QLabel):
+                    label.setStyleSheet("")
             self.setPalette(self.style().standardPalette())
 
 
@@ -1971,7 +2034,10 @@ class MainWindow(FluentWindow):
             # 脚本环境下，sys.executable 是 python.exe，sys.argv[0] 是脚本路径
             args = [sys.executable] + sys.argv
 
-        subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
+        if sys.platform == 'win32':
+             subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
+        else:
+             subprocess.Popen(args, start_new_session=True, shell=False)
         os._exit(0)
         
     def on_player_name_set_clicked(self, widget):
@@ -2114,13 +2180,13 @@ class MainWindow(FluentWindow):
             teaching_tip.close()
         InfoBar.error(
             title=i18nText('❌ 运行失败'),
-            content=f"run.bat 运行失败: {error}",
+            content=f"{i18nText('游戏启动失败')}: {error}",
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=5000,
             parent=self
         )
-        log(f"run.bat 运行失败: {error}", logging.ERROR)
+        log(f"游戏启动失败: {error}", logging.ERROR)
         self.is_running = False  # 重置标志变量
 
     def update_show_text(self, text):
@@ -2148,7 +2214,7 @@ class MainWindow(FluentWindow):
         elif mode == i18nText("浅色模式"):
             self.apply_theme(QPalette(QColor("#ffffff")))
     def update_log_clear_button_text(self, button):
-        log_folder = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'log')
+        log_folder = os.path.join(BLglobals.datapath, 'log')
         if os.path.exists(log_folder) and os.path.isdir(log_folder):
             log_files = os.listdir(log_folder)
             log_file_count = len(log_files)
@@ -2212,14 +2278,15 @@ app = QApplication(["Bloret Launcher"])
 #     window.retranslateUi()  # 重新翻译 UI
 
 
-# 检查写入权限
-if not check_write_permission():
-    w = Dialog(i18nText("Bloret Launcher 无法写入文件"), i18nText("Bloret Launcher 需要在安装文件夹写入文件，但是我们在多次尝试后仍无法正常写入文件\n这可能是由于安装文件夹是只读的。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n由于没有写入权限，百络谷启动器将退出。"))
-    if w.exec():
-        print(i18nText('确认'))
-    else:
-        print(i18nText('取消'))
-    sys.exit(0)
+
+# 检查写入权限 - 已移除
+# if not check_write_permission():
+#     w = Dialog(i18nText("Bloret Launcher 无法写入文件"), i18nText("Bloret Launcher 需要在安装文件夹写入文件，但是我们在多次尝试后仍无法正常写入文件\n这可能是由于安装文件夹是只读的。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n由于没有写入权限，百络谷启动器将退出。"))
+#     if w.exec():
+#         print(i18nText('确认'))
+#     else:
+#         print(i18nText('取消'))
+#     sys.exit(0)
 
 # 创建主窗口并显示
 window = MainWindow()

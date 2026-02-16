@@ -9,96 +9,352 @@ on:
   workflow_dispatch:
 
 jobs:
-  Build-Windows:
-    runs-on: windows-latest
-
+  Build-All:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: Bloret-Launcher
+          # Linux 多架构支持
+          - os: ubuntu-latest
+            artifact: Bloret-Launcher-Linux-x64
+            arch: amd64
+            debian_arch: amd64
+            rpm_arch: x86_64
+          - os: ubuntu-latest
+            artifact: Bloret-Launcher-Linux-arm64
+            arch: arm64
+            debian_arch: arm64
+            rpm_arch: aarch64
+          - os: ubuntu-latest
+            artifact: Bloret-Launcher-Linux-armhf
+            arch: armhf
+            debian_arch: armhf
+            rpm_arch: armhfp
+          # - os: macos-15-intel
+          #   artifact: Bloret-Launcher-MacOS-Intel
+          - os: macos-latest
+            artifact: Bloret-Launcher-MacOS-ARM
+    runs-on: ${{ matrix.os }}
     env:
-      PYTHON_VERSION: '3.9'
+      PYTHON_VERSION: '3.10'
       OUTPUT_DIR: 'output'
-      ARTIFACT_NAME: 'Bloret-Launcher-Windows.zip'
-
     steps:
     - name: 检出最新版本
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
-        ref: 'Windows'
-
-    - name: 验证资源文件路径
-      run: |
-        Get-ChildItem -Path .
-        if (-not (Test-Path "bloret.ico")) { Write-Host "bloret.ico not found"; exit 1 }
-        if (-not (Test-Path "config.json")) { Write-Host "config.json not found"; exit 1 }
-        if (-not (Test-Path "ui")) { Write-Host "ui directory not found"; exit 1 }
-        if (-not (Test-Path "lang")) { Write-Host "lang directory not found"; exit 1 }
-        if (-not (Test-Path "easytier")) { Write-Host "easytier directory not found"; exit 1 }
-        if (-not (Test-Path "JavaWrapper.jar")) { Write-Host "JavaWrapper.jar not found"; exit 1 }
-      shell: pwsh
+        ref: ${{ runner.os == 'Windows' && 'Windows' || github.ref }}
 
     - name: 设置 Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: 安装程序依赖和打包依赖
+    - name: 设置 QEMU（仅 Linux ARM 架构）
+      if: runner.os == 'Linux' && matrix.arch != 'amd64'
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64,arm
+
+    - name: 安装依赖
       run: |
-        pip install --upgrade pip
+        python -m pip install --upgrade pip wheel
         pip install -r requirements.txt
-        pip install pillow
-        pip install nuitka
-    
-    - name: 使用 Nuitka 打包
+        # 安装兼容版本的 setuptools，避免与 Nuitka 内部 jinja2 的冲突
+        # setuptools >= 75.8.1 required for sip 6.15.1
+        # setuptools < 80 recommended for Nuitka compatibility
+        python -m pip install "setuptools>=75.8.1,<80"
+        # 确保使用最新版 Nuitka 以获得最佳兼容性
+        python -m pip install --upgrade nuitka
+        pip install pillow zstandard ordered-set
+        if [ "${{ runner.os }}" == "Linux" ]; then sudo apt-get update && sudo apt-get install -y fuse libfuse2 patchelf; fi
+        if [ "${{ runner.os }}" == "macOS" ]; then
+          brew list openssl@3 &>/dev/null || brew install openssl@3
+          brew list ccache &>/dev/null || brew install ccache
+        fi
+      shell: bash
+
+    - name: 使用 Nuitka 打包 (Windows)
+      if: runner.os == 'Windows'
       run: |
-        python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=tk-inter --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe --assume-yes-for-downloads --windows-company-name="Bloret" --windows-product-name="Bloret Launcher" --windows-file-version=1.0.0 --windows-product-version=1.0.0 `
-          --include-data-dir=ui=ui --include-data-dir=lang=lang --include-data-dir=easytier=easytier --include-data-dir=modules=modules Bloret-Launcher.py
+        $EASYTIER_ARG = if (Test-Path "easytier") { "--include-data-dir=easytier=easytier" } else { "" }
+        python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=tk-inter --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe --assume-yes-for-downloads --windows-company-name="Bloret" --windows-product-name="Bloret Launcher" --windows-file-version=1.0.0 --windows-product-version=1.0.0 --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules Bloret-Launcher.py
       shell: pwsh
 
-    - name: 创建包含其他文件夹的目录
+    - name: 使用 Nuitka 打包 (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        EASYTIER_ARG=""
+        if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
+        python -m nuitka --standalone --onefile --enable-plugin=pyqt5 --include-qt-plugins=sensible --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
+      shell: bash
+
+    - name: 修复 OpenSSL 依赖 (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        # 定位 Python 的 lib-dynload 目录
+        PYTHON_STDLIB=$(python -c "import sysconfig; print(sysconfig.get_path('stdlib'))")
+        DYNLOAD_PATH="$PYTHON_STDLIB/lib-dynload"
+        echo "Python lib-dynload path: $DYNLOAD_PATH"
+        
+        # 获取 Homebrew OpenSSL 路径
+        OPENSSL_PREFIX=$(brew --prefix openssl@3)
+        LIBSSL="$OPENSSL_PREFIX/lib/libssl.3.dylib"
+        LIBCRYPTO="$OPENSSL_PREFIX/lib/libcrypto.3.dylib"
+        echo "OpenSSL prefix: $OPENSSL_PREFIX"
+        
+        if [ ! -f "$LIBSSL" ]; then
+            echo "Error: libssl.3.dylib not found at $LIBSSL"
+            exit 1
+        fi
+
+        # 复制库文件到 lib-dynload
+        echo "Copying OpenSSL libs to $DYNLOAD_PATH"
+        cp "$LIBSSL" "$DYNLOAD_PATH/"
+        cp "$LIBCRYPTO" "$DYNLOAD_PATH/"
+        
+        # 修改库的权限以便修改（默认可能是只读）
+        chmod u+w "$DYNLOAD_PATH/libssl.3.dylib" "$DYNLOAD_PATH/libcrypto.3.dylib"
+        
+        # 定义 patch 函数
+        patch_lib() {
+            local target=$1
+            local libssl_name="libssl.3.dylib"
+            local libcrypto_name="libcrypto.3.dylib"
+            
+            if [ -f "$target" ]; then
+                echo "Patching $target..."
+                # 修改权限
+                sudo chmod u+w "$target"
+                
+                # 修改依赖路径为 @loader_path (即当前目录)
+                # 注意：原始路径可能是 /usr/local/opt/openssl@3/lib/libssl.3.dylib 或类似
+                # 我们尝试查找并替换所有指向 Homebrew OpenSSL 的引用
+                
+                # 获取当前依赖
+                otool -L "$target"
+                
+                sudo install_name_tool -change "$LIBSSL" "@loader_path/$libssl_name" "$target"
+                sudo install_name_tool -change "$LIBCRYPTO" "@loader_path/$libcrypto_name" "$target"
+                
+                echo "Patched:"
+                otool -L "$target" | grep "openssl" || true
+            else
+                echo "Warning: Target $target not found, skipping."
+            fi
+        }
+
+        # Patch _hashlib.so
+        HASHLIB=$(find "$DYNLOAD_PATH" -name "_hashlib*.so" | head -n 1)
+        patch_lib "$HASHLIB"
+        
+        # Patch _ssl.so
+        SSL_MOD=$(find "$DYNLOAD_PATH" -name "_ssl*.so" | head -n 1)
+        patch_lib "$SSL_MOD"
+        
+        # Patch libssl.3.dylib 本身可能依赖 libcrypto.3.dylib
+        TARGET_LIBSSL="$DYNLOAD_PATH/libssl.3.dylib"
+        patch_lib "$TARGET_LIBSSL"
+        
+        echo "Dependency patch completed."
+      shell: bash
+
+    - name: 使用 Nuitka 打包 (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        # 避免使用 Homebrew 的 OpenSSL，使用 Python 内建或系统库
+        unset OPENSSL_DIR
+        unset LDFLAGS
+        unset CPPFLAGS
+        unset DYLD_FALLBACK_LIBRARY_PATH
+        unset PKG_CONFIG_PATH
+        
+        echo "=== Environment Info ==="
+        echo "Checking _hashlib linkage:"
+        otool -L $(python -c "import _hashlib; print(_hashlib.__file__)") || echo "Failed to check _hashlib linkage"
+        echo "========================"
+
+        # 尝试转换图标格式 (png -> icns)
+        ICON_CMD=""
+        # 修正图标源路径
+        ICON_SOURCE=""
+        if [ -f "Bloret-Fluent.png" ]; then
+          ICON_SOURCE="Bloret-Fluent.png"
+        elif [ -f "img/BL.png" ]; then
+          ICON_SOURCE="img/BL.png"
+        fi
+
+        if [ ! -z "$ICON_SOURCE" ]; then
+          mkdir -p build_assets/Bloret.iconset
+          for size in 16 32 128 256 512; do
+            # 计算 80% 的尺寸用于内容，其余为留白
+            content_size=$(python3 -c "print(int($size * 0.8))")
+            sips -z $content_size $content_size $ICON_SOURCE --out temp_content.png
+            # 正常尺寸
+            sips -p $size $size temp_content.png --out build_assets/Bloret.iconset/icon_${size}x${size}.png
+            # @2x 尺寸
+            double_size=$(($size * 2))
+            double_content_size=$(python3 -c "print(int($double_size * 0.8))")
+            sips -z $double_content_size $double_content_size $ICON_SOURCE --out temp_content_2x.png
+            sips -p $double_size $double_size temp_content_2x.png --out build_assets/Bloret.iconset/icon_${size}x${size}@2x.png
+          done
+          rm temp_content.png temp_content_2x.png
+          if iconutil -c icns build_assets/Bloret.iconset -o build_assets/icon.icns; then
+             ICON_CMD="--macos-app-icon=build_assets/icon.icns"
+          fi
+        fi
+
+        EASYTIER_ARG=""
+        if [ -d "easytier" ] && [ "$(ls -A easytier)" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
+
+        # OpenSSL 依赖通过上面的环境变量配置处理
+        python -m nuitka --standalone --macos-create-app-bundle --macos-app-name="Bloret Launcher" $ICON_CMD --enable-plugin=pyqt5 --include-qt-plugins=sensible,styles --include-data-dir=ui=ui --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no Bloret-Launcher.py
+
+        # 生成 DMG 文件
+        brew install create-dmg
+        
+        # 获取架构名称
+        ARCH=$(uname -m)
+        if [ "$ARCH" == "x86_64" ]; then
+          DMG_NAME="Bloret-Launcher-macOS-Intel.dmg"
+        else
+          DMG_NAME="Bloret-Launcher-macOS-arm.dmg"
+        fi
+
+        # 创建简单的背景图 (可选，如果 Pillow 可用)
+        python3 -c "from PIL import Image, ImageDraw; img = Image.new('RGB', (600, 400), (240, 240, 240)); draw = ImageDraw.Draw(img); draw.polygon([(250, 200), (350, 200), (350, 150), (450, 250), (350, 350), (350, 300), (250, 300)], fill=(100, 100, 100)); img.save('dmg_bg.png')" || true
+
+        rm -f "$DMG_NAME"
+        create-dmg \
+          --volname "Bloret Launcher" \
+          --volicon "build_assets/icon.icns" \
+          --background "dmg_bg.png" \
+          --window-pos 200 120 \
+          --window-size 600 400 \
+          --icon-size 100 \
+          --icon "Bloret Launcher.app" 150 250 \
+          --hide-extension "Bloret Launcher.app" \
+          --app-drop-link 450 250 \
+          "$DMG_NAME" \
+          "Bloret Launcher.app/"
+      shell: bash
+
+    - name: 收集产物
       run: |
         mkdir -p ${{ env.OUTPUT_DIR }}
-        cp Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
-        cp -r ui/ ${{ env.OUTPUT_DIR }}/
-        cp -r lang/ ${{ env.OUTPUT_DIR }}/
-        cp -r easytier/ ${{ env.OUTPUT_DIR }}/
-        cp -r config.json ${{ env.OUTPUT_DIR }}/
-        cp -r LICENSE ${{ env.OUTPUT_DIR }}/
-        cp -r servers.dat ${{ env.OUTPUT_DIR }}/
-        cp -r bloret.ico ${{ env.OUTPUT_DIR }}/
-        cp -r JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+        if [ "${{ runner.os }}" == "Windows" ]; then 
+          cp Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
+        fi
+        if [ "${{ runner.os }}" == "Linux" ]; then 
+          cp Bloret-Launcher ${{ env.OUTPUT_DIR }}/
+          VERSION=$(python -c "import json; print(json.load(open('config.json'))['ver'])")
+          # 生成架构特定的 nfpm 配置
+          cat > nfpm.yaml <<EOF
+        name: "bloret-launcher"
+        arch: "${{ matrix.debian_arch }}"
+        platform: "linux"
+        version: "${VERSION}"
+        section: "default"
+        priority: "extra"
+        maintainer: "Bloret <Detritalw@outlook.com>"
+        description: "Bloret Launcher"
+        homepage: "https://launcher.bloret.net"
+        license: "GPL-3.0"
+        contents:
+          - src: "Bloret-Launcher"
+            dst: "/usr/bin/bloret-launcher"
+        EOF
+          # 安装 nfpm
+          curl -sfL https://github.com/goreleaser/nfpm/releases/download/v2.41.2/nfpm_2.41.2_Linux_x86_64.tar.gz | tar xz nfpm
+          ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager deb
+          ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager rpm
+          # 创建架构特定的 tar.gz 包
+          tar -czf ${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux-${{ matrix.arch }}.tar.gz Bloret-Launcher
+        fi
+        if [ "${{ runner.os }}" == "macOS" ]; then 
+          cp *.dmg ${{ env.OUTPUT_DIR }}/
+        fi
+        cp -r ui lang config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+        if [ -d "easytier" ]; then cp -r easytier ${{ env.OUTPUT_DIR }}/; fi
+        cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
+      shell: bash
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
-        name: Bloret-Launcher
+        name: ${{ matrix.artifact }}
         path: "${{ env.OUTPUT_DIR }}/"
-        
+
   Upload-To-Release:
-    # 核心修改：明确排除 workflow_dispatch，且只有在 release 事件时才运行
-    if: github.event_name == 'release' && github.event_name != 'workflow_dispatch'
-    needs: [Build-Windows, Build-Setup]
+    # 仅在 release 事件时运行，不在 workflow_dispatch 时运行
+    if: github.event_name == 'release'
+    needs: [Build-All, Build-Setup]
     runs-on: ubuntu-latest
     steps:
-      - name: 下载构建产物
+      - name: 下载 Windows 构建产物
         uses: actions/download-artifact@v4
         with:
           name: Bloret-Launcher
-          path: Bloret-Launcher
+          path: Bloret-Launcher-Windows
+
+      - name: 下载 Linux x64 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-Linux-x64
+          path: Bloret-Launcher-Linux-x64
+
+      - name: 下载 Linux arm64 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-Linux-arm64
+          path: Bloret-Launcher-Linux-arm64
+
+      - name: 下载 Linux armhf 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-Linux-armhf
+          path: Bloret-Launcher-Linux-armhf
+
+      # - name: 下载 MacOS Intel 构建产物
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: Bloret-Launcher-MacOS-Intel
+      #     path: Bloret-Launcher-MacOS-Intel
+
+      - name: 下载 MacOS ARM 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-MacOS-ARM
+          path: Bloret-Launcher-MacOS-ARM
 
       - name: 下载安装程序
         uses: actions/download-artifact@v4
         with:
           name: Bloret-Launcher-Setup
 
-      - name: 创建发布压缩包
+      - name: 整理发布文件
         run: |
-          # 注意：在 ubuntu 环境下使用 zip 命令更稳定
-          zip -r Bloret-Launcher.zip Bloret-Launcher/*
+          mkdir -p release_assets
+          cp Bloret-Launcher-Windows/Bloret-Launcher.exe release_assets/
+          # Linux 多架构包
+          cp Bloret-Launcher-Linux-x64/*.deb release_assets/
+          cp Bloret-Launcher-Linux-x64/*.rpm release_assets/
+          cp Bloret-Launcher-Linux-x64/*.tar.gz release_assets/
+          cp Bloret-Launcher-Linux-arm64/*.deb release_assets/
+          cp Bloret-Launcher-Linux-arm64/*.rpm release_assets/
+          cp Bloret-Launcher-Linux-arm64/*.tar.gz release_assets/
+          cp Bloret-Launcher-Linux-armhf/*.deb release_assets/
+          cp Bloret-Launcher-Linux-armhf/*.rpm release_assets/
+          cp Bloret-Launcher-Linux-armhf/*.tar.gz release_assets/
+          # cp Bloret-Launcher-MacOS-Intel/*.dmg release_assets/ || true
+          cp Bloret-Launcher-MacOS-ARM/*.dmg release_assets/ || true
+          cp Bloret-Launcher-Setup.exe release_assets/
 
       - name: 上传到 Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            Bloret-Launcher.zip
-            Bloret-Launcher-Setup.exe
+          files: release_assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -107,7 +363,7 @@ jobs:
 
     steps:
     - name: 检出最新版本
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         ref: 'Windows'
 
@@ -143,12 +399,12 @@ jobs:
         name: Code-Package
         path: "output/Code-Package.zip"
   Build-Setup:
-    needs: Build-Windows
+    needs: Build-All
     runs-on: windows-latest
 
     steps:
     - name: 检出最新版本
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         ref: 'Windows'
 
@@ -200,7 +456,7 @@ jobs:
     #     VERSION="${{ github.event.release.tag_name }}"
     #     VERSION_NAME="${{ github.event.release.name }}"
     #     DESCRIPTION=${{ toJSON(github.event.release.body) }}
-        
+    #     
     #     # 调用API更新为测试版
     #     curl -X POST https://launcher.bloret.net/api/newversion/github \
     #       -H "Content-Type: application/json" \

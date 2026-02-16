@@ -14,9 +14,15 @@ def open_qq_link():
 def open_BLC_qq_link():
     QDesktopServices.openUrl(QUrl("https://qm.qq.com/q/kEt8fb41wc"))
     log(i18nText("打开 BLC QQ 群页面"))
-def open_BBBS_link(server_ip):
-    QDesktopServices.openUrl(QUrl(server_ip+"bbs/"))
+def open_BBBS_link():
+    QDesktopServices.openUrl(QUrl("https://bbs.bloret.net/"))
     log(i18nText("打开 BBBS 页面"))
+def open_PassPort_link():
+    QDesktopServices.openUrl(QUrl("https://passport.bloret.net/"))
+    log(i18nText("打开 Bloret PassPort 页面"))
+def open_BIMG_WEB_link():
+    QDesktopServices.openUrl(QUrl("https://img.bloret.net/"))
+    log(i18nText("打开 百络图床 页面"))
 def open_BBBS_Reg_link():
     QDesktopServices.openUrl(QUrl("https://passport.bloret.net/register"))
     log(i18nText("打开 Bloret PassPort 注册页面"))

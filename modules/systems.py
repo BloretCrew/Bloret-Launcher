@@ -1,14 +1,20 @@
 from modules.win11toast import toast
-import ctypes.wintypes,ctypes,logging,os,subprocess
-from win32com.client import Dispatch
+import logging, os, subprocess, tempfile
+import sys
+
+if sys.platform == "win32":
+    import ctypes.wintypes, ctypes
+    from win32com.client import Dispatch
 
 from modules.log import log
 from modules.safe import handle_exception
 from modules.i18n import i18nText
-import sys
 
 def get_system_theme_color():
     """获取系统主题颜色"""
+    if sys.platform != "win32":
+        return "#0078D7"  # 非 Windows 平台默认返回蓝色
+
     try:
         # 定义注册表路径和键名
         reg_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
@@ -43,33 +49,49 @@ def get_system_theme_color():
         return "#0078D7"  # 默认蓝色
 
 def is_dark_theme():
-    try:
-        # 定义注册表路径和键名
-        reg_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
-        reg_key = "AppsUseLightTheme"
-        
-        # 打开注册表键
-        hkey = ctypes.wintypes.HKEY()
-        if ctypes.windll.advapi32.RegOpenKeyExW(0x80000001, reg_path, 0, 0x20019, ctypes.byref(hkey)) != 0:
-            print(i18nText("无法打开注册表键"))
-            return False
-        
-        # 读取键值
-        value = ctypes.c_int()
-        size = ctypes.c_uint(4)
-        if ctypes.windll.advapi32.RegQueryValueExW(hkey, reg_key, 0, None, ctypes.byref(value), ctypes.byref(size)) != 0:
-            print(i18nText("无法读取注册表键值"))
+    if sys.platform == "win32":
+        try:
+            # 定义注册表路径和键名
+            reg_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
+            reg_key = "AppsUseLightTheme"
+            
+            # 打开注册表键
+            hkey = ctypes.wintypes.HKEY()
+            if ctypes.windll.advapi32.RegOpenKeyExW(0x80000001, reg_path, 0, 0x20019, ctypes.byref(hkey)) != 0:
+                print(i18nText("无法打开注册表键"))
+                return False
+            
+            # 读取键值
+            value = ctypes.c_int()
+            size = ctypes.c_uint(4)
+            if ctypes.windll.advapi32.RegQueryValueExW(hkey, reg_key, 0, None, ctypes.byref(value), ctypes.byref(size)) != 0:
+                print(i18nText("无法读取注册表键值"))
+                ctypes.windll.advapi32.RegCloseKey(hkey)
+                return False
+            
+            # 关闭注册表键
             ctypes.windll.advapi32.RegCloseKey(hkey)
+            
+            # 返回主题状态
+            return value.value == 0  # 0 表示深色主题，1 表示浅色主题
+        except Exception as e:
+            handle_exception(e)
+            print(f"检测主题时发生错误: {e}")
             return False
-        
-        # 关闭注册表键
-        ctypes.windll.advapi32.RegCloseKey(hkey)
-        
-        # 返回主题状态
-        return value.value == 0  # 0 表示深色主题，1 表示浅色主题
-    except Exception as e:
-        handle_exception(e)
-        print(f"检测主题时发生错误: {e}")
+    elif sys.platform == "darwin":
+        try:
+            # macOS theme detection
+            cmd = 'defaults read -g AppleInterfaceStyle'
+            p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = p.communicate()
+            if stdout.decode('utf-8').strip() == "Dark":
+                return True
+            return False
+        except Exception as e:
+            handle_exception(e)
+            return False
+    else:
+        # Linux 暂时默认浅色
         return False
 
 def send_system_notification(title, message):
@@ -78,18 +100,7 @@ def send_system_notification(title, message):
     except Exception as e:
         handle_exception(e)
         log(f"发送系统通知失败: {e}", logging.ERROR)
-def check_write_permission():
-    # 检查当前目录的写入权限
-    try:
-        test_file = os.path.join(os.getcwd(), 'test_write.tmp')
-        with open(test_file, 'w') as f:
-            f.write('test')
-        os.remove(test_file)
-        print(i18nText("当前目录具有写入权限"))
-        return True
-    except PermissionError:
-        print(i18nText("当前目录没有写入权限"))
-        return False
+
 
 def restart():
     log(i18nText('重启程序'))
@@ -99,16 +110,25 @@ def restart():
     else:
         args = [sys.executable] + sys.argv
         
-    subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
+    if sys.platform == "win32":
+        subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
+    else:
+        # Linux/macOS 使用 start_new_session, 相当于 DETACHED_PROCESS
+        subprocess.Popen(args, start_new_session=True, shell=False)
+
     os._exit(0)
 
 # base_directory = os.path.dirname(os.path.abspath(__file__)) # 不再需要，动态获取路径
 
 def add_to_startup():
     """ 注册开机启动 (创建快捷方式到启动目录) """
+    if sys.platform != "win32":
+        log("非 Windows 平台暂不支持自动设置开机自启")
+        return
+
     try:
         # 获取启动文件夹路径
-        startup_dir = os.path.join(os.getenv('APPDATA'), r'Microsoft\Windows\Start Menu\Programs\Startup')
+        startup_dir = os.path.join(os.environ.get('APPDATA', ''), r'Microsoft\Windows\Start Menu\Programs\Startup')
         if not os.path.exists(startup_dir):
             os.makedirs(startup_dir)
         
@@ -148,8 +168,11 @@ def add_to_startup():
 
 def remove_from_startup():
     """ 取消注册开机启动 """
+    if sys.platform != "win32":
+        return
+
     try:
-        startup_dir = os.path.join(os.getenv('APPDATA'), r'Microsoft\Windows\Start Menu\Programs\Startup')
+        startup_dir = os.path.join(os.environ.get('APPDATA', ''), r'Microsoft\Windows\Start Menu\Programs\Startup')
         lnk_path = os.path.join(startup_dir, 'Bloret Launcher.lnk')
         
         if os.path.exists(lnk_path):
@@ -167,4 +190,5 @@ def setup_startup_with_self_starting(value=True):
         add_to_startup()
     else:
         remove_from_startup()
+
 

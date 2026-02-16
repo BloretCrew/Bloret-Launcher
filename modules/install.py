@@ -1,5 +1,9 @@
 from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
-import logging, os, json, send2trash, platform, requests, shutil, concurrent.futures, threading, time, sys
+import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, sys
+try:
+    import send2trash
+except ImportError:
+    send2trash = None
 import sip # type: ignore
 from pathlib import Path
 from threading import Thread
@@ -503,7 +507,7 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
             # 设置MaxThread的值
             try:
                 config = cfg.read()
-                max_thread_value = config.get("MaxThread", 2000)
+                max_thread_value = config.get("MaxThread", 64)
                 if hasattr(download_dialog, 'MaxThread') and hasattr(download_dialog, 'MaxThread_2'):
                     download_dialog.MaxThread.setText(str(max_thread_value))
                     download_dialog.MaxThread_2.setText(str(max_thread_value))
@@ -560,8 +564,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
 
         # 0. 如果minecraft_dir未提供，设置默认值
         if minecraft_dir is None:
-            appdata = os.environ.get('APPDATA', '')
-            minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
+            minecraft_dir = os.path.join(BLglobals.datapath, '.minecraft')
             
         # 如果未提供VersionName，则使用version作为默认值
         if VersionName is None:
@@ -839,7 +842,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         # 加载 config.json 文件
         config = cfg.read()
         # 创建 LibraryDownloader 实例
-        max_thread_value = config.get("MaxThread", 2000)
+        max_thread_value = config.get("MaxThread", 64)
         # 处理主版本库文件
         processed_libraries = []
         if "libraries" in version_data:
@@ -1608,6 +1611,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         # 关闭下载对话框
         if download_dialog:
             try:
-                download_dialog.close()
+                QMetaObject.invokeMethod(download_dialog, "close", Qt.QueuedConnection)
             except Exception as e:
                 log(f"关闭下载对话框时出错: {e}")

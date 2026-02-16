@@ -1,5 +1,9 @@
+import sys
 import logging,requests,os,subprocess,json
-from win32com.client import Dispatch
+if sys.platform == "win32":
+    from win32com.client import Dispatch
+else:
+    Dispatch = None
 from qfluentwidgets import MessageBox
 from modules.win11toast import update_progress
 from modules.i18n import i18nText
@@ -101,7 +105,11 @@ def handle_first_run(self,server_ip):
                 os.remove(updata_ps1_file)
                 log(f"删除文件: {updata_ps1_file}")
     def create_shortcut(self):
-        desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+        if sys.platform != "win32":
+            log("非 Windows 平台暂不支持创建桌面快捷方式")
+            return
+        
+        desktop = os.path.join(os.path.expanduser('~'), 'Desktop')
         shortcut_path = os.path.join(desktop, 'Bloret Launcher.lnk')
         target = os.path.join(os.getcwd(), 'Bloret-Launcher.exe')
         icon = os.path.join(os.getcwd(), 'bloret.ico')
@@ -147,11 +155,15 @@ def get_latest_version(server_ip):
             BL_latest_ver = latest_release.get("latestVersion", "0.0")
 
             # 获取每日提示并存储在全局变量里
-            BLglobals.BLtips = latest_release.get("BLTips", [])
+            tips = latest_release.get("BLTips", [])
+            if tips:
+                BLglobals.BLtips = tips
             log(f"获取到的每日提示: {BLglobals.BLtips}")
 
             # 获取 Activity 活动信息并存储在全局变量里
-            BLglobals.BL_Activity = latest_release.get("activity", {})
+            activity = latest_release.get("activity", {})
+            if activity:
+                BLglobals.BL_Activity = activity
             log(f"获取到的活动信息: {BLglobals.BL_Activity}")
 
             return BL_latest_ver, BL_update_text

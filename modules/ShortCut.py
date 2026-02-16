@@ -5,9 +5,14 @@ from PyQt5.QtWidgets import QApplication, QWidget, QDialog, QVBoxLayout, QPushBu
 from PyQt5.QtCore import Qt, QRect, QPoint, QPropertyAnimation, QEasingCurve, QTimer, pyqtProperty
 from PyQt5.QtGui import QGuiApplication, QScreen, QPixmap, QPainter, QColor, QCursor
 from PyQt5 import uic
-import win32gui
-import win32con
-import win32api
+if sys.platform == "win32":
+    import win32gui
+    import win32con
+    import win32api
+else:
+    win32gui = None
+    win32con = None
+    win32api = None
 from qfluentwidgets import CardWidget, BodyLabel, StrongBodyLabel, CaptionLabel, SubtitleLabel, PushButton
 
 class MonitorSelectionDialog(QDialog):
@@ -197,6 +202,8 @@ class ScreenCaptureWidget(QWidget):
     
     def update_hover_window(self, pos):
         """检测鼠标下的窗口"""
+        if sys.platform != "win32":
+            return
         
         # 1. 直接使用 Win32 API 获取物理坐标 (绝对准确)
         phy_x, phy_y = win32api.GetCursorPos()
@@ -322,6 +329,8 @@ class ScreenCaptureWidget(QWidget):
     
     def capture_window_at_point(self, point):
         """点击截图"""
+        if sys.platform != "win32":
+            return
         self.hide()
         QApplication.processEvents()
         

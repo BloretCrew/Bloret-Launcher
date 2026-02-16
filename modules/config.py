@@ -17,7 +17,7 @@ def get_source_config_path():
 source_config_path = get_source_config_path()
 
 # config_path = %appdata%/Bloret-Launcher/config.json
-config_path = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'config.json')
+config_path = os.path.join(BLglobals.datapath, 'config.json')
 
 #先检查目标配置文件是否存在
 log(f"正在检查配置文件路径: {config_path}")

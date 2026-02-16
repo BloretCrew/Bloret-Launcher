@@ -18,6 +18,7 @@ import platform
 import requests
 import shutil
 import concurrent.futures
+import modules.globals as BLglobals
 import threading
 import time
 import zipfile
@@ -30,7 +31,11 @@ from pathlib import Path
 
 # 第三方库
 import sip  # type: ignore
-import send2trash
+try:
+    import send2trash
+except ImportError:
+    send2trash = None
+    print("[Warning] send2trash not found. Soft deletion to recycle bin will be unavailable.")
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QDesktopServices, QColor
 from PyQt5.QtWidgets import (
@@ -164,7 +169,8 @@ def open_minecraft_version_folder(self,version,MINECRAFT_DIR):
         # 检查版本文件夹是否存在
         if os.path.exists(version_path) and os.path.isdir(version_path):
             # 使用默认文件管理器打开文件夹
-            os.startfile(version_path)
+            from PyQt5.QtCore import QUrl
+            QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.abspath(version_path)))
             log(f"成功打开版本文件夹：{version_path}")
         else:
             log(f"版本文件夹不存在：{version_path}", logging.ERROR)
@@ -213,7 +219,14 @@ def delete_minecraft_version(self,version,label,card,MINECRAFT_DIR,homeInterface
         # 检查版本文件夹是否存在
         if os.path.exists(version_path) and os.path.isdir(version_path):
             # 删除版本文件夹
-            send2trash.send2trash(version_path)
+            if send2trash:
+                send2trash.send2trash(version_path)
+            else:
+                import shutil
+                if os.path.isdir(version_path):
+                    shutil.rmtree(version_path)
+                else:
+                    os.remove(version_path)
             log(f"成功删除版本文件夹：{version_path}")
             
             # 更新全局列表
@@ -853,7 +866,7 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
                 # 打开配置文件
                 config = cfg.read()
                 # 获取最大线程数配置，默认2000
-                max_thread_value = config.get("MaxThread", 2000)
+                max_thread_value = config.get("MaxThread", 64)
                 # 如果对话框中有MaxThread相关控件，则设置其值
                 if hasattr(download_dialog, 'MaxThread') and hasattr(download_dialog, 'MaxThread_2'):
                     download_dialog.MaxThread.setText(str(max_thread_value))
@@ -935,10 +948,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
 
         # 0. 如果minecraft_dir未提供，设置默认值
         if minecraft_dir is None:
-            # 从环境变量获取APPDATA路径（Windows系统）
-            appdata = os.environ.get('APPDATA', '')
-            # 构建默认的Minecraft安装目录路径：%appdata%/Bloret-Launcher/.minecraft
-            minecraft_dir = os.path.join(appdata, 'Bloret-Launcher', '.minecraft')
+            # 使用跨平台的 datapath
+            minecraft_dir = os.path.join(BLglobals.datapath, '.minecraft')
 
         # 记录开始安装的日志信息
         log(f"开始安装 Minecraft 版本: {version}，安装目录: {minecraft_dir}")
@@ -1351,7 +1362,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         # 加载配置文件config.json，获取下载线程数等配置
         config = cfg.read()
         # 从配置中获取最大线程数，默认值为2000
-        max_thread_value = config.get("MaxThread", 2000)
+        max_thread_value = config.get("MaxThread", 64)
         # 处理主版本库文件，准备下载Minecraft依赖的库文件
         processed_libraries = []
         # 检查版本数据中是否包含库文件列表
@@ -2152,7 +2163,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         if download_dialog:
             try:
                 # 尝试关闭下载对话框
-                download_dialog.close()
+                QMetaObject.invokeMethod(download_dialog, "close", Qt.QueuedConnection)
             except Exception as e:
                 # 如果关闭对话框出错，记录WARNING级别日志
                 log(f"关闭下载对话框时出错: {e}")
@@ -3338,7 +3349,8 @@ class ModPage(QWidget):
     def open_folder(self):
         if not os.path.exists(self.mods_dir):
             os.makedirs(self.mods_dir, exist_ok=True)
-        os.startfile(self.mods_dir)
+        from PyQt5.QtCore import QUrl
+        QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.abspath(self.mods_dir)))
 
     def load_mods(self):
         # 清空列表
@@ -3400,7 +3412,14 @@ class ModPage(QWidget):
             w.cancelButton.setText(i18nText("取消"))
             if w.exec():
                 try:
-                    send2trash.send2trash(path)
+                    if send2trash:
+                        send2trash.send2trash(path)
+                    else:
+                        import shutil
+                        if os.path.isdir(path):
+                            shutil.rmtree(path)
+                        else:
+                            os.remove(path)
                     InfoBar.success(title=i18nText("已删除"), content=os.path.basename(path), parent=self.window())
                     self.load_mods() # 刷新列表
                 except Exception as e:
@@ -3592,7 +3611,8 @@ class ResourcePackPage(QWidget):
     def open_folder(self):
         if not os.path.exists(self.packs_dir):
             os.makedirs(self.packs_dir, exist_ok=True)
-        os.startfile(self.packs_dir)
+        from PyQt5.QtCore import QUrl
+        QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.abspath(self.packs_dir)))
 
     def load_packs(self):
         while self.contentLayout.count():
@@ -3623,7 +3643,14 @@ class ResourcePackPage(QWidget):
             w.cancelButton.setText(i18nText("取消"))
             if w.exec():
                 try:
-                    send2trash.send2trash(path)
+                    if send2trash:
+                        send2trash.send2trash(path)
+                    else:
+                        import shutil
+                        if os.path.isdir(path):
+                            shutil.rmtree(path)
+                        else:
+                            os.remove(path)
                     InfoBar.success(title=i18nText("已删除"), content=os.path.basename(path), parent=self.window())
                     self.load_packs()
                 except Exception as e:
@@ -3730,7 +3757,11 @@ class CoreManageDialog(MessageBoxBase):
             version_path = os.path.join(self.minecraft_dir, "versions", self.version_name)
             try:
                 if os.path.exists(version_path):
-                    send2trash.send2trash(version_path)
+                    if send2trash:
+                        send2trash.send2trash(version_path)
+                    else:
+                        import shutil
+                        shutil.rmtree(version_path)
                     log(f"核心已删除: {version_path}")
                     try:
                         if os.path.exists(self.bl_json_path):

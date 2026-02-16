@@ -1,13 +1,12 @@
 import requests, logging
+import sys
 from modules.log import log
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-import tkinter as tk
-from tkinter import filedialog
 import subprocess
 import threading
 from qfluentwidgets import InfoBar
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget, QFileDialog
 from modules.i18n import i18nText
 
 def search_mods(search_term):
@@ -132,18 +131,14 @@ def Get_Mod_File_Download_Url(slug, loaders=None, game_versions=None):
 
 def add_mrpack(parent_widget: QWidget = None):
     log(i18nText("添加 Modrinth Modpack"), logging.INFO)
-    # 创建根窗口但隐藏它
-    root = tk.Tk()
-    root.withdraw()
     
     # 弹出文件选择对话框
-    file_path = filedialog.askopenfilename(
-        title=i18nText("选择 .mrpack 文件"),
-        filetypes=[("Modrinth Modpack Files", "*.mrpack")]
+    file_path, _ = QFileDialog.getOpenFileName(
+        parent_widget,
+        i18nText("选择 .mrpack 文件"),
+        "",
+        "Modrinth Modpack Files (*.mrpack)"
     )
-    
-    # 销毁根窗口
-    root.destroy()
     
     # 如果用户选择了文件
     if file_path:
@@ -155,8 +150,9 @@ def add_mrpack(parent_widget: QWidget = None):
         def run_install():
             try:
                 # 运行 mrpack-install 命令
+                executable = "mrpack-install.exe" if sys.platform == "win32" else "mrpack-install"
                 process = subprocess.Popen(
-                    ["mrpack-install.exe", file_path],
+                    [executable, file_path],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,

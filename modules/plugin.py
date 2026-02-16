@@ -13,6 +13,7 @@ import time
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from modules.customize import CustomizeAppAdd
+import modules.globals as BLglobals
 
 def install_plugin_from_zip(zip_url, plugin_name):
     '''
@@ -49,8 +50,8 @@ def install_plugin_from_zip(zip_url, plugin_name):
                     temp_zip.write(chunk)
             temp_zip_path = temp_zip.name
             
-        # 将 zip 解压缩到 %appdata%/Bloret-Launcher/Plugin/{plugin_name} 中
-        plugin_dir = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'Plugin', plugin_name)
+        # 将 zip 解压缩到 data path/Plugin/{plugin_name} 中
+        plugin_dir = os.path.join(BLglobals.datapath, 'Plugin', plugin_name)
         
         # 如果目录已存在，先删除
         if os.path.exists(plugin_dir):
@@ -226,8 +227,8 @@ def addPlugin(list_url, plugin_name):
 
                     temp_zip_path = temp_zip.name
 
-                # 4. 将 zip 解压缩到 %appdata%/Bloret-Launcher/Plugin/{plugin[name]} 中
-                plugin_dir = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher', 'Plugin', plugin['name'])
+                # 4. 将 zip 解压缩到 data path/Plugin/{plugin[name]} 中
+                plugin_dir = os.path.join(BLglobals.datapath, 'Plugin', plugin['name'])
 
                 # 如果目录已存在，先删除
                 if os.path.exists(plugin_dir):

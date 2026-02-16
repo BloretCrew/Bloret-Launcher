@@ -18,9 +18,14 @@ LM_Download_Way_list = ["1.21.8","1.21.7"]
 
 config_path = ''
 
-import os
+import os, sys
 
-datapath = os.path.join(os.getenv('APPDATA'), 'Bloret-Launcher')
+if sys.platform == 'win32':
+    datapath = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'Bloret-Launcher')
+elif sys.platform == 'darwin':
+    datapath = os.path.expanduser('~/Library/Application Support/Bloret-Launcher')
+else:
+    datapath = os.path.expanduser('~/.local/share/Bloret-Launcher')
 minecraft_dir = ""
-BLtips = []
-BL_Activity = {}
+BLtips = ["欢迎使用 Bloret Launcher！", "祝你今天玩得开心！", "Bloret Launcher，让你的 Minecraft 体验更上一层楼。", "遇到问题？试试去社区寻求帮助吧！"]
+BL_Activity = {"show": False, "title": "", "description": "", "time": "", "link": "", "icon": "", "status": "after"}
