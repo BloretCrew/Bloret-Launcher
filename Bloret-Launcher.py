@@ -202,12 +202,23 @@ class RunScriptThread(QThread):
             )
             
             last_line = ""
+            last_emit_time = 0
             # 持续读取合并后的游戏日志
             for line in iter(lambda: self.process.stdout.readline(), ''):
                 if line:
                     last_line = line.strip()
-                    self.output_received.emit(last_line)
+                    # 节流：限制发送到 UI 的频率（每 100ms 最多一次），避免日志过多卡死主线程
+                    current_time = time.time()
+                    if current_time - last_emit_time > 0.1:
+                        self.output_received.emit(last_line)
+                        last_emit_time = current_time
+                    
+                    # 磁盘日志仍然完整记录
                     log(f"[Game] {last_line}")
+            
+            # 循环结束后确保发出最后一行
+            if last_line:
+                self.output_received.emit(last_line)
             
             self.last_output_received.emit(last_line)
             self.process.stdout.close()

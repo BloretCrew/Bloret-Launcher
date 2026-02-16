@@ -90,64 +90,58 @@ def handle_exception(e):
     
     sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
+# 缓存主要处理器的流对象以提升性能
+_file_handler_stream = None
+
+def _get_file_handler_stream():
+    global _file_handler_stream
+    if _file_handler_stream is not None:
+        return _file_handler_stream
+    
+    # 尝试查找 FileHandler
+    for h in logging.getLogger().handlers:
+        if isinstance(h, logging.FileHandler):
+            if hasattr(h, 'stream') and h.stream:
+                _file_handler_stream = h.stream
+                return h.stream
+    return None
+
+import inspect
+
 def log(message, level=logging.INFO):
     '''
     发送日志消息，输出到控制台并记录到日志文件。
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    使用 stacklevel=2 来捕获调用者的位置信息。
     '''
-    import inspect
-    
-    # 获取调用者的帧信息
-    frame = inspect.currentframe().f_back
-    if frame:
-        filename = frame.f_code.co_filename
-        lineno = frame.f_lineno
-        func_name = frame.f_code.co_name
-        
-        # 创建自定义的日志记录
-        logger = logging.getLogger()
-        record = logger.makeRecord(
-            name=logger.name,
-            level=level,
-            fn=filename,
-            lno=lineno,
-            msg=message,
-            args=(),
-            exc_info=None,
-            func=func_name
-        )
-        logger.handle(record)
-        
-        # 格式化控制台输出 (仅当 sys.stdout 存在且未被冻结环境完全屏蔽时尝试打印)
-        if sys.stdout:
+    # 性能极致优化：针对极高频的游戏输出，直接写入流，跳过所有 logging 模块开销
+    if message.startswith("[Game]") and level < logging.WARNING:
+        stream = _get_file_handler_stream()
+        if stream:
             try:
-                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
+                # 手动格式化日志，格式需与 Formatter 保持一致：
+                # %(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d - %(funcName)s()] %(message)s
+                now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
                 level_name = logging.getLevelName(level)
-                formatted_log = f"[{level_name}] [{filename}:{lineno} - {func_name}()] {message}"
-                print(formatted_log)
+                
+                # 写入流 (不强制 flush)
+                stream.write(f"{now_str} [{level_name}] [launch.py:0 - run()] {message}\n")
             except Exception:
                 pass
-    else:
-        # 如果无法获取调用者信息，使用默认方式
-        logging.log(level, message)
-        if sys.stdout:
-            try:
-                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
-                level_name = logging.getLevelName(level)
-                formatted_log = f"[{level_name}] {message}"
-                print(formatted_log)
-            except Exception:
-                pass
+        return
+
+    # 正常日志：使用标准 logging 处理
+    try:
+        logger.log(level, message, stacklevel=2)
+    except Exception:
+        logger.log(level, message)
     
-    # 强制刷新所有 handlers
-    for handler in logging.getLogger().handlers:
-        try:
-            handler.flush()
-        except Exception:
-            pass
-    # if level == logging.ERROR:
-    #     handle_exception(Exception(message))  # 如果是错误级别，调用异常处理函数
+    # 2. 格式化控制台输出 (可选，因为 console_handler 已经处理了 stdout)
+    # 但由于之前的逻辑是手动打印，为了保持格式一致性，我们在这里优化处理。
+    # 实际上由于已经添加了 console_handler 到 logger，正常的 `logger.log` 已经会输出到 stdout。
+    # 如果要保留手动打印，也要避免频繁获取时间戳带来的开销。
+    
+    # 注意：不再强制刷新所有 handlers，让 OS 和 Python 运行时自行管理缓冲，提升性能。
+    # 如果确实需要立即写入，应该只针对 file_handler 且在 ERROR 级别才做，这里全部移除。
 
 def clear_log_files(self, log_clear_button):
     ''' 
