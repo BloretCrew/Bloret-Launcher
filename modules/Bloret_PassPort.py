@@ -47,6 +47,8 @@ def savedata(key, data, public=False):
                     f"user=public&"
                     f"key={key}&"
                     f"data={data_str}")
+            # 公共模式下 URL 不包含用户密码，直接记录部分信息
+            log(f"请求URL(已脱敏): http://pcfs.eno.ink:20000/app/data/save?user=public&key={key}&data_length={len(data_str)}")
         else:
             log(f"使用用户模式存储数据，用户: {user}")
             url = (f"http://pcfs.eno.ink:20000/app/data/save?"
@@ -56,8 +58,8 @@ def savedata(key, data, public=False):
                     f"usertoken={usertoken}&"
                     f"key={key}&"
                     f"data={data_str}")
-        
-        log(f"请求URL: {url[:100]}...")  # 只记录前100个字符避免日志过长
+            # 用户模式下 URL 包含 usertoken，这里记录脱敏后的 URL 信息，避免泄露密码
+            log(f"请求URL(已脱敏): http://pcfs.eno.ink:20000/app/data/save?user={user}&key={key}&data_length={len(data_str)}")
         
         response = requests.get(url, timeout=10)
         log(f"HTTP 响应状态码: {response.status_code}")
@@ -111,6 +113,8 @@ def readdata(key, public=False):
                     f"app_id=BloretLauncher&"
                     f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user=public&"
+            # 公共模式下 URL 不包含用户密码，直接记录不敏感的 URL 信息
+            log(f"请求URL(已脱敏): http://pcfs.eno.ink:20000/app/data/read?user=public&key={key}")
                     f"key={key}")
         else:
             log(f"使用用户模式读取数据，用户: {user}")
@@ -119,9 +123,9 @@ def readdata(key, public=False):
                     f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user={user}&"
                     f"usertoken={usertoken}&"
+            # 用户模式下 URL 包含 usertoken，这里记录脱敏后的 URL 信息，避免泄露密码
+            log(f"请求URL(已脱敏): http://pcfs.eno.ink:20000/app/data/read?user={user}&key={key}")
                     f"key={key}")
-        
-        log(f"请求URL: {url}")
         
         response = requests.get(url, timeout=10)
         log(f"HTTP 响应状态码: {response.status_code}")
