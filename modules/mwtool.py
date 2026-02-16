@@ -14,7 +14,7 @@ else:
     win32process = None
 from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout, QVBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread, QEventLoop
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtGui import QFont, QIcon, QPixmap
 from PyQt5.uic import loadUi
 from qfluentwidgets import SimpleCardWidget, BodyLabel, StrongBodyLabel
 from .ShortCut import ScreenShortCut
@@ -181,46 +181,14 @@ class MinecraftWindowToolManager(QObject):
                 pass
                 return self._create_tool_impl(minecraft_hwnd, version)
             else:
-                # 在非主线程中，请求 manager 在主线程创建工具栏，并同步等待结果（超时 5 秒）
-                log.debug("在非主线程中，通过 create_request 请求主线程创建工具栏并等待结果")
-                pass
-
-                done = threading.Event()
-                result = {'tool': None}
-
-                def _on_created(tool):
-                    try:
-                        log.debug(f"wait on_created 回调得到 tool: {tool}")
-                        result['tool'] = tool
-                        done.set()
-                    except Exception as _e:
-                        log.error(f"on_created 回调出错: {_e}")
-
-                try:
-                    self.tool_created.connect(_on_created)
-                except Exception as e:
-                    log.error(f"连接临时回调失败: {e}")
-
-                # 发送创建请求（由 manager 在主线程处理）
+                # 异步化改造：不再等待主线程结果，直接返回 None 并在后台排队创建
                 try:
                     self.create_request.emit(minecraft_hwnd, version)
-                    log.info("create_request 信号已发出")
+                    log.info("create_request 信号已异步发出，由主线程排期处理")
                 except Exception as e:
-                    log.error(f"发出 create_request 信号失败: {e}")
-
-                # 等待结果（超时 5 秒）
-                waited = done.wait(5)
-                if not waited:
-                    log.error("等待创建工具栏超时（5 秒）")
-                else:
-                    log.info("创建工具栏已完成，返回结果")
-
-                try:
-                    self.tool_created.disconnect(_on_created)
-                except Exception:
-                    pass
-
-                return result['tool']
+                    log.error(f"发射 create_request 信号失败: {e}")
+                
+                return None # 异步模式下立即返回
                 
         except Exception as e:
             log.error(f"跨线程创建工具栏失败: {e}")
@@ -359,6 +327,12 @@ class MinecraftWindowTool(QWidget):
         # 初始化UI
         self.init_ui()
         
+        # 设置窗口图标
+        try:
+            self.setWindowIcon(QIcon(r"g:\Work\git\Bloret-Launcher\Bloret.png"))
+        except Exception:
+            pass
+            
         # 添加延迟创建定时器，确保窗口创建完成后再显示
         QTimer.singleShot(500, self.ensure_visible)
         
@@ -396,6 +370,18 @@ class MinecraftWindowTool(QWidget):
 
         # 绑定 UI 上的控件
         try:
+            # 修改图标
+            try:
+                # 首先尝试直接获取名为 BodyLabel 的控件
+                icon_label = self.findChild(BodyLabel, "BodyLabel")
+                if icon_label:
+                    icon_path = r"g:\Work\git\Bloret-Launcher\Bloret.png"
+                    if os.path.exists(icon_path):
+                        icon_label.setPixmap(QPixmap(icon_path))
+                        icon_label.setScaledContents(True)
+            except Exception as e:
+                log.warning(f"设置 UI 图标失败: {e}")
+
             self.MinecraftVersion = self.findChild(BodyLabel, "MinecraftVersion")
             if self.MinecraftVersion:
                 self.MinecraftVersion.setText(f"Minecraft {self.version}")
@@ -420,8 +406,15 @@ class MinecraftWindowTool(QWidget):
         layout.setSpacing(10)
 
         # 图标
-        self.icon_label = QLabel("🎮")
-        self.icon_label.setStyleSheet("font-size: 20px;")
+        self.icon_label = QLabel()
+        icon_path = r"g:\Work\git\Bloret-Launcher\Bloret.png"
+        if os.path.exists(icon_path):
+            self.icon_label.setPixmap(QPixmap(icon_path))
+            self.icon_label.setScaledContents(True)
+            self.icon_label.setFixedSize(25, 25)
+        else:
+            self.icon_label.setText("🎮")
+            self.icon_label.setStyleSheet("font-size: 20px;")
 
         # 标题
         self.title_label = QLabel("Bloret Launcher")
@@ -706,30 +699,33 @@ class MinecraftWindowTool(QWidget):
 # 全局管理器实例（延迟创建，确保在 Qt 主线程中实例化）
 tool_manager = None
 _tool_manager_lock = threading.Lock()
-_tool_manager_ready = threading.Event()
 
 class ToolManagerFactory(QObject):
-    """用于在主线程创建 ToolManager 的工厂类"""
+    """ 用于在主线程创建和管理 ToolManager 的工厂类 """
     create_signal = pyqtSignal()
+    show_signal = pyqtSignal(int, str)
 
     def __init__(self):
         super().__init__()
         # 连接信号到槽，槽函数将在对象所在的线程（主线程）执行
         self.create_signal.connect(self._on_create)
-
+        self.show_signal.connect(self._on_show)
+        
     def _on_create(self):
         global tool_manager
-        try:
-            if not tool_manager:
-                tool_manager = MinecraftWindowToolManager()
-                log.info("ToolManagerFactory: 已在主线程创建 tool_manager")
-        except Exception as e:
-            log.error(f"ToolManagerFactory: 创建 tool_manager 失败: {e}")
-        finally:
+        if not tool_manager:
             try:
-                _tool_manager_ready.set()
-            except Exception:
-                pass
+                tool_manager = MinecraftWindowToolManager()
+                log.info("ToolManager 已在主线程创建")
+            except Exception as e:
+                log.error(f"创建 ToolManager 失败: {e}")
+                
+    def _on_show(self, hwnd, version):
+        self._on_create() # 确保已创建
+        if tool_manager:
+            tool_manager.show_tool(hwnd, version)
+        else:
+            log.error("无法处理显示请求：ToolManager 为空")
 
 # 全局工厂实例
 _tool_factory = ToolManagerFactory()
@@ -765,66 +761,34 @@ def _ensure_tool_manager():
         if tool_manager and tool_manager.thread() == main_thread:
             return True
 
-        _tool_manager_ready.clear()
-        
-        # 使用信号发射请求主线程创建 (比 QTimer.singleShot 更可靠)
+        # 异步化改造：不再等待，直接发射信号就返回
         try:
             _tool_factory.create_signal.emit()
+            log.debug("已异步发射 tool_manager 创建信号")
         except Exception as e:
             log.error(f"发射创建信号失败: {e}")
-            return False
-
-        # 等待创建完成（最长等待 5 秒）
-        if not _tool_manager_ready.wait(5):
-            log.error("等待 tool_manager 创建超时")
-            return False
-
-        return tool_manager is not None and tool_manager.thread() == main_thread
+        
+        return True # 假定会成功，由主线程在空闲时处理
 
 def create_minecraft_tool(minecraft_hwnd, version):
     """
-    创建 Minecraft 窗口工具栏
+    异步创建 Minecraft 窗口工具栏
     
     Args:
         minecraft_hwnd: Minecraft 窗口句柄
         version: Minecraft 版本号
     
     Returns:
-        MinecraftWindowTool 实例
+        None (异步执行)
     """
-    log.debug(f"create_minecraft_tool 被调用，句柄: {minecraft_hwnd}, 版本: {version}")
+    log.debug(f"create_minecraft_tool (异步) 被调用，句柄: {minecraft_hwnd}, 版本: {version}")
     try:
-        # 确保 QApplication 存在
-        app = QApplication.instance()
-        if not app:
-            log.debug("QApplication 不存在，创建新实例")
-            app = QApplication(sys.argv)
-        else:
-            log.debug("使用现有的 QApplication 实例")
-        
-        # 确保 manager 在主线程中存在，然后使用其显示工具栏
-        log.info("确保 tool_manager 在主线程中准备就绪...")
-        if not _ensure_tool_manager():
-            log.error("无法确保 tool_manager 在主线程中准备就绪")
-            return None
-
-        log.debug("调用 tool_manager.show_tool...")
-        tool_manager.show_tool(minecraft_hwnd, version)
-
-        result = tool_manager.current_tool
-        log.debug(f"tool_manager.current_tool 返回: {result}")
-        
-        # 确保工具栏显示
-        if result and not result.isVisible():
-            result.show()
-            log.debug("工具栏已显示")
-        
-        return result
+        # 发射异步显示信号，不再检查 manager 状态或等待
+        _tool_factory.show_signal.emit(minecraft_hwnd, version)
+        return None
         
     except Exception as e:
-        log.error(f"创建 Minecraft 工具栏失败: {e}")
-        import traceback
-        traceback.print_exc()
+        log.error(f"发射异步创建信号失败: {e}")
         return None
 
 
