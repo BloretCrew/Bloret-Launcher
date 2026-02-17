@@ -41,17 +41,17 @@ def savedata(key, data, public=False):
         # 构建请求URL
         if public:
             log("使用公共模式存储数据")
-            url = (f"http://pcfs.eno.ink:20000/app/data/save?"
+            url = (f"{BLglobals.server_ip}:20000/app/data/save?"
                     f"app_id=BloretLauncher&"
                     f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user=public&"
                     f"key={key}&"
                     f"data={data_str}")
             # 公共模式下 URL 不包含用户密码，直接记录部分信息
-            log(f"请求URL(已脱敏): http://pcfs.eno.ink:20000/app/data/save?user=public&key={key}&data_length={len(data_str)}")
+            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/save?user=public&key={key}&data_length={len(data_str)}")
         else:
             log(f"使用用户模式存储数据，用户: {user}")
-            url = (f"http://pcfs.eno.ink:20000/app/data/save?"
+            url = (f"{BLglobals.server_ip}:20000/app/data/save?"
                     f"app_id=BloretLauncher&"
                     f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user={user}&"
@@ -59,7 +59,7 @@ def savedata(key, data, public=False):
                     f"key={key}&"
                     f"data={data_str}")
             # 用户模式下 URL 包含 usertoken，这里记录脱敏后的 URL 信息，避免泄露密码
-            log(f"请求URL(已脱敏): http://pcfs.eno.ink:20000/app/data/save?user={user}&key={key}&data_length={len(data_str)}")
+            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/save?user={user}&key={key}&data_length={len(data_str)}")
         
         response = requests.get(url, timeout=10)
         log(f"HTTP 响应状态码: {response.status_code}")
@@ -110,8 +110,8 @@ def readdata(key, public=False):
         if public:
             log("使用公共模式读取数据")
             # 公共模式下 URL 不包含用户密码，直接记录不敏感的 URL 信息
-            log(f"请求URL(已脱敏): http://pcfs.eno.ink:20000/app/data/read?user=public&key={key}")
-            url = (f"http://pcfs.eno.ink:20000/app/data/read?"
+            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/read?user=public&key={key}")
+            url = (f"{BLglobals.server_ip}:20000/app/data/read?"
                     f"app_id=BloretLauncher&"
                     f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user=public&"
@@ -119,8 +119,8 @@ def readdata(key, public=False):
         else:
             log(f"使用用户模式读取数据，用户: {user}")
             # 用户模式下 URL 包含 usertoken，这里记录脱敏后的 URL 信息，避免泄露密码
-            log(f"请求URL(已脱敏): http://pcfs.eno.ink:20000/app/data/read?user={user}&key={key}")
-            url = (f"http://pcfs.eno.ink:20000/app/data/read?"
+            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/read?user={user}&key={key}")
+            url = (f"{BLglobals.server_ip}:20000/app/data/read?"
                     f"app_id=BloretLauncher&"
                     f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user={user}&"
@@ -174,7 +174,7 @@ def readdata(key, public=False):
 def get_pending_2fa_requests(username, token):
     """获取待处理的2FA请求"""
     log("获取待处理的2FA请求")
-    url = "http://pcfs.eno.ink:20000/api/2fa/app/pending"
+    url = f"{BLglobals.server_ip}:20000/api/2fa/app/pending"
     params = {
         "username": username,
         "app_id": "BloretLauncher",
@@ -185,7 +185,7 @@ def get_pending_2fa_requests(username, token):
         if response.status_code == 200:
             return response.json()
         else:
-            log(f"获取2FA请求返回非200状态: {response.status_code}, {response.text}")
+            log(f"获取2FA请求返回非200状态: \n 请求参数: {params} \n 响应状态码: {response.status_code}, \n 响应内容: {response.text}")
     except Exception as e:
         log(f"获取2FA请求网络异常: {e}")
     return None
@@ -193,7 +193,7 @@ def get_pending_2fa_requests(username, token):
 def handle_2fa_request_action(username, token, request_id, action):
     """处理2FA请求 (approve/reject)"""
     log("处理 2FA 请求")
-    url = "http://pcfs.eno.ink:20000/api/2fa/app/approve"
+    url = f"{BLglobals.server_ip}:20000/api/2fa/app/approve"
     data = {
         "username": username,
         "app_id": "BloretLauncher",
@@ -272,7 +272,7 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
         user_token = config_data.get('Bloret_PassPort_PassWord')
         
         # 2. 向验证服务器发送请求获取 Minecraft 账户列表 (对齐 web.py 逻辑)
-        verify_url = "http://pcfs.eno.ink:20000/app/MinecraftAccounts"
+        verify_url = f"{BLglobals.server_ip}:20000/app/MinecraftAccounts"
         params = {
             'app_id': 'BloretLauncher',
             'app_secret': 's4d56f4a68sd46g54asd46f54a5dsf654asdf546',

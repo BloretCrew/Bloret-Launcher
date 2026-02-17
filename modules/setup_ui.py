@@ -1109,7 +1109,7 @@ class AvatarLoaderThread(QThread):
         except Exception as e:
             log(f"头像加载异常 {self.username}: {str(e)}")
 
-def setup_passport_ui(self, widget, server_ip, homeInterface):
+def setup_passport_ui(self, widget, homeInterface):
     '''
     设定 Bloret Launcher 通行证界面 UI 布局和操作。
     适配 MinecraftAccounts (QWidget) 动态列表，支持局部刷新。
@@ -1530,7 +1530,7 @@ def setup_settings_ui(self, widget):
             log(f"Minecraft 浮动工具栏: {'启用' if state else '禁用'}")
         ))
 
-def setup_multiplayer_ui(self, widget, server_ip):
+def setup_multiplayer_ui(self, widget):
     """设定 Bloret Launcher 多人联机界面 UI 布局和操作"""
     # 获取IPv6地址
     ipv6_address_str = get_ipv6_address()

@@ -38,12 +38,36 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 }
                 
                 try:
+                    # 优先使用配置的 server_ip (可能是代理地址)
+                    verify_url = f"{BLglobals.server_ip}20000/app/verify"
+                    logger.info(f"Trying verify_url: {verify_url}")
                     response = requests.get(verify_url, params=params)
+                    
+                    # 如果响应状态码不是 200 或内容为空/非 JSON，尝试直连 IP:20000
+                    # 注意：这里我们通过解析 server_ip 来获取 IP 地址
+                    if response.status_code != 200 or not response.text.strip().startswith('{'):
+                         logger.warning(f"Primary verify failed. Status: {response.status_code}, Body: {response.text[:100]}...")
+                         
+                         # 尝试提取 IP 地址并构建直连 URL
+                         # 假设 BLglobals.server_ip 格式为 http://IP:PORT/ 或 http://DOMAIN:PORT/
+                         try:
+                             from urllib.parse import urlparse
+                             parsed_uri = urlparse(BLglobals.server_ip)
+                             host = parsed_uri.hostname
+                             if host:
+                                 fallback_url = f"http://{host}:20000/app/verify"
+                                 logger.info(f"Trying fallback_url: {fallback_url}")
+                                 response = requests.get(fallback_url, params=params)
+                         except Exception as ex:
+                             logger.error(f"Failed to construct fallback URL: {ex}")
+
                     response_data = response.text
                     
                     # 输出到控制台
-                    print(f"OAuth verification response: {response_data}")
-                    logger.info(f"OAuth verification response: {response_data}")
+                    print(f"OAuth verification response status: {response.status_code}")
+                    print(f"OAuth verification response body: {response_data}")
+                    logger.info(f"OAuth verification response status: {response.status_code}")
+                    logger.info(f"OAuth verification response body: {response_data}")
                     
                     # 解析响应数据并保存到 config.json
                     try:
@@ -66,19 +90,23 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                                 json.dump(config_data, f, ensure_ascii=False, indent=4)
                                 
                             logger.info(f"User data saved to config.json: {user_data['username']}")
-                    except json.JSONDecodeError:
-                        logger.error("Failed to parse OAuth response as JSON")
-                    
-                    # 返回成功的网页页面
-                    self.send_response(200)
-                    self.send_header('Content-type', 'text/html; charset=utf-8')
-                    self.end_headers()
-                    
-                    html_content = self.generate_success_page()
-                    self.wfile.write(html_content.encode('utf-8'))
-                    
-                    toast(f'您已以 {user_data["username"]} 登录', f'登录后可使用 Bloret PassPort 服务，例如同步 Minecraft 登录信息到云端等功能')
-                    
+
+                            # 返回成功的网页页面
+                            self.send_response(200)
+                            self.send_header('Content-type', 'text/html; charset=utf-8')
+                            self.end_headers()
+                            
+                            html_content = self.generate_success_page()
+                            self.wfile.write(html_content.encode('utf-8'))
+                            
+                            toast(f'您已以 {user_data["username"]} 登录', f'登录后可使用 Bloret PassPort 服务，例如同步 Minecraft 登录信息到云端等功能')
+                        else:
+                            raise ValueError("Invalid user data format")
+
+                    except (json.JSONDecodeError, ValueError) as e:
+                        logger.error(f"Failed to parse OAuth response: {e}")
+                        raise
+
                 except Exception as e:
                     logger.error(f"Error during OAuth verification: {e}")
                     self.send_response(500)

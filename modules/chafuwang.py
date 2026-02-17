@@ -18,7 +18,7 @@ def getServerData(ServerName: str, callback: Callable[[Dict[str, Any]], None] = 
         threading.Thread: 执行请求的线程对象
     """
     def _fetch_data():
-        url = f"{BLglobals.server_ip}api/getserver?name={ServerName}"
+        url = f"{BLglobals.server_ip}:20901/api/getserver?name={ServerName}"
         log(f"开始获取服务器数据: {ServerName}", logging.INFO)
         log(f"请求URL: {url}", logging.DEBUG)
         

@@ -72,28 +72,6 @@ def IsNeedUpdate(NowVersion, LatestVersion):
         # 都是正式版且主版本号相同，不需要更新
         return False
 
-def check_Light_Minecraft_Download_Way(callback=None):
-    '''
-    Light Minecraft 下载方式 **已弃用**  
-    但为了保持原有兼容性，暂时保留。
-    '''
-    def _inner():
-        try:
-            response = requests.get(f"{BLglobals.server_ip}api/Light-Minecraft-Download-Way")
-            if response.status_code == 200:
-                data = response.json()
-                LM_Download_Way = data.get("Light-Minecraft-Download-Way", {})
-                LM_Download_Way_list = LM_Download_Way.get("download-way", [])
-                LM_Download_Way_version = LM_Download_Way.get("version", {})
-                LM_Download_Way_minecraft = LM_Download_Way.get("minecraft", {})
-                if callback:
-                    callback(LM_Download_Way, LM_Download_Way_list, LM_Download_Way_version, LM_Download_Way_minecraft)
-        except Exception as e:
-            # handle_exception(type(e), e, e.__traceback__)
-            log(f"检查 Light Minecraft 下载方式 时发生错误: {e}", logging.ERROR)
-            pass
-    threading.Thread(target=_inner, daemon=True).start()
-
 def handle_first_run(self):
     def _inner(self):
         if self.config.get('first-run', True):
@@ -124,50 +102,13 @@ def handle_first_run(self):
     t = threading.Thread(target=_inner, args=(self,), daemon=True)
     t.start()
 
-def check_Bloret_version(self,ver_id_bloret):
-    def _inner(ver_id_bloret):
-        if not self.config.get('localmod', False):
-            try:
-                response = requests.get(f"{BLglobals.server_ip}api/bloret-version")
-                if response.status_code == 200:
-                    data = response.json()
-                    ver_id_bloret.clear()
-                    ver_id_bloret.extend(data.get("Bloret-versions", []))
-                    log(f"成功获取 Bloret 版本列表: {ver_id_bloret}")
-                    return ver_id_bloret
-                else:
-                    log(i18nText("无法获取 Bloret 版本列表"), logging.ERROR)
-            except requests.RequestException as e:
-                log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
-        else:
-            log(i18nText("本地模式已启用，获取 Bloret 版本列表 的过程已跳过。"))
-def get_bloret_versions(self, ver_id_bloret):
-    def _inner(ver_id_bloret):
-        if not self.config.get('localmod', False):
-            try:
-                response = requests.get(f"{BLglobals.server_ip}api/bloret-version")
-                if response.status_code == 200:
-                    data = response.json()
-                    ver_id_bloret.clear()
-                    ver_id_bloret.extend(data.get("Bloret-versions", []))
-                    log(f"成功获取 Bloret 版本列表: {ver_id_bloret}")
-                    return ver_id_bloret
-                else:
-                    log(i18nText("无法获取 Bloret 版本列表"), logging.ERROR)
-            except requests.RequestException as e:
-                log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
-        else:
-            log(i18nText("本地模式已启用，获取 Bloret 版本列表 的过程已跳过。"))
-    t = threading.Thread(target=_inner, args=(ver_id_bloret,), daemon=True)
-    t.start()
-
 def get_latest_version():
     # 初始化变量
     BL_update_text = ""
     BL_latest_ver = "0.0"
     
     try:
-        response = requests.get(f"{BLglobals.server_ip}api/info")
+        response = requests.get(f"{BLglobals.server_ip}:3001/api/info")
         if response.status_code == 200:
             latest_release = response.json()
             BL_update_text = latest_release.get("newVersionDescription", "")
@@ -196,7 +137,7 @@ def get_latest_version():
 class UpdateSignal(QObject):
     show_update = pyqtSignal(object, str, str, str)
 
-def check_for_updates(self, server_ip=None):
+def check_for_updates(self):
     if not hasattr(self, 'update_signal'):
         self.update_signal = UpdateSignal()
         self.update_signal.show_update.connect(show_update_message)

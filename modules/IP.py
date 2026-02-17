@@ -11,7 +11,7 @@ try:
         if "PCFS" in data:
             new_ip = data["PCFS"]
             # Construct the full URL with port 2 as per original config
-            BLglobals.server_ip = f"http://{new_ip}:2/"
+            BLglobals.server_ip = f"http://{new_ip}"
             log(f"已更新服务器 IP: {BLglobals.server_ip}")
         else:
             log("IP.json 中未找到 PCFS 字段")

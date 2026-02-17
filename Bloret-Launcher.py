@@ -66,10 +66,7 @@ from modules.setup_ui import (
 )
 from modules.customize import CustomizeRun
 from modules.global_hotkey import init_global_hotkeys, get_signal_emitter
-from modules.BLServer import (
-    check_Light_Minecraft_Download_Way, handle_first_run, 
-    check_Bloret_version, check_for_updates
-)
+from modules.BLServer import handle_first_run, check_for_updates
 from modules.Bloret_PassPort import get_pending_2fa_requests, handle_2fa_request_action
 import modules.links as links
 from modules.BLDownload import BL_download
@@ -530,7 +527,7 @@ class MainWindow(FluentWindow):
                     print("Bloret Launcher is already running.")
                     sys.exit(0)
                     
-        check_for_updates(self,BLglobals.server_ip)
+        check_for_updates(self)
 
         if self.config.get('show_runtime_do', False):
             log(i18nText("显示软件打开过程已启用"))
@@ -612,8 +609,7 @@ class MainWindow(FluentWindow):
         
         self.loading_dialogs = []  # 初始化 loading_dialogs 属性
         self.threads = []  # 初始化 threads 属性
-        handle_first_run(self,BLglobals.server_ip)
-        ver_id_bloret = check_Bloret_version(self, BLglobals.server_ip, BLglobals.ver_id_bloret)
+        handle_first_run(self)
         
 
         # 初始化其他属性
@@ -680,7 +676,7 @@ class MainWindow(FluentWindow):
 
         # 处理首次运行
         update_progress({'value': 70 / 100, 'valueStringOverride': '7/10', 'status': i18nText('处理首次运行')})
-        QTimer.singleShot(0, lambda: handle_first_run(self,BLglobals.server_ip))
+        QTimer.singleShot(0, lambda: handle_first_run(self))
         
         # 隐藏启动页面
         update_progress({'value': 80 / 100, 'valueStringOverride': '8/10', 'status': i18nText('隐藏启动页面')})
@@ -758,8 +754,8 @@ class MainWindow(FluentWindow):
         setup_tools_ui(self,self.toolsInterface)
         setup_info_ui(self,self.infoInterface)
         setup_Mod_ui(self,self.modInterface)
-        setup_multiplayer_ui(self,self.multiplayerInterface, BLglobals.server_ip)
-        setup_passport_ui(self,self.passportInterface,BLglobals.server_ip,self.homeInterface)
+        setup_multiplayer_ui(self,self.multiplayerInterface)
+        setup_passport_ui(self,self.passportInterface,self.homeInterface)
         setup_settings_ui(self,self.settingsInterface)
         
         # 2. 此时 BLglobals 中的列表应该已经被 setup_home_ui -> run_cmcl_list 填充了
@@ -2247,24 +2243,6 @@ with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
 # 获取系统深浅色主题
 isdarktheme = is_dark_theme()
 log(f"当前主题:{isdarktheme}")
-
-# 添加语言切换功能
-# def switch_language(locale):
-#     global translator
-#     app.removeTranslator(translator)  # 移除当前翻译器
-#     translator = FluentTranslator(locale)
-#     app.installTranslator(translator)
-#     window.retranslateUi()  # 重新翻译 UI
-
-# 设置语言
-# language = config.get('language', 'zh-cn')
-# if language != 'zh-cn':
-#     switch_language(QLocale(language))
-
-if not config.get('localmod', False):
-    check_Light_Minecraft_Download_Way(BLglobals.server_ip, update_download_way)
-else:
-    log(i18nText("本地模式已启用，获取 Light-Minecraft-Download-Way 的过程已跳过。"))
 
 # 适配高DPI缩放
 QApplication.setHighDpiScaleFactorRoundingPolicy(

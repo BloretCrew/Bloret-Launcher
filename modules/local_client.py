@@ -19,9 +19,9 @@ def OnlineClient(port):
     """
     
     try:
-        # 1. 请求 {server_ip}/api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital
-        log(f"请求 {BLglobals.server_ip}api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital")
-        response = requests.get(f"{BLglobals.server_ip}api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital", timeout=10)
+        # 1. 请求 {server_ip}:20000/api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital
+        log(f"请求URL: {BLglobals.server_ip}:20000/api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital")
+        response = requests.get(f"{BLglobals.server_ip}:20000/api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital", timeout=10)
         response.raise_for_status()
         data = response.json()
         
