@@ -28,7 +28,7 @@ def update_to_latest_version(self):
             'status': '正在获取最新版本信息...'
         })
         
-        response = requests.get("http://pcfs.eno.ink:3001/api/info")
+        response = requests.get(f"{BLglobals.server_ip}api/info")
         response.raise_for_status()
         res = response.json()
         

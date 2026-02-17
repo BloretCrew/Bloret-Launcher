@@ -142,13 +142,13 @@ def check_Bloret_version(self,server_ip,ver_id_bloret):
     t = threading.Thread(target=_inner, args=(self, server_ip, ver_id_bloret), daemon=True)
     t.start()
 
-def get_latest_version(server_ip):
+def get_latest_version():
     # 初始化变量
     BL_update_text = ""
     BL_latest_ver = "0.0"
     
     try:
-        response = requests.get("http://pcfs.eno.ink:3001/api/info")
+        response = requests.get(BLglobals.server_ip + "api/info")
         if response.status_code == 200:
             latest_release = response.json()
             BL_update_text = latest_release.get("newVersionDescription", "")
@@ -201,7 +201,7 @@ def check_for_updates(self,server_ip):
             except Exception as e:
                 handle_exception(type(e), e, e.__traceback__)
                 log(f"检查更新时发生错误: {e}", logging.ERROR)
-                log(i18nText("无法连接到 pcfs.eno.ink"), logging.ERROR)
+                log(i18nText("无法连接到 Bloret Launcher Server"), logging.ERROR)
                 update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': i18nText('无法连接到服务器 ❌')})
         else:
             log(i18nText("本地模式已启用，检查更新 的过程已跳过。"))

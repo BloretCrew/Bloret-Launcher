@@ -5,6 +5,7 @@ import os
 from modules.log import log
 import logging
 from modules.i18n import i18nText
+import modules.globals as BLglobals
 
 def OnlineClient(server_ip, port):
     """
@@ -20,19 +21,18 @@ def OnlineClient(server_ip, port):
     
     try:
         # 1. 请求 {server_ip}/api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital
-        response = requests.get(f"{server_ip}api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital", timeout=10)
+        response = requests.get(f"{BLglobals.server_ip}api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital", timeout=10)
         response.raise_for_status()
         data = response.json()
         
         remote_port = data.get('port')
-        connection_address = "pcfs.eno.ink"
         
-        if not remote_port or not connection_address:
+        if not remote_port:
             log(i18nText("获取远程端口或连接地址失败"), level=logging.ERROR)
             return i18nText("获取连接信息失败")
             
         log(f"获取到远程端口: {remote_port}")
-        log(f"连接地址: {connection_address}:{remote_port}")
+        log(f"连接地址: {BLglobals.server_ip[:-1]}:{remote_port}")
         
         # 2. 读取 frpc.toml 文件
         frpc_config_path = os.path.join(os.getcwd(), "frpc.toml")
@@ -88,7 +88,7 @@ def OnlineClient(server_ip, port):
             log(i18nText("frpc 客户端已在后台运行"))
             
         log(i18nText("在线客户端服务启动成功"))
-        return f"{connection_address}:{remote_port}"
+        return f"{BLglobals.server_ip[:-1]}:{remote_port}"
         
     except requests.RequestException as e:
         log(f"网络请求失败: {str(e)}", level=logging.ERROR)

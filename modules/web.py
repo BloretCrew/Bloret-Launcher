@@ -30,7 +30,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             
             if code:
                 # 向验证服务器发送请求
-                verify_url = "http://pcfs.eno.ink:20000/app/verify"
+                verify_url = f"{BLglobals.server_ip}20000/app/verify"
                 params = {
                     'app_id': 'BloretLauncher',
                     'app_secret': 's4d56f4a68sd46g54asd46f54a5dsf654asdf546',
@@ -110,7 +110,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 user_token = config_data.get('Bloret_PassPort_PassWord')
 
                 # 2. 向验证服务器发送请求获取 Minecraft 账户列表
-                verify_url = "http://pcfs.eno.ink:20000/app/MinecraftAccounts"
+                verify_url = f"{BLglobals.server_ip}20000/app/MinecraftAccounts"
                 params = {
                     'app_id': 'BloretLauncher',
                     'app_secret': 's4d56f4a68sd46g54asd46f54a5dsf654asdf546',

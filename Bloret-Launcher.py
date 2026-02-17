@@ -1,3 +1,6 @@
+# 0. 先获取 IP 地址
+import modules.IP
+
 # 1. 系统与内置库
 import os
 import sys

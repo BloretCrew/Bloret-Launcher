@@ -1,4 +1,4 @@
-server_ip = "http://pcfs.eno.ink:2/" # Bloret Launcher Server 服务器地址 （尾部带斜杠）
+server_ip = "https://wa.ng/" # Bloret Launcher Server 服务器地址 （尾部带斜杠）
 ver_id_main = []
 ver_id_short = []
 ver_id = [] 

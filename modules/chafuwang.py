@@ -4,6 +4,7 @@ import json
 from typing import Callable, Any, Dict
 from modules.log import log
 import logging
+import modules.globals as BLglobals
 
 def getServerData(ServerName: str, callback: Callable[[Dict[str, Any]], None] = None):
     """
@@ -17,7 +18,7 @@ def getServerData(ServerName: str, callback: Callable[[Dict[str, Any]], None] = 
         threading.Thread: 执行请求的线程对象
     """
     def _fetch_data():
-        url = f"http://pcfs.eno.ink:20901/api/getserver?name={ServerName}"
+        url = f"{BLglobals.server_ip}api/getserver?name={ServerName}"
         log(f"开始获取服务器数据: {ServerName}", logging.INFO)
         log(f"请求URL: {url}", logging.DEBUG)
         

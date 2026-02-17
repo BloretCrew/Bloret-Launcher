@@ -9,6 +9,7 @@ import logging
 import hashlib
 import time
 import modules.config as cfg
+import modules.globals as BLglobals
 
 timeout = 600 # second
 
@@ -54,7 +55,7 @@ def continue_ai_response(connection_id):
     Returns:
         str: AI的完整回复内容
     """
-    url = f"http://pcfs.eno.ink:20000/api/aicontinue?connectionId={connection_id}"
+    url = f"{BLglobals.server_ip}api/aicontinue?connectionId={connection_id}"
     
     log(f"开始继续获取AI响应，连接ID: {connection_id}", logging.INFO)
     
@@ -131,7 +132,7 @@ def AskBloriko(question, config, deepthink=False):
         return "用户名为空"
     
     def make_request():
-        url = "http://pcfs.eno.ink:20000/api/ai"
+        url = f"{BLglobals.server_ip}api/ai"
         
         payload = {
             "pause": True,
@@ -298,7 +299,7 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent,
     AskBloriko_Answer._bloriko_updater = ui_updater
 
     def make_request():
-        url = "http://pcfs.eno.ink:20000/api/ai"
+        url = f"{BLglobals.server_ip}api/ai"
         log(f"准备发送请求到 Bloriko AI 服务，URL: {url}", logging.INFO)
         
         # 构造请求体，适配新的API格式
