@@ -43,7 +43,7 @@ from qfluentwidgets import (
     ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, 
     Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, 
     FluentTranslator, FluentIcon, TabBar, TabCloseButtonDisplayMode,
-    BodyLabel, IndeterminateProgressBar # 添加 IndeterminateProgressBar
+    BodyLabel, IndeterminateProgressBar
 )
 
 # 3. 自定义模块 (Bloret Launcher Modules)
@@ -152,6 +152,17 @@ class RunScriptThread(QThread):
     def run(self):
         # --- 阶段1：准备启动环境 (原主线程逻辑移入此处) ---
         self.output_received.emit(f"正在准备启动环境: {self.version} ...")
+        
+        # 新增：准备账户信息 (刷新 Token + 同步)
+        try:
+            self.output_received.emit("正在同步 Minecraft 账户信息...")
+            from modules.Bloret_PassPort import prepare_minecraft_launch_account
+            prepare_minecraft_launch_account()
+            self.output_received.emit("账户信息同步完成")
+        except Exception as e:
+            log(f"账户同步过程发生异常(不影响启动尝试): {e}")
+            self.output_received.emit(f"账户同步警告: {e}")
+
         self.output_received.emit("正在检查文件完整性并解析启动参数 (如下载缺损文件可能需要较长时间)...")
         
         launch_args = []

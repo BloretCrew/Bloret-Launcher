@@ -30,7 +30,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             
             if code:
                 # 向验证服务器发送请求
-                verify_url = f"{BLglobals.server_ip}20000/app/verify"
+                verify_url = f"{BLglobals.server_ip}:20000/app/verify"
                 params = {
                     'app_id': 'BloretLauncher',
                     'app_secret': 's4d56f4a68sd46g54asd46f54a5dsf654asdf546',
@@ -39,7 +39,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 
                 try:
                     # 优先使用配置的 server_ip (可能是代理地址)
-                    verify_url = f"{BLglobals.server_ip}20000/app/verify"
+                    verify_url = f"{BLglobals.server_ip}:20000/app/verify"
                     logger.info(f"Trying verify_url: {verify_url}")
                     response = requests.get(verify_url, params=params)
                     
@@ -138,7 +138,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 user_token = config_data.get('Bloret_PassPort_PassWord')
 
                 # 2. 向验证服务器发送请求获取 Minecraft 账户列表
-                verify_url = f"{BLglobals.server_ip}20000/app/MinecraftAccounts"
+                verify_url = f"{BLglobals.server_ip}:20000/app/MinecraftAccounts"
                 params = {
                     'app_id': 'BloretLauncher',
                     'app_secret': 's4d56f4a68sd46g54asd46f54a5dsf654asdf546',
@@ -147,15 +147,30 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 }
                 
                 response = requests.get(verify_url, params=params)
-                api_result = response.json()
+                
+                if response.status_code != 200:
+                     raise Exception(f"服务器返回状态码: {response.status_code}")
+
+                try:
+                    api_result = response.json()
+                except Exception:
+                    logger.error(f"Invalid JSON response from server: {response.text}")
+                    raise Exception(f"服务器返回无效的 JSON 数据")
                 
                 if api_result.get('status') == 'success':
                     # 3. 更新 config.json 中的 MinecraftAccount 字段
                     accounts = api_result.get('accounts', [])
                     
+                    # 获取旧的 chosen 值，如果不存在或越界，则默认为 0
+                    old_minecraft_account = config_data.get('MinecraftAccount', {})
+                    old_chosen = old_minecraft_account.get('chosen', 0)
+                    
+                    # 如果之前的 chosen 索引在新列表中仍然有效，则保持不变；否则重置为 0
+                    new_chosen = old_chosen if 0 <= old_chosen < len(accounts) else (0 if accounts else -1)
+
                     config_data['MinecraftAccount'] = {
                         "logined": True if accounts else False,
-                        "chosen": 0 if accounts else -1,
+                        "chosen": new_chosen,
                         "accounts": accounts
                     }
                     

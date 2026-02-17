@@ -109,94 +109,65 @@ def readdata(key, public=False):
         # 构建请求URL
         if public:
             log("使用公共模式读取数据")
-            # 公共模式下 URL 不包含用户密码，直接记录不敏感的 URL 信息
-            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/read?user=public&key={key}")
-            url = (f"{BLglobals.server_ip}:20000/app/data/read?"
+            url = (f"{BLglobals.server_ip}:20000/app/data/get?"
                     f"app_id=BloretLauncher&"
                     f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user=public&"
                     f"key={key}")
+            # 公共模式下 URL 不包含用户密码
+            log(f"请求URL: {url}")
         else:
             log(f"使用用户模式读取数据，用户: {user}")
-            # 用户模式下 URL 包含 usertoken，这里记录脱敏后的 URL 信息，避免泄露密码
-            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/read?user={user}&key={key}")
-            url = (f"{BLglobals.server_ip}:20000/app/data/read?"
+            url = (f"{BLglobals.server_ip}:20000/app/data/get?"
                     f"app_id=BloretLauncher&"
                     f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user={user}&"
                     f"usertoken={usertoken}&"
                     f"key={key}")
+            # 用户模式下 URL 包含 usertoken，这里记录脱敏后的 URL 信息
+            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/get?user={user}&key={key}")
         
         response = requests.get(url, timeout=10)
         log(f"HTTP 响应状态码: {response.status_code}")
-        log(f"HTTP 响应内容: {response.text}")
         
         if response.status_code == 200:
+            log(i18nText("成功从 Bloret PassPort 服务器读取数据"))
+            result = response.text
+            # 尝试解析 JSON，如果不是 JSON 则直接返回字符串
             try:
-                response_json = response.json()
-                log(f"成功解析 JSON 响应: {response_json}")
-                
-                if "data" in response_json:
-                    data_content = response_json["data"]
-                    log(f"成功读取数据，数据类型: {type(data_content)}")
-                    if isinstance(data_content, str) and len(data_content) > 100:
-                        log(f"数据内容(前100字符): {data_content[:100]}...")
-                    else:
-                        log(f"数据内容: {data_content}")
-                    return data_content
-                else:
-                    log("响应中未找到 'data' 字段")
-                    return None
-            except json.JSONDecodeError as e:
-                log(f"解析 JSON 响应失败: {str(e)}")
-                log(f"原始响应内容: {response.text}")
-                return None
+                # 检查是否看起来像 JSON
+                if (result.startswith('{') and result.endswith('}')) or (result.startswith('[') and result.endswith(']')):
+                    json_result = json.loads(result)
+                    log("数据已解析为 JSON 对象")
+                    return json_result
+            except json.JSONDecodeError:
+                pass
+            
+            log("数据作为字符串返回")
+            return result
         else:
-            log(f"读取数据失败，状态码: {response.status_code}")
+            log(f"从 Bloret PassPort 服务器读取数据失败，状态码: {response.status_code}")
             return None
             
     except FileNotFoundError as e:
         log(f"readdata 错误: 找不到配置文件 - {str(e)}")
-        return None
-    except json.JSONDecodeError as e:
-        log(f"readdata 错误: JSON 解析失败 - {str(e)}")
         return None
     except requests.exceptions.RequestException as e:
         log(f"readdata 错误: HTTP 请求失败 - {str(e)}")
         return None
     except Exception as e:
         log(f"readdata 错误: 未知异常 - {str(e)}")
-        log(f"异常类型: {type(e)}")
         return None
     finally:
         log("=== readdata 函数执行结束 ===")
 
-def get_pending_2fa_requests(username, token):
-    """获取待处理的2FA请求"""
-    log("获取待处理的2FA请求")
-    url = f"{BLglobals.server_ip}:20000/api/2fa/app/pending"
-    params = {
-        "username": username,
-        "app_id": "BloretLauncher",
-        "token": token
-    }
-    try:
-        response = requests.get(url, params=params, timeout=5)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            log(f"获取2FA请求返回非200状态: \n 请求参数: {params} \n 响应状态码: {response.status_code}, \n 响应内容: {response.text}")
-    except Exception as e:
-        log(f"获取2FA请求网络异常: {e}")
-    return None
-
-def handle_2fa_request_action(username, token, request_id, action):
-    """处理2FA请求 (approve/reject)"""
-    log("处理 2FA 请求")
-    url = f"{BLglobals.server_ip}:20000/api/2fa/app/approve"
+def process_2fa_request(token, request_id, action):
+    """
+    处理 2FA 请求
+    action: 'approve' or 'deny'
+    """
+    url = f"{BLglobals.server_ip}:20000/api/2fa/process"
     data = {
-        "username": username,
-        "app_id": "BloretLauncher",
         "token": token,
         "requestId": request_id,
         "action": action
@@ -286,12 +257,19 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
         log(f"接口返回状态: {api_result.get('status')}")
         
         if api_result.get('status') == 'success':
-            # 3. 更新 config.json 中的 MinecraftAccount 字段 (对齐 web.py 逻辑)
+            # 3. 更新 config.json 中的 MinecraftAccount 字段
             accounts = api_result.get('accounts', [])
             
+            # 获取旧的 chosen 值，如果不存在或越界，则默认为 0
+            old_minecraft_account = config_data.get('MinecraftAccount', {})
+            old_chosen = old_minecraft_account.get('chosen', 0)
+            
+            # 如果之前的 chosen 索引在新列表中仍然有效，则保持不变；否则重置为 0
+            new_chosen = old_chosen if 0 <= old_chosen < len(accounts) else (0 if accounts else -1)
+
             new_account_data = {
                 "logined": True if accounts else False,
-                "chosen": 0 if accounts else -1,
+                "chosen": new_chosen,
                 "accounts": accounts
             }
             config_data['MinecraftAccount'] = new_account_data
@@ -331,3 +309,94 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
     finally:
         log("=== sync_bloret_passport_account_to_mc 函数执行结束 ===")
 
+def refresh_minecraft_token():
+    """
+    刷新 Minecraft Token
+    """
+    log("=== refresh_minecraft_token 函数开始执行 ===")
+    try:
+        config_data = cfg.read()
+        if not config_data.get('Bloret_PassPort_Login'):
+            log("用户未登录 Bloret PassPort，跳过 Token 刷新")
+            return False
+
+        username = config_data.get('Bloret_PassPort_UserName')
+        if not username:
+            log("未找到用户名，跳过 Token 刷新")
+            return False
+
+        url = f"{BLglobals.server_ip}:20000/api/login/Minecraft/Refresh"
+        headers = {
+            'Cookie': f'username={username}'
+        }
+
+        log(f"正在请求刷新 Token 接口: {url}")
+        # 注意：这里不需要 json 数据，参数通过 Cookie 传递
+        response = requests.post(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            if result.get('success'):
+                log(f"Token 刷新成功: {result.get('message')}")
+                return True
+            else:
+                log(f"Token 刷新失败: {result.get('message')}")
+                return False
+        else:
+            log(f"Token 刷新请求失败，状态码: {response.status_code}")
+            try:
+                log(f"响应内容: {response.text}")
+            except:
+                pass
+            return False
+            
+    except Exception as e:
+        log(f"刷新 Minecraft Token 时发生异常: {e}")
+        return False
+    finally:
+        log("=== refresh_minecraft_token 函数执行结束 ===")
+
+def prepare_minecraft_launch_account():
+    """
+    在启动 Minecraft 前调用的准备函数
+    1. 刷新 Minecraft Token
+    2. 同步最新的账户信息
+    """
+    log("正在准备 Minecraft 启动账户...")
+    
+    # 1. 刷新 Token
+    refresh_result = refresh_minecraft_token()
+    if not refresh_result:
+        log("Minecraft Token 刷新失败或不需要刷新，尝试继续同步...", logging.WARNING)
+    
+    # 2. 同步账户信息 (不显示弹窗)
+    # 注意：sync_bloret_passport_account_to_mc 会更新 config.json
+    # 后续的 Get_Run_Script 会读取最新的 config.json
+    sync_result = sync_bloret_passport_account_to_mc(parent_window=None)
+    if not sync_result:
+        log("Minecraft 账户同步失败，将使用本地缓存的账户信息启动", logging.WARNING)
+    
+    log("Minecraft 启动账户准备完成")
+
+def get_pending_2fa_requests(username, token):
+    """
+    获取待处理的 2FA 请求
+    """
+    url = f"{BLglobals.server_ip}:20000/api/2fa/pending"
+    params = {
+        'username': username,
+        'token': token
+    }
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        log(f"获取2FA请求失败: {e}")
+    return None
+
+def handle_2fa_request_action(username, token, request_id, action):
+    """
+    处理 2FA 请求动作 (同意/拒绝)
+    """
+    return process_2fa_request(token, request_id, action)
