@@ -7,12 +7,11 @@ import logging
 from modules.i18n import i18nText
 import modules.globals as BLglobals
 
-def OnlineClient(server_ip, port):
+def OnlineClient(port):
     """
     启动在线客户端服务
     
     Args:
-        server_ip (str): 服务器IP地址
         port (int): 本地Minecraft服务器端口
         
     Returns:
@@ -21,6 +20,7 @@ def OnlineClient(server_ip, port):
     
     try:
         # 1. 请求 {server_ip}/api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital
+        log(f"请求 {BLglobals.server_ip}api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital")
         response = requests.get(f"{BLglobals.server_ip}api/minecraft-online-client?token=Bloret-PCFS-Token-Now-Rhedar-Detrital", timeout=10)
         response.raise_for_status()
         data = response.json()

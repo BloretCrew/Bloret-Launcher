@@ -1,3 +1,5 @@
+import signal
+from numpy import inner
 import sys
 import logging,requests,os,subprocess,json
 if sys.platform == "win32":
@@ -70,14 +72,14 @@ def IsNeedUpdate(NowVersion, LatestVersion):
         # 都是正式版且主版本号相同，不需要更新
         return False
 
-def check_Light_Minecraft_Download_Way(server_ip, callback=None):
+def check_Light_Minecraft_Download_Way(callback=None):
     '''
     Light Minecraft 下载方式 **已弃用**  
     但为了保持原有兼容性，暂时保留。
     '''
     def _inner():
         try:
-            response = requests.get(server_ip + "api/Light-Minecraft-Download-Way")
+            response = requests.get(f"{BLglobals.server_ip}api/Light-Minecraft-Download-Way")
             if response.status_code == 200:
                 data = response.json()
                 LM_Download_Way = data.get("Light-Minecraft-Download-Way", {})
@@ -92,8 +94,8 @@ def check_Light_Minecraft_Download_Way(server_ip, callback=None):
             pass
     threading.Thread(target=_inner, daemon=True).start()
 
-def handle_first_run(self,server_ip):
-    def _inner(self, server_ip):
+def handle_first_run(self):
+    def _inner(self):
         if self.config.get('first-run', True):
             parent_dir = os.path.dirname(os.getcwd())
             updating_folder = os.path.join(parent_dir, "updating")
@@ -119,14 +121,14 @@ def handle_first_run(self,server_ip):
         shortcut.WorkingDirectory = os.getcwd()
         shortcut.IconLocation = icon
         shortcut.save()
-    t = threading.Thread(target=_inner, args=(self, server_ip), daemon=True)
+    t = threading.Thread(target=_inner, args=(self,), daemon=True)
     t.start()
 
-def check_Bloret_version(self,server_ip,ver_id_bloret):
-    def _inner(self, server_ip, ver_id_bloret):
+def check_Bloret_version(self,ver_id_bloret):
+    def _inner(ver_id_bloret):
         if not self.config.get('localmod', False):
             try:
-                response = requests.get(server_ip + "api/bloret-version")
+                response = requests.get(f"{BLglobals.server_ip}api/bloret-version")
                 if response.status_code == 200:
                     data = response.json()
                     ver_id_bloret.clear()
@@ -139,7 +141,24 @@ def check_Bloret_version(self,server_ip,ver_id_bloret):
                 log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
         else:
             log(i18nText("本地模式已启用，获取 Bloret 版本列表 的过程已跳过。"))
-    t = threading.Thread(target=_inner, args=(self, server_ip, ver_id_bloret), daemon=True)
+def get_bloret_versions(self, ver_id_bloret):
+    def _inner(ver_id_bloret):
+        if not self.config.get('localmod', False):
+            try:
+                response = requests.get(f"{BLglobals.server_ip}api/bloret-version")
+                if response.status_code == 200:
+                    data = response.json()
+                    ver_id_bloret.clear()
+                    ver_id_bloret.extend(data.get("Bloret-versions", []))
+                    log(f"成功获取 Bloret 版本列表: {ver_id_bloret}")
+                    return ver_id_bloret
+                else:
+                    log(i18nText("无法获取 Bloret 版本列表"), logging.ERROR)
+            except requests.RequestException as e:
+                log(f"获取 Bloret 版本列表时发生错误: {e}", logging.ERROR)
+        else:
+            log(i18nText("本地模式已启用，获取 Bloret 版本列表 的过程已跳过。"))
+    t = threading.Thread(target=_inner, args=(ver_id_bloret,), daemon=True)
     t.start()
 
 def get_latest_version():
@@ -148,7 +167,7 @@ def get_latest_version():
     BL_latest_ver = "0.0"
     
     try:
-        response = requests.get(BLglobals.server_ip + "api/info")
+        response = requests.get(f"{BLglobals.server_ip}api/info")
         if response.status_code == 200:
             latest_release = response.json()
             BL_update_text = latest_release.get("newVersionDescription", "")
@@ -177,14 +196,15 @@ def get_latest_version():
 class UpdateSignal(QObject):
     show_update = pyqtSignal(object, str, str, str)
 
-def check_for_updates(self,server_ip):
-    update_signal = UpdateSignal()
-    update_signal.show_update.connect(show_update_message)
-    
-    def _inner(self, server_ip, signal):
+def check_for_updates(self, server_ip=None):
+    if not hasattr(self, 'update_signal'):
+        self.update_signal = UpdateSignal()
+        self.update_signal.show_update.connect(show_update_message)
+
+    def _inner():
         if not self.config.get('localmod', False):
             try:
-                BL_latest_ver, BL_update_text = get_latest_version(server_ip)
+                BL_latest_ver, BL_update_text = get_latest_version()
                 log(f"最新正式版: {BL_latest_ver}")
                 current_ver = self.config.get('ver', '0.0')  # 从config.json读取当前版本
                 log(f"当前版本: {current_ver}")
@@ -195,7 +215,7 @@ def check_for_updates(self,server_ip):
                     if need_update:
                         log(f"当前版本不是最新版，请更新到 {BL_latest_ver} 版本", logging.WARNING)
                         # 使用信号确保在主线程中创建和显示 MessageBox
-                        signal.show_update.emit(self, current_ver, BL_latest_ver, BL_update_text)
+                        self.update_signal.show_update.emit(self, current_ver, BL_latest_ver, BL_update_text)
                     else:
                         log("当前版本是最新的")
             except Exception as e:
@@ -205,7 +225,8 @@ def check_for_updates(self,server_ip):
                 update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': i18nText('无法连接到服务器 ❌')})
         else:
             log(i18nText("本地模式已启用，检查更新 的过程已跳过。"))
-    t = threading.Thread(target=_inner, args=(self, server_ip, update_signal), daemon=True)
+    
+    t = threading.Thread(target=_inner, daemon=True)
     t.start()
 
 def show_update_message(parent, current_ver, latest_ver, update_text):
