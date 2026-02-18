@@ -1,5 +1,3 @@
-import signal
-from numpy import inner
 import sys
 import logging,requests,os,subprocess,json
 if sys.platform == "win32":
@@ -10,11 +8,10 @@ from qfluentwidgets import MessageBox
 from modules.win11toast import update_progress
 from modules.i18n import i18nText
 import threading
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer
+from PyQt5.QtCore import QObject, pyqtSignal
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log
 from modules.safe import handle_exception
-from modules.update import update_to_latest_version
 import modules.globals as BLglobals
 
 def IsNeedUpdate(NowVersion, LatestVersion):
