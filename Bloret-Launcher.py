@@ -79,6 +79,29 @@ from modules.VersionInfo import GetMinecraftList
 
 config = read()
 
+# --- Patch for qframelesswindow TitleBar AttributeError ---
+try:
+    from qframelesswindow.titlebar import TitleBar
+    
+    _original_eventFilter = TitleBar.eventFilter
+    
+    def _safe_eventFilter(self, obj, e):
+        try:
+            return _original_eventFilter(self, obj, e)
+        except AttributeError as err:
+            if "maxBtn" in str(err):
+                # Ignore 'TitleBar' object has no attribute 'maxBtn'
+                return False
+            raise err
+            
+    TitleBar.eventFilter = _safe_eventFilter
+    log("Successfully patched qframelesswindow.TitleBar.eventFilter")
+except ImportError:
+    log("qframelesswindow not found, skipping patch", logging.WARNING)
+except Exception as e:
+    log(f"Failed to patch qframelesswindow.TitleBar: {e}", logging.ERROR)
+# ----------------------------------------------------------
+
 def update_download_way(data, data_list, version, minecraft):
     global LM_Download_Way, LM_Download_Way_list, LM_Download_Way_version, LM_Download_Way_minecraft
     LM_Download_Way = data
