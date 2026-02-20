@@ -270,7 +270,12 @@ jobs:
           ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager deb
           ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager rpm
           # 创建架构特定的 tar.gz 包
-          tar -czf ${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux-${{ matrix.arch }}.tar.gz Bloret-Launcher
+          mkdir -p tar_contents
+          cp Bloret-Launcher tar_contents/
+          cp -r ui lang config.json LICENSE bloret.ico JavaWrapper.jar tar_contents/ || true
+          if; then cp -r easytier tar_contents/; fi
+          cp servers.dat tar_contents/ || true
+          tar -czf ${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux-${{ matrix.arch }}.tar.gz -C tar_contents .
         fi
         if [ "${{ runner.os }}" == "macOS" ]; then 
           cp *.dmg ${{ env.OUTPUT_DIR }}/

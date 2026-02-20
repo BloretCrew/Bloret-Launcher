@@ -178,7 +178,11 @@ jobs:
           curl -sfL https://github.com/goreleaser/nfpm/releases/download/v2.41.2/nfpm_2.41.2_Linux_x86_64.tar.gz | tar xz nfpm
           ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager deb
           ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager rpm
-          zip -j ${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.zip dist/Bloret-Launcher
+          mkdir -p zip_contents
+          cp dist/Bloret-Launcher zip_contents/
+          cp -r ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar zip_contents/ || true
+          cp servers.dat zip_contents/ || true
+          cd zip_contents && zip -r ../${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.zip . && cd ..
         fi
         cp -r ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
         cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
