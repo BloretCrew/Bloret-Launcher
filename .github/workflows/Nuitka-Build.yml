@@ -273,7 +273,7 @@ jobs:
           mkdir -p tar_contents
           cp Bloret-Launcher tar_contents/
           cp -r ui lang config.json LICENSE bloret.ico JavaWrapper.jar tar_contents/ || true
-          if; then cp -r easytier tar_contents/; fi
+          if [ -d "easytier" ]; then cp -r easytier tar_contents/; fi
           cp servers.dat tar_contents/ || true
           tar -czf ${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux-${{ matrix.arch }}.tar.gz -C tar_contents .
         fi
