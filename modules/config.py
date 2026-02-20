@@ -44,6 +44,17 @@ if not os.path.exists(config_path):
             log(f"复制配置文件时出错: {str(e)}")
     else:
         log(f"错误：默认配置文件 config.json 在源路径中不存在")
+        try:
+            default_fallback = {
+                "ver": "1.0",
+                "minecraft_dir": "",
+                "size": 90
+            }
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(default_fallback, f, ensure_ascii=False, indent=4)
+            log(f"已创建兜底配置文件到: {config_path}")
+        except Exception as e:
+            log(f"创建兜底配置文件失败: {str(e)}")
 else:
     log(f"目标配置文件已存在: {config_path}")
 
@@ -101,8 +112,15 @@ except Exception as e:
 
 
 def read():
-    with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    if not os.path.exists(BLglobals.config_path):
+        log(f"读取时发现配置文件不存在: {BLglobals.config_path}，返回空配置")
+        return {}
+    try:
+        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        log(f"read() 读取配置文件失败: {str(e)}，返回空配置")
+        return {}
     
 try:
     log(f"正在读取最终配置文件: {BLglobals.config_path}")
