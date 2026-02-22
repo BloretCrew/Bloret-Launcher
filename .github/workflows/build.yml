@@ -201,7 +201,7 @@ jobs:
           - src: "LICENSE"
             dst: "/usr/share/bloret-launcher/LICENSE"
           - src: "server.dat"
-            dst: "/usr/share/bloret-launcher/server.dat"
+            dst: "/usr/share/bloret-launcher/servers.dat"
           - src: "ui/"
             dst: "/usr/share/bloret-launcher/ui"
           - src: "lang/"
