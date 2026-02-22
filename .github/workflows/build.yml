@@ -155,9 +155,26 @@ jobs:
           cp dist/Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
         elif [ "${{ runner.os }}" == "macOS" ]; then
           cp *.dmg ${{ env.OUTPUT_DIR }}/
-        else
+        elif [ "${{ runner.os }}" == "Linux" ]; then
           cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
           VERSION=$(python -c "import json; print(json.load(open('config.json'))['ver'])")
+          mkdir linux_pkg_ready
+          # 生成 bloret-launcher.desktop 条目，为创建启动菜单快捷方式作准备
+          cat > linux_pkg_ready/bloret-launcher.desktop << EOF
+        [Desktop Entry]
+        Type=Application
+        Name=Bloret Launcher
+        GenericName=Minecraft
+        Comment=A Minecraft Launcher designed by BloretValley administrator.
+        Exec=/usr/share/bloret-launcher/Bloret-Launcher %U
+        Icon=/usr/share/bloret-launcher/bloret.ico
+        Terminal=false
+        Categories=Development;Game
+        EOF
+          # 生成安装后执行脚本，用于刷新启动菜单软件库
+          echo "update-desktop-database /usr/share/applications" > ./linux_pkg_ready/postinstall.sh
+          # 生成卸载后执行脚本，还是用于刷新启动菜单软件库（
+          echo "update-desktop-database /usr/share/applications" > ./linux_pkg_ready/postremove.sh
           # 生成 nfpm 配置
           cat > nfpm.yaml <<EOF
         name: "bloret-launcher"
@@ -171,8 +188,13 @@ jobs:
         homepage: "https://launcher.bloret.net"
         license: "GPL-3.0"
         contents:
-          - src: "dist/Bloret-Launcher"
-            dst: "/usr/bin/bloret-launcher"
+          - src: "dist/"
+            dst: "/usr/share/bloret-launcher"
+          - src: "linux_pkg_ready/bloret-launcher.desktop"
+            dst: "/usr/share/applications/bloret-launcher.desktop"
+        scripts:
+          postinstall: ./linux_pkg_ready/postinstall.sh
+          postremove: ./linux_pkg_ready/postremove.sh
         EOF
           # 安装 nfpm
           curl -sfL https://github.com/goreleaser/nfpm/releases/download/v2.41.2/nfpm_2.41.2_Linux_x86_64.tar.gz | tar xz nfpm
