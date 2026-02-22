@@ -192,6 +192,22 @@ jobs:
             dst: "/usr/share/bloret-launcher"
           - src: "linux_pkg_ready/bloret-launcher.desktop"
             dst: "/usr/share/applications/bloret-launcher.desktop"
+          - src: "bloret.ico"
+            dst: "/usr/share/bloret-launcher/bloret.ico"
+          - src: "config.json"
+            dst: "/usr/share/bloret-launcher/config.json"
+          - src: "JavaWrapper.jar"
+            dst: "/usr/share/bloret-launcher/JavaWrapper.jar"
+          - src: "LICENSE"
+            dst: "/usr/share/bloret-launcher/LICENSE"
+          - src: "server.dat"
+            dst: "/usr/share/bloret-launcher/server.dat"
+          - src: "ui/"
+            dst: "/usr/share/bloret-launcher/ui"
+          - src: "lang/"
+            dst: "/usr/share/bloret-launcher/lang"
+          - src: "easytier/"
+            dst: "/usr/share/bloret-launcher/easytier"
         scripts:
           postinstall: ./linux_pkg_ready/postinstall.sh
           postremove: ./linux_pkg_ready/postremove.sh
