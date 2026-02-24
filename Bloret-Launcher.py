@@ -6,6 +6,15 @@ import os
 import sys
 import re
 
+if sys.platform.startswith('linux'):
+    # Fix for Segmentation Fault when typing on some Linux distributions (e.g. openSUSE with IBus)
+    # This often occurs in Wayland/XWayland environments with PyQt5.
+    if 'QT_IM_MODULE' in os.environ and os.environ['QT_IM_MODULE'] == 'ibus':
+        # Unsetting QT_IM_MODULE often resolves the crash while still allowing basic input.
+        # Some systems may need it set to 'ibus' or 'fcitx' specifically.
+        # We will attempt to unset it to avoid the common qibus crash.
+        os.environ.pop('QT_IM_MODULE', None)
+
 def get_resource_path(relative_path):
     """ 获取资源绝对路径，兼容脚本运行和 PyInstaller 打包环境 """
     if hasattr(sys, '_MEIPASS'):
