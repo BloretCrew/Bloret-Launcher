@@ -5,11 +5,11 @@
                 "Bloret_Launcher_Title": "Bloret Launcher",
                 "WelcomeToUseBL": "歡迎使用百絡谷 Minecraft 啟動器。\n如發現任何 Bug 或有建議等，請到 Github 上提交 Issue\n也歡迎您前往 Github 頁面拉取 Pull request 請求，為百絡谷啟動器做貢獻。",
                 "Info_title": "資訊",
-                "Welcome_text": "您好,",
+                "Welcome_text": "您好",
                 "WillUseAccount_Top": "將使用",
                 "WillUseAccount_Down": "來登入 Minecraft",
-                "Minecraft_account": "无档案",
-                "Bloret_PassPort_Name": "访客"
+                "Minecraft_account": "無檔案",
+                "Bloret_PassPort_Name": "訪客"
             },
             "buttons": {
                 "pushButton_2": "Bloret Github 組織頁面",
@@ -21,20 +21,20 @@
             "TitleLabel": "聯機",
             "SubtitleLabel": "網路",
             "Labels": {
-                "StrongBodyLabel_17": "IPV6",
+                "StrongBodyLabel_17": "IPv6",
                 "CaptionLabel_5": "查看您電腦的 IPV6 配置",
                 "ipv6_address": "------:------:------:------:------:------:------:------",
                 "CaptionLabel_12": "<html><head/><body><p>使用 IPV6 進行聯機，可無需打開 Bloret Launcher 就能與其他人聯機遊玩。<br/><span style=\" font-weight:700;\">IPV6 是您的運營商提供的一項免費服務，不額外收費。 </span>已擁有的用戶點擊上方按鈕直接使用。<br/>IPV6 聯機可能並不穩定，如果您追求穩定性，建議使用下方 Online Client 進行聯機。</p></body></html>",
                 "SubtitleLabel_2": "Easytier",
                 "CaptionLabel_9": "<html><head/><body><p>Easytier 是一项开源项目，可以为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方需要打开 Bloret Launcher 才能与您一起联机。</span></p></body></html>",
-                "Client_Statue": "未连接",
-                "Client_Statue_Show": "您尚未连接到 Easytier 网络",
-                "CaptionLabel_6": "联机服务 Powered by Easytier"
+                "Client_Statue": "未連接",
+                "Client_Statue_Show": "您尚未連接到 EasyTier 網絡",
+                "CaptionLabel_6": "聯機服務由 EasyTier 驅動"
             },
             "buttons": {
-                "GetIPV6AddressGButton": "获取 IPV6 联机地址",
-                "StartOnlineClient": "开启 Easytier 联机服务",
-                "ClientOnlineClient": "连接到对方的网络"
+                "GetIPV6AddressGButton": "獲取 IPv6 地址",
+                "StartOnlineClient": "開啓 EasyTier 聯機服務",
+                "ClientOnlineClient": "連接到對方網絡"
             }
         },
         "download": {
@@ -42,7 +42,7 @@
             "Labels": {
                 "StrongBodyLabel_22": "原版 Minecraft",
                 "CaptionLabel_12": "一鍵下載安裝原版 Minecraft",
-                "StrongBodyLabel_23": "Minecraft + Fabric",
+                "StrongBodyLabel_23": "Minecraft 與 Fabric",
                 "CaptionLabel_13": "可以新增 Mod 的 Minecraft 版本",
                 "StrongBodyLabel_24": "Java",
                 "CaptionLabel_14": "一鍵下載安裝 Java",
@@ -66,9 +66,9 @@
         "mods": {
             "TitleLabel": "Mods",
             "Labels": {
-                "StrongBodyLabel": "让络可帮你挑选合适的 Mod",
-                "CaptionLabel": "无需一个一个找 Mod，让 Bloriko 帮你找齐。",
-                "Bloriko_Important_Info": "Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。"
+                "StrongBodyLabel": "讓洛可爲你挑選合適的 Mod",
+                "CaptionLabel": "無需一個一個找 Mod，讓 Bloriko 爲你找齊。",
+                "Bloriko_Important_Info": "Bloriko 可能犯錯，請勿過度依賴。"
             },
             "buttons": {
                 "Open_Modrinth_Button": "打開 Modrinth"
@@ -81,7 +81,7 @@
             "TitleLabel": "關於",
             "Labels": {
                 "StrongBodyLabel_11": "QQ",
-                "StrongBodyLabel_12": "Github",
+                "StrongBodyLabel_12": "GitHub",
                 "CaptionLabel_2": "© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved."
             },
             "buttons": {
@@ -95,32 +95,32 @@
             "TitleLabel": "通行證",
             "SubtitleLabel": {
                 "label_3": "Minecraft 帳戶",
-                "SubtitleLabel": "Bloret PassPort"
+                "SubtitleLabel": "Bloret 通行證"
             },
             "Labels": {
                 "Bloret_PassPort_UserName": "未登入",
-                "Sync_From_BloretPassPort_Card": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_title": "通过 Bloret PassPort 管理你的账户",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_sub_title": "轻松登录你的 Minecraft Account，便捷地进行操作。"
+                "Sync_From_BloretPassPort_Card": "使用 Bloret 通行證，可享受幾乎所有 Bloret 服務。",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_title": "透過 Bloret 通行證 管理您的賬戶",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_sub_title": "登入您的 Minecraft Account，便捷的進行操作。"
             },
             "buttons": {
-                "Bloret_PassPort_login": " 登录至 Bloret PassPort",
+                "Bloret_PassPort_login": " 登錄 Bloret 他現在",
                 "Bloret_PassPort_logout": "退出登入",
                 "refreshMinecraftAccount": "刷新",
-                "ManageMinecraftAccountOnBloretPassPortWebsite": "在 Bloret PassPort 上管理你的账户",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from": "从 Bloret PassPort 上同步账户"
+                "ManageMinecraftAccountOnBloretPassPortWebsite": "在 Bloret 通行證 上管理您的賬戶",
+                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from": "同步賬戶"
             }
         },
         "tools": {
-            "TitleLabel": "小工具",
+            "TitleLabel": "實用工具",
             "SubtitleLabel": {
-                "label_3": "屏幕截图",
-                "label": "Minecraft 数据查询"
+                "label_3": "熒幕截圖",
+                "label": "查詢 Minecraft 數據"
             },
             "Labels": {
                 "StrongBodyLabel_25": "Bloret Launcher Screen Cut",
-                "CaptionLabel_15": "便捷地截取屏幕画面，包括 Minecraft 窗口",
-                "StrongBodyLabel_26": "通过快捷键激活",
+                "CaptionLabel_15": "方便的截取熒幕内容",
+                "StrongBodyLabel_26": "透過快捷鍵使用",
                 "ScreenCut_ShortCut": "Ctrl+Alt+A",
                 "name2uuid_text": "查詢玩家UUID",
                 "label_2": "查詢的結果將顯示在這裡",
@@ -131,8 +131,8 @@
                 "search_cape": "披風的查詢的結果"
             },
             "buttons": {
-                "ScreenCutButton": "截图",
-                "ScreenCut_ShortCut_Set": "设置快捷键",
+                "ScreenCutButton": "截圖",
+                "ScreenCut_ShortCut_Set": "設置快捷鍵",
                 "name2uuid_player_Button": "查詢",
                 "pushButton_5": "複製到剪貼簿",
                 "search_name_button": "查詢",
@@ -143,7 +143,7 @@
             },
             "LineEdit": {
                 "name2uuid_player_uuid": "玩家名稱（正版）",
-                "search_name_type": "玩家UUID",
+                "search_name_type": "玩家 UUID",
                 "skin_uuid": "玩家UUID，注意不是名字，如果沒有，請到上面獲取。"
             }
         },
@@ -160,8 +160,8 @@
             "Labels": {
                 "StrongBodyLabel_15": "當前版本",
                 "BL_version": "未知",
-                "StrongBodyLabel_23": "Minecraft 文件夹位置",
-                "CaptionLabel_13": "存储所有 Minecraft 信息、资源以及各种版本的文件夹位置",
+                "StrongBodyLabel_23": "Minecraft 資料夾位置",
+                "CaptionLabel_13": "儲存所有 Minecraft 信息、資源及各種版本檔案",
                 "StrongBodyLabel_22": "最大執行緒數",
                 "CaptionLabel_12": "下載檔案時允許同時下載檔案的最大數量\n該數字越大,下載速度越快,但會佔用電腦更多效能。",
                 "StrongBodyLabel_17": "縮放",
@@ -170,8 +170,8 @@
                 "CaptionLabel_4": "眼睛舒服了",
                 "log_clear_text": "清空日誌",
                 "log_clear_subtext": "清空 log 資料夾",
-                "StrongBodyLabel_24": "日志文件夹位置",
-                "CaptionLabel_15": "存储所有 Bloret Launcher 日志的文件夹位置",
+                "StrongBodyLabel_24": "日志資料夾位置",
+                "CaptionLabel_15": "儲存 Bloret Lanchuner 記錄的資料夾位置",
                 "label_3": "開機自啟動",
                 "CaptionLabel_11": "開機時一併打開 Bloret Launcher, 並最小化至系統匣",
                 "StrongBodyLabel_18": "重複啟動程式",
@@ -183,8 +183,8 @@
                 "StrongBodyLabel_20": "本地模式",
                 "CaptionLabel_8": "不連接一部分的網際網路，不允許使用 PCFS 服務。",
                 "CaptionLabel_9": "設定介面大部分內容需要重啟程式後生效。",
-                "language_Setting_Title": "语言 / language",
-                "language_Setting_Tip_Text": "调整语言设置"
+                "language_Setting_Title": "語言 / language",
+                "language_Setting_Tip_Text": "調整語言設置"
             },
             "buttons": {
                 "log_clear_button": "清空日誌"
@@ -217,13 +217,13 @@
             },
             "ComboBox": {
                 "light_dark_choose": [
-                    "跟随系统",
+                    "跟隨系統",
                     "深色模式",
-                    "浅色模式"
+                    "淺色模式"
                 ],
                 "language_Choose": [
-                    "zh-cn",
-                    "en-GB"
+                    "簡體中文",
+                    "英文（英國）"
                 ]
             }
         }
@@ -240,7 +240,7 @@
         "快照版本": "快照版本",
         "远古版本": "遠古版本",
         "未知的版本类型": "未知的版本類型",
-        "您当前尚未登录": "您当前尚未登录",
+        "您当前尚未登录": "您尚未登錄",
         "Bloret Launcher 已阻止了重复打开软件的操作": "Bloret Launcher 已阻止了重複打開軟體的操作",
         "为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。": "為了防止 Bloret Launcher 佔滿您的電腦，我們已阻止您重複打開 Bloret Launcher\n如需重複打開，請到設定中勾選允許重複運行。",
         "正在启动 Bloret Launcher": "正在啟動 Bloret Launcher",
@@ -301,7 +301,7 @@
         "请选择一个Java版本": "請選擇一個Java版本",
         "无法解析Java版本号": "無法解析Java版本號",
         "正在下载 Java ": "正在下載 Java ",
-        "Minecraft版本 ": "Minecraft版本 ",
+        "Minecraft版本 ": "Minecraft 版本 ",
         " 已成功下载": " 已成功下載",
         " 已成功下载并安装": " 已成功下載並安裝",
         " 下载失败": " 下載失敗",
