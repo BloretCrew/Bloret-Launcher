@@ -1,9 +1,9 @@
 import sys
 import ctypes
 import os
-from PySide6.QtWidgets import QApplication, QWidget, QDialog, QVBoxLayout, QPushButton
+from PySide6.QtWidgets import QApplication, QWidget, QDialog, QVBoxLayout, QPushButton, QHBoxLayout, QLabel
 from PySide6.QtCore import Qt, QRect, QPoint, QPropertyAnimation, QEasingCurve, QTimer, Property as pyqtProperty
-from PySide6.QtGui import QGuiApplication, QScreen, QPixmap, QPainter, QColor, QCursor
+from PySide6.QtGui import QGuiApplication, QScreen, QPixmap, QPainter, QColor, QCursor, QFont
 from PySide6.QtUiTools import QUiLoader
 if sys.platform == "win32":
     import win32gui
@@ -21,38 +21,6 @@ try:
     QFLUENTWIDGETS_AVAILABLE = True
 except ImportError:
     QFLUENTWIDGETS_AVAILABLE = False
-    # 创建虚拟类作为后备
-    CardWidget = BodyLabel = StrongBodyLabel = CaptionLabel = None
-
-
-class CustomUiLoader(QUiLoader):
-    """自定义 UiLoader，支持 QFluentWidgets 自定义控件"""
-    
-    def __init__(self):
-        super().__init__()
-        # 注册 QFluentWidgets 控件
-        if QFLUENTWIDGETS_AVAILABLE:
-            self.registerCustomWidget(CardWidget)
-            self.registerCustomWidget(BodyLabel)
-            self.registerCustomWidget(StrongBodyLabel)
-            self.registerCustomWidget(CaptionLabel)
-    
-    def createWidget(self, class_name, parent=None, name=""):
-        """创建控件时的自定义处理"""
-        if not QFLUENTWIDGETS_AVAILABLE:
-            # 如果 QFluentWidgets 不可用，使用标准的替代方案
-            if class_name == "CardWidget":
-                from PySide6.QtWidgets import QFrame
-                widget = QFrame(parent)
-                widget.setObjectName(name)
-                return widget
-            elif class_name in ("BodyLabel", "StrongBodyLabel", "CaptionLabel"):
-                widget = QLabel(parent)
-                widget.setObjectName(name)
-                return widget
-        
-        # 正常情况下使用父类的 createWidget
-        return super().createWidget(class_name, parent, name)
 
 
 class MonitorSelectionDialog(QDialog):
@@ -152,57 +120,101 @@ class ScreenCaptureWidget(QWidget):
         self.setCursor(QCursor(Qt.CrossCursor))
         self.setMouseTracking(True)
         
-        # UI 加载
-        current_size = self.size()
-        ui_file_path = os.path.join(os.path.dirname(__file__), '..', 'ui', 'ScreenCut.ui')
-        if os.path.exists(ui_file_path):
-            try:
-                # 使用自定义 UiLoader 正确处理 QFluentWidgets 控件
-                loader = CustomUiLoader()
-                ui_widget = loader.load(ui_file_path)
-                if ui_widget:
-                    # 将加载的 UI 的属性合并到当前 widget
-                    for child in ui_widget.children():
-                        child.setParent(self)
-            except Exception as e:
-                print(f"UI loading error: {e}")
-                import traceback
-                traceback.print_exc()
-            
-            # --- 关键修复：彻底从布局管理器中剥离 CardWidget ---
-            if hasattr(self, 'CardWidget'):
-                self.CardWidget.setParent(None)  # 1. 移除父对象（自动脱离布局）
-                self.CardWidget.setParent(self)  # 2. 重新挂载为本窗口子对象
-                self.CardWidget.show()           # 3. 重新显示
-            # --------------------------------------------
-            
-        else:
-            print(f"UI文件不存在: {ui_file_path}")
-        # 恢复大小（防止loadUi重置大小）
-        self.resize(current_size)
+        # 使用代码直接构建 UI，避免 QFormBuilder 问题
+        self._build_ui()
+    
+    def _build_ui(self):
+        """直接用代码构建截图提示 UI"""
+        try:
+            if QFLUENTWIDGETS_AVAILABLE:
+                # 创建 CardWidget 容器
+                self.CardWidget = CardWidget(self)
+                
+                # 创建图标标签
+                icon_label = BodyLabel(self.CardWidget)
+                icon_label.setMaximumSize(25, 25)
+                try:
+                    icon_pixmap = QPixmap(os.path.join(os.path.dirname(__file__), '..', 'icon', 'home.png'))
+                    if not icon_pixmap.isNull():
+                        icon_label.setPixmap(icon_pixmap.scaled(25, 25, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                except:
+                    pass
+                
+                # 创建标题标签
+                title_label = StrongBodyLabel(self.CardWidget)
+                title_label.setText("Bloret Launcher Screen Cut")
+                
+                # 创建提示标签
+                self.ScreenCut_Title = CaptionLabel(self.CardWidget)
+                self.ScreenCut_Title.setText("移动鼠标选择窗口，或拖拽框选区域")
+                self.ScreenCut_Title.setWordWrap(True)
+                
+                # 构建布局
+                text_layout = QVBoxLayout()
+                text_layout.addWidget(title_label)
+                text_layout.addWidget(self.ScreenCut_Title)
+                text_layout.setContentsMargins(0, 0, 0, 0)
+                
+                main_layout = QHBoxLayout(self.CardWidget)
+                main_layout.addWidget(icon_label)
+                main_layout.addLayout(text_layout)
+                main_layout.setContentsMargins(10, 5, 10, 5)
+                
+                # 设置 CardWidget 的大小和位置
+                self.CardWidget.setMinimumSize(400, 60)
+                self.CardWidget.adjustSize()
+                
+            else:
+                # 降级方案：使用标准 QLabel
+                self.ScreenCut_Title = QLabel(self)
+                self.ScreenCut_Title.setText("移动鼠标选择窗口，或拖拽框选区域")
+                self.ScreenCut_Title.setWordWrap(True)
+                self.ScreenCut_Title.setStyleSheet("background-color: rgba(0,0,0,180); color: white; padding: 10px; border-radius: 5px;")
+                
+        except Exception as e:
+            print(f"UI build error: {e}")
+            import traceback
+            traceback.print_exc()
+            # 创建最小化的 ScreenCut_Title 作为后备
+            self.ScreenCut_Title = QLabel(self)
+            self.ScreenCut_Title.setText("截图")
+            self.ScreenCut_Title.setStyleSheet("background-color: rgba(0,0,0,180); color: white;")
         
-        # 延时初始化提示框位置 - 使用 0 毫秒在主线程中执行
+        # 初始化位置
         QTimer.singleShot(0, self._update_tip_geometry)
 
     def _update_tip_geometry(self):
         """强制更新提示框位置（居中显示在当前屏幕顶部）"""
-        if not hasattr(self, 'CardWidget'):
-            return
-
-        # 获取自身 geometry (即当前屏幕 geometry)
-        widget_rect = self.rect() # 这是一个局部坐标 (0, 0, w, h)
-        
-        self.CardWidget.setMinimumSize(400, 60)
-        self.CardWidget.adjustSize()
-        widget_width = self.CardWidget.width()
-        
-        # 计算在当前窗口内的水平居中位置
-        target_local_x = (widget_rect.width() - widget_width) // 2
-        target_local_y = 25
-        
-        self.CardWidget.move(target_local_x, target_local_y)
-        self.CardWidget.raise_()
-        self.CardWidget.show()
+        try:
+            # 获取自身 geometry (即当前屏幕 geometry)
+            widget_rect = self.rect()
+            
+            # 优先使用 CardWidget，如果不存在则使用 ScreenCut_Title
+            if hasattr(self, 'CardWidget') and self.CardWidget:
+                self.CardWidget.setMinimumSize(400, 60)
+                self.CardWidget.adjustSize()
+                widget_width = self.CardWidget.width()
+                
+                # 计算在当前窗口内的水平居中位置
+                target_local_x = (widget_rect.width() - widget_width) // 2
+                target_local_y = 25
+                
+                self.CardWidget.move(target_local_x, target_local_y)
+                self.CardWidget.raise_()
+                self.CardWidget.show()
+            elif hasattr(self, 'ScreenCut_Title') and self.ScreenCut_Title:
+                self.ScreenCut_Title.adjustSize()
+                widget_width = self.ScreenCut_Title.width()
+                
+                # 计算在当前窗口内的水平居中位置
+                target_local_x = (widget_rect.width() - widget_width) // 2
+                target_local_y = 25
+                
+                self.ScreenCut_Title.move(target_local_x, target_local_y)
+                self.ScreenCut_Title.raise_()
+                self.ScreenCut_Title.show()
+        except Exception as e:
+            print(f"Error updating tip geometry: {e}")
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
