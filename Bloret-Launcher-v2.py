@@ -7,9 +7,9 @@ SCRIPT_DIR = Path(__file__).parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from PySide6.QtCore import QLocale, Qt, QTranslator, QObject, Slot, Signal, Property
-from PySide6.QtGui import QGuiApplication, QIcon
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QLocale, Qt, QTranslator, QObject, Slot, Signal, Property, QUrl
+from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices
+from PySide6.QtWidgets import QApplication, QFileDialog
 
 import RinUI
 from RinUI import RinUIWindow
@@ -22,7 +22,7 @@ import modules.config as cfg
 import modules.globals as BLglobals
 from modules.launch import Get_Run_Script
 from modules.chafuwang import getServerData
-from modules.setup_ui import get_all_launch_items
+from modules.setup_ui import get_all_launch_items, scan_java_paths
 from modules.i18n import i18nText
 from modules.Bloriko import AskBloriko
 
@@ -34,6 +34,9 @@ class Backend(QObject):
     serverInfoChanged = Signal(dict)
     activityInfoChanged = Signal(dict)
     blorikoResponseReceived = Signal(str)
+    queryResultReceived = Signal(dict)
+    easytierStatusChanged = Signal(str, str) # title, description
+    modrinthResultsReceived = Signal(list)
 
     def __init__(self):
         super().__init__()
@@ -167,43 +170,140 @@ class Backend(QObject):
 
     @Slot()
     def openMinecraftDir(self):
-        print("Requested open .minecraft directory")
+        config_data = cfg.read()
+        mc_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+        if mc_dir and os.path.exists(mc_dir):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(mc_dir))
+        else:
+            print(f"Minecraft directory not found: {mc_dir}")
 
     @Slot()
     def openLogDir(self):
-        print("Requested open log directory")
+        log_dir = os.path.join(BLglobals.datapath, "log")
+        if os.path.exists(log_dir):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(log_dir))
 
     @Slot()
     def clearLogs(self):
-        print("Requested clear logs")
+        print("Clearing logs...")
+        log_dir = os.path.join(BLglobals.datapath, "log")
+        if os.path.exists(log_dir):
+            import shutil
+            for filename in os.listdir(log_dir):
+                file_path = os.path.join(log_dir, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    print('Failed to delete %s. Reason: %s' % (file_path, e))
 
-    @Slot()
-    def takeScreenCut(self):
-        print("Requested take screen cut")
+    @Slot(result=str)
+    def getMinecraftDir(self):
+        config_data = cfg.read()
+        return config_data.get('minecraft_dir', BLglobals.minecraft_dir)
 
-    @Slot()
-    def setScreenCutShortcut(self):
-        print("Requested set screen cut shortcut")
+    @Slot(result=str)
+    def browseMinecraftDir(self):
+        dir_path = QFileDialog.getExistingDirectory(None, "选择 Minecraft 目录", self.getMinecraftDir())
+        if dir_path:
+            self.setMinecraftDir(dir_path)
+            return dir_path
+        return ""
 
-    @Slot(str, result=str)
+    @Slot(str)
+    def setMinecraftDir(self, path):
+        config_data = cfg.read()
+        config_data['minecraft_dir'] = path
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        BLglobals.minecraft_dir = path
+        print(f"Minecraft directory updated to: {path}")
+
+    @Slot(result=list)
+    def getSystemJavas(self):
+        return scan_java_paths()
+
+    @Slot(result=str)
+    def getCurrentJavaPath(self):
+        config_data = cfg.read()
+        return config_data.get('java_path', 'Auto')
+
+    @Slot(str)
+    def setCurrentJavaPath(self, path):
+        config_data = cfg.read()
+        config_data['java_path'] = path
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Java path updated to: {path}")
+
+    @Slot(result=str)
+    def getThemeMode(self):
+        config_data = cfg.read()
+        return config_data.get('theme', 'Auto')
+
+    @Slot(str)
+    def setThemeMode(self, mode):
+        config_data = cfg.read()
+        config_data['theme'] = mode
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Theme mode updated to: {mode}")
+
+    @Slot(str)
     def queryUUID(self, name):
         print(f"Requested query UUID for name: {name}")
-        return "1234abcd-mock-uuid"
+        def run_query():
+            try:
+                response = requests.get(f"https://api.mojang.com/users/profiles/minecraft/{name}")
+                if response.status_code == 200:
+                    data = response.json()
+                    self.queryResultReceived.emit({"type": "uuid", "result": data.get("id"), "success": True})
+                else:
+                    self.queryResultReceived.emit({"type": "uuid", "success": False})
+            except Exception as e:
+                self.queryResultReceived.emit({"type": "uuid", "success": False, "error": str(e)})
+        threading.Thread(target=run_query, daemon=True).start()
 
-    @Slot(str, result=str)
+    @Slot(str)
     def queryName(self, uuid):
         print(f"Requested query name for UUID: {uuid}")
-        return "MockPlayerName"
+        def run_query():
+            try:
+                response = requests.get(f"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}")
+                if response.status_code == 200:
+                    data = response.json()
+                    self.queryResultReceived.emit({"type": "name", "result": data.get("name"), "success": True})
+                else:
+                    self.queryResultReceived.emit({"type": "name", "success": False})
+            except Exception as e:
+                self.queryResultReceived.emit({"type": "name", "success": False, "error": str(e)})
+        threading.Thread(target=run_query, daemon=True).start()
 
-    @Slot(str, result=str)
+    @Slot(str)
     def querySkin(self, uuid):
         print(f"Requested query skin for UUID: {uuid}")
-        return "http://mock.skin.url/skin.png"
-
-    @Slot(str, result=str)
-    def queryCape(self, uuid):
-        print(f"Requested query cape for UUID: {uuid}")
-        return "http://mock.cape.url/cape.png"
+        def run_query():
+            try:
+                import base64
+                response = requests.get(f"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}")
+                if response.status_code == 200:
+                    player_data = response.json()
+                    properties = player_data.get("properties", [])
+                    for prop in properties:
+                        if prop["name"] == "textures":
+                            textures = json.loads(base64.b64decode(prop["value"]).decode("utf-8"))
+                            skin = textures["textures"].get("SKIN", {}).get("url")
+                            cape = textures["textures"].get("CAPE", {}).get("url")
+                            self.queryResultReceived.emit({"type": "textures", "skin": skin, "cape": cape, "success": True})
+                            return
+                    self.queryResultReceived.emit({"type": "textures", "success": False})
+                else:
+                    self.queryResultReceived.emit({"type": "textures", "success": False})
+            except Exception as e:
+                self.queryResultReceived.emit({"type": "textures", "success": False, "error": str(e)})
+        threading.Thread(target=run_query, daemon=True).start()
 
     @Slot(str)
     def copyToClipboard(self, text):
@@ -213,28 +313,82 @@ class Backend(QObject):
         print(f"Copied to clipboard: {text}")
 
     @Slot()
-    def openModrinth(self):
-        print("Requested open Modrinth")
+    def startEasytierHost(self):
+        from modules.easytier import StartEasytierServer
+        print("Requested start Easytier host")
+        # For simplicity, using hardcoded/config-based name and secret
+        def run_et():
+            self.easytierStatusChanged.emit("正在启动", "请稍候...")
+            res = StartEasytierServer("Bloret", "123456") # Example defaults
+            if "." in res: # Looks like an IP
+                self.easytierStatusChanged.emit("已连接", f"您的虚拟 IP: {res}")
+            else:
+                self.easytierStatusChanged.emit("错误", res)
+        threading.Thread(target=run_et, daemon=True).start()
 
-    @Slot(str, bool)
-    def askBlorikoForMods(self, query, deep_think):
-        print(f"Bloriko Mod request: '{query}', deep think: {deep_think}")
+    @Slot()
+    def startEasytierClient(self):
+        # Same as host for now in the simple view
+        self.startEasytierHost()
 
     @Slot(str)
     def searchModrinth(self, query):
+        from modules.modrinth import search_mods
         print(f"Modrinth search request: '{query}'")
-
-    @Slot(result=list)
-    def getMockModList(self):
-        return [
-            {"name": "Sodium", "description": "Modern rendering engine", "id": "sodium-1"},
-            {"name": "Iris", "description": "Shaders for Fabric", "id": "iris-2"},
-            {"name": "Lithium", "description": "General-purpose optimization mod", "id": "lithium-3"}
-        ]
+        def run_search():
+            try:
+                data = search_mods(query)
+                results = []
+                if isinstance(data, dict) and "hits" in data:
+                    for hit in data["hits"]:
+                        results.append({
+                            "name": hit.get("title", "Unknown"),
+                            "description": hit.get("description", ""),
+                            "id": hit.get("project_id"),
+                            "slug": hit.get("slug"),
+                            "icon_url": hit.get("icon_url", "")
+                        })
+                self.modrinthResultsReceived.emit(results)
+            except Exception as e:
+                print(f"Error searching Modrinth: {e}")
+                self.modrinthResultsReceived.emit([])
+        threading.Thread(target=run_search, daemon=True).start()
 
     @Slot(str)
     def downloadMod(self, mod_id):
+        from modules.modrinth import Get_Mod_File_Download_Url
         print(f"Requested download mod: {mod_id}")
+        # Note: This is a simplified version. Usually needs loader/version info.
+        def run_download():
+            try:
+                url = Get_Mod_File_Download_Url(mod_id)
+                if url:
+                    print(f"Found download URL: {url}")
+                    # Here we would normally download the file...
+                    # For now just open it in browser or log it
+                    QDesktopServices.openUrl(QUrl(url))
+                else:
+                    print(f"Could not find download URL for {mod_id}")
+            except Exception as e:
+                print(f"Error downloading mod: {e}")
+        threading.Thread(target=run_download, daemon=True).start()
+
+    @Slot(str, bool)
+    def askBlorikoForMods(self, query, deep_think):
+        from modules.Bloriko import AskBloriko
+        print(f"Bloriko Mod request: '{query}', deep think: {deep_think}")
+        def run_bloriko():
+            try:
+                # AskBloriko(self, text, callback, model="Bloriko-V1")
+                # We need a callback that emits the signal
+                def callback(response):
+                    self.blorikoResponseReceived.emit(response)
+                
+                AskBloriko(None, query, callback) # Passing None as self since it might expect a widget
+            except Exception as e:
+                print(f"Error asking Bloriko: {e}")
+                self.blorikoResponseReceived.emit(f"Error: {e}")
+        threading.Thread(target=run_bloriko, daemon=True).start()
 
     @Slot(result=str)
     def getBloretPassPortUserName(self):

@@ -7,6 +7,35 @@ FluentPage {
     id: settingsPage
     title: qsTr("设置")
 
+    property string currentMcDir: ""
+    property var javaPaths: []
+    property string currentJavaPath: ""
+    property string themeMode: ""
+
+    Component.onCompleted: {
+        refreshData()
+    }
+
+    function refreshData() {
+        currentMcDir = Backend.getMinecraftDir()
+        javaPaths = Backend.getSystemJavas()
+        currentJavaPath = Backend.getCurrentJavaPath()
+        themeMode = Backend.getThemeMode()
+        
+        // Ensure "Auto" is in the list
+        if (javaPaths.indexOf("Auto") === -1) {
+            javaPaths.unshift("Auto")
+        }
+        
+        javaCombo.currentIndex = javaPaths.indexOf(currentJavaPath)
+        if (javaCombo.currentIndex === -1) {
+            javaPaths.push(currentJavaPath)
+            javaCombo.currentIndex = javaPaths.length - 1
+        }
+
+        themeCombo.currentIndex = ["Auto", "Light", "Dark"].indexOf(themeMode)
+    }
+
     // --- Version Card ---
     Frame {
         Layout.fillWidth: true
@@ -62,8 +91,12 @@ FluentPage {
                     Label { text: qsTr("选择用于启动 Minecraft 的 Java"); color: "#7f7f7f" }
                 }
                 ComboBox {
-                    model: Backend.getSystemJavas()
+                    id: javaCombo
+                    model: javaPaths
                     Layout.minimumWidth: 250
+                    onActivated: {
+                        Backend.setCurrentJavaPath(currentText)
+                    }
                 }
             }
 
@@ -75,12 +108,23 @@ FluentPage {
                 ColumnLayout {
                     Layout.fillWidth: true
                     Label { font.weight: Font.DemiBold; text: qsTr("Minecraft 文件夹位置") }
-                    Label { text: qsTr("存储所有 Minecraft 信息、资源以及各种版本的文件夹位置"); color: "#7f7f7f"; wrapMode: Text.Wrap }
+                    Label { text: currentMcDir; color: "#7f7f7f"; wrapMode: Text.Wrap; Layout.fillWidth: true }
                 }
-                Button {
-                    flat: true
-                    text: ".minecraft"
-                    onClicked: Backend.openMinecraftDir()
+                RowLayout {
+                    Button {
+                        text: qsTr("浏览...")
+                        onClicked: {
+                            var path = Backend.browseMinecraftDir()
+                            if (path !== "") {
+                                currentMcDir = path
+                            }
+                        }
+                    }
+                    Button {
+                        flat: true
+                        text: qsTr("打开")
+                        onClicked: Backend.openMinecraftDir()
+                    }
                 }
             }
 
@@ -92,75 +136,11 @@ FluentPage {
                 ColumnLayout {
                     Layout.fillWidth: true
                     Label { font.weight: Font.DemiBold; text: qsTr("Minecraft 小工具栏") }
-                    Label { text: qsTr("当游玩 Minecraft 时，在 Minecraft 窗口上方\n显示一个快捷小工具栏，方便快速操作"); color: "#7f7f7f"; wrapMode: Text.Wrap }
+                    Label { text: qsTr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"); color: "#7f7f7f"; wrapMode: Text.Wrap }
                 }
                 Switch {
                     checked: true
                 }
-            }
-        }
-    }
-
-    // --- Download Section ---
-    Label {
-        font.pixelSize: 20
-        font.weight: Font.DemiBold
-        text: qsTr("下载")
-        Layout.topMargin: 10
-    }
-
-    Frame {
-        Layout.fillWidth: true
-        padding: 15
-        background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
-            radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
-        }
-
-        RowLayout {
-            width: parent.width
-            ColumnLayout {
-                Layout.fillWidth: true
-                Label { font.weight: Font.DemiBold; text: qsTr("最大线程数") }
-                Label { text: qsTr("下载文件时允许同时下载文件的最大数量\n该数字越大,下载速度越快,但会占用计算机更多性能。"); color: "#7f7f7f"; wrapMode: Text.Wrap }
-            }
-            SpinBox {
-                from: 1
-                to: 10000
-                value: 100
-            }
-        }
-    }
-
-    // --- Interface Section ---
-    Label {
-        font.pixelSize: 20
-        font.weight: Font.DemiBold
-        text: qsTr("界面")
-        Layout.topMargin: 10
-    }
-
-    Frame {
-        Layout.fillWidth: true
-        padding: 15
-        background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
-            radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
-        }
-
-        RowLayout {
-            width: parent.width
-            ColumnLayout {
-                Layout.fillWidth: true
-                Label { font.weight: Font.DemiBold; text: qsTr("缩放") }
-                Label { text: qsTr("默认启动的窗口大小(重新启动程序后生效)"); color: "#7f7f7f" }
-            }
-            SpinBox {
-                from: 50
-                to: 200
-                value: 100
             }
         }
     }
@@ -209,9 +189,12 @@ FluentPage {
                     Label { text: qsTr("眼睛舒服了"); color: "#7f7f7f" }
                 }
                 ComboBox {
-                    model: ["浅色", "深色", "跟随系统"]
+                    id: themeCombo
+                    model: ["Auto", "Light", "Dark"]
                     Layout.minimumWidth: 150
-                    enabled: false
+                    onActivated: {
+                        Backend.setThemeMode(currentText)
+                    }
                 }
             }
         }
@@ -264,97 +247,6 @@ FluentPage {
                 Button {
                     text: qsTr("清空日志")
                     onClicked: Backend.clearLogs()
-                }
-            }
-        }
-    }
-
-    // --- Behavior Section ---
-    Label {
-        font.pixelSize: 20
-        font.weight: Font.DemiBold
-        text: qsTr("行为")
-        Layout.topMargin: 10
-    }
-
-    Frame {
-        Layout.fillWidth: true
-        padding: 15
-        background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
-            radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
-        }
-
-        ColumnLayout {
-            width: parent.width
-            spacing: 15
-
-            RowLayout {
-                Layout.fillWidth: true
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("开机自启动") }
-                    Label { text: qsTr("开机时一并打开 Bloret Launcher, 并最小化至系统托盘"); color: "#7f7f7f" }
-                }
-                Switch {
-                    checked: false
-                }
-            }
-
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.surfaceStrokeColorDefault }
-
-            RowLayout {
-                Layout.fillWidth: true
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("重复启动程序") }
-                    Label { text: qsTr("防止 Bloret Launcher 占满您的计算机"); color: "#7f7f7f" }
-                }
-                Switch {
-                    checked: false
-                }
-            }
-
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.surfaceStrokeColorDefault }
-
-            RowLayout {
-                Layout.fillWidth: true
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("显示软件打开过程") }
-                    Label { text: qsTr("在软件打开前以通知的形式显示软件在做什么"); color: "#7f7f7f" }
-                }
-                Switch {
-                    checked: true
-                }
-            }
-
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.surfaceStrokeColorDefault }
-
-            RowLayout {
-                Layout.fillWidth: true
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("在首页上 显示 Minecraft 账户登录方式") }
-                    Label { text: qsTr("展示你为微软登录或是离线登录"); color: "#7f7f7f" }
-                }
-                Switch {
-                    checked: false
-                }
-            }
-
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.surfaceStrokeColorDefault }
-
-            RowLayout {
-                Layout.fillWidth: true
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("本地模式") }
-                    Label { text: qsTr("不连接一部分的互联网，不允许使用 PCFS 服务。"); color: "#7f7f7f" }
-                }
-                Switch {
-                    checked: false
                 }
             }
         }
