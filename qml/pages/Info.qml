@@ -12,9 +12,9 @@ FluentPage {
         Layout.fillWidth: true
         padding: 15
         background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
+            color: Theme.currentTheme.colors.cardColor
             radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+            border.color: Theme.currentTheme.colors.controlBorderColor
         }
 
         RowLayout {
@@ -22,7 +22,7 @@ FluentPage {
             spacing: 20
 
             Image {
-                source: "../../icon/home.png"
+                source: "../../icon/bloret.png"
                 sourceSize { width: 100; height: 100 }
             }
 
@@ -31,15 +31,24 @@ FluentPage {
                 spacing: 5
                 
                 Label {
-                    font.pixelSize: 20
-                    font.weight: Font.DemiBold
+                    font.pixelSize: 24
+                    font.weight: Font.Bold
                     text: "Bloret Launcher"
+                    color: Theme.currentTheme.colors.textColor
                 }
                 
                 Label {
+                    text: "Version: " + (Backend ? Backend.getBloretVersion() : "2.0.0-Beta")
+                    color: Theme.currentTheme.colors.primaryColor
+                    font.weight: Font.Bold
+                }
+
+                Label {
                     text: qsTr("Conveniently manage your Minecraft, conveniently play Bloret.\n便捷地管理你的 Minecraft，便捷地游玩 Bloret。")
-                    color: "#7f7f7f"
+                    color: Theme.currentTheme.colors.textSecondaryColor
                     wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                    font.pixelSize: 14
                 }
             }
         }
@@ -57,11 +66,12 @@ FluentPage {
               "要查看 Bloret Launcher Setup 的源代码，请前往: <a href='https://github.com/BloretCrew/Bloret-Launcher-Setup/'>https://github.com/BloretCrew/Bloret-Launcher-Setup/</a><br>" +
               "要提交问题，请前往: <a href='https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose'>https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose</a><br><br>" +
               "Bloret Launcher 遵循 <a href='https://www.minecraft.net/zh-hans/eula'>Mojang Eula (Minecraft 最终用户许可协议)</a> ，Bloret Launcher 的 微软登录 功能已获 Mojang 批准，Bloret Launcher 本身未包含 Minecraft 二进制文件和其他资源文件。Bloret Launcher 是无广告免费开源软件。我们鼓励各位玩家购买 <a href='https://www.minecraft.net/zh-hans/choose-your-game'>Minecraft 正版账户</a> 进行游玩。"
-        color: "#7f7f7f"
+        color: Theme.currentTheme.colors.textSecondaryColor
         textFormat: Text.RichText
-        onLinkActivated: Backend.openUrl(link)
+        onLinkActivated: { if (Backend) Backend.openUrl(link) }
         wrapMode: Text.Wrap
         Layout.fillWidth: true
+        font.pixelSize: 12
     }
 
     // --- QQ Card ---
@@ -69,9 +79,9 @@ FluentPage {
         Layout.fillWidth: true
         padding: 15
         background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
+            color: Theme.currentTheme.colors.cardColor
             radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+            border.color: Theme.currentTheme.colors.controlBorderColor
         }
 
         RowLayout {
@@ -81,7 +91,8 @@ FluentPage {
             Rectangle {
                 width: 50; height: 50
                 color: "transparent"
-                border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+                border.color: Theme.currentTheme.colors.controlBorderColor
+                radius: 4
                 Image {
                     anchors.centerIn: parent
                     source: "../../icon/qq.png"
@@ -92,18 +103,19 @@ FluentPage {
             Label {
                 font.weight: Font.DemiBold
                 text: "QQ"
+                color: Theme.currentTheme.colors.textColor
             }
 
             Item { Layout.fillWidth: true }
 
             Button {
                 text: "Bloret"
-                onClicked: Backend.joinQQBloret()
+                onClicked: { if (Backend) Backend.joinQQBloret() }
             }
 
             Button {
                 text: "Bloret Software Community"
-                onClicked: Backend.joinQQCommunity()
+                onClicked: { if (Backend) Backend.joinQQCommunity() }
             }
         }
     }
@@ -113,9 +125,9 @@ FluentPage {
         Layout.fillWidth: true
         padding: 15
         background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
+            color: Theme.currentTheme.colors.cardColor
             radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+            border.color: Theme.currentTheme.colors.controlBorderColor
         }
 
         RowLayout {
@@ -130,31 +142,22 @@ FluentPage {
             Label {
                 font.weight: Font.DemiBold
                 text: "Github"
+                color: Theme.currentTheme.colors.textColor
             }
 
             Item { Layout.fillWidth: true }
 
             Button {
-                text: "Bloret Github 组织页面"
-                onClicked: Backend.openGithubOrg()
+                text: "组织页面"
+                onClicked: { if (Backend) Backend.openGithubOrg() }
             }
 
             Button {
-                text: "此项目的 Github"
-                onClicked: Backend.openGithubRepo()
+                text: "项目页面"
+                onClicked: { if (Backend) Backend.openGithubRepo() }
             }
         }
     }
 
     Item { Layout.fillHeight: true } // spacer
-
-    // Footer
-    Label {
-        text: "© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved."
-        color: "#7f7f7f"
-        horizontalAlignment: Text.AlignHCenter
-        Layout.fillWidth: true
-        Layout.topMargin: 20
-        Layout.bottomMargin: 10
-    }
 }

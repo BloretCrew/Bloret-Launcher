@@ -17,23 +17,25 @@ FluentPage {
     }
 
     function refreshData() {
-        currentMcDir = Backend.getMinecraftDir()
-        javaPaths = Backend.getSystemJavas()
-        currentJavaPath = Backend.getCurrentJavaPath()
-        themeMode = Backend.getThemeMode()
-        
-        // Ensure "Auto" is in the list
-        if (javaPaths.indexOf("Auto") === -1) {
-            javaPaths.unshift("Auto")
-        }
-        
-        javaCombo.currentIndex = javaPaths.indexOf(currentJavaPath)
-        if (javaCombo.currentIndex === -1) {
-            javaPaths.push(currentJavaPath)
-            javaCombo.currentIndex = javaPaths.length - 1
-        }
+        if (Backend) {
+            currentMcDir = Backend.getMinecraftDir()
+            javaPaths = Backend.getSystemJavas()
+            currentJavaPath = Backend.getCurrentJavaPath()
+            themeMode = Backend.getThemeMode()
+            
+            // Ensure "Auto" is in the list
+            if (javaPaths.indexOf("Auto") === -1) {
+                javaPaths.unshift("Auto")
+            }
+            
+            javaCombo.currentIndex = javaPaths.indexOf(currentJavaPath)
+            if (javaCombo.currentIndex === -1) {
+                javaPaths.push(currentJavaPath)
+                javaCombo.currentIndex = javaPaths.length - 1
+            }
 
-        themeCombo.currentIndex = ["Auto", "Light", "Dark"].indexOf(themeMode)
+            themeCombo.currentIndex = ["Auto", "Light", "Dark"].indexOf(themeMode)
+        }
     }
 
     // --- Version Card ---
@@ -41,9 +43,9 @@ FluentPage {
         Layout.fillWidth: true
         padding: 15
         background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
+            color: Theme.currentTheme.colors.cardColor
             radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+            border.color: Theme.currentTheme.colors.controlBorderColor
         }
 
         RowLayout {
@@ -53,10 +55,12 @@ FluentPage {
                 font.pixelSize: 16
                 text: qsTr("当前版本")
                 Layout.fillWidth: true
+                color: Theme.currentTheme.colors.textColor
             }
             Label {
-                text: Backend.getBloretVersion()
+                text: Backend ? Backend.getBloretVersion() : "2.0.0-Beta"
                 font.weight: Font.DemiBold
+                color: Theme.currentTheme.colors.primaryColor
             }
         }
     }
@@ -67,15 +71,16 @@ FluentPage {
         font.weight: Font.DemiBold
         text: qsTr("Minecraft 与 Java")
         Layout.topMargin: 10
+        color: Theme.currentTheme.colors.textColor
     }
 
     Frame {
         Layout.fillWidth: true
         padding: 15
         background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
+            color: Theme.currentTheme.colors.cardColor
             radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+            border.color: Theme.currentTheme.colors.controlBorderColor
         }
 
         ColumnLayout {
@@ -87,56 +92,58 @@ FluentPage {
                 Layout.fillWidth: true
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("Java") }
-                    Label { text: qsTr("选择用于启动 Minecraft 的 Java"); color: "#7f7f7f" }
+                    Label { font.weight: Font.DemiBold; text: qsTr("Java"); color: Theme.currentTheme.colors.textColor }
+                    Label { text: qsTr("选择用于启动 Minecraft 的 Java"); color: Theme.currentTheme.colors.textSecondaryColor }
                 }
                 ComboBox {
                     id: javaCombo
                     model: javaPaths
                     Layout.minimumWidth: 250
                     onActivated: {
-                        Backend.setCurrentJavaPath(currentText)
+                        if (Backend) Backend.setCurrentJavaPath(currentText)
                     }
                 }
             }
 
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.surfaceStrokeColorDefault }
+            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.controlBorderColor }
 
             // Minecraft Dir
             RowLayout {
                 Layout.fillWidth: true
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("Minecraft 文件夹位置") }
-                    Label { text: currentMcDir; color: "#7f7f7f"; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    Label { font.weight: Font.DemiBold; text: qsTr("Minecraft 文件夹位置"); color: Theme.currentTheme.colors.textColor }
+                    Label { text: currentMcDir; color: Theme.currentTheme.colors.textSecondaryColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
                 }
                 RowLayout {
                     Button {
                         text: qsTr("浏览...")
                         onClicked: {
-                            var path = Backend.browseMinecraftDir()
-                            if (path !== "") {
-                                currentMcDir = path
+                            if (Backend) {
+                                var path = Backend.browseMinecraftDir()
+                                if (path !== "") {
+                                    currentMcDir = path
+                                }
                             }
                         }
                     }
                     Button {
                         flat: true
                         text: qsTr("打开")
-                        onClicked: Backend.openMinecraftDir()
+                        onClicked: { if (Backend) Backend.openMinecraftDir() }
                     }
                 }
             }
 
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.surfaceStrokeColorDefault }
+            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.controlBorderColor }
 
             // Mini Toolbar
             RowLayout {
                 Layout.fillWidth: true
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("Minecraft 小工具栏") }
-                    Label { text: qsTr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"); color: "#7f7f7f"; wrapMode: Text.Wrap }
+                    Label { font.weight: Font.DemiBold; text: qsTr("Minecraft 小工具栏"); color: Theme.currentTheme.colors.textColor }
+                    Label { text: qsTr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"); color: Theme.currentTheme.colors.textSecondaryColor; wrapMode: Text.Wrap }
                 }
                 Switch {
                     checked: true
@@ -151,15 +158,16 @@ FluentPage {
         font.weight: Font.DemiBold
         text: qsTr("外观")
         Layout.topMargin: 10
+        color: Theme.currentTheme.colors.textColor
     }
 
     Frame {
         Layout.fillWidth: true
         padding: 15
         background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
+            color: Theme.currentTheme.colors.cardColor
             radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+            border.color: Theme.currentTheme.colors.controlBorderColor
         }
 
         ColumnLayout {
@@ -170,8 +178,8 @@ FluentPage {
                 Layout.fillWidth: true
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("语言 / language") }
-                    Label { text: qsTr("调整语言设置"); color: "#7f7f7f" }
+                    Label { font.weight: Font.DemiBold; text: qsTr("语言 / language"); color: Theme.currentTheme.colors.textColor }
+                    Label { text: qsTr("调整语言设置"); color: Theme.currentTheme.colors.textSecondaryColor }
                 }
                 ComboBox {
                     model: ["简体中文", "English"]
@@ -179,21 +187,21 @@ FluentPage {
                 }
             }
 
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.surfaceStrokeColorDefault }
+            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.controlBorderColor }
 
             RowLayout {
                 Layout.fillWidth: true
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("主题") }
-                    Label { text: qsTr("眼睛舒服了"); color: "#7f7f7f" }
+                    Label { font.weight: Font.DemiBold; text: qsTr("主题"); color: Theme.currentTheme.colors.textColor }
+                    Label { text: qsTr("眼睛舒服了"); color: Theme.currentTheme.colors.textSecondaryColor }
                 }
                 ComboBox {
                     id: themeCombo
                     model: ["Auto", "Light", "Dark"]
                     Layout.minimumWidth: 150
                     onActivated: {
-                        Backend.setThemeMode(currentText)
+                        if (Backend) Backend.setThemeMode(currentText)
                     }
                 }
             }
@@ -206,15 +214,16 @@ FluentPage {
         font.weight: Font.DemiBold
         text: qsTr("日志")
         Layout.topMargin: 10
+        color: Theme.currentTheme.colors.textColor
     }
 
     Frame {
         Layout.fillWidth: true
         padding: 15
         background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
+            color: Theme.currentTheme.colors.cardColor
             radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+            border.color: Theme.currentTheme.colors.controlBorderColor
         }
 
         ColumnLayout {
@@ -225,28 +234,28 @@ FluentPage {
                 Layout.fillWidth: true
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("日志文件夹位置") }
-                    Label { text: qsTr("存储所有 Bloret Launcher 日志的文件夹位置"); color: "#7f7f7f" }
+                    Label { font.weight: Font.DemiBold; text: qsTr("日志文件夹位置"); color: Theme.currentTheme.colors.textColor }
+                    Label { text: qsTr("存储所有 Bloret Launcher 日志的文件夹位置"); color: Theme.currentTheme.colors.textSecondaryColor }
                 }
                 Button {
                     flat: true
                     text: "log"
-                    onClicked: Backend.openLogDir()
+                    onClicked: { if (Backend) Backend.openLogDir() }
                 }
             }
 
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.surfaceStrokeColorDefault }
+            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.currentTheme.colors.controlBorderColor }
 
             RowLayout {
                 Layout.fillWidth: true
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: qsTr("清空日志") }
-                    Label { text: qsTr("清空 log 文件夹"); color: "#7f7f7f" }
+                    Label { font.weight: Font.DemiBold; text: qsTr("清空日志"); color: Theme.currentTheme.colors.textColor }
+                    Label { text: qsTr("清空 log 文件夹"); color: Theme.currentTheme.colors.textSecondaryColor }
                 }
                 Button {
                     text: qsTr("清空日志")
-                    onClicked: Backend.clearLogs()
+                    onClicked: { if (Backend) Backend.clearLogs() }
                 }
             }
         }
@@ -254,7 +263,7 @@ FluentPage {
 
     Label {
         text: qsTr("设置界面大部分内容需要重启程序后生效。")
-        color: "#7f7f7f"
+        color: Theme.currentTheme.colors.textTertialyColor
         Layout.topMargin: 10
     }
 }

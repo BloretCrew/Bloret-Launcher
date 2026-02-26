@@ -286,7 +286,7 @@ Item {
         anchors.top: parent.top
         anchors.topMargin: 38
         // 置顶区域最大高度：导航栏可用高度的 20%
-        height: getTopItems().length > 0 ? Math.min(topNavigationColumn.implicitHeight, (parent.height - 40) * 0.2) : 0
+        height: getTopItems().length > 0 ? Math.min(topNavigationColumn.implicitHeight, (parent.height - 40) * 0.4) : 0
         contentWidth: parent.width
         contentHeight: topNavigationColumn.implicitHeight
         clip: true
@@ -404,7 +404,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: -2
         // 底部区域最大高度：导航栏可用高度的 20%
-        height: getBottomItems().length > 0 ? Math.min(bottomNavigationColumn.implicitHeight, (parent.height - 40) * 0.2) : 0
+        height: getBottomItems().length > 0 ? Math.min(bottomNavigationColumn.implicitHeight, (parent.height - 40) * 0.4) : 0
         contentWidth: parent.width
         contentHeight: bottomNavigationColumn.implicitHeight
         clip: true

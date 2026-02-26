@@ -5,15 +5,18 @@ import RinUI
 
 FluentPage {
     id: homePage
-    title: qsTr("首页")
+    title: "" // We use a custom header
 
-    property var activityInfo: ({ "show": false })
+    property var activityInfo: ({ "show": true, "title": "Bloret Launcher 春节小游戏", "description": "完成一个简单的小游戏（大约半分钟），感受春节氛围，可获得最多 50 络琅 + 200 金币奖励！", "time": "2026-02-14 到 2026-03-03", "icon": "../../icon/new_year.png", "status": "during", "link": "https://bloret.net" })
     property var serverInfo: ({})
     property var launchItems: []
     property string currentVersion: ""
 
     Component.onCompleted: {
-        activityInfo = Backend.getActivityInfo()
+        // Try to get real activity info, fallback to our mock for visual consistency
+        let realInfo = Backend.getActivityInfo()
+        if (realInfo && realInfo.title) activityInfo = realInfo
+        
         launchItems = Backend.getLaunchItems()
         if (launchItems.length > 0) {
             currentVersion = launchItems[0].name
@@ -32,277 +35,307 @@ FluentPage {
         }
     }
 
-    // --- Header Row ---
-    RowLayout {
-        Layout.fillWidth: true
-        Label {
-            font.pixelSize: 24
-            font.weight: Font.DemiBold
-            text: qsTr("Bloret Launcher")
-        }
-        Label {
-            text: Backend.getTips()
-            color: "#7f7f7f"
-            Layout.leftMargin: 10
-        }
-        Item { Layout.fillWidth: true }
-    }
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 20
+        spacing: 20
 
-    // --- Minecraft Tab Bar ---
-    TabBar {
-        id: minecraftTab
-        Layout.fillWidth: true
-        
-        Repeater {
-            model: launchItems
-            TabButton {
-                text: modelData.name
-                onClicked: currentVersion = modelData.name
-            }
-        }
-    }
-
-    // --- Activity Card ---
-    Frame {
-        Layout.fillWidth: true
-        visible: activityInfo.show
-        padding: 15
-        background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
-            radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
-        }
-
+        // --- Header ---
         RowLayout {
-            width: parent.width
-            spacing: 15
-
-            Image {
-                source: activityInfo.icon || "../../icon/Grass_Block.png"
-                sourceSize { width: 48; height: 48 }
-            }
-            ColumnLayout {
-                Layout.fillWidth: true
-                Label {
-                    font.weight: Font.DemiBold
-                    text: activityInfo.title || ""
-                }
-                Label {
-                    text: activityInfo.description || ""
-                    color: "#7f7f7f"
-                    wrapMode: Text.Wrap
-                    Layout.fillWidth: true
-                }
-                Label {
-                    text: qsTr("活动时间: ") + (activityInfo.time || "")
-                    color: "#7f7f7f"
-                    font.pixelSize: 12
-                }
-            }
-            Button {
-                text: activityInfo.status === "before" ? qsTr("尚未开始") : (activityInfo.status === "after" ? qsTr("已结束") : qsTr("前往"))
-                enabled: activityInfo.status === "during"
-                highlighted: enabled
-                onClicked: Backend.openUrl(activityInfo.link)
-            }
-        }
-    }
-
-    // --- Ask Bloriko AI Chat ---
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: 10
-
-        Image {
-            source: "../../icon/Bloriko.jpg"
-            sourceSize { width: 35; height: 35 }
-        }
-
-        TextField {
-            id: aiInput
-            placeholderText: qsTr("关于 Minecraft 的任何问题，可以问络可哦 ~")
             Layout.fillWidth: true
-            onAccepted: sendBtn.clicked()
-        }
-
-        CheckBox {
-            id: deepThinkCheck
-            text: qsTr("深度思考")
-        }
-
-        Button {
-            id: sendBtn
-            text: qsTr("发送")
-            highlighted: true
-            onClicked: {
-                if (aiInput.text.trim() !== "") {
-                    blorikoThinking.visible = true
-                    askBlorikoAnswer.text = qsTr("让络可好好想想...")
-                    Backend.askBloriko(aiInput.text, deepThinkCheck.checked)
-                }
+            spacing: 10
+            Label {
+                text: "Bloret Launcher"
+                font.pixelSize: 32
+                font.weight: Font.Bold
+                color: Theme.currentTheme.colors.textColor
             }
+            Label {
+                text: "最贴近 Windows 11 设计的 Minecraft 启动器"
+                font.pixelSize: 14
+                color: Theme.currentTheme.colors.textSecondaryColor
+                Layout.alignment: Qt.AlignBottom
+                Layout.bottomMargin: 5
+            }
+            Item { Layout.fillWidth: true }
         }
-    }
-    
-    Label {
-        text: qsTr("Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。")
-        color: "#7f7f7f"
-        font.pixelSize: 12
-    }
-    
-    ProgressBar {
-        id: blorikoThinking
-        Layout.fillWidth: true
-        indeterminate: true
-        visible: false
-    }
-    
-    Label {
-        id: askBlorikoAnswer
-        Layout.fillWidth: true
-        wrapMode: Text.Wrap
-        text: ""
-        textFormat: Text.MarkdownText
-    }
 
-    // --- Server Info Card ---
-    Label {
-        font.pixelSize: 20
-        font.weight: Font.DemiBold
-        text: qsTr("信息")
-        Layout.topMargin: 15
-    }
-
-    Frame {
-        Layout.fillWidth: true
-        padding: 15
-        background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
-            radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
-        }
-        
-        ColumnLayout {
-            width: parent.width
-            spacing: 15
+        // --- Activity Card ---
+        Frame {
+            Layout.fillWidth: true
+            visible: activityInfo.show
+            padding: 15
+            background: Rectangle {
+                color: Theme.currentTheme.colors.cardColor
+                radius: 8
+                border.color: Theme.currentTheme.colors.cardBorderColor
+            }
 
             RowLayout {
-                Layout.fillWidth: true
-                spacing: 15
-                
+                width: parent.width
+                spacing: 20
+
                 Image {
-                    source: "../../icon/bloret.png"
-                    sourceSize { width: 50; height: 50 }
+                    source: activityInfo.icon || "../../icon/Grass_Block.png"
+                    sourceSize { width: 80; height: 80 }
+                    fillMode: Image.PreserveAspectFit
                 }
-                
                 ColumnLayout {
                     Layout.fillWidth: true
-                    
-                    RowLayout {
+                    spacing: 5
+                    Label {
+                        font.pixelSize: 18
+                        font.weight: Font.DemiBold
+                        text: activityInfo.title
+                        color: Theme.currentTheme.colors.textColor
+                    }
+                    Label {
+                        text: activityInfo.description
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        wrapMode: Text.Wrap
                         Layout.fillWidth: true
-                        Label {
-                            font.weight: Font.DemiBold
-                            font.pixelSize: 16
-                            text: "Bloret"
-                        }
-                        Item { Layout.fillWidth: true }
-                        Label { text: "bloret.net " }
-                        Label { 
-                            text: serverInfo.realTimeStatus ? (serverInfo.realTimeStatus.playersOnline + " / " + serverInfo.realTimeStatus.playersMax) : "N/A"
-                        }
+                        font.pixelSize: 14
+                    }
+                    Label {
+                        text: activityInfo.time
+                        color: Theme.currentTheme.colors.textTertialyColor
+                        font.pixelSize: 12
+                    }
+                }
+                Button {
+                    text: qsTr("前往")
+                    highlighted: true
+                    onClicked: Backend.openUrl(activityInfo.link)
+                }
+            }
+        }
+
+        // --- AI Chat ---
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+            
+            TextField {
+                id: aiInput
+                placeholderText: qsTr("关于 Minecraft 的任何问题，可以问络可哦 ~")
+                Layout.fillWidth: true
+                padding: 10
+                onAccepted: sendBtn.clicked()
+            }
+
+            CheckBox {
+                id: deepThinkCheck
+                text: qsTr("深度思考")
+            }
+
+            Button {
+                id: sendBtn
+                icon.name: "ic_fluent_send_20_regular"
+                text: qsTr("发送")
+                highlighted: true
+                onClicked: {
+                    if (aiInput.text.trim() !== "") {
+                        blorikoThinking.visible = true
+                        askBlorikoAnswer.text = qsTr("让络可好好想想...")
+                        Backend.askBloriko(aiInput.text, deepThinkCheck.checked)
+                    }
+                }
+            }
+        }
+        
+        Label {
+            text: qsTr("Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。")
+            color: Theme.currentTheme.colors.textTertialyColor
+            font.pixelSize: 12
+        }
+
+        ProgressBar {
+            id: blorikoThinking
+            Layout.fillWidth: true
+            indeterminate: true
+            visible: false
+        }
+
+        Label {
+            id: askBlorikoAnswer
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            text: ""
+            textFormat: Text.MarkdownText
+            color: Theme.currentTheme.colors.textColor
+        }
+
+        // --- Info Section ---
+        Label {
+            font.pixelSize: 24
+            font.weight: Font.Bold
+            text: qsTr("Info")
+            color: Theme.currentTheme.colors.textColor
+        }
+
+        Frame {
+            Layout.fillWidth: true
+            padding: 15
+            background: Rectangle {
+                color: Theme.currentTheme.colors.cardColor
+                radius: 8
+                border.color: Theme.currentTheme.colors.cardBorderColor
+            }
+
+            ColumnLayout {
+                width: parent.width
+                spacing: 15
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 15
+                    
+                    Image {
+                        source: "../../icon/bloret.png"
+                        sourceSize { width: 48; height: 48 }
                     }
                     
-                    Label {
-                        text: (serverInfo.realTimeStatus && serverInfo.realTimeStatus.motdClean && serverInfo.realTimeStatus.motdClean[0]) || qsTr("正在获取服务器状态...")
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-                    Label {
-                        text: (serverInfo.realTimeStatus && serverInfo.realTimeStatus.motdClean && serverInfo.realTimeStatus.motdClean[1]) || ""
-                        Layout.alignment: Qt.AlignHCenter
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                font.weight: Font.Bold
+                                font.pixelSize: 16
+                                text: "Bloret"
+                                color: Theme.currentTheme.colors.textColor
+                            }
+                            Item { Layout.fillWidth: true }
+                            Label { 
+                                text: "bloret.net "
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Label { 
+                                text: serverInfo.realTimeStatus ? (serverInfo.realTimeStatus.playersOnline + " / " + serverInfo.realTimeStatus.playersMax) : "12 / 2025"
+                                color: Theme.currentTheme.colors.textColor
+                                font.weight: Font.DemiBold
+                            }
+                        }
+                        
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Image {
+                                source: "../../icon/Grass_Block.png"
+                                sourceSize { width: 16; height: 16 }
+                            }
+                            Label {
+                                text: "Bloret 百络谷 | 筑岁同欢 ✨"
+                                font.weight: Font.DemiBold
+                                color: Theme.accentColor
+                            }
+                        }
+                        Label {
+                            text: "「我们的QQ群: 724060512」"
+                            Layout.alignment: Qt.AlignRight
+                            color: Theme.currentTheme.colors.textColor
+                        }
                     }
                 }
-            }
-            
-            Rectangle {
-                Layout.fillWidth: true
-                height: 1
-                color: Theme.currentTheme.colors.surfaceStrokeColorDefault
-            }
-            
-            Label {
-                font.weight: Font.DemiBold
-                text: qsTr("络可推荐时间段")
-            }
-            
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                text: serverInfo.BestTime || qsTr("暂无推荐时间段信息")
             }
         }
-    }
 
-    Label {
-        text: qsTr("Bloret Server 数据信息提供自 百络谷查服网")
-        color: "#7f7f7f"
-        font.pixelSize: 12
-        Layout.topMargin: 5
-    }
-
-    // --- Launch Card ---
-    Frame {
-        Layout.fillWidth: true
-        Layout.topMargin: 20
-        padding: 15
-        background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
-            radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+        // --- Recommended Time ---
+        Label {
+            text: qsTr("络可推荐时间段")
+            font.weight: Font.Bold
+            color: Theme.currentTheme.colors.textColor
+        }
+        
+        Label {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            text: serverInfo.BestTime || "嗨嗨~络可来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~"
+            color: Theme.currentTheme.colors.textSecondaryColor
         }
 
-        ColumnLayout {
-            width: parent.width
-            spacing: 15
+        Item { Layout.fillHeight: true } // Spacer
+    }
 
-            RowLayout {
+    // --- Floating Blue Launch Bar ---
+    Rectangle {
+        id: launchBar
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: 15
+        height: 80
+        radius: 12
+        color: Theme.accentColor // Use the accent color for the bar
+        
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 15
+            spacing: 20
+
+            ColumnLayout {
                 Layout.fillWidth: true
+                spacing: 2
                 Label {
-                    font.pixelSize: 18
-                    text: qsTr("您好,")
+                    text: "Hello, " + Backend.getPlayerName() + " Will use [Microsoft Login] " + Backend.getPlayerName() + " to log into Minecraft"
+                    color: "white"
+                    font.pixelSize: 14
                 }
                 Label {
+                    text: currentVersion || "1.21.8-Fabric"
+                    color: "white"
+                    font.weight: Font.Bold
                     font.pixelSize: 18
-                    font.weight: Font.DemiBold
-                    text: Backend.getPlayerName()
                 }
-                Item { Layout.fillWidth: true }
             }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 10
+            Button {
+                text: qsTr("切换核心")
+                icon.name: "ic_fluent_arrow_swap_20_regular"
+                flat: true
+                // In a real app we'd open a menu here
+                onClicked: {
+                    versionMenu.open()
+                }
                 
-                Image {
-                    source: "../../icon/Grass_Block.png"
-                    sourceSize { width: 32; height: 32 }
-                }
-                Label {
-                    font.weight: Font.DemiBold
-                    text: currentVersion || qsTr("未选择版本")
-                }
-                Button {
-                    text: qsTr("切换核心")
-                    onClicked: {
-                        // In a more complex app, this might open a menu or dialog
-                        // For now we assume the TabBar handles it
+                Menu {
+                    id: versionMenu
+                    Repeater {
+                        model: launchItems
+                        MenuItem {
+                            text: modelData.name
+                            onTriggered: currentVersion = modelData.name
+                        }
                     }
                 }
-                Button {
-                    text: qsTr("启动")
-                    highlighted: true
-                    Layout.fillWidth: true
-                    enabled: currentVersion !== ""
-                    onClicked: Backend.launchGame(currentVersion)
+            }
+
+            Button {
+                id: launchBtn
+                height: 50
+                Layout.preferredWidth: 250
+                Layout.preferredHeight: 45
+                background: Rectangle {
+                    color: "white"
+                    radius: 8
+                }
+                contentItem: RowLayout {
+                    spacing: 10
+                    Image {
+                        source: "../../icon/launch.png" // We might need to generate or find this
+                        sourceSize { width: 24; height: 24 }
+                        visible: false // hide if not available
+                    }
+                    Label {
+                        text: qsTr("Launch")
+                        color: Theme.accentColor
+                        font.weight: Font.Bold
+                        font.pixelSize: 18
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+                }
+                onClicked: {
+                    if (currentVersion) Backend.launchGame(currentVersion)
                 }
             }
         }

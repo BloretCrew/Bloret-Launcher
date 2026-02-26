@@ -7,21 +7,33 @@ FluentPage {
     id: multiplayerPage
     title: qsTr("联机")
 
+    property string etStatusTitle: Backend ? Backend.getEasytierStatusTitle() : ""
+    property string etStatusDesc: Backend ? Backend.getEasytierStatusDesc() : ""
+
+    Connections {
+        target: Backend
+        function onEasytierStatusChanged(title, desc) {
+            etStatusTitle = title
+            etStatusDesc = desc
+        }
+    }
+
     // --- Network Section ---
     Label {
         font.pixelSize: 20
         font.weight: Font.DemiBold
         text: qsTr("网络")
         Layout.topMargin: 10
+        color: Theme.currentTheme.colors.textColor
     }
 
     Frame {
         Layout.fillWidth: true
         padding: 15
         background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
+            color: Theme.currentTheme.colors.cardColor
             radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+            border.color: Theme.currentTheme.colors.controlBorderColor
         }
 
         RowLayout {
@@ -33,107 +45,154 @@ FluentPage {
                 Label {
                     font.weight: Font.DemiBold
                     text: qsTr("IPV6")
+                    color: Theme.currentTheme.colors.textColor
                 }
                 Label {
                     text: qsTr("查看您计算机的 IPV6 配置")
-                    color: "#7f7f7f"
+                    color: Theme.currentTheme.colors.textSecondaryColor
                 }
             }
 
             Label {
                 id: ipv6AddressLabel
                 font.weight: Font.DemiBold
-                text: Backend.getIpv6Address()
+                text: Backend ? Backend.getIpv6Address() : "N/A"
+                elide: Text.ElideMiddle
+                Layout.maximumWidth: 200
+                color: Theme.currentTheme.colors.textColor
+            }
+
+            Button {
+                text: qsTr("刷新")
+                onClicked: { if (Backend) ipv6AddressLabel.text = Backend.checkIpv6Address() }
             }
         }
     }
 
-    Button {
-        text: qsTr("获取 IPV6 联机地址")
-        onClicked: ipv6AddressLabel.text = Backend.checkIpv6Address()
-    }
-
     Label {
-        text: "使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。\n<b>IPV6 是您的运营商提供的一项免费服务，不额外收费。</b> 已拥有的用户点击上方按钮直接使用。\nIPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。"
-        color: "#7f7f7f"
+        text: "使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。\n<b>IPV6 是您的运营商提供的一项免费服务，不额外收费。</b> 已拥有的用户点击刷新直接显示。\nIPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。"
+        color: Theme.currentTheme.colors.textSecondaryColor
         textFormat: Text.RichText
         wrapMode: Text.Wrap
         Layout.fillWidth: true
+        font.pixelSize: 12
     }
 
     // --- Easytier Section ---
     Label {
         font.pixelSize: 20
         font.weight: Font.DemiBold
-        text: qsTr("Easytier")
+        text: qsTr("EasyTier 组网")
         Layout.topMargin: 10
-    }
-
-    Label {
-        text: "Easytier 是一项开源项目，可以为您提供高效的联机服务。\n<b>在此处开启联机服务 ，对方需要打开 Bloret Launcher 才能与您一起联机。</b>"
-        color: "#7f7f7f"
-        textFormat: Text.RichText
-        wrapMode: Text.Wrap
-        Layout.fillWidth: true
+        color: Theme.currentTheme.colors.textColor
     }
 
     Frame {
         Layout.fillWidth: true
         padding: 15
         background: Rectangle {
-            color: Theme.currentTheme.colors.controlColorDefault
+            color: Theme.currentTheme.colors.cardColor
             radius: 8
-            border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+            border.color: Theme.currentTheme.colors.controlBorderColor
         }
 
         ColumnLayout {
             width: parent.width
             spacing: 15
 
+            // Status Card
             Frame {
                 Layout.fillWidth: true
                 padding: 15
                 background: Rectangle {
-                    color: Theme.currentTheme.colors.surfaceColorDefault
+                    color: Theme.currentTheme.colors.controlFillSecondaryColor
                     radius: 8
-                    border.color: Theme.currentTheme.colors.surfaceStrokeColorDefault
+                    border.color: Theme.currentTheme.colors.controlBorderColor
                 }
                 
-                ColumnLayout {
+                RowLayout {
                     width: parent.width
-                    Label {
-                        font.weight: Font.DemiBold
-                        text: Backend.getEasytierStatusTitle()
+                    spacing: 15
+                    Image {
+                        source: "../../icon/easytier.png"
+                        sourceSize { width: 32; height: 32 }
                     }
-                    Label {
-                        text: Backend.getEasytierStatusDesc()
-                        color: "#7f7f7f"
-                    }
-                    RowLayout {
-                        Label { text: Backend.getEasytierLinkTip(); color: "#7f7f7f" }
-                        Label { text: Backend.getEasytierLinkShow(); font.weight: Font.DemiBold }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: etStatusTitle
+                            font.weight: Font.DemiBold
+                            color: Theme.currentTheme.colors.textColor
+                        }
+                        Label {
+                            text: etStatusDesc
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                        }
                     }
                 }
             }
 
+            // Controls
             RowLayout {
-                Item { Layout.fillWidth: true }
-                Button {
-                    text: qsTr("开启 Easytier 联机服务")
-                    onClicked: Backend.startEasytierHost()
+                Layout.fillWidth: true
+                spacing: 20
+
+                // Host Side
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Label { text: qsTr("作为房主"); font.weight: Font.DemiBold; color: Theme.currentTheme.colors.textColor }
+                    RowLayout {
+                        TextField {
+                            id: mcPortInput
+                            placeholderText: "MC 端口 (默认 25565)"
+                            text: "25565"
+                            Layout.fillWidth: true
+                        }
+                        TextField {
+                            id: hostPasswordInput
+                            placeholderText: "组网密码"
+                            echoMode: TextInput.Password
+                            Layout.fillWidth: true
+                        }
+                    }
+                    Button {
+                        text: qsTr("开启联机服务")
+                        highlighted: true
+                        Layout.fillWidth: true
+                        onClicked: { if (Backend) Backend.startEasytierWithConfig(mcPortInput.text, hostPasswordInput.text) }
+                    }
                 }
-                Button {
-                    text: qsTr("连接到对方的网络")
-                    onClicked: Backend.startEasytierClient()
-                    Layout.leftMargin: 15
+
+                Rectangle { width: 1; Layout.fillHeight: true; color: Theme.currentTheme.colors.dividerBorderColor }
+
+                // Client Side
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Label { text: qsTr("作为加入者"); font.weight: Font.DemiBold; color: Theme.currentTheme.colors.textColor }
+                    TextField {
+                        id: joinPasswordInput
+                        placeholderText: "对方告知您的组网密码"
+                        echoMode: TextInput.Password
+                        Layout.fillWidth: true
+                    }
+                    Button {
+                        text: qsTr("连接到对方")
+                        Layout.fillWidth: true
+                        onClicked: { if (Backend) Backend.joinEasytierWithConfig("", joinPasswordInput.text) }
+                    }
+                    Item { height: 40 } // Spacer to align buttons
                 }
             }
         }
     }
 
     Label {
-        text: qsTr("联机服务 Powered by Easytier")
-        color: "#7f7f7f"
+        text: qsTr("联机服务 Powered by EasyTier. 对方也需要安装 Bloret Launcher 或 EasyTier 才能加入。")
+        color: Theme.currentTheme.colors.textTertialyColor
         wrapMode: Text.Wrap
+        Layout.fillWidth: true
+        font.pixelSize: 12
     }
 }

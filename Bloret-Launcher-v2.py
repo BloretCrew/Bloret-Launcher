@@ -1,3 +1,7 @@
+# 0. 先获取 IP 地址
+import modules.IP
+
+
 import sys
 import os
 from pathlib import Path
@@ -7,9 +11,105 @@ SCRIPT_DIR = Path(__file__).parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+# Create the QApplication early so it can be used in shims and module imports
+from PySide6.QtWidgets import QApplication, QFileDialog
 from PySide6.QtCore import QLocale, Qt, QTranslator, QObject, Slot, Signal, Property, QUrl
 from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices
-from PySide6.QtWidgets import QApplication, QFileDialog
+
+QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+app = QApplication(sys.argv)
+
+# --- Qt Shim ---
+import types
+from PySide6 import QtCore as _QtCore, QtWidgets as _QtWidgets, QtGui as _QtGui
+
+def _make_shim(name, source_mod, extra_attrs):
+    shim = types.ModuleType(name)
+    shim.__path__ = [] # Make it behave like a package if needed
+    for attr in dir(source_mod):
+        try:
+            setattr(shim, attr, getattr(source_mod, attr))
+        except:
+            pass
+    for attr, val in extra_attrs.items():
+        setattr(shim, attr, val)
+    return shim
+
+# Aliases for QtCore
+_core_aliases = {
+    'pyqtSignal': _QtCore.Signal,
+    'pyqtSlot': _QtCore.Slot,
+    'pyqtProperty': _QtCore.Property,
+    'QRegExp': _QtCore.QRegularExpression,
+    'pyqtWrapperType': type,
+    'qApp': app,
+}
+
+# Aliases for QtGui
+_gui_aliases = {
+    'QRegExp': _QtCore.QRegularExpression,
+    'QRegExpValidator': _QtGui.QRegularExpressionValidator,
+    'qApp': app,
+}
+
+# Aliases for QtWidgets
+_widgets_aliases = {
+    'QRegExpValidator': _QtGui.QRegularExpressionValidator,
+    'QAction': _QtGui.QAction,
+    'QActionGroup': _QtGui.QActionGroup,
+    'qApp': app,
+}
+
+# Create the shims
+pyqt5_core = _make_shim('PyQt5.QtCore', _QtCore, _core_aliases)
+pyqt5_gui = _make_shim('PyQt5.QtGui', _QtGui, _gui_aliases)
+pyqt5_widgets = _make_shim('PyQt5.QtWidgets', _QtWidgets, _widgets_aliases)
+
+sys.modules['PyQt5.QtCore'] = pyqt5_core
+sys.modules['PyQt5.QtGui'] = pyqt5_gui
+sys.modules['PyQt5.QtWidgets'] = pyqt5_widgets
+
+# Make PyQt5 itself a package that contains these
+pyqt5 = types.ModuleType('PyQt5')
+pyqt5.__path__ = []
+pyqt5.QtCore = pyqt5_core
+pyqt5.QtGui = pyqt5_gui
+pyqt5.QtWidgets = pyqt5_widgets
+
+# Add sub-modules
+def _add_sub_shim(sub_name, pyside_mod_name):
+    try:
+        import importlib
+        _mod = importlib.import_module(f'PySide6.{pyside_mod_name}')
+        shim = _make_shim(f'PyQt5.{sub_name}', _mod, {})
+        sys.modules[f'PyQt5.{sub_name}'] = shim
+        setattr(pyqt5, sub_name, shim)
+    except ImportError:
+        pass
+
+_add_sub_shim('QtXml', 'QtXml')
+_add_sub_shim('QtSvg', 'QtSvg')
+_add_sub_shim('QtNetwork', 'QtNetwork')
+_add_sub_shim('QtMultimedia', 'QtMultimedia')
+_add_sub_shim('QtSql', 'QtSql')
+
+sys.modules['PyQt5'] = pyqt5
+
+# Mock uic
+class MockUic:
+    def loadUiType(self, path): return (type('MockUI', (), {}), type('MockBase', (), {}))
+    def loadUi(self, path, widget): pass
+
+sys.modules['PyQt5.uic'] = MockUic()
+setattr(pyqt5, 'uic', sys.modules['PyQt5.uic'])
+
+class MockSip:
+    def cast(self, obj, typ): return obj
+    def delete(self, obj): pass
+    def wrapinstance(self, addr, typ): return None
+    def unwrapinstance(self, obj): return 0
+
+sys.modules['sip'] = MockSip()
 
 import RinUI
 from RinUI import RinUIWindow
@@ -25,6 +125,7 @@ from modules.chafuwang import getServerData
 from modules.setup_ui import get_all_launch_items, scan_java_paths
 from modules.i18n import i18nText
 from modules.Bloriko import AskBloriko
+import socket
 
 class Backend(QObject):
     """
@@ -37,6 +138,7 @@ class Backend(QObject):
     queryResultReceived = Signal(dict)
     easytierStatusChanged = Signal(str, str) # title, description
     modrinthResultsReceived = Signal(list)
+    minecraftAccountsChanged = Signal(list)
 
     def __init__(self):
         super().__init__()
@@ -162,7 +264,7 @@ class Backend(QObject):
 
     @Slot(result=str)
     def getBloretVersion(self):
-        return "1.0.0 (Mock)"
+        return "2.0.0-RinUI (Beta)"
 
     @Slot(result=list)
     def getSystemJavas(self):
@@ -392,47 +494,114 @@ class Backend(QObject):
 
     @Slot(result=str)
     def getBloretPassPortUserName(self):
-        return "未登录 (Mock)"
+        config_data = cfg.read()
+        if config_data.get('Bloret_PassPort_Login'):
+            return config_data.get('Bloret_PassPort_UserName', 'Unknown')
+        return "未登录"
 
     @Slot()
     def loginBloretPassPort(self):
-        print("Requested login to Bloret PassPort")
+        from modules.links import Bloret_PassPort_Account_login
+        Bloret_PassPort_Account_login()
 
     @Slot()
     def logoutBloretPassPort(self):
-        print("Requested logout from Bloret PassPort")
+        from modules.Bloret_PassPort import Bloret_PassPort_Account_logout
+        # We need to pass the main window or a mock for homeInterface
+        config_data = cfg.read()
+        config_data['Bloret_PassPort_Login'] = False
+        config_data['Bloret_PassPort_UserName'] = ""
+        config_data['Bloret_PassPort_PassWord'] = ""
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print("Logged out from Bloret PassPort")
+        self.minecraftAccountsChanged.emit(self.getMinecraftAccounts())
 
     @Slot()
     def refreshMinecraftAccounts(self):
-        print("Requested refresh Minecraft accounts")
+        self.minecraftAccountsChanged.emit(self.getMinecraftAccounts())
 
     @Slot(result=list)
     def getMinecraftAccounts(self):
-        return [
-            {"name": "Steve", "type": "离线账户", "id": "acc-1", "isDefault": True},
-            {"name": "Notch", "type": "微软账户", "id": "acc-2", "isDefault": False}
-        ]
+        config_data = cfg.read()
+        mc_data = config_data.get("MinecraftAccount", {})
+        accounts = mc_data.get("accounts", [])
+        chosen_idx = mc_data.get("chosen", 0)
+        
+        result = []
+        for i, acc in enumerate(accounts):
+            result.append({
+                "index": i,
+                "name": acc.get("username", "Unknown"),
+                "type": acc.get("type", "Offline"),
+                "uuid": acc.get("uuid", ""),
+                "isDefault": (i == chosen_idx)
+            })
+        return result
 
-    @Slot(str)
-    def setDefaultMinecraftAccount(self, acc_id):
-        print(f"Requested set default Minecraft account: {acc_id}")
+    @Slot(int)
+    def setDefaultMinecraftAccount(self, index):
+        config_data = cfg.read()
+        if "MinecraftAccount" not in config_data:
+            config_data["MinecraftAccount"] = {}
+        config_data["MinecraftAccount"]["chosen"] = index
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Set default Minecraft account to index: {index}")
+        self.minecraftAccountsChanged.emit(self.getMinecraftAccounts())
 
     @Slot()
     def manageAccountOnWebsite(self):
-        print("Requested manage account on website")
+        QDesktopServices.openUrl(QUrl("https://passport.bloret.net/"))
 
     @Slot()
     def syncAccountFromPassPort(self):
+        from modules.Bloret_PassPort import sync_bloret_passport_account_to_mc
         print("Requested sync account from PassPort")
+        def run_sync():
+            # Pass None as parent_window for now
+            success = sync_bloret_passport_account_to_mc(None)
+            if success:
+                self.minecraftAccountsChanged.emit(self.getMinecraftAccounts())
+        threading.Thread(target=run_sync, daemon=True).start()
 
     @Slot(result=str)
     def getIpv6Address(self):
-        return "------:------:------:------:------:------:------:------"
+        from modules.setup_ui import get_ipv6_address
+        addr = get_ipv6_address()
+        return addr if addr else "无法获取 IPv6 地址"
 
     @Slot(result=str)
     def checkIpv6Address(self):
-        print("Requested check IPv6 address")
-        return "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+        return self.getIpv6Address()
+
+    @Slot(str, str)
+    def startEasytierWithConfig(self, port, password):
+        from modules.easytier import StartEasytierServer
+        print(f"Starting EasyTier for MC port {port} with password {password}")
+        
+        config_data = cfg.read()
+        if not config_data.get("Bloret_PassPort_Login"):
+            self.easytierStatusChanged.emit("未登录", "请先在通行证页面登录")
+            return
+
+        username = config_data.get("Bloret_PassPort_UserName", "")
+        easytier_name = "BLClient" + username
+        
+        def run_et():
+            self.easytierStatusChanged.emit("正在启动", "请稍候...")
+            res = StartEasytierServer(easytier_name, password)
+            if "." in res: # Success
+                self.easytierStatusChanged.emit("已连接", f"您的虚拟 IP: {res}\n共享端口: {port}")
+            else:
+                self.easytierStatusChanged.emit("错误", res)
+        threading.Thread(target=run_et, daemon=True).start()
+
+    @Slot(str, str)
+    def joinEasytierWithConfig(self, host_name, password):
+        # In EasyTier, joining is basically starting a server with same name/secret
+        # But for the UI we might want to distinguish.
+        self.startEasytierWithConfig("25565", password) # Join often doesn't need port redirect for the joiner
 
     @Slot(result=str)
     def getEasytierStatusTitle(self):
@@ -450,33 +619,29 @@ class Backend(QObject):
     def getEasytierLinkShow(self):
         return ""
 
-    @Slot()
-    def startEasytierHost(self):
-        print("Requested start Easytier host")
-
-    @Slot()
-    def startEasytierClient(self):
-        print("Requested start Easytier client")
-
     @Slot(str)
     def openUrl(self, url):
         print(f"Requested to open URL: {url}")
         
     @Slot()
     def joinQQBloret(self):
-        print("Requested join QQ Bloret group")
+        from modules.links import open_qq_link
+        open_qq_link()
 
     @Slot()
     def joinQQCommunity(self):
-        print("Requested join QQ Software Community group")
+        from modules.links import open_BLC_qq_link
+        open_BLC_qq_link()
 
     @Slot()
     def openGithubOrg(self):
-        print("Requested open Github Org")
+        from modules.links import open_github_bloret
+        open_github_bloret()
 
     @Slot()
     def openGithubRepo(self):
-        print("Requested open Github Repo")
+        from modules.links import open_github_bloret_Launcher
+        open_github_bloret_Launcher()
 
 class LauncherV2(RinUIWindow):
     def __init__(self):
@@ -499,7 +664,6 @@ if __name__ == "__main__":
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
-    app = QApplication(sys.argv)
-    
+    # app is already created at the top
     launcher = LauncherV2()
     sys.exit(app.exec())
