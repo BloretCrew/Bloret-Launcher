@@ -29,6 +29,7 @@ import random
 import threading
 import subprocess
 import json
+import requests
 import modules.config as cfg
 import modules.globals as BLglobals
 from modules.launch import Get_Run_Script
@@ -156,6 +157,21 @@ class Backend(QObject):
         # We can reuse same signal or dedicated one, let's reuse
         print(f"Bloriko Mod suggestion request: '{query}'")
         self.askBloriko(query + ( " (请针对 Minecraft 模组给出建议)" if "模组" not in query and "mod" not in query.lower() else ""), deep_think)
+    
+    @Slot(str, str, bool)
+    def askBlorikoForModsWithVersion(self, query, version, deep_think):
+        """
+        带 Minecraft 版本的模组推荐请求
+        
+        Args:
+            query (str): 用户的需求描述
+            version (str): Minecraft 版本号
+            deep_think (bool): 是否启用深度思考
+        """
+        from modules.Bloriko import BuildModRecommendationQuestion
+        print(f"Bloriko Mod suggestion request with version: '{query}' for MC {version}")
+        recommendation_question = BuildModRecommendationQuestion(query, version)
+        self.askBloriko(recommendation_question, deep_think)
 
     @Slot(result=list)
     def getVanillaVersions(self):
@@ -474,25 +490,57 @@ class Backend(QObject):
 
     @Slot(str)
     def downloadMod(self, mod_id):
+        """
+        下载并安装模组
+        
+        Args:
+            mod_id (str): 模组 ID 或 slug
+        """
         from modules.modrinth import Get_Mod_File_Download_Url
         print(f"Requested download mod: {mod_id}")
-        # Note: This is a simplified version. Usually needs loader/version info.
+        
         def run_download():
             try:
+                # 首先尝试以 mod_id 作为 slug 获取下载 URL
                 url = Get_Mod_File_Download_Url(mod_id)
                 if url:
                     print(f"Found download URL: {url}")
-                    # Here we would normally download the file...
-                    # For now just open it in browser or log it
-                    QDesktopServices.openUrl(QUrl(url))
+                    # 获取 Minecraft 目录
+                    config_data = cfg.read()
+                    mc_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+                    mods_dir = os.path.join(mc_dir, "mods")
+                    
+                    # 确保 mods 目录存在
+                    os.makedirs(mods_dir, exist_ok=True)
+                    
+                    # 从 URL 获取文件名
+                    filename = url.split('/')[-1]
+                    if not filename or '.' not in filename:
+                        filename = f"{mod_id}.jar"
+                    
+                    file_path = os.path.join(mods_dir, filename)
+                    
+                    # 下载文件
+                    print(f"Downloading mod to: {file_path}")
+                    response = requests.get(url, timeout=30)
+                    if response.status_code == 200:
+                        with open(file_path, 'wb') as f:
+                            f.write(response.content)
+                        print(f"Successfully downloaded mod to: {file_path}")
+                    else:
+                        print(f"Failed to download: HTTP {response.status_code}")
                 else:
                     print(f"Could not find download URL for {mod_id}")
+                    # 尝试打开 Modrinth 页面
+                    QDesktopServices.openUrl(QUrl(f"https://modrinth.com/mod/{mod_id}"))
             except Exception as e:
                 print(f"Error downloading mod: {e}")
+                import traceback
+                traceback.print_exc()
+        
         threading.Thread(target=run_download, daemon=True).start()
 
-
-    @Slot(result=str)
+    @Slot(str)
     def getBloretPassPortUserName(self):
         config_data = cfg.read()
         if config_data.get('Bloret_PassPort_Login'):
@@ -565,11 +613,13 @@ class Backend(QObject):
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print("Logged out from Bloret PassPort")
-        self.minecraftAccountsChanged.emit(self.getMinecraftAccounts())
+        # 发出信号以刷新 UI（不传递复杂对象，让 QML 主动查询）
+        self.minecraftAccountsChanged.emit([])
 
     @Slot()
     def refreshMinecraftAccounts(self):
-        self.minecraftAccountsChanged.emit(self.getMinecraftAccounts())
+        # 发出信号以刷新 UI
+        self.minecraftAccountsChanged.emit([])
 
     @Slot(result=list)
     def getMinecraftAccounts(self):
@@ -602,7 +652,7 @@ class Backend(QObject):
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print(f"Set default Minecraft account to index: {index}")
-        self.minecraftAccountsChanged.emit(self.getMinecraftAccounts())
+        self.minecraftAccountsChanged.emit([])
 
     @Slot()
     def manageAccountOnWebsite(self):
@@ -616,7 +666,7 @@ class Backend(QObject):
             try:
                 success = sync_bloret_passport_account_to_mc(None)
                 if success:
-                    self.minecraftAccountsChanged.emit(self.getMinecraftAccounts())
+                    self.minecraftAccountsChanged.emit([])
                     self.syncStatusChanged.emit("success")
                 else:
                     self.syncStatusChanged.emit("error: 同步失败，请检查是否已登录 Bloret PassPort")
@@ -636,15 +686,13 @@ class Backend(QObject):
         return self.getIpv6Address()
 
     @Slot()
-    def screenshot(self):
+    def takeScreenCut(self):
+        """截图功能"""
         from modules.ShortCut import ScreenShortCut
+        from PySide6.QtCore import QTimer
         print("Requested screenshot")
-        def run_screenshot():
-            try:
-                ScreenShortCut()
-            except Exception as e:
-                print(f"Screenshot error: {e}")
-        threading.Thread(target=run_screenshot, daemon=True).start()
+        # 使用 QTimer.singleShot 在主线程中执行截图，避免线程问题
+        QTimer.singleShot(0, lambda: ScreenShortCut())
 
     @Slot(str, str)
     def startEasytierWithConfig(self, port, password):

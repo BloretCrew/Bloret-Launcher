@@ -4,7 +4,7 @@ import os
 from PySide6.QtWidgets import QApplication, QWidget, QDialog, QVBoxLayout, QPushButton
 from PySide6.QtCore import Qt, QRect, QPoint, QPropertyAnimation, QEasingCurve, QTimer, Property as pyqtProperty
 from PySide6.QtGui import QGuiApplication, QScreen, QPixmap, QPainter, QColor, QCursor
-# removed uic import for PySide6 compatibility
+from PySide6.QtUiTools import QUiLoader
 if sys.platform == "win32":
     import win32gui
     import win32con
@@ -14,6 +14,46 @@ else:
     win32con = None
     win32api = None
 from PySide6.QtWidgets import QLabel, QPushButton as StandardPushButton
+
+# 尝试导入 QFluentWidgets 自定义控件
+try:
+    from qfluentwidgets import CardWidget, BodyLabel, StrongBodyLabel, CaptionLabel
+    QFLUENTWIDGETS_AVAILABLE = True
+except ImportError:
+    QFLUENTWIDGETS_AVAILABLE = False
+    # 创建虚拟类作为后备
+    CardWidget = BodyLabel = StrongBodyLabel = CaptionLabel = None
+
+
+class CustomUiLoader(QUiLoader):
+    """自定义 UiLoader，支持 QFluentWidgets 自定义控件"""
+    
+    def __init__(self):
+        super().__init__()
+        # 注册 QFluentWidgets 控件
+        if QFLUENTWIDGETS_AVAILABLE:
+            self.registerCustomWidget(CardWidget)
+            self.registerCustomWidget(BodyLabel)
+            self.registerCustomWidget(StrongBodyLabel)
+            self.registerCustomWidget(CaptionLabel)
+    
+    def createWidget(self, class_name, parent=None, name=""):
+        """创建控件时的自定义处理"""
+        if not QFLUENTWIDGETS_AVAILABLE:
+            # 如果 QFluentWidgets 不可用，使用标准的替代方案
+            if class_name == "CardWidget":
+                from PySide6.QtWidgets import QFrame
+                widget = QFrame(parent)
+                widget.setObjectName(name)
+                return widget
+            elif class_name in ("BodyLabel", "StrongBodyLabel", "CaptionLabel"):
+                widget = QLabel(parent)
+                widget.setObjectName(name)
+                return widget
+        
+        # 正常情况下使用父类的 createWidget
+        return super().createWidget(class_name, parent, name)
+
 
 class MonitorSelectionDialog(QDialog):
     """
@@ -80,13 +120,11 @@ class ScreenCaptureWidget(QWidget):
         # 设置窗口为全屏覆盖层
         self.setWindowFlags(
             Qt.FramelessWindowHint | 
-            Qt.WindowStaysOnTopHint | 
-            Qt.WindowDoesNotAcceptFocus |
+            Qt.WindowStaysOnTopHint |
             Qt.Tool
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_DeleteOnClose)
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
         
         # 初始化透明度
         self._opacity = 0.0
@@ -100,8 +138,8 @@ class ScreenCaptureWidget(QWidget):
         self.setGeometry(screen_geo)
         
         self.show()
-        self.raise_()
-        self.activateWindow()
+        self.raise_()  # 置顶
+        # 不调用 activateWindow()，因为 WindowDoesNotAcceptFocus 被移除了
         
         # 状态变量
         self.start_pos = None
@@ -118,7 +156,18 @@ class ScreenCaptureWidget(QWidget):
         current_size = self.size()
         ui_file_path = os.path.join(os.path.dirname(__file__), '..', 'ui', 'ScreenCut.ui')
         if os.path.exists(ui_file_path):
-            uic.loadUi(ui_file_path, self)
+            try:
+                # 使用自定义 UiLoader 正确处理 QFluentWidgets 控件
+                loader = CustomUiLoader()
+                ui_widget = loader.load(ui_file_path)
+                if ui_widget:
+                    # 将加载的 UI 的属性合并到当前 widget
+                    for child in ui_widget.children():
+                        child.setParent(self)
+            except Exception as e:
+                print(f"UI loading error: {e}")
+                import traceback
+                traceback.print_exc()
             
             # --- 关键修复：彻底从布局管理器中剥离 CardWidget ---
             if hasattr(self, 'CardWidget'):
@@ -132,8 +181,8 @@ class ScreenCaptureWidget(QWidget):
         # 恢复大小（防止loadUi重置大小）
         self.resize(current_size)
         
-        # 延时初始化提示框位置
-        QTimer.singleShot(50, self._update_tip_geometry)
+        # 延时初始化提示框位置 - 使用 0 毫秒在主线程中执行
+        QTimer.singleShot(0, self._update_tip_geometry)
 
     def _update_tip_geometry(self):
         """强制更新提示框位置（居中显示在当前屏幕顶部）"""
@@ -405,7 +454,8 @@ def ScreenShortCut():
     if app is None:
         app = QApplication(sys.argv)
     
-    app.setQuitOnLastWindowClosed(True)
+    # 不设置 QuitOnLastWindowClosed，以避免截图窗口关闭时关闭整个应用
+    app.setQuitOnLastWindowClosed(False)
     
     screens = QGuiApplication.screens()
     target_screen = screens[0]
@@ -426,7 +476,7 @@ def ScreenShortCut():
     capture_widget.show()
     
     capture_widget.raise_()
-    capture_widget.activateWindow()
+    # 不直接调用 activateWindow()，以避免焦点问题
     
     for _ in range(5):
         QApplication.processEvents()

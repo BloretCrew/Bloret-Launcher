@@ -9,6 +9,14 @@ FluentPage {
 
     property var modResults: []
     property string blorikoStatus: ""
+    property var fabricVersions: []
+    property string selectedFabricVersion: ""
+
+    Component.onCompleted: {
+        if (Backend) {
+            fabricVersions = Backend.getFabricVersions()
+        }
+    }
 
     Connections {
         target: Backend
@@ -94,7 +102,8 @@ FluentPage {
                         highlighted: true
                         onClicked: {
                             if (askBlorikoInput.text !== "" && Backend) {
-                                Backend.askBlorikoForMods(askBlorikoInput.text, deepThinkCheck.checked)
+                                // 先打开版本选择对话框
+                                versionSelectDialog.open()
                             }
                         }
                     }
@@ -173,19 +182,104 @@ FluentPage {
         id: blorikoDialog
         title: qsTr("Bloriko 的建议")
         property string text: ""
-        standardButtons: Dialog.Ok
-        width: parent.width * 0.8
+        property string selectedVersion: ""
+        standardButtons: Dialog.Close
+        width: parent.width * 0.85
+        height: parent.height * 0.8
         anchors.centerIn: parent
         modal: true
         
-        ScrollView {
+        ColumnLayout {
             anchors.fill: parent
+            anchors.margins: 10
+            spacing: 10
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                
+                TextEdit {
+                    text: blorikoDialog.text
+                    wrapMode: Text.Wrap
+                    readOnly: true
+                    width: parent.width
+                    color: Theme.currentTheme.colors.textColor
+                    selectByMouse: true
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Label {
+                    text: qsTr("一键安装提示：复制上方推荐中的模组名称，在下方搜索框进行搜索和安装")
+                    font.pixelSize: 11
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+
+                Button {
+                    text: qsTr("关闭")
+                    onClicked: {
+                        blorikoDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Version Selection Dialog ---
+    Dialog {
+        id: versionSelectDialog
+        title: qsTr("选择 Minecraft 版本")
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        width: 400
+        anchors.centerIn: parent
+        modal: true
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 10
+
             Label {
-                text: blorikoDialog.text
+                text: qsTr("请选择要推荐模组的 Minecraft 版本（仅支持 Fabric）：")
                 wrapMode: Text.Wrap
-                width: parent.width
                 color: Theme.currentTheme.colors.textColor
+            }
+
+            ComboBox {
+                id: fabricVersionCombo
+                Layout.fillWidth: true
+                model: modsPage.fabricVersions
+                
+                Component.onCompleted: {
+                    if (modsPage.fabricVersions.length > 0) {
+                        currentIndex = 0
+                    }
+                }
+            }
+
+            Item { Layout.fillHeight: true }
+        }
+
+        onAccepted: {
+            // 用户确认版本选择
+            if (fabricVersionCombo.currentIndex >= 0 && fabricVersionCombo.currentText !== "") {
+                modsPage.selectedFabricVersion = fabricVersionCombo.currentText
+                // 调用带版本参数的推荐函数
+                if (Backend && askBlorikoInput.text !== "") {
+                    Backend.askBlorikoForModsWithVersion(
+                        askBlorikoInput.text,
+                        modsPage.selectedFabricVersion,
+                        deepThinkCheck.checked
+                    )
+                }
             }
         }
     }
 }
+

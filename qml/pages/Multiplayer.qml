@@ -114,7 +114,7 @@ FluentPage {
                     width: parent.width
                     spacing: 15
                     Image {
-                        source: "../../icon/easytier.png"
+                        source: "../../icon/java.png"
                         sourceSize { width: 32; height: 32 }
                     }
                     ColumnLayout {

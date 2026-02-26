@@ -333,7 +333,7 @@ FluentPage {
                 spacing: 15
 
                 Image {
-                    source: "../../icon/easytier.png"
+                    source: "../../icon/java.png"
                     sourceSize { width: 40; height: 40 }
                 }
 

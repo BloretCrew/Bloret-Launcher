@@ -11,27 +11,43 @@ FluentPage {
     property string passportUser: ""
 
     Component.onCompleted: {
-        refreshData()
+        // 延迟更新确保 Backend 完全初始化
+        Qt.callLater(function() {
+            updatePassportData()
+        })
     }
 
-    function refreshData() {
+    function updatePassportData() {
         if (Backend) {
-            passportUser = Backend.getBloretPassPortUserName()
-            accountList = Backend.getMinecraftAccounts()
+            try {
+                passportUser = Backend.getBloretPassPortUserName()
+                accountList = Backend.getMinecraftAccounts()
+            } catch(e) {
+                console.log("Error updating passport data:", e)
+            }
         }
     }
 
     Connections {
         target: Backend
         function onMinecraftAccountsChanged(accounts) {
-            accountList = accounts
-            passportUser = Backend.getBloretPassPortUserName()
+            // 当账户列表变化时，刷新本地数据
+            if (Backend) {
+                try {
+                    accountList = Backend.getMinecraftAccounts()
+                    passportUser = Backend.getBloretPassPortUserName()
+                } catch(e) {
+                    console.log("Error in onMinecraftAccountsChanged:", e)
+                }
+            }
         }
         function onSyncStatusChanged(status) {
-            syncInfoBar.severity = status === "success" ? Severity.Success : Severity.Error
-            syncInfoBar.title = status === "success" ? qsTr("同步成功") : qsTr("同步失败")
-            syncInfoBar.text = status === "success" ? qsTr("已成功从云端同步账户") : (qsTr("同步时出错: ") + status.substring(6))
-            syncInfoBar.visible = true
+            if (status && status.length > 0) {
+                syncInfoBar.severity = status === "success" ? Severity.Success : Severity.Error
+                syncInfoBar.title = status === "success" ? qsTr("同步成功") : qsTr("同步失败")
+                syncInfoBar.text = status === "success" ? qsTr("已成功从云端同步账户") : (qsTr("同步时出错: ") + String(status).substring(6))
+                syncInfoBar.visible = true
+            }
         }
     }
 

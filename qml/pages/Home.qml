@@ -7,7 +7,7 @@ FluentPage {
     id: homePage
     title: "" // We use a custom header
 
-    property var activityInfo: ({ "show": true, "title": "Bloret Launcher 春节小游戏", "description": "完成一个简单的小游戏（大约半分钟），感受春节氛围，可获得最多 50 络琅 + 200 金币奖励！", "time": "2026-02-14 到 2026-03-03", "icon": "../../icon/new_year.png", "status": "during", "link": "https://bloret.net" })
+    property var activityInfo: ({ "show": true, "title": "Bloret Launcher 春节小游戏", "description": "完成一个简单的小游戏（大约半分钟），感受春节氛围，可获得最多 50 络琅 + 200 金币奖励！", "time": "2026-02-14 到 2026-03-03", "icon": "../../icon/Grass_Block.png", "status": "during", "link": "https://bloret.net" })
     property var serverInfo: ({})
     property var launchItems: []
     property string currentVersion: ""
@@ -277,7 +277,7 @@ FluentPage {
                 id: currentVersionIcon
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
-                source: "../../icon/DefaultVersion.png" // Fallback
+                source: "../../icon/Grass_Block.png"
                 fillMode: Image.PreserveAspectFit
             }
 
@@ -305,7 +305,7 @@ FluentPage {
                     icon.name: "ic_fluent_screenshot_20_regular"
                     flat: true
                     highlighted: false
-                    onClicked: { if (Backend) Backend.screenshot() }
+                    onClicked: { if (Backend) Backend.takeScreenCut() }
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("截图")
                 }
