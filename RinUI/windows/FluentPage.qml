@@ -13,6 +13,7 @@ Page {
     property alias contentHeader: headerContainer.data
     property alias customHeader: headerRow.data
     property alias extraHeaderItems: extraHeaderRow.data
+    property alias pageFooter: footerContainer.data
     property int radius: Theme.currentTheme.appearance.windowRadius
     property int wrapperWidth: 1000
     horizontalPadding: 56
@@ -47,6 +48,12 @@ Page {
                 Layout.alignment: Qt.AlignRight | Qt.AlignBottom
             }
         }
+    }
+
+    // 底部 / Footer //
+    footer: Item {
+        id: footerContainer
+        height: childrenRect.height
     }
 
 

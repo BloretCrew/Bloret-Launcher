@@ -58,6 +58,7 @@ class Backend(QObject):
     downloadProgressUpdated = Signal(float, str, str, str, str)
     downloadDialogClosed = Signal()
     downloadPaused = Signal(bool)
+    coreManagerRequested = Signal(str, dict)
 
     def __init__(self):
         super().__init__()
@@ -152,6 +153,188 @@ class Backend(QObject):
         
         logger.debug(f"getLaunchItems: Returning {len(qml_items)} items to QML")
         return qml_items
+
+    @Slot(str)
+    def selectLaunchItem(self, name):
+        try:
+            config_data = cfg.read()
+            config_data['ChoosedRun'] = name
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            print(f"Selected launch item: {name}")
+        except Exception as e:
+            print(f"Error selecting launch item: {e}")
+
+    @Slot(str)
+    def openVersionFolder(self, versionName):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            version_path = os.path.join(minecraft_dir, "versions", versionName)
+            if os.path.exists(version_path):
+                os.startfile(version_path)
+            else:
+                print(f"Version folder not found: {version_path}")
+        except Exception as e:
+            print(f"Error opening version folder: {e}")
+
+    @Slot(str)
+    def deleteCustomItem(self, name):
+        try:
+            if name in BLglobals.customize_list:
+                BLglobals.customize_list.remove(name)
+                config_data = cfg.read()
+                config_data['customize_list'] = BLglobals.customize_list
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                print(f"Deleted custom item: {name}")
+        except Exception as e:
+            print(f"Error deleting custom item: {e}")
+
+    @Slot(str, str)
+    def renameCustomItem(self, oldName, newName):
+        try:
+            if oldName in BLglobals.customize_list:
+                idx = BLglobals.customize_list.index(oldName)
+                BLglobals.customize_list[idx] = newName
+                config_data = cfg.read()
+                config_data['customize_list'] = BLglobals.customize_list
+                if config_data.get('ChoosedRun') == oldName:
+                    config_data['ChoosedRun'] = newName
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                print(f"Renamed custom item: {oldName} -> {newName}")
+        except Exception as e:
+            print(f"Error renaming custom item: {e}")
+
+    @Slot(str)
+    def showCoreManager(self, versionName):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
+            
+            core_data = {}
+            if os.path.exists(bl_json_path):
+                with open(bl_json_path, "r", encoding="utf-8") as f:
+                    full_data = json.load(f)
+                    core_data = full_data.get("versions", {}).get(versionName, {})
+            
+            self.coreManagerRequested.emit(versionName, core_data)
+        except Exception as e:
+            print(f"Error showing core manager: {e}")
+
+    @Slot(str, result="QVariant")
+    def getCoreData(self, versionName):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
+            
+            if os.path.exists(bl_json_path):
+                with open(bl_json_path, "r", encoding="utf-8") as f:
+                    full_data = json.load(f)
+                    return full_data.get("versions", {}).get(versionName, {})
+            return {}
+        except Exception as e:
+            print(f"Error getting core data: {e}")
+            return {}
+
+    @Slot(str, "QVariant")
+    def saveCoreData(self, versionName, data):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
+            
+            full_data = {"versions": {}}
+            if os.path.exists(bl_json_path):
+                with open(bl_json_path, "r", encoding="utf-8") as f:
+                    full_data = json.load(f)
+            
+            new_name = data.get("name", versionName)
+            
+            if new_name != versionName:
+                old_path = os.path.join(minecraft_dir, "versions", versionName)
+                new_path = os.path.join(minecraft_dir, "versions", new_name)
+                if os.path.exists(new_path):
+                    print("Target name already exists")
+                    return
+                if os.path.exists(old_path):
+                    os.rename(old_path, new_path)
+                
+                if versionName in full_data.get("versions", {}):
+                    del full_data["versions"][versionName]
+            
+            full_data["versions"][new_name] = {
+                "Fabric": data.get("Fabric", False),
+                "version": data.get("version", new_name),
+                "icon": data.get("icon", ""),
+                "server": data.get("server", ""),
+                "jvmArgs": data.get("jvmArgs", "")
+            }
+            
+            with open(bl_json_path, "w", encoding="utf-8") as f:
+                json.dump(full_data, f, ensure_ascii=False, indent=4)
+            
+            print(f"Core data saved for: {new_name}")
+        except Exception as e:
+            print(f"Error saving core data: {e}")
+
+    @Slot(str, result=str)
+    def selectCoreIcon(self, versionName):
+        try:
+            from PySide6.QtWidgets import QFileDialog
+            file_path, _ = QFileDialog.getOpenFileName(
+                None,
+                "选择图标",
+                "",
+                "Images (*.png *.jpg *.jpeg)"
+            )
+            if file_path:
+                return file_path
+            return ""
+        except Exception as e:
+            print(f"Error selecting icon: {e}")
+            return ""
+
+    @Slot(str, result=bool)
+    def confirmDeleteCore(self, versionName):
+        try:
+            from PySide6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                None,
+                "确认删除",
+                f"将删除 Minecraft 版本 {versionName}。删除后可在系统回收站中找到。",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                config_data = cfg.read()
+                minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+                version_path = os.path.join(minecraft_dir, "versions", versionName)
+                
+                if os.path.exists(version_path):
+                    if send2trash:
+                        send2trash.send2trash(version_path)
+                    else:
+                        import shutil
+                        shutil.rmtree(version_path)
+                
+                bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
+                if os.path.exists(bl_json_path):
+                    with open(bl_json_path, "r", encoding="utf-8") as f:
+                        full_data = json.load(f)
+                    if versionName in full_data.get("versions", {}):
+                        del full_data["versions"][versionName]
+                    with open(bl_json_path, "w", encoding="utf-8") as f:
+                        json.dump(full_data, f, ensure_ascii=False, indent=4)
+                
+                print(f"Core deleted: {versionName}")
+                return True
+            return False
+        except Exception as e:
+            print(f"Error deleting core: {e}")
+            return False
 
     @Slot(str, bool)
     def askBloriko(self, query, deep_think):

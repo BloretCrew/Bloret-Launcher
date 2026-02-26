@@ -1,0 +1,187 @@
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 2.15
+import RinUI
+
+Dialog {
+    id: launchSelectorDialog
+    
+    title: Backend ? Backend.tr("选择启动项目") : "选择启动项目"
+    modal: true
+    width: 500
+    height: 500
+    standardButtons: Dialog.Close
+    
+    property var launchItems: []
+    property string selectedItem: ""
+    
+    signal itemSelected(string name, string type)
+    signal manageCore(string name)
+    signal openFolder(string name)
+    signal renameItem(string name)
+    signal deleteItem(string name)
+    
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 10
+        
+        Label {
+            text: Backend ? Backend.tr("右键单击启动项可进行管理。") : "右键单击启动项可进行管理。"
+            color: Theme.currentTheme.colors.textSecondaryColor
+            font.pixelSize: 12
+        }
+        
+        ScrollView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            
+            ColumnLayout {
+                width: parent.width
+                spacing: 10
+                
+                Repeater {
+                    model: launchItems
+                    
+                    Rectangle {
+                        id: card
+                        Layout.fillWidth: true
+                        height: 60
+                        radius: 8
+                        color: mouseArea.containsMouse ? Theme.currentTheme.colors.subtleFillColorSecondary : Theme.currentTheme.colors.cardColor
+                        border.color: Theme.currentTheme.colors.cardBorderColor
+                        
+                        property var itemData: modelData
+                        property bool isHovered: mouseArea.containsMouse
+                        
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 15
+                            anchors.rightMargin: 15
+                            spacing: 15
+                            
+                            Image {
+                                source: itemData.icon || "../../icon/Grass_Block.png"
+                                sourceSize { width: 32; height: 32 }
+                                fillMode: Image.PreserveAspectFit
+                            }
+                            
+                            Label {
+                                text: itemData.name
+                                font.weight: Font.DemiBold
+                                font.pixelSize: 14
+                                color: Theme.currentTheme.colors.textColor
+                                Layout.fillWidth: true
+                            }
+                            
+                            Label {
+                                text: itemData.type === "minecraft" ? "Minecraft" : (Backend ? Backend.tr("自定义") : "自定义")
+                                font.pixelSize: 12
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            
+                            Button {
+                                text: Backend ? Backend.tr("选择") : "选择"
+                                highlighted: true
+                                Layout.preferredWidth: 80
+                                onClicked: {
+                                    selectedItem = itemData.name
+                                    itemSelected(itemData.name, itemData.type)
+                                    launchSelectorDialog.close()
+                                }
+                            }
+                        }
+                        
+                        MouseArea {
+                            id: mouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            
+                            onClicked: function(mouse) {
+                                if (mouse.button === Qt.RightButton) {
+                                    contextMenu.itemData = itemData
+                                    contextMenu.popup()
+                                }
+                            }
+                        }
+                        
+                        Menu {
+                            id: contextMenu
+                            property var itemData: null
+                            
+                            MenuItem {
+                                text: Backend ? Backend.tr("启动") : "启动"
+                                icon.name: "ic_fluent_play_20_regular"
+                                onTriggered: {
+                                    if (contextMenu.itemData) {
+                                        selectedItem = contextMenu.itemData.name
+                                        itemSelected(contextMenu.itemData.name, contextMenu.itemData.type)
+                                        launchSelectorDialog.close()
+                                    }
+                                }
+                            }
+                            
+                            MenuSeparator {
+                                visible: contextMenu.itemData && contextMenu.itemData.type === "minecraft"
+                            }
+                            
+                            MenuItem {
+                                text: Backend ? Backend.tr("核心管理") : "核心管理"
+                                icon.name: "ic_fluent_settings_20_regular"
+                                visible: contextMenu.itemData && contextMenu.itemData.type === "minecraft"
+                                onTriggered: {
+                                    if (contextMenu.itemData) {
+                                        manageCore(contextMenu.itemData.name)
+                                    }
+                                }
+                            }
+                            
+                            MenuItem {
+                                text: Backend ? Backend.tr("打开文件位置") : "打开文件位置"
+                                icon.name: "ic_fluent_folder_20_regular"
+                                visible: contextMenu.itemData && contextMenu.itemData.type === "minecraft"
+                                onTriggered: {
+                                    if (contextMenu.itemData) {
+                                        openFolder(contextMenu.itemData.name)
+                                    }
+                                }
+                            }
+                            
+                            MenuSeparator {
+                                visible: contextMenu.itemData && contextMenu.itemData.type === "custom"
+                            }
+                            
+                            MenuItem {
+                                text: Backend ? Backend.tr("更名") : "更名"
+                                icon.name: "ic_fluent_edit_20_regular"
+                                visible: contextMenu.itemData && contextMenu.itemData.type === "custom"
+                                onTriggered: {
+                                    if (contextMenu.itemData) {
+                                        renameItem(contextMenu.itemData.name)
+                                    }
+                                }
+                            }
+                            
+                            MenuItem {
+                                text: Backend ? Backend.tr("删除") : "删除"
+                                icon.name: "ic_fluent_delete_20_regular"
+                                visible: contextMenu.itemData && contextMenu.itemData.type === "custom"
+                                onTriggered: {
+                                    if (contextMenu.itemData) {
+                                        deleteItem(contextMenu.itemData.name)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    function open() {
+        launchItems = Backend ? Backend.getLaunchItems() : []
+        visible = true
+    }
+}

@@ -3877,3 +3877,18 @@ def open_core_management(self, version_name, MINECRAFT_DIR, home_interface):
     if dialog.exec():
         return True # 返回 True 表示需要刷新列表
     return False # 返回 False (如取消或出错) 视情况刷新，但在 setup_ui 中我们做了全量刷新，所以影响不大
+
+
+def show_core_manager_dialog(version_name, minecraft_dir):
+    """从 QML 调用的核心管理对话框入口函数"""
+    from PySide6.QtWidgets import QApplication
+    
+    parent_widget = QApplication.activeWindow()
+    if parent_widget is None:
+        parent_widget = QWidget()
+        parent_widget.hide()
+    
+    dialog = CoreManageDialog(version_name, minecraft_dir, None, parent=parent_widget)
+    result = dialog.exec()
+    
+    return result
