@@ -4,16 +4,18 @@ try:
     import send2trash
 except ImportError:
     send2trash = None
-# sip is not required for PySide6
 from pathlib import Path
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 
-# 线程本地存储，用于复用 Session
 thread_local_data = threading.local()
 
-# 全局列表，保持对话框引用，防止被垃圾回收
-_active_dialogs = []
+_current_download_state = {
+    'downloader': None,
+    'is_paused': False,
+    'backend': None,
+    'cancelled': False
+}
 
 def get_session():
     """获取线程本地的 requests.Session 对象，实现连接复用"""
@@ -21,10 +23,29 @@ def get_session():
         thread_local_data.session = requests.Session()
     return thread_local_data.session
 
-# PySide6 imports - consolidated
-from PySide6.QtCore import QMetaObject, Qt
-from PySide6.QtWidgets import QLabel, QProgressBar, QDialog, QCheckBox, QVBoxLayout, QPushButton
-from PySide6.QtUiTools import QUiLoader
+def toggle_current_download_pause():
+    global _current_download_state
+    downloader = _current_download_state.get('downloader')
+    backend = _current_download_state.get('backend')
+    if downloader:
+        if _current_download_state['is_paused']:
+            downloader.resume()
+            _current_download_state['is_paused'] = False
+        else:
+            downloader.pause()
+            _current_download_state['is_paused'] = True
+        if backend:
+            backend.setDownloadPaused(_current_download_state['is_paused'])
+
+def cancel_current_download():
+    global _current_download_state
+    _current_download_state['cancelled'] = True
+    downloader = _current_download_state.get('downloader')
+    if downloader:
+        downloader.cancel()
+    backend = _current_download_state.get('backend')
+    if backend:
+        backend.closeDownloadDialog()
 
 # Bloret Launcher modules
 from modules.win11toast import notify, update_progress
@@ -515,95 +536,42 @@ def download_file(url, file_path):
         log(f"下载文件失败 {url}: {str(e)}", logging.ERROR)
         return False
 
-def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None):
-    global _active_dialogs
-    # 如果没有提供下载对话框，则创建并显示一个新的
-    if download_dialog is None:
-        try:
-            # 先创建 QDialog 作为容器
-            dialog_container = QDialog()
-            dialog_container.setMinimumWidth(700)
-            dialog_container.setMinimumHeight(400)
-            
-            # 加载 UI 文件内容
-            ui_content = load_ui_file("ui/MCVer_downloading.ui")
-            
-            if ui_content is not None:
-                # 将 UI 内容放入对话框布局中
-                layout = QVBoxLayout(dialog_container)
-                layout.setContentsMargins(0, 0, 0, 0)
-                ui_content.setParent(dialog_container)
-                layout.addWidget(ui_content)
-                download_dialog = dialog_container
-            else:
-                log("UI 文件加载失败，使用基础对话框代替", logging.WARNING)
-                download_dialog = dialog_container
-            
-            title_text = f"正在下载 Minecraft {version}"
-            if Fabric_Loader:
-                title_text += " 和 Fabric Loader"
-            download_dialog.setWindowTitle(title_text)
-
-            # 查找暂停按钮并连接信号
-            pause_btn = download_dialog.findChild(QPushButton, 'pause_button')
-            if pause_btn:
-                pause_btn.clicked.connect(lambda: toggle_pause_download(download_dialog))
-
-            try:
-                config = cfg.read()
-                max_thread_value = config.get("MaxThread", 64)
-                max_thread_label = download_dialog.findChild(QLabel, 'MaxThread')
-                max_thread_label_2 = download_dialog.findChild(QLabel, 'MaxThread_2')
-                if max_thread_label:
-                    max_thread_label.setText(str(max_thread_value))
-                if max_thread_label_2:
-                    max_thread_label_2.setText(str(max_thread_value))
-            except Exception as e:
-                log(f"设置MaxThread值时出错: {e}")
-            
-            _active_dialogs.append(download_dialog)
-            
-            def on_dialog_finished():
-                global _active_dialogs
-                if download_dialog in _active_dialogs:
-                    _active_dialogs.remove(download_dialog)
-            download_dialog.finished.connect(on_dialog_finished)
-            
-            download_dialog.setWindowModality(Qt.ApplicationModal)
-            download_dialog.show()
-        except Exception as e:
-            log(f"创建下载对话框时出错: {e}")
-            download_dialog = None
+def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None, backend=None):
+    global _current_download_state
+    
+    _current_download_state = {
+        'downloader': None,
+        'is_paused': False,
+        'backend': backend,
+        'cancelled': False
+    }
     
     if VersionName is None:
         VersionName = version
         
-    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir, download_dialog, Fabric_Loader, VersionName))
+    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir, Fabric_Loader, VersionName, backend))
     thread.start()
 
-def toggle_pause_download(download_dialog):
-    if hasattr(download_dialog, 'downloader') and download_dialog.downloader is not None:
-        downloader = download_dialog.downloader
-        pause_btn = download_dialog.findChild(QPushButton, 'pause_button')
-        if downloader.is_paused:
-            downloader.resume()
-            if pause_btn:
-                pause_btn.setText(i18nText("暂停"))
-        else:
-            downloader.pause()
-            if pause_btn:
-                pause_btn.setText(i18nText("恢复下载"))
-
-def _install_minecraft_version_threaded(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None):
+def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Loader=False, VersionName=None, backend=None):
+    global _current_download_state
+    
+    def update_progress_ui(progress, status, speed="", downloaded="", total=""):
+        if backend:
+            backend.updateDownloadProgress(progress, status, speed, downloaded, total)
+    
+    def close_dialog_ui():
+        if backend:
+            backend.closeDownloadDialog()
+    
     '''
     下载并安装指定版本的 Minecraft，可选安装 Fabric Loader
     
     Args:
         version (str): 要安装的 Minecraft 版本，例如 "1.21.8"
         minecraft_dir (str, optional): Minecraft 安装目录。如果未提供，默认为 %appdata%/Bloret-Launcher/.minecraft
-        download_dialog (QDialog, optional): 下载进度对话框
         Fabric_Loader (bool, optional): 是否安装 Fabric Loader，默认为 False
         VersionName (str, optional): 版本目录名称，如果未提供，默认为 version 的值
+        backend: Python Backend 对象，用于更新 QML UI
     
     Returns:
         bool: 安装成功返回True，失败返回False
@@ -1662,9 +1630,4 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         log(f"安装 Minecraft 版本 {version} 时发生错误: {str(e)}", logging.ERROR)
         return False
     finally:
-        # 关闭下载对话框
-        if download_dialog:
-            try:
-                QMetaObject.invokeMethod(download_dialog, "close", Qt.QueuedConnection)
-            except Exception as e:
-                log(f"关闭下载对话框时出错: {e}")
+        close_dialog_ui()

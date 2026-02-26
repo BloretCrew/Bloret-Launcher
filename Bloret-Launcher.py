@@ -54,6 +54,10 @@ class Backend(QObject):
     blorikoResponseReceived = Signal(str)
     syncStatusChanged = Signal(str)
     languageChanged = Signal()
+    downloadDialogRequested = Signal(str)
+    downloadProgressUpdated = Signal(float, str, str, str, str)
+    downloadDialogClosed = Signal()
+    downloadPaused = Signal(bool)
 
     def __init__(self):
         super().__init__()
@@ -210,14 +214,36 @@ class Backend(QObject):
     def downloadVanilla(self, version):
         from modules.install import InstallMinecraftVersion
         print(f"Requested download Vanilla: {version}")
-        # Note: This will likely trigger a PyQt5 dialog if install.py isn't refactored
-        InstallMinecraftVersion(version)
+        title = f"正在下载 Minecraft {version}"
+        self.downloadDialogRequested.emit(title)
+        InstallMinecraftVersion(version, backend=self)
 
     @Slot(str)
     def downloadFabric(self, version):
         from modules.install import InstallMinecraftVersion
         print(f"Requested download Fabric: {version}")
-        InstallMinecraftVersion(version, Fabric_Loader=True)
+        title = f"正在下载 Minecraft {version} 和 Fabric Loader"
+        self.downloadDialogRequested.emit(title)
+        InstallMinecraftVersion(version, Fabric_Loader=True, backend=self)
+
+    @Slot()
+    def toggleDownloadPause(self):
+        from modules.install import toggle_current_download_pause
+        toggle_current_download_pause()
+
+    @Slot()
+    def cancelDownload(self):
+        from modules.install import cancel_current_download
+        cancel_current_download()
+
+    def updateDownloadProgress(self, progress, status, speed, downloaded, total):
+        self.downloadProgressUpdated.emit(progress, status, speed, downloaded, total)
+
+    def closeDownloadDialog(self):
+        self.downloadDialogClosed.emit()
+
+    def setDownloadPaused(self, paused):
+        self.downloadPaused.emit(paused)
 
     @Slot(str)
     def downloadJava(self, version):

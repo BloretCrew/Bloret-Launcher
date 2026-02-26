@@ -601,6 +601,10 @@
         "浏览...": "Browse...",
         "打开": "Open",
         "清空": "Clear",
-        "设置界面大部分内容需要重启程序后生效。": "Most settings require a restart to take effect."
+        "设置界面大部分内容需要重启程序后生效。": "Most settings require a restart to take effect.",
+        "准备下载...": "Preparing to download...",
+        "暂停": "Pause",
+        "恢复": "Resume",
+        "最大线程数": "Max Threads"
     }
 }

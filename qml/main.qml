@@ -60,4 +60,42 @@ FluentWindow {
             position: Position.Bottom
         }
     ]
+
+    DownloadDialog {
+        id: downloadDialog
+        
+        onPauseClicked: {
+            if (Backend) Backend.toggleDownloadPause()
+        }
+        
+        onCancelClicked: {
+            if (Backend) Backend.cancelDownload()
+        }
+    }
+
+    Connections {
+        target: Backend
+        function onDownloadDialogRequested(title) {
+            downloadDialog.downloadTitle = title
+            downloadDialog.downloadProgress = 0
+            downloadDialog.downloadStatus = Backend ? Backend.tr("准备下载...") : "准备下载..."
+            downloadDialog.downloadSpeed = ""
+            downloadDialog.downloadedSize = ""
+            downloadDialog.totalSize = ""
+            downloadDialog.isPaused = false
+            downloadDialog.open()
+        }
+        
+        function onDownloadProgressUpdated(progress, status, speed, downloaded, total) {
+            downloadDialog.updateProgress(progress, status, speed, downloaded, total)
+        }
+        
+        function onDownloadDialogClosed() {
+            downloadDialog.close()
+        }
+        
+        function onDownloadPaused(paused) {
+            downloadDialog.setPaused(paused)
+        }
+    }
 }
