@@ -178,6 +178,21 @@ class Backend(QObject):
         except Exception as e:
             print(f"Error opening version folder: {e}")
 
+    @Slot(str, str)
+    def openSubFolder(self, versionName, subPath):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            base_path = os.path.join(minecraft_dir, "versions", versionName)
+            target_path = os.path.join(base_path, subPath)
+            
+            if not os.path.exists(target_path):
+                os.makedirs(target_path, exist_ok=True)
+            
+            os.startfile(target_path)
+        except Exception as e:
+            print(f"Error opening sub folder: {e}")
+
     @Slot(str)
     def deleteCustomItem(self, name):
         try:

@@ -32,12 +32,13 @@ Dialog {
         }
         
         ScrollView {
+            id: scrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
             
             ColumnLayout {
-                width: parent.width
+                width: scrollView.width - 20
                 spacing: 10
                 
                 Repeater {
