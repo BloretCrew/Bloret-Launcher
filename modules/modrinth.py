@@ -5,7 +5,6 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import subprocess
 import threading
-from qfluentwidgets import InfoBar
 from PySide6.QtWidgets import QWidget, QFileDialog
 from modules.i18n import i18nText
 

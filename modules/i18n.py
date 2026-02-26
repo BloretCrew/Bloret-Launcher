@@ -2,7 +2,6 @@ import json
 import os
 from modules.log import log
 from PySide6.QtWidgets import QLabel, QPushButton, QCheckBox, QRadioButton, QComboBox, QTextEdit, QLineEdit, QSpinBox
-from qfluentwidgets import ComboBox, SwitchButton, TextEdit
 import modules.globals as BLglobals
 
 def load_language(language=None):

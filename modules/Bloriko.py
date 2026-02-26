@@ -1,7 +1,6 @@
 import requests
 import json
 import os
-from qfluentwidgets import MessageBox
 from modules.log import log
 import threading
 from PySide6.QtCore import QTimer, QObject, Signal as pyqtSignal, Slot as pyqtSlot, Qt

@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QDialog, QApplication, QProgressBar
-from qfluentwidgets import Dialog
+# Removed qfluentwidgets Dialog for PySide6/RinUI compatibility
 # Removed uic for PySide6 compatibility
 from PySide6.QtCore import QThread, Signal as pyqtSignal, QTimer
 from modules.win11toast import notify, update_progress

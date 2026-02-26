@@ -4,7 +4,6 @@ if sys.platform == "win32":
     from win32com.client import Dispatch
 else:
     Dispatch = None
-from qfluentwidgets import MessageBox
 from modules.win11toast import update_progress
 from modules.i18n import i18nText
 import threading

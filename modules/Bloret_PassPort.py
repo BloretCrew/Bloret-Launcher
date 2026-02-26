@@ -1,5 +1,4 @@
 from PySide6.QtWidgets import QLabel
-from qfluentwidgets import SubtitleLabel,MessageBoxBase,InfoBar,InfoBarPosition,Dialog, LineEdit, MessageBox
 import logging,requests,json
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
 from modules.log import log
@@ -218,14 +217,6 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
     if isinstance(parent_window, str):
         parent_window = None
     
-    # 添加用户确认对话框
-    if parent_window:
-        w = MessageBox(i18nText("是否从 Bloret Passport 同步账户？"), 
-                      i18nText("确定要从云端同步 Minecraft 账户到本地配置吗？"), parent_window)
-        if not w.exec():
-            log("用户取消了同步操作")
-            return False
-    
     try:
         log("正在读取 config.json 获取用户信息...")
         # 1. 读取 config.json
@@ -279,20 +270,11 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
                 json.dump(config_data, f, ensure_ascii=False, indent=4)
             
             # 关键补充：如果传入了 parent_window (MainWindow)，同步更新其内存中的 config
-            # 这样用户不重启程序也能直接看到更新，且防止 save_config 覆盖
             if parent_window and hasattr(parent_window, 'config'):
                 parent_window.config['MinecraftAccount'] = new_account_data
                 log("已同步更新 MainWindow 内存配置")
             log(f"成功同步 {len(accounts)} 个账户到 config.json")
 
-            # 4. 成功提示
-            if parent_window:
-                success_msg = MessageBox(
-                    i18nText("同步成功"), 
-                    f"{i18nText('已从 Bloret PassPort 同步')} {len(accounts)} {i18nText('个账户到本地。')}", 
-                    parent_window
-                )
-                success_msg.exec()
             return True
         else:
             message = api_result.get('message', '未知错误')
@@ -302,9 +284,6 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
         log(f"从 Bloret Passport 同步账户时出错: {str(e)}")
         log(f"异常类型: {type(e)}")
         handle_exception(type(e), e, e.__traceback__)
-        if parent_window:
-            error_msg = MessageBox(i18nText("同步失败"), f"{i18nText('同步过程中发生错误')}: {str(e)}", parent_window)
-            error_msg.exec()
         return False
     finally:
         log("=== sync_bloret_passport_account_to_mc 函数执行结束 ===")

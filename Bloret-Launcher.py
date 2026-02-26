@@ -205,18 +205,42 @@ class Backend(QObject):
     @Slot(result=str)
     def getLanguageCode(self):
         config_data = cfg.read()
-        return config_data.get("Language", "zh-cn")
+        # 旧版 config 用小写 'language' 键
+        return config_data.get("language", config_data.get("Language", "zh-cn"))
 
     @Slot(result=list)
     def getLanguages(self):
+        """扫描 lang/ 目录，构建语言列表（与旧版一致）"""
         try:
-            with open("lang/Default.json", "r", encoding="utf-8") as f:
-                data = json.load(f)
-                langs = data.get("lang", {})
-                result = []
-                for code, info in langs.items():
-                    result.append({"code": code, "name": info["name"]})
-                return result
+            lang_dir = "lang"
+            result = []
+            # 语言代码到显示名称的映射（常用语言）
+            lang_names = {
+                "zh-cn": "简体中文", "zh-TW": "繁體中文", "en-US": "English (US)",
+                "en-GB": "English (UK)", "ja-JP": "日本語", "ko-KR": "한국어",
+                "fr-FR": "Français", "de-DE": "Deutsch", "es-ES": "Español",
+                "ru-RU": "Русский", "pt-BR": "Português (Brasil)",
+                "it-IT": "Italiano", "nl-NL": "Nederlands", "pl-PL": "Polski",
+                "tr-TR": "Türkçe", "ar-SA": "العربية", "vi-VN": "Tiếng Việt",
+            }
+            if os.path.isdir(lang_dir):
+                for fn in sorted(os.listdir(lang_dir)):
+                    if fn.endswith(".json") and fn != "Default.json":
+                        code = fn[:-5]  # 去掉 .json
+                        # 尝试从语言文件读取自描述名称
+                        name = lang_names.get(code, code)
+                        try:
+                            with open(os.path.join(lang_dir, fn), "r", encoding="utf-8") as f:
+                                d = json.load(f)
+                                # 某些语言文件里有 _meta.name 字段
+                                if "_meta" in d and "name" in d["_meta"]:
+                                    name = d["_meta"]["name"]
+                        except Exception:
+                            pass
+                        result.append({"code": code, "name": name})
+            if not result:
+                result = [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
+            return result
         except Exception as e:
             print(f"Error loading languages: {e}")
             return [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
@@ -402,6 +426,28 @@ class Backend(QObject):
     def startEasytierClient(self):
         # Same as host for now in the simple view
         self.startEasytierHost()
+
+    @Slot(result=list)
+    def getFabricVersions(self):
+        """从 .BL.json 读取 Fabric 版本列表（与旧版 setup_Mod_ui 一致）"""
+        try:
+            config_data = cfg.read()
+            mc_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            bl_json_path = os.path.join(mc_dir, "versions", ".BL.json")
+            if not os.path.exists(bl_json_path):
+                return []
+            with open(bl_json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            versions = data.get("versions", {})
+            # 只返回 Fabric 版本
+            fabric_versions = []
+            for ver_name, ver_info in versions.items():
+                if ver_info.get("Fabric", False):
+                    fabric_versions.append(ver_name)
+            return sorted(fabric_versions, reverse=True)
+        except Exception as e:
+            print(f"Error getting Fabric versions: {e}")
+            return []
 
     @Slot(str)
     def searchModrinth(self, query):
