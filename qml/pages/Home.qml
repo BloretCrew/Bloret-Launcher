@@ -277,34 +277,45 @@ FluentPage {
                 Layout.fillWidth: true
                 spacing: 2
                 Label {
-                    text: "Hello, " + Backend.getPlayerName() + " Will use [Microsoft Login] " + Backend.getPlayerName() + " to log into Minecraft"
+                    text: "Hello, " + (Backend ? Backend.getPlayerName() : "User") + " ! 将使用 [Microsoft Login] 登录 Minecraft"
                     color: "white"
                     font.pixelSize: 14
                 }
                 Label {
-                    text: currentVersion || "1.21.8-Fabric"
+                    text: currentVersion || (launchItems.length > 0 ? launchItems[0].name : "Checking...")
                     color: "white"
                     font.weight: Font.Bold
                     font.pixelSize: 18
                 }
             }
 
-            Button {
-                text: qsTr("切换核心")
-                icon.name: "ic_fluent_arrow_swap_20_regular"
-                flat: true
-                // In a real app we'd open a menu here
-                onClicked: {
-                    versionMenu.open()
-                }
+            RowLayout {
+                spacing: 10
                 
-                Menu {
-                    id: versionMenu
-                    Repeater {
-                        model: launchItems
-                        MenuItem {
-                            text: modelData.name
-                            onTriggered: currentVersion = modelData.name
+                Button {
+                    icon.name: "ic_fluent_screenshot_20_regular"
+                    flat: true
+                    highlighted: false
+                    onClicked: { if (Backend) Backend.screenshot() }
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("截图")
+                }
+
+                Button {
+                    text: qsTr("切换核心")
+                    icon.name: "ic_fluent_arrow_swap_20_regular"
+                    flat: true
+                    onClicked: versionMenu.open()
+                    
+                    Menu {
+                        id: versionMenu
+                        width: 250
+                        Repeater {
+                            model: launchItems
+                            MenuItem {
+                                text: modelData.name
+                                onClicked: currentVersion = modelData.name
+                            }
                         }
                     }
                 }
@@ -313,29 +324,23 @@ FluentPage {
             Button {
                 id: launchBtn
                 height: 50
-                Layout.preferredWidth: 250
+                Layout.preferredWidth: 200
                 Layout.preferredHeight: 45
                 background: Rectangle {
                     color: "white"
                     radius: 8
+                    opacity: parent.pressed ? 0.8 : 1.0
                 }
-                contentItem: RowLayout {
-                    spacing: 10
-                    Image {
-                        source: "../../icon/launch.png" // We might need to generate or find this
-                        sourceSize { width: 24; height: 24 }
-                        visible: false // hide if not available
-                    }
-                    Label {
-                        text: qsTr("Launch")
-                        color: Theme.accentColor
-                        font.weight: Font.Bold
-                        font.pixelSize: 18
-                        Layout.alignment: Qt.AlignHCenter
-                    }
+                contentItem: Label {
+                    text: qsTr("启动游戏")
+                    color: Theme.accentColor
+                    font.weight: Font.Bold
+                    font.pixelSize: 18
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
                 }
                 onClicked: {
-                    if (currentVersion) Backend.launchGame(currentVersion)
+                    if (currentVersion && Backend) Backend.launchGame(currentVersion)
                 }
             }
         }

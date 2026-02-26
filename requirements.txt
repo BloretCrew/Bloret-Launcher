@@ -1,4 +1,4 @@
-PyQt5
+PySide6
 PyQt-Fluent-Widgets
 requests
 # win11toast 须在 Visual Studio 环境下安装

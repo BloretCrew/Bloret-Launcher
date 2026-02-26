@@ -123,7 +123,7 @@ FluentPage {
                 spacing: 15
                 Image {
                     width: 40; height: 40
-                    source: "../../icon/DefaultHead.png"
+                    source: modelData.avatarUrl || "../../icon/DefaultHead.png"
                     fillMode: Image.PreserveAspectFit
                 }
                 ColumnLayout {
