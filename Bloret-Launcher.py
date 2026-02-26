@@ -19,97 +19,8 @@ from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices
 QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 app = QApplication(sys.argv)
 
-# --- Qt Shim ---
-import types
-from PySide6 import QtCore as _QtCore, QtWidgets as _QtWidgets, QtGui as _QtGui
-
-def _make_shim(name, source_mod, extra_attrs):
-    shim = types.ModuleType(name)
-    shim.__path__ = [] # Make it behave like a package if needed
-    for attr in dir(source_mod):
-        try:
-            setattr(shim, attr, getattr(source_mod, attr))
-        except:
-            pass
-    for attr, val in extra_attrs.items():
-        setattr(shim, attr, val)
-    return shim
-
-# Aliases for QtCore
-_core_aliases = {
-    'pyqtSignal': _QtCore.Signal,
-    'pyqtSlot': _QtCore.Slot,
-    'pyqtProperty': _QtCore.Property,
-    'QRegExp': _QtCore.QRegularExpression,
-    'pyqtWrapperType': type,
-    'qApp': app,
-}
-
-# Aliases for QtGui
-_gui_aliases = {
-    'QRegExp': _QtCore.QRegularExpression,
-    'QRegExpValidator': _QtGui.QRegularExpressionValidator,
-    'qApp': app,
-}
-
-# Aliases for QtWidgets
-_widgets_aliases = {
-    'QRegExpValidator': _QtGui.QRegularExpressionValidator,
-    'QAction': _QtGui.QAction,
-    'QActionGroup': _QtGui.QActionGroup,
-    'qApp': app,
-}
-
-# Create the shims
-pyqt5_core = _make_shim('PyQt5.QtCore', _QtCore, _core_aliases)
-pyqt5_gui = _make_shim('PyQt5.QtGui', _QtGui, _gui_aliases)
-pyqt5_widgets = _make_shim('PyQt5.QtWidgets', _QtWidgets, _widgets_aliases)
-
-sys.modules['PyQt5.QtCore'] = pyqt5_core
-sys.modules['PyQt5.QtGui'] = pyqt5_gui
-sys.modules['PyQt5.QtWidgets'] = pyqt5_widgets
-
-# Make PyQt5 itself a package that contains these
-pyqt5 = types.ModuleType('PyQt5')
-pyqt5.__path__ = []
-pyqt5.QtCore = pyqt5_core
-pyqt5.QtGui = pyqt5_gui
-pyqt5.QtWidgets = pyqt5_widgets
-
-# Add sub-modules
-def _add_sub_shim(sub_name, pyside_mod_name):
-    try:
-        import importlib
-        _mod = importlib.import_module(f'PySide6.{pyside_mod_name}')
-        shim = _make_shim(f'PyQt5.{sub_name}', _mod, {})
-        sys.modules[f'PyQt5.{sub_name}'] = shim
-        setattr(pyqt5, sub_name, shim)
-    except ImportError:
-        pass
-
-_add_sub_shim('QtXml', 'QtXml')
-_add_sub_shim('QtSvg', 'QtSvg')
-_add_sub_shim('QtNetwork', 'QtNetwork')
-_add_sub_shim('QtMultimedia', 'QtMultimedia')
-_add_sub_shim('QtSql', 'QtSql')
-
-sys.modules['PyQt5'] = pyqt5
-
-# Mock uic
-class MockUic:
-    def loadUiType(self, path): return (type('MockUI', (), {}), type('MockBase', (), {}))
-    def loadUi(self, path, widget): pass
-
-sys.modules['PyQt5.uic'] = MockUic()
-setattr(pyqt5, 'uic', sys.modules['PyQt5.uic'])
-
-class MockSip:
-    def cast(self, obj, typ): return obj
-    def delete(self, obj): pass
-    def wrapinstance(self, addr, typ): return None
-    def unwrapinstance(self, obj): return 0
-
-sys.modules['sip'] = MockSip()
+# --- Finished Full PySide6 Migration ---
+# All modules have been refactored to use PySide6 and PySide6-Fluent-Widgets directly.
 
 import RinUI
 from RinUI import RinUIWindow
@@ -210,15 +121,21 @@ class Backend(QObject):
         return qml_items
 
     @Slot(str, bool)
-    def askBloriko(self, question, deep_think):
-        print(f"Bloriko request: '{question}', deep think: {deep_think}")
+    def askBloriko(self, query, deep_think):
+        print(f"Bloriko request: '{query}', deep think: {deep_think}")
         def run_ask():
             try:
                 config_data = cfg.read()
-                response = AskBloriko(question, config_data, deepthink=deep_think)
+                if not config_data.get("Bloret_PassPort_Login", False):
+                    self.blorikoResponseReceived.emit("未登录: 请先登录 Bloret PassPort 以使用 AI 功能。")
+                    return
+                
+                from modules.Bloriko import AskBloriko
+                response = AskBloriko(query, config_data, deepthink=deep_think)
                 self.blorikoResponseReceived.emit(response)
             except Exception as e:
-                self.blorikoResponseReceived.emit(f"Error: {str(e)}")
+                print(f"Error in askBloriko: {e}")
+                self.blorikoResponseReceived.emit(f"错误: {str(e)}")
         threading.Thread(target=run_ask, daemon=True).start()
 
     @Slot(result=list)
@@ -475,20 +392,6 @@ class Backend(QObject):
                 print(f"Error downloading mod: {e}")
         threading.Thread(target=run_download, daemon=True).start()
 
-    @Slot(str, bool)
-    def askBloriko(self, query, deep_think):
-        from modules.Bloriko import AskBloriko
-        print(f"Bloriko request: '{query}', deep think: {deep_think}")
-        def run_bloriko():
-            try:
-                # AskBloriko(question, config, deepthink=False)
-                config = cfg.read()
-                response = AskBloriko(query, config, deep_think)
-                self.blorikoResponseReceived.emit(response)
-            except Exception as e:
-                print(f"Error asking Bloriko: {e}")
-                self.blorikoResponseReceived.emit(f"Error: {e}")
-        threading.Thread(target=run_bloriko, daemon=True).start()
 
     @Slot(result=str)
     def getBloretPassPortUserName(self):

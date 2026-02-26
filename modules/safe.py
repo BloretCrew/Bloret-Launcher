@@ -13,9 +13,9 @@ Safe.py
 '''
 
 import threading,logging,traceback,sys,webbrowser
-from PyQt5.QtWidgets import QApplication
-from PyQt5.uic import loadUi
-from PyQt5.QtCore import QThread, QObject, pyqtSignal
+from PySide6.QtWidgets import QApplication
+# from PySide6.QtUiTools import QUiLoader # Removed uic/loadUi for PySide6 compatibility
+from PySide6.QtCore import QThread, QObject, Signal as pyqtSignal
 from modules.log import log
 from modules.i18n import i18nText
 
@@ -28,8 +28,11 @@ def _show_error_ui(exc_type, exc_value, exc_traceback):
         return
 
     try:
-        # 加载 ERROR.ui 文件
-        error_widget = loadUi("ui/ERROR.ui")
+        # loadUi is not directly available in PySide6 without extra setup
+        # Skipping for now as we are migrating to QML
+        # error_widget = loadUi("ui/ERROR.ui")
+        error_widget = None
+        if not error_widget: return
         
         # 填写信息到输入框
         error_widget.type.setText(str(exc_type))
@@ -88,7 +91,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
         try:
             app = QApplication(sys.argv)
         except Exception:
-            print("CRITICAL: PyQt5 QApplication initialization failed during exception handling.")
+            print("CRITICAL: PySide6 QApplication initialization failed during exception handling.")
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
             return
 

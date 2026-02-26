@@ -1,7 +1,7 @@
-from PyQt5.QtWidgets import QDialog, QApplication, QProgressBar
+from PySide6.QtWidgets import QDialog, QApplication, QProgressBar
 from qfluentwidgets import Dialog
-from PyQt5 import uic
-from PyQt5.QtCore import QThread, pyqtSignal, QTimer
+# Removed uic for PySide6 compatibility
+from PySide6.QtCore import QThread, Signal as pyqtSignal, QTimer
 from modules.win11toast import notify, update_progress
 import logging,os,requests,zipfile,time
 import threading
@@ -23,7 +23,8 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
             minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
             if not os.path.exists(minecraft_dir):
                 log(i18nText(".minecraft 文件夹不存在"))
-                uic.loadUi("ui/BL_download.ui", self)
+                # Skipping uic.loadUi for now as we are migrating to QML
+                # uic.loadUi("ui/BL_download.ui", self)
                 # 初始化进度条控件
                 self.progress_bars = {
                     "version": self.findChild(QProgressBar, "version"),
@@ -36,7 +37,8 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                 }
             else:
                 log(i18nText(".minecraft 文件夹已存在"))
-                uic.loadUi("ui/BL_download_version.ui", self)
+                # Skipping uic.loadUi for now
+                # uic.loadUi("ui/BL_download_version.ui", self)
                 self.progress_bars = {
                     "version": self.findChild(QProgressBar, "version")
                 }

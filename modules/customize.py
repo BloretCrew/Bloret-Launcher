@@ -84,7 +84,7 @@ def CustomizeAdd(self):
     ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
     '''
     try:
-        from PyQt5.QtWidgets import QFileDialog
+        from PySide6.QtWidgets import QFileDialog
         
         # 弹出文件选择框选择文件
         file_path, _ = QFileDialog.getOpenFileName(

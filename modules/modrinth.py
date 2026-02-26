@@ -6,7 +6,7 @@ from urllib3.util.retry import Retry
 import subprocess
 import threading
 from qfluentwidgets import InfoBar
-from PyQt5.QtWidgets import QWidget, QFileDialog
+from PySide6.QtWidgets import QWidget, QFileDialog
 from modules.i18n import i18nText
 
 def search_mods(search_term):

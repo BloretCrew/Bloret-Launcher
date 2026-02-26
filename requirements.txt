@@ -1,11 +1,11 @@
 PySide6
-PyQt-Fluent-Widgets
+PySide6-Fluent-Widgets
 requests
 # win11toast 须在 Visual Studio 环境下安装
 win11toast; sys_platform == 'win32'
 pywin32; sys_platform == 'win32'
 configparser
-sip
+# sip is not required for PySide6
 Send2Trash
 winsdk; sys_platform == 'win32'
 toml

@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QLineEdit, QLabel
+from PySide6.QtWidgets import QLineEdit, QLabel
 import logging,requests,base64,json
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块，位于 modules 中
 from modules.log import log

@@ -5,8 +5,8 @@
 import sys
 import time
 import threading
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QTimer
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer
 
 # 测试工具栏创建
 def test_toolbar_creation():

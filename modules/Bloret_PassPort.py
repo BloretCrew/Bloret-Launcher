@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QLabel
+from PySide6.QtWidgets import QLabel
 from qfluentwidgets import SubtitleLabel,MessageBoxBase,InfoBar,InfoBarPosition,Dialog, LineEdit, MessageBox
 import logging,requests,json
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块

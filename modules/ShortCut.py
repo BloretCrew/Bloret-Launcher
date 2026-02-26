@@ -1,10 +1,10 @@
 import sys
 import ctypes
 import os
-from PyQt5.QtWidgets import QApplication, QWidget, QDialog, QVBoxLayout, QPushButton
-from PyQt5.QtCore import Qt, QRect, QPoint, QPropertyAnimation, QEasingCurve, QTimer, pyqtProperty
-from PyQt5.QtGui import QGuiApplication, QScreen, QPixmap, QPainter, QColor, QCursor
-from PyQt5 import uic
+from PySide6.QtWidgets import QApplication, QWidget, QDialog, QVBoxLayout, QPushButton
+from PySide6.QtCore import Qt, QRect, QPoint, QPropertyAnimation, QEasingCurve, QTimer, Property as pyqtProperty
+from PySide6.QtGui import QGuiApplication, QScreen, QPixmap, QPainter, QColor, QCursor
+# removed uic import for PySide6 compatibility
 if sys.platform == "win32":
     import win32gui
     import win32con

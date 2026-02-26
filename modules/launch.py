@@ -4,7 +4,7 @@ try:
     import send2trash
 except ImportError:
     send2trash = None
-import sip # type: ignore
+# sip is not required for PySide6
 from pathlib import Path
 from modules.win11toast import notify, update_progress
 # 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
@@ -792,7 +792,7 @@ def monitor_minecraft_window(version, check_interval=1, callback=None):
 
             # 创建工具栏 - 使用修复后的模块确保线程安全
             try:
-                from PyQt5.QtCore import QObject, pyqtSignal, QCoreApplication, QTimer
+                from PySide6.QtCore import QObject, Signal as pyqtSignal, QCoreApplication, QTimer
                 from . import mwtool
                 
                 # 确保在主线程中创建QObject

@@ -8,7 +8,7 @@ import shutil
 import tempfile
 import threading
 import urllib.parse
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 import time
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry

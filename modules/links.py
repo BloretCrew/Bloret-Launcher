@@ -1,6 +1,6 @@
-from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtCore import QUrl
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import QUrl
+from PySide6.QtWidgets import QApplication
 # 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块，位于 modules 中
 from modules.log import log
 from modules.i18n import i18nText

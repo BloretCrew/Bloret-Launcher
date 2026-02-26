@@ -4,7 +4,7 @@ import os
 from qfluentwidgets import MessageBox
 from modules.log import log
 import threading
-from PyQt5.QtCore import QTimer, QObject, pyqtSignal, pyqtSlot, Qt
+from PySide6.QtCore import QTimer, QObject, Signal as pyqtSignal, Slot as pyqtSlot, Qt
 import logging
 import hashlib
 import time

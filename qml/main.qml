@@ -16,24 +16,24 @@ FluentWindow {
 
     navigationItems: [
         {
-            title: qsTr("Home"),
+            title: qsTr("主页"),
             page: Qt.resolvedUrl("pages/Home.qml"),
             icon: "ic_fluent_home_20_regular",
             position: Position.Top
         },
         {
-            title: qsTr("PassPort"),
+            title: qsTr("通行证"),
             page: Qt.resolvedUrl("pages/PassPort.qml"),
             icon: "ic_fluent_person_20_regular",
             position: Position.Bottom
         },
         {
-            title: qsTr("Download"),
+            title: qsTr("下载"),
             page: Qt.resolvedUrl("pages/Download.qml"),
             icon: "ic_fluent_arrow_download_20_regular"
         },
         {
-            title: qsTr("Tools"),
+            title: qsTr("小工具"),
             page: Qt.resolvedUrl("pages/Tools.qml"),
             icon: "ic_fluent_wrench_20_regular"
         },
@@ -43,18 +43,18 @@ FluentWindow {
             icon: "ic_fluent_puzzle_piece_20_regular"
         },
         {
-            title: qsTr("Multiplayer"),
+            title: qsTr("联机"),
             page: Qt.resolvedUrl("pages/Multiplayer.qml"),
             icon: "ic_fluent_plug_connected_20_regular"
         },
         {
-            title: qsTr("Settings"),
+            title: qsTr("设置"),
             page: Qt.resolvedUrl("pages/Settings.qml"),
             icon: "ic_fluent_settings_20_regular",
             position: Position.Bottom
         },
         {
-            title: qsTr("Info"),
+            title: qsTr("关于"),
             page: Qt.resolvedUrl("pages/Info.qml"),
             icon: "ic_fluent_info_20_regular",
             position: Position.Bottom

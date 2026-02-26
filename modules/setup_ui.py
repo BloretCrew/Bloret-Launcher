@@ -8,15 +8,15 @@ import logging
 import requests
 import random
 
-# 2. 第三方库 (PyQt5)
-from PyQt5.QtWidgets import (
+# 2. 第三方库 (PySide6)
+from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QLabel, QPushButton,
     QSizePolicy, QFileDialog, QFileIconProvider
 )
-from PyQt5.QtGui import QDesktopServices, QPixmap, QColor, QIcon, QMovie
-from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime, QFileInfo, QThread, pyqtSignal
-from PyQt5 import uic
+from PySide6.QtGui import QDesktopServices, QPixmap, QColor, QIcon, QMovie
+from PySide6.QtCore import QUrl, Qt, QSize, QTimer, QDateTime, QFileInfo, QThread, Signal as pyqtSignal
+# from PySide6.QtUiTools import QUiLoader # Removed uic for PySide6 compatibility
 
 # 3. 第三方库 (qfluentwidgets)
 from qfluentwidgets import (
@@ -348,12 +348,11 @@ def show_download_dialog(mod_title, slug, parent):
 
 def load_ui(ui_path, parent=None, animate=True):
     '''
-    ### 加载 UI 布局
-    通过 .ui 文件
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    # PySide6 Migration: uic.loadUi is not available. 
+    # Skipping for now as we are migrating to QML or using manual layouts.
+    # widget = uic.loadUi(ui_path)
+    return
     '''
-    widget = uic.loadUi(ui_path)
 
     if parent:
         # 强制使用布局管理（若原布局缺失）
@@ -2618,7 +2617,7 @@ class ShortCutSettingDialog(MessageBoxBase):
                 parts.append("Meta")
                 
             # 获取键名
-            from PyQt5.QtGui import QKeySequence
+            from PySide6.QtGui import QKeySequence
             key_name = QKeySequence(key).toString()
             if key_name:
                 parts.append(key_name)

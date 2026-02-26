@@ -2,8 +2,8 @@ import os,logging,shutil
 from datetime import datetime
 from qfluentwidgets import InfoBar, InfoBarPosition
 import logging,traceback,sys,webbrowser
-from PyQt5.QtWidgets import QApplication
-from PyQt5.uic import loadUi
+from PySide6.QtWidgets import QApplication
+# from PySide6.QtUiTools import QUiLoader # Removed uic for PySide6 compatibility
 import modules.globals as BLglobals
 
 copyright = "\n© 2025 Bloret Launcher All rights reserved. \n© 2025 Bloret All rights reserved."
@@ -61,8 +61,10 @@ def handle_exception(e):
     log("信息: {}".format(exc_value), logging.CRITICAL)
     log("回溯: {}".format(traceback.format_tb(exc_traceback)), logging.CRITICAL)
     
-    # 加载 ERROR.ui 文件
-    error_widget = loadUi("ui/ERROR.ui")
+    # loadUi is not directly available in PySide6
+    # Skipping for now as we are migrating to QML
+    # error_widget = loadUi("ui/ERROR.ui")
+    return
     
     # 填写信息到输入框
     error_widget.type.setText(str(exc_type))

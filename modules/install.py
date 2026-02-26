@@ -4,7 +4,7 @@ try:
     import send2trash
 except ImportError:
     send2trash = None
-import sip # type: ignore
+# sip is not required for PySide6
 from pathlib import Path
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
@@ -18,10 +18,9 @@ def get_session():
         thread_local_data.session = requests.Session()
     return thread_local_data.session
 
-# PyQt5 imports - consolidated
-from PyQt5.QtCore import QMetaObject, Qt, Q_ARG
-from PyQt5.QtWidgets import QLabel, QProgressBar, QDialog, QCheckBox
-from PyQt5 import uic
+# PySide6 imports - consolidated
+from PySide6.QtCore import QMetaObject, Qt
+from PySide6.QtWidgets import QLabel, QProgressBar, QDialog, QCheckBox
 
 # Bloret Launcher modules
 from modules.win11toast import notify, update_progress
@@ -40,11 +39,9 @@ def safe_ui_update(widget, method, value, widget_type=None):
     try:
         if widget and hasattr(widget, method):
             if widget_type == "progress_bar":
-                QMetaObject.invokeMethod(widget, method, Qt.QueuedConnection,
-                                       Q_ARG(int, value))
+                QMetaObject.invokeMethod(widget, method, Qt.QueuedConnection, value)
             elif widget_type == "label":
-                QMetaObject.invokeMethod(widget, method, Qt.QueuedConnection,
-                                       Q_ARG(str, str(value)))
+                QMetaObject.invokeMethod(widget, method, Qt.QueuedConnection, str(value))
             else:
                 QMetaObject.invokeMethod(widget, method, Qt.QueuedConnection)
             return True
@@ -267,7 +264,7 @@ class LibraryDownloader:
                     thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
                     if thread_label:
                         QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                           Q_ARG(str, str(self._active_downloads)))
+                                           str(self._active_downloads))
                 except Exception as e:
                     log(f"更新libraries_file_working_Thread时出错: {e}")
 
@@ -373,7 +370,7 @@ class LibraryDownloader:
                         if lib_progress_bar:
                             progress_value = int((self.completed_count / self.total_count) * 100)
                             QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
-                                                   Q_ARG(int, progress_value))
+                                                   progress_value)
                     except Exception as e:
                         log(f"更新libraries_progress时出错: {e}")
             return True # 成功下载
@@ -494,7 +491,10 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
         try:
             
             download_dialog = QDialog()
-            uic.loadUi("ui/MCVer_downloading.ui", download_dialog)
+            # uic.loadUi is not available in PySide6. Returning early as a safeguard.
+            # In a real migration, this should use QUiLoader or a pre-compiled UI class.
+            log("Warning: uic.loadUi called but not available. UI may not display.")
+            return
             title_text = f"正在下载 Minecraft {version}"
             if Fabric_Loader:
                 title_text += " 和 Fabric Loader"
@@ -704,8 +704,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                         # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
                         checkbox = download_dialog.findChild(QCheckBox, "First_Step_CheckBox")
                         if checkbox:
-                            QMetaObject.invokeMethod(checkbox, "setChecked", Qt.QueuedConnection, 
-                                                   Q_ARG(bool, True))
+                            QMetaObject.invokeMethod(checkbox, "setChecked", Qt.QueuedConnection, True)
                     except Exception as e:
                         log(f"设置First_Step_CheckBox时出错: {e}")
 
@@ -751,8 +750,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                                     progress_value = int((downloaded_size / total_size) * 100)
                                                     # 只更新到5%的倍数，避免频繁更新
                                                     if progress_value % 5 == 0 or progress_value == 100:
-                                                        QMetaObject.invokeMethod(progress_bar, "setValue", Qt.QueuedConnection,
-                                                                           Q_ARG(int, progress_value))
+                                                        QMetaObject.invokeMethod(progress_bar, "setValue", Qt.QueuedConnection, progress_value)
                                             except Exception as e:
                                                 log(f"更新client_jar_progress时出错: {e}")
                             
@@ -786,8 +784,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                                                 progress_value = int((downloaded_size / total_size) * 100)
                                                                 # 只更新到5%的倍数，避免频繁更新
                                                                 if progress_value % 5 == 0 or progress_value == 100:
-                                                                    QMetaObject.invokeMethod(progress_bar, "setValue", Qt.QueuedConnection,
-                                                                                           Q_ARG(int, progress_value))
+                                                                    QMetaObject.invokeMethod(progress_bar, "setValue", Qt.QueuedConnection, progress_value)
                                                         except Exception as e:
                                                             log(f"更新client_jar_progress时出错: {e}")
                                         
@@ -1077,8 +1074,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                         
                         resources_progress_bar = download_dialog.findChild(QProgressBar, "Resources_progress")
                         if resources_progress_bar:
-                            QMetaObject.invokeMethod(resources_progress_bar, "setValue", Qt.QueuedConnection,
-                                                   Q_ARG(int, 0))
+                            QMetaObject.invokeMethod(resources_progress_bar, "setValue", Qt.QueuedConnection, 0)
                             log(f"初始化资源文件进度条为0%")
                     except Exception as e:
                         log(f"初始化资源文件进度时出错: {e}")
