@@ -12,6 +12,9 @@ from concurrent.futures import ThreadPoolExecutor
 # 线程本地存储，用于复用 Session
 thread_local_data = threading.local()
 
+# 全局列表，保持对话框引用，防止被垃圾回收
+_active_dialogs = []
+
 def get_session():
     """获取线程本地的 requests.Session 对象，实现连接复用"""
     if not hasattr(thread_local_data, "session"):
@@ -20,7 +23,8 @@ def get_session():
 
 # PySide6 imports - consolidated
 from PySide6.QtCore import QMetaObject, Qt
-from PySide6.QtWidgets import QLabel, QProgressBar, QDialog, QCheckBox
+from PySide6.QtWidgets import QLabel, QProgressBar, QDialog, QCheckBox, QVBoxLayout, QPushButton
+from PySide6.QtUiTools import QUiLoader
 
 # Bloret Launcher modules
 from modules.win11toast import notify, update_progress
@@ -32,6 +36,32 @@ import modules.globals as BLglobals
 import modules.config as cfg
 
 # 线程安全的UI更新函数
+def load_ui_file(ui_file_path):
+    """
+    使用 QUiLoader 加载 UI 文件，兼容 PySide6
+    
+    Args:
+        ui_file_path (str): UI 文件的路径
+    
+    Returns:
+        QWidget: 加载的 UI 对象，如果失败返回 None
+    """
+    try:
+        loader = QUiLoader()
+        if not os.path.isabs(ui_file_path):
+            script_dir = Path(__file__).parent.parent.absolute()
+            ui_file_path = os.path.join(script_dir, ui_file_path)
+        
+        if not os.path.exists(ui_file_path):
+            log(f"UI 文件不存在: {ui_file_path}", logging.WARNING)
+            return None
+        
+        ui = loader.load(ui_file_path, None)
+        return ui
+    except Exception as e:
+        log(f"加载 UI 文件失败 {ui_file_path}: {e}", logging.ERROR)
+        return None
+
 def safe_ui_update(widget, method, value, widget_type=None):
     """
     安全地更新UI组件，确保在主线程中执行
@@ -486,40 +516,65 @@ def download_file(url, file_path):
         return False
 
 def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None):
+    global _active_dialogs
     # 如果没有提供下载对话框，则创建并显示一个新的
     if download_dialog is None:
         try:
+            # 先创建 QDialog 作为容器
+            dialog_container = QDialog()
+            dialog_container.setMinimumWidth(700)
+            dialog_container.setMinimumHeight(400)
             
-            download_dialog = QDialog()
-            # uic.loadUi is not available in PySide6. Returning early as a safeguard.
-            # In a real migration, this should use QUiLoader or a pre-compiled UI class.
-            log("Warning: uic.loadUi called but not available. UI may not display.")
-            return
+            # 加载 UI 文件内容
+            ui_content = load_ui_file("ui/MCVer_downloading.ui")
+            
+            if ui_content is not None:
+                # 将 UI 内容放入对话框布局中
+                layout = QVBoxLayout(dialog_container)
+                layout.setContentsMargins(0, 0, 0, 0)
+                ui_content.setParent(dialog_container)
+                layout.addWidget(ui_content)
+                download_dialog = dialog_container
+            else:
+                log("UI 文件加载失败，使用基础对话框代替", logging.WARNING)
+                download_dialog = dialog_container
+            
             title_text = f"正在下载 Minecraft {version}"
             if Fabric_Loader:
                 title_text += " 和 Fabric Loader"
             download_dialog.setWindowTitle(title_text)
 
-            # 连接暂停按钮
-            if hasattr(download_dialog, 'pause_button'):
-                download_dialog.pause_button.clicked.connect(lambda: toggle_pause_download(download_dialog))
+            # 查找暂停按钮并连接信号
+            pause_btn = download_dialog.findChild(QPushButton, 'pause_button')
+            if pause_btn:
+                pause_btn.clicked.connect(lambda: toggle_pause_download(download_dialog))
 
-            # 设置MaxThread的值
             try:
                 config = cfg.read()
                 max_thread_value = config.get("MaxThread", 64)
-                if hasattr(download_dialog, 'MaxThread') and hasattr(download_dialog, 'MaxThread_2'):
-                    download_dialog.MaxThread.setText(str(max_thread_value))
-                    download_dialog.MaxThread_2.setText(str(max_thread_value))
+                max_thread_label = download_dialog.findChild(QLabel, 'MaxThread')
+                max_thread_label_2 = download_dialog.findChild(QLabel, 'MaxThread_2')
+                if max_thread_label:
+                    max_thread_label.setText(str(max_thread_value))
+                if max_thread_label_2:
+                    max_thread_label_2.setText(str(max_thread_value))
             except Exception as e:
                 log(f"设置MaxThread值时出错: {e}")
-                
+            
+            _active_dialogs.append(download_dialog)
+            
+            def on_dialog_finished():
+                global _active_dialogs
+                if download_dialog in _active_dialogs:
+                    _active_dialogs.remove(download_dialog)
+            download_dialog.finished.connect(on_dialog_finished)
+            
+            download_dialog.setWindowModality(Qt.ApplicationModal)
             download_dialog.show()
         except Exception as e:
             log(f"创建下载对话框时出错: {e}")
             download_dialog = None
     
-    # 如果未提供VersionName，则使用version作为默认值
     if VersionName is None:
         VersionName = version
         
@@ -529,12 +584,15 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
 def toggle_pause_download(download_dialog):
     if hasattr(download_dialog, 'downloader') and download_dialog.downloader is not None:
         downloader = download_dialog.downloader
+        pause_btn = download_dialog.findChild(QPushButton, 'pause_button')
         if downloader.is_paused:
             downloader.resume()
-            download_dialog.pause_button.setText(i18nText("暂停"))
+            if pause_btn:
+                pause_btn.setText(i18nText("暂停"))
         else:
             downloader.pause()
-            download_dialog.pause_button.setText(i18nText("恢复下载"))
+            if pause_btn:
+                pause_btn.setText(i18nText("恢复下载"))
 
 def _install_minecraft_version_threaded(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None):
     '''

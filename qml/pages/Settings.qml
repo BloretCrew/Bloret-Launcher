@@ -5,7 +5,9 @@ import RinUI
 
 FluentPage {
     id: settingsPage
-    title: qsTr("设置")
+    
+    property string _title: Backend ? Backend.tr("设置") : "设置"
+    title: _title
 
     property string currentMcDir: ""
     property var javaPaths: []
@@ -17,14 +19,70 @@ FluentPage {
         refreshData()
     }
 
+    Connections {
+        target: Backend
+        function onLanguageChanged() {
+            refreshTranslations()
+        }
+    }
+
+    function refreshTranslations() {
+        _title = Backend ? Backend.tr("设置") : "设置"
+        _versionTitle = Backend ? Backend.tr("当前版本") : "当前版本"
+        _versionDesc = Backend ? Backend.tr("Bloret Launcher v2") : "Bloret Launcher v2"
+        _mcJavaSection = Backend ? Backend.tr("Minecraft 与 Java") : "Minecraft 与 Java"
+        _javaTitle = Backend ? Backend.tr("Java") : "Java"
+        _javaDesc = Backend ? Backend.tr("选择用于启动 Minecraft 的 Java") : "选择用于启动 Minecraft 的 Java"
+        _mcFolderTitle = Backend ? Backend.tr("Minecraft 文件夹位置") : "Minecraft 文件夹位置"
+        _mcToolbarTitle = Backend ? Backend.tr("Minecraft 小工具栏") : "Minecraft 小工具栏"
+        _mcToolbarDesc = Backend ? Backend.tr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏") : "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"
+        _appearanceSection = Backend ? Backend.tr("外观") : "外观"
+        _langTitle = Backend ? Backend.tr("语言 / language") : "语言 / language"
+        _langDesc = Backend ? Backend.tr("调整语言设置") : "调整语言设置"
+        _themeTitle = Backend ? Backend.tr("主题") : "主题"
+        _themeDesc = Backend ? Backend.tr("选择界面的颜色模式") : "选择界面的颜色模式"
+        _logSection = Backend ? Backend.tr("日志") : "日志"
+        _logFolderTitle = Backend ? Backend.tr("日志文件夹位置") : "日志文件夹位置"
+        _logFolderDesc = Backend ? Backend.tr("存储所有 Bloret Launcher 日志的文件夹位置") : "存储所有 Bloret Launcher 日志的文件夹位置"
+        _clearLogTitle = Backend ? Backend.tr("清空日志") : "清空日志"
+        _clearLogDesc = Backend ? Backend.tr("清空 log 文件夹所有的日志文件") : "清空 log 文件夹所有的日志文件"
+        _browseText = Backend ? Backend.tr("浏览...") : "浏览..."
+        _openText = Backend ? Backend.tr("打开") : "打开"
+        _clearText = Backend ? Backend.tr("清空") : "清空"
+        _restartTip = Backend ? Backend.tr("设置界面大部分内容需要重启程序后生效。") : "设置界面大部分内容需要重启程序后生效。"
+    }
+
+    property string _versionTitle: Backend ? Backend.tr("当前版本") : "当前版本"
+    property string _versionDesc: Backend ? Backend.tr("Bloret Launcher v2") : "Bloret Launcher v2"
+    property string _mcJavaSection: Backend ? Backend.tr("Minecraft 与 Java") : "Minecraft 与 Java"
+    property string _javaTitle: Backend ? Backend.tr("Java") : "Java"
+    property string _javaDesc: Backend ? Backend.tr("选择用于启动 Minecraft 的 Java") : "选择用于启动 Minecraft 的 Java"
+    property string _mcFolderTitle: Backend ? Backend.tr("Minecraft 文件夹位置") : "Minecraft 文件夹位置"
+    property string _mcToolbarTitle: Backend ? Backend.tr("Minecraft 小工具栏") : "Minecraft 小工具栏"
+    property string _mcToolbarDesc: Backend ? Backend.tr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏") : "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"
+    property string _appearanceSection: Backend ? Backend.tr("外观") : "外观"
+    property string _langTitle: Backend ? Backend.tr("语言 / language") : "语言 / language"
+    property string _langDesc: Backend ? Backend.tr("调整语言设置") : "调整语言设置"
+    property string _themeTitle: Backend ? Backend.tr("主题") : "主题"
+    property string _themeDesc: Backend ? Backend.tr("选择界面的颜色模式") : "选择界面的颜色模式"
+    property string _logSection: Backend ? Backend.tr("日志") : "日志"
+    property string _logFolderTitle: Backend ? Backend.tr("日志文件夹位置") : "日志文件夹位置"
+    property string _logFolderDesc: Backend ? Backend.tr("存储所有 Bloret Launcher 日志的文件夹位置") : "存储所有 Bloret Launcher 日志的文件夹位置"
+    property string _clearLogTitle: Backend ? Backend.tr("清空日志") : "清空日志"
+    property string _clearLogDesc: Backend ? Backend.tr("清空 log 文件夹所有的日志文件") : "清空 log 文件夹所有的日志文件"
+    property string _browseText: Backend ? Backend.tr("浏览...") : "浏览..."
+    property string _openText: Backend ? Backend.tr("打开") : "打开"
+    property string _clearText: Backend ? Backend.tr("清空") : "清空"
+    property string _restartTip: Backend ? Backend.tr("设置界面大部分内容需要重启程序后生效。") : "设置界面大部分内容需要重启程序后生效。"
+
     function refreshData() {
+        refreshTranslations()
         if (Backend) {
             currentMcDir = Backend.getMinecraftDir()
             javaPaths = Backend.getSystemJavas()
             currentJavaPath = Backend.getCurrentJavaPath()
             themeMode = Backend.getThemeMode()
             
-            // Ensure "Auto" is in the list
             if (javaPaths.indexOf("Auto") === -1) {
                 javaPaths.unshift("Auto")
             }
@@ -47,11 +105,10 @@ FluentPage {
         }
     }
 
-    // --- Version Card ---
     SettingCard {
         Layout.fillWidth: true
-        title: qsTr("当前版本")
-        description: qsTr("Bloret Launcher v2")
+        title: _versionTitle
+        description: _versionDesc
         icon.name: "ic_fluent_info_20_regular"
         Label {
             text: Backend ? Backend.getBloretVersion() : "2.0.0-Beta"
@@ -61,11 +118,10 @@ FluentPage {
         }
     }
 
-    // --- Minecraft & Java Section ---
     Label {
         font.pixelSize: 20
         font.weight: Font.DemiBold
-        text: qsTr("Minecraft 与 Java")
+        text: _mcJavaSection
         Layout.topMargin: 10
         color: Theme.currentTheme.colors.textColor
     }
@@ -76,8 +132,8 @@ FluentPage {
 
         SettingCard {
             Layout.fillWidth: true
-            title: qsTr("Java")
-            description: qsTr("选择用于启动 Minecraft 的 Java")
+            title: _javaTitle
+            description: _javaDesc
             icon.name: "ic_fluent_code_20_regular"
             ComboBox {
                 id: javaCombo
@@ -91,13 +147,13 @@ FluentPage {
 
         SettingCard {
             Layout.fillWidth: true
-            title: qsTr("Minecraft 文件夹位置")
+            title: _mcFolderTitle
             description: currentMcDir
             icon.name: "ic_fluent_folder_20_regular"
             RowLayout {
                 spacing: 8
                 Button {
-                    text: qsTr("浏览...")
+                    text: _browseText
                     onClicked: {
                         if (Backend) {
                             var path = Backend.browseMinecraftDir()
@@ -107,7 +163,7 @@ FluentPage {
                 }
                 Button {
                     flat: true
-                    text: qsTr("打开")
+                    text: _openText
                     onClicked: { if (Backend) Backend.openMinecraftDir() }
                 }
             }
@@ -115,8 +171,8 @@ FluentPage {
 
         SettingCard {
             Layout.fillWidth: true
-            title: qsTr("Minecraft 小工具栏")
-            description: qsTr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏")
+            title: _mcToolbarTitle
+            description: _mcToolbarDesc
             icon.name: "ic_fluent_toolbar_20_regular"
             Switch {
                 checked: true
@@ -124,11 +180,10 @@ FluentPage {
         }
     }
 
-    // --- Appearance Section ---
     Label {
         font.pixelSize: 20
         font.weight: Font.DemiBold
-        text: qsTr("外观")
+        text: _appearanceSection
         Layout.topMargin: 10
         color: Theme.currentTheme.colors.textColor
     }
@@ -139,8 +194,8 @@ FluentPage {
 
         SettingCard {
             Layout.fillWidth: true
-            title: qsTr("语言 / language")
-            description: qsTr("调整语言设置")
+            title: _langTitle
+            description: _langDesc
             icon.name: "ic_fluent_local_language_20_regular"
             ComboBox {
                 id: langCombo
@@ -155,8 +210,8 @@ FluentPage {
 
         SettingCard {
             Layout.fillWidth: true
-            title: qsTr("主题")
-            description: qsTr("选择界面的颜色模式")
+            title: _themeTitle
+            description: _themeDesc
             icon.name: "ic_fluent_color_20_regular"
             ComboBox {
                 id: themeCombo
@@ -169,11 +224,10 @@ FluentPage {
         }
     }
 
-    // --- Log Section ---
     Label {
         font.pixelSize: 20
         font.weight: Font.DemiBold
-        text: qsTr("日志")
+        text: _logSection
         Layout.topMargin: 10
         color: Theme.currentTheme.colors.textColor
     }
@@ -184,30 +238,30 @@ FluentPage {
 
         SettingCard {
             Layout.fillWidth: true
-            title: qsTr("日志文件夹位置")
-            description: qsTr("存储所有 Bloret Launcher 日志的文件夹位置")
+            title: _logFolderTitle
+            description: _logFolderDesc
             icon.name: "ic_fluent_text_bullet_list_square_20_regular"
             Button {
                 flat: true
-                text: "打开"
+                text: _openText
                 onClicked: { if (Backend) Backend.openLogDir() }
             }
         }
 
         SettingCard {
             Layout.fillWidth: true
-            title: qsTr("清空日志")
-            description: qsTr("清空 log 文件夹所有的日志文件")
+            title: _clearLogTitle
+            description: _clearLogDesc
             icon.name: "ic_fluent_delete_20_regular"
             Button {
-                text: qsTr("清空")
+                text: _clearText
                 onClicked: { if (Backend) Backend.clearLogs() }
             }
         }
     }
 
     Label {
-        text: qsTr("设置界面大部分内容需要重启程序后生效。")
+        text: _restartTip
         color: Theme.currentTheme.colors.textTertialyColor
         Layout.topMargin: 10
     }

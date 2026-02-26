@@ -53,6 +53,7 @@ class Backend(QObject):
     queryResultReceived = Signal(dict)
     blorikoResponseReceived = Signal(str)
     syncStatusChanged = Signal(str)
+    languageChanged = Signal()
 
     def __init__(self):
         super().__init__()
@@ -86,6 +87,7 @@ class Backend(QObject):
         return "访客"
         
     @Slot(str)
+    @Slot(str)
     def launchGame(self, version):
         print(f"Requested to launch game: {version}")
         def run_launch():
@@ -115,23 +117,36 @@ class Backend(QObject):
         from modules.setup_ui import get_all_launch_items
         items = get_all_launch_items()
         qml_items = []
+        
+        # Log for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"getLaunchItems: Retrieved {len(items)} items from get_all_launch_items()")
+        
         for item in items:
-            # Determine icon path for QML
-            icon_path = "../../icon/Grass_Block.png"
+            # Extract icon path from item
+            icon_path = "../../icon/Grass_Block.png"  # Default
+            
             if item.get("type") == "minecraft":
-                # Check for Fabric and use fabric icon if it's a fabric version
-                # Note: get_all_launch_items already tries to detect this
-                # but returns a QIcon. We'll simplify for now.
+                # For minecraft, check if we have metadata with custom icon
+                # Default to Grass_Block for minecraft
                 icon_path = "../../icon/Grass_Block.png"
-            elif item.get("type") == "custom":
-                icon_path = "../../icon/exeapps.png"
                 
-            qml_items.append({
+            elif item.get("type") == "custom":
+                # For custom apps, use a generic app icon
+                icon_path = "../../icon/exeapps.png"
+            
+            qml_item = {
                 "name": item["name"],
                 "type": item["type"],
                 "path": item["path"],
                 "icon": icon_path
-            })
+            }
+            
+            logger.debug(f"getLaunchItems: Added item {qml_item}")
+            qml_items.append(qml_item)
+        
+        logger.debug(f"getLaunchItems: Returning {len(qml_items)} items to QML")
         return qml_items
 
     @Slot(str, bool)
@@ -213,6 +228,58 @@ class Backend(QObject):
     @Slot()
     def addCustomApp(self):
         print("Requested add custom app")
+        # 打开文件浏览对话框让用户选择 exe 或其他可执行文件
+        file_path = QFileDialog.getOpenFileName(
+            None,
+            "选择应用程序文件",
+            "",
+            "所有文件 (*);;执行文件 (*.exe);;程序包 (*.zip);;整合包 (*.zip);;批处理脚本 (*.bat)"
+        )[0]
+        
+        if not file_path:
+            print("用户取消了文件选择")
+            return
+        
+        # 提取文件名作为默认显示名称
+        default_name = os.path.splitext(os.path.basename(file_path))[0]
+        
+        # 创建一个简单的输入对话框让用户确认/修改名称
+        from PySide6.QtWidgets import QInputDialog
+        display_name, ok = QInputDialog.getText(
+            None,
+            "输入显示名称",
+            "请为此应用输入一个显示名称:",
+            text=default_name
+        )
+        
+        if not ok or not display_name:
+            print("用户取消了名称输入")
+            return
+        
+        # 保存到配置文件
+        try:
+            config_data = cfg.read()
+            if "Customize" not in config_data:
+                config_data["Customize"] = []
+            
+            # 检查是否已存在相同的项
+            for item in config_data["Customize"]:
+                if item.get("showname") == display_name:
+                    print(f"自定义项 '{display_name}' 已存在")
+                    return
+            
+            config_data["Customize"].append({
+                "showname": display_name,
+                "path": file_path
+            })
+            
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            
+            print(f"成功添加自定义项: {display_name} -> {file_path}")
+            # 可以在这里发出信号或刷新 UI（如果需要）
+        except Exception as e:
+            print(f"添加自定义项失败: {e}")
 
     @Slot(result=str)
     def getBloretVersion(self):
@@ -226,36 +293,57 @@ class Backend(QObject):
 
     @Slot(result=list)
     def getLanguages(self):
-        """扫描 lang/ 目录，构建语言列表（与旧版一致）"""
+        """从 Default.json 加载语言列表"""
         try:
-            lang_dir = "lang"
-            result = []
-            # 语言代码到显示名称的映射（常用语言）
-            lang_names = {
-                "zh-cn": "简体中文", "zh-TW": "繁體中文", "en-US": "English (US)",
-                "en-GB": "English (UK)", "ja-JP": "日本語", "ko-KR": "한국어",
-                "fr-FR": "Français", "de-DE": "Deutsch", "es-ES": "Español",
-                "ru-RU": "Русский", "pt-BR": "Português (Brasil)",
-                "it-IT": "Italiano", "nl-NL": "Nederlands", "pl-PL": "Polski",
-                "tr-TR": "Türkçe", "ar-SA": "العربية", "vi-VN": "Tiếng Việt",
-            }
-            if os.path.isdir(lang_dir):
-                for fn in sorted(os.listdir(lang_dir)):
-                    if fn.endswith(".json") and fn != "Default.json":
-                        code = fn[:-5]  # 去掉 .json
-                        # 尝试从语言文件读取自描述名称
-                        name = lang_names.get(code, code)
-                        try:
-                            with open(os.path.join(lang_dir, fn), "r", encoding="utf-8") as f:
-                                d = json.load(f)
-                                # 某些语言文件里有 _meta.name 字段
-                                if "_meta" in d and "name" in d["_meta"]:
-                                    name = d["_meta"]["name"]
-                        except Exception:
-                            pass
-                        result.append({"code": code, "name": name})
-            if not result:
-                result = [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
+            default_lang_path = "lang/Default.json"
+            if os.path.exists(default_lang_path):
+                with open(default_lang_path, "r", encoding="utf-8") as f:
+                    default_data = json.load(f)
+                    result = []
+                    # 从 Default.json 中提取语言列表
+                    if "lang" in default_data:
+                        for code, lang_info in default_data["lang"].items():
+                            # 使用 Default.json 中定义的名称
+                            name = lang_info.get("name", code)
+                            # 确保文件存在
+                            lang_file = f"lang/{lang_info.get('file', code + '.json')}"
+                            if os.path.exists(lang_file):
+                                result.append({"code": code, "name": name})
+                            else:
+                                # 如果文件不存在，跳过这个语言
+                                print(f"Warning: Language file {lang_file} not found for code {code}")
+                    if not result:
+                        result = [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
+            else:
+                # 如果 Default.json 不存在，回退到旧方法
+                lang_dir = "lang"
+                result = []
+                # 语言代码到显示名称的映射（常用语言）
+                lang_names = {
+                    "zh-cn": "简体中文", "zh-TW": "繁體中文", "en-US": "English (US)",
+                    "en-GB": "English (UK)", "ja-JP": "日本語", "ko-KR": "한국어",
+                    "fr-FR": "Français", "de-DE": "Deutsch", "es-ES": "Español",
+                    "ru-RU": "Русский", "pt-BR": "Português (Brasil)",
+                    "it-IT": "Italiano", "nl-NL": "Nederlands", "pl-PL": "Polski",
+                    "tr-TR": "Türkçe", "ar-SA": "العربية", "vi-VN": "Tiếng Việt",
+                }
+                if os.path.isdir(lang_dir):
+                    for fn in sorted(os.listdir(lang_dir)):
+                        if fn.endswith(".json") and fn != "Default.json":
+                            code = fn[:-5]  # 去掉 .json
+                            # 尝试从语言文件读取自描述名称
+                            name = lang_names.get(code, code)
+                            try:
+                                with open(os.path.join(lang_dir, fn), "r", encoding="utf-8") as f:
+                                    d = json.load(f)
+                                    # 某些语言文件里有 _meta.name 字段
+                                    if "_meta" in d and "name" in d["_meta"]:
+                                        name = d["_meta"]["name"]
+                            except Exception:
+                                pass
+                            result.append({"code": code, "name": name})
+                if not result:
+                    result = [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
             return result
         except Exception as e:
             print(f"Error loading languages: {e}")
@@ -272,9 +360,13 @@ class Backend(QObject):
             from modules.i18n import reload_language
             reload_language(lang_code)
             print(f"Language set to: {lang_code}")
-            # Signals to refresh UI could be emitted here if needed
+            self.languageChanged.emit()
         except Exception as e:
             print(f"Error setting language: {e}")
+
+    @Slot(str, result=str)
+    def tr(self, key):
+        return i18nText(key)
 
     @Slot(result=list)
     def getSystemJavas(self):
@@ -573,25 +665,6 @@ class Backend(QObject):
         return list(java_versions.keys())
 
     @Slot(str)
-    def downloadVanilla(self, version):
-        from modules.install import InstallMinecraftVersion
-        print(f"Requested download vanilla: {version}")
-        def run_dl():
-            # minecraft_dir=None uses default from config/globals
-            InstallMinecraftVersion(version)
-        threading.Thread(target=run_dl, daemon=True).start()
-
-    @Slot(str)
-    def downloadFabric(self, version):
-        from modules.install import InstallMinecraftVersion
-        # Typically we need current MC version too
-        print(f"Requested download fabric: {version}")
-        # This is a simplification
-        def run_dl():
-            InstallMinecraftVersion("1.21.8", Fabric_Loader=version)
-        threading.Thread(target=run_dl, daemon=True).start()
-
-    @Slot(str)
     def downloadJava(self, version):
         from modules.java import InstallJava
         print(f"Requested download Java: {version}")
@@ -613,7 +686,7 @@ class Backend(QObject):
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print("Logged out from Bloret PassPort")
-        # 发出信号以刷新 UI（不传递复杂对象，让 QML 主动查询）
+        # 发出信号以刷新 UI（不传递参数，让 QML 主动查询）
         self.minecraftAccountsChanged.emit([])
 
     @Slot()

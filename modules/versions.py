@@ -41,8 +41,9 @@ from PySide6.QtGui import QPixmap, QDesktopServices, QColor, QIcon
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
     QListWidget, QListWidgetItem, QFileDialog, QLabel,
-    QSizePolicy, QGridLayout, QProgressBar, QCheckBox, QLineEdit, QPushButton # 新增 QProgressBar, QCheckBox, QLineEdit, QPushButton
+    QSizePolicy, QGridLayout, QProgressBar, QCheckBox, QLineEdit, QPushButton, QDialog # 新增 QDialog
 )
+from PySide6.QtUiTools import QUiLoader
 from qfluentwidgets import (
     InfoBar, InfoBarPosition, ComboBox, StrongBodyLabel,
     BodyLabel, SubtitleLabel, MessageBoxBase, LineEdit,
@@ -59,6 +60,34 @@ from modules.customize import find_Customize
 from modules.i18n import i18nText
 import modules.globals as BLglobals
 import modules.config as cfg
+
+def load_ui_file(ui_file_path):
+    """
+    使用 QUiLoader 加载 UI 文件，兼容 PySide6
+    
+    Args:
+        ui_file_path (str): UI 文件的路径
+    
+    Returns:
+        QWidget: 加载的 UI 对象，如果失败返回 None
+    """
+    try:
+        loader = QUiLoader()
+        # 如果是相对路径，需要转换为绝对路径
+        if not os.path.isabs(ui_file_path):
+            script_dir = Path(__file__).parent.parent.absolute()
+            ui_file_path = os.path.join(script_dir, ui_file_path)
+        
+        if not os.path.exists(ui_file_path):
+            log(f"UI 文件不存在: {ui_file_path}", logging.WARNING)
+            return None
+        
+        with open(ui_file_path, 'r', encoding='utf-8') as f:
+            ui = loader.load(f, None)
+        return ui
+    except Exception as e:
+        log(f"加载 UI 文件失败 {ui_file_path}: {e}", logging.ERROR)
+        return None
 
 def dl_source_launcher_or_meta_get(original_url):
     """
@@ -826,16 +855,15 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
     # 如果没有提供下载对话框实例，则创建一个新的对话框
     if download_dialog is None:
         try:
-            # 导入PySide6相关模块用于创建GUI对话框
-            from PySide6.QtWidgets import QDialog
-            # 对于 PySide6，通常不使用 uic.loadUi，而是加载 .py 或使用 QUiLoader
-            # 但既然我们正在进行 QML 迁移，这些旧 Widgets 代码只是暂时保留
-            import json
+            # 尝试使用 QUiLoader 加载 UI 文件
+            download_dialog = load_ui_file("ui/MCVer_downloading.ui")
             
-            # 创建新的对话框实例
-            download_dialog = QDialog()
-            # 从UI文件加载对话框布局
-            uic.loadUi("ui/MCVer_downloading.ui", download_dialog)
+            # 如果 UI 加载失败，创建一个简单的对话框作为备选方案
+            if download_dialog is None:
+                log("UI 文件加载失败，使用基础对话框代替", logging.WARNING)
+                download_dialog = QDialog()
+                download_dialog.setMinimumWidth(700)
+                download_dialog.setMinimumHeight(400)
             
             # 设置对话框标题，包含版本信息和Fabric Loader状态
             title_text = f"正在下载 Minecraft {version}"

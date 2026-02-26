@@ -30,7 +30,7 @@ FluentPage {
 
     Connections {
         target: Backend
-        function onMinecraftAccountsChanged(accounts) {
+        function onMinecraftAccountsChanged() {
             // 当账户列表变化时，刷新本地数据
             if (Backend) {
                 try {

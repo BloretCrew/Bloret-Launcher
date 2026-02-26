@@ -277,7 +277,14 @@ FluentPage {
                 id: currentVersionIcon
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
-                source: "../../icon/Grass_Block.png"
+                source: {
+                    // Find the icon for the current version
+                    let currentItem = launchItems.find(item => item.name === currentVersion)
+                    if (currentItem && currentItem.icon) {
+                        return currentItem.icon
+                    }
+                    return "../../icon/Grass_Block.png"
+                }
                 fillMode: Image.PreserveAspectFit
             }
 

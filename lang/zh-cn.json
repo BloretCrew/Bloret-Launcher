@@ -580,6 +580,27 @@
         "从 Bloret Passport 获取 Minecraft 账户失败": "从 Bloret Passport 获取 Minecraft 账户失败",
         "已成功从 Bloret Passport 同步 Minecraft 账户到本地": "已成功从 Bloret Passport 同步 Minecraft 账户到本地",
         "界面上可能不会及时刷新，但已经登录。": "界面上可能不会及时刷新，但已经登录。",
-        "打开 Bloret PassPort 登录页面": "打开 Bloret PassPort 登录页面"
+        "打开 Bloret PassPort 登录页面": "打开 Bloret PassPort 登录页面",
+        "当前版本": "当前版本",
+        "Bloret Launcher v2": "Bloret Launcher v2",
+        "Minecraft 与 Java": "Minecraft 与 Java",
+        "选择用于启动 Minecraft 的 Java": "选择用于启动 Minecraft 的 Java",
+        "Minecraft 文件夹位置": "Minecraft 文件夹位置",
+        "Minecraft 小工具栏": "Minecraft 小工具栏",
+        "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏": "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏",
+        "外观": "外观",
+        "语言 / language": "语言 / language",
+        "调整语言设置": "调整语言设置",
+        "主题": "主题",
+        "选择界面的颜色模式": "选择界面的颜色模式",
+        "日志": "日志",
+        "日志文件夹位置": "日志文件夹位置",
+        "存储所有 Bloret Launcher 日志的文件夹位置": "存储所有 Bloret Launcher 日志的文件夹位置",
+        "清空日志": "清空日志",
+        "清空 log 文件夹所有的日志文件": "清空 log 文件夹所有的日志文件",
+        "浏览...": "浏览...",
+        "打开": "打开",
+        "清空": "清空",
+        "设置界面大部分内容需要重启程序后生效。": "设置界面大部分内容需要重启程序后生效。"
     }
 }

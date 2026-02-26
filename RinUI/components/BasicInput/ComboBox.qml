@@ -125,6 +125,7 @@ ComboBox {
         width: root.width
         model: root.model
         currentIndex: root.currentIndex
+        textRole: root.textRole
 
         function handleItemSelected(index) {
             root.currentIndex = index

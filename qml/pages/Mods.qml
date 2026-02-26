@@ -21,6 +21,7 @@ FluentPage {
     Connections {
         target: Backend
         function onModrinthResultsReceived(results) {
+            console.log("Received Modrinth results:", results)
             modResults = results
         }
         function onBlorikoResponseReceived(response) {
