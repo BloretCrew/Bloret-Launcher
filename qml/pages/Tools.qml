@@ -30,20 +30,24 @@ FluentPage {
         }
         function onLogsCleared() {
             logClearedInfoBar.visible = true
+            // RinUI InfoBar might have autoClose/timeout, but let's keep the timer for safety if needed
             logClearedTimer.start()
         }
     }
 
-    InfoBar {
-        id: logClearedInfoBar
-        anchors.top: parent.top
-        anchors.topMargin: 20
-        anchors.horizontalCenter: parent.horizontalCenter
-        title: qsTr("日志已清空")
-        content: qsTr("所有 log 文件夹下的日志文件已成功删除。")
-        visible: false
-        type: InfoBar.Success
-    }
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 20
+        spacing: 20
+
+        InfoBar {
+            id: logClearedInfoBar
+            Layout.fillWidth: true
+            title: qsTr("成功")
+            text: qsTr("日志已成功清空")
+            severity: Severity.Success
+            visible: false
+        }
 
     Timer {
         id: logClearedTimer

@@ -1,4 +1,4 @@
-from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
+# Removed qfluentwidgets imports for PySide6 compatibility
 import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, sys
 try:
     import send2trash

@@ -27,169 +27,188 @@ FluentPage {
             accountList = accounts
             passportUser = Backend.getBloretPassPortUserName()
         }
-    }
-
-    // --- Bloret PassPort Section ---
-    Label {
-        font.pixelSize: 20
-        font.weight: Font.DemiBold
-        text: qsTr("Bloret PassPort")
-        Layout.topMargin: 10
-        color: Theme.currentTheme.colors.textColor
-    }
-
-    Frame {
-        Layout.fillWidth: true
-        padding: 15
-        background: Rectangle {
-            color: Theme.currentTheme.colors.cardColor
-            radius: 8
-            border.color: Theme.currentTheme.colors.controlBorderColor
-        }
-
-        RowLayout {
-            width: parent.width
-            spacing: 15
-
-            Label {
-                id: bloretUserName
-                font.weight: Font.DemiBold
-                text: passportUser
-                Layout.fillWidth: true
-                color: Theme.currentTheme.colors.textColor
-            }
-
-            Button {
-                text: qsTr("登录")
-                visible: passportUser === "未登录"
-                onClicked: { if (Backend) Backend.loginBloretPassPort() }
-            }
-
-            Button {
-                text: qsTr("退出登录")
-                visible: passportUser !== "未登录"
-                onClicked: { if (Backend) Backend.logoutBloretPassPort() }
-            }
+        function onSyncStatusChanged(status) {
+            syncInfoBar.severity = status === "success" ? Severity.Success : Severity.Error
+            syncInfoBar.title = status === "success" ? qsTr("同步成功") : qsTr("同步失败")
+            syncInfoBar.text = status === "success" ? qsTr("已成功从云端同步账户") : (qsTr("同步时出错: ") + status.substring(6))
+            syncInfoBar.visible = true
         }
     }
 
-    Label {
-        text: qsTr("使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。")
-        color: Theme.currentTheme.colors.textSecondaryColor
-    }
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 20
+        spacing: 20
 
-    // --- Minecraft Account Section ---
-    RowLayout {
-        Layout.fillWidth: true
-        Layout.topMargin: 10
-        
+        InfoBar {
+            id: syncInfoBar
+            Layout.fillWidth: true
+            visible: false
+            timeout: 5000
+        }
+
+        // --- Bloret PassPort Section ---
         Label {
             font.pixelSize: 20
             font.weight: Font.DemiBold
-            text: qsTr("Minecraft 账户")
-            Layout.fillWidth: true
+            text: qsTr("Bloret PassPort")
+            Layout.topMargin: 10
             color: Theme.currentTheme.colors.textColor
         }
-        
-        Button {
-            text: qsTr("刷新")
-            onClicked: { if (Backend) Backend.refreshMinecraftAccounts() }
-        }
-    }
 
-    // Minecraft Accounts List
-    ListView {
-        id: accountsListView
-        Layout.fillWidth: true
-        Layout.minimumHeight: accountList.length > 0 ? contentHeight : 50
-        implicitHeight: contentHeight
-        interactive: false
-        clip: true
-        
-        model: accountList
-        spacing: 10
-        
-        delegate: Frame {
-            width: ListView.view.width
+        Frame {
+            Layout.fillWidth: true
             padding: 15
             background: Rectangle {
                 color: Theme.currentTheme.colors.cardColor
                 radius: 8
-                border.color: modelData.isDefault ? Theme.currentTheme.colors.primaryColor : Theme.currentTheme.colors.controlBorderColor
-                border.width: modelData.isDefault ? 2 : 1
+                border.color: Theme.currentTheme.colors.controlBorderColor
             }
+
             RowLayout {
                 width: parent.width
                 spacing: 15
-                Image {
-                    Layout.preferredWidth: 32; Layout.preferredHeight: 32
-                    source: modelData.avatarUrl || "../../icon/DefaultHead.png"
-                    fillMode: Image.PreserveAspectFit
-                }
-                ColumnLayout {
+
+                Label {
+                    id: bloretUserName
+                    font.weight: Font.DemiBold
+                    text: passportUser
                     Layout.fillWidth: true
-                    Label { font.weight: Font.DemiBold; text: modelData.name; color: Theme.currentTheme.colors.textColor }
-                    Label { text: modelData.type; color: Theme.currentTheme.colors.textSecondaryColor }
+                    color: Theme.currentTheme.colors.textColor
                 }
+
                 Button {
-                    text: modelData.isDefault ? qsTr("正在使用") : qsTr("使用此账户")
-                    enabled: !modelData.isDefault
-                    onClicked: { if (Backend) Backend.setDefaultMinecraftAccount(modelData.index) }
+                    text: qsTr("登录")
+                    visible: passportUser === "未登录"
+                    onClicked: { if (Backend) Backend.loginBloretPassPort() }
+                }
+
+                Button {
+                    text: qsTr("退出登录")
+                    visible: passportUser !== "未登录"
+                    onClicked: { if (Backend) Backend.logoutBloretPassPort() }
                 }
             }
         }
 
         Label {
-            anchors.centerIn: parent
-            text: qsTr("暂无账户，请从云端同步")
-            visible: accountList.length === 0
-            color: Theme.currentTheme.colors.textTertialyColor
-        }
-    }
-
-    // --- Cloud Management Section ---
-    Frame {
-        Layout.fillWidth: true
-        padding: 15
-        background: Rectangle {
-            color: Theme.currentTheme.colors.cardColor
-            radius: 8
-            border.color: Theme.currentTheme.colors.controlBorderColor
+            text: qsTr("使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。")
+            color: Theme.currentTheme.colors.textSecondaryColor
         }
 
-        ColumnLayout {
-            width: parent.width
-            spacing: 15
-
-            ColumnLayout {
+        // --- Minecraft Account Section ---
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: 10
+            
+            Label {
+                font.pixelSize: 20
+                font.weight: Font.DemiBold
+                text: qsTr("Minecraft 账户")
                 Layout.fillWidth: true
-                Label {
-                    font.weight: Font.DemiBold
-                    text: qsTr("通过 Bloret PassPort 管理你的账户")
-                    color: Theme.currentTheme.colors.textColor
+                color: Theme.currentTheme.colors.textColor
+            }
+            
+            Button {
+                text: qsTr("刷新")
+                onClicked: { if (Backend) Backend.refreshMinecraftAccounts() }
+            }
+        }
+
+        // Minecraft Accounts List
+        ListView {
+            id: accountsListView
+            Layout.fillWidth: true
+            Layout.minimumHeight: accountList.length > 0 ? contentHeight : 50
+            implicitHeight: contentHeight
+            interactive: false
+            clip: true
+            
+            model: accountList
+            spacing: 10
+            
+            delegate: Frame {
+                width: ListView.view.width
+                padding: 15
+                background: Rectangle {
+                    color: Theme.currentTheme.colors.cardColor
+                    radius: 8
+                    border.color: modelData.isDefault ? Theme.currentTheme.colors.primaryColor : Theme.currentTheme.colors.controlBorderColor
+                    border.width: modelData.isDefault ? 2 : 1
                 }
-                Label {
-                    text: qsTr("轻松登录你的 Minecraft Account，便捷地进行操作。")
-                    color: Theme.currentTheme.colors.textSecondaryColor
+                RowLayout {
+                    width: parent.width
+                    spacing: 15
+                    Image {
+                        Layout.preferredWidth: 32; Layout.preferredHeight: 32
+                        source: modelData.avatarUrl || "../../icon/DefaultHead.png"
+                        fillMode: Image.PreserveAspectFit
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Label { font.weight: Font.DemiBold; text: modelData.name; color: Theme.currentTheme.colors.textColor }
+                        Label { text: modelData.type; color: Theme.currentTheme.colors.textSecondaryColor }
+                    }
+                    Button {
+                        text: modelData.isDefault ? qsTr("正在使用") : qsTr("使用此账户")
+                        enabled: !modelData.isDefault
+                        onClicked: { if (Backend) Backend.setDefaultMinecraftAccount(modelData.index) }
+                    }
                 }
             }
 
-            RowLayout {
-                Layout.fillWidth: true
+            Label {
+                anchors.centerIn: parent
+                text: qsTr("暂无账户，请从云端同步")
+                visible: accountList.length === 0
+                color: Theme.currentTheme.colors.textTertialyColor
+            }
+        }
+
+        // --- Cloud Management Section ---
+        Frame {
+            Layout.fillWidth: true
+            padding: 15
+            background: Rectangle {
+                color: Theme.currentTheme.colors.cardColor
+                radius: 8
+                border.color: Theme.currentTheme.colors.controlBorderColor
+            }
+
+            ColumnLayout {
+                width: parent.width
                 spacing: 15
 
-                Button {
-                    text: qsTr("网站管理")
-                    onClicked: { if (Backend) Backend.manageAccountOnWebsite() }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Label {
+                        font.weight: Font.DemiBold
+                        text: qsTr("通过 Bloret PassPort 管理你的账户")
+                        color: Theme.currentTheme.colors.textColor
+                    }
+                    Label {
+                        text: qsTr("轻松登录你的 Minecraft Account，便捷地进行操作。")
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                    }
                 }
 
-                Button {
-                    text: qsTr("云端同步")
-                    highlighted: true
-                    onClicked: { if (Backend) Backend.syncAccountFromPassPort() }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 15
+
+                    Button {
+                        text: qsTr("网站管理")
+                        onClicked: { if (Backend) Backend.manageAccountOnWebsite() }
+                    }
+
+                    Button {
+                        text: qsTr("云端同步")
+                        highlighted: true
+                        onClicked: { if (Backend) Backend.syncAccountFromPassPort() }
+                    }
+                    
+                    Item { Layout.fillWidth: true }
                 }
-                
-                Item { Layout.fillWidth: true }
             }
         }
     }

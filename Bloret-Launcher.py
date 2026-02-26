@@ -44,14 +44,14 @@ class Backend(QObject):
     Python Backend to interact with QML.
     Later, we will migrate all Bloret-Launcher.py logic here.
     """
-    serverInfoChanged = Signal(dict)
-    activityInfoChanged = Signal(dict)
-    blorikoResponseReceived = Signal(str)
-    logsCleared = Signal()
-    queryResultReceived = Signal(dict)
-    easytierStatusChanged = Signal(str, str) # title, description
     modrinthResultsReceived = Signal(list)
     minecraftAccountsChanged = Signal(list)
+    logsCleared = Signal()
+    easytierStatusChanged = Signal(str, str)
+    serverInfoChanged = Signal(dict)
+    queryResultReceived = Signal(dict)
+    blorikoResponseReceived = Signal(str)
+    syncStatusChanged = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -111,14 +111,25 @@ class Backend(QObject):
 
     @Slot(result=list)
     def getLaunchItems(self):
+        from modules.setup_ui import get_all_launch_items
         items = get_all_launch_items()
-        # QML friendly list
         qml_items = []
         for item in items:
+            # Determine icon path for QML
+            icon_path = "../../icon/Grass_Block.png"
+            if item.get("type") == "minecraft":
+                # Check for Fabric and use fabric icon if it's a fabric version
+                # Note: get_all_launch_items already tries to detect this
+                # but returns a QIcon. We'll simplify for now.
+                icon_path = "../../icon/Grass_Block.png"
+            elif item.get("type") == "custom":
+                icon_path = "../../icon/exeapps.png"
+                
             qml_items.append({
                 "name": item["name"],
                 "type": item["type"],
-                "path": item["path"]
+                "path": item["path"],
+                "icon": icon_path
             })
         return qml_items
 
@@ -139,6 +150,12 @@ class Backend(QObject):
                 print(f"Error in askBloriko: {e}")
                 self.blorikoResponseReceived.emit(f"错误: {str(e)}")
         threading.Thread(target=run_ask, daemon=True).start()
+
+    @Slot(str, bool)
+    def askBlorikoForMods(self, query, deep_think):
+        # We can reuse same signal or dedicated one, let's reuse
+        print(f"Bloriko Mod suggestion request: '{query}'")
+        self.askBloriko(query + ( " (请针对 Minecraft 模组给出建议)" if "模组" not in query and "mod" not in query.lower() else ""), deep_think)
 
     @Slot(result=list)
     def getVanillaVersions(self):
@@ -184,6 +201,11 @@ class Backend(QObject):
     @Slot(result=str)
     def getBloretVersion(self):
         return "2.0.0-RinUI (Beta)"
+
+    @Slot(result=str)
+    def getLanguageCode(self):
+        config_data = cfg.read()
+        return config_data.get("Language", "zh-cn")
 
     @Slot(result=list)
     def getLanguages(self):
@@ -431,6 +453,56 @@ class Backend(QObject):
             return config_data.get('Bloret_PassPort_UserName', 'Unknown')
         return "未登录"
 
+    @Slot(result=str)
+    def getPlayerName(self):
+        config_data = cfg.read()
+        mc_data = config_data.get("MinecraftAccount", {})
+        accounts = mc_data.get("accounts", [])
+        chosen_idx = mc_data.get("chosen", 0)
+        if chosen_idx < len(accounts):
+            return accounts[chosen_idx].get("username", "User")
+        return "User"
+
+    @Slot(result=list)
+    def getVanillaVersions(self):
+        # Placeholder for now, could be fetched from modules.versions or BMCLAPI
+        return ["1.21.8", "1.21.4", "1.20.1", "1.12.2"]
+
+    @Slot(result=list)
+    def getFabricVersions(self):
+        # Placeholder
+        return ["0.18.1", "0.17.2", "0.16.0"]
+
+    @Slot(result=list)
+    def getJavaDownloadVersions(self):
+        from modules.java import java_versions
+        return list(java_versions.keys())
+
+    @Slot(str)
+    def downloadVanilla(self, version):
+        from modules.install import InstallMinecraftVersion
+        print(f"Requested download vanilla: {version}")
+        def run_dl():
+            # minecraft_dir=None uses default from config/globals
+            InstallMinecraftVersion(version)
+        threading.Thread(target=run_dl, daemon=True).start()
+
+    @Slot(str)
+    def downloadFabric(self, version):
+        from modules.install import InstallMinecraftVersion
+        # Typically we need current MC version too
+        print(f"Requested download fabric: {version}")
+        # This is a simplification
+        def run_dl():
+            InstallMinecraftVersion("1.21.8", Fabric_Loader=version)
+        threading.Thread(target=run_dl, daemon=True).start()
+
+    @Slot(str)
+    def downloadJava(self, version):
+        from modules.java import InstallJava
+        print(f"Requested download Java: {version}")
+        InstallJava(version)
+
     @Slot()
     def loginBloretPassPort(self):
         from modules.links import Bloret_PassPort_Account_login
@@ -495,10 +567,16 @@ class Backend(QObject):
         from modules.Bloret_PassPort import sync_bloret_passport_account_to_mc
         print("Requested sync account from PassPort")
         def run_sync():
-            # Pass None as parent_window for now
-            success = sync_bloret_passport_account_to_mc(None)
-            if success:
-                self.minecraftAccountsChanged.emit(self.getMinecraftAccounts())
+            try:
+                success = sync_bloret_passport_account_to_mc(None)
+                if success:
+                    self.minecraftAccountsChanged.emit(self.getMinecraftAccounts())
+                    self.syncStatusChanged.emit("success")
+                else:
+                    self.syncStatusChanged.emit("error: 同步失败，请检查是否已登录 Bloret PassPort")
+            except Exception as e:
+                print(f"Error syncing accounts: {e}")
+                self.syncStatusChanged.emit(f"error: {str(e)}")
         threading.Thread(target=run_sync, daemon=True).start()
 
     @Slot(result=str)
