@@ -36,6 +36,7 @@ from modules.chafuwang import getServerData
 from modules.setup_ui import get_all_launch_items, scan_java_paths
 from modules.i18n import i18nText
 from modules.Bloriko import AskBloriko
+import modules.web
 import socket
 
 class Backend(QObject):
@@ -46,6 +47,7 @@ class Backend(QObject):
     serverInfoChanged = Signal(dict)
     activityInfoChanged = Signal(dict)
     blorikoResponseReceived = Signal(str)
+    logsCleared = Signal()
     queryResultReceived = Signal(dict)
     easytierStatusChanged = Signal(str, str) # title, description
     modrinthResultsReceived = Signal(list)
@@ -182,6 +184,35 @@ class Backend(QObject):
     @Slot(result=str)
     def getBloretVersion(self):
         return "2.0.0-RinUI (Beta)"
+
+    @Slot(result=list)
+    def getLanguages(self):
+        try:
+            with open("lang/Default.json", "r", encoding="utf-8") as f:
+                data = json.load(f)
+                langs = data.get("lang", {})
+                result = []
+                for code, info in langs.items():
+                    result.append({"code": code, "name": info["name"]})
+                return result
+        except Exception as e:
+            print(f"Error loading languages: {e}")
+            return [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
+
+    @Slot(str)
+    def setLanguage(self, lang_code):
+        try:
+            config_data = cfg.read()
+            config_data['language'] = lang_code
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            
+            from modules.i18n import reload_language
+            reload_language(lang_code)
+            print(f"Language set to: {lang_code}")
+            # Signals to refresh UI could be emitted here if needed
+        except Exception as e:
+            print(f"Error setting language: {e}")
 
     @Slot(result=list)
     def getSystemJavas(self):

@@ -5,33 +5,36 @@ from PySide6.QtWidgets import QLabel, QPushButton, QCheckBox, QRadioButton, QCom
 from qfluentwidgets import ComboBox, SwitchButton, TextEdit
 import modules.globals as BLglobals
 
-def load_language():
-    # 读取配置文件获取语言设置
-    try:
-        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-            language = config.get('language', 'zh-cn')  # 默认使用中文
-    except FileNotFoundError:
-        language = 'zh-cn'  # 如果配置文件不存在，默认使用中文
-    except json.JSONDecodeError:
-        language = 'zh-cn'  # 如果配置文件格式错误，默认使用中文
+def load_language(language=None):
+    # 如果没有指定语言，则读取配置文件获取语言设置
+    if language is None:
+        try:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                language = config.get('language', 'zh-cn')  # 默认使用中文
+        except (FileNotFoundError, json.JSONDecodeError):
+            language = 'zh-cn'
 
     # 加载对应的语言文件
     lang_file_path = f'lang/{language}.json'
     try:
         with open(lang_file_path, 'r', encoding='utf-8') as f:
             lang = json.load(f)
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError):
         # 如果指定的语言文件不存在，尝试加载默认的中文文件
         try:
             with open('lang/zh-cn.json', 'r', encoding='utf-8') as f:
                 lang = json.load(f)
         except FileNotFoundError:
-            lang = {}  # 如果连默认语言文件都不存在，则使用空字典
-    except json.JSONDecodeError:
-        lang = {}  # 如果语言文件格式错误，则使用空字典
-
+            lang = {}
+    
     return lang
+
+def reload_language(language=None):
+    """手动重新加载语言数据"""
+    global lang_data
+    lang_data = load_language(language)
+    log(f"Language reloaded: {language if language else 'default'}")
 
 
 # 全局变量存储语言数据

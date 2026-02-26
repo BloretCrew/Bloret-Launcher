@@ -11,6 +11,7 @@ FluentPage {
     property var javaPaths: []
     property string currentJavaPath: ""
     property string themeMode: ""
+    property var languages: []
 
     Component.onCompleted: {
         refreshData()
@@ -35,6 +36,14 @@ FluentPage {
             }
 
             themeCombo.currentIndex = ["Auto", "Light", "Dark"].indexOf(themeMode)
+            
+            languages = Backend.getLanguages()
+            for (var i = 0; i < languages.length; i++) {
+                if (languages[i].code === Backend.getLanguageCode()) {
+                    langCombo.currentIndex = i
+                    break
+                }
+            }
         }
     }
 
@@ -134,8 +143,13 @@ FluentPage {
             description: qsTr("调整语言设置")
             icon.name: "ic_fluent_local_language_20_regular"
             ComboBox {
-                model: ["简体中文", "English"]
+                id: langCombo
+                model: languages
+                textRole: "name"
                 Layout.preferredWidth: 150
+                onActivated: {
+                    if (Backend) Backend.setLanguage(model[currentIndex].code)
+                }
             }
         }
 

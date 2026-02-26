@@ -13,7 +13,7 @@ else:
     win32gui = None
     win32con = None
     win32api = None
-from qfluentwidgets import CardWidget, BodyLabel, StrongBodyLabel, CaptionLabel, SubtitleLabel, PushButton
+from PySide6.QtWidgets import QLabel, QPushButton as StandardPushButton
 
 class MonitorSelectionDialog(QDialog):
     """
@@ -37,7 +37,8 @@ class MonitorSelectionDialog(QDialog):
 
         layout = QVBoxLayout(self)
         
-        title = SubtitleLabel("检测到多个显示器，请选择要截图的屏幕：", self)
+        title = QLabel("检测到多个显示器，请选择要截图的屏幕：", self)
+        title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
         layout.addWidget(title)
         layout.addSpacing(10)
 
@@ -47,8 +48,8 @@ class MonitorSelectionDialog(QDialog):
             dpr = screen.devicePixelRatio()
             info_text = f"屏幕 {i + 1}: {geo.width()}x{geo.height()} (缩放: {int(dpr*100)}%)"
             
-            # 使用 Fluent 风格的按钮（如果可用），否则回退到普通按钮
-            btn = PushButton(info_text, self)
+            # 使用普通按钮
+            btn = StandardPushButton(info_text, self)
             btn.setMinimumHeight(40)
             # 使用闭包绑定当前屏幕
             btn.clicked.connect(lambda checked, s=screen: self.on_screen_selected(s))

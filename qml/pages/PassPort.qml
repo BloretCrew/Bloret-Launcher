@@ -122,7 +122,7 @@ FluentPage {
                 width: parent.width
                 spacing: 15
                 Image {
-                    width: 40; height: 40
+                    Layout.preferredWidth: 32; Layout.preferredHeight: 32
                     source: modelData.avatarUrl || "../../icon/DefaultHead.png"
                     fillMode: Image.PreserveAspectFit
                 }

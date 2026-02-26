@@ -273,6 +273,14 @@ FluentPage {
             anchors.margins: 15
             spacing: 20
 
+            Image {
+                id: currentVersionIcon
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                source: "../../icon/DefaultVersion.png" // Fallback
+                fillMode: Image.PreserveAspectFit
+            }
+
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2
@@ -282,6 +290,7 @@ FluentPage {
                     font.pixelSize: 14
                 }
                 Label {
+                    id: versionLabel
                     text: currentVersion || (launchItems.length > 0 ? launchItems[0].name : "Checking...")
                     color: "white"
                     font.weight: Font.Bold

@@ -28,6 +28,27 @@ FluentPage {
             etStatusTitle.text = title
             etStatusDesc.text = desc
         }
+        function onLogsCleared() {
+            logClearedInfoBar.visible = true
+            logClearedTimer.start()
+        }
+    }
+
+    InfoBar {
+        id: logClearedInfoBar
+        anchors.top: parent.top
+        anchors.topMargin: 20
+        anchors.horizontalCenter: parent.horizontalCenter
+        title: qsTr("日志已清空")
+        content: qsTr("所有 log 文件夹下的日志文件已成功删除。")
+        visible: false
+        type: InfoBar.Success
+    }
+
+    Timer {
+        id: logClearedTimer
+        interval: 3000
+        onTriggered: logClearedInfoBar.visible = false
     }
 
     // --- Screen Cut Section ---
