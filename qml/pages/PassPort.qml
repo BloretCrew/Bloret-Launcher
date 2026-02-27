@@ -31,11 +31,9 @@ FluentPage {
     Connections {
         target: Backend
         function onMinecraftAccountsChanged(accounts) {
-            // 当账户列表变化时，刷新本地数据
             if (Backend) {
                 try {
-                    // 如果信号携带了账户数据，则直接使用；否则从 Backend 查询
-                    if (typeof accounts !== 'undefined' && accounts !== null) {
+                    if (Array.isArray(accounts) && accounts.length > 0) {
                         accountList = accounts
                     } else {
                         accountList = Backend.getMinecraftAccounts()

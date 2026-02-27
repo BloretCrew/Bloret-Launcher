@@ -47,7 +47,7 @@ class Backend(QObject):
     Later, we will migrate all Bloret-Launcher.py logic here.
     """
     modrinthResultsReceived = Signal(list)
-    minecraftAccountsChanged = Signal(list)
+    minecraftAccountsChanged = Signal(list, arguments=['accounts'])
     logsCleared = Signal()
     easytierStatusChanged = Signal(str, str)
     serverInfoChanged = Signal(dict)
@@ -1222,12 +1222,16 @@ class Backend(QObject):
         
         threading.Thread(target=run_download, daemon=True).start()
 
-    @Slot(str)
+    @Slot(result=str)
     def getBloretPassPortUserName(self):
         config_data = cfg.read()
         if config_data.get('Bloret_PassPort_Login'):
             return config_data.get('Bloret_PassPort_UserName', 'Unknown')
         return "未登录"
+
+    @Slot(result=str)
+    def getPassPortName(self):
+        return self.getBloretPassPortUserName()
 
     @Slot(result=str)
     def getPlayerName(self):
