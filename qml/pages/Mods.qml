@@ -26,6 +26,7 @@ FluentPage {
         }
         function onBlorikoResponseReceived(response) {
             blorikoStatus = response
+            versionSelectDialog.close()
             blorikoDialog.text = response
             blorikoDialog.open()
         }
@@ -266,40 +267,48 @@ FluentPage {
         id: blorikoDialog
         title: qsTr("Bloriko 的建议")
         property string text: ""
-        property string selectedVersion: ""
-        standardButtons: Dialog.Close
-        width: parent.width * 0.85
-        height: parent.height * 0.8
-        anchors.centerIn: parent
+        width: Math.min(parent.width * 0.9, 650)
+        height: Math.min(parent.height * 0.9, 550)
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
         modal: true
         
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 10
-            spacing: 10
+        // 显式设置 Padding 以避开 Dialog 的标题区域
+        padding: 0
+        topPadding: 60
+        leftPadding: 20
+        rightPadding: 20
+        bottomPadding: 20
+
+        contentItem: ColumnLayout {
+            spacing: 15
 
             ScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
                 
-                TextEdit {
+                TextArea {
                     text: blorikoDialog.text
                     wrapMode: Text.Wrap
                     readOnly: true
-                    width: parent.width
                     color: Theme.currentTheme.colors.textColor
                     selectByMouse: true
+                    textFormat: Text.MarkdownText
+                    font.pixelSize: 14
+                    background: null
+                    leftPadding: 0
+                    topPadding: 0
                 }
             }
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 10
+                spacing: 15
 
                 Label {
-                    text: qsTr("一键安装提示：复制上方推荐中的模组名称，在下方搜索框进行搜索和安装")
-                    font.pixelSize: 11
+                    text: qsTr("💡 提示：复制上方推荐中的模组名称，在搜索框搜索即可一键安装。")
+                    font.pixelSize: 12
                     color: Theme.currentTheme.colors.textSecondaryColor
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true
@@ -307,9 +316,7 @@ FluentPage {
 
                 Button {
                     text: qsTr("关闭")
-                    onClicked: {
-                        blorikoDialog.close()
-                    }
+                    onClicked: blorikoDialog.close()
                 }
             }
         }
@@ -319,28 +326,37 @@ FluentPage {
     Dialog {
         id: versionSelectDialog
         title: qsTr("选择 Minecraft 版本")
-        standardButtons: Dialog.Ok | Dialog.Cancel
         width: 400
+        height: loading ? 250 : 380
         x: (parent.width - width) / 2
         y: (parent.height - height) / 2
         modal: true
+        closePolicy: Popup.NoAutoClose
+        
+        padding: 0
+        topPadding: 60
+        leftPadding: 20
+        rightPadding: 20
+        bottomPadding: 20
 
-        ColumnLayout {
-            width: parent.width
-            anchors.margins: 10
-            spacing: 10
+        property bool loading: false
+
+        contentItem: ColumnLayout {
+            spacing: 20
 
             Label {
                 text: qsTr("请选择要推荐模组的 Minecraft 版本（仅支持 Fabric）：")
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
                 color: Theme.currentTheme.colors.textColor
+                visible: !versionSelectDialog.loading
             }
 
             ComboBox {
                 id: fabricVersionCombo
                 Layout.fillWidth: true
                 model: modsPage.fabricVersions
+                visible: !versionSelectDialog.loading
                 
                 Component.onCompleted: {
                     if (modsPage.fabricVersions.length > 0) {
@@ -348,21 +364,59 @@ FluentPage {
                     }
                 }
             }
-        }
 
-        onAccepted: {
-            // 用户确认版本选择
-            if (fabricVersionCombo.currentIndex >= 0 && fabricVersionCombo.currentText !== "") {
-                modsPage.selectedFabricVersion = fabricVersionCombo.currentText
-                // 调用带版本参数的推荐函数
-                if (Backend && askBlorikoInput.text !== "") {
-                    Backend.askBlorikoForModsWithVersion(
-                        askBlorikoInput.text,
-                        modsPage.selectedFabricVersion,
-                        deepThinkCheck.checked
-                    )
+            ColumnLayout {
+                Layout.fillWidth: true
+                visible: versionSelectDialog.loading
+                spacing: 15
+                
+                ProgressBar {
+                    Layout.fillWidth: true
+                    indeterminate: true
+                }
+                
+                Label {
+                    text: qsTr("络可正在思考建议...")
+                    Layout.alignment: Qt.AlignHCenter
+                    color: Theme.currentTheme.colors.textColor
+                    font.pixelSize: 14
                 }
             }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+                visible: !versionSelectDialog.loading
+                
+                Item { Layout.fillWidth: true }
+                
+                Button {
+                    text: qsTr("取消")
+                    onClicked: versionSelectDialog.close()
+                }
+                
+                Button {
+                    text: qsTr("确定")
+                    highlighted: true
+                    onClicked: {
+                        if (fabricVersionCombo.currentIndex >= 0 && fabricVersionCombo.currentText !== "") {
+                            versionSelectDialog.loading = true
+                            modsPage.selectedFabricVersion = fabricVersionCombo.currentText
+                            if (Backend && askBlorikoInput.text !== "") {
+                                Backend.askBlorikoForModsWithVersion(
+                                    askBlorikoInput.text,
+                                    modsPage.selectedFabricVersion,
+                                    deepThinkCheck.checked
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        onClosed: {
+            loading = false
         }
     }
 
@@ -378,9 +432,12 @@ FluentPage {
         property string modId: ""
 
         ColumnLayout {
-            width: parent.width
-            anchors.margins: 10
-            spacing: 10
+            anchors.fill: parent
+            anchors.topMargin: 56
+            anchors.leftMargin: 15
+            anchors.rightMargin: 15
+            anchors.bottomMargin: 15
+            spacing: 15
             
             Label {
                 text: qsTr("请选择要安装此 Mod 的 Fabric 版本:")
