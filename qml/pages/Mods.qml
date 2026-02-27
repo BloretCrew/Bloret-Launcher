@@ -327,21 +327,19 @@ FluentPage {
         id: versionSelectDialog
         title: qsTr("选择 Minecraft 版本")
         width: 400
-        height: loading ? 250 : 380
         x: (parent.width - width) / 2
         y: (parent.height - height) / 2
         modal: true
         closePolicy: Popup.NoAutoClose
-        
-        padding: 0
-        topPadding: 60
-        leftPadding: 20
-        rightPadding: 20
-        bottomPadding: 20
 
         property bool loading: false
 
-        contentItem: ColumnLayout {
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.topMargin: 56
+            anchors.leftMargin: 15
+            anchors.rightMargin: 15
+            anchors.bottomMargin: 15
             spacing: 20
 
             Label {
