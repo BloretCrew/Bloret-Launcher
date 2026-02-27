@@ -320,98 +320,100 @@ FluentPage {
             color: Theme.currentTheme.colors.windowBorderColor
         }
 
-        ColumnLayout {
+        RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 24
             anchors.rightMargin: 24
-            anchors.topMargin: 10
-            anchors.bottomMargin: 10
-            spacing: 5
+            spacing: 15
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 5
-
-                Label {
-                    text: qsTr("您好, ")
-                    color: Theme.currentTheme.colors.textColor
-                    font.pixelSize: 14
-                    font.weight: Font.DemiBold
+            Image {
+                source: {
+                    let currentItem = launchItems.find(item => item.name === currentVersion)
+                    if (currentItem && currentItem.icon) {
+                        return currentItem.icon
+                    }
+                    return "../../icon/Grass_Block.png"
                 }
-                Label {
-                    text: Backend ? Backend.getPassPortName() : qsTr("访客")
-                    color: Theme.currentTheme.colors.textColor
-                    font.pixelSize: 14
-                    font.weight: Font.DemiBold
+                sourceSize { width: 44; height: 44 }
+                fillMode: Image.PreserveAspectFit
+                Layout.alignment: Qt.AlignVCenter
+            }
+            
+            ColumnLayout {
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 2
+                
+                RowLayout {
+                    spacing: 4
+                    Label {
+                        text: qsTr("您好, ")
+                        color: Theme.currentTheme.colors.textColor
+                        font.pixelSize: 13
+                    }
+                    Label {
+                        text: Backend ? Backend.getPassPortName() : qsTr("访客")
+                        color: Theme.currentTheme.colors.textColor
+                        font.pixelSize: 13
+                        font.weight: Font.DemiBold
+                    }
+                    Label {
+                        text: qsTr("!")
+                        color: Theme.currentTheme.colors.textColor
+                        font.pixelSize: 13
+                    }
+                    Label {
+                        text: qsTr("将使用")
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        font.pixelSize: 13
+                    }
+                    Label {
+                        text: Backend ? Backend.getPlayerName() : qsTr("无档案")
+                        color: Theme.currentTheme.colors.textColor
+                        font.pixelSize: 13
+                        font.weight: Font.DemiBold
+                    }
+                    Label {
+                        text: qsTr("来登录")
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        font.pixelSize: 13
+                    }
                 }
-                Label {
-                    text: qsTr(" ! ") + qsTr("将使用") + " "
-                    color: Theme.currentTheme.colors.textSecondaryColor
-                    font.pixelSize: 14
+                
+                RowLayout {
+                    spacing: 10
+                    Label {
+                        id: versionLabel
+                        text: currentVersion || (launchItems.length > 0 ? launchItems[0].name : "Checking...")
+                        color: Theme.currentTheme.colors.textColor
+                        font.weight: Font.Bold
+                        font.pixelSize: 18
+                    }
+                    Button {
+                        text: qsTr("切换核心")
+                        flat: true
+                        onClicked: launchSelectorDialog.open()
+                    }
                 }
-                Label {
-                    text: Backend ? Backend.getPlayerName() : qsTr("无档案")
-                    color: Theme.currentTheme.colors.textColor
-                    font.pixelSize: 14
-                }
-                Label {
-                    text: " " + qsTr("来登录 Minecraft")
-                    color: Theme.currentTheme.colors.textSecondaryColor
-                    font.pixelSize: 14
-                }
-
-                Item { Layout.fillWidth: true }
             }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 10
+            Item { Layout.fillWidth: true }
 
-                Image {
-                    source: {
-                        let currentItem = launchItems.find(item => item.name === currentVersion)
-                        if (currentItem && currentItem.icon) {
-                            return currentItem.icon
-                        }
-                        return "../../icon/Grass_Block.png"
-                    }
-                    sourceSize { width: 32; height: 32 }
-                    fillMode: Image.PreserveAspectFit
-                }
-                Label {
-                    id: versionLabel
-                    text: currentVersion || (launchItems.length > 0 ? launchItems[0].name : "Checking...")
-                    color: Theme.currentTheme.colors.textColor
-                    font.weight: Font.Bold
-                    font.pixelSize: 18
-                }
-                Button {
-                    text: qsTr("切换核心")
-                    icon.name: "ic_fluent_arrow_swap_20_regular"
-                    flat: true
-                    onClicked: launchSelectorDialog.open()
-                }
+            Button {
+                icon.name: "ic_fluent_screenshot_20_regular"
+                flat: true
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("截图")
+                onClicked: { if (Backend) Backend.takeScreenCut() }
+            }
 
-                Item { Layout.fillWidth: true }
-
-                Button {
-                    icon.name: "ic_fluent_screenshot_20_regular"
-                    flat: true
-                    highlighted: false
-                    onClicked: { if (Backend) Backend.takeScreenCut() }
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("截图")
-                }
-
-                Button {
-                    id: launchBtn
-                    height: 36
-                    text: qsTr("启动")
-                    highlighted: true
-                    Layout.preferredWidth: 120
-                    onClicked: {
-                        if (currentVersion && Backend) Backend.launchGame(currentVersion)
-                    }
+            Button {
+                id: launchBtn
+                text: qsTr("启动")
+                highlighted: true
+                Layout.preferredWidth: 120
+                Layout.preferredHeight: 36
+                onClicked: {
+                    if (currentVersion && Backend) Backend.launchGame(currentVersion)
                 }
             }
         }

@@ -22,7 +22,8 @@ Dialog {
     signal deleteItem(string name)
     
     ColumnLayout {
-        anchors.fill: parent
+        width: parent.width
+        height: parent.height
         spacing: 10
         
         Label {
@@ -101,7 +102,6 @@ Dialog {
                             
                             onClicked: function(mouse) {
                                 if (mouse.button === Qt.RightButton) {
-                                    contextMenu.itemData = itemData
                                     contextMenu.popup()
                                 }
                             }
@@ -109,69 +109,62 @@ Dialog {
                         
                         Menu {
                             id: contextMenu
-                            property var itemData: null
                             
                             MenuItem {
                                 text: Backend ? Backend.tr("启动") : "启动"
                                 icon.name: "ic_fluent_play_20_regular"
                                 onTriggered: {
-                                    if (contextMenu.itemData) {
-                                        selectedItem = contextMenu.itemData.name
-                                        itemSelected(contextMenu.itemData.name, contextMenu.itemData.type)
-                                        launchSelectorDialog.close()
-                                    }
+                                    selectedItem = itemData.name
+                                    itemSelected(itemData.name, itemData.type)
+                                    launchSelectorDialog.close()
                                 }
                             }
                             
                             MenuSeparator {
-                                visible: contextMenu.itemData && contextMenu.itemData.type === "minecraft"
+                                visible: itemData.type === "minecraft"
                             }
                             
                             MenuItem {
+                                id: coreManageItem
                                 text: Backend ? Backend.tr("核心管理") : "核心管理"
                                 icon.name: "ic_fluent_settings_20_regular"
-                                visible: contextMenu.itemData && contextMenu.itemData.type === "minecraft"
+                                visible: itemData.type === "minecraft"
                                 onTriggered: {
-                                    if (contextMenu.itemData) {
-                                        manageCore(contextMenu.itemData.name)
-                                    }
+                                    manageCore(itemData.name)
                                 }
                             }
                             
                             MenuItem {
+                                id: openFolderItem
                                 text: Backend ? Backend.tr("打开文件位置") : "打开文件位置"
                                 icon.name: "ic_fluent_folder_20_regular"
-                                visible: contextMenu.itemData && contextMenu.itemData.type === "minecraft"
+                                visible: itemData.type === "minecraft"
                                 onTriggered: {
-                                    if (contextMenu.itemData) {
-                                        openFolder(contextMenu.itemData.name)
-                                    }
+                                    openFolder(itemData.name)
                                 }
                             }
                             
                             MenuSeparator {
-                                visible: contextMenu.itemData && contextMenu.itemData.type === "custom"
+                                visible: itemData.type === "custom"
                             }
                             
                             MenuItem {
+                                id: renameItem
                                 text: Backend ? Backend.tr("更名") : "更名"
                                 icon.name: "ic_fluent_edit_20_regular"
-                                visible: contextMenu.itemData && contextMenu.itemData.type === "custom"
+                                visible: itemData.type === "custom"
                                 onTriggered: {
-                                    if (contextMenu.itemData) {
-                                        renameItem(contextMenu.itemData.name)
-                                    }
+                                    renameItem(itemData.name)
                                 }
                             }
                             
                             MenuItem {
+                                id: deleteItem
                                 text: Backend ? Backend.tr("删除") : "删除"
                                 icon.name: "ic_fluent_delete_20_regular"
-                                visible: contextMenu.itemData && contextMenu.itemData.type === "custom"
+                                visible: itemData.type === "custom"
                                 onTriggered: {
-                                    if (contextMenu.itemData) {
-                                        deleteItem(contextMenu.itemData.name)
-                                    }
+                                    deleteItem(itemData.name)
                                 }
                             }
                         }

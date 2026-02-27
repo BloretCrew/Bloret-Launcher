@@ -39,6 +39,7 @@ from modules.i18n import i18nText
 from modules.Bloriko import AskBloriko
 import modules.web
 import socket
+import send2trash
 
 class Backend(QObject):
     """
@@ -349,6 +350,371 @@ class Backend(QObject):
             return False
         except Exception as e:
             print(f"Error deleting core: {e}")
+            return False
+
+    @Slot(str, result="QVariant")
+    def getServers(self, versionName):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            version_servers_dat = os.path.join(minecraft_dir, "versions", versionName, "servers.dat")
+            root_servers_dat = os.path.join(minecraft_dir, "servers.dat")
+            
+            read_path = ""
+            if os.path.exists(version_servers_dat):
+                read_path = version_servers_dat
+            elif os.path.exists(root_servers_dat):
+                read_path = root_servers_dat
+            
+            if read_path:
+                return self._parse_servers_dat(read_path)
+            return []
+        except Exception as e:
+            print(f"Error getting servers: {e}")
+            return []
+
+    def _parse_servers_dat(self, path):
+        import struct
+        import io
+        servers = []
+        try:
+            with open(path, 'rb') as f:
+                data = f.read()
+            
+            def read_string(stream):
+                length = struct.unpack('>h', stream.read(2))[0]
+                if length < 0:
+                    return ""
+                return stream.read(length).decode('utf-8')
+            
+            def read_tag(stream, has_name=True):
+                tag_type = struct.unpack('>b', stream.read(1))[0]
+                if tag_type == 0:
+                    return None, None
+                
+                name = ""
+                if has_name:
+                    name = read_string(stream)
+                
+                if tag_type == 8:
+                    return name, read_string(stream)
+                elif tag_type == 9:
+                    list_type = struct.unpack('>b', stream.read(1))[0]
+                    list_len = struct.unpack('>i', stream.read(4))[0]
+                    items = []
+                    for _ in range(list_len):
+                        _, val = read_tag(stream, False)
+                        items.append(val)
+                    return name, items
+                elif tag_type == 10:
+                    compound = {}
+                    while True:
+                        sub_name, sub_val = read_tag(stream)
+                        if sub_name is None:
+                            break
+                        compound[sub_name] = sub_val
+                    return name, compound
+                return name, None
+            
+            stream = io.BytesIO(data)
+            _, servers_data = read_tag(stream)
+            
+            if servers_data and 'servers' in servers_data:
+                for server in servers_data['servers']:
+                    icon_str = server.get('icon', '')
+                    # ensure string is clean and properly prefixed for QML
+                    if isinstance(icon_str, str):
+                        icon_str = icon_str.strip()
+                        if icon_str and not icon_str.startswith('data:'):
+                            icon_str = 'data:image/png;base64,' + icon_str
+                    else:
+                        icon_str = ''
+
+                    servers.append({
+                        'name': server.get('name', 'Minecraft Server'),
+                        'ip': server.get('ip', ''),
+                        'icon': icon_str
+                    })
+        except Exception as e:
+            print(f"Error parsing servers.dat: {e}")
+        return servers
+
+    @Slot(str, str, str)
+    def addServer(self, versionName, name, ip):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            version_servers_dat = os.path.join(minecraft_dir, "versions", versionName, "servers.dat")
+            
+            os.makedirs(os.path.dirname(version_servers_dat), exist_ok=True)
+            
+            servers = self._parse_servers_dat(version_servers_dat) if os.path.exists(version_servers_dat) else []
+            servers.append({'name': name, 'ip': ip, 'icon': ''})
+            
+            self._save_servers_dat(version_servers_dat, servers)
+            print(f"Server added: {name}")
+        except Exception as e:
+            print(f"Error adding server: {e}")
+
+    def _save_servers_dat(self, path, servers):
+        import struct
+        import io
+        try:
+            stream = io.BytesIO()
+            
+            def write_string(s):
+                encoded = s.encode('utf-8')
+                stream.write(struct.pack('>h', len(encoded)))
+                stream.write(encoded)
+            
+            stream.write(struct.pack('>b', 10))
+            write_string("")
+            
+            stream.write(struct.pack('>b', 9))
+            write_string("servers")
+            stream.write(struct.pack('>b', 10))
+            stream.write(struct.pack('>i', len(servers)))
+            
+            for server in servers:
+                stream.write(struct.pack('>b', 10))
+                write_string("")
+                
+                stream.write(struct.pack('>b', 8))
+                write_string("name")
+                write_string(server.get('name', ''))
+                
+                stream.write(struct.pack('>b', 8))
+                write_string("ip")
+                write_string(server.get('ip', ''))
+                
+                if server.get('icon'):
+                    stream.write(struct.pack('>b', 8))
+                    write_string("icon")
+                    write_string(server['icon'])
+                
+                stream.write(struct.pack('>b', 0))
+            
+            stream.write(struct.pack('>b', 0))
+            
+            with open(path, 'wb') as f:
+                f.write(stream.getvalue())
+            print(f"Saved {len(servers)} servers to {path}")
+        except Exception as e:
+            print(f"Error saving servers.dat: {e}")
+
+    @Slot(str, result="QVariant")
+    def getMods(self, versionName):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            mods_dir = os.path.join(minecraft_dir, "versions", versionName, "mods")
+            
+            if not os.path.exists(mods_dir):
+                os.makedirs(mods_dir, exist_ok=True)
+                return []
+            
+            mods = []
+            import zipfile
+            import base64
+            for filename in os.listdir(mods_dir):
+                file_path = os.path.join(mods_dir, filename)
+                if os.path.isdir(file_path):
+                    continue
+                
+                is_disabled = filename.endswith('.disabled')
+                if not (filename.endswith('.jar') or filename.endswith('.jar.disabled')):
+                    continue
+                
+                mod_data = {
+                    "name": filename,
+                    "path": file_path,
+                    "filename": filename,
+                    "version": "",
+                    "description": "无描述",
+                    "icon": "",
+                    "enabled": not is_disabled
+                }
+                
+                try:
+                    if zipfile.is_zipfile(file_path):
+                        with zipfile.ZipFile(file_path, 'r') as zf:
+                            if 'fabric.mod.json' in zf.namelist():
+                                with zf.open('fabric.mod.json') as f:
+                                    meta = json.load(f)
+                                    mod_data["name"] = meta.get("name", meta.get("id", filename))
+                                    mod_data["version"] = meta.get("version", "")
+                                    mod_data["description"] = meta.get("description", "")[:100]
+                                    
+                                    icon_path = meta.get("icon")
+                                    if icon_path and isinstance(icon_path, str) and icon_path in zf.namelist():
+                                        icon_data = zf.read(icon_path)
+                                        mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
+                                    elif f"assets/{meta.get('id')}/icon.png" in zf.namelist():
+                                        icon_data = zf.read(f"assets/{meta.get('id')}/icon.png")
+                                        mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
+                            elif 'mcmod.info' in zf.namelist():
+                                with zf.open('mcmod.info') as f:
+                                    meta_list = json.load(f)
+                                    if meta_list and isinstance(meta_list, list):
+                                        meta = meta_list[0]
+                                        mod_data["name"] = meta.get("name", filename)
+                                        mod_data["version"] = meta.get("version", "")
+                                        mod_data["description"] = meta.get("description", "")[:100]
+                                        
+                                        logo = meta.get("logoFile")
+                                        if logo and logo in zf.namelist():
+                                            icon_data = zf.read(logo)
+                                            mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
+                except Exception as e:
+                    print(f"Error reading mod {filename}: {e}")
+                
+                mods.append(mod_data)
+            
+            return mods
+        except Exception as e:
+            print(f"Error getting mods: {e}")
+            return []
+
+    @Slot(str, bool)
+    def toggleMod(self, path, enabled):
+        try:
+            if not os.path.exists(path):
+                return
+            
+            dirname, filename = os.path.split(path)
+            
+            if enabled:
+                if filename.endswith('.disabled'):
+                    new_filename = filename[:-9]
+                    new_path = os.path.join(dirname, new_filename)
+                    os.rename(path, new_path)
+            else:
+                if not filename.endswith('.disabled'):
+                    new_filename = filename + '.disabled'
+                    new_path = os.path.join(dirname, new_filename)
+                    os.rename(path, new_path)
+        except Exception as e:
+            print(f"Error toggling mod: {e}")
+
+    @Slot(str, result=bool)
+    def deleteMod(self, path):
+        try:
+            from PySide6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                None,
+                "确认删除",
+                f"将删除 Mod: {os.path.basename(path)}",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                if send2trash:
+                    send2trash.send2trash(path)
+                else:
+                    os.remove(path)
+                return True
+            return False
+        except Exception as e:
+            print(f"Error deleting mod: {e}")
+            return False
+
+    @Slot(str, result="QVariant")
+    def getResourcePacks(self, versionName):
+        try:
+            import base64
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            packs_dir = os.path.join(minecraft_dir, "versions", versionName, "resourcepacks")
+            
+            if not os.path.exists(packs_dir):
+                os.makedirs(packs_dir, exist_ok=True)
+                return []
+            
+            packs = []
+            import zipfile
+            for filename in os.listdir(packs_dir):
+                file_path = os.path.join(packs_dir, filename)
+                
+                if not (os.path.isdir(file_path) or filename.endswith('.zip')):
+                    continue
+                
+                pack_data = {
+                    "name": filename,
+                    "path": file_path,
+                    "description": "无描述",
+                    "icon": ""
+                }
+                
+                try:
+                    if os.path.isdir(file_path):
+                        mcmeta_path = os.path.join(file_path, "pack.mcmeta")
+                        icon_path = os.path.join(file_path, "pack.png")
+                        
+                        if os.path.exists(mcmeta_path):
+                            with open(mcmeta_path, 'r', encoding='utf-8') as f:
+                                meta = json.load(f)
+                                desc = meta.get("pack", {}).get("description", "")
+                                if isinstance(desc, dict):
+                                    desc = desc.get("translate", str(desc))
+                                pack_data["description"] = str(desc)[:100]
+                        
+                        if os.path.exists(icon_path):
+                            # read bytes and convert to data URI
+                            try:
+                                with open(icon_path, 'rb') as imgf:
+                                    b64 = base64.b64encode(imgf.read()).decode('utf-8')
+                                    pack_data["icon"] = f"data:image/png;base64,{b64}"
+                            except Exception as ee:
+                                print(f"Error reading resource pack icon {icon_path}: {ee}")
+                            
+                    elif zipfile.is_zipfile(file_path):
+                        with zipfile.ZipFile(file_path, 'r') as zf:
+                            if "pack.mcmeta" in zf.namelist():
+                                with zf.open("pack.mcmeta") as f:
+                                    meta = json.load(f)
+                                    desc = meta.get("pack", {}).get("description", "")
+                                    if isinstance(desc, dict):
+                                        desc = desc.get("translate", str(desc))
+                                    pack_data["description"] = str(desc)[:100]
+                            if "pack.png" in zf.namelist():
+                                try:
+                                    icon_bytes = zf.read("pack.png")
+                                    b64 = base64.b64encode(icon_bytes).decode('utf-8')
+                                    pack_data["icon"] = f"data:image/png;base64,{b64}"
+                                except Exception as ee:
+                                    print(f"Error extracting pack.png from {filename}: {ee}")
+                except Exception as e:
+                    print(f"Error reading resource pack {filename}: {e}")
+                
+                packs.append(pack_data)
+            
+            return packs
+        except Exception as e:
+            print(f"Error getting resource packs: {e}")
+            return []
+
+    @Slot(str, result=bool)
+    def deleteResourcePack(self, path):
+        try:
+            from PySide6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                None,
+                "确认删除",
+                f"将删除资源包: {os.path.basename(path)}",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                if send2trash:
+                    send2trash.send2trash(path)
+                else:
+                    import shutil
+                    if os.path.isdir(path):
+                        shutil.rmtree(path)
+                    else:
+                        os.remove(path)
+                return True
+            return False
+        except Exception as e:
+            print(f"Error deleting resource pack: {e}")
             return False
 
     @Slot(str, bool)

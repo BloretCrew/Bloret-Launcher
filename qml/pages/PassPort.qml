@@ -30,11 +30,16 @@ FluentPage {
 
     Connections {
         target: Backend
-        function onMinecraftAccountsChanged() {
+        function onMinecraftAccountsChanged(accounts) {
             // 当账户列表变化时，刷新本地数据
             if (Backend) {
                 try {
-                    accountList = Backend.getMinecraftAccounts()
+                    // 如果信号携带了账户数据，则直接使用；否则从 Backend 查询
+                    if (typeof accounts !== 'undefined' && accounts !== null) {
+                        accountList = accounts
+                    } else {
+                        accountList = Backend.getMinecraftAccounts()
+                    }
                     passportUser = Backend.getBloretPassPortUserName()
                 } catch(e) {
                     console.log("Error in onMinecraftAccountsChanged:", e)

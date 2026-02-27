@@ -173,7 +173,7 @@ FluentPage {
             Layout.fillWidth: true
             title: _mcToolbarTitle
             description: _mcToolbarDesc
-            icon.name: "ic_fluent_toolbar_20_regular"
+            icon.name: "ic_fluent_window_dev_tools_20_filled"
             Switch {
                 checked: true
             }
