@@ -82,7 +82,7 @@ FluentPage {
                 text: "Bloret Launcher"
                 font.pixelSize: 32
                 font.weight: Font.Bold
-                color: Theme.currentTheme.colors.textColor
+                color: (Theme.currentTheme && Theme.currentTheme.colors) ? Theme.currentTheme.colors.textColor : (Theme.dark ? "#ffffff" : "#000000")
             }
             Label {
                 text: Backend ? Backend.getTips() : "最贴近 Windows 11 设计的 Minecraft 启动器"
@@ -109,7 +109,7 @@ FluentPage {
                 spacing: 20
 
                 Image {
-                    source: activityInfo.icon || "../../icon/Grass_Block.png"
+                    source: activityInfo.icon || "../../ui/icon/Grass_Block.png"
                     sourceSize { width: 80; height: 80 }
                     fillMode: Image.PreserveAspectFit
                 }
@@ -311,6 +311,8 @@ FluentPage {
 
     pageFooter: Rectangle {
         height: 80
+        anchors.left: parent.left
+        anchors.right: parent.right
         color: Theme.currentTheme.colors.backgroundAcrylicColor
 
         Rectangle {
@@ -332,7 +334,7 @@ FluentPage {
                     if (currentItem && currentItem.icon) {
                         return currentItem.icon
                     }
-                    return "../../icon/Grass_Block.png"
+                    return "../../ui/icon/Grass_Block.png"
                 }
                 sourceSize { width: 44; height: 44 }
                 fillMode: Image.PreserveAspectFit
@@ -347,12 +349,12 @@ FluentPage {
                     spacing: 4
                     Label {
                         text: qsTr("您好, ")
-                        color: Theme.currentTheme.colors.textColor
+                        color: (Theme.currentTheme && Theme.currentTheme.colors) ? Theme.currentTheme.colors.textColor : (Theme.dark ? "#ffffff" : "#000000")
                         font.pixelSize: 13
                     }
                     Label {
                         text: Backend ? Backend.getPassPortName() : qsTr("访客")
-                        color: Theme.currentTheme.colors.textColor
+                        color: (Theme.currentTheme && Theme.currentTheme.colors) ? Theme.currentTheme.colors.textColor : (Theme.dark ? "#ffffff" : "#000000")
                         font.pixelSize: 13
                         font.weight: Font.DemiBold
                     }

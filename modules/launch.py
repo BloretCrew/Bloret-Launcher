@@ -1,4 +1,9 @@
-from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
+try:
+    from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
+except ImportError:
+    InfoBar = None
+    InfoBarPosition = None
+    ComboBox = None
 import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, psutil
 try:
     import send2trash
@@ -182,6 +187,9 @@ def Get_Run_Script(mc_version):
         "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED",
         "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",
         "--add-opens", "java.base/jdk.internal.ref=ALL-UNNAMED",
+        "--add-opens", "java.base/jdk.internal.loader=ALL-UNNAMED",
+        "--add-opens", "java.base/java.net=ALL-UNNAMED",
+        "--add-opens", "java.base/java.security=ALL-UNNAMED",
         "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",
         "--add-exports", "java.base/jdk.internal.misc=ALL-UNNAMED",
         "--add-exports", "java.base/jdk.internal.ref=ALL-UNNAMED",
@@ -495,11 +503,22 @@ def Get_Run_Script(mc_version):
 
     # 仅在 Windows 系统且非 Fabric 环境下尝试使用 JavaWrapper 以处理进程管理
     # macOS 和 Linux 系统直接启动，避免 Wrapper 兼容性问题
-    use_wrapper = (platform.system() == "Windows" and not is_fabric and os.path.exists(java_wrapper_path))
-
-    if use_wrapper:
-        classpath.append(java_wrapper_path)
-        log("将在启动中使用 JavaWrapper (Windows 适配层)")
+    # 注意：JavaWrapper 在较新版本的 JDK (17+) 上可能存在兼容性问题导致 NullPointerException
+    use_wrapper = False
+    if platform.system() == "Windows" and not is_fabric and os.path.exists(java_wrapper_path):
+        # 允许通过配置文件手动关闭
+        disable_wrapper = config_data.get('disable_java_wrapper', False)
+        
+        # 启发式检测：检查路径中是否包含较新 JDK 的特征
+        is_new_jdk = any(v in java_path.lower() for v in ["jdk-17", "jdk17", "jdk-21", "jdk21", "jdk-24", "zulu-17", "zulu-21", "zulu-23", "zulu-24"])
+        
+        if not disable_wrapper and not is_new_jdk:
+            use_wrapper = True
+            classpath.append(java_wrapper_path)
+            log("将在启动中使用 JavaWrapper (Windows 适配层)")
+        else:
+            reason = "配置禁用" if disable_wrapper else "检测到较新 JDK 版本"
+            log(f"跳过使用 JavaWrapper ({reason}: {java_path})")
 
     # 添加类路径参数
     # 注意：在 shell=False 时，不要手动添加引号。

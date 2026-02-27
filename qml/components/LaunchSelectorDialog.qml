@@ -56,6 +56,19 @@ Dialog {
                         property var itemData: modelData
                         property bool isHovered: mouseArea.containsMouse
                         
+                        MouseArea {
+                            id: mouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            
+                            onClicked: function(mouse) {
+                                if (mouse.button === Qt.RightButton) {
+                                    contextMenu.popup()
+                                }
+                            }
+                        }
+                        
                         RowLayout {
                             anchors.fill: parent
                             anchors.leftMargin: 15
@@ -90,19 +103,6 @@ Dialog {
                                     selectedItem = itemData.name
                                     itemSelected(itemData.name, itemData.type)
                                     launchSelectorDialog.close()
-                                }
-                            }
-                        }
-                        
-                        MouseArea {
-                            id: mouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            
-                            onClicked: function(mouse) {
-                                if (mouse.button === Qt.RightButton) {
-                                    contextMenu.popup()
                                 }
                             }
                         }
