@@ -391,7 +391,9 @@ FluentPage {
                         font.pixelSize: 18
                     }
                     Button {
+                        icon.name: "ic_fluent_camera_switch_20_filled"
                         text: qsTr("切换核心")
+                        highlighted: true
                         flat: true
                         onClicked: launchSelectorDialog.open()
                     }
@@ -401,7 +403,7 @@ FluentPage {
             Item { Layout.fillWidth: true }
 
             Button {
-                icon.name: "ic_fluent_screenshot_20_regular"
+                icon.name: "ic_fluent_screen_cut_20_filled"
                 flat: true
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("截图")
@@ -410,6 +412,7 @@ FluentPage {
 
             Button {
                 id: launchBtn
+                icon.name: "ic_fluent_caret_right_20_filled"
                 text: qsTr("启动")
                 highlighted: true
                 Layout.preferredWidth: 120
