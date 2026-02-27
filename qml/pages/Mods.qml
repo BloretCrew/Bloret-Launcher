@@ -31,20 +31,19 @@ FluentPage {
         }
     }
 
+    function formatNumber(num) {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + "M"
+        if (num >= 1000) return (num / 1000).toFixed(1) + "K"
+        return num.toString()
+    }
+
     ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: 20
+        Layout.fillWidth: true
+        // anchors.fill: parent // Removed to avoid layout conflict inside Flickable
+        // anchors.margins: 20
         spacing: 20
 
         // --- Header ---
-        RowLayout {
-            Layout.fillWidth: true
-            Item { Layout.fillWidth: true }
-            Button {
-                text: qsTr("打开 Modrinth")
-                onClicked: { if (Backend) Backend.openUrl("https://modrinth.com") }
-            }
-        }
 
         // --- Bloriko AI Mod Suggestion ---
         Frame {
@@ -137,7 +136,9 @@ FluentPage {
         ListView {
             id: modListView
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            // Layout.fillHeight: true // Removed, let it grow with content
+            implicitHeight: contentHeight // Auto height based on content
+            interactive: false // Disable internal scrolling, use page scroll
             model: modsPage.modResults
             clip: true
             spacing: 10
@@ -152,31 +153,113 @@ FluentPage {
                 RowLayout {
                     width: parent.width
                     spacing: 15
-                    Image {
-                        width: 50; height: 50
-                        source: modelData.icon_url || ""
-                        fillMode: Image.PreserveAspectFit
-                        visible: modelData.icon_url !== ""
-                    }
+                    
+                    // Icon
                     Rectangle {
-                        width: 50; height: 50
-                        color: Theme.currentTheme.colors.controlFillSecondaryColor
-                        radius: 4
-                        visible: !modelData.icon_url
-                        Label { text: "Icon"; anchors.centerIn: parent; color: Theme.currentTheme.colors.textTertialyColor }
+                        Layout.preferredWidth: 64
+                        Layout.preferredHeight: 64
+                        Layout.alignment: Qt.AlignTop
+                        color: "transparent"
+                        
+                        Image {
+                            anchors.fill: parent
+                            source: modelData.icon_url || ""
+                            fillMode: Image.PreserveAspectFit
+                            visible: modelData.icon_url !== ""
+                        }
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            color: Theme.currentTheme.colors.controlFillSecondaryColor
+                            radius: 8
+                            visible: !modelData.icon_url
+                            Label { text: "Icon"; anchors.centerIn: parent; color: Theme.currentTheme.colors.textTertialyColor }
+                        }
                     }
+
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Label { font.weight: Font.DemiBold; text: modelData.name; color: Theme.currentTheme.colors.textColor }
-                        Label { text: modelData.description; color: Theme.currentTheme.colors.textSecondaryColor; wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 2; elide: Text.ElideRight }
+                        spacing: 4
+                        
+                        // Title & Author
+                        RowLayout {
+                            Label { 
+                                font.weight: Font.DemiBold
+                                font.pixelSize: 16
+                                text: modelData.name
+                                color: Theme.currentTheme.colors.textColor 
+                            }
+                            Label {
+                                text: "by " + (modelData.author || "Unknown")
+                                color: Theme.currentTheme.colors.textTertialyColor
+                                font.pixelSize: 12
+                                Layout.alignment: Qt.AlignBaseline
+                            }
+                        }
+                        
+                        Label { 
+                            text: modelData.description
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                            maximumLineCount: 2
+                            elide: Text.ElideRight
+                        }
+                        
+                        // Stats & Categories
+                        RowLayout {
+                            spacing: 15
+                            
+                            Label {
+                                text: "⬇ " + formatNumber(modelData.downloads || 0)
+                                color: Theme.currentTheme.colors.textTertialyColor
+                                font.pixelSize: 12
+                            }
+                            
+                            Label {
+                                text: "♥ " + formatNumber(modelData.follows || 0)
+                                color: Theme.currentTheme.colors.textTertialyColor
+                                font.pixelSize: 12
+                            }
+                            
+                            Repeater {
+                                model: (modelData.categories || []).slice(0, 3)
+                                delegate: Rectangle {
+                                    color: Theme.currentTheme.colors.controlFillSecondaryColor
+                                    radius: 4
+                                    width: catLabel.implicitWidth + 10
+                                    height: 18
+                                    Label {
+                                        id: catLabel
+                                        text: modelData
+                                        anchors.centerIn: parent
+                                        font.pixelSize: 10
+                                        color: Theme.currentTheme.colors.textSecondaryColor
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    RowLayout {
+                    spacing: 8
+                    Button {
+                        text: qsTr("查看")
+                        onClicked: { 
+                            if (Backend) Backend.openUrl("https://modrinth.com/mod/" + modelData.slug) 
+                        }
                     }
                     Button {
                         text: qsTr("下载")
-                        onClicked: { if (Backend) Backend.downloadMod(modelData.id) }
+                        highlighted: true
+                        onClicked: { 
+                            downloadTargetDialog.modId = modelData.id
+                            downloadTargetDialog.open()
+                        }
                     }
                 }
             }
         }
+    }
     }
 
     Dialog {
@@ -238,17 +321,19 @@ FluentPage {
         title: qsTr("选择 Minecraft 版本")
         standardButtons: Dialog.Ok | Dialog.Cancel
         width: 400
-        anchors.centerIn: parent
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
         modal: true
 
         ColumnLayout {
-            anchors.fill: parent
+            width: parent.width
             anchors.margins: 10
             spacing: 10
 
             Label {
                 text: qsTr("请选择要推荐模组的 Minecraft 版本（仅支持 Fabric）：")
                 wrapMode: Text.Wrap
+                Layout.fillWidth: true
                 color: Theme.currentTheme.colors.textColor
             }
 
@@ -263,8 +348,6 @@ FluentPage {
                     }
                 }
             }
-
-            Item { Layout.fillHeight: true }
         }
 
         onAccepted: {
@@ -282,5 +365,41 @@ FluentPage {
             }
         }
     }
-}
 
+    Dialog {
+        id: downloadTargetDialog
+        title: qsTr("选择安装版本")
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        width: 350
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+        modal: true
+        
+        property string modId: ""
+
+        ColumnLayout {
+            width: parent.width
+            anchors.margins: 10
+            spacing: 10
+            
+            Label {
+                text: qsTr("请选择要安装此 Mod 的 Fabric 版本:")
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+                color: Theme.currentTheme.colors.textColor
+            }
+            
+            ComboBox {
+                id: downloadVersionCombo
+                Layout.fillWidth: true
+                model: modsPage.fabricVersions
+            }
+        }
+        
+        onAccepted: {
+            if (Backend && downloadVersionCombo.currentText !== "") {
+                Backend.downloadMod(downloadTargetDialog.modId, downloadVersionCombo.currentText)
+            }
+        }
+    }
+}

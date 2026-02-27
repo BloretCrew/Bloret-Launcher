@@ -764,10 +764,7 @@ class Backend(QObject):
         except:
             return ["1.21.8", "1.21.7", "1.20.1"]
 
-    @Slot(result=list)
-    def getFabricVersions(self):
-        # Using the same list for now as in setup_ui.py
-        return self.getVanillaVersions()
+    # Removed incorrect getFabricVersions implementation here to use the correct one below
 
     @Slot(result=list)
     def getJavaDownloadVersions(self):
@@ -1162,7 +1159,11 @@ class Backend(QObject):
                             "description": hit.get("description", ""),
                             "id": hit.get("project_id"),
                             "slug": hit.get("slug"),
-                            "icon_url": hit.get("icon_url", "")
+                            "icon_url": hit.get("icon_url", ""),
+                            "author": hit.get("author", ""),
+                            "downloads": hit.get("downloads", 0),
+                            "follows": hit.get("follows", 0),
+                            "categories": hit.get("display_categories", [])
                         })
                 self.modrinthResultsReceived.emit(results)
             except Exception as e:
@@ -1170,27 +1171,49 @@ class Backend(QObject):
                 self.modrinthResultsReceived.emit([])
         threading.Thread(target=run_search, daemon=True).start()
 
-    @Slot(str)
-    def downloadMod(self, mod_id):
+    @Slot(str, str)
+    def downloadMod(self, mod_id, version_name):
         """
         下载并安装模组
         
         Args:
             mod_id (str): 模组 ID 或 slug
+            version_name (str): 目标版本名称
         """
         from modules.modrinth import Get_Mod_File_Download_Url
-        print(f"Requested download mod: {mod_id}")
+        print(f"Requested download mod: {mod_id} to {version_name}")
         
         def run_download():
             try:
+                config_data = cfg.read()
+                mc_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+                
+                # 获取游戏版本
+                game_version = None
+                bl_json_path = os.path.join(mc_dir, "versions", ".BL.json")
+                if os.path.exists(bl_json_path):
+                    with open(bl_json_path, "r", encoding="utf-8") as f:
+                        bl_data = json.load(f)
+                        if version_name in bl_data.get("versions", {}):
+                            ver_info = bl_data["versions"][version_name]
+                            game_version = ver_info.get("version")
+                
+                if not game_version:
+                    # 简单的 fallback，假设版本名以版本号开头
+                    import re
+                    match = re.match(r"^(\d+\.\d+(\.\d+)?)", version_name)
+                    if match:
+                        game_version = match.group(1)
+                
+                print(f"Detected game version: {game_version}")
+
                 # 首先尝试以 mod_id 作为 slug 获取下载 URL
-                url = Get_Mod_File_Download_Url(mod_id)
+                url = Get_Mod_File_Download_Url(mod_id, loaders=["fabric"], game_versions=[game_version] if game_version else None)
                 if url:
                     print(f"Found download URL: {url}")
                     # 获取 Minecraft 目录
-                    config_data = cfg.read()
-                    mc_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
-                    mods_dir = os.path.join(mc_dir, "mods")
+                    
+                    mods_dir = os.path.join(mc_dir, "versions", version_name, "mods")
                     
                     # 确保 mods 目录存在
                     os.makedirs(mods_dir, exist_ok=True)
@@ -1233,36 +1256,9 @@ class Backend(QObject):
     def getPassPortName(self):
         return self.getBloretPassPortUserName()
 
-    @Slot(result=str)
-    def getPlayerName(self):
-        config_data = cfg.read()
-        mc_data = config_data.get("MinecraftAccount", {})
-        accounts = mc_data.get("accounts", [])
-        chosen_idx = mc_data.get("chosen", 0)
-        if chosen_idx < len(accounts):
-            return accounts[chosen_idx].get("username", "User")
-        return "User"
-
-    @Slot(result=list)
-    def getVanillaVersions(self):
-        # Placeholder for now, could be fetched from modules.versions or BMCLAPI
-        return ["1.21.8", "1.21.4", "1.20.1", "1.12.2"]
-
-    @Slot(result=list)
-    def getFabricVersions(self):
-        # Placeholder
-        return ["0.18.1", "0.17.2", "0.16.0"]
-
-    @Slot(result=list)
-    def getJavaDownloadVersions(self):
-        from modules.java import java_versions
-        return list(java_versions.keys())
-
-    @Slot(str)
-    def downloadJava(self, version):
-        from modules.java import InstallJava
-        print(f"Requested download Java: {version}")
-        InstallJava(version)
+    # Removed duplicate getPlayerName, getVanillaVersions, getFabricVersions, getJavaDownloadVersions, downloadJava
+    # ensuring the correct implementations later in the file are used.
+    pass
 
     @Slot()
     def loginBloretPassPort(self):
@@ -1408,6 +1404,7 @@ class Backend(QObject):
     @Slot(str)
     def openUrl(self, url):
         print(f"Requested to open URL: {url}")
+        QDesktopServices.openUrl(QUrl(url))
         
     @Slot()
     def joinQQBloret(self):
