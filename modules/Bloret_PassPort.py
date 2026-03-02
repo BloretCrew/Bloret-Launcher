@@ -265,6 +265,11 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
             }
             config_data['MinecraftAccount'] = new_account_data
             
+            # 同时更新头像信息（如果服务器返回了 avatar 字段）
+            if 'avatar' in api_result:
+                config_data['Bloret_PassPort_Avatar'] = api_result['avatar']
+                log(f"已更新用户头像: {api_result['avatar']}")
+            
             # 保存配置到 config.json
             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                 json.dump(config_data, f, ensure_ascii=False, indent=4)

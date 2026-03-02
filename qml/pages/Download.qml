@@ -2,10 +2,13 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
+import "../components"
 
 FluentPage {
     id: downloadPage
     title: qsTr("下载")
+
+    VersionNameDialog { id: versionDialog }
 
     property var vanillaVersions: []
     property var fabricVersions: []
@@ -16,6 +19,13 @@ FluentPage {
             vanillaVersions = Backend.getVanillaVersions()
             fabricVersions = Backend.getFabricVersions()
             javaVersions = Backend.getJavaDownloadVersions()
+            versionDialog.confirmed.connect(function(name){
+                if (versionDialog.fabric) {
+                    Backend.downloadFabric(fabricCombo.currentText, name)
+                } else {
+                    Backend.downloadVanilla(vanillaCombo.currentText, name)
+                }
+            })
         }
     }
 
@@ -61,7 +71,11 @@ FluentPage {
                 text: qsTr("下载并安装")
                 highlighted: true
                 onClicked: {
-                    if (Backend) Backend.downloadVanilla(vanillaCombo.currentText)
+                    if (!Backend) return
+                    let ver = vanillaCombo.currentText
+                    versionDialog.version = ver
+                    versionDialog.fabric = false
+                    versionDialog.open()
                 }
             }
         }
@@ -109,7 +123,11 @@ FluentPage {
                 text: qsTr("下载并安装")
                 highlighted: true
                 onClicked: {
-                    if (Backend) Backend.downloadFabric(fabricCombo.currentText)
+                    if (!Backend) return
+                    let ver = fabricCombo.currentText
+                    versionDialog.version = ver
+                    versionDialog.fabric = true
+                    versionDialog.open()
                 }
             }
         }

@@ -60,6 +60,7 @@ class Backend(QObject):
     downloadDialogClosed = Signal()
     downloadPaused = Signal(bool)
     coreManagerRequested = Signal(str, dict)
+    activityInfoChanged = Signal(dict)
 
     def __init__(self):
         super().__init__()
@@ -111,6 +112,52 @@ class Backend(QObject):
     @Slot(result=dict)
     def getActivityInfo(self):
         return BLglobals.BL_Activity
+
+    @Slot()
+    def refreshActivityInfo(self):
+        """从 API 刷新活动信息"""
+        from modules.BLServer import get_latest_version
+        def update_activity():
+            try:
+                _, _ = get_latest_version()
+                # BL_Activity 已在 get_latest_version 中更新
+                # 如果图标是远程 URL，则下载缓存到本地文件
+                icon_url = BLglobals.BL_Activity.get("icon", "")
+                if icon_url.startswith("http"):
+                    try:
+                        import requests, hashlib
+                        from PySide6.QtCore import QUrl
+                        resp = requests.get(icon_url, timeout=5)
+                        if resp.status_code == 200:
+                            # compute hash for filename
+                            h = hashlib.md5(icon_url.encode('utf-8')).hexdigest()
+                            cache_dir = os.path.join(SCRIPT_DIR, "cache")
+                            os.makedirs(cache_dir, exist_ok=True)
+                            local_path = os.path.join(cache_dir, f"activity_{h}.png")
+                            with open(local_path, "wb") as imgf:
+                                imgf.write(resp.content)
+                            # convert to file URL for QML
+                            url = QUrl.fromLocalFile(local_path).toString()
+                            BLglobals.BL_Activity["icon"] = url
+                            icon_path = url
+                        else:
+                            icon_path = icon_url
+                    except Exception as e:
+                        print(f"Failed to download activity icon: {e}")
+                        icon_path = icon_url
+                else:
+                    # non-http value might be local path; convert to file URL too
+                    from PySide6.QtCore import QUrl
+                    if icon_url:
+                        BLglobals.BL_Activity["icon"] = QUrl.fromLocalFile(icon_url).toString()
+                        icon_path = QUrl.fromLocalFile(icon_url).toString()
+                # else icon_path remains whatever returned
+                self._activity_info = BLglobals.BL_Activity
+                self.activityInfoChanged.emit(self._activity_info)
+            except Exception as e:
+                print(f"Error refreshing activity info: {e}")
+        
+        threading.Thread(target=update_activity, daemon=True).start()
 
     @Slot()
     def refreshServerInfo(self):
@@ -780,21 +827,54 @@ class Backend(QObject):
         from modules.java import java_versions
         return list(java_versions.keys())
 
-    @Slot(str)
-    def downloadVanilla(self, version):
+    @Slot(str, str, result='QVariant')
+    def validateVersionName(self, baseVersion, name):
+        """Validate name for installation: returns dict with valid, error, exists"""
+        result = {"valid": True, "error": "", "exists": False}
+        try:
+            # empty
+            if not name or name.strip() == "":
+                result["valid"] = False
+                result["error"] = "版本名不能为空"
+                return result
+            # invalid characters
+            invalid = r"[\\/:\*\?\"<>|]"
+            import re
+            if re.search(invalid, name):
+                result["valid"] = False
+                result["error"] = "版本名不能包含 \\ / : * ? \" < > | 等字符"
+                return result
+            # reserved names
+            reserved = ['CON','PRN','AUX','NUL'] + [f'COM{i}' for i in range(1,10)] + [f'LPT{i}' for i in range(1,10)]
+            if name.upper() in reserved:
+                result["valid"] = False
+                result["error"] = "版本名为 Windows 保留字"
+                return result
+            # existence
+            items = self.getLaunchItems()
+            for item in items:
+                if item.get("name") == name:
+                    result["exists"] = True
+                    break
+        except Exception as e:
+            print(f"validation exception: {e}")
+        return result
+
+    @Slot(str, str)
+    def downloadVanilla(self, version, versionName):
         from modules.install import InstallMinecraftVersion
-        print(f"Requested download Vanilla: {version}")
+        print(f"Requested download Vanilla: {version} as {versionName}")
         title = f"正在下载 Minecraft {version}"
         self.downloadDialogRequested.emit(title)
-        InstallMinecraftVersion(version, backend=self)
+        InstallMinecraftVersion(version, VersionName=versionName, backend=self)
 
-    @Slot(str)
-    def downloadFabric(self, version):
+    @Slot(str, str)
+    def downloadFabric(self, version, versionName):
         from modules.install import InstallMinecraftVersion
-        print(f"Requested download Fabric: {version}")
+        print(f"Requested download Fabric: {version} as {versionName}")
         title = f"正在下载 Minecraft {version} 和 Fabric Loader"
         self.downloadDialogRequested.emit(title)
-        InstallMinecraftVersion(version, Fabric_Loader=True, backend=self)
+        InstallMinecraftVersion(version, Fabric_Loader=True, VersionName=versionName, backend=self)
 
     @Slot()
     def toggleDownloadPause(self):
@@ -1264,6 +1344,49 @@ class Backend(QObject):
     @Slot(result=str)
     def getPassPortName(self):
         return self.getBloretPassPortUserName()
+
+    @Slot(result=str)
+    def getPassPortAvatar(self):
+        config_data = cfg.read()
+        if not config_data.get('Bloret_PassPort_Login'):
+            return ""
+        
+        username = config_data.get('Bloret_PassPort_UserName', '')
+        if not username:
+            return ""
+        
+        cache_dir = os.path.join(BLglobals.cache_path, 'avatars')
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_file = os.path.join(cache_dir, f"{username}_passport.png")
+        
+        if os.path.exists(cache_file):
+            return QUrl.fromLocalFile(cache_file).toString()
+        
+        avatar_url = config_data.get('Bloret_PassPort_Avatar', '')
+        
+        if avatar_url and (avatar_url.startswith('http://') or avatar_url.startswith('https://')):
+            try:
+                print(f"getPassPortAvatar: downloading from {avatar_url}")
+                response = requests.get(avatar_url, timeout=5)
+                if response.status_code == 200:
+                    with open(cache_file, 'wb') as f:
+                        f.write(response.content)
+                    return QUrl.fromLocalFile(cache_file).toString()
+            except Exception as e:
+                print(f"Failed to download passport avatar: {e}")
+        
+        try:
+            fallback_url = f"https://visage.surgeplay.com/face/128/{username}"
+            print(f"getPassPortAvatar: trying fallback {fallback_url}")
+            response = requests.get(fallback_url, timeout=5, headers={"User-Agent": "BloretLauncher/1.0"})
+            if response.status_code == 200 and len(response.content) > 100:
+                with open(cache_file, 'wb') as f:
+                    f.write(response.content)
+                return QUrl.fromLocalFile(cache_file).toString()
+        except Exception as e:
+            print(f"Failed to get fallback avatar: {e}")
+        
+        return ""
 
     # Removed duplicate getPlayerName, getVanillaVersions, getFabricVersions, getJavaDownloadVersions, downloadJava
     # ensuring the correct implementations later in the file are used.

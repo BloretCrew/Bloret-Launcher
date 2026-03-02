@@ -72,6 +72,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     # 解析响应数据并保存到 config.json
                     try:
                         user_data = json.loads(response_data)
+                        logger.info(f"OAuth response user_data: {user_data}")
                         if isinstance(user_data, dict) and 'username' in user_data and 'email' in user_data:
                             # 读取现有配置
                             try:
@@ -84,7 +85,10 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             config_data['Bloret_PassPort_Login'] = True
                             config_data['Bloret_PassPort_UserName'] = user_data['username']
                             config_data['Bloret_PassPort_PassWord'] = user_data.get('apptoken', '')
-                            
+                            # avatar field may not exist; still write key even if empty
+                            avatar_val = user_data.get('avatar', '')
+                            config_data['Bloret_PassPort_Avatar'] = avatar_val
+                            logger.info(f"Avatar value from server: '{avatar_val}'")
                             # 保存配置到文件
                             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                                 json.dump(config_data, f, ensure_ascii=False, indent=4)

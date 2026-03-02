@@ -88,6 +88,31 @@ FluentPage {
                 width: parent.width
                 spacing: 15
 
+                // 用户头像
+                Rectangle {
+                    width: 48; height: 48
+                    radius: width/2
+                    color: "transparent"
+                    clip: true
+                    Image {
+                        id: passportAvatar
+                        anchors.fill: parent
+                        source: {
+                            let url = Backend ? Backend.getPassPortAvatar() : ""
+                            return url && url !== "" ? url : "../../icon/Grass_Block.png"
+                        }
+                        asynchronous: true
+                        cache: false
+                        fillMode: Image.PreserveAspectCrop
+                        onStatusChanged: {
+                            if (status === Image.Error) {
+                                source = "../../icon/Grass_Block.png"
+                            }
+                        }
+                    }
+                    // always visible
+                }
+
                 Label {
                     id: bloretUserName
                     font.weight: Font.DemiBold

@@ -137,8 +137,12 @@
 ![Alt](https://repobeats.axiom.co/api/embed/a5638ffaed2d2ba6776999fafc10b5e1513c53a9.svg "Repobeats analytics image")
 
 ## 致谢以下存储库或项目
-- [PyQt5](https://www.riverbankcomputing.com/static/Docs/PyQt5/)
-- [PyQt Fluent Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)
+
+- [RinUI](https://github.com/RinLit-233-shiroko/Rin-UI)
+
+**RinUI 是 Bloret Launcher 的核心组件库。**
+
+
 - [SF Symbols](https://developer.apple.com/cn/sf-symbols/)
 <details>
 

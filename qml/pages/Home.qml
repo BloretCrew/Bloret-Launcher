@@ -8,14 +8,19 @@ import "../components"
 FluentPage {
     id: homePage
 
-    property var activityInfo: ({ "show": true, "title": "Bloret Launcher 春节小游戏", "description": "完成一个简单的小游戏（大约半分钟），感受春节氛围，可获得最多 50 络琅 + 200 金币奖励！", "time": "2026-02-14 到 2026-03-03", "icon": "../../icon/Grass_Block.png", "status": "during", "link": "https://bloret.net" })
+    property var activityInfo: ({ "show": false, "title": "", "description": "", "time": "", "icon": "", "status": "", "link": "" })
     property var serverInfo: ({})
     property var launchItems: []
     property string currentVersion: ""
 
     Component.onCompleted: {
+        // 从后端获取活动信息（从 API https://launcher.bloret.net/api/info 获取）
+        Backend.refreshActivityInfo()
+        
         let realInfo = Backend.getActivityInfo()
-        if (realInfo && realInfo.title) activityInfo = realInfo
+        if (realInfo && Object.keys(realInfo).length > 0) {
+            activityInfo = realInfo
+        }
         
         launchItems = Backend.getLaunchItems()
         if (launchItems.length > 0) {
@@ -32,6 +37,11 @@ FluentPage {
         function onBlorikoResponseReceived(response) {
             blorikoThinking.visible = false
             askBlorikoAnswer.text = response
+        }
+        function onActivityInfoChanged(data) {
+            if (data && Object.keys(data).length > 0) {
+                activityInfo = data
+            }
         }
     }
 
@@ -110,10 +120,23 @@ FluentPage {
                 width: parent.width
                 spacing: 20
 
-                Image {
-                    source: activityInfo.icon || "../../ui/icon/Grass_Block.png"
-                    sourceSize { width: 80; height: 80 }
-                    fillMode: Image.PreserveAspectFit
+                Rectangle {
+                    width: 80; height: 80
+                    radius: 12
+                    color: "transparent"
+                    clip: true
+                    Image {
+                        anchors.fill: parent
+                        source: activityInfo.icon && activityInfo.icon !== "" ? activityInfo.icon : "../../icon/Grass_Block.png"
+                        asynchronous: true
+                        cache: false
+                        fillMode: Image.PreserveAspectFit
+                        onStatusChanged: {
+                            if (status === Image.Error) {
+                                source = "../../icon/Grass_Block.png"
+                            }
+                        }
+                    }
                 }
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -275,7 +298,7 @@ FluentPage {
                             Label {
                                 text: "Bloret 百络谷 | 筑岁同欢 ✨"
                                 font.weight: Font.DemiBold
-                                color: Theme.accentColor
+                                color: Theme.accentColor ? Theme.accentColor : Theme.currentTheme.colors.textColor
                             }
                         }
                         Label {
@@ -330,16 +353,22 @@ FluentPage {
             anchors.rightMargin: 24
             spacing: 15
 
-            Image {
-                source: {
-                    let currentItem = launchItems.find(item => item.name === currentVersion)
-                    if (currentItem && currentItem.icon) {
-                        return currentItem.icon
+Rectangle {
+                    width: 44; height: 44
+                    radius: 8
+                    color: "transparent"
+                    clip: true
+                    Image {
+                        anchors.fill: parent
+                        source: {
+                            let currentItem = launchItems.find(item => item.name === currentVersion)
+                            if (currentItem && currentItem.icon) {
+                                return currentItem.icon
+                            }
+                            return "../../icon/Grass_Block.png"
+                        }
+                        fillMode: Image.PreserveAspectFit
                     }
-                    return "../../ui/icon/Grass_Block.png"
-                }
-                sourceSize { width: 44; height: 44 }
-                fillMode: Image.PreserveAspectFit
                 Layout.alignment: Qt.AlignVCenter
             }
             
@@ -348,38 +377,48 @@ FluentPage {
                 spacing: 2
                 
                 RowLayout {
-                    spacing: 4
-                    Label {
-                        text: qsTr("您好, ")
-                        color: (Theme.currentTheme && Theme.currentTheme.colors) ? Theme.currentTheme.colors.textColor : (Theme.dark ? "#ffffff" : "#000000")
-                        font.pixelSize: 13
+                    spacing: 8
+                    Layout.fillWidth: true
+                    
+                    // 用户头像
+                    Rectangle {
+                        width: 32; height: 32
+                        radius: width/2    // always circle
+                        color: "transparent"
+                        clip: true
+                        Image {
+                            id: avatarImage
+                            anchors.fill: parent
+                            source: {
+                                let url = Backend ? Backend.getPassPortAvatar() : ""
+                                return url && url !== "" ? url : "../../icon/Grass_Block.png"
+                            }
+                            asynchronous: true
+                            cache: false
+                            fillMode: Image.PreserveAspectCrop
+                            onStatusChanged: {
+                                if (status === Image.Error) {
+                                    source = "../../icon/Grass_Block.png"
+                                }
+                            }
+                        }
+                        // always visible, show default when missing
                     }
-                    Label {
-                        text: Backend ? Backend.getPassPortName() : qsTr("访客")
-                        color: (Theme.currentTheme && Theme.currentTheme.colors) ? Theme.currentTheme.colors.textColor : (Theme.dark ? "#ffffff" : "#000000")
-                        font.pixelSize: 13
-                        font.weight: Font.DemiBold
-                    }
-                    Label {
-                        text: qsTr("!")
-                        color: Theme.currentTheme.colors.textColor
-                        font.pixelSize: 13
-                    }
-                    Label {
-                        text: qsTr("将使用")
-                        color: Theme.currentTheme.colors.textSecondaryColor
-                        font.pixelSize: 13
-                    }
-                    Label {
-                        text: Backend ? Backend.getPlayerName() : qsTr("无档案")
-                        color: Theme.currentTheme.colors.textColor
-                        font.pixelSize: 13
-                        font.weight: Font.DemiBold
-                    }
-                    Label {
-                        text: qsTr("来登录")
-                        color: Theme.currentTheme.colors.textSecondaryColor
-                        font.pixelSize: 13
+                    
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+                        Label {
+                            text: Backend ? Backend.getPassPortName() : qsTr("访客")
+                            color: (Theme.currentTheme && Theme.currentTheme.colors) ? Theme.currentTheme.colors.textColor : (Theme.dark ? "#ffffff" : "#000000")
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                        }
+                        Label {
+                            text: (Backend ? Backend.getPlayerName() : qsTr("无档案"))
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            font.pixelSize: 12
+                        }
                     }
                 }
                 
