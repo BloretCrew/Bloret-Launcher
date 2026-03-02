@@ -181,7 +181,7 @@ FluentPage {
                     maskSource: Rectangle {
                         width: 35
                         height: 35
-                        radius: 17.5
+                        radius: 8
                     }
                 }
             }
@@ -389,6 +389,14 @@ Rectangle {
                         Image {
                             id: avatarImage
                             anchors.fill: parent
+                            layer.enabled: true
+                            layer.effect: OpacityMask {
+                                maskSource: Rectangle {
+                                    width: avatarImage.width
+                                    height: avatarImage.height
+                                    radius: 8
+                                }
+                            }
                             source: {
                                 let url = Backend ? Backend.getPassPortAvatar() : ""
                                 let finalUrl = url && url !== "" ? url : "../../icon/Grass_Block.png"

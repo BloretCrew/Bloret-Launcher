@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
+import Qt5Compat.GraphicalEffects
 import RinUI
 
 FluentPage {
@@ -99,6 +100,14 @@ FluentPage {
                     Image {
                         id: passportAvatar
                         anchors.fill: parent
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Rectangle {
+                                width: passportAvatar.width
+                                height: passportAvatar.height
+                                radius: 8
+                            }
+                        }
                         source: {
                             let url = Backend ? Backend.getPassPortAvatar() : ""
                             let finalUrl = url && url !== "" ? url : "../../icon/Grass_Block.png"
@@ -198,6 +207,14 @@ FluentPage {
                         Layout.preferredWidth: 32; Layout.preferredHeight: 32
                         source: modelData.avatarUrl || "../../icon/DefaultHead.png"
                         fillMode: Image.PreserveAspectFit
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Rectangle {
+                                width: 32
+                                height: 32
+                                radius: 8
+                            }
+                        }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
