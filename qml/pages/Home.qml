@@ -68,6 +68,8 @@ FluentPage {
     Connections {
         target: Backend
         function onCoreManagerRequested(versionName, coreData) {
+            // 确保只打开一次对话框
+            coreManagerDialog.close()
             coreManagerDialog.openWithVersion(versionName)
         }
     }

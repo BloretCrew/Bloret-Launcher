@@ -3871,9 +3871,9 @@ class CoreManageDialog(MessageBoxBase):
             InfoBar.error(title=i18nText("保存失败"), content=str(e), parent=self.widget)
 
 
-def open_core_management(self, version_name, MINECRAFT_DIR, home_interface):
+def open_core_management(parent, version_name, MINECRAFT_DIR, home_interface):
     """ 打开核心管理对话框的入口函数 """
-    dialog = CoreManageDialog(version_name, MINECRAFT_DIR, home_interface, parent=self)
+    dialog = CoreManageDialog(version_name, MINECRAFT_DIR, home_interface, parent=parent)
     if dialog.exec():
         return True # 返回 True 表示需要刷新列表
     return False # 返回 False (如取消或出错) 视情况刷新，但在 setup_ui 中我们做了全量刷新，所以影响不大

@@ -18,6 +18,7 @@ Dialog {
     property var servers: []
     property var mods: []
     property var resourcePacks: []
+    property bool isOpening: false
 
     ColumnLayout {
         width: parent.width
@@ -703,6 +704,13 @@ Dialog {
     }
     
     function openWithVersion(name) {
+        // 防止重复打开
+        if (isOpening) {
+            return
+        }
+        
+        isOpening = true
+        
         versionName = name
         coreData = Backend ? Backend.getCoreData(name) : {}
         nameEdit.text = name
@@ -718,5 +726,8 @@ Dialog {
         
         stackedWidget.currentIndex = 0
         open()
+        
+        // 重置标志
+        isOpening = false
     }
 }

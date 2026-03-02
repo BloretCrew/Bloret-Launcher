@@ -65,6 +65,7 @@ class Backend(QObject):
         super().__init__()
         self._server_info = {}
         self._activity_info = BLglobals.BL_Activity
+        self._last_core_manager_request_time = 0  # 防止重复请求
 
     def setBackendParent(self, parent):
         self.parent = parent
@@ -226,6 +227,14 @@ class Backend(QObject):
     @Slot(str)
     def showCoreManager(self, versionName):
         try:
+            import time
+            current_time = time.time()
+            # 防止在100ms内重复触发请求
+            if current_time - self._last_core_manager_request_time < 0.1:
+                return
+            
+            self._last_core_manager_request_time = current_time
+            
             config_data = cfg.read()
             minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
             bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
