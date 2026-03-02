@@ -1,5 +1,5 @@
 try:
-    from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
+    from modules.compat_widgets import InfoBar, InfoBarPosition, ComboBox
 except ImportError:
     InfoBar = None
     InfoBarPosition = None

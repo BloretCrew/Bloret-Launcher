@@ -18,8 +18,8 @@ from PySide6.QtGui import QDesktopServices, QPixmap, QColor, QIcon, QMovie
 from PySide6.QtCore import QUrl, Qt, QSize, QTimer, QDateTime, QFileInfo, QThread, Signal as pyqtSignal
 # from PySide6.QtUiTools import QUiLoader # Removed uic for PySide6 compatibility
 
-# 3. 第三方库 (qfluentwidgets)
-from qfluentwidgets import (
+# 3. 兼容控件 (替代 qfluentwidgets)
+from modules.compat_widgets import (
     SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar,
     SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton,
     SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit,

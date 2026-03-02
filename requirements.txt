@@ -1,5 +1,5 @@
 PySide6
-PySide6-Fluent-Widgets
+RinUI
 requests
 # win11toast 须在 Visual Studio 环境下安装
 win11toast; sys_platform == 'win32'

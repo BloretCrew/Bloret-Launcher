@@ -15,9 +15,9 @@ else:
     win32api = None
 from PySide6.QtWidgets import QLabel, QPushButton as StandardPushButton
 
-# 尝试导入 QFluentWidgets 自定义控件
+# 尝试导入兼容控件（替代 QFluentWidgets）
 try:
-    from qfluentwidgets import CardWidget, BodyLabel, StrongBodyLabel, CaptionLabel
+    from modules.compat_widgets import CardWidget, BodyLabel, StrongBodyLabel, CaptionLabel
     QFLUENTWIDGETS_AVAILABLE = True
 except ImportError:
     QFLUENTWIDGETS_AVAILABLE = False

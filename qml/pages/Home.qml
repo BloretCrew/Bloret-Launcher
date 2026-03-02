@@ -391,13 +391,17 @@ Rectangle {
                             anchors.fill: parent
                             source: {
                                 let url = Backend ? Backend.getPassPortAvatar() : ""
-                                return url && url !== "" ? url : "../../icon/Grass_Block.png"
+                                let finalUrl = url && url !== "" ? url : "../../icon/Grass_Block.png"
+                                console.log("[Home.qml] Avatar Image source:", finalUrl)
+                                return finalUrl
                             }
                             asynchronous: true
                             cache: false
                             fillMode: Image.PreserveAspectCrop
                             onStatusChanged: {
+                                console.log("[Home.qml] Avatar Image status:", status)
                                 if (status === Image.Error) {
+                                    console.log("[Home.qml] Avatar Image loading failed, using default")
                                     source = "../../icon/Grass_Block.png"
                                 }
                             }

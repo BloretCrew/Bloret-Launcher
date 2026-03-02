@@ -99,13 +99,23 @@ FluentPage {
                         anchors.fill: parent
                         source: {
                             let url = Backend ? Backend.getPassPortAvatar() : ""
-                            return url && url !== "" ? url : "../../icon/Grass_Block.png"
+                            let finalUrl = url && url !== "" ? url : "../../icon/Grass_Block.png"
+                            console.log("[PassPort.qml] Image source changed")
+                            console.log("  Backend.getPassPortAvatar() returned:", url)
+                            console.log("  Final Image source:", finalUrl)
+                            return finalUrl
                         }
                         asynchronous: true
                         cache: false
                         fillMode: Image.PreserveAspectCrop
                         onStatusChanged: {
-                            if (status === Image.Error) {
+                            console.log("[PassPort.qml] Image status changed:", status, "source:", source)
+                            if (status === Image.Loading) {
+                                console.log("  正在加载图像...")
+                            } else if (status === Image.Ready) {
+                                console.log("  图像加载成功！")
+                            } else if (status === Image.Error) {
+                                console.log("  图像加载失败！使用默认头像")
                                 source = "../../icon/Grass_Block.png"
                             }
                         }

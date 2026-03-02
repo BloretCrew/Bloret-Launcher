@@ -16,7 +16,7 @@ from PySide6.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout, QVBoxL
 from PySide6.QtCore import Qt, QTimer, Signal as pyqtSignal, QObject, QThread, QEventLoop
 from PySide6.QtGui import QFont, QIcon, QPixmap
 # from PySide6.QtUiTools import QUiLoader # Removed uic for PySide6 compatibility
-from qfluentwidgets import SimpleCardWidget, BodyLabel, StrongBodyLabel
+from modules.compat_widgets import CardWidget as SimpleCardWidget, BodyLabel, StrongBodyLabel
 from .ShortCut import ScreenShortCut
 import logging
 # 导入原始的 log 函数并重命名

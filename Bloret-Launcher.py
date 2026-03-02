@@ -20,7 +20,7 @@ QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundin
 app = QApplication(sys.argv)
 
 # --- Finished Full PySide6 Migration ---
-# All modules have been refactored to use PySide6 and PySide6-Fluent-Widgets directly.
+# All modules have been refactored to use PySide6 and RinUI directly.
 
 import RinUI
 from RinUI import RinUIWindow
@@ -1347,45 +1347,98 @@ class Backend(QObject):
 
     @Slot(result=str)
     def getPassPortAvatar(self):
+        print(f"\n[getPassPortAvatar] 方法被调用")
         config_data = cfg.read()
-        if not config_data.get('Bloret_PassPort_Login'):
+        
+        is_logged_in = config_data.get('Bloret_PassPort_Login')
+        print(f"  登录状态: {is_logged_in}")
+        if not is_logged_in:
+            print(f"  未登录，返回空字符串")
             return ""
         
         username = config_data.get('Bloret_PassPort_UserName', '')
+        print(f"  用户名: {username}")
         if not username:
+            print(f"  用户名为空，返回空字符串")
             return ""
         
         cache_dir = os.path.join(BLglobals.cache_path, 'avatars')
-        os.makedirs(cache_dir, exist_ok=True)
+        print(f"  缓存目录: {cache_dir}")
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            print(f"  缓存目录已创建")
+        except Exception as e:
+            print(f"  创建缓存目录失败: {e}")
+        
         cache_file = os.path.join(cache_dir, f"{username}_passport.png")
+        print(f"  缓存文件路径: {cache_file}")
         
-        if os.path.exists(cache_file):
-            return QUrl.fromLocalFile(cache_file).toString()
-        
+        # 从 config.json 读取头像 URL
         avatar_url = config_data.get('Bloret_PassPort_Avatar', '')
+        print(f"  存储的头像 URL: {avatar_url if avatar_url else '(空)'}")
         
+        # 如果有有效的头像 URL，尝试下载（即使缓存存在也重新下载）
         if avatar_url and (avatar_url.startswith('http://') or avatar_url.startswith('https://')):
             try:
-                print(f"getPassPortAvatar: downloading from {avatar_url}")
-                response = requests.get(avatar_url, timeout=5)
+                print(f"  开始从远程服务器下载头像...")
+                print(f"  请求 URL: {avatar_url}")
+                
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
+                }
+                response = requests.get(avatar_url, timeout=10, headers=headers)
+                print(f"  HTTP 响应状态码: {response.status_code}")
+                print(f"  Content-Type: {response.headers.get('Content-Type', '未知')}")
+                print(f"  响应内容大小: {len(response.content)} bytes")
+                
                 if response.status_code == 200:
+                    # 验证是否真的是图片数据
+                    if len(response.content) < 500:
+                        print(f"  ⚠️ 警告：图片数据太小（{len(response.content)} bytes），可能不是有效的图片")
+                        print(f"  响应内容预览: {response.content[:200]}")
+                    else:
+                        print(f"  ✅ 图片数据大小正常")
+                    
+                    # 保存到缓存
                     with open(cache_file, 'wb') as f:
                         f.write(response.content)
-                    return QUrl.fromLocalFile(cache_file).toString()
+                    print(f"  头像已保存到缓存文件（{len(response.content)} bytes）")
+                    
+                    local_url = QUrl.fromLocalFile(cache_file).toString()
+                    print(f"  返回本地文件 URL: {local_url}")
+                    print(f"[getPassPortAvatar] 方法执行完成\n")
+                    return local_url
+                else:
+                    print(f"  下载失败：HTTP {response.status_code}")
             except Exception as e:
-                print(f"Failed to download passport avatar: {e}")
+                print(f"  下载头像异常: {type(e).__name__}: {e}")
+                import traceback
+                traceback.print_exc()
         
+        # 如果主头像 URL 不存在或下载失败，使用 Minecraft 皮肤 API 作为备用
+        print(f"  尝试使用 Minecraft 皮肤 API 作为备用...")
         try:
             fallback_url = f"https://visage.surgeplay.com/face/128/{username}"
-            print(f"getPassPortAvatar: trying fallback {fallback_url}")
-            response = requests.get(fallback_url, timeout=5, headers={"User-Agent": "BloretLauncher/1.0"})
-            if response.status_code == 200 and len(response.content) > 100:
+            print(f"  备用 URL: {fallback_url}")
+            response = requests.get(fallback_url, timeout=10, headers={"User-Agent": "BloretLauncher/1.0"})
+            print(f"  HTTP 响应状态码: {response.status_code}")
+            print(f"  响应内容大小: {len(response.content)} bytes")
+            
+            if response.status_code == 200 and len(response.content) > 500:
                 with open(cache_file, 'wb') as f:
                     f.write(response.content)
-                return QUrl.fromLocalFile(cache_file).toString()
+                print(f"  备用头像已保存到缓存文件")
+                local_url = QUrl.fromLocalFile(cache_file).toString()
+                print(f"  返回本地文件 URL: {local_url}")
+                print(f"[getPassPortAvatar] 方法执行完成\n")
+                return local_url
+            else:
+                print(f"  备用下载失败：HTTP {response.status_code} 或内容过小")
         except Exception as e:
-            print(f"Failed to get fallback avatar: {e}")
+            print(f"  备用下载异常: {type(e).__name__}: {e}")
         
+        print(f"  所有方法都失败，返回空字符串")
+        print(f"[getPassPortAvatar] 方法执行完成\n")
         return ""
 
     # Removed duplicate getPlayerName, getVanillaVersions, getFabricVersions, getJavaDownloadVersions, downloadJava

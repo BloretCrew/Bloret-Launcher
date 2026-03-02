@@ -1,4 +1,4 @@
-from qfluentwidgets import MessageBox, Dialog
+from modules.compat_widgets import MessageBox, Dialog
 from modules.log import log
 import os
 import json

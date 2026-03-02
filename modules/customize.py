@@ -1,4 +1,4 @@
-from qfluentwidgets import InfoBar, InfoBarPosition
+from modules.compat_widgets import InfoBar, InfoBarPosition
 import os,subprocess,json,sys,logging
 from modules.log import log
 from modules.i18n import i18nText

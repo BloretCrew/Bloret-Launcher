@@ -44,7 +44,7 @@ from PySide6.QtWidgets import (
     QSizePolicy, QGridLayout, QProgressBar, QCheckBox, QLineEdit, QPushButton, QDialog # 新增 QDialog
 )
 from PySide6.QtUiTools import QUiLoader
-from qfluentwidgets import (
+from modules.compat_widgets import (
     InfoBar, InfoBarPosition, ComboBox, StrongBodyLabel,
     BodyLabel, SubtitleLabel, MessageBoxBase, LineEdit,
     PushButton, SwitchButton, CaptionLabel, Pivot,
@@ -2351,7 +2351,7 @@ def on_other_version_selected(self, selected_text, combo_box):
             version_combo.setEnabled(False)
             
             # 显示加载提示信息
-            from qfluentwidgets import InfoBar, InfoBarPosition
+            from modules.compat_widgets import InfoBar, InfoBarPosition
             from PySide6.QtCore import Qt, QThread, Signal as pyqtSignal
             InfoBar.info(
                 title=i18nText('正在加载'),  # 提示标题
@@ -3044,7 +3044,7 @@ class ServerPage(QWidget):
         self.vLayout.addLayout(self.headerLayout)
         
         # 2. 列表滚动区
-        from qfluentwidgets import SmoothScrollArea
+        from modules.compat_widgets import SmoothScrollArea
         self.scrollArea = SmoothScrollArea(self)
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setStyleSheet("background-color: transparent; border: none;")
@@ -3333,7 +3333,7 @@ class ModPage(QWidget):
         self.vLayout.addLayout(hLayout)
         
         # 列表区域
-        from qfluentwidgets import SmoothScrollArea
+        from modules.compat_widgets import SmoothScrollArea
         self.scrollArea = SmoothScrollArea(self)
         self.scrollArea.setWidgetResizable(True)
         # --- 修改点开始：禁用水平滚动条 ---
@@ -3596,7 +3596,7 @@ class ResourcePackPage(QWidget):
         self.vLayout.addLayout(hLayout)
         
         # List
-        from qfluentwidgets import SmoothScrollArea
+        from modules.compat_widgets import SmoothScrollArea
         self.scrollArea = SmoothScrollArea(self)
         self.scrollArea.setWidgetResizable(True)
         # --- 修改点开始：禁用水平滚动条 ---

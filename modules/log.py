@@ -1,6 +1,6 @@
 import os,logging,shutil
 from datetime import datetime
-from qfluentwidgets import InfoBar, InfoBarPosition
+from modules.compat_widgets import InfoBar, InfoBarPosition
 import logging,traceback,sys,webbrowser
 from PySide6.QtWidgets import QApplication
 # from PySide6.QtUiTools import QUiLoader # Removed uic for PySide6 compatibility

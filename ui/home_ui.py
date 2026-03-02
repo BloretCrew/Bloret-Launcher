@@ -377,7 +377,9 @@ class Ui_Form(object):
         self.MinecraftVersionLabel.setText(_translate("Form", "1.20.1"))
         self.MinecraftVersionChoose.setText(_translate("Form", "切换核心"))
         self.run.setText(_translate("Form", "启动"))
-from qfluentwidgets import BodyLabel, CaptionLabel, CardWidget, CheckBox, ElevatedCardWidget, IndeterminateProgressBar, LineEdit, PrimaryPushButton, PushButton, SmoothScrollArea, StrongBodyLabel, SubtitleLabel, TabBar, TitleLabel
+from modules.compat_widgets import BodyLabel, CaptionLabel, CardWidget, CheckBox, IndeterminateProgressBar, LineEdit, PrimaryPushButton, PushButton, SmoothScrollArea, StrongBodyLabel, SubtitleLabel, TabBar
+from modules.compat_widgets import CardWidget as ElevatedCardWidget
+from modules.compat_widgets import SubtitleLabel as TitleLabel
 
 
 if __name__ == "__main__":
