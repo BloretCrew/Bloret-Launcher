@@ -88,12 +88,14 @@ FluentPage {
                 width: parent.width
                 spacing: 15
 
-                // 用户头像
+                // 用户头像 - 圆角矩形
                 Rectangle {
-                    width: 48; height: 48
-                    radius: width/2
+                    width: 48
+                    height: 48
+                    radius: 8
                     color: "transparent"
                     clip: true
+                    
                     Image {
                         id: passportAvatar
                         anchors.fill: parent
@@ -120,7 +122,6 @@ FluentPage {
                             }
                         }
                     }
-                    // always visible
                 }
 
                 Label {

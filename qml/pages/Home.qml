@@ -383,7 +383,7 @@ Rectangle {
                     // 用户头像
                     Rectangle {
                         width: 32; height: 32
-                        radius: width/2    // always circle
+                        radius: 8
                         color: "transparent"
                         clip: true
                         Image {
@@ -406,7 +406,6 @@ Rectangle {
                                 }
                             }
                         }
-                        // always visible, show default when missing
                     }
                     
                     ColumnLayout {
@@ -419,7 +418,7 @@ Rectangle {
                             font.weight: Font.DemiBold
                         }
                         Label {
-                            text: (Backend ? Backend.getPlayerName() : qsTr("无档案"))
+                            text: (Backend ? "以身份 " + Backend.getPlayerName() + " 来登录 Minecraft" : qsTr("无档案"))
                             color: Theme.currentTheme.colors.textSecondaryColor
                             font.pixelSize: 12
                         }
