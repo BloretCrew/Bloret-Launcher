@@ -8,26 +8,41 @@ FluentPage {
     id: downloadPage
     title: qsTr("下载")
 
-    VersionNameDialog { id: versionDialog }
-    SelectVersionDialog { id: selectVersionDialog }
+    VersionNameDialog { 
+        id: versionDialog 
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+    }
+    SelectVersionDialog { 
+        id: selectVersionDialog 
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+    }
 
     property var vanillaVersions: []
     property var fabricVersions: []
     property var javaVersions: []
     property var bloretVersions: []
     property var minecraftVersionList: []
-    property bool isSettingIndex: false  // 防止在代码中设置 index 时打开对话框
+    property var fabricVersionList: [] // 新增：Fabric 版本列表
+    property string currentSelectionTarget: "" // 新增：记录当前选择的是原版还是Fabric
+    property bool _ignoreIndexChange: false // 防止 onCurrentIndexChanged 循环触发
 
     Component.onCompleted: {
         if (Backend) {
             bloretVersions = Backend.getVersionsByCategory("百络谷支持版本")
             
-            // 合并版本列表：百络谷版本 + "其他版本..."
-            minecraftVersionList = bloretVersions.slice()  // 复制数组
+            // 初始化原版列表：百络谷版本 + "其他版本..."
+            minecraftVersionList = bloretVersions.slice()
             minecraftVersionList.push(qsTr("其他版本..."))
             vanillaCombo.model = minecraftVersionList
             
-            fabricVersions = Backend.getFabricVersions()
+            // 初始化 Fabric 列表：使用相同的百络谷版本作为推荐 + "其他版本..."
+            // Fabric 支持几乎所有版本，所以逻辑和原版下载类似，让用户从"其他版本"里选
+            fabricVersionList = bloretVersions.slice()
+            fabricVersionList.push(qsTr("其他版本..."))
+            fabricCombo.model = fabricVersionList
+            
             javaVersions = Backend.getJavaDownloadVersions()
             
             versionDialog.confirmed.connect(function(name){
@@ -43,19 +58,25 @@ FluentPage {
     }
     
     function onVersionSelected(version) {
-        // 将选中的版本添加到列表中（如果不存在）
-        let index = minecraftVersionList.indexOf(version)
-        if (index === -1) {
-            // 移除"其他版本..."并重新添加版本
-            minecraftVersionList.pop()
-            minecraftVersionList.push(version)
-            minecraftVersionList.push(qsTr("其他版本..."))
-            vanillaCombo.model = minecraftVersionList
+        console.log("[Download] onVersionSelected:", version, "target:", currentSelectionTarget)
+        _ignoreIndexChange = true
+        if (currentSelectionTarget === "vanilla") {
+            let index = minecraftVersionList.indexOf(version)
+            if (index === -1) {
+                // 插入到倒数第二个位置（"其他版本..."之前）
+                minecraftVersionList.splice(minecraftVersionList.length - 1, 0, version)
+                vanillaCombo.model = minecraftVersionList
+            }
+            vanillaCombo.currentIndex = minecraftVersionList.indexOf(version)
+        } else if (currentSelectionTarget === "fabric") {
+            let index = fabricVersionList.indexOf(version)
+            if (index === -1) {
+                fabricVersionList.splice(fabricVersionList.length - 1, 0, version)
+                fabricCombo.model = fabricVersionList
+            }
+            fabricCombo.currentIndex = fabricVersionList.indexOf(version)
         }
-        // 使用标志位防止打开对话框
-        isSettingIndex = true
-        vanillaCombo.currentIndex = minecraftVersionList.indexOf(version)
-        isSettingIndex = false
+        _ignoreIndexChange = false
     }
 
     // --- Vanilla Minecraft Card ---
@@ -94,11 +115,11 @@ FluentPage {
                 id: vanillaCombo
                 Layout.preferredWidth: 150
                 onCurrentIndexChanged: {
-                    // 只在用户手动选择时打开对话框，不在代码设置 index 时打开
-                    if (isSettingIndex) return
-                    
-                    let currentText = vanillaCombo.currentText
-                    if (currentText === qsTr("其他版本...")) {
+                    if (_ignoreIndexChange) return
+                    console.log("[Download] vanillaCombo index changed:", currentIndex, "text:", model[currentIndex])
+                    if (model[currentIndex] === qsTr("其他版本...")) {
+                        currentSelectionTarget = "vanilla"
+                        console.log("[Download] Opening SelectVersionDialog for vanilla")
                         selectVersionDialog.open()
                     }
                 }
@@ -111,6 +132,7 @@ FluentPage {
                     if (!Backend) return
                     let ver = vanillaCombo.currentText
                     if (ver === qsTr("其他版本...")) {
+                        currentSelectionTarget = "vanilla"
                         selectVersionDialog.open()
                         return
                     }
@@ -156,8 +178,17 @@ FluentPage {
 
             ComboBox {
                 id: fabricCombo
-                model: fabricVersions
                 Layout.preferredWidth: 150
+                // model 已经在 Component.onCompleted 中设置
+                onCurrentIndexChanged: {
+                    if (_ignoreIndexChange) return
+                    console.log("[Download] fabricCombo index changed:", currentIndex, "text:", model[currentIndex])
+                    if (model[currentIndex] === qsTr("其他版本...")) {
+                        currentSelectionTarget = "fabric"
+                        console.log("[Download] Opening SelectVersionDialog for fabric")
+                        selectVersionDialog.open()
+                    }
+                }
             }
 
             Button {
@@ -166,6 +197,12 @@ FluentPage {
                 onClicked: {
                     if (!Backend) return
                     let ver = fabricCombo.currentText
+                    // 如果当前选中的是“其他版本...”，则打开选择框
+                    if (ver === qsTr("其他版本...")) {
+                        currentSelectionTarget = "fabric"
+                        selectVersionDialog.open()
+                        return
+                    }
                     versionDialog.version = ver
                     versionDialog.fabric = true
                     versionDialog.open()

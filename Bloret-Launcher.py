@@ -833,57 +833,42 @@ class Backend(QObject):
                 print(f"[DEBUG] Returning Bloret supported versions: {len(BLglobals.ver_id_bloret)} items")
                 return BLglobals.ver_id_bloret
             
-            # 检查缓存
+            # 检查是否已有一网打尽的标志，或者直接检查缓存
             if category in self._versions_cache:
                 print(f"[DEBUG] Found cached versions for {category}: {len(self._versions_cache[category])} items")
                 return self._versions_cache[category]
             
+            # 如果之前已经获取过清单但这个分类不在缓存里（说明是无效分类或者新分类），直接返回空
+            if getattr(self, '_manifest_fetched', False):
+                 return []
+
             # 从BMCLAPI获取版本清单
             api_url = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
             print(f"[DEBUG] Fetching version manifest from: {api_url}")
             
             response = requests.get(api_url, timeout=10)
-            print(f"[DEBUG] Response status code: {response.status_code}")
             
             if response.status_code == 200:
                 data = response.json()
-                print(f"[DEBUG] Response data keys: {list(data.keys())}")
-                
                 all_versions = data.get("versions", [])
                 print(f"[DEBUG] Total versions fetched: {len(all_versions)}")
                 
-                if category == "正式版本":
-                    result = [v["id"] for v in all_versions if v.get("type") == "release"]
-                    print(f"[DEBUG] Found {len(result)} release versions")
-                elif category == "快照版本":
-                    result = [v["id"] for v in all_versions if v.get("type") == "snapshot"]
-                    print(f"[DEBUG] Found {len(result)} snapshot versions")
-                elif category == "远古版本":
-                    result = [v["id"] for v in all_versions if v.get("type") == "old_alpha"]
-                    print(f"[DEBUG] Found {len(result)} old versions")
-                else:
-                    print(f"[DEBUG] Unknown category: {category}")
-                    return []
+                # 一次性处理所有分类并缓存
+                self._versions_cache["正式版本"] = [v["id"] for v in all_versions if v.get("type") == "release"]
+                self._versions_cache["快照版本"] = [v["id"] for v in all_versions if v.get("type") == "snapshot"]
+                # 把 old_alpha 和 old_beta 都归为远古版本
+                self._versions_cache["远古版本"] = [v["id"] for v in all_versions if v.get("type") in ["old_alpha", "old_beta"]]
                 
-                # 缓存结果
-                self._versions_cache[category] = result
-                print(f"[DEBUG] Cached {len(result)} results for {category}")
+                self._manifest_fetched = True
+                
+                result = self._versions_cache.get(category, [])
+                print(f"[DEBUG] Cached result for {category}: {len(result)} items")
                 return result
             else:
                 print(f"[ERROR] Failed to fetch versions: HTTP {response.status_code}")
-                print(f"[ERROR] Response text: {response.text[:200]}")
-                print(f"[ERROR] Response URL: {response.url}")
                 return []
-        except requests.exceptions.Timeout:
-            print(f"[ERROR] Timeout while fetching versions for {category}")
-            return []
-        except requests.exceptions.ConnectionError as e:
-            print(f"[ERROR] Connection error while fetching versions: {e}")
-            return []
         except Exception as e:
             print(f"[ERROR] Exception getting versions by category {category}: {type(e).__name__}: {e}")
-            import traceback
-            traceback.print_exc()
             return []
 
     # Removed incorrect getFabricVersions implementation here to use the correct one below

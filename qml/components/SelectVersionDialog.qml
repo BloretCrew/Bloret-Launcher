@@ -16,48 +16,48 @@ Dialog {
     property string selectedVersion: ""
     property bool isLoading: false
     
-    width: 450
-    height: 350
+    width: 500
+    height: 320
     
     Component.onCompleted: {
+        console.log("[SelectVersionDialog] Component.onCompleted")
         if (Backend) {
-            // 初始加载第一个类别的版本
             updateVersionList(0)
+        }
+    }
+    
+    onAboutToShow: {
+        console.log("[SelectVersionDialog] Dialog about to show")
+        if (!currentVersions || currentVersions.length === 0) {
+            console.log("[SelectVersionDialog] Versions not loaded, loading now...")
+            updateVersionList(categoryCombo.currentIndex)
         }
     }
     
     function updateVersionList(categoryIndex) {
         if (!Backend) {
-            console.error("[SelectVersionDialog] Backend is not available")
+            console.error("[SelectVersionDialog] Backend not available")
             return
         }
         
         let category = categories[categoryIndex]
-        console.log(`[SelectVersionDialog] updateVersionList called for category: ${category}`)
+        console.log(`[SelectVersionDialog] updateVersionList: category=${category}`)
         
-        // 如果是"百络谷支持版本"，直接加载（无需异步）
         if (category === "百络谷支持版本") {
-            console.log("[SelectVersionDialog] Category is '百络谷支持版本', loading directly...")
+            console.log("[SelectVersionDialog] Loading Bloret versions synchronously")
             currentVersions = Backend.getVersionsByCategory(category)
-            console.log(`[SelectVersionDialog] Got ${currentVersions.length} versions for '百络谷支持版本'`)
+            console.log(`[SelectVersionDialog] Got ${currentVersions.length} Bloret versions`)
             versionCombo.model = currentVersions
             if (currentVersions.length > 0) {
                 versionCombo.currentIndex = 0
                 selectedVersion = currentVersions[0]
-                console.log(`[SelectVersionDialog] Selected version: ${selectedVersion}`)
             }
             isLoading = false
-            console.log("[SelectVersionDialog] Loading complete for '百络谷支持版本'")
             return
         }
         
-        // 其他类别：显示加载状态
-        console.log(`[SelectVersionDialog] Category '${category}' requires async loading, showing InfoBar...`)
+        console.log(`[SelectVersionDialog] Loading ${category} asynchronously`)
         isLoading = true
-        infoBar.open()
-        console.log("[SelectVersionDialog] InfoBar opened, starting timer for async load")
-        
-        // 使用 Timer 延迟执行，避免阻塞 UI
         loadingTimer.start()
     }
     
@@ -66,78 +66,89 @@ Dialog {
         interval: 100
         running: false
         onTriggered: {
-            console.log("[SelectVersionDialog] Timer triggered, fetching versions...")
+            console.log("[SelectVersionDialog] Timer triggered")
             let category = selectVersionDialog.categories[categoryCombo.currentIndex]
-            console.log(`[SelectVersionDialog] Calling Backend.getVersionsByCategory('${category}')`)
-            
+            console.log(`[SelectVersionDialog] Fetching ${category} from backend`)
             currentVersions = Backend.getVersionsByCategory(category)
-            console.log(`[SelectVersionDialog] Received ${currentVersions.length} versions from Backend`)
-            
+            console.log(`[SelectVersionDialog] Got ${currentVersions.length} versions`)
             versionCombo.model = currentVersions
             if (currentVersions.length > 0) {
                 versionCombo.currentIndex = 0
                 selectedVersion = currentVersions[0]
-                console.log(`[SelectVersionDialog] Selected first version: ${selectedVersion}`)
-            } else {
-                console.warn("[SelectVersionDialog] No versions received from Backend!")
             }
-            
             isLoading = false
-            console.log("[SelectVersionDialog] isLoading set to false")
-            infoBar.close()
-            console.log("[SelectVersionDialog] InfoBar closed")
         }
     }
     
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: 16
+    contentItem: ColumnLayout {
+        spacing: 15
         
-        InfoBar {
-            id: infoBar
+        RowLayout {
             Layout.fillWidth: true
-            title: qsTr("加载中...")
-            text: qsTr("正在获取 Minecraft 版本列表...")
-            severity: Severity.Info
-            closable: false
+            spacing: 10
+            
+            Label {
+                text: qsTr("版本类别:")
+                Layout.alignment: Qt.AlignVCenter
+            }
+            
+            ComboBox {
+                id: categoryCombo
+                Layout.fillWidth: true
+                model: selectVersionDialog.categories
+                currentIndex: 0
+                enabled: !isLoading
+                onCurrentIndexChanged: {
+                    console.log(`[SelectVersionDialog] Category changed to index ${currentIndex}`)
+                    updateVersionList(currentIndex)
+                }
+            }
+        }
+        
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
             visible: isLoading
-        }
-        
-        Label {
-            text: qsTr("选择版本类别:")
-            font.weight: Font.DemiBold
-            color: Theme.currentTheme.colors.textColor
-        }
-        
-        ComboBox {
-            id: categoryCombo
-            Layout.fillWidth: true
-            model: selectVersionDialog.categories
-            currentIndex: 0
-            enabled: !isLoading
-            onCurrentIndexChanged: {
-                console.log(`[SelectVersionDialog] CategoryCombo changed to index ${currentIndex}: ${selectVersionDialog.categories[currentIndex]}`)
-                updateVersionList(currentIndex)
+            
+            ProgressBar {
+                Layout.fillWidth: true
+                indeterminate: true
             }
         }
         
         Label {
-            text: qsTr("选择版本:")
-            font.weight: Font.DemiBold
-            color: Theme.currentTheme.colors.textColor
+            text: qsTr("正在加载版本...")
+            visible: isLoading
+            Layout.alignment: Qt.AlignHCenter
         }
         
-        ComboBox {
-            id: versionCombo
+        RowLayout {
             Layout.fillWidth: true
-            model: currentVersions
-            enabled: !isLoading
-            onCurrentTextChanged: {
-                selectedVersion = currentText
+            spacing: 10
+            visible: !isLoading
+            
+            Label {
+                text: qsTr("选择版本:")
+                Layout.alignment: Qt.AlignVCenter
+            }
+            
+            ComboBox {
+                id: versionCombo
+                Layout.fillWidth: true
+                model: currentVersions
+                enabled: !isLoading
+                onCurrentTextChanged: {
+                    if (currentText) {
+                        selectedVersion = currentText
+                        console.log(`[SelectVersionDialog] Version selected: ${currentText}`)
+                    }
+                }
             }
         }
         
-        Item { Layout.fillHeight: true }
+        Item {
+            Layout.fillHeight: true
+        }
     }
     
     footer: DialogButtonBox {
@@ -145,8 +156,9 @@ Dialog {
             text: qsTr("确定")
             DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
             highlighted: true
-            enabled: !isLoading
+            enabled: !isLoading && selectedVersion.length > 0
             onClicked: {
+                console.log(`[SelectVersionDialog] User clicked OK, emitting versionSelected(${selectedVersion})`)
                 selectVersionDialog.versionSelected(selectedVersion)
                 selectVersionDialog.accept()
             }
@@ -155,7 +167,10 @@ Dialog {
             text: qsTr("取消")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
             enabled: !isLoading
-            onClicked: selectVersionDialog.reject()
+            onClicked: {
+                console.log("[SelectVersionDialog] User clicked Cancel")
+                selectVersionDialog.reject()
+            }
         }
     }
 }
