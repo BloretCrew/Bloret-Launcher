@@ -61,12 +61,17 @@ class Backend(QObject):
     downloadPaused = Signal(bool)
     coreManagerRequested = Signal(str, dict)
     activityInfoChanged = Signal(dict)
+    launchDialogRequested = Signal(str)
+    launchProgressUpdated = Signal(float, str, str)
+    launchDialogClosed = Signal()
 
     def __init__(self):
         super().__init__()
         self._server_info = {}
         self._activity_info = BLglobals.BL_Activity
         self._last_core_manager_request_time = 0  # 防止重复请求
+        self._is_launching = False
+        self._launch_session_id = 0
 
     def setBackendParent(self, parent):
         self.parent = parent
@@ -95,18 +100,89 @@ class Backend(QObject):
         return "访客"
         
     @Slot(str)
-    @Slot(str)
     def launchGame(self, version):
         print(f"Requested to launch game: {version}")
+
+        if self._is_launching:
+            print("Launch request ignored: another launch is already in progress")
+            return
+
+        self._is_launching = True
+        self._launch_session_id += 1
+        launch_session_id = self._launch_session_id
+        self.launchDialogRequested.emit(f"正在启动 {version}")
+
+        def is_current_session():
+            return launch_session_id == self._launch_session_id
+
+        def emit_progress(progress, status, detail=""):
+            if not is_current_session():
+                return
+            self.launchProgressUpdated.emit(float(progress), status, detail)
+
+        def finish_launch(close_dialog=False):
+            if not is_current_session():
+                return
+            self._is_launching = False
+            if close_dialog:
+                self.launchDialogClosed.emit()
+
         def run_launch():
             try:
+                from modules.Bloret_PassPort import refresh_minecraft_token, sync_bloret_passport_account_to_mc
+                from modules.launch import monitor_minecraft_window
+
+                emit_progress(5, f"正在准备启动环境: {version}", "")
+
+                emit_progress(20, "正在向 Bloret PassPort 刷新令牌...", "")
+                refresh_ok = refresh_minecraft_token()
+                if refresh_ok:
+                    emit_progress(35, "令牌刷新完成", "")
+                else:
+                    emit_progress(35, "令牌刷新未完成，继续使用现有状态", "")
+
+                emit_progress(50, "正在重新获取 Minecraft 档案数据...", "")
+                sync_ok = sync_bloret_passport_account_to_mc(parent_window=None)
+                if sync_ok:
+                    self.minecraftAccountsChanged.emit([])
+                    emit_progress(65, "档案数据更新完成", "")
+                else:
+                    emit_progress(65, "档案同步失败，将使用本地缓存档案", "")
+
+                emit_progress(80, "正在补全文件并解析启动参数...", "如有缺失文件会自动下载")
                 launch_args, game_dir = Get_Run_Script(version)
+
+                emit_progress(95, "正在执行启动命令...", "")
                 print(f"Launching with args: {launch_args}")
                 subprocess.Popen(launch_args, cwd=game_dir)
+
+                emit_progress(97, "启动命令已执行，正在等待 Minecraft 窗口出现...", "")
+
+                window_found_event = threading.Event()
+
+                def on_window_found():
+                    if window_found_event.is_set():
+                        return
+                    window_found_event.set()
+                    emit_progress(100, "已检测到 Minecraft 窗口，启动完成", "")
+                    finish_launch(close_dialog=True)
+
+                monitor_minecraft_window(version, callback=on_window_found)
+
+                def monitor_timeout_guard():
+                    if window_found_event.wait(310):
+                        return
+                    emit_progress(100, "等待 Minecraft 窗口超时", "未检测到窗口，你可以继续后台等待或关闭此对话框后重试")
+                    finish_launch(close_dialog=False)
+
+                threading.Thread(target=monitor_timeout_guard, daemon=True).start()
             except Exception as e:
                 print(f"Failed to launch: {e}")
                 import traceback
                 traceback.print_exc()
+                emit_progress(100, f"启动失败: {e}", "")
+                finish_launch(close_dialog=False)
+
         threading.Thread(target=run_launch, daemon=True).start()
 
     @Slot(result=dict)

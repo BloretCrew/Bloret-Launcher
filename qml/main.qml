@@ -98,6 +98,21 @@ FluentWindow {
             // 账户信息变化时更新导航
             updatePassPortNavigation()
         }
+
+        function onLaunchDialogRequested(title) {
+            launchProgressDialog.launchTitle = title
+            launchProgressDialog.updateLaunchProgress(0, Backend ? Backend.tr("正在准备启动环境...") : "正在准备启动环境...", "")
+            launchProgressDialog.open()
+        }
+
+        function onLaunchProgressUpdated(progress, status, detail) {
+            launchProgressDialog.updateLaunchProgress(progress, status, detail)
+        }
+
+        function onLaunchDialogClosed() {
+            launchProgressDialog.close()
+        }
+
         function onDownloadDialogRequested(title) {
             downloadDialog.downloadTitle = title
             downloadDialog.downloadProgress = 0
@@ -136,5 +151,9 @@ FluentWindow {
         onCancelClicked: {
             if (Backend) Backend.cancelDownload()
         }
+    }
+
+    LaunchProgressDialog {
+        id: launchProgressDialog
     }
 }
