@@ -27,25 +27,35 @@ Dialog {
     }
     
     function updateVersionList(categoryIndex) {
-        if (!Backend) return
+        if (!Backend) {
+            console.error("[SelectVersionDialog] Backend is not available")
+            return
+        }
         
         let category = categories[categoryIndex]
+        console.log(`[SelectVersionDialog] updateVersionList called for category: ${category}`)
         
         // 如果是"百络谷支持版本"，直接加载（无需异步）
         if (category === "百络谷支持版本") {
+            console.log("[SelectVersionDialog] Category is '百络谷支持版本', loading directly...")
             currentVersions = Backend.getVersionsByCategory(category)
+            console.log(`[SelectVersionDialog] Got ${currentVersions.length} versions for '百络谷支持版本'`)
             versionCombo.model = currentVersions
             if (currentVersions.length > 0) {
                 versionCombo.currentIndex = 0
                 selectedVersion = currentVersions[0]
+                console.log(`[SelectVersionDialog] Selected version: ${selectedVersion}`)
             }
             isLoading = false
+            console.log("[SelectVersionDialog] Loading complete for '百络谷支持版本'")
             return
         }
         
         // 其他类别：显示加载状态
+        console.log(`[SelectVersionDialog] Category '${category}' requires async loading, showing InfoBar...`)
         isLoading = true
         infoBar.open()
+        console.log("[SelectVersionDialog] InfoBar opened, starting timer for async load")
         
         // 使用 Timer 延迟执行，避免阻塞 UI
         loadingTimer.start()
@@ -56,15 +66,26 @@ Dialog {
         interval: 100
         running: false
         onTriggered: {
+            console.log("[SelectVersionDialog] Timer triggered, fetching versions...")
             let category = selectVersionDialog.categories[categoryCombo.currentIndex]
+            console.log(`[SelectVersionDialog] Calling Backend.getVersionsByCategory('${category}')`)
+            
             currentVersions = Backend.getVersionsByCategory(category)
+            console.log(`[SelectVersionDialog] Received ${currentVersions.length} versions from Backend`)
+            
             versionCombo.model = currentVersions
             if (currentVersions.length > 0) {
                 versionCombo.currentIndex = 0
                 selectedVersion = currentVersions[0]
+                console.log(`[SelectVersionDialog] Selected first version: ${selectedVersion}`)
+            } else {
+                console.warn("[SelectVersionDialog] No versions received from Backend!")
             }
+            
             isLoading = false
+            console.log("[SelectVersionDialog] isLoading set to false")
             infoBar.close()
+            console.log("[SelectVersionDialog] InfoBar closed")
         }
     }
     
@@ -95,6 +116,7 @@ Dialog {
             currentIndex: 0
             enabled: !isLoading
             onCurrentIndexChanged: {
+                console.log(`[SelectVersionDialog] CategoryCombo changed to index ${currentIndex}: ${selectVersionDialog.categories[currentIndex]}`)
                 updateVersionList(currentIndex)
             }
         }
