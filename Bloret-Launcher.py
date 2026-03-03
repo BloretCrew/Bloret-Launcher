@@ -820,6 +820,72 @@ class Backend(QObject):
         except:
             return ["1.21.8", "1.21.7", "1.20.1"]
 
+    # 版本缓存
+    _versions_cache = {}
+    
+    @Slot(str, result=list)
+    def getVersionsByCategory(self, category):
+        """根据类别返回版本列表"""
+        try:
+            print(f"[DEBUG] Getting versions for category: {category}")
+            
+            if category == "百络谷支持版本":
+                print(f"[DEBUG] Returning Bloret supported versions: {len(BLglobals.ver_id_bloret)} items")
+                return BLglobals.ver_id_bloret
+            
+            # 检查缓存
+            if category in self._versions_cache:
+                print(f"[DEBUG] Found cached versions for {category}: {len(self._versions_cache[category])} items")
+                return self._versions_cache[category]
+            
+            # 从BMCLAPI获取版本清单
+            api_url = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
+            print(f"[DEBUG] Fetching version manifest from: {api_url}")
+            
+            response = requests.get(api_url, timeout=10)
+            print(f"[DEBUG] Response status code: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"[DEBUG] Response data keys: {list(data.keys())}")
+                
+                all_versions = data.get("versions", [])
+                print(f"[DEBUG] Total versions fetched: {len(all_versions)}")
+                
+                if category == "正式版本":
+                    result = [v["id"] for v in all_versions if v.get("type") == "release"]
+                    print(f"[DEBUG] Found {len(result)} release versions")
+                elif category == "快照版本":
+                    result = [v["id"] for v in all_versions if v.get("type") == "snapshot"]
+                    print(f"[DEBUG] Found {len(result)} snapshot versions")
+                elif category == "远古版本":
+                    result = [v["id"] for v in all_versions if v.get("type") == "old_alpha"]
+                    print(f"[DEBUG] Found {len(result)} old versions")
+                else:
+                    print(f"[DEBUG] Unknown category: {category}")
+                    return []
+                
+                # 缓存结果
+                self._versions_cache[category] = result
+                print(f"[DEBUG] Cached {len(result)} results for {category}")
+                return result
+            else:
+                print(f"[ERROR] Failed to fetch versions: HTTP {response.status_code}")
+                print(f"[ERROR] Response text: {response.text[:200]}")
+                print(f"[ERROR] Response URL: {response.url}")
+                return []
+        except requests.exceptions.Timeout:
+            print(f"[ERROR] Timeout while fetching versions for {category}")
+            return []
+        except requests.exceptions.ConnectionError as e:
+            print(f"[ERROR] Connection error while fetching versions: {e}")
+            return []
+        except Exception as e:
+            print(f"[ERROR] Exception getting versions by category {category}: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
     # Removed incorrect getFabricVersions implementation here to use the correct one below
 
     @Slot(result=list)
@@ -1131,6 +1197,19 @@ class Backend(QObject):
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print(f"Theme mode updated to: {mode}")
 
+    @Slot(result=bool)
+    def getShowAccountOnHome(self):
+        config_data = cfg.read()
+        return config_data.get('show_account_on_home', True)
+
+    @Slot(bool)
+    def setShowAccountOnHome(self, show):
+        config_data = cfg.read()
+        config_data['show_account_on_home'] = show
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Show account on home updated to: {show}")
+
     @Slot(str)
     def queryUUID(self, name):
         print(f"Requested query UUID for name: {name}")
@@ -1340,6 +1419,11 @@ class Backend(QObject):
         if config_data.get('Bloret_PassPort_Login'):
             return config_data.get('Bloret_PassPort_UserName', 'Unknown')
         return "未登录"
+
+    @Slot(result=bool)
+    def getBloretPassPortLoginStatus(self):
+        config_data = cfg.read()
+        return config_data.get('Bloret_PassPort_Login', False)
 
     @Slot(result=str)
     def getPassPortName(self):

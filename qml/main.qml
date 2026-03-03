@@ -15,7 +15,7 @@ FluentWindow {
 
     navigationView.navExpandWidth: 200
 
-    navigationItems: [
+    property var navItems: [
         {
             title: qsTr("主页"),
             page: Qt.resolvedUrl("pages/Home.qml"),
@@ -26,7 +26,8 @@ FluentWindow {
             title: qsTr("通行证"),
             page: Qt.resolvedUrl("pages/PassPort.qml"),
             icon: "ic_fluent_person_20_regular",
-            position: Position.Bottom
+            position: Position.Bottom,
+            passportItem: true  // 标记为通行证项
         },
         {
             title: qsTr("下载"),
@@ -61,21 +62,42 @@ FluentWindow {
             position: Position.Bottom
         }
     ]
-
-    DownloadDialog {
-        id: downloadDialog
+    
+    navigationItems: navItems
+    
+    function updatePassPortNavigation() {
+        if (!Backend) return
         
-        onPauseClicked: {
-            if (Backend) Backend.toggleDownloadPause()
-        }
+        let isLoggedIn = Backend.getBloretPassPortLoginStatus()
+        let passPortAvatar = Backend.getPassPortAvatar()
+        let passPortName = Backend.getPassPortName()
         
-        onCancelClicked: {
-            if (Backend) Backend.cancelDownload()
+        // 更新通行证导航项
+        for (let i = 0; i < navItems.length; i++) {
+            if (navItems[i].passportItem) {
+                if (isLoggedIn && passPortAvatar) {
+                    // 已登录：显示用户头像和名字
+                    navItems[i].title = passPortName
+                    navItems[i].source = passPortAvatar  // 使用source显示自定义图片
+                    navItems[i].icon = ""  // 清除默认icon
+                } else {
+                    // 未登录：显示默认icon和"通行证"文本
+                    navItems[i].title = qsTr("通行证")
+                    navItems[i].source = ""
+                    navItems[i].icon = "ic_fluent_person_20_regular"
+                }
+                break
+            }
         }
+        navigationItems = navItems  // 触发更新
     }
-
+    
     Connections {
         target: Backend
+        function onMinecraftAccountsChanged(accounts) {
+            // 账户信息变化时更新导航
+            updatePassPortNavigation()
+        }
         function onDownloadDialogRequested(title) {
             downloadDialog.downloadTitle = title
             downloadDialog.downloadProgress = 0
@@ -97,6 +119,22 @@ FluentWindow {
         
         function onDownloadPaused(paused) {
             downloadDialog.setPaused(paused)
+        }
+    }
+    
+    Component.onCompleted: {
+        updatePassPortNavigation()
+    }
+    
+    DownloadDialog {
+        id: downloadDialog
+        
+        onPauseClicked: {
+            if (Backend) Backend.toggleDownloadPause()
+        }
+        
+        onCancelClicked: {
+            if (Backend) Backend.cancelDownload()
         }
     }
 }

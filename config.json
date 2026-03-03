@@ -30,5 +30,6 @@
         "chosen": -1,
         "accounts": []
     },
-    "mwtool_switch_open": true
+    "mwtool_switch_open": true,
+    "show_account_on_home": true
 }

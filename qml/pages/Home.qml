@@ -12,6 +12,7 @@ FluentPage {
     property var serverInfo: ({})
     property var launchItems: []
     property string currentVersion: ""
+    property bool showAccountOnHome: true
 
     Component.onCompleted: {
         // 从后端获取活动信息（从 API https://launcher.bloret.net/api/info 获取）
@@ -26,6 +27,9 @@ FluentPage {
         if (launchItems.length > 0) {
             currentVersion = launchItems[0].name
         }
+        
+        showAccountOnHome = Backend.getShowAccountOnHome()
+        
         Backend.refreshServerInfo()
     }
 
@@ -379,6 +383,7 @@ Rectangle {
                 RowLayout {
                     spacing: 8
                     Layout.fillWidth: true
+                    visible: showAccountOnHome
                     
                     // 用户头像
                     Rectangle {

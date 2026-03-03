@@ -36,6 +36,9 @@ FluentPage {
         _mcFolderTitle = Backend ? Backend.tr("Minecraft 文件夹位置") : "Minecraft 文件夹位置"
         _mcToolbarTitle = Backend ? Backend.tr("Minecraft 小工具栏") : "Minecraft 小工具栏"
         _mcToolbarDesc = Backend ? Backend.tr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏") : "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"
+        _homeSection = Backend ? Backend.tr("首页") : "首页"
+        _showAccountTitle = Backend ? Backend.tr("显示账户信息") : "显示账户信息"
+        _showAccountDesc = Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息"
         _appearanceSection = Backend ? Backend.tr("外观") : "外观"
         _langTitle = Backend ? Backend.tr("语言 / language") : "语言 / language"
         _langDesc = Backend ? Backend.tr("调整语言设置") : "调整语言设置"
@@ -60,6 +63,9 @@ FluentPage {
     property string _mcFolderTitle: Backend ? Backend.tr("Minecraft 文件夹位置") : "Minecraft 文件夹位置"
     property string _mcToolbarTitle: Backend ? Backend.tr("Minecraft 小工具栏") : "Minecraft 小工具栏"
     property string _mcToolbarDesc: Backend ? Backend.tr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏") : "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"
+    property string _homeSection: Backend ? Backend.tr("首页") : "首页"
+    property string _showAccountTitle: Backend ? Backend.tr("显示账户信息") : "显示账户信息"
+    property string _showAccountDesc: Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息"
     property string _appearanceSection: Backend ? Backend.tr("外观") : "外观"
     property string _langTitle: Backend ? Backend.tr("语言 / language") : "语言 / language"
     property string _langDesc: Backend ? Backend.tr("调整语言设置") : "调整语言设置"
@@ -102,6 +108,8 @@ FluentPage {
                     break
                 }
             }
+            
+            showAccountSwitch.checked = Backend.getShowAccountOnHome()
         }
     }
 
@@ -176,6 +184,33 @@ FluentPage {
             icon.name: "ic_fluent_window_dev_tools_20_filled"
             Switch {
                 checked: true
+            }
+        }
+    }
+
+    Label {
+        font.pixelSize: 20
+        font.weight: Font.DemiBold
+        text: _homeSection
+        Layout.topMargin: 10
+        color: Theme.currentTheme.colors.textColor
+    }
+
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 4
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: _showAccountTitle
+            description: _showAccountDesc
+            icon.name: "ic_fluent_person_20_regular"
+            Switch {
+                id: showAccountSwitch
+                checked: true
+                onCheckedChanged: {
+                    if (Backend) Backend.setShowAccountOnHome(checked)
+                }
             }
         }
     }

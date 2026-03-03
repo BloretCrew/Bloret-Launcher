@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import Qt5Compat.GraphicalEffects
 import "../../themes"
 import "../../components"
 
@@ -63,13 +64,48 @@ Item {
             anchors.topMargin: 6
             anchors.bottomMargin: 8
 
-            IconWidget {
-                id: icon
+            // 检查是否为头像（source是图片路径）
+            Item {
+                id: iconContainer
                 anchors.verticalCenter: parent.verticalCenter
-                size: itemData.size !== undefined ? itemData.size : (itemData.icon || itemData.source ? 19 : 0)
-                icon: itemData.icon || ""
-                source: itemData.source || ""
-                enableColorOverlay: itemData.enableColorOverlay || false
+                width: itemData.source ? 19 : (itemData.icon ? 19 : 0)
+                height: width
+                visible: width > 0
+                
+                // 如果有source，显示头像；否则使用IconWidget显示icon
+                Rectangle {
+                    id: avatarRect
+                    anchors.fill: parent
+                    radius: 8  // 圆角8
+                    color: "transparent"
+                    clip: true
+                    visible: itemData.source ? true : false
+                    
+                    Image {
+                        id: avatarImage
+                        anchors.fill: parent
+                        source: itemData.source || ""
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Rectangle {
+                                width: avatarImage.width
+                                height: avatarImage.height
+                                radius: 8
+                            }
+                        }
+                    }
+                }
+                
+                IconWidget {
+                    id: icon
+                    anchors.centerIn: parent
+                    size: itemData.icon ? 19 : 0
+                    icon: itemData.icon || ""
+                    enableColorOverlay: itemData.enableColorOverlay || false
+                    visible: !itemData.source  // 当有source时隐藏此icon
+                }
             }
 
             Text {
