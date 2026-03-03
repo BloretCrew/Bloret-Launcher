@@ -12,9 +12,9 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 # Create the QApplication early so it can be used in shims and module imports
-from PySide6.QtWidgets import QApplication, QFileDialog
+from PySide6.QtWidgets import QApplication, QFileDialog, QMenu, QSystemTrayIcon
 from PySide6.QtCore import QLocale, Qt, QTranslator, QObject, Slot, Signal, Property, QUrl
-from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices
+from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices, QAction, QPixmap, QPainter
 
 QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 app = QApplication(sys.argv)
@@ -38,8 +38,60 @@ from modules.setup_ui import get_all_launch_items, scan_java_paths
 from modules.i18n import i18nText
 from modules.Bloriko import AskBloriko
 import modules.web
+import modules.links as links
 import socket
 import send2trash
+
+
+def get_app_icon_path(for_tray=False):
+    """根据平台返回应用图标路径：macOS 使用 Bloret-Fluent.png；程序坞/标题栏使用带留白版本，托盘保留原始图标。"""
+    if sys.platform == "darwin":
+        mac_icon = SCRIPT_DIR / "Bloret-Fluent.png"
+        if mac_icon.exists():
+            if for_tray:
+                return mac_icon
+
+            # macOS 程序坞视觉尺寸修正：生成带透明留白的图标，避免看起来比其他应用更大
+            padded_icon = SCRIPT_DIR / "cache" / "Bloret-Fluent-dock.png"
+            try:
+                src = QPixmap(str(mac_icon))
+                if not src.isNull():
+                    side = max(src.width(), src.height())
+                    canvas = QPixmap(side, side)
+                    canvas.fill(Qt.GlobalColor.transparent)
+
+                    target_side = int(side * 0.84)
+                    scaled = src.scaled(
+                        target_side,
+                        target_side,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+
+                    painter = QPainter(canvas)
+                    x = (side - scaled.width()) // 2
+                    y = (side - scaled.height()) // 2
+                    painter.drawPixmap(x, y, scaled)
+                    painter.end()
+
+                    padded_icon.parent.mkdir(parents=True, exist_ok=True)
+                    if canvas.save(str(padded_icon), "PNG"):
+                        return padded_icon
+            except Exception as e:
+                print(f"Failed to generate padded mac icon: {e}")
+
+            return mac_icon
+
+    default_icon = SCRIPT_DIR / "bloret.ico"
+    if default_icon.exists():
+        return default_icon
+
+    # 兜底：如果默认图标不存在，macOS 再尝试 fluent 图标
+    fallback_mac_icon = SCRIPT_DIR / "Bloret-Fluent.png"
+    if fallback_mac_icon.exists():
+        return fallback_mac_icon
+
+    return None
 
 class Backend(QObject):
     """
@@ -72,6 +124,7 @@ class Backend(QObject):
         self._last_core_manager_request_time = 0  # 防止重复请求
         self._is_launching = False
         self._launch_session_id = 0
+        self._screenshot_widget = None
 
     def setBackendParent(self, parent):
         self.parent = parent
@@ -1271,6 +1324,26 @@ class Backend(QObject):
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print(f"Show account on home updated to: {show}")
 
+    @Slot(result=bool)
+    def getMinimizeToTrayOnClose(self):
+        config_data = cfg.read()
+        return config_data.get('minimize_to_tray_on_close', True)
+
+    @Slot(bool)
+    def setMinimizeToTrayOnClose(self, enabled):
+        config_data = cfg.read()
+        config_data['minimize_to_tray_on_close'] = enabled
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Minimize to tray on close updated to: {enabled}")
+
+    @Slot(result=bool)
+    def isSystemTrayAvailable(self):
+        try:
+            return QSystemTrayIcon.isSystemTrayAvailable()
+        except Exception:
+            return False
+
     @Slot(str)
     def queryUUID(self, name):
         print(f"Requested query UUID for name: {name}")
@@ -1684,8 +1757,17 @@ class Backend(QObject):
         from modules.ShortCut import ScreenShortCut
         from PySide6.QtCore import QTimer
         print("Requested screenshot")
+
+        def start_screenshot():
+            try:
+                self._screenshot_widget = ScreenShortCut()
+                if self._screenshot_widget is not None:
+                    self._screenshot_widget.destroyed.connect(lambda *args: setattr(self, '_screenshot_widget', None))
+            except Exception as e:
+                print(f"Failed to start screenshot: {e}")
+
         # 使用 QTimer.singleShot 在主线程中执行截图，避免线程问题
-        QTimer.singleShot(0, lambda: ScreenShortCut())
+        QTimer.singleShot(0, start_screenshot)
 
     @Slot(str, str)
     def startEasytierWithConfig(self, port, password):
@@ -1756,9 +1838,86 @@ class Backend(QObject):
         from modules.links import open_github_bloret_Launcher
         open_github_bloret_Launcher()
 
+
+class LauncherTrayIcon(QSystemTrayIcon):
+    """RinUI 版系统托盘图标与菜单"""
+
+    def __init__(self, main_window):
+        super().__init__()
+        self.main_window = main_window
+
+        icon_path = get_app_icon_path(for_tray=True)
+        if icon_path:
+            self.setIcon(QIcon(str(icon_path)))
+        else:
+            self.setIcon(main_window.windowIcon())
+
+        self.setToolTip("Bloret Launcher")
+
+        self.menu = QMenu()
+        self.launch_menu = self.menu.addMenu(i18nText("🔼  启动版本"))
+        self.menu.aboutToShow.connect(self._refresh_launch_menu)
+        self._refresh_launch_menu()
+
+        self.menu.addSeparator()
+        self.menu.addAction(i18nText('🔡  访问 BBS'), links.open_BBBS_link)
+        self.menu.addAction(i18nText('🔡  访问 Bloret PassPort'), links.open_PassPort_link)
+        self.menu.addAction(i18nText('🔡  访问 百络图床'), links.open_BIMG_WEB_link)
+
+        self.menu.addSeparator()
+        self.menu.addAction(i18nText('🔄️  重启程序'), self.main_window.restart_app)
+        self.menu.addAction(i18nText('✅  显示窗口'), self.main_window.show_main_window)
+        self.menu.addAction(i18nText('❎  退出程序'), self.main_window.quit_app)
+
+        self.setContextMenu(self.menu)
+        self.activated.connect(self._on_tray_activated)
+
+    def _refresh_launch_menu(self):
+        self.launch_menu.clear()
+
+        try:
+            launch_items = get_all_launch_items()
+            version_names = []
+
+            for item in launch_items:
+                if isinstance(item, dict):
+                    name = item.get("name", "")
+                else:
+                    name = str(item)
+
+                if name:
+                    version_names.append(name)
+
+            unique_versions = list(dict.fromkeys(version_names))
+            if not unique_versions:
+                empty_action = QAction(i18nText("暂无可启动版本"), self.launch_menu)
+                empty_action.setEnabled(False)
+                self.launch_menu.addAction(empty_action)
+                return
+
+            for version in unique_versions:
+                action = QAction(version, self.launch_menu)
+                action.triggered.connect(lambda checked=False, v=version: self.main_window.launch_version_from_tray(v))
+                self.launch_menu.addAction(action)
+
+        except Exception as e:
+            print(f"Failed to refresh tray launch menu: {e}")
+            error_action = QAction(i18nText("加载启动列表失败"), self.launch_menu)
+            error_action.setEnabled(False)
+            self.launch_menu.addAction(error_action)
+
+    def _on_tray_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            if self.main_window.isMinimized() or not self.main_window.isVisible():
+                self.main_window.show_main_window()
+            else:
+                self.main_window.hide()
+
 class LauncherV2(RinUIWindow):
     def __init__(self):
         super().__init__()
+        self._force_quit = False
+        self.tray_icon = None
         
         # Inject Backend to QML BEFORE loading
         self.backend = Backend()
@@ -1768,15 +1927,92 @@ class LauncherV2(RinUIWindow):
         qml_file = SCRIPT_DIR / "qml" / "main.qml"
         self.load(str(qml_file))
         
-        icon_path = SCRIPT_DIR / "bloret.ico"
-        if icon_path.exists():
+        icon_path = get_app_icon_path()
+        if icon_path:
             self.setIcon(str(icon_path))
         self.setProperty("title", "Bloret Launcher v2")
+
+        self._init_system_tray()
+
+    def _init_system_tray(self):
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            print("System tray is not available on this platform")
+            return
+
+        self.tray_icon = LauncherTrayIcon(self)
+        self.tray_icon.show()
+
+    def launch_version_from_tray(self, version):
+        if version and self.backend:
+            self.backend.launchGame(version)
+
+    def show_main_window(self):
+        self.show()
+        try:
+            self.showNormal()
+        except Exception:
+            pass
+        self.raise_()
+        self.activateWindow()
+
+    def quit_app(self):
+        self._force_quit = True
+        if self.tray_icon:
+            self.tray_icon.hide()
+        QApplication.quit()
+
+    def restart_app(self):
+        if getattr(sys, 'frozen', False):
+            args = [sys.executable] + sys.argv[1:]
+        else:
+            args = [sys.executable] + sys.argv
+
+        kwargs = {"shell": False}
+        if sys.platform == 'win32':
+            kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        else:
+            kwargs["start_new_session"] = True
+
+        subprocess.Popen(args, **kwargs)
+        self.quit_app()
+
+    def closeEvent(self, event):
+        if self._force_quit:
+            try:
+                super().closeEvent(event)
+            except Exception:
+                event.accept()
+            return
+
+        minimize_to_tray = True
+        try:
+            if self.backend:
+                minimize_to_tray = self.backend.getMinimizeToTrayOnClose()
+        except Exception:
+            minimize_to_tray = True
+
+        tray_available = bool(self.tray_icon and self.tray_icon.isVisible())
+
+        if minimize_to_tray and tray_available:
+            event.ignore()
+            self.hide()
+            return
+
+        self._force_quit = True
+        if self.tray_icon:
+            self.tray_icon.hide()
+        try:
+            super().closeEvent(event)
+        except Exception:
+            event.accept()
 
 if __name__ == "__main__":
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
     # app is already created at the top
+    global_icon_path = get_app_icon_path()
+    if global_icon_path:
+        app.setWindowIcon(QIcon(str(global_icon_path)))
     launcher = LauncherV2()
     sys.exit(app.exec())

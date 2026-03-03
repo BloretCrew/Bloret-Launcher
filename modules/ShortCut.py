@@ -1,9 +1,11 @@
 import sys
 import ctypes
 import os
+from pathlib import Path
 from PySide6.QtWidgets import QApplication, QWidget, QDialog, QVBoxLayout, QPushButton, QHBoxLayout, QLabel
-from PySide6.QtCore import Qt, QRect, QPoint, QPropertyAnimation, QEasingCurve, QTimer, Property as pyqtProperty
+from PySide6.QtCore import Qt, QRect, QPoint, QPropertyAnimation, QEasingCurve, QTimer, Property as pyqtProperty, QUrl
 from PySide6.QtGui import QGuiApplication, QScreen, QPixmap, QPainter, QColor, QCursor, QFont
+from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtUiTools import QUiLoader
 if sys.platform == "win32":
     import win32gui
@@ -84,6 +86,14 @@ class ScreenCaptureWidget(QWidget):
             target_screen = QGuiApplication.primaryScreen()
         
         self.target_screen = target_screen
+        if sys.platform == "win32":
+            self.default_tip_text = "移动鼠标选择窗口，或拖拽框选区域"
+        else:
+            self.default_tip_text = "拖拽框选区域，单击可截取当前屏幕"
+
+        self.tipQuickWidget = None
+        self.CardWidget = None
+        self.ScreenCut_Title = None
         
         # 设置窗口为全屏覆盖层
         self.setWindowFlags(
@@ -125,6 +135,10 @@ class ScreenCaptureWidget(QWidget):
     
     def _build_ui(self):
         """直接用代码构建截图提示 UI"""
+        if self._build_rinui_tip_widget():
+            QTimer.singleShot(0, self._update_tip_geometry)
+            return
+
         try:
             if QFLUENTWIDGETS_AVAILABLE:
                 # 创建 CardWidget 容器
@@ -146,7 +160,7 @@ class ScreenCaptureWidget(QWidget):
                 
                 # 创建提示标签
                 self.ScreenCut_Title = CaptionLabel(self.CardWidget)
-                self.ScreenCut_Title.setText("移动鼠标选择窗口，或拖拽框选区域")
+                self.ScreenCut_Title.setText(self.default_tip_text)
                 self.ScreenCut_Title.setWordWrap(True)
                 
                 # 构建布局
@@ -167,7 +181,7 @@ class ScreenCaptureWidget(QWidget):
             else:
                 # 降级方案：使用标准 QLabel
                 self.ScreenCut_Title = QLabel(self)
-                self.ScreenCut_Title.setText("移动鼠标选择窗口，或拖拽框选区域")
+                self.ScreenCut_Title.setText(self.default_tip_text)
                 self.ScreenCut_Title.setWordWrap(True)
                 self.ScreenCut_Title.setStyleSheet("background-color: rgba(0,0,0,180); color: white; padding: 10px; border-radius: 5px;")
                 
@@ -183,11 +197,78 @@ class ScreenCaptureWidget(QWidget):
         # 初始化位置
         QTimer.singleShot(0, self._update_tip_geometry)
 
+    def _build_rinui_tip_widget(self):
+        """优先使用 RinUI QML 组件构建截图提示卡片（效果参考 CW2 Widget）"""
+        try:
+            project_root = Path(__file__).resolve().parent.parent
+            qml_file = project_root / "qml" / "components" / "ScreenCutTipWidget.qml"
+            if not qml_file.exists():
+                return False
+
+            tip_widget = QQuickWidget(self)
+            tip_widget.setResizeMode(QQuickWidget.ResizeMode.SizeViewToRootObject)
+            tip_widget.setClearColor(Qt.GlobalColor.transparent)
+            tip_widget.setAttribute(Qt.WA_TranslucentBackground, True)
+            tip_widget.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+
+            engine = tip_widget.engine()
+            engine.addImportPath(str(project_root))
+            engine.addImportPath(str(project_root / "RinUI"))
+
+            tip_widget.setSource(QUrl.fromLocalFile(str(qml_file)))
+            if tip_widget.status() == QQuickWidget.Status.Error:
+                error_text = "; ".join(e.toString() for e in tip_widget.errors())
+                print(f"Failed to load RinUI screenshot tip widget: {error_text}")
+                tip_widget.deleteLater()
+                return False
+
+            root_obj = tip_widget.rootObject()
+            if root_obj is None:
+                tip_widget.deleteLater()
+                return False
+
+            root_obj.setProperty("tipText", self.default_tip_text)
+            self.tipQuickWidget = tip_widget
+            return True
+        except Exception as e:
+            print(f"Failed to build RinUI screenshot tip widget: {e}")
+            return False
+
+    def _set_tip_text(self, text):
+        text = text or ""
+
+        if self.tipQuickWidget:
+            root_obj = self.tipQuickWidget.rootObject()
+            if root_obj and root_obj.property("tipText") != text:
+                root_obj.setProperty("tipText", text)
+                self._update_tip_geometry()
+            return
+
+        if self.ScreenCut_Title and self.ScreenCut_Title.text() != text:
+            self.ScreenCut_Title.setText(text)
+            self._update_tip_geometry()
+
     def _update_tip_geometry(self):
         """强制更新提示框位置（居中显示在当前屏幕顶部）"""
         try:
             # 获取自身 geometry (即当前屏幕 geometry)
             widget_rect = self.rect()
+
+            if self.tipQuickWidget:
+                size_hint = self.tipQuickWidget.sizeHint()
+                hint_width = size_hint.width() if size_hint.width() > 0 else 420
+                hint_height = size_hint.height() if size_hint.height() > 0 else 66
+
+                self.tipQuickWidget.resize(max(420, hint_width), max(60, hint_height))
+                widget_width = self.tipQuickWidget.width()
+
+                target_local_x = (widget_rect.width() - widget_width) // 2
+                target_local_y = 25
+
+                self.tipQuickWidget.move(target_local_x, target_local_y)
+                self.tipQuickWidget.raise_()
+                self.tipQuickWidget.show()
+                return
             
             # 优先使用 CardWidget，如果不存在则使用 ScreenCut_Title
             if hasattr(self, 'CardWidget') and self.CardWidget:
@@ -308,11 +389,8 @@ class ScreenCaptureWidget(QWidget):
                 
                 # 更新提示文字
                 window_title = win32gui.GetWindowText(hwnd)
-                if hasattr(self, 'ScreenCut_Title') and self.ScreenCut_Title:
-                    new_text = f"当前窗口：{window_title}" if window_title else "当前窗口"
-                    if self.ScreenCut_Title.text() != new_text:
-                        self.ScreenCut_Title.setText(new_text)
-                        self._update_tip_geometry() 
+                new_text = f"当前窗口：{window_title}" if window_title else "当前窗口"
+                self._set_tip_text(new_text)
                 
                 if self.last_hover_hwnd == hwnd:
                     return
@@ -347,10 +425,7 @@ class ScreenCaptureWidget(QWidget):
             self.current_hover_rect = None
             self.last_hover_hwnd = None
             # 恢复默认提示
-            if hasattr(self, 'ScreenCut_Title') and self.ScreenCut_Title:
-                if self.ScreenCut_Title.text() != "移动鼠标选择窗口，或拖拽框选区域":
-                    self.ScreenCut_Title.setText("移动鼠标选择窗口，或拖拽框选区域")
-                    self._update_tip_geometry()
+            self._set_tip_text(self.default_tip_text)
     
     def mouseReleaseEvent(self, event):
         if event.button() != Qt.LeftButton:
@@ -392,6 +467,13 @@ class ScreenCaptureWidget(QWidget):
     def capture_window_at_point(self, point):
         """点击截图"""
         if sys.platform != "win32":
+            self.hide()
+            QApplication.processEvents()
+            if self.target_screen:
+                screenshot = self.target_screen.grabWindow(0)
+                if screenshot and not screenshot.isNull():
+                    QApplication.clipboard().setPixmap(screenshot)
+                    print("截图已复制到剪贴板 (Screen)")
             return
         self.hide()
         QApplication.processEvents()
@@ -476,7 +558,7 @@ def ScreenShortCut():
     if len(screens) > 1:
         # 弹出选择对话框
         dialog = MonitorSelectionDialog(screens)
-        if dialog.exec_() == QDialog.Accepted and dialog.selected_screen:
+        if dialog.exec() == QDialog.Accepted and dialog.selected_screen:
             target_screen = dialog.selected_screen
         else:
             print("用户取消了屏幕选择")

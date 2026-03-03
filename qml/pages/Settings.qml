@@ -14,6 +14,7 @@ FluentPage {
     property string currentJavaPath: ""
     property string themeMode: ""
     property var languages: []
+    property bool traySupported: true
 
     Component.onCompleted: {
         refreshData()
@@ -39,6 +40,9 @@ FluentPage {
         _homeSection = Backend ? Backend.tr("首页") : "首页"
         _showAccountTitle = Backend ? Backend.tr("显示账户信息") : "显示账户信息"
         _showAccountDesc = Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息"
+        _closeToTrayTitle = Backend ? Backend.tr("关闭按钮最小化到托盘") : "关闭按钮最小化到托盘"
+        _closeToTrayDesc = Backend ? Backend.tr("开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序") : "开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序"
+        _closeToTrayUnavailableDesc = Backend ? Backend.tr("当前平台不支持托盘") : "当前平台不支持托盘"
         _appearanceSection = Backend ? Backend.tr("外观") : "外观"
         _langTitle = Backend ? Backend.tr("语言 / language") : "语言 / language"
         _langDesc = Backend ? Backend.tr("调整语言设置") : "调整语言设置"
@@ -66,6 +70,9 @@ FluentPage {
     property string _homeSection: Backend ? Backend.tr("首页") : "首页"
     property string _showAccountTitle: Backend ? Backend.tr("显示账户信息") : "显示账户信息"
     property string _showAccountDesc: Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息"
+    property string _closeToTrayTitle: Backend ? Backend.tr("关闭按钮最小化到托盘") : "关闭按钮最小化到托盘"
+    property string _closeToTrayDesc: Backend ? Backend.tr("开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序") : "开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序"
+    property string _closeToTrayUnavailableDesc: Backend ? Backend.tr("当前平台不支持托盘") : "当前平台不支持托盘"
     property string _appearanceSection: Backend ? Backend.tr("外观") : "外观"
     property string _langTitle: Backend ? Backend.tr("语言 / language") : "语言 / language"
     property string _langDesc: Backend ? Backend.tr("调整语言设置") : "调整语言设置"
@@ -110,6 +117,8 @@ FluentPage {
             }
             
             showAccountSwitch.checked = Backend.getShowAccountOnHome()
+            minimizeToTraySwitch.checked = Backend.getMinimizeToTrayOnClose()
+            traySupported = Backend.isSystemTrayAvailable()
         }
     }
 
@@ -210,6 +219,21 @@ FluentPage {
                 checked: true
                 onCheckedChanged: {
                     if (Backend) Backend.setShowAccountOnHome(checked)
+                }
+            }
+        }
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: _closeToTrayTitle
+            description: traySupported ? _closeToTrayDesc : _closeToTrayUnavailableDesc
+            icon.name: "ic_fluent_settings_20_regular"
+            Switch {
+                id: minimizeToTraySwitch
+                checked: true
+                enabled: traySupported
+                onCheckedChanged: {
+                    if (Backend) Backend.setMinimizeToTrayOnClose(checked)
                 }
             }
         }

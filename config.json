@@ -31,5 +31,6 @@
         "accounts": []
     },
     "mwtool_switch_open": true,
-    "show_account_on_home": true
+    "show_account_on_home": true,
+    "minimize_to_tray_on_close": true
 }
