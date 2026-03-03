@@ -139,8 +139,9 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             print(f"验证 - 保存的头像URL: {saved_avatar if saved_avatar else '(空)'}")
                             print(f"验证 - 登录状态: {verify_config.get('Bloret_PassPort_Login')}")
                             print(f"验证 - 用户名: {verify_config.get('Bloret_PassPort_UserName')}")
-                            print(f"验证 - Token: {verify_config.get('Bloret_PassPort_PassWord')}")
-                                
+                            stored_token = verify_config.get('Bloret_PassPort_PassWord')
+                            print(f"验证 - Token: {'***' if stored_token else '(空)'}")
+                            
                             logger.info(f"User data saved to config.json: {user_data['username']}")
 
                             # 返回成功的网页页面
