@@ -5,10 +5,16 @@ import urllib.parse
 import logging
 import os
 import json
-from modules.plugin import addPlugin
+import time
+import platform
+import subprocess
+import sys
+from pathlib import Path
+from modules.plugin import addPlugin, list_installed_plugins, uninstall_plugin
 from modules.win11toast import toast
 import modules.globals as BLglobals
 from modules.log import log
+import modules.config as cfg
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -18,7 +24,345 @@ logger = logging.getLogger(__name__)
 pending_plugins = {}
 
 class WebRequestHandler(BaseHTTPRequestHandler):
+    def _send_json(self, status_code, payload):
+        self.send_response(status_code)
+        self.send_header('Content-type', 'application/json; charset=utf-8')
+        self.end_headers()
+        self.wfile.write(json.dumps(payload, ensure_ascii=False, indent=2).encode('utf-8'))
+
+    def _append_query_to_url(self, url, extra_params):
+        parsed = urllib.parse.urlparse(url)
+        merged = urllib.parse.parse_qs(parsed.query)
+        for key, value in extra_params.items():
+            merged[key] = [str(value)]
+        new_query = urllib.parse.urlencode(merged, doseq=True)
+        return urllib.parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
+
+    def _redirect_or_json_success(self, query_params, payload, status_code=200):
+        redirect_url = query_params.get('redirect', [None])[0]
+        if redirect_url:
+            target = self._append_query_to_url(redirect_url, {'status': 'success'})
+            self.send_response(302)
+            self.send_header('Location', target)
+            self.end_headers()
+            return
+        self._send_json(status_code, payload)
+
+    def _parse_oauth(self, query_params):
+        name = None
+        secret = None
+
+        oauth_raw = query_params.get('oauth', [None])[0]
+        if oauth_raw:
+            decoded = urllib.parse.unquote(oauth_raw)
+            try:
+                oauth_data = json.loads(decoded)
+                if isinstance(oauth_data, dict):
+                    name = oauth_data.get('name')
+                    secret = oauth_data.get('secret')
+            except Exception:
+                if ':' in decoded:
+                    parts = decoded.split(':', 1)
+                    name, secret = parts[0].strip(), parts[1].strip()
+                elif ',' in decoded:
+                    parts = decoded.split(',', 1)
+                    name, secret = parts[0].strip(), parts[1].strip()
+
+        if not name:
+            name = query_params.get('oauth.name', [None])[0] or query_params.get('oauth_name', [None])[0]
+        if not secret:
+            secret = query_params.get('oauth.secret', [None])[0] or query_params.get('oauth_secret', [None])[0]
+
+        if not name or not secret:
+            return None
+        return {'name': name, 'secret': secret}
+
+    def _validate_oauth(self, oauth_name, oauth_secret):
+        params = {'appname': oauth_name, 'appsecret': oauth_secret}
+        validate_url = f"{BLglobals.server_ip}:20000/app/oauthapp/validate"
+
+        try:
+            response = requests.get(validate_url, params=params, timeout=15)
+
+            if response.status_code != 200 or not response.text.strip().startswith('{'):
+                parsed_uri = urllib.parse.urlparse(BLglobals.server_ip)
+                host = parsed_uri.hostname
+                if host:
+                    fallback_url = f"http://{host}:20000/app/oauthapp/validate"
+                    response = requests.get(fallback_url, params=params, timeout=15)
+
+            if response.status_code != 200:
+                return False, f"OAuth 校验请求失败: HTTP {response.status_code}"
+
+            result = response.json()
+            if result.get('status') == 'success' and result.get('valid') is True:
+                return True, result
+
+            return False, result.get('message', 'OAuth 应用身份校验失败')
+        except Exception as e:
+            return False, f"OAuth 校验异常: {str(e)}"
+
+    def _ensure_oauth(self, query_params):
+        oauth_data = self._parse_oauth(query_params)
+        if not oauth_data:
+            self._send_json(400, {
+                'status': 'error',
+                'message': '缺少必填 oauth 参数。格式: oauth={"name":"APP_NAME","secret":"APP_SECRET"}'
+            })
+            return False, None
+
+        ok, detail = self._validate_oauth(oauth_data['name'], oauth_data['secret'])
+        if not ok:
+            self._send_json(401, {
+                'status': 'error',
+                'message': detail
+            })
+            return False, None
+
+        return True, oauth_data
+
+    def _parse_value(self, value_raw):
+        if value_raw is None:
+            return None
+        value_text = urllib.parse.unquote(value_raw)
+        try:
+            return json.loads(value_text)
+        except Exception:
+            return value_text
+
+    def _handle_open_api(self, api_path, query_params):
+        ok, _ = self._ensure_oauth(query_params)
+        if not ok:
+            return
+
+        try:
+            if api_path == '/api/v1/ping':
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'message': 'pong',
+                    'timestamp': int(time.time())
+                })
+                return
+
+            if api_path == '/api/v1/system/info':
+                config_data = cfg.read()
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'data': {
+                        'platform': platform.platform(),
+                        'python': sys.version.split()[0],
+                        'datapath': BLglobals.datapath,
+                        'cache_path': BLglobals.cache_path,
+                        'config_path': BLglobals.config_path,
+                        'minecraft_dir': config_data.get('minecraft_dir', BLglobals.minecraft_dir),
+                    }
+                })
+                return
+
+            if api_path == '/api/v1/launch/items':
+                from modules.setup_ui import get_all_launch_items
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'data': get_all_launch_items()
+                })
+                return
+
+            if api_path == '/api/v1/launch/start':
+                version = query_params.get('version', [None])[0]
+                if not version:
+                    self._send_json(400, {'status': 'error', 'message': '缺少必填参数 version'})
+                    return
+
+                from modules.launch import Get_Run_Script
+                launch_args, game_dir = Get_Run_Script(version)
+                process = subprocess.Popen(launch_args, cwd=game_dir)
+
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'message': '启动命令已执行',
+                    'data': {'version': version, 'pid': process.pid}
+                })
+                return
+
+            if api_path == '/api/v1/passport/status':
+                config_data = cfg.read()
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'data': {
+                        'logined': bool(config_data.get('Bloret_PassPort_Login', False)),
+                        'username': config_data.get('Bloret_PassPort_UserName', ''),
+                        'avatar': config_data.get('Bloret_PassPort_Avatar', ''),
+                    }
+                })
+                return
+
+            if api_path == '/api/v1/passport/sync-accounts':
+                from modules.Bloret_PassPort import sync_bloret_passport_account_to_mc
+                success = sync_bloret_passport_account_to_mc(parent_window=None)
+                if not success:
+                    self._send_json(500, {'status': 'error', 'message': '同步账户失败'})
+                    return
+
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'message': '同步账户成功'
+                })
+                return
+
+            if api_path == '/api/v1/passport/prepare-launch-account':
+                from modules.Bloret_PassPort import prepare_minecraft_launch_account
+                prepare_minecraft_launch_account()
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'message': '启动前账户准备完成'
+                })
+                return
+
+            if api_path == '/api/v1/minecraft/accounts':
+                config_data = cfg.read()
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'data': config_data.get('MinecraftAccount', {'logined': False, 'chosen': -1, 'accounts': []})
+                })
+                return
+
+            if api_path == '/api/v1/config/get':
+                config_data = cfg.read()
+                key = query_params.get('key', [None])[0]
+                if key:
+                    self._redirect_or_json_success(query_params, {
+                        'status': 'success',
+                        'data': {key: config_data.get(key)}
+                    })
+                else:
+                    self._redirect_or_json_success(query_params, {
+                        'status': 'success',
+                        'data': config_data
+                    })
+                return
+
+            if api_path == '/api/v1/config/set':
+                key = query_params.get('key', [None])[0]
+                value_raw = query_params.get('value', [None])[0]
+                if not key or value_raw is None:
+                    self._send_json(400, {'status': 'error', 'message': '缺少必填参数 key 或 value'})
+                    return
+
+                config_data = cfg.read()
+                config_data[key] = self._parse_value(value_raw)
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, ensure_ascii=False, indent=4)
+
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'message': '配置已更新',
+                    'data': {key: config_data.get(key)}
+                })
+                return
+
+            if api_path == '/api/v1/activity/get':
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'data': BLglobals.BL_Activity
+                })
+                return
+
+            if api_path == '/api/v1/activity/refresh':
+                from modules.BLServer import get_latest_version
+                get_latest_version()
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'data': BLglobals.BL_Activity
+                })
+                return
+
+            if api_path == '/api/v1/plugin/install':
+                plugin_download = query_params.get('download', [None])[0]
+                plugin_name = query_params.get('name', ['Unknown Plugin'])[0]
+                if not plugin_download:
+                    self._send_json(400, {'status': 'error', 'message': '缺少必填参数 download'})
+                    return
+
+                result = addPlugin(plugin_download, plugin_name)
+                if not result:
+                    self._send_json(500, {'status': 'error', 'message': '插件安装任务启动失败'})
+                    return
+
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'message': '插件安装任务已提交',
+                    'data': {'name': plugin_name, 'download': plugin_download}
+                })
+                return
+
+            if api_path == '/api/v1/plugin/list':
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'data': list_installed_plugins()
+                })
+                return
+
+            if api_path == '/api/v1/plugin/uninstall':
+                plugin_name = query_params.get('name', [None])[0]
+                if not plugin_name:
+                    self._send_json(400, {'status': 'error', 'message': '缺少必填参数 name'})
+                    return
+
+                ok, message = uninstall_plugin(plugin_name)
+                if not ok:
+                    self._send_json(500, {'status': 'error', 'message': message})
+                    return
+
+                self._redirect_or_json_success(query_params, {
+                    'status': 'success',
+                    'message': message
+                })
+                return
+
+            if api_path == '/api/v1/help':
+                self._send_json(200, {
+                    'status': 'success',
+                    'data': {
+                        'rules': {
+                            'method': 'GET only',
+                            'oauth': 'required, format oauth={"name":"APP_NAME","secret":"APP_SECRET"}',
+                            'redirect': 'optional, redirect=<url>'
+                        },
+                        'endpoints': [
+                            '/api/v1/ping',
+                            '/api/v1/system/info',
+                            '/api/v1/launch/items',
+                            '/api/v1/launch/start?version=...',
+                            '/api/v1/passport/status',
+                            '/api/v1/passport/sync-accounts',
+                            '/api/v1/passport/prepare-launch-account',
+                            '/api/v1/minecraft/accounts',
+                            '/api/v1/config/get?key=...',
+                            '/api/v1/config/set?key=...&value=...',
+                            '/api/v1/activity/get',
+                            '/api/v1/activity/refresh',
+                            '/api/v1/plugin/install?download=...&name=...',
+                            '/api/v1/plugin/list',
+                            '/api/v1/plugin/uninstall?name=...'
+                        ]
+                    }
+                })
+                return
+
+            self._send_json(404, {'status': 'error', 'message': f'Unknown API path: {api_path}'})
+        except Exception as e:
+            logger.exception(f"Error handling open API path {api_path}: {e}")
+            self._send_json(500, {'status': 'error', 'message': str(e)})
+
     def do_GET(self):
+        parsed_path = urllib.parse.urlparse(self.path)
+        request_path = parsed_path.path
+        query_params = urllib.parse.parse_qs(parsed_path.query)
+
+        if request_path.startswith('/api/v1/'):
+            self._handle_open_api(request_path, query_params)
+            return
+
         # 处理 /login/Bloret-PassPort 路径
         if self.path.startswith('/login/Bloret-PassPort'):
             # 解析查询参数
@@ -278,6 +622,13 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 # 解析查询参数
                 parsed_path = urllib.parse.urlparse(self.path)
                 query_params = urllib.parse.parse_qs(parsed_path.query)
+
+                ok, oauth_data = self._ensure_oauth(query_params)
+                if not ok:
+                    return
+
+                oauth_payload = json.dumps(oauth_data, ensure_ascii=False)
+                redirect_url = query_params.get('redirect', [None])[0]
                 
                 # 获取插件参数
                 plugin_name = query_params.get('name', ['Unknown Plugin'])[0]
@@ -295,7 +646,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     'download': plugin_download,
                     'master': plugin_master,
                     'version': plugin_version
-                })
+                }, oauth_payload=oauth_payload, redirect_url=redirect_url)
                 self.wfile.write(html_content.encode('utf-8'))
                 
             except Exception as e:
@@ -312,17 +663,23 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 # 解析查询参数
                 parsed_path = urllib.parse.urlparse(self.path)
                 query_params = urllib.parse.parse_qs(parsed_path.query)
+
+                ok, _ = self._ensure_oauth(query_params)
+                if not ok:
+                    return
+
+                redirect_url = query_params.get('redirect', [None])[0]
                 
                 # 获取插件下载链接
                 plugin_download = query_params.get('download', [None])[0]
                 
                 # 获取插件名称
-                plugin_name = query_params.get('name')
+                plugin_name = query_params.get('name', ['Unknown Plugin'])[0]
                 
                 if plugin_download:
                     print(f"直接在当前线程中执行插件安装并返回结果: 安装插件 {plugin_name}")
                     # 直接在当前线程中执行插件安装并返回结果
-                    self.install_plugin_and_respond(plugin_download, plugin_name)
+                    self.install_plugin_and_respond(plugin_download, plugin_name, redirect_url=redirect_url)
                 else:
                     # download 参数缺失
                     self.send_response(400)
@@ -342,6 +699,13 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 # 解析查询参数
                 parsed_path = urllib.parse.urlparse(self.path)
                 query_params = urllib.parse.parse_qs(parsed_path.query)
+
+                ok, oauth_data = self._ensure_oauth(query_params)
+                if not ok:
+                    return
+
+                oauth_payload = json.dumps(oauth_data, ensure_ascii=False)
+                redirect_url = query_params.get('redirect', [None])[0]
                 
                 # 获取参数
                 list_url = query_params.get('list', [None])[0]
@@ -372,12 +736,12 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     self.send_header('Content-type', 'text/html; charset=utf-8')
                     self.end_headers()
                     
-                    html_content = self.generate_plugin_confirmation_page(plugin)
+                    html_content = self.generate_plugin_confirmation_page(plugin, oauth_payload=oauth_payload, redirect_url=redirect_url)
                     self.wfile.write(html_content.encode('utf-8'))
                     
                 elif action == 'install' and plugin_download:
                     # 直接在当前线程中执行插件安装并返回结果
-                    self.install_plugin_and_respond(plugin_download, plugin_name)
+                    self.install_plugin_and_respond(plugin_download, plugin_name, redirect_url=redirect_url)
                     
                 else:
                     # 缺少必要参数
@@ -505,12 +869,20 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"Not Found")
 
-    def install_plugin_and_respond(self, plugin_url, plugin_name):
+    def install_plugin_and_respond(self, plugin_url, plugin_name, redirect_url=None):
         """安装插件并返回结果页面"""
         try:
             # 运行 addPlugin 函数
             result = addPlugin(plugin_url, plugin_name)
             logger.info(f"Plugin installation completed for {plugin_url} with result: {result}")
+
+            if redirect_url:
+                redirect_status = 'success' if result else 'error'
+                target = self._append_query_to_url(redirect_url, {'status': redirect_status})
+                self.send_response(302)
+                self.send_header('Location', target)
+                self.end_headers()
+                return
             
             # 根据结果发送成功或失败页面
             self.send_response(200)
@@ -518,7 +890,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             
             if result:
-                html_content = self.generate_install_success_page()
+                html_content = self.generate_install_success_page(plugin_name or 'Unknown Plugin')
             else:
                 html_content = self.generate_error_page("插件安装失败")
             self.wfile.write(html_content.encode('utf-8'))
@@ -556,7 +928,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 </html>
         '''
 
-    def generate_plugin_confirmation_page(self, plugin, list_url=None):
+    def generate_plugin_confirmation_page(self, plugin, list_url=None, oauth_payload=None, redirect_url=None):
         """生成插件安装确认页面 - Microsoft Fluent2 Design"""
         plugin_name = plugin.get('name', 'Unknown Plugin')
         plugin_master = plugin.get('master', 'Unknown Author')
@@ -569,6 +941,10 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             'download': plugin_download,
             'name': plugin_name
         }
+        if oauth_payload:
+            install_params['oauth'] = oauth_payload
+        if redirect_url:
+            install_params['redirect'] = redirect_url
         install_url = f"/plugin/add?{urllib.parse.urlencode(install_params)}"
         
         return f'''

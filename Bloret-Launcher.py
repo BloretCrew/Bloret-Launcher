@@ -37,6 +37,7 @@ from modules.chafuwang import getServerData
 from modules.setup_ui import get_all_launch_items, scan_java_paths
 from modules.i18n import i18nText
 from modules.Bloriko import AskBloriko
+from modules.plugin import list_installed_plugins, uninstall_plugin, get_plugin_root
 import modules.web
 import modules.links as links
 import socket
@@ -1837,6 +1838,46 @@ class Backend(QObject):
     def openGithubRepo(self):
         from modules.links import open_github_bloret_Launcher
         open_github_bloret_Launcher()
+
+    def _resolve_plugin_path(self, name):
+        if not name:
+            return ""
+        for plugin in list_installed_plugins():
+            if name in (plugin.get("folderName"), plugin.get("id"), plugin.get("name")):
+                return plugin.get("path", "")
+        return ""
+
+    @Slot(result="QVariant")
+    def getInstalledPlugins(self):
+        plugins = list_installed_plugins()
+        for plugin in plugins:
+            icon_path = plugin.get("iconPath")
+            if icon_path:
+                plugin["icon"] = QUrl.fromLocalFile(icon_path).toString()
+            else:
+                plugin["icon"] = ""
+        return plugins
+
+    @Slot(result=str)
+    def getPluginRoot(self):
+        return get_plugin_root()
+
+    @Slot()
+    def openPluginRoot(self):
+        plugin_root = get_plugin_root()
+        if plugin_root:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(plugin_root))
+
+    @Slot(str)
+    def openPluginFolder(self, name):
+        plugin_path = self._resolve_plugin_path(name)
+        if plugin_path:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(plugin_path))
+
+    @Slot(str, result="QVariant")
+    def uninstallPlugin(self, name):
+        ok, message = uninstall_plugin(name)
+        return {"success": ok, "message": message}
 
 
 class LauncherTrayIcon(QSystemTrayIcon):
