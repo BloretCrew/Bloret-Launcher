@@ -82,7 +82,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         pyinstaller --onefile --windowed --name=Bloret-Launcher \
-          --add-data "bloret.ico:." --add-data "config.json:." --add-data "ui:ui" --add-data "BL4CW2:BL4CW2" --add-data "BLAPI:BLAPI" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
+          --add-data "bloret.ico:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
           --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
       shell: bash
 
