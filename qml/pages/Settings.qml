@@ -5,7 +5,7 @@ import RinUI
 
 FluentPage {
     id: settingsPage
-    
+
     property string _title: Backend ? Backend.tr("设置") : "设置"
     title: _title
 
@@ -17,50 +17,50 @@ FluentPage {
     property bool traySupported: true
 
     Component.onCompleted: {
-        refreshData()
+        refreshData();
     }
 
     Connections {
         target: Backend
         function onLanguageChanged() {
-            refreshTranslations()
+            refreshTranslations();
         }
     }
 
     function refreshTranslations() {
-        _title = Backend ? Backend.tr("设置") : "设置"
-        _versionTitle = Backend ? Backend.tr("当前版本") : "当前版本"
-        _versionDesc = Backend ? Backend.tr("Bloret Launcher v2") : "Bloret Launcher v2"
-        _mcJavaSection = Backend ? Backend.tr("Minecraft 与 Java") : "Minecraft 与 Java"
-        _javaTitle = Backend ? Backend.tr("Java") : "Java"
-        _javaDesc = Backend ? Backend.tr("选择用于启动 Minecraft 的 Java") : "选择用于启动 Minecraft 的 Java"
-        _mcFolderTitle = Backend ? Backend.tr("Minecraft 文件夹位置") : "Minecraft 文件夹位置"
-        _mcToolbarTitle = Backend ? Backend.tr("Minecraft 小工具栏") : "Minecraft 小工具栏"
-        _mcToolbarDesc = Backend ? Backend.tr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏") : "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"
-        _homeSection = Backend ? Backend.tr("首页") : "首页"
-        _showAccountTitle = Backend ? Backend.tr("显示账户信息") : "显示账户信息"
-        _showAccountDesc = Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息"
-        _closeToTrayTitle = Backend ? Backend.tr("关闭按钮最小化到托盘") : "关闭按钮最小化到托盘"
-        _closeToTrayDesc = Backend ? Backend.tr("开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序") : "开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序"
-        _closeToTrayUnavailableDesc = Backend ? Backend.tr("当前平台不支持托盘") : "当前平台不支持托盘"
-        _appearanceSection = Backend ? Backend.tr("外观") : "外观"
-        _langTitle = Backend ? Backend.tr("语言 / language") : "语言 / language"
-        _langDesc = Backend ? Backend.tr("调整语言设置") : "调整语言设置"
-        _themeTitle = Backend ? Backend.tr("主题") : "主题"
-        _themeDesc = Backend ? Backend.tr("选择界面的颜色模式") : "选择界面的颜色模式"
-        _logSection = Backend ? Backend.tr("日志") : "日志"
-        _logFolderTitle = Backend ? Backend.tr("日志文件夹位置") : "日志文件夹位置"
-        _logFolderDesc = Backend ? Backend.tr("存储所有 Bloret Launcher 日志的文件夹位置") : "存储所有 Bloret Launcher 日志的文件夹位置"
-        _clearLogTitle = Backend ? Backend.tr("清空日志") : "清空日志"
-        _clearLogDesc = Backend ? Backend.tr("清空 log 文件夹所有的日志文件") : "清空 log 文件夹所有的日志文件"
-        _browseText = Backend ? Backend.tr("浏览...") : "浏览..."
-        _openText = Backend ? Backend.tr("打开") : "打开"
-        _clearText = Backend ? Backend.tr("清空") : "清空"
-        _restartTip = Backend ? Backend.tr("设置界面大部分内容需要重启程序后生效。") : "设置界面大部分内容需要重启程序后生效。"
+        _title = Backend ? Backend.tr("设置") : "设置";
+        _versionTitle = Backend ? Backend.tr("当前版本") : "当前版本";
+        _versionDesc = Backend ? Backend.tr("Bloret Launcher") : "Bloret Launcher";
+        _mcJavaSection = Backend ? Backend.tr("Minecraft 与 Java") : "Minecraft 与 Java";
+        _javaTitle = Backend ? Backend.tr("Java") : "Java";
+        _javaDesc = Backend ? Backend.tr("选择用于启动 Minecraft 的 Java") : "选择用于启动 Minecraft 的 Java";
+        _mcFolderTitle = Backend ? Backend.tr("Minecraft 文件夹位置") : "Minecraft 文件夹位置";
+        _mcToolbarTitle = Backend ? Backend.tr("Minecraft 小工具栏") : "Minecraft 小工具栏";
+        _mcToolbarDesc = Backend ? Backend.tr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏") : "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏";
+        _homeSection = Backend ? Backend.tr("首页") : "首页";
+        _showAccountTitle = Backend ? Backend.tr("显示账户信息") : "显示账户信息";
+        _showAccountDesc = Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息";
+        _closeToTrayTitle = Backend ? Backend.tr("关闭按钮最小化到托盘") : "关闭按钮最小化到托盘";
+        _closeToTrayDesc = Backend ? Backend.tr("开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序") : "开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序";
+        _closeToTrayUnavailableDesc = Backend ? Backend.tr("当前平台不支持托盘") : "当前平台不支持托盘";
+        _appearanceSection = Backend ? Backend.tr("外观") : "外观";
+        _langTitle = Backend ? Backend.tr("语言 / language") : "语言 / language";
+        _langDesc = Backend ? Backend.tr("调整语言设置") : "调整语言设置";
+        _themeTitle = Backend ? Backend.tr("主题") : "主题";
+        _themeDesc = Backend ? Backend.tr("选择界面的颜色模式") : "选择界面的颜色模式";
+        _logSection = Backend ? Backend.tr("日志") : "日志";
+        _logFolderTitle = Backend ? Backend.tr("日志文件夹位置") : "日志文件夹位置";
+        _logFolderDesc = Backend ? Backend.tr("存储所有 Bloret Launcher 日志的文件夹位置") : "存储所有 Bloret Launcher 日志的文件夹位置";
+        _clearLogTitle = Backend ? Backend.tr("清空日志") : "清空日志";
+        _clearLogDesc = Backend ? Backend.tr("清空 log 文件夹所有的日志文件") : "清空 log 文件夹所有的日志文件";
+        _browseText = Backend ? Backend.tr("浏览...") : "浏览...";
+        _openText = Backend ? Backend.tr("打开") : "打开";
+        _clearText = Backend ? Backend.tr("清空") : "清空";
+        _restartTip = Backend ? Backend.tr("设置界面大部分内容需要重启程序后生效。") : "设置界面大部分内容需要重启程序后生效。";
     }
 
     property string _versionTitle: Backend ? Backend.tr("当前版本") : "当前版本"
-    property string _versionDesc: Backend ? Backend.tr("Bloret Launcher v2") : "Bloret Launcher v2"
+    property string _versionDesc: Backend ? Backend.tr("Bloret Launcher") : "Bloret Launcher"
     property string _mcJavaSection: Backend ? Backend.tr("Minecraft 与 Java") : "Minecraft 与 Java"
     property string _javaTitle: Backend ? Backend.tr("Java") : "Java"
     property string _javaDesc: Backend ? Backend.tr("选择用于启动 Minecraft 的 Java") : "选择用于启动 Minecraft 的 Java"
@@ -89,36 +89,36 @@ FluentPage {
     property string _restartTip: Backend ? Backend.tr("设置界面大部分内容需要重启程序后生效。") : "设置界面大部分内容需要重启程序后生效。"
 
     function refreshData() {
-        refreshTranslations()
+        refreshTranslations();
         if (Backend) {
-            currentMcDir = Backend.getMinecraftDir()
-            javaPaths = Backend.getSystemJavas()
-            currentJavaPath = Backend.getCurrentJavaPath()
-            themeMode = Backend.getThemeMode()
-            
+            currentMcDir = Backend.getMinecraftDir();
+            javaPaths = Backend.getSystemJavas();
+            currentJavaPath = Backend.getCurrentJavaPath();
+            themeMode = Backend.getThemeMode();
+
             if (javaPaths.indexOf("Auto") === -1) {
-                javaPaths.unshift("Auto")
-            }
-            
-            javaCombo.currentIndex = javaPaths.indexOf(currentJavaPath)
-            if (javaCombo.currentIndex === -1) {
-                javaPaths.push(currentJavaPath)
-                javaCombo.currentIndex = javaPaths.length - 1
+                javaPaths.unshift("Auto");
             }
 
-            themeCombo.currentIndex = ["Auto", "Light", "Dark"].indexOf(themeMode)
-            
-            languages = Backend.getLanguages()
+            javaCombo.currentIndex = javaPaths.indexOf(currentJavaPath);
+            if (javaCombo.currentIndex === -1) {
+                javaPaths.push(currentJavaPath);
+                javaCombo.currentIndex = javaPaths.length - 1;
+            }
+
+            themeCombo.currentIndex = ["Auto", "Light", "Dark"].indexOf(themeMode);
+
+            languages = Backend.getLanguages();
             for (var i = 0; i < languages.length; i++) {
                 if (languages[i].code === Backend.getLanguageCode()) {
-                    langCombo.currentIndex = i
-                    break
+                    langCombo.currentIndex = i;
+                    break;
                 }
             }
-            
-            showAccountSwitch.checked = Backend.getShowAccountOnHome()
-            minimizeToTraySwitch.checked = Backend.getMinimizeToTrayOnClose()
-            traySupported = Backend.isSystemTrayAvailable()
+
+            showAccountSwitch.checked = Backend.getShowAccountOnHome();
+            minimizeToTraySwitch.checked = Backend.getMinimizeToTrayOnClose();
+            traySupported = Backend.isSystemTrayAvailable();
         }
     }
 
@@ -157,7 +157,8 @@ FluentPage {
                 model: javaPaths
                 Layout.preferredWidth: 250
                 onActivated: {
-                    if (Backend) Backend.setCurrentJavaPath(currentText)
+                    if (Backend)
+                        Backend.setCurrentJavaPath(currentText);
                 }
             }
         }
@@ -173,15 +174,19 @@ FluentPage {
                     text: _browseText
                     onClicked: {
                         if (Backend) {
-                            var path = Backend.browseMinecraftDir()
-                            if (path !== "") currentMcDir = path
+                            var path = Backend.browseMinecraftDir();
+                            if (path !== "")
+                                currentMcDir = path;
                         }
                     }
                 }
                 Button {
                     flat: true
                     text: _openText
-                    onClicked: { if (Backend) Backend.openMinecraftDir() }
+                    onClicked: {
+                        if (Backend)
+                            Backend.openMinecraftDir();
+                    }
                 }
             }
         }
@@ -218,7 +223,8 @@ FluentPage {
                 id: showAccountSwitch
                 checked: true
                 onCheckedChanged: {
-                    if (Backend) Backend.setShowAccountOnHome(checked)
+                    if (Backend)
+                        Backend.setShowAccountOnHome(checked);
                 }
             }
         }
@@ -233,7 +239,8 @@ FluentPage {
                 checked: true
                 enabled: traySupported
                 onCheckedChanged: {
-                    if (Backend) Backend.setMinimizeToTrayOnClose(checked)
+                    if (Backend)
+                        Backend.setMinimizeToTrayOnClose(checked);
                 }
             }
         }
@@ -262,7 +269,8 @@ FluentPage {
                 textRole: "name"
                 Layout.preferredWidth: 150
                 onActivated: {
-                    if (Backend) Backend.setLanguage(model[currentIndex].code)
+                    if (Backend)
+                        Backend.setLanguage(model[currentIndex].code);
                 }
             }
         }
@@ -277,7 +285,8 @@ FluentPage {
                 model: ["Auto", "Light", "Dark"]
                 Layout.preferredWidth: 150
                 onActivated: {
-                    if (Backend) Backend.setThemeMode(currentText)
+                    if (Backend)
+                        Backend.setThemeMode(currentText);
                 }
             }
         }
@@ -303,7 +312,10 @@ FluentPage {
             Button {
                 flat: true
                 text: _openText
-                onClicked: { if (Backend) Backend.openLogDir() }
+                onClicked: {
+                    if (Backend)
+                        Backend.openLogDir();
+                }
             }
         }
 
@@ -314,7 +326,10 @@ FluentPage {
             icon.name: "ic_fluent_delete_20_regular"
             Button {
                 text: _clearText
-                onClicked: { if (Backend) Backend.clearLogs() }
+                onClicked: {
+                    if (Backend)
+                        Backend.clearLogs();
+                }
             }
         }
     }

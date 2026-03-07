@@ -13,9 +13,9 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 # Create the QApplication early so it can be used in shims and module imports
-from PySide6.QtWidgets import QApplication, QFileDialog, QMenu, QSystemTrayIcon
+from PySide6.QtWidgets import QApplication, QFileDialog, QSystemTrayIcon
 from PySide6.QtCore import QLocale, Qt, QTranslator, QObject, Slot, Signal, Property, QUrl
-from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices, QAction, QPixmap, QPainter, QCursor
+from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices, QPixmap, QPainter, QCursor
 
 QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 app = QApplication(sys.argv)
@@ -63,6 +63,7 @@ import modules.web
 import modules.links as links
 import socket
 import send2trash
+from modules.compat_widgets import Action, RoundMenu
 
 
 def get_app_icon_path(for_tray=False):
@@ -1934,19 +1935,20 @@ class LauncherTrayIcon(QSystemTrayIcon):
 
         self.setToolTip("Bloret Launcher")
 
-        self.menu = QMenu()
-        self.launch_menu = self.menu.addMenu(i18nText("🔼  启动版本"))
+        self.menu = RoundMenu()
+        self.launch_menu = RoundMenu(i18nText("🔼  启动版本"), self.menu)
+        self.menu.addMenu(self.launch_menu)
         self._refresh_launch_menu()
 
         self.menu.addSeparator()
-        self.menu.addAction(i18nText('🔡  访问 BBS'), links.open_BBBS_link)
-        self.menu.addAction(i18nText('🔡  访问 Bloret PassPort'), links.open_PassPort_link)
-        self.menu.addAction(i18nText('🔡  访问 百络图床'), links.open_BIMG_WEB_link)
+        self.menu.addAction(Action(i18nText('🔡  访问 BBS'), self.menu, triggered=links.open_BBBS_link))
+        self.menu.addAction(Action(i18nText('🔡  访问 Bloret PassPort'), self.menu, triggered=links.open_PassPort_link))
+        self.menu.addAction(Action(i18nText('🔡  访问 百络图床'), self.menu, triggered=links.open_BIMG_WEB_link))
 
         self.menu.addSeparator()
-        self.menu.addAction(i18nText('🔄️  重启程序'), self.main_window.restart_app)
-        self.menu.addAction(i18nText('✅  显示窗口'), self.main_window.show_main_window)
-        self.menu.addAction(i18nText('❎  退出程序'), self.main_window.quit_app)
+        self.menu.addAction(Action(i18nText('🔄️  重启程序'), self.menu, triggered=self.main_window.restart_app))
+        self.menu.addAction(Action(i18nText('✅  显示窗口'), self.menu, triggered=self.main_window.show_main_window))
+        self.menu.addAction(Action(i18nText('❎  退出程序'), self.menu, triggered=self.main_window.quit_app))
 
         self.activated.connect(self._on_tray_activated)
 
@@ -1975,19 +1977,22 @@ class LauncherTrayIcon(QSystemTrayIcon):
         try:
             unique_versions = self._get_tray_launch_versions()
             if not unique_versions:
-                empty_action = QAction(i18nText("暂无可启动版本"), self.launch_menu)
+                empty_action = Action(i18nText("暂无可启动版本"), self.launch_menu)
                 empty_action.setEnabled(False)
                 self.launch_menu.addAction(empty_action)
                 return
 
             for version in unique_versions:
-                action = QAction(version, self.launch_menu)
-                action.triggered.connect(lambda checked=False, v=version: self.main_window.launch_version_from_tray(v))
+                action = Action(
+                    version,
+                    self.launch_menu,
+                    triggered=lambda checked=False, v=version: self.main_window.launch_version_from_tray(v),
+                )
                 self.launch_menu.addAction(action)
 
         except Exception as e:
             print(f"Failed to refresh tray launch menu: {e}")
-            error_action = QAction(i18nText("加载启动列表失败"), self.launch_menu)
+            error_action = Action(i18nText("加载启动列表失败"), self.launch_menu)
             error_action.setEnabled(False)
             self.launch_menu.addAction(error_action)
         finally:
@@ -2099,7 +2104,7 @@ class LauncherV2(RinUIWindow):
         icon_path = get_app_icon_path()
         if icon_path:
             self.setIcon(str(icon_path))
-        self.setProperty("title", "Bloret Launcher v2")
+        self.setProperty("title", "Bloret Launcher")
 
         self._init_system_tray()
 

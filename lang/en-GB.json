@@ -582,7 +582,7 @@
         "界面上可能不会及时刷新，但已经登录。": "The UI may not refresh immediately, but login has succeeded.",
         "打开 Bloret PassPort 登录页面": "Open Bloret PassPort login page",
         "当前版本": "Current Version",
-        "Bloret Launcher v2": "Bloret Launcher v2",
+        "Bloret Launcher": "Bloret Launcher",
         "Minecraft 与 Java": "Minecraft & Java",
         "选择用于启动 Minecraft 的 Java": "Select the Java to use for launching Minecraft",
         "Minecraft 文件夹位置": "Minecraft Folder Location",
