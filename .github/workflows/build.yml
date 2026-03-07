@@ -223,11 +223,11 @@ jobs:
           ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager archlinux
           mkdir -p zip_contents
           cp dist/Bloret-Launcher zip_contents/
-          cp -r ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar zip_contents/ || true
+          cp -r RinUI qml ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar zip_contents/ || true
           cp servers.dat zip_contents/ || true
           cd zip_contents && zip -r ../${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.zip . && cd ..
         fi
-        cp -r ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+        cp -r RinUI qml ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
         cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
       shell: bash
 
