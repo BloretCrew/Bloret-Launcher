@@ -82,7 +82,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         pyinstaller --onefile --windowed --name=Bloret-Launcher \
-          --add-data "bloret.ico:." --add-data "config.json:." --add-data "ui:ui" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
+          --add-data "bloret.ico:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
           --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
       shell: bash
 
@@ -204,6 +204,10 @@ jobs:
             dst: "/usr/share/bloret-launcher/servers.dat"
           - src: "ui/"
             dst: "/usr/share/bloret-launcher/ui"
+          - src: "RinUI/"
+            dst: "/usr/share/bloret-launcher/RinUI"
+          - src: "qml/"
+            dst: "/usr/share/bloret-launcher/qml"
           - src: "lang/"
             dst: "/usr/share/bloret-launcher/lang"
           - src: "easytier/"
@@ -219,11 +223,11 @@ jobs:
           ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager archlinux
           mkdir -p zip_contents
           cp dist/Bloret-Launcher zip_contents/
-          cp -r ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar zip_contents/ || true
+          cp -r RinUI qml ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar zip_contents/ || true
           cp servers.dat zip_contents/ || true
           cd zip_contents && zip -r ../${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.zip . && cd ..
         fi
-        cp -r ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
+        cp -r RinUI qml ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
         cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
       shell: bash
 
