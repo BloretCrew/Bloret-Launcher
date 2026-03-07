@@ -13,6 +13,12 @@ FluentWindow {
     minimumWidth: 800
     minimumHeight: 600
 
+    onClosing: function(closeEvent) {
+        if (Backend && Backend.handleWindowCloseRequest()) {
+            closeEvent.accepted = false
+        }
+    }
+
     navigationView.navExpandWidth: 200
 
     property var navItems: [

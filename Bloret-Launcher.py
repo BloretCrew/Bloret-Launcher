@@ -4,6 +4,7 @@ import modules.IP
 
 import sys
 import os
+import faulthandler
 from pathlib import Path
 
 # Add the local directory to handle imports like 'import RinUI' correctly
@@ -14,10 +15,30 @@ if str(SCRIPT_DIR) not in sys.path:
 # Create the QApplication early so it can be used in shims and module imports
 from PySide6.QtWidgets import QApplication, QFileDialog, QMenu, QSystemTrayIcon
 from PySide6.QtCore import QLocale, Qt, QTranslator, QObject, Slot, Signal, Property, QUrl
-from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices, QAction, QPixmap, QPainter
+from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices, QAction, QPixmap, QPainter, QCursor
 
 QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 app = QApplication(sys.argv)
+
+
+def _enable_fault_logging():
+    """记录 Python/原生崩溃堆栈，避免仅看到退出码。"""
+    try:
+        appdata = Path(os.getenv("APPDATA", str(SCRIPT_DIR)))
+        log_dir = appdata / "Bloret-Launcher" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        fault_path = log_dir / "python-faulthandler.log"
+
+        stream = open(fault_path, "a", encoding="utf-8")
+        stream.write("\n===== Bloret Launcher fault handler enabled =====\n")
+        faulthandler.enable(file=stream, all_threads=True)
+        return stream
+    except Exception as e:
+        print(f"Failed to enable faulthandler logging: {e}")
+        return None
+
+
+_FAULT_LOG_STREAM = _enable_fault_logging()
 
 # --- Finished Full PySide6 Migration ---
 # All modules have been refactored to use PySide6 and RinUI directly.
@@ -129,6 +150,16 @@ class Backend(QObject):
 
     def setBackendParent(self, parent):
         self.parent = parent
+
+    @Slot(result=bool)
+    def handleWindowCloseRequest(self):
+        parent = getattr(self, "parent", None)
+        if parent and hasattr(parent, "handle_close_request_from_qml"):
+            try:
+                return bool(parent.handle_close_request_from_qml())
+            except Exception as e:
+                print(f"handleWindowCloseRequest failed: {e}")
+        return False
 
     @Slot(result=str)
     def helloFromPython(self):
@@ -1884,8 +1915,16 @@ class LauncherTrayIcon(QSystemTrayIcon):
     """RinUI 版系统托盘图标与菜单"""
 
     def __init__(self, main_window):
-        super().__init__()
+        app_instance = QApplication.instance()
+        if app_instance is not None:
+            super().__init__(app_instance)
+        else:
+            super().__init__()
+
         self.main_window = main_window
+        self._is_refreshing_launch_menu = False
+        self._trigger_reason = self._resolve_trigger_reason()
+        self._context_reason = self._resolve_context_reason()
 
         icon_path = get_app_icon_path(for_tray=True)
         if icon_path:
@@ -1897,7 +1936,6 @@ class LauncherTrayIcon(QSystemTrayIcon):
 
         self.menu = QMenu()
         self.launch_menu = self.menu.addMenu(i18nText("🔼  启动版本"))
-        self.menu.aboutToShow.connect(self._refresh_launch_menu)
         self._refresh_launch_menu()
 
         self.menu.addSeparator()
@@ -1910,26 +1948,32 @@ class LauncherTrayIcon(QSystemTrayIcon):
         self.menu.addAction(i18nText('✅  显示窗口'), self.main_window.show_main_window)
         self.menu.addAction(i18nText('❎  退出程序'), self.main_window.quit_app)
 
-        self.setContextMenu(self.menu)
         self.activated.connect(self._on_tray_activated)
 
+    @staticmethod
+    def _resolve_trigger_reason():
+        """兼容不同 PySide 版本的枚举写法。"""
+        reason_enum = getattr(QSystemTrayIcon, "ActivationReason", None)
+        if reason_enum is not None and hasattr(reason_enum, "Trigger"):
+            return reason_enum.Trigger
+        return getattr(QSystemTrayIcon, "Trigger", None)
+
+    @staticmethod
+    def _resolve_context_reason():
+        reason_enum = getattr(QSystemTrayIcon, "ActivationReason", None)
+        if reason_enum is not None and hasattr(reason_enum, "Context"):
+            return reason_enum.Context
+        return getattr(QSystemTrayIcon, "Context", None)
+
     def _refresh_launch_menu(self):
+        if self._is_refreshing_launch_menu:
+            return
+
+        self._is_refreshing_launch_menu = True
         self.launch_menu.clear()
 
         try:
-            launch_items = get_all_launch_items()
-            version_names = []
-
-            for item in launch_items:
-                if isinstance(item, dict):
-                    name = item.get("name", "")
-                else:
-                    name = str(item)
-
-                if name:
-                    version_names.append(name)
-
-            unique_versions = list(dict.fromkeys(version_names))
+            unique_versions = self._get_tray_launch_versions()
             if not unique_versions:
                 empty_action = QAction(i18nText("暂无可启动版本"), self.launch_menu)
                 empty_action.setEnabled(False)
@@ -1946,13 +1990,97 @@ class LauncherTrayIcon(QSystemTrayIcon):
             error_action = QAction(i18nText("加载启动列表失败"), self.launch_menu)
             error_action.setEnabled(False)
             self.launch_menu.addAction(error_action)
+        finally:
+            self._is_refreshing_launch_menu = False
+
+    @staticmethod
+    def _get_tray_launch_versions():
+        """仅收集托盘菜单需要的名称，避免右键时触发图标解析。"""
+        version_names = []
+
+        try:
+            config_data = cfg.read()
+
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            versions_dir = os.path.join(minecraft_dir, "versions")
+
+            if os.path.isdir(versions_dir):
+                for entry in os.listdir(versions_dir):
+                    version_path = os.path.join(versions_dir, entry)
+                    if os.path.isdir(version_path):
+                        version_names.append(entry)
+
+            customize_items = config_data.get("Customize", [])
+            if isinstance(customize_items, list):
+                for custom_item in customize_items:
+                    if isinstance(custom_item, dict):
+                        custom_name = str(custom_item.get("showname", "")).strip()
+                        if custom_name:
+                            version_names.append(custom_name)
+        except Exception as e:
+            print(f"Failed to collect tray launch versions: {e}")
+
+        return list(dict.fromkeys(version_names))
 
     def _on_tray_activated(self, reason):
-        if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            if self.main_window.isMinimized() or not self.main_window.isVisible():
-                self.main_window.show_main_window()
-            else:
-                self.main_window.hide()
+        try:
+            is_trigger = self._reason_equals(reason, self._trigger_reason)
+            if is_trigger:
+                if self._is_window_hidden_or_minimized():
+                    self.main_window.show_main_window()
+                else:
+                    root_window = getattr(self.main_window, "root_window", None)
+                    if root_window is not None:
+                        root_window.hide()
+                    else:
+                        self.main_window.hide()
+                return
+
+            is_context = self._reason_equals(reason, self._context_reason)
+            if is_context:
+                self._refresh_launch_menu()
+                self.menu.popup(QCursor.pos())
+        except Exception as e:
+            print(f"Tray activation handler failed: {e}")
+
+    def _is_window_hidden_or_minimized(self):
+        """兼容 RinUI/QQuickWindow 的窗口状态判断，避免访问不存在的 QWidget API。"""
+        root_window = getattr(self.main_window, "root_window", None)
+        window_obj = root_window if root_window is not None else self.main_window
+
+        is_visible = True
+        try:
+            if hasattr(window_obj, "isVisible"):
+                is_visible = bool(window_obj.isVisible())
+            elif hasattr(window_obj, "visible"):
+                is_visible = bool(window_obj.visible)
+        except Exception:
+            is_visible = True
+
+        is_minimized = False
+        try:
+            if hasattr(window_obj, "isMinimized"):
+                is_minimized = bool(window_obj.isMinimized())
+            elif hasattr(window_obj, "visibility"):
+                visibility_value = window_obj.visibility()
+                is_minimized = "Minimized" in str(visibility_value)
+        except Exception:
+            is_minimized = False
+
+        return (not is_visible) or is_minimized
+
+    @staticmethod
+    def _reason_equals(reason, expected):
+        if expected is None:
+            return False
+
+        if reason == expected:
+            return True
+
+        try:
+            return int(reason) == int(expected)
+        except Exception:
+            return False
 
 class LauncherV2(RinUIWindow):
     def __init__(self):
@@ -1975,6 +2103,60 @@ class LauncherV2(RinUIWindow):
 
         self._init_system_tray()
 
+    def _read_minimize_to_tray_on_close(self):
+        minimize_to_tray = True
+        try:
+            if self.backend:
+                minimize_to_tray = bool(self.backend.getMinimizeToTrayOnClose())
+        except Exception:
+            minimize_to_tray = True
+        return minimize_to_tray
+
+    def _can_hide_to_tray(self):
+        return bool(self.tray_icon and self.tray_icon.isVisible())
+
+    def _should_hide_to_tray_on_close(self):
+        return self._read_minimize_to_tray_on_close() and self._can_hide_to_tray()
+
+    def handle_close_request_from_qml(self):
+        """由 QML onClosing 调用，返回 True 表示已拦截关闭并隐藏到托盘。"""
+        if self._force_quit:
+            return False
+
+        if self._should_hide_to_tray_on_close():
+            self.hide()
+            return True
+
+        self._force_quit = True
+        if self.tray_icon:
+            self.tray_icon.hide()
+        return False
+
+    @staticmethod
+    def _reject_close_event(event):
+        if event is None:
+            return
+
+        try:
+            if hasattr(event, "setAccepted"):
+                event.setAccepted(False)
+                return
+        except Exception:
+            pass
+
+        try:
+            if hasattr(event, "ignore"):
+                event.ignore()
+                return
+        except Exception:
+            pass
+
+        try:
+            if hasattr(event, "accepted"):
+                event.accepted = False
+        except Exception:
+            pass
+
     def _init_system_tray(self):
         if not QSystemTrayIcon.isSystemTrayAvailable():
             print("System tray is not available on this platform")
@@ -1988,13 +2170,36 @@ class LauncherV2(RinUIWindow):
             self.backend.launchGame(version)
 
     def show_main_window(self):
-        self.show()
+        root_window = getattr(self, "root_window", None)
+        window_obj = root_window if root_window is not None else self
+
         try:
-            self.showNormal()
+            if hasattr(window_obj, "show"):
+                window_obj.show()
+            else:
+                self.show()
         except Exception:
             pass
-        self.raise_()
-        self.activateWindow()
+
+        try:
+            if hasattr(window_obj, "showNormal"):
+                window_obj.showNormal()
+        except Exception:
+            pass
+
+        try:
+            if hasattr(window_obj, "raise_"):
+                window_obj.raise_()
+        except Exception:
+            pass
+
+        try:
+            if hasattr(window_obj, "requestActivate"):
+                window_obj.requestActivate()
+            elif hasattr(window_obj, "activateWindow"):
+                window_obj.activateWindow()
+        except Exception:
+            pass
 
     def quit_app(self):
         self._force_quit = True
@@ -2025,17 +2230,11 @@ class LauncherV2(RinUIWindow):
                 event.accept()
             return
 
-        minimize_to_tray = True
-        try:
-            if self.backend:
-                minimize_to_tray = self.backend.getMinimizeToTrayOnClose()
-        except Exception:
-            minimize_to_tray = True
-
-        tray_available = bool(self.tray_icon and self.tray_icon.isVisible())
-
-        if minimize_to_tray and tray_available:
-            event.ignore()
+        if self._should_hide_to_tray_on_close():
+            try:
+                event.ignore()
+            except Exception:
+                self._reject_close_event(event)
             self.hide()
             return
 
@@ -2048,9 +2247,6 @@ class LauncherV2(RinUIWindow):
             event.accept()
 
 if __name__ == "__main__":
-    QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
-        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-    )
     # app is already created at the top
     global_icon_path = get_app_icon_path()
     if global_icon_path:
