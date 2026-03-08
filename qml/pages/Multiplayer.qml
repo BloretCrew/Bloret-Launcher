@@ -5,7 +5,7 @@ import RinUI
 
 FluentPage {
     id: multiplayerPage
-    title: qsTr("联机")
+    title: (Backend ? Backend.tr("联机") : "联机")
 
     property string etStatusTitle: Backend ? Backend.getEasytierStatusTitle() : ""
     property string etStatusDesc: Backend ? Backend.getEasytierStatusDesc() : ""
@@ -22,7 +22,7 @@ FluentPage {
     Label {
         font.pixelSize: 20
         font.weight: Font.DemiBold
-        text: qsTr("网络")
+        text: (Backend ? Backend.tr("网络") : "网络")
         Layout.topMargin: 10
         color: Theme.currentTheme.colors.textColor
     }
@@ -44,11 +44,11 @@ FluentPage {
                 Layout.fillWidth: true
                 Label {
                     font.weight: Font.DemiBold
-                    text: qsTr("IPV6")
+                    text: (Backend ? Backend.tr("IPV6") : "IPV6")
                     color: Theme.currentTheme.colors.textColor
                 }
                 Label {
-                    text: qsTr("查看您计算机的 IPV6 配置")
+                    text: (Backend ? Backend.tr("查看您计算机的 IPV6 配置") : "查看您计算机的 IPV6 配置")
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
             }
@@ -63,7 +63,7 @@ FluentPage {
             }
 
             Button {
-                text: qsTr("刷新")
+                text: (Backend ? Backend.tr("刷新") : "刷新")
                 onClicked: { if (Backend) ipv6AddressLabel.text = Backend.checkIpv6Address() }
             }
         }
@@ -82,7 +82,7 @@ FluentPage {
     Label {
         font.pixelSize: 20
         font.weight: Font.DemiBold
-        text: qsTr("EasyTier 组网")
+        text: (Backend ? Backend.tr("EasyTier 组网") : "EasyTier 组网")
         Layout.topMargin: 10
         color: Theme.currentTheme.colors.textColor
     }
@@ -142,7 +142,7 @@ FluentPage {
                 // Host Side
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Label { text: qsTr("作为房主"); font.weight: Font.DemiBold; color: Theme.currentTheme.colors.textColor }
+                    Label { text: (Backend ? Backend.tr("作为房主") : "作为房主"); font.weight: Font.DemiBold; color: Theme.currentTheme.colors.textColor }
                     RowLayout {
                         TextField {
                             id: mcPortInput
@@ -158,7 +158,7 @@ FluentPage {
                         }
                     }
                     Button {
-                        text: qsTr("开启联机服务")
+                        text: (Backend ? Backend.tr("开启联机服务") : "开启联机服务")
                         highlighted: true
                         Layout.fillWidth: true
                         onClicked: { if (Backend) Backend.startEasytierWithConfig(mcPortInput.text, hostPasswordInput.text) }
@@ -170,7 +170,7 @@ FluentPage {
                 // Client Side
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Label { text: qsTr("作为加入者"); font.weight: Font.DemiBold; color: Theme.currentTheme.colors.textColor }
+                    Label { text: (Backend ? Backend.tr("作为加入者") : "作为加入者"); font.weight: Font.DemiBold; color: Theme.currentTheme.colors.textColor }
                     TextField {
                         id: joinPasswordInput
                         placeholderText: "对方告知您的组网密码"
@@ -178,7 +178,7 @@ FluentPage {
                         Layout.fillWidth: true
                     }
                     Button {
-                        text: qsTr("连接到对方")
+                        text: (Backend ? Backend.tr("连接到对方") : "连接到对方")
                         Layout.fillWidth: true
                         onClicked: { if (Backend) Backend.joinEasytierWithConfig("", joinPasswordInput.text) }
                     }
@@ -189,7 +189,7 @@ FluentPage {
     }
 
     Label {
-        text: qsTr("联机服务 Powered by EasyTier. 对方也需要安装 Bloret Launcher 或 EasyTier 才能加入。")
+        text: (Backend ? Backend.tr("联机服务 Powered by EasyTier. 对方也需要安装 Bloret Launcher 或 EasyTier 才能加入。") : "联机服务 Powered by EasyTier. 对方也需要安装 Bloret Launcher 或 EasyTier 才能加入。")
         color: Theme.currentTheme.colors.textTertialyColor
         wrapMode: Text.Wrap
         Layout.fillWidth: true

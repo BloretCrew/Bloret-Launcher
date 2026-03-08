@@ -5,7 +5,7 @@ import RinUI
 
 FluentPage {
     id: modsPage
-    title: qsTr("Mods")
+    title: (Backend ? Backend.tr("Mods") : "Mods")
 
     property var modResults: []
     property string blorikoStatus: ""
@@ -73,11 +73,11 @@ FluentPage {
                         Layout.fillWidth: true
                         Label {
                             font.weight: Font.DemiBold
-                            text: qsTr("让络可帮你挑选合适的 Mod")
+                            text: (Backend ? Backend.tr("让络可帮你挑选合适的 Mod") : "让络可帮你挑选合适的 Mod")
                             color: Theme.currentTheme.colors.textColor
                         }
                         Label {
-                            text: qsTr("无需一个一个找 Mod，让 Bloriko 帮你找齐。")
+                            text: (Backend ? Backend.tr("无需一个一个找 Mod，让 Bloriko 帮你找齐。") : "无需一个一个找 Mod，让 Bloriko 帮你找齐。")
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
                     }
@@ -90,16 +90,16 @@ FluentPage {
                     TextField {
                         id: askBlorikoInput
                         Layout.fillWidth: true
-                        placeholderText: qsTr("告诉 Bloriko 你的需求...")
+                        placeholderText: (Backend ? Backend.tr("告诉 Bloriko 你的需求...") : "告诉 Bloriko 你的需求...")
                     }
 
                     CheckBox {
                         id: deepThinkCheck
-                        text: qsTr("深度思考")
+                        text: (Backend ? Backend.tr("深度思考") : "深度思考")
                     }
 
                     Button {
-                        text: qsTr("发送")
+                        text: (Backend ? Backend.tr("发送") : "发送")
                         highlighted: true
                         onClicked: {
                             if (askBlorikoInput.text !== "" && Backend) {
@@ -113,7 +113,7 @@ FluentPage {
         }
 
         Label {
-            text: qsTr("Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。")
+            text: (Backend ? Backend.tr("Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。") : "Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。")
             color: Theme.currentTheme.colors.textTertialyColor
             font.pixelSize: 12
         }
@@ -124,11 +124,11 @@ FluentPage {
             TextField {
                 id: modSearchInput
                 Layout.fillWidth: true
-                placeholderText: qsTr("在 Modrinth 上搜索...")
+                placeholderText: (Backend ? Backend.tr("在 Modrinth 上搜索...") : "在 Modrinth 上搜索...")
                 onAccepted: { if (Backend) Backend.searchModrinth(modSearchInput.text) }
             }
             Button {
-                text: qsTr("搜索")
+                text: (Backend ? Backend.tr("搜索") : "搜索")
                 onClicked: { if (Backend) Backend.searchModrinth(modSearchInput.text) }
             }
         }
@@ -244,13 +244,13 @@ FluentPage {
                     RowLayout {
                     spacing: 8
                     Button {
-                        text: qsTr("查看")
+                        text: (Backend ? Backend.tr("查看") : "查看")
                         onClicked: { 
                             if (Backend) Backend.openUrl("https://modrinth.com/mod/" + modelData.slug) 
                         }
                     }
                     Button {
-                        text: qsTr("下载")
+                        text: (Backend ? Backend.tr("下载") : "下载")
                         highlighted: true
                         onClicked: { 
                             downloadTargetDialog.modId = modelData.id
@@ -265,7 +265,7 @@ FluentPage {
 
     Dialog {
         id: blorikoDialog
-        title: qsTr("Bloriko 的建议")
+        title: (Backend ? Backend.tr("Bloriko 的建议") : "Bloriko 的建议")
         property string text: ""
         width: Math.min(parent.width * 0.9, 650)
         height: Math.min(parent.height * 0.9, 550)
@@ -307,7 +307,7 @@ FluentPage {
                 spacing: 15
 
                 Label {
-                    text: qsTr("💡 提示：复制上方推荐中的模组名称，在搜索框搜索即可一键安装。")
+                    text: (Backend ? Backend.tr("💡 提示：复制上方推荐中的模组名称，在搜索框搜索即可一键安装。") : "💡 提示：复制上方推荐中的模组名称，在搜索框搜索即可一键安装。")
                     font.pixelSize: 12
                     color: Theme.currentTheme.colors.textSecondaryColor
                     wrapMode: Text.Wrap
@@ -315,7 +315,7 @@ FluentPage {
                 }
 
                 Button {
-                    text: qsTr("关闭")
+                    text: (Backend ? Backend.tr("关闭") : "关闭")
                     onClicked: blorikoDialog.close()
                 }
             }
@@ -325,7 +325,7 @@ FluentPage {
     // --- Version Selection Dialog ---
     Dialog {
         id: versionSelectDialog
-        title: qsTr("选择 Minecraft 版本")
+        title: (Backend ? Backend.tr("选择 Minecraft 版本") : "选择 Minecraft 版本")
         width: 400
         x: (parent.width - width) / 2
         y: (parent.height - height) / 2
@@ -343,7 +343,7 @@ FluentPage {
             spacing: 20
 
             Label {
-                text: qsTr("请选择要推荐模组的 Minecraft 版本（仅支持 Fabric）：")
+                text: (Backend ? Backend.tr("请选择要推荐模组的 Minecraft 版本（仅支持 Fabric）：") : "请选择要推荐模组的 Minecraft 版本（仅支持 Fabric）：")
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
                 color: Theme.currentTheme.colors.textColor
@@ -374,7 +374,7 @@ FluentPage {
                 }
                 
                 Label {
-                    text: qsTr("络可正在思考建议...")
+                    text: (Backend ? Backend.tr("络可正在思考建议...") : "络可正在思考建议...")
                     Layout.alignment: Qt.AlignHCenter
                     color: Theme.currentTheme.colors.textColor
                     font.pixelSize: 14
@@ -389,12 +389,12 @@ FluentPage {
                 Item { Layout.fillWidth: true }
                 
                 Button {
-                    text: qsTr("取消")
+                    text: (Backend ? Backend.tr("取消") : "取消")
                     onClicked: versionSelectDialog.close()
                 }
                 
                 Button {
-                    text: qsTr("确定")
+                    text: (Backend ? Backend.tr("确定") : "确定")
                     highlighted: true
                     onClicked: {
                         if (fabricVersionCombo.currentIndex >= 0 && fabricVersionCombo.currentText !== "") {
@@ -420,7 +420,7 @@ FluentPage {
 
     Dialog {
         id: downloadTargetDialog
-        title: qsTr("选择安装版本")
+        title: (Backend ? Backend.tr("选择安装版本") : "选择安装版本")
         standardButtons: Dialog.Ok | Dialog.Cancel
         width: 350
         x: (parent.width - width) / 2
@@ -438,7 +438,7 @@ FluentPage {
             spacing: 15
             
             Label {
-                text: qsTr("请选择要安装此 Mod 的 Fabric 版本:")
+                text: (Backend ? Backend.tr("请选择要安装此 Mod 的 Fabric 版本:") : "请选择要安装此 Mod 的 Fabric 版本:")
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
                 color: Theme.currentTheme.colors.textColor

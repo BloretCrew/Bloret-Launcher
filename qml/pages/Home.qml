@@ -165,7 +165,7 @@ FluentPage {
                     }
                 }
                 Button {
-                    text: qsTr("前往")
+                    text: (Backend ? Backend.tr("前往") : "前往")
                     highlighted: true
                     onClicked: Backend.openUrl(activityInfo.link)
                 }
@@ -192,7 +192,7 @@ FluentPage {
             
             TextField {
                 id: aiInput
-                placeholderText: qsTr("关于 Minecraft 的任何问题，可以问络可哦 ~")
+                placeholderText: (Backend ? Backend.tr("关于 Minecraft 的任何问题，可以问络可哦 ~") : "关于 Minecraft 的任何问题，可以问络可哦 ~")
                 Layout.fillWidth: true
                 padding: 10
                 onAccepted: sendBtn.clicked()
@@ -200,18 +200,18 @@ FluentPage {
 
             CheckBox {
                 id: deepThinkCheck
-                text: qsTr("深度思考")
+                text: (Backend ? Backend.tr("深度思考") : "深度思考")
             }
 
             Button {
                 id: sendBtn
                 icon.name: "ic_fluent_send_20_regular"
-                text: qsTr("发送")
+                text: (Backend ? Backend.tr("发送") : "发送")
                 highlighted: true
                 onClicked: {
                     if (aiInput.text.trim() !== "") {
                         blorikoThinking.visible = true
-                        askBlorikoAnswer.text = qsTr("让络可好好想想...")
+                        askBlorikoAnswer.text = (Backend ? Backend.tr("让络可好好想想...") : "让络可好好想想...")
                         Backend.askBloriko(aiInput.text, deepThinkCheck.checked)
                     }
                 }
@@ -219,7 +219,7 @@ FluentPage {
         }
         
         Label {
-            text: qsTr("Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。")
+            text: (Backend ? Backend.tr("Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。") : "Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。")
             color: Theme.currentTheme.colors.textTertialyColor
             font.pixelSize: 12
         }
@@ -243,7 +243,7 @@ FluentPage {
         Label {
             font.pixelSize: 24
             font.weight: Font.Bold
-            text: qsTr("信息")
+            text: (Backend ? Backend.tr("信息") : "信息")
             color: Theme.currentTheme.colors.textColor
         }
 
@@ -315,7 +315,7 @@ FluentPage {
 
                 Label {
                     font.weight: Font.Bold
-                    text: qsTr("络可推荐时间段")
+                    text: (Backend ? Backend.tr("络可推荐时间段") : "络可推荐时间段")
                     color: Theme.currentTheme.colors.textColor
                 }
                 
@@ -330,7 +330,7 @@ FluentPage {
         }
 
         Label {
-            text: qsTr("Bloret Server 数据信息提供自 百络谷查服网")
+            text: (Backend ? Backend.tr("Bloret Server 数据信息提供自 百络谷查服网") : "Bloret Server 数据信息提供自 百络谷查服网")
             color: Theme.currentTheme.colors.textTertialyColor
             font.pixelSize: 12
         }
@@ -425,13 +425,13 @@ Rectangle {
                         Layout.fillWidth: true
                         spacing: 0
                         Label {
-                            text: Backend ? Backend.getPassPortName() : qsTr("访客")
+                            text: Backend ? Backend.getPassPortName() : (Backend ? Backend.tr("访客") : "访客")
                             color: (Theme.currentTheme && Theme.currentTheme.colors) ? Theme.currentTheme.colors.textColor : (Theme.dark ? "#ffffff" : "#000000")
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
                         }
                         Label {
-                            text: (Backend ? "以身份 " + Backend.getPlayerName() + " 来登录 Minecraft" : qsTr("无档案"))
+                            text: (Backend ? "以身份 " + Backend.getPlayerName() + " 来登录 Minecraft" : (Backend ? Backend.tr("无档案") : "无档案"))
                             color: Theme.currentTheme.colors.textSecondaryColor
                             font.pixelSize: 12
                         }
@@ -449,7 +449,7 @@ Rectangle {
                     }
                     Button {
                         icon.name: "ic_fluent_camera_switch_20_filled"
-                        text: qsTr("切换核心")
+                        text: (Backend ? Backend.tr("切换核心") : "切换核心")
                         highlighted: true
                         flat: true
                         onClicked: launchSelectorDialog.open()
@@ -463,14 +463,14 @@ Rectangle {
                 icon.name: "ic_fluent_screen_cut_20_filled"
                 flat: true
                 ToolTip.visible: hovered
-                ToolTip.text: qsTr("截图")
+                ToolTip.text: (Backend ? Backend.tr("截图") : "截图")
                 onClicked: { if (Backend) Backend.takeScreenCut() }
             }
 
             Button {
                 id: launchBtn
                 icon.name: "ic_fluent_caret_right_20_filled"
-                text: qsTr("启动")
+                text: (Backend ? Backend.tr("启动") : "启动")
                 highlighted: true
                 Layout.preferredWidth: 120
                 Layout.preferredHeight: 36

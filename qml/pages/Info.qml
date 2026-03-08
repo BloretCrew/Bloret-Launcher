@@ -5,7 +5,7 @@ import RinUI
 
 FluentPage {
     id: infoPage
-    title: qsTr("关于")
+    title: (Backend ? Backend.tr("关于") : "关于")
 
     // --- Header Card ---
     Frame {
@@ -44,7 +44,7 @@ FluentPage {
                 }
 
                 Label {
-                    text: qsTr("Conveniently manage your Minecraft, conveniently play Bloret.\n便捷地管理你的 Minecraft，便捷地游玩 Bloret。")
+                    text: (Backend ? Backend.tr("Conveniently manage your Minecraft, conveniently play Bloret.\n便捷地管理你的 Minecraft，便捷地游玩 Bloret。") : "Conveniently manage your Minecraft, conveniently play Bloret.\n便捷地管理你的 Minecraft，便捷地游玩 Bloret。")
                     color: Theme.currentTheme.colors.textSecondaryColor
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true

@@ -7,7 +7,7 @@ import "components"
 FluentWindow {
     id: window
     visible: true
-    title: qsTr("Bloret Launcher")
+    title: (Backend ? Backend.tr("Bloret Launcher") : "Bloret Launcher")
     width: 1000
     height: 700
     minimumWidth: 800
@@ -23,51 +23,51 @@ FluentWindow {
 
     property var navItems: [
         {
-            title: qsTr("主页"),
+            title: (Backend ? Backend.tr("主页") : "主页"),
             page: Qt.resolvedUrl("pages/Home.qml"),
             icon: "ic_fluent_home_20_regular",
             position: Position.Top
         },
         {
-            title: qsTr("通行证"),
+            title: (Backend ? Backend.tr("通行证") : "通行证"),
             page: Qt.resolvedUrl("pages/PassPort.qml"),
             icon: "ic_fluent_person_20_regular",
             position: Position.Bottom,
             passportItem: true  // 标记为通行证项
         },
         {
-            title: qsTr("下载"),
+            title: (Backend ? Backend.tr("下载") : "下载"),
             page: Qt.resolvedUrl("pages/Download.qml"),
             icon: "ic_fluent_arrow_download_20_regular"
         },
         {
-            title: qsTr("小工具"),
+            title: (Backend ? Backend.tr("小工具") : "小工具"),
             page: Qt.resolvedUrl("pages/Tools.qml"),
             icon: "ic_fluent_wrench_20_regular"
         },
         {
-            title: qsTr("插件"),
+            title: (Backend ? Backend.tr("插件") : "插件"),
             page: Qt.resolvedUrl("pages/Plugins.qml"),
             icon: "ic_fluent_extension_20_regular"
         },
         {
-            title: qsTr("Mods"),
+            title: (Backend ? Backend.tr("Mods") : "Mods"),
             page: Qt.resolvedUrl("pages/Mods.qml"),
             icon: "ic_fluent_puzzle_piece_20_regular"
         },
         {
-            title: qsTr("联机"),
+            title: (Backend ? Backend.tr("联机") : "联机"),
             page: Qt.resolvedUrl("pages/Multiplayer.qml"),
             icon: "ic_fluent_plug_connected_20_regular"
         },
         {
-            title: qsTr("设置"),
+            title: (Backend ? Backend.tr("设置") : "设置"),
             page: Qt.resolvedUrl("pages/Settings.qml"),
             icon: "ic_fluent_settings_20_regular",
             position: Position.Bottom
         },
         {
-            title: qsTr("关于"),
+            title: (Backend ? Backend.tr("关于") : "关于"),
             page: Qt.resolvedUrl("pages/Info.qml"),
             icon: "ic_fluent_info_20_regular",
             position: Position.Bottom
@@ -93,7 +93,7 @@ FluentWindow {
                     navItems[i].icon = ""  // 清除默认icon
                 } else {
                     // 未登录：显示默认icon和"通行证"文本
-                    navItems[i].title = qsTr("通行证")
+                    navItems[i].title = (Backend ? Backend.tr("通行证") : "通行证")
                     navItems[i].source = ""
                     navItems[i].icon = "ic_fluent_person_20_regular"
                 }

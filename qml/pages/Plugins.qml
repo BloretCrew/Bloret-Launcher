@@ -5,7 +5,7 @@ import RinUI
 
 FluentPage {
     id: pluginsPage
-    title: qsTr("插件")
+    title: (Backend ? Backend.tr("插件") : "插件")
 
     property var pluginList: []
     property string pluginRoot: ""
@@ -70,22 +70,22 @@ FluentPage {
                     Label {
                         font.weight: Font.DemiBold
                         font.pixelSize: 16
-                        text: qsTr("已安装的插件")
+                        text: (Backend ? Backend.tr("已安装的插件") : "已安装的插件")
                         color: Theme.currentTheme.colors.textColor
                     }
                     Label {
-                        text: qsTr("管理已安装插件，查看信息或卸载")
+                        text: (Backend ? Backend.tr("管理已安装插件，查看信息或卸载") : "管理已安装插件，查看信息或卸载")
                         color: Theme.currentTheme.colors.textSecondaryColor
                     }
                 }
 
                 Button {
-                    text: qsTr("刷新")
+                    text: (Backend ? Backend.tr("刷新") : "刷新")
                     onClicked: refreshPlugins()
                 }
 
                 Button {
-                    text: qsTr("打开插件目录")
+                    text: (Backend ? Backend.tr("打开插件目录") : "打开插件目录")
                     onClicked: { if (Backend) Backend.openPluginRoot() }
                 }
             }
@@ -147,12 +147,12 @@ FluentPage {
                             Label {
                                 font.weight: Font.DemiBold
                                 font.pixelSize: 16
-                                text: modelData.name || qsTr("未命名插件")
+                                text: modelData.name || (Backend ? Backend.tr("未命名插件") : "未命名插件")
                                 color: Theme.currentTheme.colors.textColor
                             }
 
                             Label {
-                                text: modelData.version ? ("v" + modelData.version) : qsTr("v未知")
+                                text: modelData.version ? ("v" + modelData.version) : (Backend ? Backend.tr("v未知") : "v未知")
                                 color: Theme.currentTheme.colors.textTertialyColor
                                 font.pixelSize: 12
                                 Layout.alignment: Qt.AlignBaseline
@@ -160,13 +160,13 @@ FluentPage {
                         }
 
                         Label {
-                            text: modelData.author ? (qsTr("作者: ") + modelData.author) : qsTr("作者: 未知")
+                            text: modelData.author ? ((Backend ? Backend.tr("作者: ") : "作者: ") + modelData.author) : (Backend ? Backend.tr("作者: 未知") : "作者: 未知")
                             color: Theme.currentTheme.colors.textSecondaryColor
                             font.pixelSize: 12
                         }
 
                         Label {
-                            text: modelData.description || qsTr("暂无插件描述")
+                            text: modelData.description || (Backend ? Backend.tr("暂无插件描述") : "暂无插件描述")
                             color: Theme.currentTheme.colors.textSecondaryColor
                             wrapMode: Text.Wrap
                             Layout.fillWidth: true
@@ -179,18 +179,18 @@ FluentPage {
                         spacing: 8
 
                         Button {
-                            text: qsTr("主页")
+                            text: (Backend ? Backend.tr("主页") : "主页")
                             visible: modelData.url && modelData.url !== ""
                             onClicked: { if (Backend) Backend.openUrl(modelData.url) }
                         }
 
                         Button {
-                            text: qsTr("打开文件夹")
+                            text: (Backend ? Backend.tr("打开文件夹") : "打开文件夹")
                             onClicked: { if (Backend) Backend.openPluginFolder(modelData.folderName) }
                         }
 
                         Button {
-                            text: qsTr("卸载")
+                            text: (Backend ? Backend.tr("卸载") : "卸载")
                             highlighted: true
                             onClicked: {
                                 pendingUninstallName = modelData.folderName
@@ -204,7 +204,7 @@ FluentPage {
 
             Label {
                 anchors.centerIn: parent
-                text: qsTr("暂无插件")
+                text: (Backend ? Backend.tr("暂无插件") : "暂无插件")
                 color: Theme.currentTheme.colors.textTertialyColor
                 visible: pluginListView.count === 0
             }
@@ -213,18 +213,18 @@ FluentPage {
 
     Dialog {
         id: uninstallDialog
-        title: qsTr("卸载插件")
+        title: (Backend ? Backend.tr("卸载插件") : "卸载插件")
         modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
 
         ColumnLayout {
             spacing: 8
             Label {
-                text: qsTr("确认卸载插件：") + pendingUninstallDisplay + qsTr("？")
+                text: (Backend ? Backend.tr("确认卸载插件：") : "确认卸载插件：") + pendingUninstallDisplay + (Backend ? Backend.tr("？") : "？")
                 wrapMode: Text.Wrap
             }
             Label {
-                text: qsTr("卸载后会删除插件文件，并移除相关启动项。")
+                text: (Backend ? Backend.tr("卸载后会删除插件文件，并移除相关启动项。") : "卸载后会删除插件文件，并移除相关启动项。")
                 color: Theme.currentTheme.colors.textSecondaryColor
                 wrapMode: Text.Wrap
             }
@@ -234,10 +234,10 @@ FluentPage {
             if (Backend) {
                 let result = Backend.uninstallPlugin(pendingUninstallName)
                 if (result && result.success) {
-                    showStatus(qsTr("卸载成功"), result.message || qsTr("插件已卸载"), Severity.Success)
+                    showStatus((Backend ? Backend.tr("卸载成功") : "卸载成功"), result.message || (Backend ? Backend.tr("插件已卸载") : "插件已卸载"), Severity.Success)
                 } else {
-                    let msg = result && result.message ? result.message : qsTr("卸载失败")
-                    showStatus(qsTr("卸载失败"), msg, Severity.Error)
+                    let msg = result && result.message ? result.message : (Backend ? Backend.tr("卸载失败") : "卸载失败")
+                    showStatus((Backend ? Backend.tr("卸载失败") : "卸载失败"), msg, Severity.Error)
                 }
                 refreshPlugins()
             }

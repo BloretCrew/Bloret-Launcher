@@ -5,7 +5,7 @@ import RinUI
 
 Dialog {
     id: selectVersionDialog
-    title: qsTr("选择 Minecraft 版本")
+    title: (Backend ? Backend.tr("选择 Minecraft 版本") : "选择 Minecraft 版本")
     modal: true
     closePolicy: Dialog.CloseOnEscape | Dialog.CloseOnPressOutside
     
@@ -88,7 +88,7 @@ Dialog {
             spacing: 10
             
             Label {
-                text: qsTr("版本类别:")
+                text: (Backend ? Backend.tr("版本类别:") : "版本类别:")
                 Layout.alignment: Qt.AlignVCenter
             }
             
@@ -117,7 +117,7 @@ Dialog {
         }
         
         Label {
-            text: qsTr("正在加载版本...")
+            text: (Backend ? Backend.tr("正在加载版本...") : "正在加载版本...")
             visible: isLoading
             Layout.alignment: Qt.AlignHCenter
         }
@@ -128,7 +128,7 @@ Dialog {
             visible: !isLoading
             
             Label {
-                text: qsTr("选择版本:")
+                text: (Backend ? Backend.tr("选择版本:") : "选择版本:")
                 Layout.alignment: Qt.AlignVCenter
             }
             
@@ -153,7 +153,7 @@ Dialog {
     
     footer: DialogButtonBox {
         Button {
-            text: qsTr("确定")
+            text: (Backend ? Backend.tr("确定") : "确定")
             DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
             highlighted: true
             enabled: !isLoading && selectedVersion.length > 0
@@ -164,7 +164,7 @@ Dialog {
             }
         }
         Button {
-            text: qsTr("取消")
+            text: (Backend ? Backend.tr("取消") : "取消")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
             enabled: !isLoading
             onClicked: {

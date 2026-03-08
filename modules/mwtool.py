@@ -727,6 +727,11 @@ class ToolManagerFactory(QObject):
                 log.error(f"创建 ToolManager 失败: {e}")
                 
     def _on_show(self, hwnd, version):
+        app = QApplication.instance()
+        if app and QThread.currentThread() != app.thread():
+            log.error("_on_show 未在主线程执行，已跳过工具栏创建以避免卡死")
+            return
+
         self._on_create() # 确保已创建
         if tool_manager:
             tool_manager.show_tool(hwnd, version)
@@ -789,6 +794,15 @@ def create_minecraft_tool(minecraft_hwnd, version):
     """
     log.debug(f"create_minecraft_tool (异步) 被调用，句柄: {minecraft_hwnd}, 版本: {version}")
     try:
+        app = QApplication.instance()
+        if not app:
+            log.warning("QApplication 未初始化，跳过工具栏创建")
+            return None
+
+        if _tool_factory.thread() != app.thread():
+            log.error("ToolManagerFactory 线程归属异常，跳过工具栏创建以避免 UI 卡死")
+            return None
+
         # 发射异步显示信号，不再检查 manager 状态或等待
         _tool_factory.show_signal.emit(minecraft_hwnd, version)
         return None

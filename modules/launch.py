@@ -32,6 +32,15 @@ if platform.system() == "Windows":
         import win32process # type: ignore
     except ImportError:
         pass
+    try:
+        # Import on module load (main Qt thread in normal app startup) so mwtool's
+        # global QObject instances keep correct thread affinity.
+        from modules import mwtool  # type: ignore
+    except Exception as e:
+        mwtool = None
+        log(f"加载 mwtool 失败，将跳过 Minecraft 工具栏: {e}", logging.WARNING)
+else:
+    mwtool = None
 
 def Get_Run_Script(mc_version):
     """
@@ -809,15 +818,17 @@ def monitor_minecraft_window(version, check_interval=1, callback=None):
                 log("非 Windows 系统暂不支持浮动工具栏功能")
                 return hwnd
 
+            try:
+                if not cfg.read().get("mwtool_switch_open", True):
+                    log("已关闭 Minecraft 小工具栏，跳过创建")
+                    return hwnd
+            except Exception as e:
+                log(f"读取 mwtool_switch_open 失败，继续按默认开启处理: {e}", logging.WARNING)
+
             # 创建工具栏 - 使用修复后的模块确保线程安全
             try:
-                from PySide6.QtCore import QObject, Signal as pyqtSignal, QCoreApplication, QTimer
-                from . import mwtool
-                
-                # 确保在主线程中创建QObject
-                app = QCoreApplication.instance()
-                if not app:
-                    log("无法获取 QApplication 实例", logging.ERROR)
+                if mwtool is None:
+                    log("mwtool 未就绪，跳过 Minecraft 浮动工具栏创建", logging.WARNING)
                     return
                 
                 log("正在创建工具栏...", logging.DEBUG)
@@ -828,7 +839,7 @@ def monitor_minecraft_window(version, check_interval=1, callback=None):
                     if tool:
                         log(f"工具栏创建成功: {tool}", logging.DEBUG)
                     else:
-                        log("工具栏创建返回 None", logging.ERROR)
+                        log("工具栏创建已异步派发", logging.DEBUG)
                 except Exception as e:
                     log(f"工具栏创建失败: {e}", logging.ERROR)
                     import traceback

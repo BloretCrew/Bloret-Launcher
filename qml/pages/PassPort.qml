@@ -6,7 +6,7 @@ import RinUI
 
 FluentPage {
     id: passportPage
-    title: qsTr("通行证")
+    title: (Backend ? Backend.tr("通行证") : "通行证")
 
     property var accountList: []
     property string passportUser: ""
@@ -48,8 +48,8 @@ FluentPage {
         function onSyncStatusChanged(status) {
             if (status && status.length > 0) {
                 syncInfoBar.severity = status === "success" ? Severity.Success : Severity.Error
-                syncInfoBar.title = status === "success" ? qsTr("同步成功") : qsTr("同步失败")
-                syncInfoBar.text = status === "success" ? qsTr("已成功从云端同步账户") : (qsTr("同步时出错: ") + String(status).substring(6))
+                syncInfoBar.title = status === "success" ? (Backend ? Backend.tr("同步成功") : "同步成功") : (Backend ? Backend.tr("同步失败") : "同步失败")
+                syncInfoBar.text = status === "success" ? (Backend ? Backend.tr("已成功从云端同步账户") : "已成功从云端同步账户") : ((Backend ? Backend.tr("同步时出错: ") : "同步时出错: ") + String(status).substring(6))
                 syncInfoBar.visible = true
             }
         }
@@ -71,7 +71,7 @@ FluentPage {
         Label {
             font.pixelSize: 20
             font.weight: Font.DemiBold
-            text: qsTr("Bloret PassPort")
+            text: (Backend ? Backend.tr("Bloret PassPort") : "Bloret PassPort")
             Layout.topMargin: 10
             color: Theme.currentTheme.colors.textColor
         }
@@ -142,13 +142,13 @@ FluentPage {
                 }
 
                 Button {
-                    text: qsTr("登录")
+                    text: (Backend ? Backend.tr("登录") : "登录")
                     visible: passportUser === "未登录"
                     onClicked: { if (Backend) Backend.loginBloretPassPort() }
                 }
 
                 Button {
-                    text: qsTr("退出登录")
+                    text: (Backend ? Backend.tr("退出登录") : "退出登录")
                     visible: passportUser !== "未登录"
                     onClicked: { if (Backend) Backend.logoutBloretPassPort() }
                 }
@@ -156,7 +156,7 @@ FluentPage {
         }
 
         Label {
-            text: qsTr("使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。")
+            text: (Backend ? Backend.tr("使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。") : "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。")
             color: Theme.currentTheme.colors.textSecondaryColor
         }
 
@@ -168,13 +168,13 @@ FluentPage {
             Label {
                 font.pixelSize: 20
                 font.weight: Font.DemiBold
-                text: qsTr("Minecraft 账户")
+                text: (Backend ? Backend.tr("Minecraft 账户") : "Minecraft 账户")
                 Layout.fillWidth: true
                 color: Theme.currentTheme.colors.textColor
             }
             
             Button {
-                text: qsTr("刷新")
+                text: (Backend ? Backend.tr("刷新") : "刷新")
                 onClicked: { if (Backend) Backend.refreshMinecraftAccounts() }
             }
         }
@@ -222,7 +222,7 @@ FluentPage {
                         Label { text: modelData.type; color: Theme.currentTheme.colors.textSecondaryColor }
                     }
                     Button {
-                        text: modelData.isDefault ? qsTr("正在使用") : qsTr("使用此账户")
+                        text: modelData.isDefault ? (Backend ? Backend.tr("正在使用") : "正在使用") : (Backend ? Backend.tr("使用此账户") : "使用此账户")
                         enabled: !modelData.isDefault
                         onClicked: { if (Backend) Backend.setDefaultMinecraftAccount(modelData.index) }
                     }
@@ -231,7 +231,7 @@ FluentPage {
 
             Label {
                 anchors.centerIn: parent
-                text: qsTr("暂无账户，请从云端同步")
+                text: (Backend ? Backend.tr("暂无账户，请从云端同步") : "暂无账户，请从云端同步")
                 visible: accountList.length === 0
                 color: Theme.currentTheme.colors.textTertialyColor
             }
@@ -255,11 +255,11 @@ FluentPage {
                     Layout.fillWidth: true
                     Label {
                         font.weight: Font.DemiBold
-                        text: qsTr("通过 Bloret PassPort 管理你的账户")
+                        text: (Backend ? Backend.tr("通过 Bloret PassPort 管理你的账户") : "通过 Bloret PassPort 管理你的账户")
                         color: Theme.currentTheme.colors.textColor
                     }
                     Label {
-                        text: qsTr("轻松登录你的 Minecraft Account，便捷地进行操作。")
+                        text: (Backend ? Backend.tr("轻松登录你的 Minecraft Account，便捷地进行操作。") : "轻松登录你的 Minecraft Account，便捷地进行操作。")
                         color: Theme.currentTheme.colors.textSecondaryColor
                     }
                 }
@@ -269,12 +269,12 @@ FluentPage {
                     spacing: 15
 
                     Button {
-                        text: qsTr("网站管理")
+                        text: (Backend ? Backend.tr("网站管理") : "网站管理")
                         onClicked: { if (Backend) Backend.manageAccountOnWebsite() }
                     }
 
                     Button {
-                        text: qsTr("云端同步")
+                        text: (Backend ? Backend.tr("云端同步") : "云端同步")
                         highlighted: true
                         onClicked: { if (Backend) Backend.syncAccountFromPassPort() }
                     }

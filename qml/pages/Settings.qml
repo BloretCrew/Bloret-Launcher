@@ -268,9 +268,13 @@ FluentPage {
                 model: languages
                 textRole: "name"
                 Layout.preferredWidth: 150
-                onActivated: {
-                    if (Backend)
-                        Backend.setLanguage(model[currentIndex].code);
+                onActivated: function(index) {
+                    if (!Backend)
+                        return;
+
+                    var selected = (languages && index >= 0 && index < languages.length) ? languages[index] : null;
+                    if (selected && selected.code)
+                        Backend.setLanguage(selected.code);
                 }
             }
         }

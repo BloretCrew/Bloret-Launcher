@@ -1177,8 +1177,12 @@ class Backend(QObject):
     @Slot(result=str)
     def getLanguageCode(self):
         config_data = cfg.read()
-        # 旧版 config 用小写 'language' 键
-        return config_data.get("language", config_data.get("Language", "zh-cn"))
+        lang_code = config_data.get("language") or config_data.get("Language") or "zh-cn"
+        if not isinstance(lang_code, str):
+            return "zh-cn"
+
+        lang_code = lang_code.strip()
+        return lang_code if lang_code else "zh-cn"
 
     @Slot(result=list)
     def getLanguages(self):
@@ -1241,8 +1245,18 @@ class Backend(QObject):
     @Slot(str)
     def setLanguage(self, lang_code):
         try:
+            if not isinstance(lang_code, str):
+                lang_code = "" if lang_code is None else str(lang_code)
+
+            lang_code = lang_code.strip()
+            if not lang_code:
+                print("Ignored empty language code")
+                return
+
             config_data = cfg.read()
             config_data['language'] = lang_code
+            # Drop legacy key to avoid ambiguity.
+            config_data.pop('Language', None)
             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                 json.dump(config_data, f, indent=4, ensure_ascii=False)
             

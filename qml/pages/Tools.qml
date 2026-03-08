@@ -5,22 +5,22 @@ import RinUI
 
 FluentPage {
     id: toolsPage
-    title: qsTr("小工具")
+    title: (Backend ? Backend.tr("小工具") : "小工具")
 
     Connections {
         target: Backend
         function onQueryResultReceived(data) {
             if (data.type === "uuid") {
-                uuidResult.text = data.success ? data.result : qsTr("查询失败")
+                uuidResult.text = data.success ? data.result : (Backend ? Backend.tr("查询失败") : "查询失败")
             } else if (data.type === "name") {
-                nameResult.text = data.success ? data.result : qsTr("查询失败")
+                nameResult.text = data.success ? data.result : (Backend ? Backend.tr("查询失败") : "查询失败")
             } else if (data.type === "textures") {
                 if (data.success) {
-                    skinResult.text = data.skin || qsTr("未找到皮肤")
-                    capeResult.text = data.cape || qsTr("未找到披风")
+                    skinResult.text = data.skin || (Backend ? Backend.tr("未找到皮肤") : "未找到皮肤")
+                    capeResult.text = data.cape || (Backend ? Backend.tr("未找到披风") : "未找到披风")
                 } else {
-                    skinResult.text = qsTr("查询失败")
-                    capeResult.text = qsTr("查询失败")
+                    skinResult.text = (Backend ? Backend.tr("查询失败") : "查询失败")
+                    capeResult.text = (Backend ? Backend.tr("查询失败") : "查询失败")
                 }
             }
         }
@@ -49,8 +49,8 @@ FluentPage {
         InfoBar {
             id: logClearedInfoBar
             Layout.fillWidth: true
-            title: qsTr("成功")
-            text: qsTr("日志已成功清空")
+            title: (Backend ? Backend.tr("成功") : "成功")
+            text: (Backend ? Backend.tr("日志已成功清空") : "日志已成功清空")
             severity: Severity.Success
             visible: false
         }
@@ -59,7 +59,7 @@ FluentPage {
         Label {
             font.pixelSize: 20
             font.weight: Font.DemiBold
-            text: qsTr("屏幕截图")
+            text: (Backend ? Backend.tr("屏幕截图") : "屏幕截图")
             Layout.topMargin: 10
             color: Theme.currentTheme.colors.textColor
         }
@@ -91,18 +91,18 @@ FluentPage {
                         Label {
                             font.weight: Font.DemiBold
                             font.pixelSize: 16
-                            text: qsTr("Bloret Launcher Screen Cut")
+                            text: (Backend ? Backend.tr("Bloret Launcher Screen Cut") : "Bloret Launcher Screen Cut")
                             color: Theme.currentTheme.colors.textColor
                         }
                         Label {
-                            text: qsTr("便捷地截取屏幕画面，包括 Minecraft 窗口")
+                            text: (Backend ? Backend.tr("便捷地截取屏幕画面，包括 Minecraft 窗口") : "便捷地截取屏幕画面，包括 Minecraft 窗口")
                             color: Theme.currentTheme.colors.textSecondaryColor
                             wrapMode: Text.Wrap
                         }
                     }
 
                     Button {
-                        text: qsTr("截图")
+                        text: (Backend ? Backend.tr("截图") : "截图")
                         onClicked: { if (Backend) Backend.takeScreenCut() }
                     }
                 }
@@ -113,7 +113,7 @@ FluentPage {
         Label {
             font.pixelSize: 20
             font.weight: Font.DemiBold
-            text: qsTr("Minecraft 数据查询")
+            text: (Backend ? Backend.tr("Minecraft 数据查询") : "Minecraft 数据查询")
             Layout.topMargin: 10
             color: Theme.currentTheme.colors.textColor
         }
@@ -134,7 +134,7 @@ FluentPage {
 
                 Label {
                     font.weight: Font.DemiBold
-                    text: qsTr("查询玩家UUID")
+                    text: (Backend ? Backend.tr("查询玩家UUID") : "查询玩家UUID")
                     color: Theme.currentTheme.colors.textColor
                 }
 
@@ -147,14 +147,14 @@ FluentPage {
                     TextField {
                         id: uuidInput
                         Layout.fillWidth: true
-                        placeholderText: qsTr("玩家名称（正版）")
+                        placeholderText: (Backend ? Backend.tr("玩家名称（正版）") : "玩家名称（正版）")
                     }
 
                     Button {
                         Layout.fillWidth: true
-                        text: qsTr("查询")
+                        text: (Backend ? Backend.tr("查询") : "查询")
                         onClicked: {
-                            uuidResult.text = qsTr("查询中...")
+                            uuidResult.text = (Backend ? Backend.tr("查询中...") : "查询中...")
                             if (Backend) Backend.queryUUID(uuidInput.text)
                         }
                     }
@@ -163,13 +163,13 @@ FluentPage {
                         Layout.fillWidth: true
                         Label {
                             id: uuidResult
-                            text: qsTr("查询的结果将显示在这里")
+                            text: (Backend ? Backend.tr("查询的结果将显示在这里") : "查询的结果将显示在这里")
                             Layout.fillWidth: true
                             elide: Text.ElideMiddle
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
                         Button {
-                            text: qsTr("复制")
+                            text: (Backend ? Backend.tr("复制") : "复制")
                             onClicked: { if (Backend) Backend.copyToClipboard(uuidResult.text) }
                         }
                     }
@@ -193,7 +193,7 @@ FluentPage {
 
                 Label {
                     font.weight: Font.DemiBold
-                    text: qsTr("查询玩家名字")
+                    text: (Backend ? Backend.tr("查询玩家名字") : "查询玩家名字")
                     color: Theme.currentTheme.colors.textColor
                 }
 
@@ -206,14 +206,14 @@ FluentPage {
                     TextField {
                         id: nameInput
                         Layout.fillWidth: true
-                        placeholderText: qsTr("玩家UUID")
+                        placeholderText: (Backend ? Backend.tr("玩家UUID") : "玩家UUID")
                     }
 
                     Button {
                         Layout.fillWidth: true
-                        text: qsTr("查询")
+                        text: (Backend ? Backend.tr("查询") : "查询")
                         onClicked: {
-                            nameResult.text = qsTr("查询中...")
+                            nameResult.text = (Backend ? Backend.tr("查询中...") : "查询中...")
                             if (Backend) Backend.queryName(nameInput.text)
                         }
                     }
@@ -222,12 +222,12 @@ FluentPage {
                         Layout.fillWidth: true
                         Label {
                             id: nameResult
-                            text: qsTr("查询的结果将显示在这里")
+                            text: (Backend ? Backend.tr("查询的结果将显示在这里") : "查询的结果将显示在这里")
                             Layout.fillWidth: true
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
                         Button {
-                            text: qsTr("复制")
+                            text: (Backend ? Backend.tr("复制") : "复制")
                             onClicked: { if (Backend) Backend.copyToClipboard(nameResult.text) }
                         }
                     }
@@ -251,7 +251,7 @@ FluentPage {
 
                 Label {
                     font.weight: Font.DemiBold
-                    text: qsTr("获取玩家的皮肤和披风")
+                    text: (Backend ? Backend.tr("获取玩家的皮肤和披风") : "获取玩家的皮肤和披风")
                     color: Theme.currentTheme.colors.textColor
                 }
 
@@ -264,15 +264,15 @@ FluentPage {
                     TextField {
                         id: skinInput
                         Layout.fillWidth: true
-                        placeholderText: qsTr("玩家UUID")
+                        placeholderText: (Backend ? Backend.tr("玩家UUID") : "玩家UUID")
                     }
 
                     Button {
                         Layout.fillWidth: true
-                        text: qsTr("查询")
+                        text: (Backend ? Backend.tr("查询") : "查询")
                         onClicked: {
-                            skinResult.text = qsTr("查询中...")
-                            capeResult.text = qsTr("查询中...")
+                            skinResult.text = (Backend ? Backend.tr("查询中...") : "查询中...")
+                            capeResult.text = (Backend ? Backend.tr("查询中...") : "查询中...")
                             if (Backend) Backend.querySkin(skinInput.text)
                         }
                     }
@@ -281,13 +281,13 @@ FluentPage {
                         Layout.fillWidth: true
                         Label {
                             id: skinResult
-                            text: qsTr("皮肤的查询的结果")
+                            text: (Backend ? Backend.tr("皮肤的查询的结果") : "皮肤的查询的结果")
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
                         Button {
-                            text: qsTr("复制")
+                            text: (Backend ? Backend.tr("复制") : "复制")
                             onClicked: { if (Backend) Backend.copyToClipboard(skinResult.text) }
                         }
                     }
@@ -296,13 +296,13 @@ FluentPage {
                         Layout.fillWidth: true
                         Label {
                             id: capeResult
-                            text: qsTr("披风的查询的结果")
+                            text: (Backend ? Backend.tr("披风的查询的结果") : "披风的查询的结果")
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
                         Button {
-                            text: qsTr("复制")
+                            text: (Backend ? Backend.tr("复制") : "复制")
                             onClicked: { if (Backend) Backend.copyToClipboard(capeResult.text) }
                         }
                     }
@@ -314,7 +314,7 @@ FluentPage {
         Label {
             font.pixelSize: 20
             font.weight: Font.DemiBold
-            text: qsTr("EasyTier 组网")
+            text: (Backend ? Backend.tr("EasyTier 组网") : "EasyTier 组网")
             Layout.topMargin: 10
             color: Theme.currentTheme.colors.textColor
         }
@@ -353,11 +353,11 @@ FluentPage {
                 }
 
                 Button {
-                    text: qsTr("启动服务器")
+                    text: (Backend ? Backend.tr("启动服务器") : "启动服务器")
                     onClicked: { if (Backend) Backend.startEasytierHost() }
                 }
                 Button {
-                    text: qsTr("连接节点")
+                    text: (Backend ? Backend.tr("连接节点") : "连接节点")
                     onClicked: { if (Backend) Backend.startEasytierClient() }
                 }
             }
