@@ -79,6 +79,10 @@ FluentPage {
         id: coreManagerDialog
     }
 
+    RunningInstancesDialog {
+        id: runningInstancesDialog
+    }
+
     Connections {
         target: Backend
         function onCoreManagerRequested(versionName, coreData) {
@@ -465,6 +469,13 @@ Rectangle {
                 ToolTip.visible: hovered
                 ToolTip.text: (Backend ? Backend.tr("截图") : "截图")
                 onClicked: { if (Backend) Backend.takeScreenCut() }
+            }
+
+            Button {
+                text: (Backend ? Backend.tr("正在运行") : "正在运行")
+                icon.name: "ic_fluent_apps_list_20_regular"
+                flat: true
+                onClicked: runningInstancesDialog.open()
             }
 
             Button {

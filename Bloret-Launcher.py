@@ -139,6 +139,7 @@ class Backend(QObject):
     launchDialogRequested = Signal(str)
     launchProgressUpdated = Signal(float, str, str)
     launchDialogClosed = Signal()
+    runningInstancesChanged = Signal(list)
 
     def __init__(self):
         super().__init__()
@@ -240,7 +241,14 @@ class Backend(QObject):
 
                 emit_progress(95, "正在执行启动命令...", "")
                 print(f"Launching with args: {launch_args}")
-                subprocess.Popen(launch_args, cwd=game_dir)
+                proc = subprocess.Popen(launch_args, cwd=game_dir)
+                import uuid as _uuid
+                instance_id = str(_uuid.uuid4())
+                BLglobals.running_instances[instance_id] = {
+                    "name": version, "type": "minecraft",
+                    "pid": proc.pid, "suspended": False
+                }
+                self.runningInstancesChanged.emit(self.getRunningInstances())
 
                 emit_progress(97, "启动命令已执行，正在等待 Minecraft 窗口出现...", "")
 
@@ -270,6 +278,51 @@ class Backend(QObject):
                 finish_launch(close_dialog=False)
 
         threading.Thread(target=run_launch, daemon=True).start()
+
+    @Slot(result=list)
+    def getRunningInstances(self):
+        import psutil
+        dead = [k for k, v in BLglobals.running_instances.items() if not psutil.pid_exists(v["pid"])]
+        for k in dead:
+            del BLglobals.running_instances[k]
+        return [{"id": k, **v} for k, v in BLglobals.running_instances.items()]
+
+    @Slot(str)
+    def suspendInstance(self, instance_id):
+        import psutil
+        entry = BLglobals.running_instances.get(instance_id)
+        if not entry or not psutil.pid_exists(entry["pid"]):
+            return
+        pid = entry["pid"]
+        try:
+            import platform as _platform
+            if _platform.system() == "Windows":
+                import ctypes
+                handle = ctypes.windll.kernel32.OpenProcess(0x1F0FFF, False, pid)
+                if entry["suspended"]:
+                    ctypes.windll.ntdll.NtResumeProcess(handle)
+                else:
+                    ctypes.windll.ntdll.NtSuspendProcess(handle)
+                ctypes.windll.kernel32.CloseHandle(handle)
+            else:
+                import signal as _signal
+                import os as _os
+                _os.kill(pid, _signal.SIGCONT if entry["suspended"] else _signal.SIGSTOP)
+            entry["suspended"] = not entry["suspended"]
+            self.runningInstancesChanged.emit(self.getRunningInstances())
+        except Exception as e:
+            print(f"suspendInstance failed: {e}")
+
+    @Slot(str)
+    def terminateInstance(self, instance_id):
+        import psutil
+        entry = BLglobals.running_instances.pop(instance_id, None)
+        if entry and psutil.pid_exists(entry["pid"]):
+            try:
+                psutil.Process(entry["pid"]).kill()
+            except Exception as e:
+                print(f"terminateInstance failed: {e}")
+        self.runningInstancesChanged.emit(self.getRunningInstances())
 
     @Slot(result=dict)
     def getActivityInfo(self):

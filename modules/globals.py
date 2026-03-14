@@ -31,3 +31,4 @@ cache_path = os.path.join(datapath, 'cache')
 minecraft_dir = ""
 BLtips = ["欢迎使用 Bloret Launcher！", "祝你今天玩得开心！", "Bloret Launcher，让你的 Minecraft 体验更上一层楼。", "遇到问题？试试去社区寻求帮助吧！"]
 BL_Activity = {"show": False, "title": "", "description": "", "time": "", "link": "", "icon": "", "status": "after"}
+running_instances = {}  # key: unique_id (str), value: {"name": str, "type": "minecraft"|"custom", "pid": int, "suspended": bool}
