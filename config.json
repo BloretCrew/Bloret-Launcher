@@ -12,6 +12,7 @@
     "Bloret_PassPort_UserName": "",
     "Bloret_PassPort_PassWord": "",
     "Bloret_PassPort_Admin": false,
+    "bbbs_session": "",
     "whenCWopen_BLopen": true,
     "localmod": false,
     "home_show_login_mod": true,

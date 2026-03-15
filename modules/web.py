@@ -450,6 +450,10 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             # avatar field may not exist; still write key even if empty
                             avatar_val = user_data.get('avatar', '')
                             config_data['Bloret_PassPort_Avatar'] = avatar_val
+
+                            # BBBS session
+                            bbbs_session_val = user_data.get('bbbs_session', '')
+                            config_data['bbbs_session'] = bbbs_session_val
                             
                             # 打印调试信息
                             print(f"\n[Bloret PassPort 登录] 用户信息提取")

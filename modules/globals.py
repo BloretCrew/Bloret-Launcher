@@ -1,4 +1,5 @@
 server_ip = "https://wa.ng" # Bloret Launcher Server 服务器地址 （尾部不要带斜杠）
+bbbs_server_ip = "https://wa.ng:21111" # BBBS 服务器地址
 ver_id_main = []
 ver_id_short = []
 ver_id = [] 

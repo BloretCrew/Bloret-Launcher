@@ -56,6 +56,16 @@ FluentWindow {
             icon: "ic_fluent_plug_connected_20_regular"
         },
         {
+            title: (Backend ? Backend.tr("BBBS") : "BBBS"),
+            page: Qt.resolvedUrl("pages/BBBS.qml"),
+            icon: "ic_fluent_chat_20_regular"
+        },
+        {
+            title: (Backend ? Backend.tr("Live") : "Live"),
+            page: Qt.resolvedUrl("pages/Live.qml"),
+            icon: "ic_fluent_video_person_20_regular"
+        },
+        {
             title: (Backend ? Backend.tr("设置") : "设置"),
             page: Qt.resolvedUrl("pages/Settings.qml"),
             icon: "ic_fluent_settings_20_regular",

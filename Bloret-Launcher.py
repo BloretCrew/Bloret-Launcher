@@ -143,6 +143,22 @@ class Backend(QObject):
     updateProgressUpdated = Signal(float, str)  # progress (0-1), status_text
     updateFailed = Signal(str)                  # error_message
 
+    # BBBS signals
+    bbbsSummaryReceived = Signal(dict)
+    bbbsLeaderboardReceived = Signal(list)
+    bbbsAllPostsReceived = Signal(list)
+    bbbsErrorOccurred = Signal(str)
+
+    # Live signals
+    liveSpaceListReceived = Signal(list)
+    liveJoinedSpace = Signal(dict)
+    liveLeftSpace = Signal()
+    liveUserEvent = Signal(dict)
+    liveChatMessageReceived = Signal(dict)
+    liveSignalReceived = Signal(dict)
+    liveErrorOccurred = Signal(str)
+    liveConnectionStateChanged = Signal(str)
+
     def __init__(self):
         super().__init__()
         self._server_info = {}
@@ -151,6 +167,10 @@ class Backend(QObject):
         self._is_launching = False
         self._launch_session_id = 0
         self._screenshot_widget = None
+        # Live state
+        self._live_sse_client = None
+        self._live_webrtc_manager = None
+        self._current_live_space_id = None
 
     def setBackendParent(self, parent):
         self.parent = parent
@@ -2010,6 +2030,152 @@ class Backend(QObject):
     def openGithubRepo(self):
         from modules.links import open_github_bloret_Launcher
         open_github_bloret_Launcher()
+
+    # ==================== BBBS ====================
+
+    @Slot(result=bool)
+    def isBBBSAuthenticated(self):
+        config_data = cfg.read()
+        return bool(config_data.get('bbbs_session', ''))
+
+    @Slot()
+    def fetchBBBSSummary(self):
+        def run():
+            from modules.bbbs import fetch_summary
+            try:
+                data = fetch_summary()
+                if data is not None:
+                    self.bbbsSummaryReceived.emit(data if isinstance(data, dict) else {"text": str(data)})
+                else:
+                    self.bbbsErrorOccurred.emit("无法获取每日摘要")
+            except Exception as e:
+                self.bbbsErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot()
+    def fetchBBBSLeaderboard(self):
+        def run():
+            from modules.bbbs import fetch_leaderboard_posts
+            try:
+                data = fetch_leaderboard_posts()
+                self.bbbsLeaderboardReceived.emit(data or [])
+            except Exception as e:
+                self.bbbsErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot()
+    def fetchBBBSAllPosts(self):
+        def run():
+            from modules.bbbs import fetch_all_posts
+            try:
+                data = fetch_all_posts()
+                self.bbbsAllPostsReceived.emit(data or [])
+            except Exception as e:
+                self.bbbsErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    # ==================== Live ====================
+
+    @Slot()
+    def fetchLiveSpaceList(self):
+        def run():
+            from modules.bbbs_live import fetch_space_list
+            try:
+                data = fetch_space_list()
+                self.liveSpaceListReceived.emit(data or [])
+            except Exception as e:
+                self.liveErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot(str, str)
+    def joinLiveSpace(self, spaceId, password):
+        def run():
+            from modules.bbbs_live import check_access, verify_password, LiveSSEClient
+            try:
+                access = check_access(spaceId)
+                if access and access.get('needsPassword'):
+                    if password:
+                        result = verify_password(spaceId, password)
+                        if not result or not result.get('success'):
+                            self.liveErrorOccurred.emit("密码验证失败")
+                            return
+                    else:
+                        self.liveErrorOccurred.emit("需要密码才能加入")
+                        return
+
+                self._current_live_space_id = spaceId
+                self._live_sse_client = LiveSSEClient(spaceId, self._handle_live_event)
+                self._live_sse_client.start()
+                self.liveConnectionStateChanged.emit("connecting")
+            except Exception as e:
+                self.liveErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot()
+    def leaveLiveSpace(self):
+        if self._live_sse_client:
+            self._live_sse_client.stop()
+            self._live_sse_client = None
+        if self._live_webrtc_manager:
+            self._live_webrtc_manager.stop()
+            self._live_webrtc_manager = None
+        self._current_live_space_id = None
+        self.liveLeftSpace.emit()
+        self.liveConnectionStateChanged.emit("disconnected")
+
+    @Slot(str)
+    def sendLiveChatMessage(self, message):
+        def run():
+            from modules.bbbs_live import send_signal
+            try:
+                send_signal(self._current_live_space_id, {
+                    "type": "chat",
+                    "payload": {"message": message}
+                })
+            except Exception as e:
+                self.liveErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot(str)
+    def createLiveSpace(self, name):
+        def run():
+            from modules.bbbs_live import create_space
+            try:
+                result = create_space(name)
+                if result and result.get('success'):
+                    self.fetchLiveSpaceList()
+                else:
+                    self.liveErrorOccurred.emit("创建空间失败")
+            except Exception as e:
+                self.liveErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot(bool)
+    def toggleLiveAudio(self, enabled):
+        if self._live_webrtc_manager:
+            self._live_webrtc_manager.toggle_audio(enabled)
+
+    @Slot(bool)
+    def toggleLiveVideo(self, enabled):
+        if self._live_webrtc_manager:
+            self._live_webrtc_manager.toggle_video(enabled)
+
+    def _handle_live_event(self, event):
+        """分发 SSE 事件到对应的 Signal"""
+        event_type = event.get("type", "")
+        if event_type == "init":
+            self.liveJoinedSpace.emit(event)
+            self.liveConnectionStateChanged.emit("connected")
+        elif event_type in ("user-joined", "user-left"):
+            self.liveUserEvent.emit(event)
+        elif event_type == "chat":
+            self.liveChatMessageReceived.emit(event)
+        elif event_type in ("offer", "answer", "ice-candidate"):
+            if self._live_webrtc_manager:
+                self._live_webrtc_manager.handle_signaling(event)
+            self.liveSignalReceived.emit(event)
+        elif event_type == "error":
+            self.liveErrorOccurred.emit(event.get("message", "未知错误"))
 
 
 class LauncherTrayIcon(QSystemTrayIcon):
