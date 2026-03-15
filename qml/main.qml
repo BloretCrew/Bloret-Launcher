@@ -141,6 +141,18 @@ FluentWindow {
         function onDownloadPaused(paused) {
             downloadDialog.setPaused(paused)
         }
+
+        function onUpdateAvailable(currentVer, latestVer, updateText) {
+            updateDialog.showUpdate(currentVer, latestVer, updateText)
+        }
+
+        function onUpdateProgressUpdated(progress, status) {
+            updateDialog.updateProgress(progress, status)
+        }
+
+        function onUpdateFailed(message) {
+            updateDialog.showError(message)
+        }
     }
     
     Component.onCompleted: {
@@ -161,5 +173,9 @@ FluentWindow {
 
     LaunchProgressDialog {
         id: launchProgressDialog
+    }
+
+    UpdateDialog {
+        id: updateDialog
     }
 }

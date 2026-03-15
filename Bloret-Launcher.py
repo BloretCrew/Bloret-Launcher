@@ -139,6 +139,9 @@ class Backend(QObject):
     launchProgressUpdated = Signal(float, str, str)
     launchDialogClosed = Signal()
     runningInstancesChanged = Signal(list)
+    updateAvailable = Signal(str, str, str)    # current_ver, latest_ver, update_text
+    updateProgressUpdated = Signal(float, str)  # progress (0-1), status_text
+    updateFailed = Signal(str)                  # error_message
 
     def __init__(self):
         super().__init__()
@@ -1224,7 +1227,8 @@ class Backend(QObject):
 
     @Slot(result=str)
     def getBloretVersion(self):
-        return "2.0.0-RinUI (Beta)"
+        config_data = cfg.read()
+        return str(config_data.get("ver", ""))
 
     @Slot(result=str)
     def getLanguageCode(self):
@@ -1322,6 +1326,76 @@ class Backend(QObject):
     @Slot(str, result=str)
     def tr(self, key):
         return i18nText(key)
+
+    # ── Software Update ──────────────────────────────────────────
+
+    def checkForUpdates(self):
+        """Check for updates in a background thread; emit updateAvailable if newer version exists."""
+        def _inner():
+            try:
+                config_data = cfg.read()
+                if config_data.get('localmod', False):
+                    print("Local mode enabled, skipping update check")
+                    return
+
+                from modules.BLServer import get_latest_version, IsNeedUpdate
+                latest_ver, update_text = get_latest_version()
+                current_ver = str(config_data.get('ver', '0.0'))
+                print(f"Update check: current={current_ver}, latest={latest_ver}")
+
+                if latest_ver and IsNeedUpdate(current_ver, latest_ver):
+                    print(f"Update available: {latest_ver}")
+                    self.updateAvailable.emit(current_ver, latest_ver, update_text)
+                else:
+                    print("Already up to date")
+            except Exception as e:
+                print(f"Update check failed: {e}")
+
+        threading.Thread(target=_inner, daemon=True).start()
+
+    @Slot()
+    def startUpdate(self):
+        """Download the latest installer and launch it."""
+        def _inner():
+            try:
+                self.updateProgressUpdated.emit(0.05, i18nText("正在获取下载地址..."))
+
+                response = requests.get(f"{BLglobals.server_ip}:3001/api/info", timeout=15)
+                response.raise_for_status()
+                res = response.json()
+
+                download_url = res["downloads"]["stable"]["gitcode"]
+                version = res["latestVersion"]
+
+                self.updateProgressUpdated.emit(0.1, i18nText("正在下载更新文件..."))
+
+                import tempfile
+                temp_dir = tempfile.gettempdir()
+                file_name = os.path.join(temp_dir, f"Bloret-Launcher-Setup-{version}.exe")
+
+                with requests.get(download_url, stream=True, timeout=30) as r:
+                    r.raise_for_status()
+                    total_size = int(r.headers.get('content-length', 0))
+                    downloaded_size = 0
+                    last_progress = 0.1
+                    with open(file_name, 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                            downloaded_size += len(chunk)
+                            if total_size > 0:
+                                progress = 0.1 + (downloaded_size / total_size) * 0.8
+                                if progress - last_progress >= 0.03:
+                                    status = f"{downloaded_size // 1024} KB / {total_size // 1024} KB"
+                                    self.updateProgressUpdated.emit(progress, status)
+                                    last_progress = progress
+
+                self.updateProgressUpdated.emit(0.95, i18nText("正在启动安装程序..."))
+                subprocess.Popen([file_name, "--quickstart"])
+                sys.exit(0)
+
+            except Exception as e:
+                print(f"Update failed: {e}")
+                self.updateFailed.emit(str(e))
 
     @Slot(result=list)
     def getSystemJavas(self):
@@ -2133,6 +2207,9 @@ class LauncherV2(RinUIWindow):
         self.setProperty("title", "Bloret Launcher")
 
         self._init_system_tray()
+
+        # Check for software updates after UI is ready
+        self.backend.checkForUpdates()
 
     def _read_minimize_to_tray_on_close(self):
         minimize_to_tray = True

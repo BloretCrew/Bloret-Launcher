@@ -129,6 +129,7 @@ ComboBox {
 
         function handleItemSelected(index) {
             root.currentIndex = index
+            root.activated(index)
             return true
         }
         onItemSelected: (index) => handleItemSelected(index)

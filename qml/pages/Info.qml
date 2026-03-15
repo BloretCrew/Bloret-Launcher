@@ -22,7 +22,7 @@ FluentPage {
             spacing: 20
 
             Image {
-                source: "../../icon/bloret.png"
+                source: "../../icon/home.png"
                 sourceSize { width: 100; height: 100 }
             }
 
@@ -65,7 +65,8 @@ FluentPage {
               "要查看 Bloret Launcher 的源代码，请前往: <a href='https://github.com/BloretCrew/Bloret-Launcher/'>https://github.com/BloretCrew/Bloret-Launcher/</a><br>" +
               "要查看 Bloret Launcher Setup 的源代码，请前往: <a href='https://github.com/BloretCrew/Bloret-Launcher-Setup/'>https://github.com/BloretCrew/Bloret-Launcher-Setup/</a><br>" +
               "要提交问题，请前往: <a href='https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose'>https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose</a><br><br>" +
-              "Bloret Launcher 遵循 <a href='https://www.minecraft.net/zh-hans/eula'>Mojang Eula (Minecraft 最终用户许可协议)</a> ，Bloret Launcher 的 微软登录 功能已获 Mojang 批准，Bloret Launcher 本身未包含 Minecraft 二进制文件和其他资源文件。Bloret Launcher 是无广告免费开源软件。我们鼓励各位玩家购买 <a href='https://www.minecraft.net/zh-hans/choose-your-game'>Minecraft 正版账户</a> 进行游玩。"
+              "Bloret Launcher 遵循 <a href='https://www.minecraft.net/zh-hans/eula'>Mojang Eula (Minecraft 最终用户许可协议)</a> ，Bloret Launcher 的 微软登录 功能已获 Mojang 批准，Bloret Launcher 本身未包含 Minecraft 二进制文件和其他资源文件。Bloret Launcher 是无广告免费开源软件。我们鼓励各位玩家购买 <a href='https://www.minecraft.net/zh-hans/choose-your-game'>Minecraft 正版账户</a> 进行游玩。<br><br>"+
+              "致谢为 Bloret Launcher 提供窗口框架的 RinUI。致谢为 Bloret Launcher 贡献过的开发者。致谢 Bloret Launcher 所学习和集成的开源项目。"
         color: Theme.currentTheme.colors.textSecondaryColor
         textFormat: Text.RichText
         onLinkActivated: { if (Backend) Backend.openUrl(link) }
