@@ -9,7 +9,7 @@ Safe.py
 
 
 ***
-###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
 '''
 
 import threading,logging,traceback,sys,webbrowser
@@ -77,7 +77,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     ## 显示错误跟踪窗口并报告异常
 
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     # 参数已由系统异常钩子直接提供
     log(i18nText("未捕获的异常:"), logging.CRITICAL)

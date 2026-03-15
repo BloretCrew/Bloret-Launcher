@@ -513,7 +513,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         bool: 安装成功返回True，失败返回False
     
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     try:
         # 创建Windows 11通知

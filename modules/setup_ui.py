@@ -646,7 +646,7 @@ def setup_home_ui(self, widget):
     '''
     设定 Bloret Launcher 主页 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     if self.config.get('localmod', False):
         InfoBar.warning(
@@ -955,7 +955,7 @@ def setup_download_load_ui(self, widget):
     ### 设定 Bloret Launcher 下载界面加载时 UI 布局和操作。
     # ⚠️ 已弃用
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     loading_label = widget.findChild(QLabel, "loading_label")
     if loading_label:
@@ -965,7 +965,7 @@ def setup_download_old_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInt
     '''
     设定 Bloret Launcher 下载界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     download_way_choose = widget.findChild(ComboBox, "download_way_choose")  # 获取 download_way_choose 元素
     LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
@@ -1056,7 +1056,7 @@ def setup_tools_ui(self, widget):
     '''
     设定 Bloret Launcher 小工具界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     name2uuid_button = widget.findChild(QPushButton, "name2uuid_player_Button")
     if name2uuid_button:
@@ -1316,7 +1316,7 @@ def setup_settings_ui(self, widget):
     '''
     设定 Bloret Launcher 设置界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     minecraft_dir_link = widget.findChild(HyperlinkLabel, "minecraft_dir_link")
     if minecraft_dir_link:
@@ -2163,7 +2163,7 @@ def setup_info_ui(self, widget):
     '''
     设定 Bloret Launcher 关于界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     github_org_button = widget.findChild(QPushButton, "pushButton_2")
     if github_org_button:
@@ -2385,7 +2385,7 @@ def setup_download_ui(self, widget):
     设定 Bloret Launcher 下载 UI 布局和操作。
     根据 ui/download.ui 文件设置界面元素和事件处理。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     # 获取配置文件中的Minecraft版本列表
     try:
@@ -2891,7 +2891,7 @@ def setup_tools_ui(self, widget):
     """
     设定 Bloret Launcher 工具界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     """
     try:
         # 获取截图按钮
@@ -3028,7 +3028,7 @@ def setup_Mod_ui(self, widget):
     '''
     设定 Bloret Launcher 模组界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     # 绑定 OpenMod 按钮点击事件
     Open_Modrinth_Button = widget.findChild(QPushButton, "Open_Modrinth_Button")

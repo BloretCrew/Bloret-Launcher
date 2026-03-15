@@ -6,7 +6,7 @@ from modules.win11toast import notify, update_progress
 import logging,os,requests,zipfile,time
 import threading
 from concurrent.futures import ThreadPoolExecutor
-# 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块，位于 modules 中
+# 以下导入的部分是 Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.的模块，位于 modules 中
 from modules.safe import handle_exception
 from modules.log import log
 from modules.i18n import i18nText

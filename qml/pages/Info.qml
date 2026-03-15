@@ -61,7 +61,7 @@ FluentPage {
               "百络百科: <a href='https://wiki.bloret.net/'>https://wiki.bloret.net/</a><br>" +
               "Bloret Launcher 将百络谷带到您的计算机上。<br>" +
               "Bloret Launcher 是由 Bloret 所有的无广告免费开源软件。<br><br>" +
-              "© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.<br>" +
+              "© 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.<br>" +
               "要查看 Bloret Launcher 的源代码，请前往: <a href='https://github.com/BloretCrew/Bloret-Launcher/'>https://github.com/BloretCrew/Bloret-Launcher/</a><br>" +
               "要查看 Bloret Launcher Setup 的源代码，请前往: <a href='https://github.com/BloretCrew/Bloret-Launcher-Setup/'>https://github.com/BloretCrew/Bloret-Launcher-Setup/</a><br>" +
               "要提交问题，请前往: <a href='https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose'>https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose</a><br><br>" +

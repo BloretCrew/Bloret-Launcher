@@ -8,7 +8,7 @@ from modules.win11toast import update_progress
 from modules.i18n import i18nText
 import threading
 from PySide6.QtCore import QObject, Signal as pyqtSignal
-# 以下导入的部分是 Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.的模块
+# 以下导入的部分是 Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.的模块
 from modules.log import log
 from modules.safe import handle_exception
 import modules.globals as BLglobals

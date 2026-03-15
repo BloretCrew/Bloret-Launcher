@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QApplication
 # from PySide6.QtUiTools import QUiLoader # Removed uic for PySide6 compatibility
 import modules.globals as BLglobals
 
-copyright = "\n© 2025 Bloret Launcher All rights reserved. \n© 2025 Bloret All rights reserved."
+copyright = "\n© 2026 Bloret Launcher All rights reserved. \n© 2026 Bloret All rights reserved."
 
 # 创建日志文件夹
 # 创建日志文件夹
@@ -51,7 +51,7 @@ def handle_exception(e):
     专用于 log.py 模块的异常处理函数。其他文件中请使用 safe.py 的 handle_exception 函数。
 
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     exc_type = type(e)
     exc_value = e
@@ -160,7 +160,7 @@ def clear_log_files(self, log_clear_button):
     输出 : 无
     
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     log_folder = os.path.join(BLglobals.datapath, 'log')
     file_num = len(os.listdir(log_folder))-1  # 减去一个正在使用的文件

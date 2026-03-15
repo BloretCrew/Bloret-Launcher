@@ -9,7 +9,7 @@ Versions.py
  - [x] 修改自定义选项名称
 
 ***
-###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
 '''
 import logging
 import os
@@ -187,7 +187,7 @@ def open_minecraft_version_folder(self,version,MINECRAFT_DIR):
      MINECRAFT_DIR Minecraft 安装目录
 
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     log(f"正在打开 Minecraft 版本文件夹：{version}")
     
@@ -236,7 +236,7 @@ def delete_minecraft_version(self,version,label,card,MINECRAFT_DIR,homeInterface
 
     
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     log(f"正在删除 Minecraft 版本：{version}")
     
@@ -315,7 +315,7 @@ def Change_minecraft_version_name(self,version,label,MINECRAFT_DIR,homeInterface
      MINECRAFT_DIR Minecraft 安装目录
 
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     log(f"正在修改 Minecraft 版本名称：{version}")
     # 获取新的版本名称
@@ -402,7 +402,7 @@ def delete_Customize(self,version,label,card,customize_list,homeInterface):
      customize_list 自定义选项列表
     
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     log(f"正在删除自定义选项：{version}")
     try:
@@ -471,7 +471,7 @@ def Change_Customize_name(self,version,label,homeInterface):
     ### 将配置文件中 `{version}` 项目换成想要的名称并刷新重读。
 
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     log(f"正在修改自定义选项名称：{version}")
     isOK,item=find_Customize(self,version)
@@ -949,7 +949,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         bool: 安装成功返回True，失败返回False
     
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     try:
         # 创建Windows 11通知，通知用户开始安装Minecraft版本
