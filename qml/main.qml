@@ -46,11 +46,6 @@ FluentWindow {
             icon: "ic_fluent_wrench_20_regular"
         },
         {
-            title: (Backend ? Backend.tr("插件") : "插件"),
-            page: Qt.resolvedUrl("pages/Plugins.qml"),
-            icon: "ic_fluent_extension_20_regular"
-        },
-        {
             title: (Backend ? Backend.tr("Mods") : "Mods"),
             page: Qt.resolvedUrl("pages/Mods.qml"),
             icon: "ic_fluent_puzzle_piece_20_regular"
