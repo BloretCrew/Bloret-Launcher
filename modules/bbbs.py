@@ -6,7 +6,7 @@ from modules.log import log
 
 
 def _get_base_url():
-    return BLglobals.bbbs_server_ip
+    return BLglobals.server_ip + ':21111'
 
 
 def _get_session_cookie():

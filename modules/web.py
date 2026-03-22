@@ -454,6 +454,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             # BBBS session
                             bbbs_session_val = user_data.get('bbbs_session', '')
                             config_data['bbbs_session'] = bbbs_session_val
+                            bbbs_session_sig_val = user_data.get('bbbs_session.sig', '')
+                            config_data['bbbs_session_sig'] = bbbs_session_sig_val
                             
                             # 打印调试信息
                             print(f"\n[Bloret PassPort 登录] 用户信息提取")

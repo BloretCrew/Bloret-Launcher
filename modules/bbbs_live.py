@@ -8,16 +8,40 @@ from modules.log import log
 
 
 def _get_base_url():
-    return BLglobals.bbbs_server_ip
+    return BLglobals.server_ip + ':21111'
+
+
+def _log_request(method, url, cookies, body=None):
+    """调试用：打印请求完整信息"""
+    log(f"[Live DEBUG] ===== 请求 =====")
+    log(f"[Live DEBUG] {method} {url}")
+    log(f"[Live DEBUG] Cookies: {json.dumps(cookies, ensure_ascii=False)}")
+    if body is not None:
+        log(f"[Live DEBUG] Body: {json.dumps(body, ensure_ascii=False)}")
+
+
+def _log_response(response):
+    """调试用：打印响应完整信息"""
+    log(f"[Live DEBUG] ===== 响应 =====")
+    log(f"[Live DEBUG] Status: {response.status_code}")
+    log(f"[Live DEBUG] Headers: {dict(response.headers)}")
+    try:
+        log(f"[Live DEBUG] Body: {response.text[:500]}")
+    except Exception:
+        pass
 
 
 def _get_session_cookie():
-    """从 config.json 读取 bbbs_session，返回 cookies dict"""
+    """从 config.json 读取 bbbs_session 和 bbbs_session_sig，返回 cookies dict"""
     config_data = cfg.read()
+    cookies = {}
     session = config_data.get('bbbs_session', '')
     if session:
-        return {'session': session}
-    return {}
+        cookies['session'] = session
+    session_sig = config_data.get('bbbs_session_sig', '')
+    if session_sig:
+        cookies['session.sig'] = session_sig
+    return cookies
 
 
 # ==================== Space Management ====================
@@ -26,8 +50,10 @@ def fetch_space_list():
     """GET /api/live/list - 获取所有 Live 空间列表"""
     url = f"{_get_base_url()}/api/live/list"
     cookies = _get_session_cookie()
+    _log_request("GET", url, cookies)
     try:
         response = requests.get(url, cookies=cookies, timeout=15)
+        _log_response(response)
         if response.status_code == 200:
             return response.json()
         else:
@@ -42,8 +68,10 @@ def check_access(space_id):
     """GET /api/live/check-access/:spaceId - 检查是否需要密码"""
     url = f"{_get_base_url()}/api/live/check-access/{space_id}"
     cookies = _get_session_cookie()
+    _log_request("GET", url, cookies)
     try:
         response = requests.get(url, cookies=cookies, timeout=10)
+        _log_response(response)
         if response.status_code == 200:
             return response.json()
         return None
@@ -56,8 +84,10 @@ def verify_password(space_id, password):
     """POST /api/live/verify-password/:spaceId - 验证空间密码"""
     url = f"{_get_base_url()}/api/live/verify-password/{space_id}"
     cookies = _get_session_cookie()
+    _log_request("POST", url, cookies, {"password": password})
     try:
         response = requests.post(url, json={"password": password}, cookies=cookies, timeout=10)
+        _log_response(response)
         if response.status_code == 200:
             return response.json()
         return {"success": False}
@@ -70,8 +100,10 @@ def send_signal(space_id, signal_data):
     """POST /api/live/signal/:spaceId - 发送信号（聊天、WebRTC 等）"""
     url = f"{_get_base_url()}/api/live/signal/{space_id}"
     cookies = _get_session_cookie()
+    _log_request("POST", url, cookies, signal_data)
     try:
         response = requests.post(url, json=signal_data, cookies=cookies, timeout=10)
+        _log_response(response)
         if response.status_code == 200:
             return response.json()
         else:
@@ -86,8 +118,10 @@ def create_space(name):
     """POST /api/live/create - 创建新 Live 空间"""
     url = f"{_get_base_url()}/api/live/create"
     cookies = _get_session_cookie()
+    _log_request("POST", url, cookies, {"name": name})
     try:
         response = requests.post(url, json={"name": name}, cookies=cookies, timeout=10)
+        _log_response(response)
         if response.status_code == 200:
             return response.json()
         else:
