@@ -885,25 +885,63 @@ def setup_home_ui(self, widget):
     if not AskBloriko_Answer:
         log("未找到 AskBloriko_Answer 元素")
 
+    BloretServerIP = widget.findChild(QLabel, "BloretServerIP")
     BloretServerOnlineNumber = widget.findChild(QLabel, "BloretServerOnlineNumber")
     BloretServerText0 = widget.findChild(QLabel, "BloretServerText0")
     BloretServerText1 = widget.findChild(QLabel, "BloretServerText1")
     BloretServer_BestTime = widget.findChild(QLabel, "BloretServer_BestTime")
     if BloretServer_BestTime:
         BloretServer_BestTime.setWordWrap(True)
-    
+
+    def _stringify_server_value(value):
+        if value is None:
+            return ""
+        if isinstance(value, bool):
+            return "是" if value else "否"
+        if isinstance(value, (int, float, str)):
+            return str(value)
+        if isinstance(value, list):
+            items = [str(item) for item in value if str(item).strip()]
+            return "、".join(items)
+        return json.dumps(value, ensure_ascii=False)
+
+    def _collect_extra_lines(value, prefix=""):
+        lines = []
+        if isinstance(value, dict):
+            for key, item in value.items():
+                next_prefix = f"{prefix}.{key}" if prefix else str(key)
+                lines.extend(_collect_extra_lines(item, next_prefix))
+            return lines
+        if isinstance(value, list):
+            if value and all(not isinstance(item, (dict, list)) for item in value):
+                rendered = _stringify_server_value(value)
+                if rendered:
+                    lines.append(f"- **{prefix}**: {rendered}")
+                return lines
+            for index, item in enumerate(value):
+                next_prefix = f"{prefix}[{index}]" if prefix else f"[{index}]"
+                lines.extend(_collect_extra_lines(item, next_prefix))
+            return lines
+
+        rendered = _stringify_server_value(value)
+        if rendered:
+            lines.append(f"- **{prefix}**: {rendered}")
+        return lines
+
     # 修复：正确处理getServerData返回的线程对象
     def update_server_info(data):
         if BloretServerOnlineNumber and BloretServerText0 and BloretServerText1 and BloretServer_BestTime:
             # 检查是否有错误信息
             if "error" in data:
                 log(f"服务器数据获取失败: {data.get('error')}")
+                if BloretServerIP:
+                    BloretServerIP.setText("N/A")
                 BloretServerOnlineNumber.setText("N/A")
                 BloretServerText0.setText("服务器数据获取失败")
                 BloretServerText1.setText("")
                 BloretServer_BestTime.setText("")
                 return
-            
+
             try:
                 # 安全地处理数据，确保数字类型正确转换为字符串
                 real_time_status = data.get('realTimeStatus', {})
@@ -911,9 +949,25 @@ def setup_home_ui(self, widget):
                 players_max = real_time_status.get('playersMax', 'N/A')
                 motd_clean = real_time_status.get('motdClean', ['', ''])
                 best_time = data.get('BestTime', '')
+                server_ip = real_time_status.get('host', data.get('ip', data.get('host', 'bloret.net')))
 
-                log(f"从数据中提取: players_online={players_online}, players_max={players_max}, motd_clean={motd_clean}, best_time={best_time}")
-                
+                displayed_fields = {'BestTime'}
+                displayed_realtime_fields = {'playersOnline', 'playersMax', 'motdClean', 'host'}
+                extra_lines = []
+
+                for key, value in data.items():
+                    if key in displayed_fields or key == 'realTimeStatus':
+                        continue
+                    extra_lines.extend(_collect_extra_lines(value, key))
+
+                if isinstance(real_time_status, dict):
+                    for key, value in real_time_status.items():
+                        if key in displayed_realtime_fields:
+                            continue
+                        extra_lines.extend(_collect_extra_lines(value, f"realTimeStatus.{key}"))
+
+                log(f"从数据中提取: server_ip={server_ip}, players_online={players_online}, players_max={players_max}, motd_clean={motd_clean}, best_time={best_time}, extra_lines_count={len(extra_lines)}")
+
                 # 检查QLabel对象是否存在
                 if not BloretServerOnlineNumber:
                     log("BloretServerOnlineNumber QLabel not found.")
@@ -924,9 +978,12 @@ def setup_home_ui(self, widget):
                 if not BloretServer_BestTime:
                     log("BloretServer_BestTime QLabel not found.")
 
+                if BloretServerIP:
+                    BloretServerIP.setText(str(server_ip))
+
                 # 正确地将数字转换为字符串进行显示
                 BloretServerOnlineNumber.setText(f"{players_online} / {players_max}")
-                
+
                 if motd_clean and len(motd_clean) > 0:
                     BloretServerText0.setText(str(motd_clean[0]))
                 else:
@@ -937,10 +994,18 @@ def setup_home_ui(self, widget):
                 else:
                     BloretServerText1.setText("")
 
-                BloretServer_BestTime.setText(str(best_time))
-                log(f"UI已更新: BloretServerOnlineNumber='{players_online} / {players_max}', BloretServerText0='{motd_clean[0] if motd_clean and len(motd_clean) > 0 else '暂无公告'}', BloretServerText1='{motd_clean[1] if motd_clean and len(motd_clean) > 1 else ''}'")
+                detail_sections = []
+                if str(best_time).strip():
+                    detail_sections.append(str(best_time))
+                if extra_lines:
+                    detail_sections.append("**其余服务器数据**\n" + "\n".join(extra_lines))
+
+                BloretServer_BestTime.setText("\n\n".join(detail_sections))
+                log(f"UI已更新: BloretServerIP='{server_ip}', BloretServerOnlineNumber='{players_online} / {players_max}', extra_lines_count={len(extra_lines)}")
             except Exception as e:
                 log(f"处理服务器数据时出错: {str(e)}")
+                if BloretServerIP:
+                    BloretServerIP.setText("N/A")
                 BloretServerOnlineNumber.setText("N/A")
                 BloretServerText0.setText("数据处理错误")
                 BloretServerText1.setText("")
