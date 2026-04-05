@@ -13,3 +13,8 @@ run.bat
 .DS_Store
 /temp/Modules
 /temp
+/Lib
+/Scripts
+/RinUI
+/.qwen
+/.vs

@@ -159,6 +159,10 @@ class Backend(QObject):
     liveErrorOccurred = Signal(str)
     liveConnectionStateChanged = Signal(str)
 
+    # OOBE signals
+    javaEnvironmentChecked = Signal(bool, str)  # installed, java_path
+    javaInstallationComplete = Signal(str)      # java_path
+
     def __init__(self):
         super().__init__()
         self._server_info = {}
@@ -1247,8 +1251,22 @@ class Backend(QObject):
 
     @Slot(result=str)
     def getBloretVersion(self):
+        """获取当前版本号 - 优先从用户配置获取，否则从源配置文件获取"""
         config_data = cfg.read()
-        return str(config_data.get("ver", ""))
+        version = config_data.get("ver")
+        if version:
+            return str(version)
+        
+        # 配置文件不存在或没有版本号，从源配置文件获取
+        source_config_path = cfg.source_config_path
+        if os.path.exists(source_config_path):
+            try:
+                with open(source_config_path, 'r', encoding='utf-8') as f:
+                    source_config = json.load(f)
+                    return str(source_config.get("ver", ""))
+            except Exception as e:
+                print(f"Error reading source config for version: {e}")
+        return ""
 
     @Slot(result=str)
     def getLanguageCode(self):
@@ -1360,7 +1378,25 @@ class Backend(QObject):
 
                 from modules.BLServer import get_latest_version, IsNeedUpdate
                 latest_ver, update_text = get_latest_version()
-                current_ver = str(config_data.get('ver', '0.0'))
+                
+                # 优先从用户配置获取版本号，如果不存在则从源配置文件获取
+                current_ver = config_data.get('ver')
+                if not current_ver:
+                    # 配置文件不存在或没有版本号，从源配置文件获取
+                    source_config_path = cfg.source_config_path
+                    if os.path.exists(source_config_path):
+                        try:
+                            with open(source_config_path, 'r', encoding='utf-8') as f:
+                                source_config = json.load(f)
+                                current_ver = source_config.get('ver', '0.0')
+                                print(f"Version from source config: {current_ver}")
+                        except Exception as e:
+                            print(f"Error reading source config: {e}")
+                            current_ver = '0.0'
+                    else:
+                        current_ver = '0.0'
+                
+                current_ver = str(current_ver)
                 print(f"Update check: current={current_ver}, latest={latest_ver}")
 
                 if latest_ver and IsNeedUpdate(current_ver, latest_ver):
@@ -1758,6 +1794,7 @@ class Backend(QObject):
 
     @Slot(result=str)
     def getPassPortAvatar(self):
+        """获取用户头像 - 优先使用 PassPort 头像，备用使用 Minecraft 账户头像"""
         print(f"\n[getPassPortAvatar] 方法被调用")
         config_data = cfg.read()
         
@@ -1768,7 +1805,7 @@ class Backend(QObject):
             return ""
         
         username = config_data.get('Bloret_PassPort_UserName', '')
-        print(f"  用户名: {username}")
+        print(f"  PassPort 用户名: {username}")
         if not username:
             print(f"  用户名为空，返回空字符串")
             return ""
@@ -1788,10 +1825,10 @@ class Backend(QObject):
         avatar_url = config_data.get('Bloret_PassPort_Avatar', '')
         print(f"  存储的头像 URL: {avatar_url if avatar_url else '(空)'}")
         
-        # 如果有有效的头像 URL，尝试下载（即使缓存存在也重新下载）
+        # 如果有有效的头像 URL，尝试下载
         if avatar_url and (avatar_url.startswith('http://') or avatar_url.startswith('https://')):
             try:
-                print(f"  开始从远程服务器下载头像...")
+                print(f"  开始从 PassPort 头像 URL 下载...")
                 print(f"  请求 URL: {avatar_url}")
                 
                 headers = {
@@ -1799,54 +1836,58 @@ class Backend(QObject):
                 }
                 response = requests.get(avatar_url, timeout=10, headers=headers)
                 print(f"  HTTP 响应状态码: {response.status_code}")
-                print(f"  Content-Type: {response.headers.get('Content-Type', '未知')}")
                 print(f"  响应内容大小: {len(response.content)} bytes")
                 
-                if response.status_code == 200:
-                    # 验证是否真的是图片数据
-                    if len(response.content) < 500:
-                        print(f"  ⚠️ 警告：图片数据太小（{len(response.content)} bytes），可能不是有效的图片")
-                        print(f"  响应内容预览: {response.content[:200]}")
-                    else:
-                        print(f"  ✅ 图片数据大小正常")
-                    
+                if response.status_code == 200 and len(response.content) > 500:
                     # 保存到缓存
                     with open(cache_file, 'wb') as f:
                         f.write(response.content)
-                    print(f"  头像已保存到缓存文件（{len(response.content)} bytes）")
+                    print(f"  PassPort 头像已保存到缓存文件")
                     
                     local_url = QUrl.fromLocalFile(cache_file).toString()
                     print(f"  返回本地文件 URL: {local_url}")
                     print(f"[getPassPortAvatar] 方法执行完成\n")
                     return local_url
                 else:
-                    print(f"  下载失败：HTTP {response.status_code}")
+                    print(f"  下载失败：HTTP {response.status_code} 或内容过小")
             except Exception as e:
                 print(f"  下载头像异常: {type(e).__name__}: {e}")
-                import traceback
-                traceback.print_exc()
         
-        # 如果主头像 URL 不存在或下载失败，使用 Minecraft 皮肤 API 作为备用
-        print(f"  尝试使用 Minecraft 皮肤 API 作为备用...")
-        try:
-            fallback_url = f"https://visage.surgeplay.com/face/128/{username}"
-            print(f"  备用 URL: {fallback_url}")
-            response = requests.get(fallback_url, timeout=10, headers={"User-Agent": "BloretLauncher/1.0"})
-            print(f"  HTTP 响应状态码: {response.status_code}")
-            print(f"  响应内容大小: {len(response.content)} bytes")
+        # 如果 PassPort 头像不可用，尝试使用 Minecraft 账户的头像
+        print(f"  PassPort 头像不可用，尝试使用 Minecraft 账户头像...")
+        mc_account_config = config_data.get("MinecraftAccount", {})
+        accounts_list = mc_account_config.get("accounts", [])
+        chosen_index = mc_account_config.get("chosen", 0)
+        
+        if accounts_list and 0 <= chosen_index < len(accounts_list):
+            chosen_account = accounts_list[chosen_index]
+            mc_uuid = chosen_account.get("uuid", "")
+            mc_username = chosen_account.get("username", "")
+            print(f"  选中的 Minecraft 账户: {mc_username}, UUID: {mc_uuid}")
             
-            if response.status_code == 200 and len(response.content) > 500:
-                with open(cache_file, 'wb') as f:
-                    f.write(response.content)
-                print(f"  备用头像已保存到缓存文件")
-                local_url = QUrl.fromLocalFile(cache_file).toString()
-                print(f"  返回本地文件 URL: {local_url}")
-                print(f"[getPassPortAvatar] 方法执行完成\n")
-                return local_url
-            else:
-                print(f"  备用下载失败：HTTP {response.status_code} 或内容过小")
-        except Exception as e:
-            print(f"  备用下载异常: {type(e).__name__}: {e}")
+            # 优先使用 UUID 获取头像
+            avatar_identifier = mc_uuid if mc_uuid else mc_username
+            if avatar_identifier:
+                try:
+                    # 使用 minotar.net 获取头像（更稳定）
+                    fallback_url = f"https://minotar.net/helm/{avatar_identifier}/64"
+                    print(f"  Minecraft 头像 URL: {fallback_url}")
+                    response = requests.get(fallback_url, timeout=10, headers={"User-Agent": "BloretLauncher/1.0"})
+                    print(f"  HTTP 响应状态码: {response.status_code}")
+                    print(f"  响应内容大小: {len(response.content)} bytes")
+                    
+                    if response.status_code == 200 and len(response.content) > 500:
+                        with open(cache_file, 'wb') as f:
+                            f.write(response.content)
+                        print(f"  Minecraft 头像已保存到缓存文件")
+                        local_url = QUrl.fromLocalFile(cache_file).toString()
+                        print(f"  返回本地文件 URL: {local_url}")
+                        print(f"[getPassPortAvatar] 方法执行完成\n")
+                        return local_url
+                    else:
+                        print(f"  Minecraft 头像下载失败：HTTP {response.status_code} 或内容过小")
+                except Exception as e:
+                    print(f"  Minecraft 头像下载异常: {type(e).__name__}: {e}")
         
         print(f"  所有方法都失败，返回空字符串")
         print(f"[getPassPortAvatar] 方法执行完成\n")
@@ -1891,7 +1932,16 @@ class Backend(QObject):
         for i, acc in enumerate(accounts):
             uuid = acc.get("uuid", "")
             # Generate avatar URL if UUID is present
-            avatar_url = f"https://minotar.net/avatar/{uuid}" if uuid else "../../icon/DefaultHead.png"
+            # 使用 minotar.net 的 helmet/avatar 接口，如果没有 UUID 则使用默认头像
+            if uuid:
+                avatar_url = f"https://minotar.net/helm/{uuid}/64"
+            else:
+                # 对于离线账户，使用用户名生成头像
+                username = acc.get("username", "")
+                if username:
+                    avatar_url = f"https://minotar.net/helm/{username}/64"
+                else:
+                    avatar_url = ""
             result.append({
                 "index": i,
                 "name": acc.get("username", "Unknown"),
@@ -2176,6 +2226,350 @@ class Backend(QObject):
             self.liveSignalReceived.emit(event)
         elif event_type == "error":
             self.liveErrorOccurred.emit(event.get("message", "未知错误"))
+
+    # ========== OOBE 相关方法 ==========
+
+    @Slot(result=bool)
+    def isFirstRun(self):
+        """检查是否是首次运行 - 通过检查配置文件中是否有必要配置项来判断"""
+        try:
+            config_data = cfg.read()
+            # 如果没有设置 minecraft_dir 或者 Java_Path，则认为是首次运行
+            minecraft_dir = config_data.get("minecraft_dir", "")
+            java_path = config_data.get("Java_Path", "")
+            return not minecraft_dir or not java_path
+        except Exception:
+            return True
+
+    @Slot()
+    def completeOOBE(self):
+        """标记 OOBE 已完成 - 从源配置文件复制默认配置，但保留用户已保存的数据"""
+        try:
+            import shutil
+            # 从 modules.config 获取源配置文件路径
+            source_config = cfg.source_config_path if hasattr(cfg, 'source_config_path') else str(SCRIPT_DIR / 'config.json')
+            target_config = BLglobals.config_path
+            
+            # 首先保存用户在 OOBE 中已经设置的数据
+            existing_config = cfg.read()
+            existing_mc_account = existing_config.get("MinecraftAccount", {})
+            existing_java_path = existing_config.get("Java_Path", "")
+            existing_minecraft_dir = existing_config.get("minecraft_dir", "")
+            existing_language = existing_config.get("language", "zh-cn")
+            existing_passport_login = existing_config.get("Bloret_PassPort_Login", False)
+            existing_passport_username = existing_config.get("Bloret_PassPort_UserName", "")
+            existing_passport_admin = existing_config.get("Bloret_PassPort_Admin", False)
+            existing_passport_avatar = existing_config.get("Bloret_PassPort_Avatar", "")
+            existing_passport_password = existing_config.get("Bloret_PassPort_PassWord", "")
+            
+            if os.path.exists(source_config):
+                # 复制默认配置文件
+                shutil.copyfile(source_config, target_config)
+                print(f"OOBE completed: Default config copied to {target_config}")
+                
+                # 读取复制的默认配置
+                config_data = cfg.read()
+                
+                # 恢复用户在 OOBE 中已保存的数据
+                if existing_mc_account.get("accounts") or existing_mc_account.get("chosen", -1) >= 0:
+                    config_data["MinecraftAccount"] = existing_mc_account
+                    print(f"Preserved MinecraftAccount: {existing_mc_account}")
+                
+                if existing_java_path:
+                    config_data["Java_Path"] = existing_java_path
+                    print(f"Preserved Java_Path: {existing_java_path}")
+                
+                if existing_minecraft_dir:
+                    config_data["minecraft_dir"] = existing_minecraft_dir
+                    print(f"Preserved minecraft_dir: {existing_minecraft_dir}")
+                
+                if existing_language and existing_language != "zh-cn":
+                    config_data["language"] = existing_language
+                    print(f"Preserved language: {existing_language}")
+                
+                # 保留 Bloret PassPort 登录状态
+                if existing_passport_login:
+                    config_data["Bloret_PassPort_Login"] = existing_passport_login
+                    config_data["Bloret_PassPort_UserName"] = existing_passport_username
+                    config_data["Bloret_PassPort_Admin"] = existing_passport_admin
+                    if existing_passport_avatar:
+                        config_data["Bloret_PassPort_Avatar"] = existing_passport_avatar
+                    if existing_passport_password:
+                        config_data["Bloret_PassPort_PassWord"] = existing_passport_password
+                    print(f"Preserved PassPort login: {existing_passport_username}")
+                
+                # 标记首次运行完成
+                config_data["first-run"] = False
+                
+                with open(target_config, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                print("OOBE completed: User data preserved")
+            else:
+                # 如果没有源配置文件，创建一个基本的，并保留用户数据
+                config_data = {
+                    "minecraft-part": ".minecraft",
+                    "first-run": False,
+                    "ver": "25.0",
+                    "minecraft_dir": existing_minecraft_dir,
+                    "Java_Path": existing_java_path,
+                    "language": existing_language,
+                    "MinecraftAccount": existing_mc_account,
+                    "Bloret_PassPort_Login": existing_passport_login,
+                    "Bloret_PassPort_UserName": existing_passport_username,
+                    "Bloret_PassPort_Admin": existing_passport_admin,
+                    "Bloret_PassPort_Avatar": existing_passport_avatar,
+                    "Bloret_PassPort_PassWord": existing_passport_password
+                }
+                with open(target_config, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                print("OOBE completed: Created config with user data")
+        except Exception as e:
+            print(f"Error completing OOBE: {e}")
+
+    @Slot(result=str)
+    def getDefaultMinecraftDir(self):
+        """获取默认的 Minecraft 目录路径"""
+        # 默认目录为 %appdata%/Bloret-Launcher/.minecraft
+        return os.path.join(BLglobals.datapath, ".minecraft")
+
+    @Slot(result=str)
+    def selectMinecraftDirectory(self):
+        """让用户选择 Minecraft 目录"""
+        from PySide6.QtWidgets import QFileDialog
+        default_dir = os.path.join(BLglobals.datapath, ".minecraft")
+        selected_dir = QFileDialog.getExistingDirectory(
+            None,
+            self.tr("选择 Minecraft 游戏文件夹"),
+            default_dir
+        )
+        if selected_dir:
+            # 保存到配置
+            try:
+                config_data = cfg.read()
+                config_data["minecraft_dir"] = selected_dir
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                print(f"Minecraft directory set to: {selected_dir}")
+                return selected_dir
+            except Exception as e:
+                print(f"Error saving minecraft directory: {e}")
+        return ""
+
+    @Slot(str)
+    def setMinecraftDirectory(self, minecraft_dir):
+        """设置 Minecraft 目录"""
+        try:
+            config_data = cfg.read()
+            config_data["minecraft_dir"] = minecraft_dir
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            print(f"Minecraft directory set to: {minecraft_dir}")
+        except Exception as e:
+            print(f"Error setting minecraft directory: {e}")
+
+    @Slot(result=str)
+    def getAppDataPath(self):
+        """获取 AppData 路径"""
+        import os
+        return os.environ.get('APPDATA', '')
+
+    @Slot()
+    def checkJavaEnvironment(self):
+        """检查 Java 运行环境"""
+        def check_java():
+            try:
+                import subprocess
+                import shutil
+                
+                java_path = ""
+                
+                # 1. 首先尝试从配置获取 Java 路径
+                config_data = cfg.read()
+                config_java_path = config_data.get("Java_Path", "")
+                
+                if config_java_path and os.path.exists(config_java_path):
+                    java_path = config_java_path
+                
+                # 2. 如果配置中没有或无效，尝试在系统 PATH 中查找
+                if not java_path:
+                    # Windows 上需要查找 java.exe
+                    java_exe = shutil.which("java")
+                    if java_exe:
+                        java_path = java_exe
+                
+                # 3. 尝试常见的 Java 安装路径 (Windows)
+                if not java_path:
+                    common_paths = []
+                    
+                    # Program Files 下的 Java
+                    program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
+                    program_files_x86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
+                    
+                    def find_java_in_dir(base_dir):
+                        """递归查找目录下的 java.exe，只搜索 Java 相关文件夹"""
+                        found = []
+                        java_keywords = ("java", "jdk", "jre", "zulu", "adopt", "corretto", "microsoft", "openjdk", "temurin", "graalvm")
+                        try:
+                            for folder in os.listdir(base_dir):
+                                folder_path = os.path.join(base_dir, folder)
+                                if os.path.isdir(folder_path) and folder.lower().startswith(java_keywords):
+                                    # 首先检查直接子目录下的 bin/java.exe
+                                    potential_path = os.path.join(folder_path, "bin", "java.exe")
+                                    if os.path.exists(potential_path):
+                                        found.append(potential_path)
+                                    # 如果没有找到，递归检查子目录（最多 2 层）
+                                    else:
+                                        try:
+                                            for subfolder in os.listdir(folder_path):
+                                                subfolder_path = os.path.join(folder_path, subfolder)
+                                                if os.path.isdir(subfolder_path):
+                                                    potential_path = os.path.join(subfolder_path, "bin", "java.exe")
+                                                    if os.path.exists(potential_path):
+                                                        found.append(potential_path)
+                                        except Exception:
+                                            pass
+                        except Exception:
+                            pass
+                        return found
+                    
+                    for base in [program_files, program_files_x86]:
+                        if os.path.exists(base):
+                            common_paths.extend(find_java_in_dir(base))
+                    
+                    # 检查 JAVA_HOME 环境变量
+                    java_home = os.environ.get("JAVA_HOME", "")
+                    if java_home:
+                        potential_path = os.path.join(java_home, "bin", "java.exe")
+                        if os.path.exists(potential_path):
+                            common_paths.insert(0, potential_path)
+                    
+                    # 测试每个可能的路径
+                    for potential_path in common_paths:
+                        try:
+                            result = subprocess.run(
+                                [potential_path, "-version"],
+                                capture_output=True,
+                                text=True,
+                                timeout=10,
+                                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                            )
+                            if result.returncode == 0:
+                                java_path = potential_path
+                                break
+                        except Exception:
+                            continue
+                
+                # 4. 验证找到的 Java 是否可用
+                if java_path:
+                    try:
+                        result = subprocess.run(
+                            [java_path, "-version"],
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                        )
+                        if result.returncode == 0:
+                            # 保存到配置
+                            config_data["Java_Path"] = java_path
+                            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                                json.dump(config_data, f, indent=4, ensure_ascii=False)
+                            print(f"Java found: {java_path}")
+                            self.javaEnvironmentChecked.emit(True, java_path)
+                            return
+                    except Exception as e:
+                        print(f"Error validating Java: {e}")
+                
+                # 未找到有效的 Java
+                print("Java not found")
+                self.javaEnvironmentChecked.emit(False, "")
+            except Exception as e:
+                print(f"Error checking Java environment: {e}")
+                self.javaEnvironmentChecked.emit(False, "")
+
+        threading.Thread(target=check_java, daemon=True).start()
+
+    @Slot(str)
+    def installJava(self, version="21"):
+        """安装指定版本的 Java"""
+        def install_java():
+            try:
+                from modules.java import InstallJava
+                
+                # 我们使用 modules.java 中的安装逻辑，但需要监听安装完成状态
+                # 这里简化处理，假设安装会在完成后通知
+                InstallJava(version)
+                
+                # 等待一段时间后检查安装结果
+                import time
+                time.sleep(5)  # 给安装一些时间
+                
+                # 重新检查 Java 环境
+                self.checkJavaEnvironment()
+                
+                # 发射安装完成信号
+                config_data = cfg.read()
+                java_path = config_data.get("Java_Path", "")
+                if java_path:
+                    self.javaInstallationComplete.emit(java_path)
+                else:
+                    self.javaInstallationComplete.emit("")
+            except Exception as e:
+                print(f"Error installing Java: {e}")
+                self.javaInstallationComplete.emit("")
+
+        threading.Thread(target=install_java, daemon=True).start()
+
+    @Slot(result=bool)
+    def getMinecraftAccountSynced(self):
+        """检查 Minecraft 账户是否已同步"""
+        try:
+            config_data = cfg.read()
+            mc_account_config = config_data.get("MinecraftAccount", {})
+            accounts_list = mc_account_config.get("accounts", [])
+            return len(accounts_list) > 0 and mc_account_config.get("chosen", -1) >= 0
+        except Exception:
+            return False
+
+    @Slot()
+    def syncMinecraftAccount(self):
+        """同步 Minecraft 账户"""
+        def sync_account():
+            try:
+                from modules.Bloret_PassPort import sync_bloret_passport_account_to_mc
+                sync_bloret_passport_account_to_mc(parent_window=None)
+                self.minecraftAccountsChanged.emit([])
+            except Exception as e:
+                print(f"Error syncing Minecraft account: {e}")
+
+        threading.Thread(target=sync_account, daemon=True).start()
+
+    @Slot(result=str)
+    def getConfigLanguage(self):
+        """获取当前配置的语言"""
+        try:
+            config_data = cfg.read()
+            return config_data.get("language", "zh-cn")
+        except Exception:
+            return "zh-cn"
+
+    @Slot(str)
+    def setLanguage(self, language):
+        """设置界面语言"""
+        try:
+            config_data = cfg.read()
+            config_data["language"] = language
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            
+            # 重新加载语言数据
+            from modules.i18n import reload_language
+            reload_language(language)
+            
+            self.languageChanged.emit()
+            print(f"Language set to: {language}")
+        except Exception as e:
+            print(f"Error setting language: {e}")
 
 
 class LauncherTrayIcon(QSystemTrayIcon):

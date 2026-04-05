@@ -13,6 +13,9 @@ FluentWindow {
     minimumWidth: 800
     minimumHeight: 600
 
+    // 用于保持 OOBE 窗口引用的属性
+    property var oobeWindowRef: null
+
     onClosing: function(closeEvent) {
         if (Backend && Backend.handleWindowCloseRequest()) {
             closeEvent.accepted = false
@@ -78,16 +81,16 @@ FluentWindow {
             position: Position.Bottom
         }
     ]
-    
+
     navigationItems: navItems
-    
+
     function updatePassPortNavigation() {
         if (!Backend) return
-        
+
         let isLoggedIn = Backend.getBloretPassPortLoginStatus()
         let passPortAvatar = Backend.getPassPortAvatar()
         let passPortName = Backend.getPassPortName()
-        
+
         // 更新通行证导航项
         for (let i = 0; i < navItems.length; i++) {
             if (navItems[i].passportItem) {
@@ -107,7 +110,7 @@ FluentWindow {
         }
         navigationItems = navItems  // 触发更新
     }
-    
+
     Connections {
         target: Backend
         function onMinecraftAccountsChanged(accounts) {
@@ -139,15 +142,15 @@ FluentWindow {
             downloadDialog.isPaused = false
             downloadDialog.open()
         }
-        
+
         function onDownloadProgressUpdated(progress, status, speed, downloaded, total) {
             downloadDialog.updateProgress(progress, status, speed, downloaded, total)
         }
-        
+
         function onDownloadDialogClosed() {
             downloadDialog.close()
         }
-        
+
         function onDownloadPaused(paused) {
             downloadDialog.setPaused(paused)
         }
@@ -164,18 +167,14 @@ FluentWindow {
             updateDialog.showError(message)
         }
     }
-    
-    Component.onCompleted: {
-        updatePassPortNavigation()
-    }
-    
+
     DownloadDialog {
         id: downloadDialog
-        
+
         onPauseClicked: {
             if (Backend) Backend.toggleDownloadPause()
         }
-        
+
         onCancelClicked: {
             if (Backend) Backend.cancelDownload()
         }
@@ -187,5 +186,65 @@ FluentWindow {
 
     UpdateDialog {
         id: updateDialog
+    }
+
+    // OOBE 覆盖层
+    Loader {
+        id: oobeLoader
+        anchors.fill: parent
+        visible: false
+        z: 1000  // 确保在最上层
+        
+        onLoaded: {
+            console.log("OOBE Loader loaded")
+            // 连接 OOBE 的导航信号（保留备用）
+            if (oobeLoader.item) {
+                oobeLoader.item.requestNavigateToPassPort.connect(function() {
+                    console.log("OOBE requested navigation to PassPort page")
+                    // 导航到通行证页面
+                    if (window.navItems && window.navItems.length > 1) {
+                        window.currentPage = window.navItems[1].page
+                    }
+                })
+            }
+        }
+    }
+
+    // 监听通行证登录状态变化
+    Connections {
+        target: Backend
+        function onMinecraftAccountsChanged(accounts) {
+            // 当账户信息变化时，检查 OOBE 是否需要重新显示
+            if (oobeLoader.visible === false && oobeLoader.source === "OOBEOverlay.qml") {
+                // OOBE 覆盖层之前加载过但现在不可见，可能是用户去登录了
+                // 检查是否是首次运行且未完成 OOBE
+                var firstRun = Backend ? Backend.isFirstRun() : false
+                if (firstRun) {
+                    // 重新显示 OOBE 覆盖层
+                    oobeLoader.visible = true
+                    // 重新加载以刷新状态
+                    oobeLoader.source = ""
+                    Qt.callLater(function() {
+                        oobeLoader.source = "OOBEOverlay.qml"
+                    })
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        updatePassPortNavigation()
+
+        // 检查是否是首次运行
+        var firstRun = Backend ? Backend.isFirstRun() : false
+        console.log("First run check:", firstRun)
+
+        if (firstRun) {
+            console.log("First run detected, loading OOBE overlay...")
+
+            // 加载 OOBE 覆盖层
+            oobeLoader.source = "OOBEOverlay.qml"
+            oobeLoader.visible = true
+        }
     }
 }
