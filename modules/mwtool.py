@@ -61,35 +61,62 @@ log = LogWrapper()
 # 移除 ImmediateFlushHandler 相关代码，因为我们已在 log.py 中强化了 flush
 
 class MinecraftWindowWatcher(QThread):
-    """监视线程：等待 Minecraft 窗口出现"""
+    """监视线程：等待 Minecraft 窗口出现，并在窗口关闭后隐藏工具条"""
     window_found = pyqtSignal(int, str)
-    
-    def __init__(self, version):
+    window_closed = pyqtSignal()  # 新增：窗口关闭信号
+
+    def __init__(self, version, mc_pid=None):
         super().__init__()
         self.version = version
+        self.mc_pid = mc_pid  # Minecraft 进程 ID
         self.is_running = True
-    
+
     def run(self):
         if sys.platform != "win32":
             log.info("非 Windows 系统跳过窗口监视")
             return
         log.info(f"开始寻找 Minecraft {self.version} 窗口...")
+        
+        hwnd_found = False
+        
         # 最多寻找 300 秒 (5分钟)
         for _ in range(300):
             if not self.is_running:
                 break
-            
+
             # 使用加强版的查找逻辑
-            hwnd = self._find_window()
-            if hwnd:
-                log.info(f"找到窗口句柄: {hwnd}")
-                # 再次确认窗口有效性
-                if win32gui.IsWindow(hwnd) and win32gui.IsWindowVisible(hwnd):
-                    time.sleep(1) # 等待窗口完全初始化
-                    self.window_found.emit(hwnd, self.version)
-                    return
-            time.sleep(1)
-            
+            if not hwnd_found:
+                hwnd = self._find_window()
+                if hwnd:
+                    log.info(f"找到窗口句柄: {hwnd}")
+                    # 再次确认窗口有效性
+                    if win32gui.IsWindow(hwnd) and win32gui.IsWindowVisible(hwnd):
+                        time.sleep(1)  # 等待窗口完全初始化
+                        hwnd_found = True
+                        # 注意：这里不再发射 window_found，因为 monitor_thread 已经处理了工具条创建
+                        # 避免重复创建工具条
+            else:
+                # 窗口已找到，现在检查它是否仍然存在
+                if self.mc_pid:
+                    # 通过进程 ID 检查
+                    try:
+                        import psutil
+                        proc = psutil.Process(self.mc_pid)
+                        if not proc.is_running():
+                            log.info("Minecraft 进程已退出，发送窗口关闭信号")
+                            self.window_closed.emit()
+                            return
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        log.info("Minecraft 进程已退出（通过异常检测），发送窗口关闭信号")
+                        self.window_closed.emit()
+                        return
+                
+                # 同时检查窗口句柄是否仍然有效
+                # 这里简单检查窗口是否仍然可见即可
+                time.sleep(2)  # 每 2 秒检查一次
+        
+        log.info("Minecraft 窗口监视器结束")
+
     def _find_window(self):
         found_hwnd = []
         target_version = self.version
@@ -101,7 +128,7 @@ class MinecraftWindowWatcher(QThread):
             try:
                 title = win32gui.GetWindowText(hwnd)
                 class_name = win32gui.GetClassName(hwnd)
-                
+
                 # 排除启动器自己
                 if "Bloret Launcher" in title:
                     return
@@ -110,11 +137,11 @@ class MinecraftWindowWatcher(QThread):
                 # 1. 标题匹配
                 if "Minecraft" in title or (target_version and target_version in title):
                     # 2. 类名匹配 (LWJGL, GLFW, SDL等是游戏常用窗口库)
-                    if (class_name.startswith("LWJGL") or 
-                        "GLFW" in class_name or 
+                    if (class_name.startswith("LWJGL") or
+                        "GLFW" in class_name or
                         "SunAwtFrame" in class_name or
                         "SDL_app" in class_name):
-                        
+
                         found_hwnd.append(hwnd)
             except Exception:
                 pass
@@ -123,7 +150,7 @@ class MinecraftWindowWatcher(QThread):
             win32gui.EnumWindows(callback, None)
         except Exception:
             pass
-            
+
         return found_hwnd[0] if found_hwnd else None
 
     def stop(self):
@@ -132,15 +159,20 @@ class MinecraftWindowWatcher(QThread):
 # 全局监视器变量
 _watcher_thread = None
 
-def start_monitoring(version):
-    """启动监视"""
+def start_monitoring(version, mc_pid=None):
+    """启动监视
+    
+    Args:
+        version: Minecraft 版本号
+        mc_pid: Minecraft 进程 ID（可选），用于监控进程退出
+    """
     global _watcher_thread
     if _watcher_thread and _watcher_thread.isRunning():
         _watcher_thread.stop()
-    
-    _watcher_thread = MinecraftWindowWatcher(version)
-    # 连接信号：找到窗口后直接调用创建工具栏函数
-    _watcher_thread.window_found.connect(create_minecraft_tool)
+
+    _watcher_thread = MinecraftWindowWatcher(version, mc_pid)
+    # 只连接窗口关闭信号，自动隐藏工具条
+    _watcher_thread.window_closed.connect(hide_minecraft_tool)
     _watcher_thread.start()
 
 def stop_monitoring():
@@ -340,12 +372,17 @@ class MinecraftWindowTool(QWidget):
         # 禁用完全透明背景，确保背景颜色能正确显示
         self.setAttribute(Qt.WA_TranslucentBackground, False) 
         
-        # 设置窗口背景色为 Fluent 风格的半透明深色背景
-        # 这样可以保证工具条在任何游戏背景下都清晰可见
-        self.setStyleSheet("""
-            background-color: rgba(32, 32, 32, 200); 
+        # 固定为纯白色背景（不透明）
+        bg_color = "#ffffff"
+        text_color = "#000000"
+        subtext_color = "#666666"
+        
+        self.setStyleSheet(f"""
+            background-color: {bg_color}; 
             border-radius: 8px;
         """)
+        self._text_color = text_color
+        self._subtext_color = subtext_color
         
         # 提高窗口不透明度（1.0 为完全不透明）
         self.setWindowOpacity(1.0)
@@ -423,6 +460,13 @@ class MinecraftWindowTool(QWidget):
             self.MinecraftVersion = self.findChild(BodyLabel, "MinecraftVersion")
             if self.MinecraftVersion:
                 self.MinecraftVersion.setText(f"Minecraft {self.version}")
+                # 应用主题颜色
+                self.MinecraftVersion.setStyleSheet(f"color: {self._subtext_color};")
+            
+            # 同时设置 StrongBodyLabel 的颜色
+            strong_label = self.findChild(StrongBodyLabel, "StrongBodyLabel")
+            if strong_label:
+                strong_label.setStyleSheet(f"color: {self._text_color};")
 
             # 连接屏幕截图按钮
             try:
@@ -461,17 +505,17 @@ class MinecraftWindowTool(QWidget):
         
         if not icon_found:
             self.icon_label.setText("🎮")
-            self.icon_label.setStyleSheet("font-size: 20px;")
+            self.icon_label.setStyleSheet(f"font-size: 20px;")
 
         # 标题
         self.title_label = QLabel("Bloret Launcher")
         self.title_label.setFont(QFont("Arial", 12, QFont.Bold))
-        self.title_label.setStyleSheet("color: white;")
+        self.title_label.setStyleSheet(f"color: {self._text_color};")
 
         # 版本标签
         self.version_label = QLabel(f"Minecraft {self.version}")
         self.version_label.setFont(QFont("Arial", 10))
-        self.version_label.setStyleSheet("color: #cccccc;")
+        self.version_label.setStyleSheet(f"color: {self._subtext_color};")
 
         # 添加到布局
         layout.addWidget(self.icon_label)

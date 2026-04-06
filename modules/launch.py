@@ -772,17 +772,18 @@ def get_minecraft_window_handle(version=None, timeout=300):
         log(f"获取 Minecraft 窗口句柄时出错: {e}")
         return None
 
-def monitor_minecraft_window(version, check_interval=1, callback=None):
+def monitor_minecraft_window(version, check_interval=1, callback=None, mc_pid=None):
     """
     监控 Minecraft 窗口，当窗口出现时获取句柄并显示浮动工具栏
-    
+
     Args:
         version (str): Minecraft 版本号
         check_interval (int): 检查间隔（秒）
         callback (callable): 找到窗口后的回调函数
+        mc_pid (int): Minecraft 进程 ID（可选），用于监控进程退出并自动隐藏工具条
     """
     def monitor_thread():
-        log(f"开始监控 Minecraft {version} 窗口...")
+        log(f"开始监控 Minecraft {version} 窗口... (进程 ID: {mc_pid})")
         
         # 等待一段时间让 Minecraft 启动
         time.sleep(3)
@@ -843,9 +844,9 @@ def monitor_minecraft_window(version, check_interval=1, callback=None):
                 if mwtool is None:
                     log("mwtool 未就绪，跳过 Minecraft 浮动工具栏创建", logging.WARNING)
                     return
-                
+
                 log("正在创建工具栏...", logging.DEBUG)
-                
+
                 # 直接在监控线程中调用工具栏创建（mwtool 内部会处理跨线程调用）
                 try:
                     tool = mwtool.create_minecraft_tool(hwnd, version)
@@ -857,7 +858,15 @@ def monitor_minecraft_window(version, check_interval=1, callback=None):
                     log(f"工具栏创建失败: {e}", logging.ERROR)
                     import traceback
                     traceback.print_exc()
-                
+
+                # 启动进程退出监控，当 Minecraft 退出时自动隐藏工具条
+                if mc_pid:
+                    try:
+                        mwtool.start_monitoring(version, mc_pid=mc_pid)
+                        log(f"✅ 已启动进程退出监控 (PID: {mc_pid})，Minecraft 退出时工具条将自动隐藏")
+                    except Exception as e:
+                        log(f"启动进程退出监控失败: {e}", logging.WARNING)
+
                 log(f"✅ Minecraft 浮动工具栏创建完成，版本: {version}")
             except Exception as e:
                 log(f"创建 Minecraft 浮动工具栏失败: {e}")

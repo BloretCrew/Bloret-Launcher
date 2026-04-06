@@ -151,6 +151,9 @@ class Backend(QObject):
 
     # Live signals
     liveSpaceListReceived = Signal(list)
+    
+    # Minecraft Chat signal
+    minecraftChatMessage = Signal(str, str)  # timestamp, message
     liveJoinedSpace = Signal(dict)
     liveLeftSpace = Signal()
     liveUserEvent = Signal(dict)
@@ -270,43 +273,71 @@ class Backend(QObject):
 
                 emit_progress(95, "正在执行启动命令...", "")
                 print(f"Launching with args: {launch_args}")
-                
-                # 修改：不使用 PIPE 捕获，而是让输出直接打印到控制台
-                # 这样可以实时看到 Minecraft 的日志输出
+
+                # 使用 PIPE 捕获输出，同时实时打印到控制台并解析聊天消息
                 proc = subprocess.Popen(
-                    launch_args, cwd=game_dir
+                    launch_args, cwd=game_dir,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,  # 合并 stderr 到 stdout
+                    encoding='utf-8',
+                    errors='replace',
+                    bufsize=1,  # 行缓冲
                 )
-                
+
                 import uuid as _uuid
                 instance_id = str(_uuid.uuid4())
                 BLglobals.running_instances[instance_id] = {
                     "name": version, "type": "minecraft",
                     "pid": proc.pid, "suspended": False
                 }
+                self._recordRecentRun(version, "minecraft")
                 self.runningInstancesChanged.emit(self.getRunningInstances())
 
                 emit_progress(97, "启动命令已执行，正在等待 Minecraft 窗口出现...", "")
 
-                # 添加后台线程监控进程退出，检测早期崩溃
-                def monitor_process_exit(p, ver, evt):
+                # 添加后台线程实时监控日志输出，解析聊天消息并打印到控制台
+                def monitor_process_output(p, ver, evt):
                     try:
-                        p.wait()  # 等待进程结束
+                        import re
+                        # 匹配聊天消息的正则表达式
+                        # 格式: [13:01:18] [Render thread/INFO]: [System] [CHAT] 霕 Detritalw: xx
+                        # 注意中间有冒号分隔符
+                        chat_pattern = r'\[([^\]]+)\]\s*\[[^\]]+\]:\s*(?:\[System\]\s*)?\[CHAT\]\s*(.*)'
+
+                        for line in p.stdout:
+                            if not line:
+                                break
+
+                            # 实时打印到控制台
+                            print(line, end='', flush=True)
+
+                            # 尝试匹配聊天消息
+                            match = re.search(chat_pattern, line)
+                            if match:
+                                timestamp = match.group(1)
+                                chat_message = match.group(2).strip()
+                                if chat_message:
+                                    # 清理乱码字符（替换无效字符）
+                                    chat_message = chat_message.replace('\ufffd', '')
+                                    # 发送聊天消息信号
+                                    self.minecraftChatMessage.emit(timestamp, chat_message)
+                                    print(f"[聊天] {timestamp} - {chat_message}")  # 调试输出
+
+                        # 进程结束后检查
+                        p.wait()
                         if p.returncode != 0 and not evt.is_set():
-                            # 进程异常退出且窗口未出现，说明启动早期就崩溃了
                             print(f"\n[错误] Minecraft {ver} 进程异常退出，返回码: {p.returncode}")
-                            print("[错误] 这可能是启动早期崩溃，请检查上面的日志输出\n")
-                            # 由于没有捕获输出，这里无法获取详细日志
                             self.minecraftCrashDetected.emit(
                                 f"Minecraft {ver} 崩溃",
-                                f"进程异常退出 (返回码: {p.returncode})\n请查看控制台日志输出",
+                                f"进程异常退出 (返回码: {p.returncode})\n请查看上面的日志输出",
                                 f"进程异常退出，返回码: {p.returncode}"
                             )
                     except Exception as e:
-                        print(f"[错误] 监控进程退出时发生异常: {e}")
+                        print(f"[错误] 监控进程输出时发生异常: {e}")
 
                 window_found_event = threading.Event()
                 threading.Thread(
-                    target=monitor_process_exit,
+                    target=monitor_process_output,
                     args=(proc, version, window_found_event),
                     daemon=True
                 ).start()
@@ -318,7 +349,8 @@ class Backend(QObject):
                     emit_progress(100, "已检测到 Minecraft 窗口，启动完成", "")
                     finish_launch(close_dialog=True)
 
-                monitor_minecraft_window(version, callback=on_window_found)
+                # 传入 proc.pid 以便监控进程退出并自动隐藏工具条
+                monitor_minecraft_window(version, callback=on_window_found, mc_pid=proc.pid)
 
                 def monitor_timeout_guard():
                     if window_found_event.wait(310):
@@ -341,6 +373,88 @@ class Backend(QObject):
                 )
 
         threading.Thread(target=run_launch, daemon=True).start()
+
+    # ========== 聊天记录持久化 ==========
+
+    _chat_history_path = os.path.join(BLglobals.datapath, 'chat_history.json')
+
+    def _readChatFile(self):
+        """读取整个聊天历史文件"""
+        try:
+            if os.path.exists(self._chat_history_path):
+                with open(self._chat_history_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"读取聊天历史失败: {e}")
+        return {}
+
+    def _writeChatFile(self, data):
+        """写入整个聊天历史文件"""
+        try:
+            os.makedirs(os.path.dirname(self._chat_history_path), exist_ok=True)
+            with open(self._chat_history_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"写入聊天历史失败: {e}")
+
+    @Slot(str, str)
+    def saveChatHistory(self, version, messagesJson):
+        """保存某个版本的聊天记录"""
+        try:
+            all_history = self._readChatFile()
+            all_history[version] = json.loads(messagesJson)
+            self._writeChatFile(all_history)
+        except Exception as e:
+            print(f"saveChatHistory 失败: {e}")
+
+    @Slot(str, result=str)
+    def loadChatHistory(self, version):
+        """加载聊天记录，version 为 'all' 时返回全部，否则返回指定版本"""
+        try:
+            all_history = self._readChatFile()
+            if version == "all":
+                return json.dumps(all_history)
+            return json.dumps(all_history.get(version, []))
+        except Exception as e:
+            print(f"loadChatHistory 失败: {e}")
+            return "{}" if version == "all" else "[]"
+
+    _recent_runs_path = os.path.join(BLglobals.datapath, 'recent_runs.json')
+
+    def _recordRecentRun(self, name, run_type):
+        """记录最近运行的项目"""
+        from datetime import datetime
+        try:
+            recent = []
+            if os.path.exists(self._recent_runs_path):
+                with open(self._recent_runs_path, 'r', encoding='utf-8') as f:
+                    recent = json.load(f)
+            # 移除同名旧记录
+            recent = [r for r in recent if r.get("name") != name]
+            # 插入到最前面
+            recent.insert(0, {
+                "name": name,
+                "type": run_type,
+                "lastRun": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            # 最多保留 20 条
+            recent = recent[:20]
+            os.makedirs(os.path.dirname(self._recent_runs_path), exist_ok=True)
+            with open(self._recent_runs_path, 'w', encoding='utf-8') as f:
+                json.dump(recent, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"记录最近运行失败: {e}")
+
+    @Slot(result=list)
+    def getRecentRuns(self):
+        """获取最近运行的项目列表"""
+        try:
+            if os.path.exists(self._recent_runs_path):
+                with open(self._recent_runs_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"读取最近运行失败: {e}")
+        return []
 
     @Slot(result=list)
     def getRunningInstances(self):
