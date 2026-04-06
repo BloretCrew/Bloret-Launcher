@@ -323,6 +323,9 @@ class Backend(QObject):
                                     self.minecraftChatMessage.emit(timestamp, chat_message)
                                     print(f"[聊天] {timestamp} - {chat_message}")  # 调试输出
 
+                                    # 当 Minecraft 窗口不在前台时发送 Windows 通知
+                                    self._notify_if_not_foreground(timestamp, chat_message)
+
                         # 进程结束后检查
                         p.wait()
                         if p.returncode != 0 and not evt.is_set():
@@ -420,6 +423,36 @@ class Backend(QObject):
             return "{}" if version == "all" else "[]"
 
     _recent_runs_path = os.path.join(BLglobals.datapath, 'recent_runs.json')
+
+    def _notify_if_not_foreground(self, timestamp, message):
+        """当 Minecraft 窗口不在前台时发送 Windows Toast 通知"""
+        try:
+            import ctypes
+            # 获取当前前台窗口标题
+            hwnd = ctypes.windll.user32.GetForegroundWindow()
+            if hwnd:
+                length = ctypes.windll.user32.GetWindowTextLengthW(hwnd) + 1
+                buf = ctypes.create_unicode_buffer(length)
+                ctypes.windll.user32.GetWindowTextW(hwnd, buf, length)
+                title = buf.value
+                # 如果前台窗口标题包含 Minecraft，则不通知
+                if "minecraft" in title.lower() or "Minecraft" in title:
+                    return
+
+            def send_toast():
+                try:
+                    from win11toast import toast
+                    toast(
+                        title='Minecraft 聊天消息',
+                        body=f'{timestamp} {message}',
+                        icon=None,
+                    )
+                except Exception:
+                    pass
+
+            threading.Thread(target=send_toast, daemon=True).start()
+        except Exception:
+            pass
 
     def _recordRecentRun(self, name, run_type):
         """记录最近运行的项目"""

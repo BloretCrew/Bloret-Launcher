@@ -9,7 +9,8 @@
       "Bash(cmd.exe /c \"python check_qml.py && exit\")",
       "Bash(cmd.exe //c \"python check_qml.py\")",
       "Bash(python)",
-      "Bash(find \"f:\\\\GitProjects\\\\Bloret-Launcher\" -name \"*.py\" -exec grep -l \"Avatar\\\\|Circular\" {} \\\\;)"
+      "Bash(find \"f:\\\\GitProjects\\\\Bloret-Launcher\" -name \"*.py\" -exec grep -l \"Avatar\\\\|Circular\" {} \\\\;)",
+      "Bash(pip show:*)"
     ]
   }
 }
