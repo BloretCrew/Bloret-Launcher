@@ -186,6 +186,7 @@ Dialog {
                                     color: msgDelegate.msgUsername
                                         ? chatDialog.usernameColor(msgDelegate.msgUsername)
                                         : Theme.currentTheme.colors.controlQuaternaryColor
+                                    clip: true
 
                                     // 文字回退（无用户名或头像加载失败时显示）
                                     Text {
@@ -210,14 +211,11 @@ Dialog {
                                             : ""
                                         fillMode: Image.PreserveAspectCrop
                                         smooth: true
+                                        asynchronous: true
+                                        cache: true
                                         visible: status === Image.Ready
-                                        layer.enabled: true
-                                        layer.effect: Item {
-                                            // 圆形遮罩用 clip + radius 实现在外层 Rectangle
-                                        }
                                     }
 
-                                    // 加载中指示
                                     BusyIndicator {
                                         anchors.centerIn: parent
                                         width: 16
