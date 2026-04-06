@@ -166,6 +166,10 @@ FluentWindow {
         function onUpdateFailed(message) {
             updateDialog.showError(message)
         }
+
+        function onMinecraftCrashDetected(title, message, stackTrace) {
+            errorAnalysisDialog.showError(title, message, stackTrace)
+        }
     }
 
     DownloadDialog {
@@ -186,6 +190,10 @@ FluentWindow {
 
     UpdateDialog {
         id: updateDialog
+    }
+
+    ErrorAnalysisDialog {
+        id: errorAnalysisDialog
     }
 
     // OOBE 覆盖层

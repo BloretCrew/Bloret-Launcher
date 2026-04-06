@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
+import "../components"
 
 FluentPage {
     id: multiplayerPage
@@ -79,12 +80,26 @@ FluentPage {
     }
 
     // --- Easytier Section ---
-    Label {
-        font.pixelSize: 20
-        font.weight: Font.DemiBold
-        text: (Backend ? Backend.tr("EasyTier 组网") : "EasyTier 组网")
+    RowLayout {
+        spacing: 10
         Layout.topMargin: 10
-        color: Theme.currentTheme.colors.textColor
+
+        Label {
+            font.pixelSize: 20
+            font.weight: Font.DemiBold
+            text: (Backend ? Backend.tr("EasyTier 组网") : "EasyTier 组网")
+            color: Theme.currentTheme.colors.textColor
+        }
+
+        Badge {
+            text: "Pre-alpha"
+            colorType: "Warning"
+        }
+        Badge {
+            text: "EasyTier"
+            colorType: "Success"
+        }
+        
     }
 
     Frame {

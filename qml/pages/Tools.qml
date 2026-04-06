@@ -7,6 +7,7 @@ FluentPage {
     id: toolsPage
     title: (Backend ? Backend.tr("小工具") : "小工具")
 
+    // Easytier status handler (not displayed in this page, but kept for backend communication)
     Connections {
         target: Backend
         function onQueryResultReceived(data) {
@@ -24,10 +25,6 @@ FluentPage {
                 }
             }
         }
-        function onEasytierStatusChanged(title, desc) {
-            etStatusTitle.text = title
-            etStatusDesc.text = desc
-        }
         function onLogsCleared() {
             logClearedInfoBar.visible = true
             logClearedTimer.start()
@@ -42,7 +39,10 @@ FluentPage {
     }
 
     ColumnLayout {
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
         anchors.margins: 20
         spacing: 20
 
@@ -309,61 +309,5 @@ FluentPage {
                 }
             }
         }
-
-        // --- EasyTier Section ---
-        Label {
-            font.pixelSize: 20
-            font.weight: Font.DemiBold
-            text: (Backend ? Backend.tr("EasyTier 组网") : "EasyTier 组网")
-            Layout.topMargin: 10
-            color: Theme.currentTheme.colors.textColor
-        }
-
-        Frame {
-            Layout.fillWidth: true
-            padding: 15
-            background: Rectangle {
-                color: Theme.currentTheme.colors.cardColor
-                radius: 8
-                border.color: Theme.currentTheme.colors.controlBorderColor
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 15
-
-                Image {
-                    source: "../../icon/java.png"
-                    sourceSize { width: 40; height: 40 }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Label {
-                        id: etStatusTitle
-                        font.weight: Font.DemiBold
-                        text: Backend ? Backend.getEasytierStatusTitle() : ""
-                        color: Theme.currentTheme.colors.textColor
-                    }
-                    Label {
-                        id: etStatusDesc
-                        text: Backend ? Backend.getEasytierStatusDesc() : ""
-                        color: Theme.currentTheme.colors.textSecondaryColor
-                    }
-                }
-
-                Button {
-                    text: (Backend ? Backend.tr("启动服务器") : "启动服务器")
-                    onClicked: { if (Backend) Backend.startEasytierHost() }
-                }
-                Button {
-                    text: (Backend ? Backend.tr("连接节点") : "连接节点")
-                    onClicked: { if (Backend) Backend.startEasytierClient() }
-                }
-            }
-        }
-
-        // Bottom spacer
-        Item { Layout.fillHeight: true }
     }
 }

@@ -163,6 +163,9 @@ class Backend(QObject):
     javaEnvironmentChecked = Signal(bool, str)  # installed, java_path
     javaInstallationComplete = Signal(str)      # java_path
 
+    # Minecraft crash analysis signal
+    minecraftCrashDetected = Signal(str, str, str)  # title, message, stack_trace
+
     def __init__(self):
         super().__init__()
         self._server_info = {}
@@ -267,7 +270,10 @@ class Backend(QObject):
 
                 emit_progress(95, "正在执行启动命令...", "")
                 print(f"Launching with args: {launch_args}")
-                proc = subprocess.Popen(launch_args, cwd=game_dir)
+                proc = subprocess.Popen(
+                    launch_args, cwd=game_dir,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
                 import uuid as _uuid
                 instance_id = str(_uuid.uuid4())
                 BLglobals.running_instances[instance_id] = {
@@ -278,7 +284,31 @@ class Backend(QObject):
 
                 emit_progress(97, "启动命令已执行，正在等待 Minecraft 窗口出现...", "")
 
+                # Monitor process for early crashes
+                def monitor_process_output(p, ver, evt):
+                    try:
+                        stdout_data, stderr_data = p.communicate(timeout=30)
+                        if p.returncode != 0 and not evt.is_set():
+                            stderr_text = stderr_data.decode(errors="replace") if stderr_data else ""
+                            stdout_text = stdout_data.decode(errors="replace") if stdout_data else ""
+                            combined = stderr_text + "\n" + stdout_text
+                            if combined.strip():
+                                self.minecraftCrashDetected.emit(
+                                    f"Minecraft {ver} 崩溃",
+                                    f"进程异常退出 (返回码: {p.returncode})",
+                                    combined.strip()[:3000]
+                                )
+                    except subprocess.TimeoutExpired:
+                        pass  # Process still running, which is normal
+                    except Exception:
+                        pass
+
                 window_found_event = threading.Event()
+                threading.Thread(
+                    target=monitor_process_output,
+                    args=(proc, version, window_found_event),
+                    daemon=True
+                ).start()
 
                 def on_window_found():
                     if window_found_event.is_set():
@@ -299,9 +329,15 @@ class Backend(QObject):
             except Exception as e:
                 print(f"Failed to launch: {e}")
                 import traceback
+                tb_str = traceback.format_exc()
                 traceback.print_exc()
                 emit_progress(100, f"启动失败: {e}", "")
                 finish_launch(close_dialog=False)
+                self.minecraftCrashDetected.emit(
+                    f"启动失败",
+                    str(e),
+                    tb_str
+                )
 
         threading.Thread(target=run_launch, daemon=True).start()
 
@@ -2028,9 +2064,13 @@ class Backend(QObject):
         def run_et():
             self.easytierStatusChanged.emit("正在启动", "请稍候...")
             res = StartEasytierServer(easytier_name, password)
-            if "." in res: # Success
+            if "." in res: # Success with IP (contains IP address)
                 self.easytierStatusChanged.emit("已连接", f"您的虚拟 IP: {res}\n共享端口: {port}")
-            else:
+            elif res.startswith(i18nText("~")): # Success without IP (local direct mode)
+                # 移除 ~ 前缀，显示友好提示
+                msg = res[1:]  # 移除 ~ 前缀
+                self.easytierStatusChanged.emit("已启动", msg)
+            else: # Error
                 self.easytierStatusChanged.emit("错误", res)
         threading.Thread(target=run_et, daemon=True).start()
 

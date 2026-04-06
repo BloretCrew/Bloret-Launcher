@@ -47,7 +47,7 @@ Dialog {
                 height: rowContent.implicitHeight + 16
                 radius: 6
                 color: Theme.currentTheme.colors.cardColor
-                border.color: Theme.currentTheme.colors.cardStrokeColorDefault
+                border.color: Theme.currentTheme.colors.cardBorderColor
                 border.width: 1
 
                 RowLayout {

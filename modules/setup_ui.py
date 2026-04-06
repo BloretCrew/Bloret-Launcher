@@ -1802,7 +1802,7 @@ def start_online_client(parent, clientpage):
     port_dialog.exec_()
 
 def client_online_client(parent, clientpage):
-    """连接在线客户端服务"""
+    """连接在线客户端服务（加入者模式）"""
     log("client_online_client: 开始执行客户端联机功能", logging.INFO)
     log(f"client_online_client: 传入参数 - parent: {parent}, clientpage: {clientpage}", logging.DEBUG)
 
@@ -1816,62 +1816,72 @@ def client_online_client(parent, clientpage):
     # 检查登录状态
     login_status = config.get("Bloret_PassPort_Login", False)
     log(f"client_online_client: Bloret PassPort 登录状态: {login_status}", logging.INFO)
-    
+
     if not login_status:
         log("client_online_client: 用户未登录，显示登录提示", logging.WARNING)
         # 在主线程中显示消息框
         QTimer.singleShot(0, show_login_message)
         return
-    
+
     log("client_online_client: 用户已登录，继续执行联机流程", logging.INFO)
 
     # 创建连接信息输入对话框
     log("client_online_client: 创建连接信息输入对话框", logging.INFO)
     connect_dialog = MessageBoxBase(parent)
-    connect_dialog.setWindowTitle(i18nText("连接联机服务"))
-    
-    name_label = BodyLabel(i18nText("请输入对方 Bloret PassPort 用户名"))
+    connect_dialog.setWindowTitle(i18nText("连接到房主的网络"))
+
+    name_label = BodyLabel(i18nText("请输入房主的 Bloret PassPort 用户名"))
     name_input = LineEdit()
-    name_input.setPlaceholderText(i18nText('对方用户名'))
+    name_input.setPlaceholderText(i18nText('房主用户名'))
 
     # 密码输入框
-    key_label = BodyLabel(i18nText("请输入对方联机密钥"))
+    key_label = BodyLabel(i18nText("请输入房主的联机密钥"))
     key_input = LineEdit()
-    key_input.setPlaceholderText(i18nText('对方密钥'))
+    key_input.setPlaceholderText(i18nText('房主密钥'))
     # 将密码输入框设置为密码模式
     key_input.setEchoMode(LineEdit.Password)
+
+    # 房主 IP 输入框
+    ip_label = BodyLabel(i18nText("请输入房主的局域网 IP 地址"))
+    ip_input = LineEdit()
+    ip_input.setPlaceholderText(i18nText('例如: 192.168.3.168'))
     
+    # 获取本机 IP 作为提示
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        ip_input.setPlaceholderText(i18nText(f'例如: {local_ip.rsplit(".", 1)[0]}.xxx'))
+    except:
+        pass
+
     connect_dialog.viewLayout.addWidget(name_label)
     connect_dialog.viewLayout.addWidget(name_input)
     connect_dialog.viewLayout.addWidget(key_label)
     connect_dialog.viewLayout.addWidget(key_input)
-    
-    # 添加动图
-    # gif_label = QLabel()
-    # movie = QMovie("ui/icon/OnlineClient.gif")
-    # gif_label.setMovie(movie)
-    # movie.start()
-    
-    # connect_dialog.viewLayout.addWidget(gif_label)
-    
+    connect_dialog.viewLayout.addWidget(ip_label)
+    connect_dialog.viewLayout.addWidget(ip_input)
+
     connect_dialog.yesButton.setText(i18nText("确认"))
     connect_dialog.cancelButton.setText(i18nText("取消"))
-    
+
     log("client_online_client: 对话框组件初始化完成", logging.DEBUG)
-    
+
     def handle_connect_confirm():
         try:
             log("client_online_client: 用户点击确认连接按钮", logging.INFO)
-            
-            # 获取用户输入的 username
+
+            # 获取用户输入的用户名
             username = name_input.text().strip()
             log(f"client_online_client: 获取用户名输入: '{username}'", logging.DEBUG)
-            
+
             if not username:
                 log("client_online_client: 用户名为空，显示错误提示", logging.WARNING)
                 InfoBar.error(
                     title=i18nText('输入错误'),
-                    content=i18nText('请输入对方用户名'),
+                    content=i18nText('请输入房主用户名'),
                     parent=parent
                 )
                 return
@@ -1883,13 +1893,26 @@ def client_online_client(parent, clientpage):
             # 检查联机密钥是否为空
             if not key:
                 key = "NoPassWord"
-            
-            log(f"client_online_client: 开始连接 - 目标用户: {username}, 密钥长度: {len(key)}", logging.INFO)
-            
-            # 调用 StartEasytierServer 函数连接到主机
-            connection_address = StartEasytierServer(username, key)
+
+            # 获取房主 IP
+            peer_ip = ip_input.text().strip()
+            log(f"client_online_client: 获取房主 IP: '{peer_ip}'", logging.DEBUG)
+
+            if not peer_ip:
+                log("client_online_client: 房主 IP 为空，显示错误提示", logging.WARNING)
+                InfoBar.error(
+                    title=i18nText('输入错误'),
+                    content=i18nText('请输入房主的局域网 IP 地址'),
+                    parent=parent
+                )
+                return
+
+            log(f"client_online_client: 开始连接 - 房主用户名: {username}, 密钥长度: {len(key)}, 房主 IP: {peer_ip}", logging.INFO)
+
+            # 调用 StartEasytierServer 函数连接到房主网络（加入者模式）
+            connection_address = StartEasytierServer(username, key, is_host=False, peer_ip=peer_ip)
             log(f"client_online_client: StartEasytierServer 返回结果: {connection_address}", logging.DEBUG)
-            
+
             # 检查是否返回了错误信息
             if isinstance(connection_address, str) and (connection_address.startswith(i18nText("权限错误：")) or connection_address.startswith(i18nText("安全软件阻止："))):
                 log(f"client_online_client: 权限或安全软件错误: {connection_address}", logging.ERROR)
@@ -1897,7 +1920,7 @@ def client_online_client(parent, clientpage):
                     title=i18nText('连接失败'),
                     content=connection_address,
                     parent=parent,
-                    duration=10000  # 显示更长时间以便用户阅读
+                    duration=10000
                 )
                 return
             elif isinstance(connection_address, str) and (connection_address.startswith(i18nText("启动失败:")) or connection_address == i18nText("网络请求失败") or connection_address == i18nText("配置文件不存在") or connection_address == i18nText("frpc程序不存在") or connection_address == i18nText("获取连接信息失败")):
@@ -1908,41 +1931,48 @@ def client_online_client(parent, clientpage):
                     parent=parent
                 )
                 return
+            elif isinstance(connection_address, str) and connection_address.startswith(i18nText("~")):
+                # 连接尝试成功，但未获取到虚拟 IP
+                log("client_online_client: 连接尝试成功，但未获取到虚拟 IP", logging.WARNING)
+                msg = connection_address[1:]  # 移除 ~ 前缀
+                InfoBar.warning(
+                    title=i18nText('连接尝试'),
+                    content=msg,
+                    parent=parent,
+                    duration=10000
+                )
+                return
 
             log("client_online_client: 连接成功，开始获取服务器信息", logging.INFO)
             
-            # 此处发送必要信息到 Bloret PassPort 的 public 数据中，以便客户端读取
-            log("client_online_client: 从 Bloret PassPort 读取客户端公共数据", logging.DEBUG)
+            # 获取虚拟 IP 成功后，从 PassPort 获取房主的服务器信息
             ClinetPublic = readdata("Client", True)
-            log(f"client_online_client: 获取到的原始数据: {ClinetPublic[:200]}{'...' if len(str(ClinetPublic)) > 200 else ''}", logging.DEBUG)
-            
-            # 这里返回的数据是 str, 需要先转换为字典再处理
             ClinetPublic = json.loads(ClinetPublic)
-            log(f"client_online_client: JSON解析成功，数据类型: {type(ClinetPublic)}", logging.DEBUG)
 
-            username = 'BLClient' + username
-            log(f"client_online_client: 构造完整用户名: {username}", logging.DEBUG)
-            
-            # 检查目标用户是否存在
-            if username not in ClinetPublic:
-                log(f"client_online_client: 目标用户 {username} 不存在于公共数据中", logging.ERROR)
+            full_username = 'BLClient' + username
+            if full_username not in ClinetPublic:
+                log(f"client_online_client: 房主 {full_username} 不存在于公共数据中", logging.ERROR)
                 InfoBar.error(
                     title=i18nText('连接失败'),
-                    content=f'用户 {username} 未找到或不在线',
+                    content=f'房主 {username} 未找到或不在线',
                     parent=parent
                 )
                 return
 
-            # 获取 ClientPublic[username] 得到：{ip:connection_address, port:port, username:easytier_name}
-            log(f"client_online_client: 获取用户 {username} 的连接信息", logging.DEBUG)
-            ip = ClinetPublic[username]["ip"]
-            port = ClinetPublic[username]["port"]
-            log(f"client_online_client: 服务器信息 - IP: {ip}, 端口: {port}", logging.INFO)
+            # 获取房主的端口信息
+            port = ClinetPublic[full_username]["port"]
+            log(f"client_online_client: 房主服务器端口: {port}", logging.INFO)
 
-            # 显示连接地址对话框
-            server_address = f"{ip}:{port}"
-            log("client_online_client: 显示连接地址对话框", logging.INFO)
-            show_connection_address_dialog(parent, f"已连接到对方的网络，现在打开 Minecraft，连接服务器 {server_address}\n(请注意联机过程中不要关闭 Bloret Launcher，您可以关闭本窗口，保持 Bloret Launcher 在托盘中运行)", server_address, clientpage, False)
+            # 显示连接成功信息
+            server_address = f"{connection_address}:{port}"
+            show_connection_address_dialog(
+                parent, 
+                f"已成功连接到房主 {username} 的网络！\n\nMinecraft 服务器地址: {server_address}\n\n现在打开 Minecraft，添加服务器并连接。", 
+                server_address, 
+                clientpage, 
+                False
+            )
+            
         except json.JSONDecodeError as e:
             log(f"client_online_client: JSON解析错误: {str(e)}", logging.ERROR)
             InfoBar.error(

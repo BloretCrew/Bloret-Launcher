@@ -8,6 +8,11 @@ FluentPage {
     id: downloadPage
     title: (Backend ? Backend.tr("下载") : "下载")
 
+    Badge {
+        text: "bangbang93/BMCLAPI"
+        colorType: "Success"
+    }
+
     VersionNameDialog { 
         id: versionDialog 
         parent: Overlay.overlay

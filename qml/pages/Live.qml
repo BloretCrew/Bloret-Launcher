@@ -2,10 +2,10 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
+import "../components"
 
 FluentPage {
     id: livePage
-    title: (Backend ? Backend.tr("Live") : "Live")
 
     property var spaceList: []
     property bool inSpace: false
@@ -197,6 +197,11 @@ FluentPage {
                 color: Theme.currentTheme.colors.textSecondaryColor
                 Layout.alignment: Qt.AlignBottom
                 Layout.bottomMargin: 5
+            }
+            
+            Badge {
+                text: "Bloret BBS"
+                colorType: "Success"
             }
             Item { Layout.fillWidth: true }
         }

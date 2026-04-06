@@ -2,10 +2,10 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
+import "../components"
 
 FluentPage {
     id: bbbsPage
-    title: (Backend ? Backend.tr("BBBS") : "BBBS")
 
     property var summaryData: ({})
     property var leaderboardData: []
@@ -58,12 +58,18 @@ FluentPage {
                 color: Theme.currentTheme.colors.textColor
             }
             Label {
-                text: (Backend ? Backend.tr("百络谷 BBS") : "百络谷 BBS")
+                text: (Backend ? Backend.tr("百络论坛") : "百络论坛")
                 font.pixelSize: 14
                 color: Theme.currentTheme.colors.textSecondaryColor
                 Layout.alignment: Qt.AlignBottom
                 Layout.bottomMargin: 5
             }
+            
+            Badge {
+                text: "Bloret BBS"
+                colorType: "Success"
+            }
+
             Item { Layout.fillWidth: true }
             Button {
                 text: (Backend ? Backend.tr("刷新") : "刷新")
