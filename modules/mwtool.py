@@ -22,6 +22,24 @@ import logging
 # 导入原始的 log 函数并重命名
 from .log import log as _log_func
 
+# 尝试导入主题检测函数
+try:
+    from modules.theme import is_dark_theme
+except ImportError:
+    def is_dark_theme():
+        # 降级方案：读取配置文件判断
+        try:
+            import json
+            config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                # themelight=False 表示深色，True 表示浅色
+                return not config.get('themelight', False)
+        except:
+            pass
+        return True  # 默认深色
+
 # 创建一个兼容类，将 log.info() 等调用转发给 _log_func 函数
 class LogWrapper:
     def debug(self, msg):
@@ -319,12 +337,15 @@ class MinecraftWindowTool(QWidget):
         )
         
         # 设置窗口属性
-        # 禁用完全透明背景，确保 SimpleCardWidget 背景能正确显示
+        # 禁用完全透明背景，确保背景颜色能正确显示
         self.setAttribute(Qt.WA_TranslucentBackground, False) 
         
-        # 设置窗口背景色为 Fluent 风格的半透明深色背景（如果 UI 中没有设置）
+        # 设置窗口背景色为 Fluent 风格的半透明深色背景
         # 这样可以保证工具条在任何游戏背景下都清晰可见
-        self.setStyleSheet("background-color: rgba(32, 32, 32, 200); border-radius: 8px;")
+        self.setStyleSheet("""
+            background-color: rgba(32, 32, 32, 200); 
+            border-radius: 8px;
+        """)
         
         # 提高窗口不透明度（1.0 为完全不透明）
         self.setWindowOpacity(1.0)
@@ -387,10 +408,15 @@ class MinecraftWindowTool(QWidget):
                 # 首先尝试直接获取名为 BodyLabel 的控件
                 icon_label = self.findChild(BodyLabel, "BodyLabel")
                 if icon_label:
-                    icon_path = r"g:\Work\git\Bloret-Launcher\Bloret.png"
-                    if os.path.exists(icon_path):
-                        icon_label.setPixmap(QPixmap(icon_path))
-                        icon_label.setScaledContents(True)
+                    icon_paths = [
+                        os.path.join(os.getcwd(), "Bloret.png"),
+                        os.path.join(os.path.dirname(os.path.dirname(__file__)), "Bloret.png"),
+                    ]
+                    for icon_path in icon_paths:
+                        if os.path.exists(icon_path):
+                            icon_label.setPixmap(QPixmap(icon_path))
+                            icon_label.setScaledContents(True)
+                            break
             except Exception as e:
                 log.warning(f"设置 UI 图标失败: {e}")
 
@@ -419,12 +445,21 @@ class MinecraftWindowTool(QWidget):
 
         # 图标
         self.icon_label = QLabel()
-        icon_path = r"g:\Work\git\Bloret-Launcher\Bloret.png"
-        if os.path.exists(icon_path):
-            self.icon_label.setPixmap(QPixmap(icon_path))
-            self.icon_label.setScaledContents(True)
-            self.icon_label.setFixedSize(25, 25)
-        else:
+        # 修复硬编码路径，使用相对路径
+        icon_paths = [
+            os.path.join(os.getcwd(), "Bloret.png"),
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "Bloret.png"),
+        ]
+        icon_found = False
+        for icon_path in icon_paths:
+            if os.path.exists(icon_path):
+                self.icon_label.setPixmap(QPixmap(icon_path))
+                self.icon_label.setScaledContents(True)
+                self.icon_label.setFixedSize(25, 25)
+                icon_found = True
+                break
+        
+        if not icon_found:
             self.icon_label.setText("🎮")
             self.icon_label.setStyleSheet("font-size: 20px;")
 

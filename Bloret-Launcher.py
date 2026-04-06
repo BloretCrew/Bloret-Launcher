@@ -270,10 +270,13 @@ class Backend(QObject):
 
                 emit_progress(95, "正在执行启动命令...", "")
                 print(f"Launching with args: {launch_args}")
+                
+                # 修改：不使用 PIPE 捕获，而是让输出直接打印到控制台
+                # 这样可以实时看到 Minecraft 的日志输出
                 proc = subprocess.Popen(
-                    launch_args, cwd=game_dir,
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    launch_args, cwd=game_dir
                 )
+                
                 import uuid as _uuid
                 instance_id = str(_uuid.uuid4())
                 BLglobals.running_instances[instance_id] = {
@@ -284,28 +287,26 @@ class Backend(QObject):
 
                 emit_progress(97, "启动命令已执行，正在等待 Minecraft 窗口出现...", "")
 
-                # Monitor process for early crashes
-                def monitor_process_output(p, ver, evt):
+                # 添加后台线程监控进程退出，检测早期崩溃
+                def monitor_process_exit(p, ver, evt):
                     try:
-                        stdout_data, stderr_data = p.communicate(timeout=30)
+                        p.wait()  # 等待进程结束
                         if p.returncode != 0 and not evt.is_set():
-                            stderr_text = stderr_data.decode(errors="replace") if stderr_data else ""
-                            stdout_text = stdout_data.decode(errors="replace") if stdout_data else ""
-                            combined = stderr_text + "\n" + stdout_text
-                            if combined.strip():
-                                self.minecraftCrashDetected.emit(
-                                    f"Minecraft {ver} 崩溃",
-                                    f"进程异常退出 (返回码: {p.returncode})",
-                                    combined.strip()[:3000]
-                                )
-                    except subprocess.TimeoutExpired:
-                        pass  # Process still running, which is normal
-                    except Exception:
-                        pass
+                            # 进程异常退出且窗口未出现，说明启动早期就崩溃了
+                            print(f"\n[错误] Minecraft {ver} 进程异常退出，返回码: {p.returncode}")
+                            print("[错误] 这可能是启动早期崩溃，请检查上面的日志输出\n")
+                            # 由于没有捕获输出，这里无法获取详细日志
+                            self.minecraftCrashDetected.emit(
+                                f"Minecraft {ver} 崩溃",
+                                f"进程异常退出 (返回码: {p.returncode})\n请查看控制台日志输出",
+                                f"进程异常退出，返回码: {p.returncode}"
+                            )
+                    except Exception as e:
+                        print(f"[错误] 监控进程退出时发生异常: {e}")
 
                 window_found_event = threading.Event()
                 threading.Thread(
-                    target=monitor_process_output,
+                    target=monitor_process_exit,
                     args=(proc, version, window_found_event),
                     daemon=True
                 ).start()
