@@ -1,10 +1,15 @@
-from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
+try:
+    from modules.compat_widgets import InfoBar, InfoBarPosition, ComboBox
+except ImportError:
+    InfoBar = None
+    InfoBarPosition = None
+    ComboBox = None
 import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, psutil
 try:
     import send2trash
 except ImportError:
     send2trash = None
-import sip # type: ignore
+# sip is not required for PySide6
 from pathlib import Path
 from modules.win11toast import notify, update_progress
 # 以下导入的部分是 Bloret Launcher 所有的模块，位于 modules 中
@@ -27,6 +32,15 @@ if platform.system() == "Windows":
         import win32process # type: ignore
     except ImportError:
         pass
+    try:
+        # Import on module load (main Qt thread in normal app startup) so mwtool's
+        # global QObject instances keep correct thread affinity.
+        from modules import mwtool  # type: ignore
+    except Exception as e:
+        mwtool = None
+        log(f"加载 mwtool 失败，将跳过 Minecraft 工具栏: {e}", logging.WARNING)
+else:
+    mwtool = None
 
 def Get_Run_Script(mc_version):
     """
@@ -123,6 +137,29 @@ def Get_Run_Script(mc_version):
                     if os.path.exists(default_path):
                         java_path = default_path
                         break
+
+    # 检测 Java 版本，用于后续兼容性判断
+    java_version = 8  # 默认版本
+    try:
+        result = subprocess.run(
+            [java_path, "-version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        )
+        # Java 版本输出通常在 stderr 中
+        version_output = result.stderr if result.stderr else result.stdout
+        # 提取版本号（例如 "25.0.1" 或 "17.0.8"）
+        import re
+        version_match = re.search(r'version\s+"?(\d+)', version_output)
+        if version_match:
+            java_version = int(version_match.group(1))
+            log(f"检测到 Java版本: {java_version}")
+        else:
+            log(f"无法检测 Java 版本，假定为 8")
+    except Exception as e:
+        log(f"检测 Java 版本失败: {e}，假定为 8")
     
     # --- 账户信息处理 (从 config.json 读取) ---
     mc_account_config = config_data.get("MinecraftAccount", {})
@@ -182,6 +219,9 @@ def Get_Run_Script(mc_version):
         "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED",
         "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",
         "--add-opens", "java.base/jdk.internal.ref=ALL-UNNAMED",
+        "--add-opens", "java.base/jdk.internal.loader=ALL-UNNAMED",
+        "--add-opens", "java.base/java.net=ALL-UNNAMED",
+        "--add-opens", "java.base/java.security=ALL-UNNAMED",
         "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",
         "--add-exports", "java.base/jdk.internal.misc=ALL-UNNAMED",
         "--add-exports", "java.base/jdk.internal.ref=ALL-UNNAMED",
@@ -488,18 +528,11 @@ def Get_Run_Script(mc_version):
     
     log("mods 目录: " + mods_dir)
 
-    # 处理 JavaWrapper.jar 路径 (仅在 Windows 原版中使用)
-    java_wrapper_path = os.path.join(os.getcwd(), "JavaWrapper.jar")
-    if hasattr(sys, '_MEIPASS'):
-        java_wrapper_path = os.path.join(sys._MEIPASS, "JavaWrapper.jar")
-
-    # 仅在 Windows 系统且非 Fabric 环境下尝试使用 JavaWrapper 以处理进程管理
-    # macOS 和 Linux 系统直接启动，避免 Wrapper 兼容性问题
-    use_wrapper = (platform.system() == "Windows" and not is_fabric and os.path.exists(java_wrapper_path))
-
-    if use_wrapper:
-        classpath.append(java_wrapper_path)
-        log("将在启动中使用 JavaWrapper (Windows 适配层)")
+    # 处理 JavaWrapper.jar 路径
+    # 注意：JavaWrapper 是一个第三方进程管理工具，但它早已停止维护
+    # 它在 Java 17+（包括 Java 25）上会导致严重的 NullPointerException 崩溃
+    # 因此，我们现在默认直接禁用它，改用原生直接启动方式
+    use_wrapper = False  # 强制禁用
 
     # 添加类路径参数
     # 注意：在 shell=False 时，不要手动添加引号。
@@ -516,12 +549,20 @@ def Get_Run_Script(mc_version):
         launch_args.append("net.fabricmc.loader.impl.launch.knot.KnotClient")
     else:
         # 原始 Minecraft 启动方式
+        # 最终检查：即使 use_wrapper 为 True，如果 Java 版本 >= 17 也强制禁用
+        if use_wrapper and java_version >= 17:
+            log(f"⚠️ 最终保护：Java {java_version} >= 17，强制禁用 JavaWrapper")
+            use_wrapper = False
+        
         if use_wrapper:
             # 在 Windows 上，Wrapper 充当启动入口
             launch_args.append("oolloo.jlw.Wrapper")
-        
+            log("⚠️ 使用 JavaWrapper 启动（Java 版本 < 17）")
+
         # 指定 Minecraft 的真正主类
         launch_args.append("net.minecraft.client.main.Main")
+        if not use_wrapper:
+            log(f"✅ 直接启动 Minecraft（未使用 JavaWrapper，Java {java_version}）")
     
     # 游戏目录应该是主 .minecraft 目录，而不是版本特定目录
     # 修改：为了实现版本隔离，game_dir 应该指向 versions_dir
@@ -731,17 +772,18 @@ def get_minecraft_window_handle(version=None, timeout=300):
         log(f"获取 Minecraft 窗口句柄时出错: {e}")
         return None
 
-def monitor_minecraft_window(version, check_interval=1, callback=None):
+def monitor_minecraft_window(version, check_interval=1, callback=None, mc_pid=None):
     """
     监控 Minecraft 窗口，当窗口出现时获取句柄并显示浮动工具栏
-    
+
     Args:
         version (str): Minecraft 版本号
         check_interval (int): 检查间隔（秒）
         callback (callable): 找到窗口后的回调函数
+        mc_pid (int): Minecraft 进程 ID（可选），用于监控进程退出并自动隐藏工具条
     """
     def monitor_thread():
-        log(f"开始监控 Minecraft {version} 窗口...")
+        log(f"开始监控 Minecraft {version} 窗口... (进程 ID: {mc_pid})")
         
         # 等待一段时间让 Minecraft 启动
         time.sleep(3)
@@ -790,31 +832,41 @@ def monitor_minecraft_window(version, check_interval=1, callback=None):
                 log("非 Windows 系统暂不支持浮动工具栏功能")
                 return hwnd
 
+            try:
+                if not cfg.read().get("mwtool_switch_open", True):
+                    log("已关闭 Minecraft 小工具栏，跳过创建")
+                    return hwnd
+            except Exception as e:
+                log(f"读取 mwtool_switch_open 失败，继续按默认开启处理: {e}", logging.WARNING)
+
             # 创建工具栏 - 使用修复后的模块确保线程安全
             try:
-                from PyQt5.QtCore import QObject, pyqtSignal, QCoreApplication, QTimer
-                from . import mwtool
-                
-                # 确保在主线程中创建QObject
-                app = QCoreApplication.instance()
-                if not app:
-                    log("无法获取 QApplication 实例", logging.ERROR)
+                if mwtool is None:
+                    log("mwtool 未就绪，跳过 Minecraft 浮动工具栏创建", logging.WARNING)
                     return
-                
+
                 log("正在创建工具栏...", logging.DEBUG)
-                
+
                 # 直接在监控线程中调用工具栏创建（mwtool 内部会处理跨线程调用）
                 try:
                     tool = mwtool.create_minecraft_tool(hwnd, version)
                     if tool:
                         log(f"工具栏创建成功: {tool}", logging.DEBUG)
                     else:
-                        log("工具栏创建返回 None", logging.ERROR)
+                        log("工具栏创建已异步派发", logging.DEBUG)
                 except Exception as e:
                     log(f"工具栏创建失败: {e}", logging.ERROR)
                     import traceback
                     traceback.print_exc()
-                
+
+                # 启动进程退出监控，当 Minecraft 退出时自动隐藏工具条
+                if mc_pid:
+                    try:
+                        mwtool.start_monitoring(version, mc_pid=mc_pid)
+                        log(f"✅ 已启动进程退出监控 (PID: {mc_pid})，Minecraft 退出时工具条将自动隐藏")
+                    except Exception as e:
+                        log(f"启动进程退出监控失败: {e}", logging.WARNING)
+
                 log(f"✅ Minecraft 浮动工具栏创建完成，版本: {version}")
             except Exception as e:
                 log(f"创建 Minecraft 浮动工具栏失败: {e}")

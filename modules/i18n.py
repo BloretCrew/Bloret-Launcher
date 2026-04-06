@@ -1,37 +1,48 @@
 import json
 import os
 from modules.log import log
-from PyQt5.QtWidgets import QLabel, QPushButton, QCheckBox, QRadioButton, QComboBox, QTextEdit, QLineEdit, QSpinBox
-from qfluentwidgets import ComboBox, SwitchButton, TextEdit
+from PySide6.QtWidgets import QLabel, QPushButton, QCheckBox, QRadioButton, QComboBox, QTextEdit, QLineEdit, QSpinBox
 import modules.globals as BLglobals
 
-def load_language():
-    # 读取配置文件获取语言设置
-    try:
-        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-            language = config.get('language', 'zh-cn')  # 默认使用中文
-    except FileNotFoundError:
-        language = 'zh-cn'  # 如果配置文件不存在，默认使用中文
-    except json.JSONDecodeError:
-        language = 'zh-cn'  # 如果配置文件格式错误，默认使用中文
+
+def _lang_file_path(language):
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    return os.path.join(base_dir, "lang", f"{language}.json")
+
+def load_language(language=None):
+    # 如果没有指定语言，则读取配置文件获取语言设置
+    if language is None:
+        try:
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                language = config.get('language') or config.get('Language') or 'zh-cn'
+        except (FileNotFoundError, json.JSONDecodeError):
+            language = 'zh-cn'
+
+    if not isinstance(language, str):
+        language = 'zh-cn'
+    language = language.strip() or 'zh-cn'
 
     # 加载对应的语言文件
-    lang_file_path = f'lang/{language}.json'
+    lang_file_path = _lang_file_path(language)
     try:
         with open(lang_file_path, 'r', encoding='utf-8') as f:
             lang = json.load(f)
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError):
         # 如果指定的语言文件不存在，尝试加载默认的中文文件
         try:
-            with open('lang/zh-cn.json', 'r', encoding='utf-8') as f:
+            with open(_lang_file_path('zh-cn'), 'r', encoding='utf-8') as f:
                 lang = json.load(f)
         except FileNotFoundError:
-            lang = {}  # 如果连默认语言文件都不存在，则使用空字典
-    except json.JSONDecodeError:
-        lang = {}  # 如果语言文件格式错误，则使用空字典
-
+            lang = {}
+    
     return lang
+
+def reload_language(language=None):
+    """手动重新加载语言数据"""
+    global lang_data
+    lang_data = load_language(language)
+    log(f"Language reloaded: {language if language else 'default'}")
 
 
 # 全局变量存储语言数据

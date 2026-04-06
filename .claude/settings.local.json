@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ':*)",
+      "Bash(/c/Users/0570/AppData/Local/Programs/Python/Python314/python.exe check_qml.py)",
+      "Bash(python check_qml.py)",
+      "Bash(/c/Users/0570/AppData/Local/Programs/Python/Python314/python check_qml.py)",
+      "Bash(cmd.exe /c \"python check_qml.py\")",
+      "Bash(cmd.exe /c \"python check_qml.py && exit\")",
+      "Bash(cmd.exe //c \"python check_qml.py\")",
+      "Bash(python)",
+      "Bash(find \"f:\\\\GitProjects\\\\Bloret-Launcher\" -name \"*.py\" -exec grep -l \"Avatar\\\\|Circular\" {} \\\\;)",
+      "Bash(pip show:*)"
+    ]
+  }
+}

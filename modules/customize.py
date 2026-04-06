@@ -1,4 +1,4 @@
-from qfluentwidgets import InfoBar, InfoBarPosition
+from modules.compat_widgets import InfoBar, InfoBarPosition
 import os,subprocess,json,sys,logging
 from modules.log import log
 from modules.i18n import i18nText
@@ -14,7 +14,7 @@ def CustomizeRun(self,version):
 
     
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     # 查找 config.json 中 Customize 的 showname 是否匹配 version
     for item in self.config.get("Customize", []):
@@ -54,7 +54,7 @@ def find_Customize(self,version):
     ## 查找 config.json 中 Customize 的 showname 是否匹配 version
 
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     with open(BLglobals.config_path, 'r', encoding='utf-8') as file:
         config_data = json.load(file)
@@ -81,10 +81,10 @@ def CustomizeAdd(self):
     2. 文件路径 -> path
     
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     try:
-        from PyQt5.QtWidgets import QFileDialog
+        from PySide6.QtWidgets import QFileDialog
         
         # 弹出文件选择框选择文件
         file_path, _ = QFileDialog.getOpenFileName(
@@ -183,7 +183,7 @@ def CustomizeAppAdd(file_path, file_name):
         任何异常都会被捕获并记录到日志中，不会导致程序崩溃
         
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     try:
         log(f"开始添加自定义程序: {file_path}， {file_name}")

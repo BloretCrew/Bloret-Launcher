@@ -1,16 +1,21 @@
-from qfluentwidgets import InfoBar, InfoBarPosition, ComboBox
+# Removed qfluentwidgets imports for PySide6 compatibility
 import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, sys
 try:
     import send2trash
 except ImportError:
     send2trash = None
-import sip # type: ignore
 from pathlib import Path
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 
-# 线程本地存储，用于复用 Session
 thread_local_data = threading.local()
+
+_current_download_state = {
+    'downloader': None,
+    'is_paused': False,
+    'backend': None,
+    'cancelled': False
+}
 
 def get_session():
     """获取线程本地的 requests.Session 对象，实现连接复用"""
@@ -18,10 +23,29 @@ def get_session():
         thread_local_data.session = requests.Session()
     return thread_local_data.session
 
-# PyQt5 imports - consolidated
-from PyQt5.QtCore import QMetaObject, Qt, Q_ARG
-from PyQt5.QtWidgets import QLabel, QProgressBar, QDialog, QCheckBox
-from PyQt5 import uic
+def toggle_current_download_pause():
+    global _current_download_state
+    downloader = _current_download_state.get('downloader')
+    backend = _current_download_state.get('backend')
+    if downloader:
+        if _current_download_state['is_paused']:
+            downloader.resume()
+            _current_download_state['is_paused'] = False
+        else:
+            downloader.pause()
+            _current_download_state['is_paused'] = True
+        if backend:
+            backend.setDownloadPaused(_current_download_state['is_paused'])
+
+def cancel_current_download():
+    global _current_download_state
+    _current_download_state['cancelled'] = True
+    downloader = _current_download_state.get('downloader')
+    if downloader:
+        downloader.cancel()
+    backend = _current_download_state.get('backend')
+    if backend:
+        backend.closeDownloadDialog()
 
 # Bloret Launcher modules
 from modules.win11toast import notify, update_progress
@@ -33,6 +57,32 @@ import modules.globals as BLglobals
 import modules.config as cfg
 
 # 线程安全的UI更新函数
+def load_ui_file(ui_file_path):
+    """
+    使用 QUiLoader 加载 UI 文件，兼容 PySide6
+    
+    Args:
+        ui_file_path (str): UI 文件的路径
+    
+    Returns:
+        QWidget: 加载的 UI 对象，如果失败返回 None
+    """
+    try:
+        loader = QUiLoader()
+        if not os.path.isabs(ui_file_path):
+            script_dir = Path(__file__).parent.parent.absolute()
+            ui_file_path = os.path.join(script_dir, ui_file_path)
+        
+        if not os.path.exists(ui_file_path):
+            log(f"UI 文件不存在: {ui_file_path}", logging.WARNING)
+            return None
+        
+        ui = loader.load(ui_file_path, None)
+        return ui
+    except Exception as e:
+        log(f"加载 UI 文件失败 {ui_file_path}: {e}", logging.ERROR)
+        return None
+
 def safe_ui_update(widget, method, value, widget_type=None):
     """
     安全地更新UI组件，确保在主线程中执行
@@ -40,11 +90,9 @@ def safe_ui_update(widget, method, value, widget_type=None):
     try:
         if widget and hasattr(widget, method):
             if widget_type == "progress_bar":
-                QMetaObject.invokeMethod(widget, method, Qt.QueuedConnection,
-                                       Q_ARG(int, value))
+                QMetaObject.invokeMethod(widget, method, Qt.QueuedConnection, value)
             elif widget_type == "label":
-                QMetaObject.invokeMethod(widget, method, Qt.QueuedConnection,
-                                       Q_ARG(str, str(value)))
+                QMetaObject.invokeMethod(widget, method, Qt.QueuedConnection, str(value))
             else:
                 QMetaObject.invokeMethod(widget, method, Qt.QueuedConnection)
             return True
@@ -227,49 +275,35 @@ class LibraryDownloader:
             self._pause_cond.notify_all()
             log("下载已恢复")
         
-    def download_single_library(self, lib_item, download_dialog=None):
+    def download_single_library(self, lib_item):
         with self.lock:
             while self._paused:
                 self._pause_cond.wait()
         lib, lib_path = lib_item
 
-        # 如果文件已存在且大小匹配，则跳过下载
         if os.path.exists(lib_path):
             expected_size = lib.get("downloads", {}).get("artifact", {}).get("size")
             if expected_size is not None:
                 actual_size = os.path.getsize(lib_path)
                 if actual_size == expected_size:
                     log(f"库文件已存在且大小匹配，跳过下载: {lib_path}")
-                    # 增加完成计数
                     with self.lock:
                         self.completed_count += 1
-                    # 减少活动下载计数
                     with self._active_downloads_lock:
                         self._active_downloads -= 1
-                    return True # 成功跳过
+                    return True
                 else:
                     log(f"库文件已存在但大小不匹配，重新下载: {lib_path} (预期: {expected_size}, 实际: {actual_size})")
             else:
                 log(f"库文件已存在，但未提供预期大小，跳过下载: {lib_path}")
-                # 增加完成计数
                 with self.lock:
                     self.completed_count += 1
-                # 减少活动下载计数
                 with self._active_downloads_lock:
                     self._active_downloads -= 1
-                return True # 成功跳过
+                return True
 
-        # 增加活动下载计数
         with self._active_downloads_lock:
             self._active_downloads += 1
-            if download_dialog:
-                try:
-                    thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
-                    if thread_label:
-                        QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                           Q_ARG(str, str(self._active_downloads)))
-                except Exception as e:
-                    log(f"更新libraries_file_working_Thread时出错: {e}")
 
         try:
             # 确保目录存在
@@ -364,57 +398,22 @@ class LibraryDownloader:
                         log(f"所有镜像源和重试都下载失败: {lib_path}", logging.ERROR)
                         return False
             
-            # 更新完成计数
             with self.lock:
                 self.completed_count += 1
-                if download_dialog:
-                    try:
-                        lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
-                        if lib_progress_bar:
-                            progress_value = int((self.completed_count / self.total_count) * 100)
-                            QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
-                                                   Q_ARG(int, progress_value))
-                    except Exception as e:
-                        log(f"更新libraries_progress时出错: {e}")
-            return True # 成功下载
+            return True
         except Exception as e:
             log(f"下载库文件失败 {lib_path}: {str(e)}", logging.WARNING)
-            # 更新完成计数（即使失败也计数）
             with self.lock:
                 self.completed_count += 1
         finally:
-            # 减少活动下载计数
             with self._active_downloads_lock:
                 self._active_downloads -= 1
-                if download_dialog:
-                    try:
-                        thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
-                        if thread_label:
-                            QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                               Q_ARG(str, str(self._active_downloads)))
-                    except Exception as e:
-                        log(f"更新libraries_file_working_Thread时出错: {e}")
     
-    def download_libraries(self, download_dialog=None):
-        if download_dialog:
-            try:
-                lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
-                thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
-                if lib_progress_bar:
-                    QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
-                                           Q_ARG(int, 0))
-                if thread_label:
-                    QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                           Q_ARG(str, "0"))
-            except Exception as e:
-                log(f"初始化libraries_progress或libraries_file_working_Thread时出错: {e}")
-        
+    def download_libraries(self):
         log(f"使用 {self.max_workers} 个线程下载库文件")
         
-        # 使用线程池并发下载
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="LibraryDownloader") as executor:
-            futures = [executor.submit(self.download_single_library, lib_item, download_dialog) for lib_item in self.missing_libraries]
-            # 等待所有下载完成
+            futures = [executor.submit(self.download_single_library, lib_item) for lib_item in self.missing_libraries]
             concurrent.futures.wait(futures)
         
         all_downloads_successful = True
@@ -424,24 +423,9 @@ class LibraryDownloader:
                 break
 
         if not all_downloads_successful:
-            log("Fabric Loader 库文件下载失败", logging.ERROR)
+            log("库文件下载失败", logging.ERROR)
 
-        # 显示完成通知
-        if download_dialog:
-            try:
-                lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
-                thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
-                if lib_progress_bar:
-                    QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
-                                           Q_ARG(int, 100))
-                if thread_label:
-                    QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                           Q_ARG(str, "0"))
-            except Exception as e:
-                log(f"更新libraries_progress或libraries_file_working_Thread时出错: {e}")
-        
-        # 设置完成事件
-        self.completed_event.set()
+        return all_downloads_successful
 
     def download_file(self, url, file_path):
         """
@@ -488,70 +472,48 @@ def download_file(url, file_path):
         log(f"下载文件失败 {url}: {str(e)}", logging.ERROR)
         return False
 
-def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None):
-    # 如果没有提供下载对话框，则创建并显示一个新的
-    if download_dialog is None:
-        try:
-            
-            download_dialog = QDialog()
-            uic.loadUi("ui/MCVer_downloading.ui", download_dialog)
-            title_text = f"正在下载 Minecraft {version}"
-            if Fabric_Loader:
-                title_text += " 和 Fabric Loader"
-            download_dialog.setWindowTitle(title_text)
-
-            # 连接暂停按钮
-            if hasattr(download_dialog, 'pause_button'):
-                download_dialog.pause_button.clicked.connect(lambda: toggle_pause_download(download_dialog))
-
-            # 设置MaxThread的值
-            try:
-                config = cfg.read()
-                max_thread_value = config.get("MaxThread", 64)
-                if hasattr(download_dialog, 'MaxThread') and hasattr(download_dialog, 'MaxThread_2'):
-                    download_dialog.MaxThread.setText(str(max_thread_value))
-                    download_dialog.MaxThread_2.setText(str(max_thread_value))
-            except Exception as e:
-                log(f"设置MaxThread值时出错: {e}")
-                
-            download_dialog.show()
-        except Exception as e:
-            log(f"创建下载对话框时出错: {e}")
-            download_dialog = None
+def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None, backend=None):
+    global _current_download_state
     
-    # 如果未提供VersionName，则使用version作为默认值
+    _current_download_state = {
+        'downloader': None,
+        'is_paused': False,
+        'backend': backend,
+        'cancelled': False
+    }
+    
     if VersionName is None:
         VersionName = version
         
-    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir, download_dialog, Fabric_Loader, VersionName))
+    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir, Fabric_Loader, VersionName, backend))
     thread.start()
 
-def toggle_pause_download(download_dialog):
-    if hasattr(download_dialog, 'downloader') and download_dialog.downloader is not None:
-        downloader = download_dialog.downloader
-        if downloader.is_paused:
-            downloader.resume()
-            download_dialog.pause_button.setText(i18nText("暂停"))
-        else:
-            downloader.pause()
-            download_dialog.pause_button.setText(i18nText("恢复下载"))
-
-def _install_minecraft_version_threaded(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None):
+def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Loader=False, VersionName=None, backend=None):
+    global _current_download_state
+    
+    def update_progress_ui(progress, status, speed="", downloaded="", total=""):
+        if backend:
+            backend.updateDownloadProgress(progress, status, speed, downloaded, total)
+    
+    def close_dialog_ui():
+        if backend:
+            backend.closeDownloadDialog()
+    
     '''
     下载并安装指定版本的 Minecraft，可选安装 Fabric Loader
     
     Args:
         version (str): 要安装的 Minecraft 版本，例如 "1.21.8"
         minecraft_dir (str, optional): Minecraft 安装目录。如果未提供，默认为 %appdata%/Bloret-Launcher/.minecraft
-        download_dialog (QDialog, optional): 下载进度对话框
         Fabric_Loader (bool, optional): 是否安装 Fabric Loader，默认为 False
         VersionName (str, optional): 版本目录名称，如果未提供，默认为 version 的值
+        backend: Python Backend 对象，用于更新 QML UI
     
     Returns:
         bool: 安装成功返回True，失败返回False
     
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     try:
         # 创建Windows 11通知
@@ -698,23 +660,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
 
         log(f"已保存版本JSON文件: {version_json_path}")
 
-        # 设置 First_Step_CheckBox 为 true
-        if download_dialog:
-                    try:
-                        # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                        checkbox = download_dialog.findChild(QCheckBox, "First_Step_CheckBox")
-                        if checkbox:
-                            QMetaObject.invokeMethod(checkbox, "setChecked", Qt.QueuedConnection, 
-                                                   Q_ARG(bool, True))
-                    except Exception as e:
-                        log(f"设置First_Step_CheckBox时出错: {e}")
-
-        # 下载客户端JAR文件，使用PCL风格的镜像源处理
-        update_progress({
-            'value': 0.5, 
-            'valueStringOverride': '50%',
-            'status': i18nText('正在下载客户端JAR文件...')
-        })
+        update_progress_ui(10, i18nText("正在下载客户端JAR文件..."), "", "", "")
         if "downloads" in version_data and "client" in version_data["downloads"]:
             client_info = version_data["downloads"]["client"]
             client_url = client_info["url"]
@@ -729,7 +675,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             for url in client_urls:
                 try:
                     log(f"正在下载客户端JAR文件: {url}")
-                    # 使用Session来更好地管理连接
                     with requests.Session() as session:
                         response = session.get(url, stream=True, timeout=30)
                         if response.status_code == 200:
@@ -742,26 +687,17 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                         f.write(chunk)
                                         downloaded_size += len(chunk)
                                         
-                                        # 更新客户端JAR进度条（每5%更新一次）
-                                        if download_dialog and total_size > 0:
-                                            try:
-                                                # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                                                progress_bar = download_dialog.findChild(QProgressBar, "client_jar_progress")
-                                                if progress_bar:
-                                                    progress_value = int((downloaded_size / total_size) * 100)
-                                                    # 只更新到5%的倍数，避免频繁更新
-                                                    if progress_value % 5 == 0 or progress_value == 100:
-                                                        QMetaObject.invokeMethod(progress_bar, "setValue", Qt.QueuedConnection,
-                                                                           Q_ARG(int, progress_value))
-                                            except Exception as e:
-                                                log(f"更新client_jar_progress时出错: {e}")
+                                        if total_size > 0:
+                                            progress_value = int((downloaded_size / total_size) * 100)
+                                            if progress_value % 5 == 0 or progress_value == 100:
+                                                update_progress_ui(progress_value, i18nText("正在下载客户端JAR文件..."), 
+                                                    "", f"{downloaded_size // 1024 // 1024}MB", f"{total_size // 1024 // 1024}MB")
                             
                             log(f"已下载客户端JAR文件: {client_jar_path}")
                             download_success = True
                             break
                         else:
                             log(f"下载客户端JAR文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
-                            # 如果是403错误，尝试使用原始URL
                             if response.status_code == 403:
                                 original_url = client_info["url"]
                                 log(f"尝试使用原始URL: {original_url}")
@@ -777,26 +713,17 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                                     f.write(chunk)
                                                     downloaded_size += len(chunk)
                                                     
-                                                    # 更新客户端JAR进度条（每5%更新一次）
-                                                    if download_dialog and total_size > 0:
-                                                        try:
-                                                            # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                                                            progress_bar = download_dialog.findChild(QProgressBar, "client_jar_progress")
-                                                            if progress_bar:
-                                                                progress_value = int((downloaded_size / total_size) * 100)
-                                                                # 只更新到5%的倍数，避免频繁更新
-                                                                if progress_value % 5 == 0 or progress_value == 100:
-                                                                    QMetaObject.invokeMethod(progress_bar, "setValue", Qt.QueuedConnection,
-                                                                                           Q_ARG(int, progress_value))
-                                                        except Exception as e:
-                                                            log(f"更新client_jar_progress时出错: {e}")
+                                                    if total_size > 0:
+                                                        progress_value = int((downloaded_size / total_size) * 100)
+                                                        if progress_value % 5 == 0 or progress_value == 100:
+                                                            update_progress_ui(progress_value, i18nText("正在下载客户端JAR文件..."), 
+                                                                "", f"{downloaded_size // 1024 // 1024}MB", f"{total_size // 1024 // 1024}MB")
                                         
                                         log(f"已下载客户端JAR文件: {client_jar_path}")
                                         download_success = True
                                         break
                 except requests.exceptions.ConnectionError as e:
                     log(f"网络连接错误: {url}, {e}", logging.WARNING)
-                    # 尝试使用HTTP协议
                     try:
                         http_url = url.replace("https://", "http://")
                         log(f"尝试使用HTTP协议: {http_url}")
@@ -812,17 +739,11 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                             f.write(chunk)
                                             downloaded_size += len(chunk)
                                             
-                                            # 更新客户端JAR进度条（每5%更新一次）
-                                            if download_dialog and total_size > 0:
-                                                try:
-                                                    progress_bar = download_dialog.findChild(QProgressBar, "client_jar_progress")
-                                                    if progress_bar:
-                                                        progress_value = int((downloaded_size / total_size) * 100)
-                                                        # 只更新到5%的倍数，避免频繁更新
-                                                        if progress_value % 5 == 0 or progress_value == 100:
-                                                            safe_ui_update(progress_bar, "setValue", progress_value, "progress_bar")
-                                                except Exception as e:
-                                                    log(f"更新client_jar_progress时出错: {e}")
+                                            if total_size > 0:
+                                                progress_value = int((downloaded_size / total_size) * 100)
+                                                if progress_value % 5 == 0 or progress_value == 100:
+                                                    update_progress_ui(progress_value, i18nText("正在下载客户端JAR文件..."), 
+                                                        "", f"{downloaded_size // 1024 // 1024}MB", f"{total_size // 1024 // 1024}MB")
                                 
                                 log(f"已下载客户端JAR文件: {client_jar_path}")
                                 download_success = True
@@ -861,24 +782,18 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 else:
                     log(f"库缺少 'name' 字段: {lib}", logging.WARNING)
 
-        if download_dialog is not None and processed_libraries:
-            download_dialog.downloader = LibraryDownloader(processed_libraries, max_workers=max_thread_value)
+        if processed_libraries:
+            _current_download_state['downloader'] = LibraryDownloader(processed_libraries, max_workers=max_thread_value)
 
-        # 创建natives目录
-        natives_dir = os.path.join(version_dir, f"{VersionName}-natives")  # 使用VersionName作为natives目录名
+        natives_dir = os.path.join(version_dir, f"{VersionName}-natives")
         os.makedirs(natives_dir, exist_ok=True)
 
-        # 下载库文件，使用PCL风格的镜像源处理
-        update_progress({
-            'value': 0.6, 
-            'valueStringOverride': '60%',
-            'status': i18nText('正在下载库文件...')
-        })
+        update_progress_ui(60, i18nText("正在下载库文件..."), "", "", "")
         libraries_dir = os.path.join(minecraft_dir, "libraries")
         os.makedirs(libraries_dir, exist_ok=True)
 
-        if download_dialog is not None and download_dialog.downloader is not None:
-            download_dialog.downloader.download_libraries(download_dialog)
+        if _current_download_state['downloader'] is not None:
+            _current_download_state['downloader'].download_libraries()
         
         # 下载资源索引，使用PCL风格的镜像源处理
         if "assetIndex" in version_data:
@@ -966,16 +881,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 active_downloads = 0
                 active_downloads_lock = threading.Lock()
                 
-                # 创建线程安全的UI更新函数
                 def update_thread_count():
-                    """安全地更新线程数显示"""
-                    if download_dialog:
-                        try:
-                            thread_label = download_dialog.findChild(QLabel, "Resources_file_working_Thread")
-                            if thread_label:
-                                safe_ui_update(thread_label, "setText", active_downloads, "label")
-                        except Exception as e:
-                            log(f"更新Resources_file_working_Thread时出错: {e}")
+                    pass
                 
                 # 创建多线程下载资源文件
                 def download_asset(asset_name, asset_info):
@@ -1071,25 +978,12 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                             active_downloads -= 1
                             update_thread_count()  # 更新线程数显示
                 
-                # 初始化UI进度条为0%
-                if download_dialog:
-                    try:
-                        
-                        resources_progress_bar = download_dialog.findChild(QProgressBar, "Resources_progress")
-                        if resources_progress_bar:
-                            QMetaObject.invokeMethod(resources_progress_bar, "setValue", Qt.QueuedConnection,
-                                                   Q_ARG(int, 0))
-                            log(f"初始化资源文件进度条为0%")
-                    except Exception as e:
-                        log(f"初始化资源文件进度时出错: {e}")
+                update_progress_ui(0, i18nText("正在下载资源文件..."), "", "", "")
                 
-                # 创建线程池，确保线程安全
                 with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="AssetsDownloader") as executor:
-                    # 提交所有下载任务
                     future_to_asset = {executor.submit(download_asset, asset_name, asset_info): asset_name 
                                       for asset_name, asset_info in asset_index_data["objects"].items()}
                     
-                    # 处理完成的任务
                     success_count = 0
                     failed_count = 0
                     completed_count = 0
@@ -1107,49 +1001,20 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                         finally:
                             completed_count += 1
                         
-                        # 更新资源文件下载进度条和线程数显示
-                        if download_dialog:
-                            try:
-                                # 每10%更新一次UI，避免频繁更新
-                                current_progress = int((completed_count / assets_count) * 100)
-                                last_progress = int(((completed_count - 1) / assets_count) * 100) if completed_count > 0 else 0
-                                
-                                # 当进度达到10%的倍数时更新UI，只更新进度条，不发送通知
-                                if current_progress // 10 > last_progress // 10 or completed_count == assets_count:
-                                    # 更新进度条
-                                    resources_progress_bar = download_dialog.findChild(QProgressBar, "Resources_progress")
-                                    if resources_progress_bar:
-                                        safe_ui_update(resources_progress_bar, "setValue", current_progress, "progress_bar")
-                                        log(f"资源文件下载进度: {current_progress}% ({completed_count}/{assets_count})")
-                                
-                                # 更新活动线程数显示
-                                update_thread_count()
-                            except Exception as e:
-                                log(f"更新资源文件进度时出错: {e}")
+                        current_progress = int((completed_count / assets_count) * 100)
+                        last_progress = int(((completed_count - 1) / assets_count) * 100) if completed_count > 0 else 0
+                        
+                        if current_progress // 10 > last_progress // 10 or completed_count == assets_count:
+                            update_progress_ui(current_progress, i18nText("正在下载资源文件..."), 
+                                "", f"{completed_count}", f"{assets_count}")
+                            log(f"资源文件下载进度: {current_progress}% ({completed_count}/{assets_count})")
                     
-                    # 等待所有任务完成
                     try:
                         concurrent.futures.wait(future_to_asset, timeout=60)
                     except Exception as e:
                         log(f"等待资源文件下载完成时出错: {e}")
                 
-                # 下载完成，更新UI进度条为100%
-                if download_dialog:
-                    try:
-                        
-                        resources_progress_bar = download_dialog.findChild(QProgressBar, "Resources_progress")
-                        if resources_progress_bar:
-                            safe_ui_update(resources_progress_bar, "setValue", 100, "progress_bar")
-                            log(f"资源文件下载完成，设置进度条为100%")
-                    except Exception as e:
-                        log(f"完成资源文件进度时出错: {e}")
-                
-                # 更新通知为完成状态
-                # update_progress({
-                #     'value': 1, 
-                #     'valueStringOverride': f'{assets_count}/{assets_count} 个',
-                #     'status': i18nText('资源文件下载完成!')
-                # })
+                update_progress_ui(100, i18nText("资源文件下载完成!"), "", f"{assets_count}", f"{assets_count}")
                 
                 # 输出下载结果
                 log(f"资源文件下载完成: 成功 {success_count} 个, 失败 {failed_count} 个")
@@ -1428,9 +1293,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                         processed_fabric_libraries,
                         max_workers=max_thread_value
                     )
-                    if not library_downloader.download_libraries(download_dialog=download_dialog):
+                    if not library_downloader.download_libraries():
                         log("Fabric Loader 库文件下载失败，但将继续安装流程", logging.WARNING)
-                        # 不中断安装流程，继续执行
                     else:
                         log("Fabric Loader 库文件下载完成")
                 else:
@@ -1608,9 +1472,4 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         log(f"安装 Minecraft 版本 {version} 时发生错误: {str(e)}", logging.ERROR)
         return False
     finally:
-        # 关闭下载对话框
-        if download_dialog:
-            try:
-                QMetaObject.invokeMethod(download_dialog, "close", Qt.QueuedConnection)
-            except Exception as e:
-                log(f"关闭下载对话框时出错: {e}")
+        close_dialog_ui()

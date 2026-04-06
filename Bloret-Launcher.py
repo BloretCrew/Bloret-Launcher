@@ -1,2339 +1,3111 @@
 # 0. 先获取 IP 地址
 import modules.IP
 
-# 1. 系统与内置库
-import os
+
 import sys
-import re
+import os
+import faulthandler
+from pathlib import Path
 
-if sys.platform.startswith('linux'):
-    # Fix for Segmentation Fault when typing on some Linux distributions (e.g. openSUSE with IBus)
-    # This often occurs in Wayland/XWayland environments with PyQt5.
-    if 'QT_IM_MODULE' in os.environ and os.environ['QT_IM_MODULE'] == 'ibus':
-        # Unsetting QT_IM_MODULE often resolves the crash while still allowing basic input.
-        # Some systems may need it set to 'ibus' or 'fcitx' specifically.
-        # We will attempt to unset it to avoid the common qibus crash.
-        os.environ.pop('QT_IM_MODULE', None)
+# Add the local directory to handle imports like 'import RinUI' correctly
+SCRIPT_DIR = Path(__file__).parent.absolute()
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
-def get_resource_path(relative_path):
-    """ 获取资源绝对路径，兼容脚本运行和 PyInstaller 打包环境 """
-    if hasattr(sys, '_MEIPASS'):
-        # PyInstaller 临时目录
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
-import json
-import time
-import locale
-import ctypes
-import shutil
-import logging
-import traceback
+# Create the QApplication early so it can be used in shims and module imports
+from PySide6.QtWidgets import QApplication, QFileDialog, QSystemTrayIcon
+from PySide6.QtCore import QLocale, Qt, QTranslator, QObject, Slot, Signal, Property, QUrl
+from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices, QPixmap, QPainter, QCursor
+
+QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+app = QApplication(sys.argv)
+
+
+def _enable_fault_logging():
+    """记录 Python/原生崩溃堆栈，避免仅看到退出码。"""
+    try:
+        appdata = Path(os.getenv("APPDATA", str(SCRIPT_DIR)))
+        log_dir = appdata / "Bloret-Launcher" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        fault_path = log_dir / "python-faulthandler.log"
+
+        stream = open(fault_path, "a", encoding="utf-8")
+        stream.write("\n===== Bloret Launcher fault handler enabled =====\n")
+        faulthandler.enable(file=stream, all_threads=True)
+        return stream
+    except Exception as e:
+        print(f"Failed to enable faulthandler logging: {e}")
+        return None
+
+
+_FAULT_LOG_STREAM = _enable_fault_logging()
+
+# --- Finished Full PySide6 Migration ---
+# All modules have been refactored to use PySide6 and RinUI directly.
+
+import RinUI
+from RinUI import RinUIWindow
+
+import random
+import threading
 import subprocess
-from http import server
-import datetime
-
-# 2. 第三方库
-from PyQt5 import sip
-import psutil
+import json
 import requests
-from PyQt5 import uic
-from PyQt5.QtWidgets import (
-    QApplication, QWidget, QPushButton, QLineEdit, QLabel, QFileDialog, 
-    QMessageBox, QDialog, QSystemTrayIcon, QStackedWidget, QPlainTextEdit
-)
-from PyQt5.QtGui import QIcon, QColor, QPalette
-from PyQt5.QtCore import (
-    Qt, QTimer, QSize, QRect, QPropertyAnimation, QEasingCurve, 
-    QSettings, QThread, pyqtSignal, QLocale
-)
-from qfluentwidgets import (
-    MessageBox, SubtitleLabel, StrongBodyLabel, MessageBoxBase, 
-    NavigationItemPosition, TeachingTip, InfoBarIcon, TeachingTipTailPosition, 
-    ComboBox, InfoBar, InfoBarPosition, FluentWindow, SplashScreen, 
-    Dialog, LineEdit, SystemTrayMenu, Action, setThemeColor, 
-    FluentTranslator, FluentIcon, TabBar, TabCloseButtonDisplayMode,
-    BodyLabel, IndeterminateProgressBar
-)
-
-# 3. 自定义模块 (Bloret Launcher Modules)
-import modules.globals as BLglobals
 import modules.config as cfg
+import modules.globals as BLglobals
+from modules.launch import Get_Run_Script
+from modules.chafuwang import getServerData
+from modules.setup_ui import get_all_launch_items, scan_java_paths
+from modules.i18n import i18nText
+from modules.Bloriko import AskBloriko
 import modules.web
-import modules.mwtool
-from modules.config import read
-from modules.safe import handle_exception
-from modules.log import log
-from modules.win11toast import toast, notify, update_progress
-from modules.systems import (
-    get_system_theme_color, is_dark_theme, 
-    restart, setup_startup_with_self_starting
-)
-from modules.setup_ui import (
-    setup_home_ui, setup_download_old_ui, setup_tools_ui, setup_passport_ui, 
-    setup_settings_ui, setup_info_ui, load_ui, setup_Mod_ui, setup_multiplayer_ui, setup_download_ui,
-    get_all_launch_items
-)
-from modules.customize import CustomizeRun
-from modules.global_hotkey import init_global_hotkeys, get_signal_emitter
-from modules.BLServer import handle_first_run, check_for_updates
-from modules.Bloret_PassPort import get_pending_2fa_requests, handle_2fa_request_action
 import modules.links as links
-from modules.BLDownload import BL_download
-# Import monitor_minecraft_window
-from modules.launch import Get_Run_Script, monitor_minecraft_window
-from modules.i18n import i18n_widgets, i18nText
-from modules.ShortCut import ScreenShortCut
-from modules.install import InstallMinecraftVersion
-from modules.VersionInfo import GetMinecraftList
-
-config = read()
-
-# --- Patch for qframelesswindow TitleBar AttributeError ---
-try:
-    from qframelesswindow.titlebar import TitleBar
-    
-    _original_eventFilter = TitleBar.eventFilter
-    
-    def _safe_eventFilter(self, obj, e):
-        try:
-            return _original_eventFilter(self, obj, e)
-        except AttributeError as err:
-            if "maxBtn" in str(err):
-                # Ignore 'TitleBar' object has no attribute 'maxBtn'
-                return False
-            raise err
-            
-    TitleBar.eventFilter = _safe_eventFilter
-    log("Successfully patched qframelesswindow.TitleBar.eventFilter")
-except ImportError:
-    log("qframelesswindow not found, skipping patch", logging.WARNING)
-except Exception as e:
-    log(f"Failed to patch qframelesswindow.TitleBar: {e}", logging.ERROR)
-# ----------------------------------------------------------
-
-def update_download_way(data, data_list, version, minecraft):
-    global LM_Download_Way, LM_Download_Way_list, LM_Download_Way_version, LM_Download_Way_minecraft
-    LM_Download_Way = data
-    LM_Download_Way_version = version
-    LM_Download_Way_minecraft = minecraft
+import socket
+import send2trash
+from modules.compat_widgets import Action, RoundMenu
 
 
-class SystemTrayIcon(QSystemTrayIcon):
-    """ 
-    系统托盘图标 
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        if parent is None:
-            print(i18nText("警告：SystemTrayIcon 的 parent 参数为 None"))
-        self.setIcon(QIcon(get_resource_path('bloret.ico')))  # 使用资源路径设置托盘图标
-        self.parent = parent
-        self.main_window = parent
+def get_app_icon_path(for_tray=False):
+    """根据平台返回应用图标路径：macOS 使用 Bloret-Fluent.png；程序坞/标题栏使用带留白版本，托盘保留原始图标。"""
+    if sys.platform == "darwin":
+        mac_icon = SCRIPT_DIR / "Bloret-Fluent.png"
+        if mac_icon.exists():
+            if for_tray:
+                return mac_icon
 
-        # 创建托盘菜单
-        self.menu = SystemTrayMenu(parent=parent)
-
-        # 添加二级菜单
-        launch_menu = SystemTrayMenu(i18nText("🔼  启动版本"), self.menu)
-        BLglobals.set_list = get_all_launch_items()
-        log(f"BLglobals.set_list: {BLglobals.set_list}")
-        version_list = [item if isinstance(item, str) else item.get('name', str(item)) for item in BLglobals.set_list]
-        log(f"version_list: {version_list}")
-
-        for version in version_list:
-            action = Action(
-                version,
-                triggered=lambda checked, version=version: self.main_window.run_cmcl(version)
-            )
-            launch_menu.addAction(action)
-
-        self.menu.addMenu(launch_menu)
-
-        self.menu.addActions([
-            Action(i18nText('🔡  访问 BBS'), triggered=lambda: links.open_BBBS_link()),
-            Action(i18nText('🔡  访问 Bloret PassPort'), triggered=lambda: links.open_PassPort_link()),
-            Action(i18nText('🔡  访问 百络图床'), triggered=lambda: links.open_BIMG_WEB_link()),
-            Action(i18nText('🔄️  重启程序'), triggered=self.main_window.restart_app),
-            Action(i18nText('✅  显示窗口'), triggered=self.main_window.show_main_window),
-            Action(i18nText('❎  退出程序'), triggered=self.main_window.quit_app)
-        ])
-        self.setContextMenu(self.menu)
-
-        # 连接托盘图标激活事件
-        self.activated.connect(self.on_tray_icon_activated)
-
-    def on_tray_icon_activated(self, reason):
-        """ 托盘图标激活事件 """
-        if reason == QSystemTrayIcon.Trigger:  # 单击托盘图标
-            if self.parent.isMinimized() or not self.parent.isVisible():
-                self.parent.showNormal()
-                self.parent.activateWindow()
-            else:
-                self.parent.hide()
-class RunScriptThread(QThread):
-    finished = pyqtSignal()
-    error_occurred = pyqtSignal(str)
-    output_received = pyqtSignal(str)
-    last_output_received = pyqtSignal(str)  # 新增信号
-    
-    def __init__(self, version):
-        super().__init__()
-        self.process = None
-        self.version = version
-    
-    def run(self):
-        # --- 阶段1：准备启动环境 (原主线程逻辑移入此处) ---
-        self.output_received.emit(f"正在准备启动环境: {self.version} ...")
-        
-        # 新增：准备账户信息 (刷新 Token + 同步)
-        try:
-            self.output_received.emit("正在同步 Minecraft 账户信息...")
-            from modules.Bloret_PassPort import prepare_minecraft_launch_account
-            prepare_minecraft_launch_account()
-            self.output_received.emit("账户信息同步完成")
-        except Exception as e:
-            log(f"账户同步过程发生异常(不影响启动尝试): {e}")
-            self.output_received.emit(f"账户同步警告: {e}")
-
-        self.output_received.emit("正在检查文件完整性并解析启动参数 (如下载缺损文件可能需要较长时间)...")
-        
-        launch_args = []
-        work_dir = ""
-
-        try:
-            # 清理旧脚本 (如果存在)
-            if os.path.exists("run.bat"):
-                try:
-                    os.remove("run.bat")
-                except:
-                    pass
-
-            # 获取启动参数
-            from modules.launch import Get_Run_Script
-            launch_args, work_dir = Get_Run_Script(self.version)
-                
-            self.output_received.emit("启动参数解析成功，正在调用 Java 虚拟机...")
-
-        except Exception as e:
-            error_msg = f"准备启动失败: {str(e)}\n{traceback.format_exc()}"
-            self.output_received.emit(error_msg)
-            self.error_occurred.emit(error_msg)
-            return
-
-        # --- 阶段2：执行启动命令 ---
-        try:
-            # 使用列表形式的 args 避免 shell=True (除了 Windows 下可能需要)
-            # 在 Windows 上，即使 shell=False，只要 args 是列表，subprocess 也会正确处理参数转义
-            # 但为了兼容性和行为一致性，我们通常尽量不使用 shell=True
-            
-            log(f"启动目录: {work_dir}")
-            
-            kwargs = {}
-            if sys.platform == 'win32':
-                 kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
-
-            self.process = subprocess.Popen(
-                launch_args,
-                cwd=work_dir,          # 设置工作目录
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, # 将 stderr 重定向到 stdout，防止管道阻塞导致游戏卡死
-                text=True,
-                encoding='utf-8',
-                errors='replace',
-                shell=False,           # 不使用 shell，直接执行 executable
-                **kwargs
-            )
-            
-            last_line = ""
-            last_emit_time = 0
-            # 持续读取合并后的游戏日志
-            for line in iter(lambda: self.process.stdout.readline(), ''):
-                if line:
-                    last_line = line.strip()
-                    # 节流：限制发送到 UI 的频率（每 100ms 最多一次），避免日志过多卡死主线程
-                    current_time = time.time()
-                    if current_time - last_emit_time > 0.1:
-                        self.output_received.emit(last_line)
-                        last_emit_time = current_time
-                    
-                    # 磁盘日志仍然完整记录
-                    log(f"[Game] {last_line}")
-            
-            # 循环结束后确保发出最后一行
-            if last_line:
-                self.output_received.emit(last_line)
-            
-            self.last_output_received.emit(last_line)
-            self.process.stdout.close()
-            self.process.wait()
-            
-            if self.process.returncode == 0:
-                self.finished.emit()
-            else:
-                # 游戏异常退出时，由于 stderr 已重定向，直接从最后一行日志中提取错误线索
-                error_msg = f"游戏异常退出 (返回码: {self.process.returncode})"
-                if last_line:
-                    error_msg += f"\n最后输出: {last_line}"
-                self.error_occurred.emit(error_msg)
-                     
-        except subprocess.CalledProcessError as e:
-            self.error_occurred.emit(str(e.stderr))
-        except Exception as e:
-            self.error_occurred.emit(f"运行过程发生异常: {str(e)}")
-    
-    def terminate_process(self):
-        """终止Minecraft进程"""
-        try:
-            # 首先终止批处理脚本进程
-            if self.process and self.process.poll() is None:
-                self.process.terminate()
-                self.process.wait(timeout=3)  # 等待3秒
-                if self.process.poll() is None:
-                    self.process.kill()
-                    self.process.wait()
-            
-            # 查找包含版本信息的Java进程
-            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-                try:
-                    cmdline = proc.info.get('cmdline', [])
-                    if cmdline and 'java' in proc.info.get('name', '').lower():
-                        # 检查命令行参数中是否包含版本信息
-                        cmd_str = ' '.join(cmdline)
-                        if self.version and self.version in cmd_str:
-                            log(f"找到Minecraft进程 (PID: {proc.pid}, 版本: {self.version})")
-                            proc.terminate()
-                            try:
-                                proc.wait(timeout=5)
-                            except psutil.TimeoutExpired:
-                                proc.kill()
-                                proc.wait()
-                            log(f"已终止Minecraft进程 (PID: {proc.pid})")
-                            return True
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-            
-            # 如果没有找到特定版本的进程，尝试查找典型的Minecraft进程
-            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-                try:
-                    cmdline = proc.info.get('cmdline', [])
-                    if cmdline and 'java' in proc.info.get('name', '').lower():
-                        cmd_str = ' '.join(cmdline)
-                        # 检查是否包含Minecraft相关的类或参数
-                        if any(keyword in cmd_str for keyword in ['net.minecraft', 'minecraft', '.jar', 'forge', 'fabric']):
-                            log(f"找到可能的Minecraft进程 (PID: {proc.pid})")
-                            proc.terminate()
-                            try:
-                                proc.wait(timeout=3)
-                            except psutil.TimeoutExpired:
-                                proc.kill()
-                                proc.wait()
-                            log(f"已终止可能的Minecraft进程 (PID: {proc.pid})")
-                            return True
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-            
-            log(f"未找到正在运行的Minecraft进程 (版本: {self.version})")
-            return True  # 即使没有找到进程，也算作成功
-            
-        except ImportError:
-            log("警告: 未安装psutil库，无法精确查找Minecraft进程")
-            return True
-        except Exception as e:
-            log(f"终止进程时出错: {e}")
-            return False
-class UpdateShowTextThread(QThread):
-    update_text = pyqtSignal(str)
-    def __init__(self, run_script_thread):
-        super().__init__()
-        self.run_script_thread = run_script_thread
-        self.last_output = ""
-    def run(self):
-        while self.run_script_thread.isRunning():
-            time.sleep(1)  # 每秒更新一次
-            self.update_text.emit(self.last_output)
-    def update_last_output(self, text):
-        self.last_output = text
-class LoadMinecraftVersionsThread(QThread):
-    versions_loaded = pyqtSignal(list)
-    error_occurred = pyqtSignal(str)
-    def __init__(self, version_type):
-        super().__init__()
-        self.version_type = version_type
-    def run(self):
-        try:
-            response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
-            response.raise_for_status()
-            version_data = response.json()
-            versions = version_data["versions"]
-            BLglobals.ver_id_main.clear()
-            BLglobals.ver_id_short.clear()
-            BLglobals.ver_id_long.clear()
-            for version in versions:
-                if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
-                    BLglobals.ver_id_main.append(version["id"])
-                else:
-                    if version["type"] == "snapshot":
-                        BLglobals.ver_id_short.append(version["id"])
-                    elif version["type"] in ["old_alpha", "old_beta"]:
-                        BLglobals.ver_id_long.append(version["id"])
-            if self.version_type == i18nText("百络谷支持版本"):
-                # 直接使用固定的版本列表
-                self.versions_loaded.emit(["1.21.7", "1.21.8"])
-            elif self.version_type == i18nText("正式版本"):
-                self.versions_loaded.emit(BLglobals.ver_id_main)
-            elif self.version_type == i18nText("快照版本"):
-                self.versions_loaded.emit(BLglobals.ver_id_short)
-            elif self.version_type == i18nText("远古版本"):
-                self.versions_loaded.emit(BLglobals.ver_id_long)
-            else:
-                self.error_occurred.emit(i18nText("未知的版本类型"))
-        except requests.RequestException as e:
-            self.error_occurred.emit(f"请求错误: {e}")
-        except requests.exceptions.SSLError as e:
-            self.error_occurred.emit(f"SSL 错误: {e}")
-
-class PassPort2FAPollingThread(QThread):
-    request_received = pyqtSignal(dict)
-    
-    def __init__(self, main_window):
-        super().__init__()
-        self.main_window = main_window  # 保存 MainWindow 引用
-        self.is_running = True
-        self.processed_ids = set()
-
-    def run(self):
-        log("PassPort 2FA 轮询线程已启动")
-        while self.is_running:
+            # macOS 程序坞视觉尺寸修正：生成带透明留白的图标，避免看起来比其他应用更大
+            padded_icon = SCRIPT_DIR / "cache" / "Bloret-Fluent-dock.png"
             try:
-                # 必须在循环内获取，且直接使用 main_window.config 以获取内存中最新的登录状态
-                config = self.main_window.config
-                
-                # 检查登录状态 (且非本地模式)
-                if config.get('Bloret_PassPort_Login', False) and not config.get('localmod', False):
-                    username = config.get('Bloret_PassPort_UserName')
-                    token = config.get('Bloret_PassPort_PassWord')
-                    
-                    if username and token:
-                        # log(f"正在检查用户 {username} 的 2FA 请求...") # 调试用，确认在循环
-                        data = get_pending_2fa_requests(username, token)
-                        if data and data.get('success'):
-                            requests_list = data.get('requests', [])
-                            for req in requests_list:
-                                req_id = req.get('requestId')
-                                if req_id and req_id not in self.processed_ids:
-                                    self.processed_ids.add(req_id)
-                                    self.request_received.emit(req)
+                src = QPixmap(str(mac_icon))
+                if not src.isNull():
+                    side = max(src.width(), src.height())
+                    canvas = QPixmap(side, side)
+                    canvas.fill(Qt.GlobalColor.transparent)
+
+                    target_side = int(side * 0.84)
+                    scaled = src.scaled(
+                        target_side,
+                        target_side,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+
+                    painter = QPainter(canvas)
+                    x = (side - scaled.width()) // 2
+                    y = (side - scaled.height()) // 2
+                    painter.drawPixmap(x, y, scaled)
+                    painter.end()
+
+                    padded_icon.parent.mkdir(parents=True, exist_ok=True)
+                    if canvas.save(str(padded_icon), "PNG"):
+                        return padded_icon
             except Exception as e:
-                log(f"2FA Polling Error: {e}")
-            
-            # 每5秒检查一次，分割为多次sleep以便快速停止
-            for _ in range(50): 
-                if not self.is_running:
-                    break
-                time.sleep(0.1)
+                print(f"Failed to generate padded mac icon: {e}")
 
-    def stop(self):
-        self.is_running = False
-        self.wait()
+            return mac_icon
 
-class LaunchConsoleDialog(MessageBoxBase):
-    """ 启动控制台对话框 (精简版) """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.titleLabel = SubtitleLabel(i18nText("Minecraft 正在启动"), self)
-        self.titleLabel.setAlignment(Qt.AlignCenter)
-        
-        # 进度条 (不确定进度模式)
-        self.progressBar = IndeterminateProgressBar(self)
-        self.progressBar.setFixedWidth(300) # 设置固定宽度让布局更紧凑
-        
-        # 状态文本显示区域 (单行)
-        self.statusLabel = BodyLabel(i18nText("正在准备启动环境..."), self)
-        self.statusLabel.setAlignment(Qt.AlignCenter)
-        self.statusLabel.setTextColor("#606060", "#a0a0a0") # 设置灰色文字
-        
-        # 添加到布局
-        self.viewLayout.addWidget(self.titleLabel)
-        self.viewLayout.addSpacing(20) # 增加间距
-        self.viewLayout.addWidget(self.progressBar, 0, Qt.AlignCenter)
-        self.viewLayout.addSpacing(10) # 增加间距
-        self.viewLayout.addWidget(self.statusLabel)
-        self.viewLayout.addStretch(1) # 底部弹簧
-        
-        # 设置大小
-        self.widget.setMinimumWidth(400)
-        # self.widget.setMinimumHeight(200) # 让布局自动适应
-        
-        # 按钮设置
-        self.yesButton.hide() # 隐藏确定按钮
-        self.cancelButton.setText(i18nText("后台运行")) # 将取消按钮改为后台运行
-        
-    def update_status(self, text):
-        """ 更新状态文本，如果文本太长可以截断 """
-        # 简单的截断处理，防止单行文本过长撑破布局
-        if len(text) > 50:
-            text = text[:47] + "..."
-        self.statusLabel.setText(text)
+    default_icon = SCRIPT_DIR / "bloret.ico"
+    if default_icon.exists():
+        return default_icon
 
-class MainWindow(FluentWindow):
-    launch_success_signal = pyqtSignal()
+    # 兜底：如果默认图标不存在，macOS 再尝试 fluent 图标
+    fallback_mac_icon = SCRIPT_DIR / "Bloret-Fluent.png"
+    if fallback_mac_icon.exists():
+        return fallback_mac_icon
+
+    return None
+
+class Backend(QObject):
+    """
+    Python Backend to interact with QML.
+    Later, we will migrate all Bloret-Launcher.py logic here.
+    """
+    modrinthResultsReceived = Signal(list)
+    minecraftAccountsChanged = Signal(list, arguments=['accounts'])
+    logsCleared = Signal()
+    easytierStatusChanged = Signal(str, str)
+    serverInfoChanged = Signal(dict)
+    queryResultReceived = Signal(dict)
+    blorikoResponseReceived = Signal(str)
+    syncStatusChanged = Signal(str)
+    languageChanged = Signal()
+    downloadDialogRequested = Signal(str)
+    downloadProgressUpdated = Signal(float, str, str, str, str)
+    downloadDialogClosed = Signal()
+    downloadPaused = Signal(bool)
+    coreManagerRequested = Signal(str, dict)
+    activityInfoChanged = Signal(dict)
+    launchDialogRequested = Signal(str)
+    launchProgressUpdated = Signal(float, str, str)
+    launchDialogClosed = Signal()
+    runningInstancesChanged = Signal(list)
+    updateAvailable = Signal(str, str, str)    # current_ver, latest_ver, update_text
+    updateProgressUpdated = Signal(float, str)  # progress (0-1), status_text
+    updateFailed = Signal(str)                  # error_message
+
+    # BBBS signals
+    bbbsSummaryReceived = Signal(dict)
+    bbbsLeaderboardReceived = Signal(list)
+    bbbsAllPostsReceived = Signal(list)
+    bbbsErrorOccurred = Signal(str)
+
+    # Live signals
+    liveSpaceListReceived = Signal(list)
+    
+    # Minecraft Chat signal
+    minecraftChatMessage = Signal(str, str)  # timestamp, message
+    liveJoinedSpace = Signal(dict)
+    liveLeftSpace = Signal()
+    liveUserEvent = Signal(dict)
+    liveChatMessageReceived = Signal(dict)
+    liveSignalReceived = Signal(dict)
+    liveErrorOccurred = Signal(str)
+    liveConnectionStateChanged = Signal(str)
+
+    # OOBE signals
+    javaEnvironmentChecked = Signal(bool, str)  # installed, java_path
+    javaInstallationComplete = Signal(str)      # java_path
+
+    # Minecraft crash analysis signal
+    minecraftCrashDetected = Signal(str, str, str)  # title, message, stack_trace
 
     def __init__(self):
         super().__init__()
+        self._server_info = {}
+        self._activity_info = BLglobals.BL_Activity
+        self._last_core_manager_request_time = 0  # 防止重复请求
+        self._is_launching = False
+        self._launch_session_id = 0
+        self._screenshot_widget = None
+        # Live state
+        self._live_sse_client = None
+        self._live_webrtc_manager = None
+        self._current_live_space_id = None
 
-        # 初始化配置文件
-        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-            self.config = json.load(f)
-        
-        # 进程管理：版本 -> RunScriptThread 映射
-        self.running_processes = {}
-        self.minecraft_tab = None
+    def setBackendParent(self, parent):
+        self.parent = parent
 
-        # 获取系统主题颜色
-        theme_color = get_system_theme_color()
-        log(f"系统主题颜色: {theme_color}")
-        setThemeColor(theme_color)
-
-        if isdarktheme:
-            from qfluentwidgets import setTheme, Theme
-            setTheme(Theme.DARK)
-        else:
-            from qfluentwidgets import setTheme, Theme
-            setTheme(Theme.LIGHT)
-            
-        self.setWindowTitle("Bloret Launcher")
-        
-        # macOS 适配：将窗口控制按钮（红绿灯）移至左侧
-        if sys.platform == 'darwin':
+    @Slot(result=bool)
+    def handleWindowCloseRequest(self):
+        parent = getattr(self, "parent", None)
+        if parent and hasattr(parent, "handle_close_request_from_qml"):
             try:
-                # 尝试使用 hBoxLayout（标准布局属性名）
-                if hasattr(self.titleBar, 'hBoxLayout'):
-                    layout = self.titleBar.hBoxLayout
-                elif hasattr(self.titleBar, 'hLayout'):
-                    layout = self.titleBar.hLayout
-                else:
-                    # 如果都没有，尝试获取第一个布局
-                    layout = self.titleBar.layout()
-                
-                if layout:
-                    layout.insertWidget(0, self.titleBar.closeBtn)
-                    layout.insertWidget(1, self.titleBar.minBtn)
-                    layout.insertWidget(2, self.titleBar.maxBtn)
-                    layout.insertSpacing(3, 10)
-            except AttributeError as e:
-                log(f"macOS 标题栏适配失败: {e}", logging.WARNING)
-            
-            # 在 macOS 上通常不显示标题栏图标，但用户要求显示
-            if hasattr(self.titleBar, 'iconLabel'):
-                self.titleBar.iconLabel.setHidden(False)
-
-        icon_path = get_resource_path('bloret.ico')
-        if os.path.exists(icon_path):
-            log(f"图标路径存在: {icon_path}")
-        else:
-            log(f"图标路径不存在: {icon_path}", logging.ERROR)
-        self.setWindowIcon(QIcon(icon_path))
-
-        # 检测是否重复运行
-        self.mutex = None
-        if sys.platform == "win32":
-            self.mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\BloretLauncherMutex")
-            if self.mutex == 0:
-                log(i18nText("创建互斥体失败"))
-                sys.exit(1)
-            error = ctypes.windll.kernel32.GetLastError()
-            if error == 183:  # ERROR_ALREADY_EXISTS
-                log(i18nText("检测到程序重复运行"))
-                if not self.config.get('repeat_run', False):
-                    log(i18nText("重复运行被禁用：检测到程序已运行，退出新实例"))
-                    # 显示通知
-                    notify(progress={
-                        'title': i18nText('Bloret Launcher 已阻止了重复打开软件的操作'),
-                        'body': i18nText('为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。'),
-                        'icon': os.path.join(os.getcwd(), 'bloret.ico')
-                    })
-                    w = Dialog(i18nText("Bloret Launcher 已阻止了重复打开软件的操作"), i18nText("为了防止 Bloret Launcher 占满您的计算机，我们已阻止您重复打开 Bloret Launcher\n如需重复打开，请到设置中勾选允许重复运行。"))
-                    if w.exec():
-                        print(i18nText('确认'))
-                    ctypes.windll.kernel32.CloseHandle(self.mutex)
-                    sys.exit(0)
-        else:
-            # Linux/macOS simple file lock
-            import fcntl
-            import tempfile
-            self.lock_file = open(os.path.join(tempfile.gettempdir(), 'bloret.lock'), 'w')
-            try:
-                fcntl.lockf(self.lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except IOError:
-                log(i18nText("检测到程序重复运行"))
-                if not self.config.get('repeat_run', False):
-                    print("Bloret Launcher is already running.")
-                    sys.exit(0)
-                    
-        check_for_updates(self)
-
-        if self.config.get('show_runtime_do', False):
-            log(i18nText("显示软件打开过程已启用"))
-            # 显示通知
-            notify(progress={
-                'title': i18nText('正在启动 Bloret Launcher'),
-                'status': i18nText('正在做打开软件前的工作...'),
-                'value': '0',
-                'valueStringOverride': '0%',
-                'icon': os.path.join(os.getcwd(), 'bloret.ico')
-            })
-        else:
-            log(i18nText("显示软件打开过程已禁用"))
-
-        # 检查是否需要设置开机自启
-        setup_startup_with_self_starting(cfg.read().get("self-starting", False))
-
-        # 检查并设置 minecraft_dir 配置
-        if not self.config.get('minecraft_dir'):
-            # 设置默认的 minecraft 目录为 %appdata%/Bloret-Launcher/.minecraft
-            default_mc_dir = os.path.join(BLglobals.datapath, '.minecraft')
-
-            self.config['minecraft_dir'] = default_mc_dir
-            # 保存配置到文件
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(self.config, f, ensure_ascii=False, indent=4)
-            # 同时更新全局变量
-            BLglobals.minecraft_dir = default_mc_dir
-            log(f"已设置默认Minecraft目录: {default_mc_dir}")
-        else:
-            # 确保全局变量与配置文件同步
-            BLglobals.minecraft_dir = self.config['minecraft_dir']
-
-        # 设置全局编码
-        codec = locale.getpreferredencoding()
-        if sys.stdout:
-            sys.stdout.reconfigure(encoding='utf-8')
-        if sys.stderr:
-            sys.stderr.reconfigure(encoding='utf-8')
-
-        # # 为 Plugin.py 设置 Window 参数
-        # setup_window(window)
-
-        # 1. 创建启动页面
-        update_progress({'value': 10 / 100, 'valueStringOverride': '1/10', 'status': i18nText('创建启动页面')})
-        icon_path = get_resource_path('bloret.ico')
-        if os.path.exists(icon_path):
-            log(f"图标路径存在: {icon_path}")
-        else:
-            log(f"图标路径不存在: {icon_path}", logging.ERROR)
-        self.splashScreen = SplashScreen(QIcon(icon_path), self)
-        log(i18nText("启动画面创建完成"))
-        self.splashScreen.setIconSize(QSize(102, 102))
-        self.splashScreen.setWindowTitle("Bloret Launcher")
-        self.splashScreen.setWindowIcon(QIcon(icon_path))
-        
-        # 2. 在创建其他子页面前先显示主界面
-        update_progress({'value': 20 / 100, 'valueStringOverride': '2/10', 'status': i18nText('连接服务器')})
-        self.splashScreen.show()
-        log(i18nText("启动画面已显示"))
-
-        if not isdarktheme:
-            # 监听系统主题变化
-            QApplication.instance().paletteChanged.connect(self.apply_theme)
-        
-        # 初始化 sidebar_animation
-        update_progress({'value': 30 / 100, 'valueStringOverride': '3/10', 'status': i18nText('初始化侧边栏动画')})
-        self.sidebar_animation = QPropertyAnimation(self.navigationInterface, b"geometry")
-        self.sidebar_animation.setDuration(300)  # 设置动画持续时间
-        self.sidebar_animation.setEasingCurve(QEasingCurve.InOutQuad)
-        
-        # 初始化 fade_in_animation
-        update_progress({'value': 40 / 100, 'valueStringOverride': '4/10', 'status': i18nText('初始化淡入动画')})
-        self.fade_in_animation = QPropertyAnimation(self, b"windowOpacity")
-        self.fade_in_animation.setDuration(500)
-        self.fade_in_animation.setStartValue(0)
-        self.fade_in_animation.setEndValue(1)
-        self.fade_in_animation.setEasingCurve(QEasingCurve.InOutQuad)
-        
-        self.loading_dialogs = []  # 初始化 loading_dialogs 属性
-        self.threads = []  # 初始化 threads 属性
-        handle_first_run(self)
-        
-
-        # 初始化其他属性
-        update_progress({'value': 60 / 100, 'valueStringOverride': '6/10', 'status': i18nText('初始化其他属性')})
-        self.is_running = False
-
-        # 从配置加载账户信息
-        mc_acc_config = self.config.get("MinecraftAccount", {})
-        accounts = mc_acc_config.get("accounts", [])
-        chosen_idx = mc_acc_config.get("chosen", 0)
-
-        self.player_name = ""
-        self.player_uuid = ""
-        self.login_mod = i18nText("请在下方登录")  # 默认值
-
-        if accounts and 0 <= chosen_idx < len(accounts):
-            acc = accounts[chosen_idx]
-            self.player_name = acc.get("username", "")
-            self.player_uuid = acc.get("uuid", "")
-            acc_type = acc.get("type", "Offline")
-            if acc_type == "Microsoft":
-                self.login_mod = i18nText("微软登录")
-            else:
-                self.login_mod = i18nText("离线登录")
-
-        self.player_skin = ""
-        self.player_cape = ""
-        self.Customize_icon = None
-        self.settings = QSettings("Bloret", "Launcher")
-        if not isdarktheme:
-            self.apply_theme()
-        self.cmcl_data = None
-        self.initNavigation()
-        self.initWindow()
-        self.apply_scale()
-        self.setAttribute(Qt.WA_QuitOnClose, True)  # 确保窗口关闭时程序退出
-        self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)  # 确保窗口显示在最前面
-        self.raise_()
-        self.activateWindow()
-
-        # 初始化托盘图标
-        self.tray_icon = SystemTrayIcon(parent=self)
-        self.tray_icon.show()
-
-        # 初始化全局快捷键
-        init_global_hotkeys()
-        
-        # 初始化 PassPort 2FA 轮询线程
-        self.passport_2fa_thread = PassPort2FAPollingThread(self)  # 传递 self (MainWindow)
-        self.passport_2fa_thread.request_received.connect(self.show_2fa_dialog)
-        self.passport_2fa_thread.start()
-        self.threads.append(self.passport_2fa_thread)
-
-        # 连接快捷键信号到主线程处理
-        try:
-            signal_emitter = get_signal_emitter()
-            if signal_emitter:
-                signal_emitter.shortcut_triggered.connect(self.handle_screenshot_shortcut)
-                log("已连接截图快捷键信号到主线程处理")
-            else:
-                log("警告：无法获取快捷键信号发射器")
-        except Exception as e:
-            log(f"连接快捷键信号失败: {e}")
-
-        # 处理首次运行
-        update_progress({'value': 70 / 100, 'valueStringOverride': '7/10', 'status': i18nText('处理首次运行')})
-        QTimer.singleShot(0, lambda: handle_first_run(self))
-        
-        # 隐藏启动页面
-        update_progress({'value': 80 / 100, 'valueStringOverride': '8/10', 'status': i18nText('隐藏启动页面')})
-        QTimer.singleShot(3000, lambda: (log(i18nText("隐藏启动画面")), self.splashScreen.finish()))
-
-        # 初始化需要 cmcl_data 的组件
-        update_progress({'value': 90 / 100, 'valueStringOverride': '9/10', 'status': i18nText('初始化需要 cmcl_data 的组件')})
-        self.initNavigation()
-
-        # 显示窗口
-        update_progress({'value': 100 / 100, 'valueStringOverride': '10/10', 'status': i18nText('显示窗口')})
-        self.show()
-        
-    def handle_screenshot_shortcut(self):
-        """处理截图快捷键，在主线程中执行截图功能"""
-        try:
-            log("收到截图快捷键信号，开始执行截图功能")
-            widget = ScreenShortCut()
-            log("截图功能已启动")
-        except Exception as e:
-            log(f"执行截图功能失败: {e}")
-            traceback.print_exc()
-        
-        # 错误报告测试
-        # try:
-        #     raise Exception("test")
-        # except Exception as e:
-        #     handle_exception(e)
-
-    def refresh_home_minecraft_account(self,player_name,widget):
-        Minecraft_account = widget.findChild(QLabel, "Minecraft_account")
-        # if Minecraft_account:
-        log(f"设置主页玩家名称：{player_name}，Minecraft_account:{Minecraft_account}")
-        Minecraft_account.setText(f"{player_name}")
-        
-    def initNavigation(self):
-        self.homeInterface = QWidget()
-        self.downloadInterface = QWidget()
-        self.toolsInterface = QWidget()
-        self.modInterface = QWidget()
-        self.passportInterface = QWidget()
-        self.settingsInterface = QWidget()
-        self.infoInterface = QWidget()
-        self.homeInterface.setObjectName("home")
-        self.downloadInterface.setObjectName("download")
-        self.toolsInterface.setObjectName("tools")
-        self.modInterface.setObjectName("mod")
-        self.passportInterface.setObjectName("passport")
-        self.settingsInterface.setObjectName("settings")
-        self.infoInterface.setObjectName("info")
-        self.addSubInterface(self.homeInterface, FluentIcon.HOME, i18nText("主页"), NavigationItemPosition.TOP)
-        self.addSubInterface(self.downloadInterface, FluentIcon.DOWNLOAD, i18nText("下载"), NavigationItemPosition.TOP)
-        self.addSubInterface(self.toolsInterface, FluentIcon.DEVELOPER_TOOLS, i18nText("工具"), NavigationItemPosition.SCROLL)
-        self.addSubInterface(self.modInterface, FluentIcon.TRANSPARENT, "Mods", NavigationItemPosition.SCROLL)
-        self.addSubInterface(self.passportInterface, FluentIcon.PEOPLE, i18nText("通行证"), NavigationItemPosition.BOTTOM)
-        self.addSubInterface(self.settingsInterface, FluentIcon.SETTING, i18nText("设置"), NavigationItemPosition.BOTTOM)
-        self.multiplayerInterface = QWidget()
-        self.multiplayerInterface.setObjectName("multiplayer")
-        self.addSubInterface(self.multiplayerInterface, FluentIcon.CONNECT, i18nText("联机"), NavigationItemPosition.SCROLL)
-        self.addSubInterface(self.infoInterface, FluentIcon.INFO, i18nText("关于"), NavigationItemPosition.BOTTOM)
-        load_ui(get_resource_path("ui/home.ui"), parent=self.homeInterface)
-        load_ui(get_resource_path("ui/client.ui"), parent=self.multiplayerInterface)
-        load_ui(get_resource_path("ui/download.ui"), parent=self.downloadInterface)
-        load_ui(get_resource_path("ui/tools.ui"), parent=self.toolsInterface)
-        load_ui(get_resource_path("ui/mods.ui"), parent=self.modInterface)
-        load_ui(get_resource_path("ui/passport.ui"), parent=self.passportInterface)
-        load_ui(get_resource_path("ui/settings.ui"), parent=self.settingsInterface)
-        load_ui(get_resource_path("ui/info.ui"), parent=self.infoInterface)
-        i18n_widgets(self)
-        
-        # 1. 先初始化主页，这里面会调用 run_cmcl_list 更新全局列表
-        setup_home_ui(self,self.homeInterface)
-        
-        setup_download_ui(self,self.downloadInterface)
-        setup_tools_ui(self,self.toolsInterface)
-        setup_info_ui(self,self.infoInterface)
-        setup_Mod_ui(self,self.modInterface)
-        setup_multiplayer_ui(self,self.multiplayerInterface)
-        setup_passport_ui(self,self.passportInterface,self.homeInterface)
-        setup_settings_ui(self,self.settingsInterface)
-        
-        # 2. 此时 BLglobals 中的列表应该已经被 setup_home_ui -> run_cmcl_list 填充了
-        # 如果不放心，可以再次手动获取一下，或者直接使用全局变量
-        if not hasattr(BLglobals, 'minecraft_list'):
-            # 如果全局变量未初始化，尝试手动运行一次列表刷新逻辑
-            # 注意：这里我们不能直接调用 run_cmcl_list 因为它依赖 config
-            # 但既然是 MainWindow 的方法，我们可以直接调
-            self.run_cmcl_list(True)
-            
-        mc_list = getattr(BLglobals, 'minecraft_list', [])
-        cust_list = getattr(BLglobals, 'customize_list', [])
-        
-        log(f"版本管理UI初始化列表: MC={mc_list}, Custom={cust_list}")
-
-    def animate_sidebar(self):
-        start_geometry = self.navigationInterface.geometry()
-        end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
-        self.sidebar_animation.setStartValue(start_geometry)
-        self.sidebar_animation.setEndValue(end_geometry)
-        self.sidebar_animation.start()
-    def initWindow(self):
-        # self.resize(900, 700)
-        self.setWindowIcon(QIcon("bloret.ico"))
-        self.setWindowTitle("Bloret Launcher")
-        self.scale_factor = self.config.get('size', 90) / 100.0
-        # self.resize(int(800 * self.scale_factor), int(600 * self.scale_factor))
-        # 优化窗口缩放逻辑（替换原有resize调用）
-    def apply_scale(self):
-        base_width, base_height = 800, 600  # 基准尺寸
-        self.scale_factor = self.config.get('size', 90) / 100.0
-        scaled_width = int(base_width * self.scale_factor)
-        os.environ['QT_SCALE_FACTOR'] = str(self.scale_factor)
-        scaled_height = int(base_height * self.scale_factor)
-
-        self.resize(scaled_width, scaled_height)
-
-        # 强制控件重新布局
-        self.layout().activate()
-
-        # 调用侧边栏缩放函数
-        self.apply_sidebar_scaling()
-    def apply_sidebar_scaling(self):
-        base_sidebar_width = 300  # 设置一个基准宽度
-        size = self.scale_factor   # 使用已有的 scale_factor 属性
-
-        scaled_sidebar_width = int(base_sidebar_width * size)
-        self.navigationInterface.setExpandWidth(scaled_sidebar_width)
-        if hasattr(self.navigationInterface, 'setCollapseWidth'):
-            self.navigationInterface.setCollapseWidth(int(scaled_sidebar_width * size))
-        # 可选：设置最小展开宽度
-        base_window_width = 900
-        scaled_min_expand_width = int(base_window_width * size)
-        self.resize(int(base_window_width * size), int(700 * size))  # 调整窗口大小
-        self.navigationInterface.setMinimumExpandWidth(scaled_min_expand_width)
-        # self.navigationInterface.expand(useAni=False)
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        icon_size = int(64 * self.scale_factor)
-        
-        # 仅在存在 Customize_icon 时更新
-        if hasattr(self, 'Customize_icon') and self.Customize_icon:
-            self.Customize_icon.setPixmap(self.icon.pixmap(icon_size, icon_size))
-    def on_home_clicked(self):
-        log(i18nText("主页 被点击"))
-        self.switchTo(self.homeInterface)
-    def download_minecraft_version(self, version):
-        """下载并安装Minecraft版本"""
-        if not version:
-            InfoBar.error(
-                title=i18nText('❌ 错误'),
-                content=i18nText("请选择一个Minecraft版本"),
-                parent=self,
-                duration=3000
-            )
-            return
-            
-        log(f"开始下载Minecraft版本: {version}")
-        
-        # 使用InstallMinecraftVersion函数下载版本
-
-        # 加载UI文件
-        try:
-            self.download_dialog = QDialog(self)
-            uic.loadUi(get_resource_path("ui/MCVer_downloading.ui"), self.download_dialog)
-            self.download_dialog.setWindowTitle(f"正在下载 Minecraft {version}")
-
-            # 设置MaxThread的值
-            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-            max_thread_value = config.get("MaxThread", 2000)
-            self.download_dialog.MaxThread.setText(str(max_thread_value))
-
-            self.download_dialog.show()
-        except Exception as e:
-            log(f"加载或显示下载弹窗时发生错误: {e}")
-            InfoBar.error(
-                title=i18nText('❌ 错误'),
-                content=f"无法显示下载进度弹窗: {e}",
-                parent=self,
-                duration=5000
-            )
-            return
-
-        # 创建线程下载版本
-        class DownloadThread(QThread):
-            download_finished = pyqtSignal(bool)
-
-            def __init__(self, version, minecraft_dir, download_dialog):
-                super().__init__()
-                self.version = version
-                BLglobals.minecraft_dir = minecraft_dir
-                self.download_dialog = download_dialog
-
-            def run(self):
-                result = InstallMinecraftVersion(self.version, BLglobals.minecraft_dir, self.download_dialog)
-                self.download_finished.emit(result)
-
-        download_thread = DownloadThread(version, BLglobals.minecraft_dir, self.download_dialog)
-        download_thread.download_finished.connect(lambda success: self.on_minecraft_download_finished(success, version, self.download_dialog))
-        download_thread.start()
-        BLglobals.threads.append(download_thread)  # 防止线程被垃圾回收
-    
-    def download_fabric_version(self, version):
-        """下载并安装Fabric版本"""
-        if not version:
-            InfoBar.error(
-                title=i18nText('❌ 错误'),
-                content=i18nText("请选择一个Fabric版本"),
-                parent=self,
-                duration=3000
-            )
-            return
-            
-        log(f"开始下载Fabric版本: {version}")
-        
-        # 创建进度提示
-        teaching_tip = TeachingTip(
-            title=f"正在下载 Fabric {version}",
-            content=i18nText("下载过程可能需要几分钟，请耐心等待..."),
-            parent=self,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=-1,  # 不自动关闭
-            isClosable=False
-        )
-        teaching_tip.show()
-        
-        # TODO: 实现Fabric版本下载逻辑
-        # 临时实现，仅显示提示
-        InfoBar.warning(
-            title=i18nText('⚠️ 功能开发中'),
-            content=f"Fabric {version} 下载功能正在开发中",
-            parent=self,
-            duration=3000
-        )
-        teaching_tip.close()
-    
-    def download_java_version(self, version_text):
-        """下载并安装Java版本"""
-        if not version_text:
-            InfoBar.error(
-                title=i18nText('❌ 错误'),
-                content=i18nText("请选择一个Java版本"),
-                parent=self,
-                duration=3000
-            )
-            return
-            
-        # 从选择框文本中提取版本号
-        match = re.search(r'Java (\d+)', version_text)
-        if not match:
-            InfoBar.error(
-                title=i18nText('❌ 错误'),
-                content=i18nText("无法解析Java版本号"),
-                parent=self,
-                duration=3000
-            )
-            return
-            
-        version = match.group(1)
-        log(f"开始下载Java版本: {version}")
-        
-        # 创建进度提示
-        teaching_tip = TeachingTip(
-            title=f"正在下载 Java {version}",
-            content=i18nText("下载过程可能需要几分钟，请耐心等待..."),
-            parent=self,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=-1,  # 不自动关闭
-            isClosable=False
-        )
-        teaching_tip.show()
-        
-        # TODO: 实现Java版本下载逻辑
-        # 临时实现，仅显示提示
-        InfoBar.warning(
-            title=i18nText('⚠️ 功能开发中'),
-            content=f"Java {version} 下载功能正在开发中",
-            parent=self,
-            duration=3000
-        )
-        teaching_tip.close()
-    
-    def on_minecraft_download_finished(self, success, version, teaching_tip):
-        """Minecraft下载完成回调"""
-        if teaching_tip and not sip.isdeleted(teaching_tip):
-            teaching_tip.close()
-            
-        if success:
-            log(f"Minecraft版本 {version} 已成功下载")
-            InfoBar.success(
-                title=i18nText('✅ 下载成功'),
-                content=f"Minecraft版本 {version} 已成功下载并安装",
-                parent=self,
-                duration=5000
-            )
-        else:
-            log(f"Minecraft版本 {version} 下载失败")
-            InfoBar.error(
-                title=i18nText('❌ 下载失败'),
-                content=f"Minecraft版本 {version} 下载失败，请查看日志了解详情",
-                parent=self,
-                duration=5000
-            )
-    
-    def on_download_finished(self, teaching_tip, download_button):
-        if hasattr(self, 'version'):
-            log(f"版本 {self.version} 已成功下载")
-        else:
-            log(i18nText("下载完成，但版本信息缺失"))
-
-        if teaching_tip and not sip.isdeleted(teaching_tip):
-            teaching_tip.close()
-        if download_button:
-            InfoBar.success(
-                title=i18nText('✅ 下载完成'),
-                content=f"版本 {self.version if hasattr(self, 'version') else '未知'} 已成功下载\n前往主页就可以启动了！",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-        self.run_cmcl_list(True)
-        # 拷贝 servers.dat 文件到 .minecraft 文件夹
-        src_file = os.path.join(os.getcwd(), "servers.dat")
-        dest_dir = os.path.join(os.getcwd(), ".minecraft")
-        if os.path.exists(src_file):
-            try:
-                shutil.copy(src_file, dest_dir)
-                log(f"成功拷贝 {src_file} 到 {dest_dir}")
+                return bool(parent.handle_close_request_from_qml())
             except Exception as e:
-                handle_exception(e)
-                log(f"拷贝 {src_file} 到 {dest_dir} 失败: {e}", logging.ERROR)
-        self.is_running = False  # 重置标志变量
-        # 发送系统通知
-        QTimer.singleShot(0, lambda: self.send_system_notification(i18nText("下载完成"), f"版本 {self.version} 已成功下载"))
-        # 检查 NoneType 错误
-        if self.show_text is not None:
-            self.show_text.setText(i18nText("下载完成"))
-        else:
-            log("show_text is None", logging.ERROR)
-        self.run_cmcl_list(True)
-    def run_cmcl_list(self,back_set_list):
-        # 移除 minecraft_list, customize_list 的 global 声明，改用 BLglobals
+                print(f"handleWindowCloseRequest failed: {e}")
+        return False
+
+    @Slot(result=str)
+    def helloFromPython(self):
+        return "Hello from PySide6 Backend!"
         
+    @Slot(result=str)
+    def getTips(self):
+        if hasattr(BLglobals, "BLtips") and BLglobals.BLtips:
+            return random.choice(BLglobals.BLtips)
+        return "欢迎使用 Bloret Launcher！"
+
+    @Slot(result=str)
+    def getPlayerName(self):
         try:
-            versions_path = os.path.join(self.config['minecraft_dir'], "versions")
-            temp_list = []  # 使用临时变量
-            
-            if os.path.exists(versions_path) and os.path.isdir(versions_path):
-                temp_list = [d for d in os.listdir(versions_path)
-                            if os.path.isdir(os.path.join(versions_path, d))]
-                
-                if not temp_list:
-                    # 注意：这里逻辑有点奇怪，如果为空返回提示文本，但这会污染列表类型
-                    # 建议保持为空列表，在 UI 层处理提示
-                    # 为了兼容现有逻辑，我们暂且保留，但要注意
-                    # temp_list = []
-                    # temp_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
-                    log(f"版本目录为空: {versions_path}")
-                else:
-                    log(f"成功读取版本列表: {temp_list}")
-            else:
-                # 同上
-                # temp_list = []
-                # temp_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
-                log(f"路径无效: {versions_path}")
-                
-            BLglobals.set_list = temp_list  # 最后统一赋值给全局变量
-
-            # --- 修改：存入 BLglobals ---
-            BLglobals.minecraft_list = temp_list 
-            log(f"Minecraft 版本列表: {BLglobals.minecraft_list}")
-
-            if "Customize" in self.config:
-                BLglobals.customize_list = [item.get("showname") for item in self.config["Customize"]]
-            else:
-                BLglobals.customize_list = []
-                
-            log(f"Customize 列表中的 showname 值: {BLglobals.customize_list}")
-            
-            # 合并
-            BLglobals.set_list = BLglobals.minecraft_list + BLglobals.customize_list
-            log(f"合并后的版本列表: {BLglobals.set_list}")
-
-            self.update_version_combobox()  # 新增UI更新方法
-            if back_set_list:
-                return BLglobals.set_list
-            else:
-                return BLglobals.customize_list
+            config_data = cfg.read()
+            mc_account_config = config_data.get("MinecraftAccount", {})
+            accounts_list = mc_account_config.get("accounts", [])
+            chosen_index = mc_account_config.get("chosen", 0)
+            if accounts_list and 0 <= chosen_index < len(accounts_list):
+                return accounts_list[chosen_index].get("username", "访客")
         except Exception as e:
-            # handle_exception(e)
-            log(f"读取版本列表失败: {e}", logging.ERROR)
-            BLglobals.set_list = []
-            # 异常情况下给默认空值
-            BLglobals.minecraft_list = []
-            BLglobals.customize_list = []
-            # BLglobals.set_list.append(i18nText("你还未安装任何版本哦，请前往下载页面安装"))
-   
-    def run_cmcl(self, version, HomePage=None):
-        log(f"minecraft_list:{GetMinecraftList()}")
-        if version not in BLglobals.minecraft_list:
-            CustomizeRun(self,version)
-        else:
-            # 检查 config.json 中是否有账户信息
-            try:
-                config_data = cfg.read()
-                mc_account = config_data.get("MinecraftAccount", {})
-                accounts = mc_account.get("accounts", [])
-                
-                # 如果 accounts 列表为空，提示用户登录
-                if not accounts:
-                    msg_box = MessageBox(
-                        i18nText('您当前尚未登录'),
-                        i18nText('Minecraft 还不知道您是谁，无法启动。请先登录，确认以转到通行证页面。'),
-                        self
-                    )
-                    if msg_box.exec_():
-                        # 切换到通行证页面
-                        self.switchTo(self.passportInterface)
-                    return
-            except Exception as e:
-                handle_exception(e)
-                log(f"检查账户信息时出错: {e}", logging.ERROR)
-                InfoBar.error(
-                    title=i18nText('❌ 错误'),
-                    content=i18nText('检查账户信息时发生错误'),
-                    parent=self,
-                    duration=3000
-                )
+            print(f"Error reading player name: {e}")
+        return "访客"
+        
+    @Slot(str)
+    def launchGame(self, version):
+        print(f"Requested to launch game: {version}")
+
+        if self._is_launching:
+            print("Launch request ignored: another launch is already in progress")
+            return
+
+        self._is_launching = True
+        self._launch_session_id += 1
+        launch_session_id = self._launch_session_id
+        self.launchDialogRequested.emit(f"正在启动 {version}")
+
+        def is_current_session():
+            return launch_session_id == self._launch_session_id
+
+        def emit_progress(progress, status, detail=""):
+            if not is_current_session():
                 return
-            
-            InfoBar.success(
-                title=f'🔄️ 正在启动 {version}',
-                content=f"正在处理 Minecraft 文件和启动...\n您马上就能见到 Minecraft 窗口出现了！",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
+            self.launchProgressUpdated.emit(float(progress), status, detail)
 
-            if self.is_running:
+        def finish_launch(close_dialog=False):
+            if not is_current_session():
                 return
-            self.is_running = True
-            log(f"正在启动 {version}")
-            
-            # 在启动时添加TabBar标签
-            if HomePage:
-                try:
-                    # 获取TabBar组件
-                    minecraft_tab = HomePage.findChild(TabBar, "MinecraftTab")
-                    if minecraft_tab and hasattr(minecraft_tab, 'addTab'):
-                        try:
-                            # 启用关闭按钮
-                            minecraft_tab.setCloseButtonDisplayMode(TabCloseButtonDisplayMode.ON_HOVER)
-                            minecraft_tab.show()
-                            
-                            # 添加标签
-                            minecraft_tab.addTab(
-                                routeKey=version,
-                                text=version,
-                                icon="ui/icon/Grass_Block.png",
-                                onClick=lambda: log(f"点击了标签: {version}")
-                            )
-                            
-                            # 连接关闭信号（如果尚未连接）
-                            if not hasattr(self, '_tab_close_connected'):
-                                minecraft_tab.tabCloseRequested.connect(self.on_tab_close_requested)
-                                self._tab_close_connected = True
-                                self.minecraft_tab = minecraft_tab
+            self._is_launching = False
+            if close_dialog:
+                self.launchDialogClosed.emit()
 
-                            log(f"启动时已向 MinecraftTab 添加标签: {version}")
-                        except Exception as e:
-                            log(f"启动时添加标签到 MinecraftTab 失败: {e}")
-                    else:
-                        log(f"启动时未找到 MinecraftTab 组件或组件不支持 addTab 方法")
-                except Exception as e:
-                    log(f"启动时添加标签时出错: {e}")
-            
-            # 移除主线程中的耗时操作 (os.remove, Get_Run_Script 等)
-            # 这些操作已移动到 RunScriptThread.run() 中执行
-
-            run_button = self.sender()  # 获取按钮对象（可能为 None）
-            
-            # 创建启动日志弹窗
-            launch_dialog = LaunchConsoleDialog(self)
-            launch_dialog.titleLabel.setText(f'正在启动 {version}')
-
-            # 线程 (初始化时传入版本号)
-            self.run_script_thread = RunScriptThread(version)
-            
-            # 连接日志到弹窗 (更新单行状态)
-            self.run_script_thread.output_received.connect(launch_dialog.update_status)
-            # 线程结束或出错时关闭弹窗
-            self.run_script_thread.finished.connect(launch_dialog.accept)
-            self.run_script_thread.error_occurred.connect(launch_dialog.reject)
-
-            # 连接原有的结束/错误处理逻辑 (teaching_tip 传入 None)
-            self.run_script_thread.finished.connect(lambda: self.on_run_script_finished(None, run_button, version))
-            self.run_script_thread.error_occurred.connect(lambda error: self.on_run_script_error(error, None, run_button))
-            
-            self.run_script_thread.start()
-            self.threads.append(self.run_script_thread)
-            
-            # 跟踪运行中的进程
-            self.running_processes[version] = self.run_script_thread
-            
-            # 连接启动成功信号到关闭弹窗
-            self.launch_success_signal.connect(launch_dialog.accept)
-
-            # 定义回调函数
-            def on_window_found():
-                self.launch_success_signal.emit()
-
-            # 启动 Minecraft 窗口监控 (使用 mwtool)
-            if self.config.get('mwtool_switch_open', True):
-                try:
-                    log(f"启动工具栏监视器，目标版本: {version}")
-                    # Use monitor_minecraft_window from launch.py
-                    monitor_minecraft_window(version, callback=on_window_found)
-                except Exception as e:
-                    log(f"启动工具栏监视器失败: {e}", logging.ERROR)
-            else:
-                log("mwtool 窗口监视功能已禁用")
-
-            self.update_show_text_thread = UpdateShowTextThread(self.run_script_thread)
-            self.update_show_text_thread.update_text.connect(self.update_show_text)
-            self.run_script_thread.last_output_received.connect(self.update_show_text_thread.update_last_output)
-            self.update_show_text_thread.start()
-            self.threads.append(self.update_show_text_thread)
-
-            # 显示模态对话框 (展示启动过程)
-            # 用户点击"后台运行"会关闭此窗口，但不会停止线程
-            launch_dialog.exec()
-            
-            # 断开信号，避免重复连接
+        def run_launch():
             try:
-                self.launch_success_signal.disconnect(launch_dialog.accept)
-            except:
-                pass
-    def update_version_combobox(self):
-        home_interface = self.homeInterface
-        if home_interface:
-            run_choose = home_interface.findChild(ComboBox, "run_choose")
-            if run_choose:
-                # 添加版本去重逻辑
-                unique_versions = list(dict.fromkeys(BLglobals.set_list))  # 保持顺序去重
-                current_text = run_choose.currentText()  # 保留当前选中项
-                
-                run_choose.clear()
-                run_choose.addItems(unique_versions)
-                
-                # 恢复选中项或默认选择
-                if current_text in unique_versions:
-                    run_choose.setCurrentText(current_text)
-                elif unique_versions:
-                    run_choose.setCurrentIndex(0)
-    def closeEvent(self, event):
-        """ 隐藏窗口而不是退出程序 """
-        event.ignore()  # 忽略关闭事件
-        self.hide()  # 隐藏窗口
-    def on_download_clicked(self):
-        log(i18nText("下载 被点击"))
-        load_ui("ui/download.old.ui", animate=False)
-        setup_download_old_ui(self,self.content_layout.itemAt(0).widget(),LM_Download_Way_list,BLglobals.ver_id_bloret,self.homeInterface)
-    def on_download_way_changed(self, widget, selected_way):
-        show_way = widget.findChild(ComboBox, "show_way")
-        fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
-        LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
-        if selected_way == "Bloret Launcher":
-            if show_way:
-                show_way.setEnabled(False)
-            if fabric_choose:
-                fabric_choose.setEnabled(False)
-            if LM_download_way_choose:
-                LM_download_way_choose.setEnabled(True)
-        else:
-            if show_way:
-                show_way.setEnabled(True)
-            if fabric_choose:
-                fabric_choose.setEnabled(True)
-            if LM_download_way_choose:
-                LM_download_way_choose.setEnabled(False)
-    def on_customize_choose_clicked(self, widget):
-        Customize_path = widget.findChild(LineEdit, "Customize_path")
-        Customize_showname = widget.findChild(LineEdit, "Customize_showname")
-        # Customize_icon = widget.findChild(QLabel, "Customize_icon")
-        Customize_choose_path, _ = QFileDialog.getOpenFileName(self, i18nText("选择文件"), os.getcwd(), i18nText("所有文件 (*.*)"))
-        if Customize_choose_path:
-            Customize_path.setText(Customize_choose_path)
-            Customize_showname.setText(os.path.splitext(os.path.basename(Customize_choose_path))[0])
-            # icon = QIcon(Customize_choose_path)
-            # if not icon.isNull():
-            #     Customize_icon.setPixmap(icon.pixmap(64, 64))  # 设置图标大小为 64x64
-            # else:
-            #     Customize_icon.setText("无法加载图标")
-            # self.showTeachingTip(Customize_showname, Customize_choose_path)
-    def on_customize_add_clicked(self, widget, homeInterface):
-        Customize_path = widget.findChild(LineEdit, "Customize_path")
-        Customize_showname = widget.findChild(LineEdit, "Customize_showname")
-        Customize_path_value = Customize_path.text()
-        Customize_showname_value = Customize_showname.text()
-        log(f"Customize Path: {Customize_path_value}, Customize Show Name: {Customize_showname_value}")
-        if not Customize_path_value or not Customize_showname_value:
-            InfoBar.warning(
-                title=i18nText('⚠️ 提示'),
-                content=i18nText("路径或显示名称不能为空"),
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            return
+                from modules.Bloret_PassPort import refresh_minecraft_token, sync_bloret_passport_account_to_mc
+                from modules.launch import monitor_minecraft_window
 
-        if not os.path.exists(Customize_path_value):
-            InfoBar.error(
-                title=i18nText('❌ 错误'),
-                content=i18nText("指定的路径不存在，请重新选择"),
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            return
+                emit_progress(5, f"正在准备启动环境: {version}", "")
 
-        if not os.path.isfile(Customize_path_value):
-            InfoBar.error(
-                title=i18nText('❌ 错误'),
-                content=i18nText("指定的路径不是文件，请重新选择"),
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            return
-        # Save to config.json
-        try:
-            with open(BLglobals.config_path, 'r', encoding='utf-8') as file:
-                config_data = json.load(file)
-
-            if "Customize" not in config_data:
-                config_data["Customize"] = []
-
-            config_data["Customize"].append({
-                "showname": Customize_showname_value,
-                "path": Customize_path_value
-            })
-
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as file:
-                json.dump(config_data, file, ensure_ascii=False, indent=4)
-            self.config = config_data  # 同步到 self.config
-            InfoBar.success(
-                title=i18nText('✅ 成功'),
-                content=f"路径 {Customize_path_value} 和显示名称 {Customize_showname_value} 已成功保存",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-            run_choose = homeInterface.findChild(ComboBox, "run_choose")
-            run_choose.clear()
-            run_choose.addItems(self.run_cmcl_list(True))
-            
-        except Exception as e:
-            handle_exception(e)
-            InfoBar.error(
-                title=i18nText('❌ 错误'),
-                content=f"保存到 config.json 时发生错误: {e}",
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )     
-    def on_show_way_changed(self, widget, version_type):
-        show_way = widget.findChild(ComboBox, "show_way")
-        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-
-        if show_way and minecraft_choose:
-            show_way.setEnabled(False)
-            minecraft_choose.setEnabled(False)
-            InfoBar.success(
-                title=i18nText('⏱️ 正在加载'),
-                content=f"正在加载 {version_type} 的列表",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-        def fetch_versions():
-            self.load_versions_thread = LoadMinecraftVersionsThread(version_type)
-            self.threads.append(self.load_versions_thread)  # 将线程添加到列表中
-            self.load_versions_thread.versions_loaded.connect(lambda versions: self.update_minecraft_choose(widget, versions))
-            self.load_versions_thread.error_occurred.connect(lambda error: self.show_error_tip(widget, error))
-            self.load_versions_thread.start()
-        QTimer.singleShot(5000, fetch_versions)
-    def update_minecraft_choose(self, widget, versions):
-        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-        show_way = widget.findChild(ComboBox, "show_way")
-        if minecraft_choose:
-            minecraft_choose.clear()
-            minecraft_choose.addItems(versions)
-            minecraft_choose.setEnabled(True)
-        if show_way:
-            show_way.setEnabled(True)
-        for dialog in self.loading_dialogs:
-            dialog.close()
-        self.loading_dialogs.clear()
-    def show_error_tip(self, widget, error):
-        show_way = widget.findChild(ComboBox, "show_way")
-        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-        if show_way:
-            show_way.setEnabled(True)
-        if minecraft_choose:
-            minecraft_choose.setEnabled(True)
-        InfoBar.error(
-            title=i18nText('错误'),
-            content=f"加载列表时出错: {error}",
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=5000,
-            parent=self
-        )
-        for dialog in self.loading_dialogs:
-            dialog.close()
-        self.loading_dialogs.clear()
-    def showTeachingTip(self, target_widget, folder_path):
-        if sip.isdeleted(target_widget):
-            log(f"目标小部件已被删除，无法显示 TeachingTip", logging.ERROR)
-            return
-        InfoBar.success(
-            title=i18nText('✅ 提示'),
-            content=f"已存储 Minecraft 核心文件夹位置为\n{folder_path}",
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=5000,
-            parent=self
-        )
-    def update_minecraft_versions(self, widget, version_type):
-        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-        if minecraft_choose:
-            try:
-                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
-                if response.status_code == 200:
-                    version_data = response.json()
-                    latest_release = version_data["latest"]["release"]
-                    latest_snapshot = version_data["latest"]["snapshot"]
-                    versions = version_data["versions"]
-                    BLglobals.ver_id_main.clear()
-                    BLglobals.ver_id_short.clear()
-                    BLglobals.ver_id_long.clear()
-                    for version in versions:
-                        if version["type"] not in ["snapshot", "old_alpha", "old_beta"]:
-                            BLglobals.ver_id_main.append(version["id"])
-                        else:
-                            if version["type"] == "snapshot":
-                                BLglobals.ver_id_short.append(version["id"])
-                            elif version["type"] in ["old_alpha", "old_beta"]:
-                                BLglobals.ver_id_long.append(version["id"])
-            
-                    # 更新UI中的minecraft_choose下拉框
-                    minecraft_choose.clear()
-                    if version_type == i18nText("百络谷支持版本"):
-                        # 确保ver_id_bloret不为None且不为空
-                        if BLglobals.ver_id_bloret is not None and len(BLglobals.ver_id_bloret) > 0:
-                            minecraft_choose.addItems(BLglobals.ver_id_bloret)
-                        else:
-                            # 如果ver_id_bloret为空，则添加默认版本列表
-                            minecraft_choose.addItems(["1.21.7", "1.21.8"])
-                    elif version_type == i18nText("正式版本"):
-                        minecraft_choose.addItems(BLglobals.ver_id_main)
-                    elif version_type == i18nText("快照版本"):
-                        minecraft_choose.addItems(BLglobals.ver_id_short)
-                    elif version_type == i18nText("远古版本"):
-                        minecraft_choose.addItems(BLglobals.ver_id_long)
-                    else:
-                        log(i18nText("未知的版本类型"), logging.ERROR)
-            
-                    log(f"最新发布版本: {latest_release}")
-                    log(f"最新快照版本: {latest_snapshot}")
-                    log(i18nText("Minecraft 版本列表已更新"))
+                emit_progress(20, "正在向 Bloret PassPort 刷新令牌...", "")
+                refresh_ok = refresh_minecraft_token()
+                if refresh_ok:
+                    emit_progress(35, "令牌刷新完成", "")
                 else:
-                    log(i18nText("无法获取 Minecraft 版本列表"), logging.ERROR)
-            except requests.exceptions.RequestException as e:
-                log(f"请求错误: {e}", logging.ERROR)
-                InfoBar.error(
-                    title=i18nText('提示'),
-                    content=i18nText("无法连接到服务器，请检查网络连接或稍后再试。"),
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
-            except requests.exceptions.SSLError as e:
-                log(f"SSL 错误: {e}", logging.ERROR)
-                InfoBar.error(
-                    title=i18nText('提示'),
-                    content=i18nText("无法连接到服务器，请检查网络连接或稍后再试。"),
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
-            finally:
-                for dialog in self.loading_dialogs:  # 关闭所有 loading_dialog
-                    dialog.close()
-                self.loading_dialogs.clear()  # 清空列表
-    def start_download(self, widget):
-        minecraft_choose = widget.findChild(ComboBox, "minecraft_choose")
-        download_button = widget.findChild(QPushButton, "download")
-        fabric_choose = widget.findChild(ComboBox, "Fabric_choose")
-        
-        vername_edit = widget.findChild(LineEdit, "vername_edit")
-        if vername_edit:
-            vername = vername_edit.text().strip()
-            pattern = r'^(?!^(PRN|AUX|NUL|CON|COM[1-9]|LPT[1-9])$)[^\\/:*?"<>|\x00-\x1F\u4e00-\u9fff]+$'
-            if not re.match(pattern, vername):
-                msg = MessageBox(
-                    title=i18nText("非法名称"),
-                    content=i18nText("名称包含非法字符或中文，请遵循以下规则：\n1. 不能包含 \\ / : * ? \" < > |\n2. 不能包含中文\n3. 不能使用系统保留名称"),
-                    parent=self
-                )
-                msg.exec()
-                return
-    
-        if minecraft_choose and download_button and fabric_choose:
-            cmcl_save_path = os.path.join(os.getcwd(), "cmcl_save.json")
-            cmcl_path = os.path.join(os.getcwd(), "cmcl.exe")
-    
-            if not os.path.isfile(cmcl_path):
-                log(f"文件 {cmcl_path} 不存在", logging.ERROR)
-                QMessageBox.critical(self, i18nText("错误"), f"文件 {cmcl_path} 不存在")
-                return
-            
-            choose_ver = minecraft_choose.currentText()
-            self.version = choose_ver
-            fabric_download = fabric_choose.currentText()
-    
-            InfoBar.success(
-                title=i18nText('⬇️ 正在下载'),
-                content=f"正在下载你所选的版本...",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-    
-            download_button.setText(i18nText("已经开始下载...下载状态将会显示在这里"))
-    
-            download_way_choose = widget.findChild(ComboBox, "download_way_choose")
-            selected_way = download_way_choose.currentText()
-    
-            # 定义 teaching_tip 变量
-            teaching_tip = None
-    
-            if selected_way == "Bloret Launcher":  # Bloret Launcher 方法
-                log(f"LM_Download_Way_minecraft:{LM_Download_Way_minecraft}")
-                LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
-                BL_download(self, choose_ver, LM_download_way_choose.currentText(), LM_Download_Way_minecraft, LM_Download_Way_version, self)
-                self.on_download_finished(teaching_tip, download_button)
-            else:  # CMCL 方法
-                if fabric_download != i18nText("不安装"):
-                    command = f"\"{cmcl_path}\" install {choose_ver} -n {vername} --fabric={fabric_download}"
+                    emit_progress(35, "令牌刷新未完成，继续使用现有状态", "")
+
+                emit_progress(50, "正在重新获取 Minecraft 档案数据...", "")
+                sync_ok = sync_bloret_passport_account_to_mc(parent_window=None)
+                if sync_ok:
+                    self.minecraftAccountsChanged.emit([])
+                    emit_progress(65, "档案数据更新完成", "")
                 else:
-                    command = f"\"{cmcl_path}\" install {choose_ver} -n {vername}"
-        
-                log(f"下载命令: {command}")
-        
-                self.download_thread = self.DownloadThread(cmcl_path, command, log)
-                self.threads.append(self.download_thread)
-                self.download_thread.output_received.connect(self.log_output)
-                self.download_thread.output_received.connect(lambda text: download_button.setText(text[:70] + '...' if len(text) > 70 else text))
-                
-                teaching_tip = InfoBar(
-                    icon=InfoBarIcon.SUCCESS,
-                    title=i18nText('✅ 正在下载'),
-                    content=f"正在下载你所选的版本...",
-                    orient=Qt.Horizontal,
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=5000,
-                    parent=self
-                )
-                teaching_tip.show()
-        
-                self.download_thread.finished.connect(
-                    lambda: self.on_download_finished(teaching_tip, download_button)
-                )
-                
-                self.download_thread.error_occurred.connect(
-                    lambda error: self.on_download_error(error, teaching_tip, download_button)
-                )
-                self.download_thread.start()
-                self.threads.append(self.download_thread)  # 将线程添加到列表中
-    class DownloadThread(QThread):
-        finished = pyqtSignal()
-        error_occurred = pyqtSignal(str)
-        output_received = pyqtSignal(str)
+                    emit_progress(65, "档案同步失败，将使用本地缓存档案", "")
 
-        def __init__(self, cmcl_path, version, log_method):
-            self.log = log_method
-            super().__init__()
-            self.cmcl_path = cmcl_path
-            self.version = version
+                emit_progress(80, "正在补全文件并解析启动参数...", "如有缺失文件会自动下载")
+                launch_args, game_dir = Get_Run_Script(version)
 
-        def run(self):
-            try:
-                log(f"正在下载版本 {self.version}")
-                log(i18nText("执行命令: ") + f"{self.version}")
-                process = subprocess.Popen(
-                    self.version,
+                emit_progress(95, "正在执行启动命令...", "")
+                print(f"Launching with args: {launch_args}")
+
+                # 使用 PIPE 捕获输出，同时实时打印到控制台并解析聊天消息
+                proc = subprocess.Popen(
+                    launch_args, cwd=game_dir,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
+                    stderr=subprocess.STDOUT,  # 合并 stderr 到 stdout
                     encoding='utf-8',
-                    errors='replace'
+                    errors='replace',
+                    bufsize=1,  # 行缓冲
                 )
-                last_line = ""
-                for line in iter(process.stdout.readline, ''):
-                    last_line = line.strip()
-                    self.output_received.emit(last_line)
-                    if i18nText("该名称已存在，请更换一个名称。") in line:
-                        self.error_occurred.emit(i18nText("该版本已下载过。"))
-                        process.terminate()
+
+                import uuid as _uuid
+                instance_id = str(_uuid.uuid4())
+                BLglobals.running_instances[instance_id] = {
+                    "name": version, "type": "minecraft",
+                    "pid": proc.pid, "suspended": False
+                }
+                self._recordRecentRun(version, "minecraft")
+                self.runningInstancesChanged.emit(self.getRunningInstances())
+
+                emit_progress(97, "启动命令已执行，正在等待 Minecraft 窗口出现...", "")
+
+                # 添加后台线程实时监控日志输出，解析聊天消息并打印到控制台
+                def monitor_process_output(p, ver, evt):
+                    try:
+                        import re
+                        # 匹配聊天消息的正则表达式
+                        # 格式: [13:01:18] [Render thread/INFO]: [System] [CHAT] 霕 Detritalw: xx
+                        # 注意中间有冒号分隔符
+                        chat_pattern = r'\[([^\]]+)\]\s*\[[^\]]+\]:\s*(?:\[System\]\s*)?\[CHAT\]\s*(.*)'
+
+                        for line in p.stdout:
+                            if not line:
+                                break
+
+                            # 实时打印到控制台
+                            print(line, end='', flush=True)
+
+                            # 尝试匹配聊天消息
+                            match = re.search(chat_pattern, line)
+                            if match:
+                                timestamp = match.group(1)
+                                chat_message = match.group(2).strip()
+                                if chat_message:
+                                    # 清理乱码字符（替换无效字符）
+                                    chat_message = chat_message.replace('\ufffd', '')
+                                    # 发送聊天消息信号
+                                    self.minecraftChatMessage.emit(timestamp, chat_message)
+                                    print(f"[聊天] {timestamp} - {chat_message}")  # 调试输出
+
+                                    # 当 Minecraft 窗口不在前台时发送 Windows 通知
+                                    self._notify_if_not_foreground(timestamp, chat_message)
+
+                        # 进程结束后检查
+                        p.wait()
+                        if p.returncode != 0 and not evt.is_set():
+                            print(f"\n[错误] Minecraft {ver} 进程异常退出，返回码: {p.returncode}")
+                            self.minecraftCrashDetected.emit(
+                                f"Minecraft {ver} 崩溃",
+                                f"进程异常退出 (返回码: {p.returncode})\n请查看上面的日志输出",
+                                f"进程异常退出，返回码: {p.returncode}"
+                            )
+                    except Exception as e:
+                        print(f"[错误] 监控进程输出时发生异常: {e}")
+
+                window_found_event = threading.Event()
+                threading.Thread(
+                    target=monitor_process_output,
+                    args=(proc, version, window_found_event),
+                    daemon=True
+                ).start()
+
+                def on_window_found():
+                    if window_found_event.is_set():
                         return
-                    self.output_received.emit(line.strip())
-                    log(line.strip())  # 将输出存入日志
-                while process.poll() is None:
-                    self.output_received.emit(i18nText("正在下载并安装"))
-                    time.sleep(1)
-                process.stdout.close()
-                process.wait()
-                if process.returncode == 0:
-                    self.finished.emit()
-                else:
-                    error = process.stderr.read().strip() or "Unknown error"
-                    self.error_occurred.emit(error)
-            except subprocess.CalledProcessError as e:
-                self.error_occurred.emit(str(e.stderr))
+                    window_found_event.set()
+                    emit_progress(100, "已检测到 Minecraft 窗口，启动完成", "")
+                    finish_launch(close_dialog=True)
 
-        def send_system_notification(self, title, message):
-            try:
-                if sys.platform == "win32":
-                    toast(title, message, duration="short", icon={'src': 'bloret.ico','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
+                # 传入 proc.pid 以便监控进程退出并自动隐藏工具条
+                monitor_minecraft_window(version, callback=on_window_found, mc_pid=proc.pid)
+
+                def monitor_timeout_guard():
+                    if window_found_event.wait(310):
+                        return
+                    emit_progress(100, "等待 Minecraft 窗口超时", "未检测到窗口，你可以继续后台等待或关闭此对话框后重试")
+                    finish_launch(close_dialog=False)
+
+                threading.Thread(target=monitor_timeout_guard, daemon=True).start()
             except Exception as e:
-                handle_exception(e)
-                log(f"发送系统通知失败: {e}", logging.ERROR)
-    class MicrosoftLoginThread(QThread):
-        finished = pyqtSignal(bool, str)
-        
-        def __init__(self):
-            super().__init__()
-            self.log_method = None
-            
-        def run(self):
-            # 执行微软登录命令
-            log(i18nText("正在执行微软登录命令：cmcl account --login=microsoft"))
-            process = subprocess.Popen(["cmcl", "account", "--login=microsoft"],
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    text=True,
-                                    encoding='utf-8')
+                print(f"Failed to launch: {e}")
+                import traceback
+                tb_str = traceback.format_exc()
+                traceback.print_exc()
+                emit_progress(100, f"启动失败: {e}", "")
+                finish_launch(close_dialog=False)
+                self.minecraftCrashDetected.emit(
+                    f"启动失败",
+                    str(e),
+                    tb_str
+                )
 
-            process.wait()
-            
-            if process.returncode == 0:
-                self.finished.emit(True, i18nText("登录成功"))
-            else:
-                error = process.stderr.read()
-                self.finished.emit(False, f"登录失败: {error}")
-    class OfflineLoginThread(QThread):
-        finished = pyqtSignal(bool, str)
-        
-        def __init__(self, username):
-            super().__init__()
-            self.username = username
-            
-        def run(self):
-            try:
-                process = subprocess.Popen(["cmcl", "account", "--login=offline", "-n", self.username,"-s"],
-                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                process.wait()
-                if process.returncode == 0:
-                    self.finished.emit(True, i18nText("离线登录成功"))
-                else:
-                    error = process.stderr.read()
-                    self.finished.emit(False, f"登录失败: {error}")
-            except Exception as e:
-                handle_exception(e)
-                self.finished.emit(False, f"执行异常: {str(e)}")
-    class MessageBox(MessageBoxBase):
-        def __init__(self, title, content, parent=None):
-            super().__init__(parent)
-            self.name_edit = LineEdit()
-            self.viewLayout.addWidget(SubtitleLabel(title))
-            self.viewLayout.addWidget(StrongBodyLabel(content))
-            self.viewLayout.addWidget(self.name_edit)
-            self.widget.setMinimumWidth(300)
-    class CustomMessageBox(MessageBoxBase):
-        def __init__(self, parent=None):
-            super().__init__(parent)
-            self.titleLabel = SubtitleLabel(i18nText('离线登录'))
-            self.usernameLineEdit = LineEdit()
+        threading.Thread(target=run_launch, daemon=True).start()
 
-            self.usernameLineEdit.setPlaceholderText(i18nText('请输入玩家名称'))
-            self.usernameLineEdit.setClearButtonEnabled(True)
+    # ========== 聊天记录持久化 ==========
 
-            self.viewLayout.addWidget(self.titleLabel)
-            self.viewLayout.addWidget(self.usernameLineEdit)
+    _chat_history_path = os.path.join(BLglobals.datapath, 'chat_history.json')
 
-            self.widget.setMinimumWidth(300)
+    def _readChatFile(self):
+        """读取整个聊天历史文件"""
+        try:
+            if os.path.exists(self._chat_history_path):
+                with open(self._chat_history_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"读取聊天历史失败: {e}")
+        return {}
 
-        def validate(self):
-            """ 重写验证表单数据的方法 """
-            isValid = len(self.usernameLineEdit.text()) > 0
-            return isValid
-    def handle_login(self, widget):
-        login_way_choose = widget.findChild(ComboBox, "login_way")
-        # 添加离线登录处理
-        if login_way_choose.currentText() == i18nText("离线登录"):
-                try:
-                    shutil.copyfile('cmcl.blank.json', 'cmcl.json')
-                    dialog = self.CustomMessageBox(self)
-                    if dialog.exec():
-                        username = dialog.usernameLineEdit.text()
-                        self.offline_thread = self.OfflineLoginThread(username)
-                        self.offline_thread.finished.connect(
-                            lambda success, msg: self.on_login_finished(widget, success, msg))
-                        self.offline_thread.start()
-                except Exception as e:
-                    handle_exception(e)
-                    self.show_error(i18nText("文件操作失败"), f"无法覆盖cmcl.json: {str(e)}")
-        elif login_way_choose.currentText() == i18nText("微软登录"):
-            if not config.get('localmod', False):
-                login_way_choose = widget.findChild(ComboBox, "login_way")
-                if not login_way_choose or login_way_choose.currentText() != i18nText("微软登录"):
+    def _writeChatFile(self, data):
+        """写入整个聊天历史文件"""
+        try:
+            os.makedirs(os.path.dirname(self._chat_history_path), exist_ok=True)
+            with open(self._chat_history_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"写入聊天历史失败: {e}")
+
+    @Slot(str, str)
+    def saveChatHistory(self, version, messagesJson):
+        """保存某个版本的聊天记录"""
+        try:
+            all_history = self._readChatFile()
+            all_history[version] = json.loads(messagesJson)
+            self._writeChatFile(all_history)
+        except Exception as e:
+            print(f"saveChatHistory 失败: {e}")
+
+    @Slot(str, result=str)
+    def loadChatHistory(self, version):
+        """加载聊天记录，version 为 'all' 时返回全部，否则返回指定版本"""
+        try:
+            all_history = self._readChatFile()
+            if version == "all":
+                return json.dumps(all_history)
+            return json.dumps(all_history.get(version, []))
+        except Exception as e:
+            print(f"loadChatHistory 失败: {e}")
+            return "{}" if version == "all" else "[]"
+
+    _recent_runs_path = os.path.join(BLglobals.datapath, 'recent_runs.json')
+
+    def _notify_if_not_foreground(self, timestamp, message):
+        """当 Minecraft 窗口不在前台时发送 Windows Toast 通知"""
+        try:
+            import ctypes
+            # 获取当前前台窗口标题
+            hwnd = ctypes.windll.user32.GetForegroundWindow()
+            if hwnd:
+                length = ctypes.windll.user32.GetWindowTextLengthW(hwnd) + 1
+                buf = ctypes.create_unicode_buffer(length)
+                ctypes.windll.user32.GetWindowTextW(hwnd, buf, length)
+                title = buf.value
+                # 如果前台窗口标题包含 Minecraft，则不通知
+                if "minecraft" in title.lower() or "Minecraft" in title:
                     return
 
-                # 覆盖cmcl.json
+            def send_toast():
                 try:
-                    shutil.copyfile('cmcl.blank.json', 'cmcl.json')
-                    log(i18nText("成功覆盖 cmcl.json 文件"))
-                except Exception as e:
-                    handle_exception(e)
-                    self.show_error(i18nText("文件操作失败"), f"无法覆盖cmcl.json: {str(e)}")
-                    return
-
-                # 创建并启动登录线程
-                self.microsoft_login_thread = self.MicrosoftLoginThread()
-                self.microsoft_login_thread.log_method = log
-                self.microsoft_login_thread.finished.connect(
-                    lambda success, msg: self.on_login_finished(widget, success, msg)
-                )
-                
-                # 显示加载提示
-                self.login_tip = InfoBar(
-                    icon=InfoBarIcon.WARNING,
-                    title=i18nText('⏱️ 正在登录微软账户'),
-                    content=i18nText('请按照浏览器中的提示完成登录...'),
-                    isClosable=True,  # 允许用户手动关闭
-                    position=InfoBarPosition.TOP,
-                    duration=5000,  # 设置自动关闭时间
-                    parent=self
-                )
-                self.login_tip.show()
-                
-                self.microsoft_login_thread.start()
-            
-            else:
-                log(i18nText("本地模式已启用，无法使用微软登录。"))
-                w = Dialog(i18nText("您已启用本地模式"), i18nText("Bloret Launcher 在本地模式下无法进行微软登录，\n因为该操作需要互联网\n如果需要登录，请到设置界面关闭本地模式。或使用离线登录。"))
-                if w.exec():
-                    print(i18nText('确认'))
-                else:
-                    print(i18nText('取消'))
-    def on_login_finished(self, widget, success, message):
-        # 添加有效性检查
-        if hasattr(self, 'login_tip') and self.login_tip and not sip.isdeleted(self.login_tip):
-            try:
-                self.login_tip.close()
-            except RuntimeError:
-                pass  # 如果对象已被销毁则忽略异常
-        
-        # 处理结果
-        if success:
-            self.update_passport_ui(widget)
-            InfoBar.success(
-                title=i18nText('✅ 登录成功'),
-                content=i18nText('登录成功'),
-                parent=self
-            )
-        else:
-            InfoBar.error(
-                title=i18nText('❎ 登录失败'),
-                content=message,
-                parent=self
-            )
-    def update_passport_ui(self, widget):
-        # 更新UI显示
-        login_way_combo = widget.findChild(ComboBox, "player_login_way")
-        name_combo = widget.findChild(ComboBox, "playername")
-        
-        if self.cmcl_data:
-            # 更新登录方式
-            login_method = self.login_mod
-            if login_way_combo:
-                login_way_combo.clear()
-                login_way_combo.addItem(login_method)
-            
-            # 更新玩家名称
-            if name_combo:
-                name_combo.clear()
-                name_combo.addItem(self.player_name)            
-
-    def show_2fa_dialog(self, request_data):
-        """显示 2FA 验证请求对话框"""
-        try:
-            log(f"show_2fa_dialog: 收到 2FA 请求: {request_data}")
-            timestamp = request_data.get('timestamp')
-            # 格式化时间
-            try:
-                time_str = datetime.datetime.fromtimestamp(timestamp / 1000.0).strftime('%Y-%m-%d %H:%M:%S')
-                log(f"show_2fa_dialog: 时间戳转换成功: {time_str}")
-            except Exception as e:
-                log(f"show_2fa_dialog: 时间戳转换失败: {e}")
-                time_str = i18nText("未知时间")
-            
-            ip = request_data.get('ip', i18nText('未知 IP'))
-            device = request_data.get('device', i18nText('未知设备'))
-            location = request_data.get('location', i18nText('未知位置'))
-            request_id = request_data.get('requestId')
-            log(f"show_2fa_dialog: 请求信息 - IP: {ip}, 设备: {device}, 位置: {location}, RequestID: {request_id}")
-            
-            title = i18nText("Bloret PassPort 登录请求")
-            content = (
-                f"{i18nText('您的账号正在尝试登录。')}\n\n"
-                f"{i18nText('时间')}: {time_str}\n"
-                f"{i18nText('IP')}: {ip}\n"
-                f"{i18nText('位置')}: {location}\n"
-                f"{i18nText('设备')}: {device}\n\n"
-                f"{i18nText('如果是您本人的操作，请点击 允许登录 按钮。')}"
-            )
-            
-            w = Dialog(title, content, self)
-            w.yesButton.setText(i18nText("允许登录"))
-            w.cancelButton.setText(i18nText("拒绝"))
-            
-            username = self.config.get('Bloret_PassPort_UserName')
-            token = self.config.get('Bloret_PassPort_PassWord')
-            log(f"show_2fa_dialog: 用户名: {username}")
-
-            if w.exec():
-                # 允许登录
-                log(f"show_2fa_dialog: 用户选择允许登录，请求ID: {request_id}")
-                res = handle_2fa_request_action(username, token, request_id, 'approve')
-                log(f"show_2fa_dialog: 允许登录响应: {res}")
-                if res and res.get('success'):
-                    InfoBar.success(
-                        title=i18nText('已允许登录'),
-                        content=i18nText('操作成功'),
-                        parent=self,
-                        duration=3000
+                    from win11toast import toast
+                    toast(
+                        title='Minecraft 聊天消息',
+                        body=f'{timestamp} {message}',
+                        icon=None,
                     )
-                else:
-                    error_msg = res.get('error', i18nText('未知错误')) if res else i18nText('网络错误')
-                    log(f"show_2fa_dialog: 允许登录失败: {error_msg}")
-                    InfoBar.error(
-                        title=i18nText('操作失败'),
-                        content=error_msg,
-                        parent=self,
-                        duration=3000
-                    )
-            else:
-                # 拒绝登录
-                log(f"show_2fa_dialog: 用户选择拒绝登录，请求ID: {request_id}")
-                res = handle_2fa_request_action(username, token, request_id, 'reject')
-                log(f"show_2fa_dialog: 拒绝登录响应: {res}")
-                if res and res.get('success'):
-                    InfoBar.warning(
-                        title=i18nText('已拒绝登录'),
-                        content=i18nText('操作成功'),
-                        parent=self,
-                        duration=3000
-                    )
-                else:
-                    error_msg = res.get('error', i18nText('未知错误')) if res else i18nText('网络错误')
-                    log(f"show_2fa_dialog: 拒绝登录失败: {error_msg}")
-        except Exception as e:
-            log(f"显示 2FA 对话框时出错: {e}", logging.ERROR)
+                except Exception:
+                    pass
 
-    def show_error(self, title, content):
-        InfoBar.error(
-            title=title,
-            content=content,
-            parent=self
-        )
-    def send_system_notification(self, title, message):
-        try:
-            if sys.platform == "win32":
-                toast(title, message, duration="short", icon={'src': 'bloret.ico','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
-            elif sys.platform == "darwin":
-                subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
-            else:
-                subprocess.run(["notify-send", title, message])
-        except Exception as e:
-            handle_exception(e)
-            log(f"发送系统通知失败: {e}", logging.ERROR)
-    def on_download_error(self, error_message, teaching_tip, download_button):
-        if teaching_tip and not sip.isdeleted(teaching_tip):
-            teaching_tip.close()
-        TeachingTip.create(
-            target=download_button,
-            icon=InfoBarIcon.ERROR,
-            title=i18nText('❎ 提示'),
-            content=f"下载失败，原因：{error_message}",
-            isClosable=True,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=5000,
-            parent=self
-        )
-        self.is_running = False  # 重置标志变量
-
-    def animate_sidebar(self):
-        start_geometry = self.navigationInterface.geometry()
-        end_geometry = QRect(start_geometry.x(), start_geometry.y(), start_geometry.width(), start_geometry.height())
-        self.sidebar_animation.setStartValue(start_geometry)
-        self.sidebar_animation.setEndValue(end_geometry)
-        self.sidebar_animation.start()
-    def animate_fade_in(self):
-        self.fade_in_animation.start()
-    def apply_theme(self, palette=None):
-        if palette is None:
-            palette = QApplication.palette()
-            # Trust system theme detection for auto mode
-            is_dark = is_dark_theme()
-        else:
-            # Check palette lightness for manual mode overrides
-            is_dark = palette.color(QPalette.Window).lightness() < 128
-        
-        if is_dark:
-            self.setStyleSheet("""
-                QPushButton { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
-                QPushButton:hover { background-color: #4a4a4a; color: #ffffff; }
-                QPushButton:pressed { background-color: #5a5a5a; color: #ffffff; }
-                QComboBox { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
-                QComboBox:hover { background-color: #4a4a4a; color: #ffffff; }
-                QComboBox:pressed { background-color: #5a5a5a; color: #ffffff; }
-                QComboBox QAbstractItemView { background-color: #2e2e2e; selection-background-color: #4a4a4a; color: #ffffff; }
-                QLineEdit { background-color: #3a3a3a; border: 1px solid #444444; color: #ffffff; }
-                QLabel { color: #ffffff; }
-                QCheckBox { color: #ffffff; }
-                QCheckBox::indicator { width: 20px; height: 20px; }
-                QCheckBox::indicator:checked { image: url(ui/icon/checked.png); }
-                QCheckBox::indicator:unchecked { image: url(ui/icon/unchecked.png); }
-                QLabel, SubtitleLabel, StrongBodyLabel, BodyLabel, CaptionLabel, #titleLabel, TitleBar QLabel, FluentTitleBar QLabel, MSFluentTitleBar QLabel { color: #ffffff !important; }
-            """)
-            if hasattr(self, 'titleBar'):
-                self.titleBar.setStyleSheet("background: transparent;")
-                for label in self.titleBar.findChildren(QLabel):
-                    label.setStyleSheet("color: #ffffff !important;")
-            
-            palette.setColor(QPalette.Window, QColor("#2e2e2e"))
-            palette.setColor(QPalette.WindowText, QColor("#ffffff"))
-            palette.setColor(QPalette.Base, QColor("#2e2e2e"))
-            palette.setColor(QPalette.AlternateBase, QColor("#2e2e2e"))
-            palette.setColor(QPalette.ToolTipBase, QColor("#ffffff"))
-            palette.setColor(QPalette.ToolTipText, QColor("#000000"))
-            palette.setColor(QPalette.Text, QColor("#ffffff"))
-            palette.setColor(QPalette.Button, QColor("#3a3a3a"))
-            palette.setColor(QPalette.ButtonText, QColor("#ffffff"))
-            palette.setColor(QPalette.BrightText, QColor("#ff0000"))
-            palette.setColor(QPalette.Link, QColor("#2a82da"))
-            palette.setColor(QPalette.Highlight, QColor("#2a82da"))
-            palette.setColor(QPalette.HighlightedText, QColor("#ffffff"))
-            self.setPalette(palette)
-        else:
-            # Light mode
-            self.setStyleSheet("")
-            if hasattr(self, 'titleBar'):
-                self.titleBar.setStyleSheet("")
-                for label in self.titleBar.findChildren(QLabel):
-                    label.setStyleSheet("")
-            self.setPalette(self.style().standardPalette())
-
-
-    def show_main_window(self):
-        """显示主窗口"""
-        self.show()
-        self.raise_()
-        self.activateWindow()
-
-    def save_config(self):
-        """ 将当前内存中的配置保存到磁盘并刷新缓存 """
-        try:
-            if hasattr(self, 'config'):
-                # 1. 防止覆盖：先从磁盘读取最新配置（获取 web.py 或其他模块写入的 Passport 信息）
-                try:
-                    if os.path.exists(BLglobals.config_path):
-                        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-                            disk_config = json.load(f)
-                        
-                        # 定义需要从磁盘同步到内存的关键字段 (Passport 和 账户信息)
-                        # 这些字段通常由 web.py 或 sync 模块在后台修改
-                        sync_keys = [
-                            'Bloret_PassPort_Login', 
-                            'Bloret_PassPort_UserName', 
-                            'Bloret_PassPort_PassWord',
-                            'MinecraftAccount'
-                        ]
-                        
-                        for key in sync_keys:
-                            if key in disk_config:
-                                self.config[key] = disk_config[key]
-                                log(f"save_config: 已从磁盘同步最新字段 {key}")
-                except Exception as e:
-                    log(f"保存前同步磁盘配置失败: {e}", logging.ERROR)
-
-                # 2. 保存合并后的配置
-                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                    json.dump(self.config, f, ensure_ascii=False, indent=4)
-                    f.flush()
-                    os.fsync(f.fileno())
-                log("配置文件已成功保存到磁盘")
-        except Exception as e:
-            log(f"保存配置文件失败: {e}", logging.ERROR)
-
-    def load_config(self):
-        """ 从磁盘重新加载配置到内存（用于外部模块修改文件后的同步） """
-        try:
-            if os.path.exists(BLglobals.config_path):
-                with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-                    self.config = json.load(f)
-                log("配置已从磁盘重新加载")
-        except Exception as e:
-            log(f"加载配置文件失败: {e}", logging.ERROR)
-
-    def quit_app(self):
-        """ 安全退出程序 """
-        if hasattr(self, 'passport_2fa_thread') and self.passport_2fa_thread.isRunning():
-            self.passport_2fa_thread.stop()
-        self.save_config()
-        if self.mutex:
-            ctypes.windll.kernel32.CloseHandle(self.mutex)
-            self.mutex = None
-        os._exit(0)
-
-    def restart_app(self):
-        """ 安全重启程序 """
-        log(i18nText('正在准备重启程序...'))
-        if hasattr(self, 'passport_2fa_thread') and self.passport_2fa_thread.isRunning():
-            self.passport_2fa_thread.stop()
-        self.save_config()
-        if self.mutex:
-            ctypes.windll.kernel32.CloseHandle(self.mutex)
-            self.mutex = None
-        
-        # 判断是否为 PyInstaller 打包后的环境
-        if getattr(sys, 'frozen', False):
-            # 打包环境下，sys.executable 是 exe 路径，sys.argv[0] 也是 exe 路径
-            # 我们只需要取 sys.executable 加上剩余的参数
-            args = [sys.executable] + sys.argv[1:]
-        else:
-            # 脚本环境下，sys.executable 是 python.exe，sys.argv[0] 是脚本路径
-            args = [sys.executable] + sys.argv
-
-        if sys.platform == 'win32':
-             subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
-        else:
-             subprocess.Popen(args, start_new_session=True, shell=False)
-        os._exit(0)
-        
-    def on_player_name_set_clicked(self, widget):
-        player_name_edit = widget.findChild(QLineEdit, "player_name")
-        player_name = player_name_edit.text()
-
-        if not player_name:
-            InfoBar.warning(
-                title=i18nText('⚠️ 提示'),
-                content=i18nText("请填写值后设定"),
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-        elif any('\u4e00' <= char <= '\u9fff' for char in player_name):
-            InfoBar.warning(
-                title=i18nText('⚠️ 提示'),
-                content=i18nText("名称不能包含中文"),
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-        else:
-            with open('cmcl.json', 'r', encoding='utf-8') as file:
-                data = json.load(file)
-            data['accounts'][0]['playerName'] = player_name
-            with open('cmcl.json', 'w', encoding='utf-8') as file:
-                json.dump(data, file, ensure_ascii=False, indent=4)
-
-    def log_output(self, output):
-        if output:
-            log(output.strip())
-    def on_tab_close_requested(self, index):
-        """处理TabBar关闭按钮点击事件"""
-        try:
-            
-            if self.minecraft_tab and isinstance(self.minecraft_tab, TabBar):
-                # 获取要关闭的标签的版本信息
-                tab_item = self.minecraft_tab.tabItem(index)
-                if tab_item:
-                    version = tab_item.routeKey()
-                    
-                    # 检查是否有对应的运行进程
-                    if version in self.running_processes:
-                        run_thread = self.running_processes[version]
-                        
-                        # 确认对话框
-                        w = MessageBox(
-                            i18nText('确认关闭'),
-                            i18nText(f'确定要关闭 Minecraft {version} 吗？'),
-                            self
-                        )
-                        
-                        if w.exec():
-                            # 用户确认关闭
-                            log(f"用户请求关闭 Minecraft {version}")
-                            
-                            # 终止进程
-                            if run_thread.terminate_process():
-                                # 从跟踪列表中移除
-                                del self.running_processes[version]
-                                
-                                # 移除标签
-                                self.minecraft_tab.removeTab(index)
-                                
-                                InfoBar.success(
-                                    title=i18nText('✅ 已关闭'),
-                                    content=i18nText(f"Minecraft {version} 已关闭"),
-                                    isClosable=True,
-                                    position=InfoBarPosition.TOP,
-                                    duration=3000,
-                                    parent=self
-                                )
-                            else:
-                                InfoBar.error(
-                                    title=i18nText('❌ 关闭失败'),
-                                    content=i18nText(f"无法终止 Minecraft {version} 进程"),
-                                    isClosable=True,
-                                    position=InfoBarPosition.TOP,
-                                    duration=5000,
-                                    parent=self
-                                )
-                    else:
-                        # 没有对应的进程，直接移除标签
-                        self.minecraft_tab.removeTab(index)
-                        log(f"移除了未运行状态的标签: {version}")
-                        
-        except Exception as e:
-            log(f"处理标签关闭请求时出错: {e}")
-            InfoBar.error(
-                title=i18nText('❌ 错误'),
-                content=i18nText("关闭标签时发生错误"),
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=5000,
-                parent=self
-            )
-
-    def on_run_script_finished(self, teaching_tip, run_button, version=None):
-        try:
-            modules.mwtool.hide_minecraft_tool()
-            modules.mwtool.stop_monitoring()
-        except Exception as e:
-            log(f"停止工具栏失败: {e}")
-
-        if self.update_show_text_thread:
-            self.update_show_text_thread.terminate()  # 停止更新线程
-            self.update_show_text_thread.wait()  # 确保线程完全停止
-        if teaching_tip and not sip.isdeleted(teaching_tip):
-            teaching_tip.close()  # 关闭气泡消息
-        
-        # 从运行进程列表中移除
-        if version and version in self.running_processes:
-            del self.running_processes[version]
-        
-        InfoBar.success(
-            title=i18nText('⏹️ 游戏结束'),
-            content=i18nText("Minecraft 已结束\n如果您认为是异常退出，请查看 log 文件夹中的最后一份日志文件\n并前往本项目的 Github 或 百络谷QQ群 询问"),
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=5000,
-            parent=self
-        )
-        self.is_running = False  # 重置标志变量
-
-        QApplication.processEvents()  # 处理所有挂起的事件
-        time.sleep(1)  # 等待1秒确保所有事件处理完毕
-
-    def on_run_script_error(self, error, teaching_tip, run_button):
-        try:
-            modules.mwtool.hide_minecraft_tool()
-            modules.mwtool.stop_monitoring()
+            threading.Thread(target=send_toast, daemon=True).start()
         except Exception:
             pass
-        if self.update_show_text_thread:
-            self.update_show_text_thread.terminate()  # 停止更新线程
-        if teaching_tip and not sip.isdeleted(teaching_tip):
-            teaching_tip.close()
-        InfoBar.error(
-            title=i18nText('❌ 运行失败'),
-            content=f"{i18nText('游戏启动失败')}: {error}",
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=5000,
-            parent=self
-        )
-        log(f"游戏启动失败: {error}", logging.ERROR)
-        self.is_running = False  # 重置标志变量
 
-    def update_show_text(self, text):
-        return
+    def _recordRecentRun(self, name, run_type):
+        """记录最近运行的项目"""
+        from datetime import datetime
+        try:
+            recent = []
+            if os.path.exists(self._recent_runs_path):
+                with open(self._recent_runs_path, 'r', encoding='utf-8') as f:
+                    recent = json.load(f)
+            # 移除同名旧记录
+            recent = [r for r in recent if r.get("name") != name]
+            # 插入到最前面
+            recent.insert(0, {
+                "name": name,
+                "type": run_type,
+                "lastRun": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            # 最多保留 20 条
+            recent = recent[:20]
+            os.makedirs(os.path.dirname(self._recent_runs_path), exist_ok=True)
+            with open(self._recent_runs_path, 'w', encoding='utf-8') as f:
+                json.dump(recent, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"记录最近运行失败: {e}")
 
-    def download_skin(self, widget):
-        if self.player_skin:
-            skin_url = self.player_skin
-            skin_data = requests.get(skin_url).content
-            with open("player_skin.png", "wb") as file:
-                file.write(skin_data)
-            log(f"皮肤已下载到 player_skin.png")
-    def download_cape(self, widget):
-        if self.player_cape:
-            cape_url = self.player_cape
-            cape_data = requests.get(cape_url).content
-            with open("player_cape.png", "wb") as file:
-                file.write(cape_data)
-            log(f"披风已下载到 player_cape.png")
-    def on_light_dark_changed(self, mode):
-        if mode == i18nText("跟随系统"):
-            self.apply_theme()
-        elif mode == i18nText("深色模式"):
-            self.apply_theme(QPalette(QColor("#2e2e2e")))
-        elif mode == i18nText("浅色模式"):
-            self.apply_theme(QPalette(QColor("#ffffff")))
-    def update_log_clear_button_text(self, button):
-        log_folder = os.path.join(BLglobals.datapath, 'log')
-        if os.path.exists(log_folder) and os.path.isdir(log_folder):
-            log_files = os.listdir(log_folder)
-            log_file_count = len(log_files)
-            total_size = sum(os.path.getsize(os.path.join(log_folder, f)) for f in log_files)
-            if log_file_count-1 <= 0:
-                button.setText(i18nText("没有日志可以清空了"))
-                button.setEnabled(False)
+    @Slot(result=list)
+    def getRecentRuns(self):
+        """获取最近运行的项目列表"""
+        try:
+            if os.path.exists(self._recent_runs_path):
+                with open(self._recent_runs_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"读取最近运行失败: {e}")
+        return []
+
+    @Slot(result=list)
+    def getRunningInstances(self):
+        import psutil
+        dead = [k for k, v in BLglobals.running_instances.items() if not psutil.pid_exists(v["pid"])]
+        for k in dead:
+            del BLglobals.running_instances[k]
+        return [{"id": k, **v} for k, v in BLglobals.running_instances.items()]
+
+    @Slot(str)
+    def suspendInstance(self, instance_id):
+        import psutil
+        entry = BLglobals.running_instances.get(instance_id)
+        if not entry or not psutil.pid_exists(entry["pid"]):
+            return
+        pid = entry["pid"]
+        try:
+            import platform as _platform
+            if _platform.system() == "Windows":
+                import ctypes
+                handle = ctypes.windll.kernel32.OpenProcess(0x1F0FFF, False, pid)
+                if entry["suspended"]:
+                    ctypes.windll.ntdll.NtResumeProcess(handle)
+                else:
+                    ctypes.windll.ntdll.NtSuspendProcess(handle)
+                ctypes.windll.kernel32.CloseHandle(handle)
             else:
-                button.setText(f"清空 {log_file_count-1} 个日志，总计 {total_size // 1024} KB")
+                import signal as _signal
+                import os as _os
+                _os.kill(pid, _signal.SIGCONT if entry["suspended"] else _signal.SIGSTOP)
+            entry["suspended"] = not entry["suspended"]
+            self.runningInstancesChanged.emit(self.getRunningInstances())
+        except Exception as e:
+            print(f"suspendInstance failed: {e}")
+
+    @Slot(str)
+    def terminateInstance(self, instance_id):
+        import psutil
+        entry = BLglobals.running_instances.pop(instance_id, None)
+        if entry and psutil.pid_exists(entry["pid"]):
+            try:
+                psutil.Process(entry["pid"]).kill()
+            except Exception as e:
+                print(f"terminateInstance failed: {e}")
+        self.runningInstancesChanged.emit(self.getRunningInstances())
+
+    @Slot(result=dict)
+    def getActivityInfo(self):
+        return BLglobals.BL_Activity
+
+    @Slot()
+    def refreshActivityInfo(self):
+        """从 API 刷新活动信息"""
+        from modules.BLServer import get_latest_version
+        def update_activity():
+            try:
+                _, _ = get_latest_version()
+                # BL_Activity 已在 get_latest_version 中更新
+                # 如果图标是远程 URL，则下载缓存到本地文件
+                icon_url = BLglobals.BL_Activity.get("icon", "")
+                if icon_url.startswith("http"):
+                    try:
+                        import requests, hashlib
+                        from PySide6.QtCore import QUrl
+                        resp = requests.get(icon_url, timeout=5)
+                        if resp.status_code == 200:
+                            # compute hash for filename
+                            h = hashlib.md5(icon_url.encode('utf-8')).hexdigest()
+                            cache_dir = os.path.join(SCRIPT_DIR, "cache")
+                            os.makedirs(cache_dir, exist_ok=True)
+                            local_path = os.path.join(cache_dir, f"activity_{h}.png")
+                            with open(local_path, "wb") as imgf:
+                                imgf.write(resp.content)
+                            # convert to file URL for QML
+                            url = QUrl.fromLocalFile(local_path).toString()
+                            BLglobals.BL_Activity["icon"] = url
+                            icon_path = url
+                        else:
+                            icon_path = icon_url
+                    except Exception as e:
+                        print(f"Failed to download activity icon: {e}")
+                        icon_path = icon_url
+                else:
+                    # non-http value might be local path; convert to file URL too
+                    from PySide6.QtCore import QUrl
+                    if icon_url:
+                        BLglobals.BL_Activity["icon"] = QUrl.fromLocalFile(icon_url).toString()
+                        icon_path = QUrl.fromLocalFile(icon_url).toString()
+                # else icon_path remains whatever returned
+                self._activity_info = BLglobals.BL_Activity
+                self.activityInfoChanged.emit(self._activity_info)
+            except Exception as e:
+                print(f"Error refreshing activity info: {e}")
+        
+        threading.Thread(target=update_activity, daemon=True).start()
+
+    @Slot()
+    def refreshServerInfo(self):
+        def update_callback(data):
+            self._server_info = data
+            self.serverInfoChanged.emit(data)
+        getServerData("Bloret", callback=update_callback)
+
+    @Slot(result=list)
+    def getLaunchItems(self):
+        from modules.setup_ui import get_all_launch_items
+        items = get_all_launch_items()
+        qml_items = []
+        
+        # Log for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"getLaunchItems: Retrieved {len(items)} items from get_all_launch_items()")
+        
+        for item in items:
+            # Extract icon path from item
+            icon_path = "../../icon/Grass_Block.png"  # Default
+            
+            if item.get("type") == "minecraft":
+                # For minecraft, check if we have metadata with custom icon
+                # Default to Grass_Block for minecraft
+                icon_path = "../../icon/Grass_Block.png"
+                
+            elif item.get("type") == "custom":
+                # For custom apps, use a generic app icon
+                icon_path = "../../icon/exeapps.png"
+            
+            qml_item = {
+                "name": item["name"],
+                "type": item["type"],
+                "path": item["path"],
+                "icon": icon_path
+            }
+            
+            logger.debug(f"getLaunchItems: Added item {qml_item}")
+            qml_items.append(qml_item)
+        
+        logger.debug(f"getLaunchItems: Returning {len(qml_items)} items to QML")
+        return qml_items
+
+    @Slot(str)
+    def selectLaunchItem(self, name):
+        try:
+            config_data = cfg.read()
+            config_data['ChoosedRun'] = name
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            print(f"Selected launch item: {name}")
+        except Exception as e:
+            print(f"Error selecting launch item: {e}")
+
+    @Slot(str)
+    def openVersionFolder(self, versionName):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            version_path = os.path.join(minecraft_dir, "versions", versionName)
+            if os.path.exists(version_path):
+                os.startfile(version_path)
+            else:
+                print(f"Version folder not found: {version_path}")
+        except Exception as e:
+            print(f"Error opening version folder: {e}")
+
+    @Slot(str, str)
+    def openSubFolder(self, versionName, subPath):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            base_path = os.path.join(minecraft_dir, "versions", versionName)
+            target_path = os.path.join(base_path, subPath)
+            
+            if not os.path.exists(target_path):
+                os.makedirs(target_path, exist_ok=True)
+            
+            os.startfile(target_path)
+        except Exception as e:
+            print(f"Error opening sub folder: {e}")
+
+    @Slot(str)
+    def deleteCustomItem(self, name):
+        try:
+            if name in BLglobals.customize_list:
+                BLglobals.customize_list.remove(name)
+                config_data = cfg.read()
+                config_data['customize_list'] = BLglobals.customize_list
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                print(f"Deleted custom item: {name}")
+        except Exception as e:
+            print(f"Error deleting custom item: {e}")
+
+    @Slot(str, str)
+    def renameCustomItem(self, oldName, newName):
+        try:
+            if oldName in BLglobals.customize_list:
+                idx = BLglobals.customize_list.index(oldName)
+                BLglobals.customize_list[idx] = newName
+                config_data = cfg.read()
+                config_data['customize_list'] = BLglobals.customize_list
+                if config_data.get('ChoosedRun') == oldName:
+                    config_data['ChoosedRun'] = newName
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                print(f"Renamed custom item: {oldName} -> {newName}")
+        except Exception as e:
+            print(f"Error renaming custom item: {e}")
+
+    @Slot(str)
+    def showCoreManager(self, versionName):
+        try:
+            import time
+            current_time = time.time()
+            # 防止在100ms内重复触发请求
+            if current_time - self._last_core_manager_request_time < 0.1:
+                return
+            
+            self._last_core_manager_request_time = current_time
+            
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
+            
+            core_data = {}
+            if os.path.exists(bl_json_path):
+                with open(bl_json_path, "r", encoding="utf-8") as f:
+                    full_data = json.load(f)
+                    core_data = full_data.get("versions", {}).get(versionName, {})
+            
+            self.coreManagerRequested.emit(versionName, core_data)
+        except Exception as e:
+            print(f"Error showing core manager: {e}")
+
+    @Slot(str, result="QVariant")
+    def getCoreData(self, versionName):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
+            
+            if os.path.exists(bl_json_path):
+                with open(bl_json_path, "r", encoding="utf-8") as f:
+                    full_data = json.load(f)
+                    return full_data.get("versions", {}).get(versionName, {})
+            return {}
+        except Exception as e:
+            print(f"Error getting core data: {e}")
+            return {}
+
+    @Slot(str, "QVariant")
+    def saveCoreData(self, versionName, data):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
+            
+            full_data = {"versions": {}}
+            if os.path.exists(bl_json_path):
+                with open(bl_json_path, "r", encoding="utf-8") as f:
+                    full_data = json.load(f)
+            
+            new_name = data.get("name", versionName)
+            
+            if new_name != versionName:
+                old_path = os.path.join(minecraft_dir, "versions", versionName)
+                new_path = os.path.join(minecraft_dir, "versions", new_name)
+                if os.path.exists(new_path):
+                    print("Target name already exists")
+                    return
+                if os.path.exists(old_path):
+                    os.rename(old_path, new_path)
+                
+                if versionName in full_data.get("versions", {}):
+                    del full_data["versions"][versionName]
+            
+            full_data["versions"][new_name] = {
+                "Fabric": data.get("Fabric", False),
+                "version": data.get("version", new_name),
+                "icon": data.get("icon", ""),
+                "server": data.get("server", ""),
+                "jvmArgs": data.get("jvmArgs", "")
+            }
+            
+            with open(bl_json_path, "w", encoding="utf-8") as f:
+                json.dump(full_data, f, ensure_ascii=False, indent=4)
+            
+            print(f"Core data saved for: {new_name}")
+        except Exception as e:
+            print(f"Error saving core data: {e}")
+
+    @Slot(str, result=str)
+    def selectCoreIcon(self, versionName):
+        try:
+            from PySide6.QtWidgets import QFileDialog
+            file_path, _ = QFileDialog.getOpenFileName(
+                None,
+                "选择图标",
+                "",
+                "Images (*.png *.jpg *.jpeg)"
+            )
+            if file_path:
+                return file_path
+            return ""
+        except Exception as e:
+            print(f"Error selecting icon: {e}")
+            return ""
+
+    @Slot(str, result=bool)
+    def confirmDeleteCore(self, versionName):
+        try:
+            from PySide6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                None,
+                "确认删除",
+                f"将删除 Minecraft 版本 {versionName}。删除后可在系统回收站中找到。",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                config_data = cfg.read()
+                minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+                version_path = os.path.join(minecraft_dir, "versions", versionName)
+                
+                if os.path.exists(version_path):
+                    if send2trash:
+                        send2trash.send2trash(version_path)
+                    else:
+                        import shutil
+                        shutil.rmtree(version_path)
+                
+                bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
+                if os.path.exists(bl_json_path):
+                    with open(bl_json_path, "r", encoding="utf-8") as f:
+                        full_data = json.load(f)
+                    if versionName in full_data.get("versions", {}):
+                        del full_data["versions"][versionName]
+                    with open(bl_json_path, "w", encoding="utf-8") as f:
+                        json.dump(full_data, f, ensure_ascii=False, indent=4)
+                
+                print(f"Core deleted: {versionName}")
+                return True
+            return False
+        except Exception as e:
+            print(f"Error deleting core: {e}")
+            return False
+
+    @Slot(str, result="QVariant")
+    def getServers(self, versionName):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            version_servers_dat = os.path.join(minecraft_dir, "versions", versionName, "servers.dat")
+            root_servers_dat = os.path.join(minecraft_dir, "servers.dat")
+            
+            read_path = ""
+            if os.path.exists(version_servers_dat):
+                read_path = version_servers_dat
+            elif os.path.exists(root_servers_dat):
+                read_path = root_servers_dat
+            
+            if read_path:
+                return self._parse_servers_dat(read_path)
+            return []
+        except Exception as e:
+            print(f"Error getting servers: {e}")
+            return []
+
+    def _parse_servers_dat(self, path):
+        import struct
+        import io
+        servers = []
+        try:
+            with open(path, 'rb') as f:
+                data = f.read()
+            
+            def read_string(stream):
+                length = struct.unpack('>h', stream.read(2))[0]
+                if length < 0:
+                    return ""
+                return stream.read(length).decode('utf-8')
+            
+            def read_tag(stream, has_name=True):
+                tag_type = struct.unpack('>b', stream.read(1))[0]
+                if tag_type == 0:
+                    return None, None
+                
+                name = ""
+                if has_name:
+                    name = read_string(stream)
+                
+                if tag_type == 8:
+                    return name, read_string(stream)
+                elif tag_type == 9:
+                    list_type = struct.unpack('>b', stream.read(1))[0]
+                    list_len = struct.unpack('>i', stream.read(4))[0]
+                    items = []
+                    for _ in range(list_len):
+                        _, val = read_tag(stream, False)
+                        items.append(val)
+                    return name, items
+                elif tag_type == 10:
+                    compound = {}
+                    while True:
+                        sub_name, sub_val = read_tag(stream)
+                        if sub_name is None:
+                            break
+                        compound[sub_name] = sub_val
+                    return name, compound
+                return name, None
+            
+            stream = io.BytesIO(data)
+            _, servers_data = read_tag(stream)
+            
+            if servers_data and 'servers' in servers_data:
+                for server in servers_data['servers']:
+                    icon_str = server.get('icon', '')
+                    # ensure string is clean and properly prefixed for QML
+                    if isinstance(icon_str, str):
+                        icon_str = icon_str.strip()
+                        if icon_str and not icon_str.startswith('data:'):
+                            icon_str = 'data:image/png;base64,' + icon_str
+                    else:
+                        icon_str = ''
+
+                    servers.append({
+                        'name': server.get('name', 'Minecraft Server'),
+                        'ip': server.get('ip', ''),
+                        'icon': icon_str
+                    })
+        except Exception as e:
+            print(f"Error parsing servers.dat: {e}")
+        return servers
+
+    @Slot(str, str, str)
+    def addServer(self, versionName, name, ip):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            version_servers_dat = os.path.join(minecraft_dir, "versions", versionName, "servers.dat")
+            
+            os.makedirs(os.path.dirname(version_servers_dat), exist_ok=True)
+            
+            servers = self._parse_servers_dat(version_servers_dat) if os.path.exists(version_servers_dat) else []
+            servers.append({'name': name, 'ip': ip, 'icon': ''})
+            
+            self._save_servers_dat(version_servers_dat, servers)
+            print(f"Server added: {name}")
+        except Exception as e:
+            print(f"Error adding server: {e}")
+
+    def _save_servers_dat(self, path, servers):
+        import struct
+        import io
+        try:
+            stream = io.BytesIO()
+            
+            def write_string(s):
+                encoded = s.encode('utf-8')
+                stream.write(struct.pack('>h', len(encoded)))
+                stream.write(encoded)
+            
+            stream.write(struct.pack('>b', 10))
+            write_string("")
+            
+            stream.write(struct.pack('>b', 9))
+            write_string("servers")
+            stream.write(struct.pack('>b', 10))
+            stream.write(struct.pack('>i', len(servers)))
+            
+            for server in servers:
+                stream.write(struct.pack('>b', 10))
+                write_string("")
+                
+                stream.write(struct.pack('>b', 8))
+                write_string("name")
+                write_string(server.get('name', ''))
+                
+                stream.write(struct.pack('>b', 8))
+                write_string("ip")
+                write_string(server.get('ip', ''))
+                
+                if server.get('icon'):
+                    stream.write(struct.pack('>b', 8))
+                    write_string("icon")
+                    write_string(server['icon'])
+                
+                stream.write(struct.pack('>b', 0))
+            
+            stream.write(struct.pack('>b', 0))
+            
+            with open(path, 'wb') as f:
+                f.write(stream.getvalue())
+            print(f"Saved {len(servers)} servers to {path}")
+        except Exception as e:
+            print(f"Error saving servers.dat: {e}")
+
+    @Slot(str, result="QVariant")
+    def getMods(self, versionName):
+        try:
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            mods_dir = os.path.join(minecraft_dir, "versions", versionName, "mods")
+            
+            if not os.path.exists(mods_dir):
+                os.makedirs(mods_dir, exist_ok=True)
+                return []
+            
+            mods = []
+            import zipfile
+            import base64
+            for filename in os.listdir(mods_dir):
+                file_path = os.path.join(mods_dir, filename)
+                if os.path.isdir(file_path):
+                    continue
+                
+                is_disabled = filename.endswith('.disabled')
+                if not (filename.endswith('.jar') or filename.endswith('.jar.disabled')):
+                    continue
+                
+                mod_data = {
+                    "name": filename,
+                    "path": file_path,
+                    "filename": filename,
+                    "version": "",
+                    "description": "无描述",
+                    "icon": "",
+                    "enabled": not is_disabled
+                }
+                
+                try:
+                    if zipfile.is_zipfile(file_path):
+                        with zipfile.ZipFile(file_path, 'r') as zf:
+                            if 'fabric.mod.json' in zf.namelist():
+                                with zf.open('fabric.mod.json') as f:
+                                    meta = json.load(f)
+                                    mod_data["name"] = meta.get("name", meta.get("id", filename))
+                                    mod_data["version"] = meta.get("version", "")
+                                    mod_data["description"] = meta.get("description", "")[:100]
+                                    
+                                    icon_path = meta.get("icon")
+                                    if icon_path and isinstance(icon_path, str) and icon_path in zf.namelist():
+                                        icon_data = zf.read(icon_path)
+                                        mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
+                                    elif f"assets/{meta.get('id')}/icon.png" in zf.namelist():
+                                        icon_data = zf.read(f"assets/{meta.get('id')}/icon.png")
+                                        mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
+                            elif 'mcmod.info' in zf.namelist():
+                                with zf.open('mcmod.info') as f:
+                                    meta_list = json.load(f)
+                                    if meta_list and isinstance(meta_list, list):
+                                        meta = meta_list[0]
+                                        mod_data["name"] = meta.get("name", filename)
+                                        mod_data["version"] = meta.get("version", "")
+                                        mod_data["description"] = meta.get("description", "")[:100]
+                                        
+                                        logo = meta.get("logoFile")
+                                        if logo and logo in zf.namelist():
+                                            icon_data = zf.read(logo)
+                                            mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
+                except Exception as e:
+                    print(f"Error reading mod {filename}: {e}")
+                
+                mods.append(mod_data)
+            
+            return mods
+        except Exception as e:
+            print(f"Error getting mods: {e}")
+            return []
+
+    @Slot(str, bool)
+    def toggleMod(self, path, enabled):
+        try:
+            if not os.path.exists(path):
+                return
+            
+            dirname, filename = os.path.split(path)
+            
+            if enabled:
+                if filename.endswith('.disabled'):
+                    new_filename = filename[:-9]
+                    new_path = os.path.join(dirname, new_filename)
+                    os.rename(path, new_path)
+            else:
+                if not filename.endswith('.disabled'):
+                    new_filename = filename + '.disabled'
+                    new_path = os.path.join(dirname, new_filename)
+                    os.rename(path, new_path)
+        except Exception as e:
+            print(f"Error toggling mod: {e}")
+
+    @Slot(str, result=bool)
+    def deleteMod(self, path):
+        try:
+            from PySide6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                None,
+                "确认删除",
+                f"将删除 Mod: {os.path.basename(path)}",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                if send2trash:
+                    send2trash.send2trash(path)
+                else:
+                    os.remove(path)
+                return True
+            return False
+        except Exception as e:
+            print(f"Error deleting mod: {e}")
+            return False
+
+    @Slot(str, result="QVariant")
+    def getResourcePacks(self, versionName):
+        try:
+            import base64
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            packs_dir = os.path.join(minecraft_dir, "versions", versionName, "resourcepacks")
+            
+            if not os.path.exists(packs_dir):
+                os.makedirs(packs_dir, exist_ok=True)
+                return []
+            
+            packs = []
+            import zipfile
+            for filename in os.listdir(packs_dir):
+                file_path = os.path.join(packs_dir, filename)
+                
+                if not (os.path.isdir(file_path) or filename.endswith('.zip')):
+                    continue
+                
+                pack_data = {
+                    "name": filename,
+                    "path": file_path,
+                    "description": "无描述",
+                    "icon": ""
+                }
+                
+                try:
+                    if os.path.isdir(file_path):
+                        mcmeta_path = os.path.join(file_path, "pack.mcmeta")
+                        icon_path = os.path.join(file_path, "pack.png")
+                        
+                        if os.path.exists(mcmeta_path):
+                            with open(mcmeta_path, 'r', encoding='utf-8') as f:
+                                meta = json.load(f)
+                                desc = meta.get("pack", {}).get("description", "")
+                                if isinstance(desc, dict):
+                                    desc = desc.get("translate", str(desc))
+                                pack_data["description"] = str(desc)[:100]
+                        
+                        if os.path.exists(icon_path):
+                            # read bytes and convert to data URI
+                            try:
+                                with open(icon_path, 'rb') as imgf:
+                                    b64 = base64.b64encode(imgf.read()).decode('utf-8')
+                                    pack_data["icon"] = f"data:image/png;base64,{b64}"
+                            except Exception as ee:
+                                print(f"Error reading resource pack icon {icon_path}: {ee}")
+                            
+                    elif zipfile.is_zipfile(file_path):
+                        with zipfile.ZipFile(file_path, 'r') as zf:
+                            if "pack.mcmeta" in zf.namelist():
+                                with zf.open("pack.mcmeta") as f:
+                                    meta = json.load(f)
+                                    desc = meta.get("pack", {}).get("description", "")
+                                    if isinstance(desc, dict):
+                                        desc = desc.get("translate", str(desc))
+                                    pack_data["description"] = str(desc)[:100]
+                            if "pack.png" in zf.namelist():
+                                try:
+                                    icon_bytes = zf.read("pack.png")
+                                    b64 = base64.b64encode(icon_bytes).decode('utf-8')
+                                    pack_data["icon"] = f"data:image/png;base64,{b64}"
+                                except Exception as ee:
+                                    print(f"Error extracting pack.png from {filename}: {ee}")
+                except Exception as e:
+                    print(f"Error reading resource pack {filename}: {e}")
+                
+                packs.append(pack_data)
+            
+            return packs
+        except Exception as e:
+            print(f"Error getting resource packs: {e}")
+            return []
+
+    @Slot(str, result=bool)
+    def deleteResourcePack(self, path):
+        try:
+            from PySide6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                None,
+                "确认删除",
+                f"将删除资源包: {os.path.basename(path)}",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                if send2trash:
+                    send2trash.send2trash(path)
+                else:
+                    import shutil
+                    if os.path.isdir(path):
+                        shutil.rmtree(path)
+                    else:
+                        os.remove(path)
+                return True
+            return False
+        except Exception as e:
+            print(f"Error deleting resource pack: {e}")
+            return False
+
+    @Slot(str, bool)
+    def askBloriko(self, query, deep_think):
+        print(f"Bloriko request: '{query}', deep think: {deep_think}")
+        def run_ask():
+            try:
+                config_data = cfg.read()
+                if not config_data.get("Bloret_PassPort_Login", False):
+                    self.blorikoResponseReceived.emit("未登录: 请先登录 Bloret PassPort 以使用 AI 功能。")
+                    return
+                
+                from modules.Bloriko import AskBloriko
+                response = AskBloriko(query, config_data, deepthink=deep_think)
+                self.blorikoResponseReceived.emit(response)
+            except Exception as e:
+                print(f"Error in askBloriko: {e}")
+                self.blorikoResponseReceived.emit(f"错误: {str(e)}")
+        threading.Thread(target=run_ask, daemon=True).start()
+
+    @Slot(str, bool)
+    def askBlorikoForMods(self, query, deep_think):
+        # We can reuse same signal or dedicated one, let's reuse
+        print(f"Bloriko Mod suggestion request: '{query}'")
+        self.askBloriko(query + ( " (请针对 Minecraft 模组给出建议)" if "模组" not in query and "mod" not in query.lower() else ""), deep_think)
+    
+    @Slot(str, str, bool)
+    def askBlorikoForModsWithVersion(self, query, version, deep_think):
+        """
+        带 Minecraft 版本的模组推荐请求
+        
+        Args:
+            query (str): 用户的需求描述
+            version (str): Minecraft 版本号
+            deep_think (bool): 是否启用深度思考
+        """
+        from modules.Bloriko import BuildModRecommendationQuestion
+        print(f"Bloriko Mod suggestion request with version: '{query}' for MC {version}")
+        recommendation_question = BuildModRecommendationQuestion(query, version)
+        self.askBloriko(recommendation_question, deep_think)
+
+    @Slot(result=list)
+    def getVanillaVersions(self):
+        try:
+            config_data = cfg.read()
+            return config_data.get('Minecraft_Versions', ["1.21.8", "1.21.7", "1.20.1"])
+        except:
+            return ["1.21.8", "1.21.7", "1.20.1"]
+
+    # 版本缓存
+    _versions_cache = {}
+    
+    @Slot(str, result=list)
+    def getVersionsByCategory(self, category):
+        """根据类别返回版本列表"""
+        try:
+            print(f"[DEBUG] Getting versions for category: {category}")
+            
+            if category == "百络谷支持版本":
+                print(f"[DEBUG] Returning Bloret supported versions: {len(BLglobals.ver_id_bloret)} items")
+                return BLglobals.ver_id_bloret
+            
+            # 检查是否已有一网打尽的标志，或者直接检查缓存
+            if category in self._versions_cache:
+                print(f"[DEBUG] Found cached versions for {category}: {len(self._versions_cache[category])} items")
+                return self._versions_cache[category]
+            
+            # 如果之前已经获取过清单但这个分类不在缓存里（说明是无效分类或者新分类），直接返回空
+            if getattr(self, '_manifest_fetched', False):
+                 return []
+
+            # 从BMCLAPI获取版本清单
+            api_url = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
+            print(f"[DEBUG] Fetching version manifest from: {api_url}")
+            
+            response = requests.get(api_url, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                all_versions = data.get("versions", [])
+                print(f"[DEBUG] Total versions fetched: {len(all_versions)}")
+                
+                # 一次性处理所有分类并缓存
+                self._versions_cache["正式版本"] = [v["id"] for v in all_versions if v.get("type") == "release"]
+                self._versions_cache["快照版本"] = [v["id"] for v in all_versions if v.get("type") == "snapshot"]
+                # 把 old_alpha 和 old_beta 都归为远古版本
+                self._versions_cache["远古版本"] = [v["id"] for v in all_versions if v.get("type") in ["old_alpha", "old_beta"]]
+                
+                self._manifest_fetched = True
+                
+                result = self._versions_cache.get(category, [])
+                print(f"[DEBUG] Cached result for {category}: {len(result)} items")
+                return result
+            else:
+                print(f"[ERROR] Failed to fetch versions: HTTP {response.status_code}")
+                return []
+        except Exception as e:
+            print(f"[ERROR] Exception getting versions by category {category}: {type(e).__name__}: {e}")
+            return []
+
+    # Removed incorrect getFabricVersions implementation here to use the correct one below
+
+    @Slot(result=list)
+    def getJavaDownloadVersions(self):
+        from modules.java import java_versions
+        return list(java_versions.keys())
+
+    @Slot(str, str, result='QVariant')
+    def validateVersionName(self, baseVersion, name):
+        """Validate name for installation: returns dict with valid, error, exists"""
+        result = {"valid": True, "error": "", "exists": False}
+        try:
+            # empty
+            if not name or name.strip() == "":
+                result["valid"] = False
+                result["error"] = "版本名不能为空"
+                return result
+            # invalid characters
+            invalid = r"[\\/:\*\?\"<>|]"
+            import re
+            if re.search(invalid, name):
+                result["valid"] = False
+                result["error"] = "版本名不能包含 \\ / : * ? \" < > | 等字符"
+                return result
+            # reserved names
+            reserved = ['CON','PRN','AUX','NUL'] + [f'COM{i}' for i in range(1,10)] + [f'LPT{i}' for i in range(1,10)]
+            if name.upper() in reserved:
+                result["valid"] = False
+                result["error"] = "版本名为 Windows 保留字"
+                return result
+            # existence
+            items = self.getLaunchItems()
+            for item in items:
+                if item.get("name") == name:
+                    result["exists"] = True
+                    break
+        except Exception as e:
+            print(f"validation exception: {e}")
+        return result
+
+    @Slot(str, str)
+    def downloadVanilla(self, version, versionName):
+        from modules.install import InstallMinecraftVersion
+        print(f"Requested download Vanilla: {version} as {versionName}")
+        title = f"正在下载 Minecraft {version}"
+        self.downloadDialogRequested.emit(title)
+        InstallMinecraftVersion(version, VersionName=versionName, backend=self)
+
+    @Slot(str, str)
+    def downloadFabric(self, version, versionName):
+        from modules.install import InstallMinecraftVersion
+        print(f"Requested download Fabric: {version} as {versionName}")
+        title = f"正在下载 Minecraft {version} 和 Fabric Loader"
+        self.downloadDialogRequested.emit(title)
+        InstallMinecraftVersion(version, Fabric_Loader=True, VersionName=versionName, backend=self)
+
+    @Slot()
+    def toggleDownloadPause(self):
+        from modules.install import toggle_current_download_pause
+        toggle_current_download_pause()
+
+    @Slot()
+    def cancelDownload(self):
+        from modules.install import cancel_current_download
+        cancel_current_download()
+
+    def updateDownloadProgress(self, progress, status, speed, downloaded, total):
+        self.downloadProgressUpdated.emit(progress, status, speed, downloaded, total)
+
+    def closeDownloadDialog(self):
+        self.downloadDialogClosed.emit()
+
+    def setDownloadPaused(self, paused):
+        self.downloadPaused.emit(paused)
+
+    @Slot(str)
+    def downloadJava(self, version):
+        from modules.java import InstallJava
+        print(f"Requested download Java: {version}")
+        InstallJava(version)
+
+    @Slot()
+    def addCustomApp(self):
+        print("Requested add custom app")
+        # 打开文件浏览对话框让用户选择 exe 或其他可执行文件
+        file_path = QFileDialog.getOpenFileName(
+            None,
+            "选择应用程序文件",
+            "",
+            "所有文件 (*);;执行文件 (*.exe);;程序包 (*.zip);;整合包 (*.zip);;批处理脚本 (*.bat)"
+        )[0]
+        
+        if not file_path:
+            print("用户取消了文件选择")
+            return
+        
+        # 提取文件名作为默认显示名称
+        default_name = os.path.splitext(os.path.basename(file_path))[0]
+        
+        # 创建一个简单的输入对话框让用户确认/修改名称
+        from PySide6.QtWidgets import QInputDialog
+        display_name, ok = QInputDialog.getText(
+            None,
+            "输入显示名称",
+            "请为此应用输入一个显示名称:",
+            text=default_name
+        )
+        
+        if not ok or not display_name:
+            print("用户取消了名称输入")
+            return
+        
+        # 保存到配置文件
+        try:
+            config_data = cfg.read()
+            if "Customize" not in config_data:
+                config_data["Customize"] = []
+            
+            # 检查是否已存在相同的项
+            for item in config_data["Customize"]:
+                if item.get("showname") == display_name:
+                    print(f"自定义项 '{display_name}' 已存在")
+                    return
+            
+            config_data["Customize"].append({
+                "showname": display_name,
+                "path": file_path
+            })
+            
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            
+            print(f"成功添加自定义项: {display_name} -> {file_path}")
+            # 可以在这里发出信号或刷新 UI（如果需要）
+        except Exception as e:
+            print(f"添加自定义项失败: {e}")
+
+    @Slot(result=str)
+    def getBloretVersion(self):
+        """获取当前版本号 - 优先从用户配置获取，否则从源配置文件获取"""
+        config_data = cfg.read()
+        version = config_data.get("ver")
+        if version:
+            return str(version)
+        
+        # 配置文件不存在或没有版本号，从源配置文件获取
+        source_config_path = cfg.source_config_path
+        if os.path.exists(source_config_path):
+            try:
+                with open(source_config_path, 'r', encoding='utf-8') as f:
+                    source_config = json.load(f)
+                    return str(source_config.get("ver", ""))
+            except Exception as e:
+                print(f"Error reading source config for version: {e}")
+        return ""
+
+    @Slot(result=str)
+    def getLanguageCode(self):
+        config_data = cfg.read()
+        lang_code = config_data.get("language") or config_data.get("Language") or "zh-cn"
+        if not isinstance(lang_code, str):
+            return "zh-cn"
+
+        lang_code = lang_code.strip()
+        return lang_code if lang_code else "zh-cn"
+
+    @Slot(result=list)
+    def getLanguages(self):
+        """从 Default.json 加载语言列表"""
+        try:
+            default_lang_path = "lang/Default.json"
+            if os.path.exists(default_lang_path):
+                with open(default_lang_path, "r", encoding="utf-8") as f:
+                    default_data = json.load(f)
+                    result = []
+                    # 从 Default.json 中提取语言列表
+                    if "lang" in default_data:
+                        for code, lang_info in default_data["lang"].items():
+                            # 使用 Default.json 中定义的名称
+                            name = lang_info.get("name", code)
+                            # 确保文件存在
+                            lang_file = f"lang/{lang_info.get('file', code + '.json')}"
+                            if os.path.exists(lang_file):
+                                result.append({"code": code, "name": name})
+                            else:
+                                # 如果文件不存在，跳过这个语言
+                                print(f"Warning: Language file {lang_file} not found for code {code}")
+                    if not result:
+                        result = [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
+            else:
+                # 如果 Default.json 不存在，回退到旧方法
+                lang_dir = "lang"
+                result = []
+                # 语言代码到显示名称的映射（常用语言）
+                lang_names = {
+                    "zh-cn": "简体中文", "zh-TW": "繁體中文", "en-US": "English (US)",
+                    "en-GB": "English (UK)", "ja-JP": "日本語", "ko-KR": "한국어",
+                    "fr-FR": "Français", "de-DE": "Deutsch", "es-ES": "Español",
+                    "ru-RU": "Русский", "pt-BR": "Português (Brasil)",
+                    "it-IT": "Italiano", "nl-NL": "Nederlands", "pl-PL": "Polski",
+                    "tr-TR": "Türkçe", "ar-SA": "العربية", "vi-VN": "Tiếng Việt",
+                }
+                if os.path.isdir(lang_dir):
+                    for fn in sorted(os.listdir(lang_dir)):
+                        if fn.endswith(".json") and fn != "Default.json":
+                            code = fn[:-5]  # 去掉 .json
+                            # 尝试从语言文件读取自描述名称
+                            name = lang_names.get(code, code)
+                            try:
+                                with open(os.path.join(lang_dir, fn), "r", encoding="utf-8") as f:
+                                    d = json.load(f)
+                                    # 某些语言文件里有 _meta.name 字段
+                                    if "_meta" in d and "name" in d["_meta"]:
+                                        name = d["_meta"]["name"]
+                            except Exception:
+                                pass
+                            result.append({"code": code, "name": name})
+                if not result:
+                    result = [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
+            return result
+        except Exception as e:
+            print(f"Error loading languages: {e}")
+            return [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
+
+    @Slot(str)
+    def setLanguage(self, lang_code):
+        try:
+            if not isinstance(lang_code, str):
+                lang_code = "" if lang_code is None else str(lang_code)
+
+            lang_code = lang_code.strip()
+            if not lang_code:
+                print("Ignored empty language code")
+                return
+
+            config_data = cfg.read()
+            config_data['language'] = lang_code
+            # Drop legacy key to avoid ambiguity.
+            config_data.pop('Language', None)
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            
+            from modules.i18n import reload_language
+            reload_language(lang_code)
+            print(f"Language set to: {lang_code}")
+            self.languageChanged.emit()
+        except Exception as e:
+            print(f"Error setting language: {e}")
+
+    @Slot(str, result=str)
+    def tr(self, key):
+        return i18nText(key)
+
+    # ── Software Update ──────────────────────────────────────────
+
+    def checkForUpdates(self):
+        """Check for updates in a background thread; emit updateAvailable if newer version exists."""
+        def _inner():
+            try:
+                config_data = cfg.read()
+                if config_data.get('localmod', False):
+                    print("Local mode enabled, skipping update check")
+                    return
+
+                from modules.BLServer import get_latest_version, IsNeedUpdate
+                latest_ver, update_text = get_latest_version()
+                
+                # 优先从用户配置获取版本号，如果不存在则从源配置文件获取
+                current_ver = config_data.get('ver')
+                if not current_ver:
+                    # 配置文件不存在或没有版本号，从源配置文件获取
+                    source_config_path = cfg.source_config_path
+                    if os.path.exists(source_config_path):
+                        try:
+                            with open(source_config_path, 'r', encoding='utf-8') as f:
+                                source_config = json.load(f)
+                                current_ver = source_config.get('ver', '0.0')
+                                print(f"Version from source config: {current_ver}")
+                        except Exception as e:
+                            print(f"Error reading source config: {e}")
+                            current_ver = '0.0'
+                    else:
+                        current_ver = '0.0'
+                
+                current_ver = str(current_ver)
+                print(f"Update check: current={current_ver}, latest={latest_ver}")
+
+                if latest_ver and IsNeedUpdate(current_ver, latest_ver):
+                    print(f"Update available: {latest_ver}")
+                    self.updateAvailable.emit(current_ver, latest_ver, update_text)
+                else:
+                    print("Already up to date")
+            except Exception as e:
+                print(f"Update check failed: {e}")
+
+        threading.Thread(target=_inner, daemon=True).start()
+
+    @Slot()
+    def startUpdate(self):
+        """Download the latest installer and launch it."""
+        def _inner():
+            try:
+                self.updateProgressUpdated.emit(0.05, i18nText("正在获取下载地址..."))
+
+                response = requests.get(f"{BLglobals.server_ip}:3001/api/info", timeout=15)
+                response.raise_for_status()
+                res = response.json()
+
+                download_url = res["downloads"]["stable"]["gitcode"]
+                version = res["latestVersion"]
+
+                self.updateProgressUpdated.emit(0.1, i18nText("正在下载更新文件..."))
+
+                import tempfile
+                temp_dir = tempfile.gettempdir()
+                file_name = os.path.join(temp_dir, f"Bloret-Launcher-Setup-{version}.exe")
+
+                with requests.get(download_url, stream=True, timeout=30) as r:
+                    r.raise_for_status()
+                    total_size = int(r.headers.get('content-length', 0))
+                    downloaded_size = 0
+                    last_progress = 0.1
+                    with open(file_name, 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                            downloaded_size += len(chunk)
+                            if total_size > 0:
+                                progress = 0.1 + (downloaded_size / total_size) * 0.8
+                                if progress - last_progress >= 0.03:
+                                    status = f"{downloaded_size // 1024} KB / {total_size // 1024} KB"
+                                    self.updateProgressUpdated.emit(progress, status)
+                                    last_progress = progress
+
+                self.updateProgressUpdated.emit(0.95, i18nText("正在启动安装程序..."))
+                subprocess.Popen([file_name, "--quickstart"])
+                sys.exit(0)
+
+            except Exception as e:
+                print(f"Update failed: {e}")
+                self.updateFailed.emit(str(e))
+
+    @Slot(result=list)
+    def getSystemJavas(self):
+        return ["C:\\Program Files\\Java\\jre1.8.0_361\\bin\\java.exe", "E:\\Java\\jdk-17\\bin\\java.exe"]
+
+    @Slot()
+    def openMinecraftDir(self):
+        config_data = cfg.read()
+        mc_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+        if mc_dir and os.path.exists(mc_dir):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(mc_dir))
         else:
-            button.setText(i18nText("清空日志"))
-# 初始化配置文件
-with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-    config = json.load(f)
+            print(f"Minecraft directory not found: {mc_dir}")
 
-# 获取系统深浅色主题
-isdarktheme = is_dark_theme()
-log(f"当前主题:{isdarktheme}")
+    @Slot()
+    def openLogDir(self):
+        log_dir = os.path.join(BLglobals.datapath, "log")
+        if os.path.exists(log_dir):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(log_dir))
 
-# 适配高DPI缩放
-QApplication.setHighDpiScaleFactorRoundingPolicy(
-    Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
-QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
-QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+    @Slot()
+    def clearLogs(self):
+        print("Clearing logs...")
+        log_dir = os.path.join(BLglobals.datapath, "log")
+        if os.path.exists(log_dir):
+            import shutil
+            for filename in os.listdir(log_dir):
+                file_path = os.path.join(log_dir, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    print('Failed to delete %s. Reason: %s' % (file_path, e))
+
+    @Slot(result=str)
+    def getMinecraftDir(self):
+        config_data = cfg.read()
+        return config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+
+    @Slot(result=str)
+    def browseMinecraftDir(self):
+        dir_path = QFileDialog.getExistingDirectory(None, "选择 Minecraft 目录", self.getMinecraftDir())
+        if dir_path:
+            self.setMinecraftDir(dir_path)
+            return dir_path
+        return ""
+
+    @Slot(str)
+    def setMinecraftDir(self, path):
+        config_data = cfg.read()
+        config_data['minecraft_dir'] = path
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        BLglobals.minecraft_dir = path
+        print(f"Minecraft directory updated to: {path}")
+
+    @Slot(result=list)
+    def getSystemJavas(self):
+        return scan_java_paths()
+
+    @Slot(result=str)
+    def getCurrentJavaPath(self):
+        config_data = cfg.read()
+        return config_data.get('java_path', 'Auto')
+
+    @Slot(str)
+    def setCurrentJavaPath(self, path):
+        config_data = cfg.read()
+        config_data['java_path'] = path
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Java path updated to: {path}")
+
+    @Slot(result=str)
+    def getThemeMode(self):
+        config_data = cfg.read()
+        return config_data.get('theme', 'Auto')
+
+    @Slot(str)
+    def setThemeMode(self, mode):
+        config_data = cfg.read()
+        config_data['theme'] = mode
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Theme mode updated to: {mode}")
+
+    @Slot(result=bool)
+    def getShowAccountOnHome(self):
+        config_data = cfg.read()
+        return config_data.get('show_account_on_home', True)
+
+    @Slot(bool)
+    def setShowAccountOnHome(self, show):
+        config_data = cfg.read()
+        config_data['show_account_on_home'] = show
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Show account on home updated to: {show}")
+
+    @Slot(result=bool)
+    def getMinimizeToTrayOnClose(self):
+        config_data = cfg.read()
+        return config_data.get('minimize_to_tray_on_close', True)
+
+    @Slot(bool)
+    def setMinimizeToTrayOnClose(self, enabled):
+        config_data = cfg.read()
+        config_data['minimize_to_tray_on_close'] = enabled
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Minimize to tray on close updated to: {enabled}")
+
+    @Slot(result=bool)
+    def isSystemTrayAvailable(self):
+        try:
+            return QSystemTrayIcon.isSystemTrayAvailable()
+        except Exception:
+            return False
+
+    @Slot(str)
+    def queryUUID(self, name):
+        print(f"Requested query UUID for name: {name}")
+        def run_query():
+            try:
+                response = requests.get(f"https://api.mojang.com/users/profiles/minecraft/{name}")
+                if response.status_code == 200:
+                    data = response.json()
+                    self.queryResultReceived.emit({"type": "uuid", "result": data.get("id"), "success": True})
+                else:
+                    self.queryResultReceived.emit({"type": "uuid", "success": False})
+            except Exception as e:
+                self.queryResultReceived.emit({"type": "uuid", "success": False, "error": str(e)})
+        threading.Thread(target=run_query, daemon=True).start()
+
+    @Slot(str)
+    def queryName(self, uuid):
+        print(f"Requested query name for UUID: {uuid}")
+        def run_query():
+            try:
+                response = requests.get(f"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}")
+                if response.status_code == 200:
+                    data = response.json()
+                    self.queryResultReceived.emit({"type": "name", "result": data.get("name"), "success": True})
+                else:
+                    self.queryResultReceived.emit({"type": "name", "success": False})
+            except Exception as e:
+                self.queryResultReceived.emit({"type": "name", "success": False, "error": str(e)})
+        threading.Thread(target=run_query, daemon=True).start()
+
+    @Slot(str)
+    def querySkin(self, uuid):
+        print(f"Requested query skin for UUID: {uuid}")
+        def run_query():
+            try:
+                import base64
+                response = requests.get(f"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}")
+                if response.status_code == 200:
+                    player_data = response.json()
+                    properties = player_data.get("properties", [])
+                    for prop in properties:
+                        if prop["name"] == "textures":
+                            textures = json.loads(base64.b64decode(prop["value"]).decode("utf-8"))
+                            skin = textures["textures"].get("SKIN", {}).get("url")
+                            cape = textures["textures"].get("CAPE", {}).get("url")
+                            self.queryResultReceived.emit({"type": "textures", "skin": skin, "cape": cape, "success": True})
+                            return
+                    self.queryResultReceived.emit({"type": "textures", "success": False})
+                else:
+                    self.queryResultReceived.emit({"type": "textures", "success": False})
+            except Exception as e:
+                self.queryResultReceived.emit({"type": "textures", "success": False, "error": str(e)})
+        threading.Thread(target=run_query, daemon=True).start()
+
+    @Slot(str)
+    def copyToClipboard(self, text):
+        from PySide6.QtGui import QGuiApplication
+        cb = QGuiApplication.clipboard()
+        cb.setText(text)
+        print(f"Copied to clipboard: {text}")
+
+    @Slot()
+    def startEasytierHost(self):
+        from modules.easytier import StartEasytierServer
+        print("Requested start Easytier host")
+        # For simplicity, using hardcoded/config-based name and secret
+        def run_et():
+            self.easytierStatusChanged.emit("正在启动", "请稍候...")
+            res = StartEasytierServer("Bloret", "123456") # Example defaults
+            if "." in res: # Looks like an IP
+                self.easytierStatusChanged.emit("已连接", f"您的虚拟 IP: {res}")
+            else:
+                self.easytierStatusChanged.emit("错误", res)
+        threading.Thread(target=run_et, daemon=True).start()
+
+    @Slot()
+    def startEasytierClient(self):
+        # Same as host for now in the simple view
+        self.startEasytierHost()
+
+    @Slot(result=list)
+    def getFabricVersions(self):
+        """从 .BL.json 读取 Fabric 版本列表（与旧版 setup_Mod_ui 一致）"""
+        try:
+            config_data = cfg.read()
+            mc_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            bl_json_path = os.path.join(mc_dir, "versions", ".BL.json")
+            if not os.path.exists(bl_json_path):
+                return []
+            with open(bl_json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            versions = data.get("versions", {})
+            # 只返回 Fabric 版本
+            fabric_versions = []
+            for ver_name, ver_info in versions.items():
+                if ver_info.get("Fabric", False):
+                    fabric_versions.append(ver_name)
+            return sorted(fabric_versions, reverse=True)
+        except Exception as e:
+            print(f"Error getting Fabric versions: {e}")
+            return []
+
+    @Slot(str)
+    def searchModrinth(self, query):
+        from modules.modrinth import search_mods
+        print(f"Modrinth search request: '{query}'")
+        def run_search():
+            try:
+                data = search_mods(query)
+                results = []
+                if isinstance(data, dict) and "hits" in data:
+                    for hit in data["hits"]:
+                        results.append({
+                            "name": hit.get("title", "Unknown"),
+                            "description": hit.get("description", ""),
+                            "id": hit.get("project_id"),
+                            "slug": hit.get("slug"),
+                            "icon_url": hit.get("icon_url", ""),
+                            "author": hit.get("author", ""),
+                            "downloads": hit.get("downloads", 0),
+                            "follows": hit.get("follows", 0),
+                            "categories": hit.get("display_categories", [])
+                        })
+                self.modrinthResultsReceived.emit(results)
+            except Exception as e:
+                print(f"Error searching Modrinth: {e}")
+                self.modrinthResultsReceived.emit([])
+        threading.Thread(target=run_search, daemon=True).start()
+
+    @Slot(str, str)
+    def downloadMod(self, mod_id, version_name):
+        """
+        下载并安装模组
+        
+        Args:
+            mod_id (str): 模组 ID 或 slug
+            version_name (str): 目标版本名称
+        """
+        from modules.modrinth import Get_Mod_File_Download_Url
+        print(f"Requested download mod: {mod_id} to {version_name}")
+        
+        def run_download():
+            try:
+                config_data = cfg.read()
+                mc_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+                
+                # 获取游戏版本
+                game_version = None
+                bl_json_path = os.path.join(mc_dir, "versions", ".BL.json")
+                if os.path.exists(bl_json_path):
+                    with open(bl_json_path, "r", encoding="utf-8") as f:
+                        bl_data = json.load(f)
+                        if version_name in bl_data.get("versions", {}):
+                            ver_info = bl_data["versions"][version_name]
+                            game_version = ver_info.get("version")
+                
+                if not game_version:
+                    # 简单的 fallback，假设版本名以版本号开头
+                    import re
+                    match = re.match(r"^(\d+\.\d+(\.\d+)?)", version_name)
+                    if match:
+                        game_version = match.group(1)
+                
+                print(f"Detected game version: {game_version}")
+
+                # 首先尝试以 mod_id 作为 slug 获取下载 URL
+                url = Get_Mod_File_Download_Url(mod_id, loaders=["fabric"], game_versions=[game_version] if game_version else None)
+                if url:
+                    print(f"Found download URL: {url}")
+                    # 获取 Minecraft 目录
+                    
+                    mods_dir = os.path.join(mc_dir, "versions", version_name, "mods")
+                    
+                    # 确保 mods 目录存在
+                    os.makedirs(mods_dir, exist_ok=True)
+                    
+                    # 从 URL 获取文件名
+                    filename = url.split('/')[-1]
+                    if not filename or '.' not in filename:
+                        filename = f"{mod_id}.jar"
+                    
+                    file_path = os.path.join(mods_dir, filename)
+                    
+                    # 下载文件
+                    print(f"Downloading mod to: {file_path}")
+                    response = requests.get(url, timeout=30)
+                    if response.status_code == 200:
+                        with open(file_path, 'wb') as f:
+                            f.write(response.content)
+                        print(f"Successfully downloaded mod to: {file_path}")
+                    else:
+                        print(f"Failed to download: HTTP {response.status_code}")
+                else:
+                    print(f"Could not find download URL for {mod_id}")
+                    # 尝试打开 Modrinth 页面
+                    QDesktopServices.openUrl(QUrl(f"https://modrinth.com/mod/{mod_id}"))
+            except Exception as e:
+                print(f"Error downloading mod: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        threading.Thread(target=run_download, daemon=True).start()
+
+    @Slot(result=str)
+    def getBloretPassPortUserName(self):
+        config_data = cfg.read()
+        if config_data.get('Bloret_PassPort_Login'):
+            return config_data.get('Bloret_PassPort_UserName', 'Unknown')
+        return "未登录"
+
+    @Slot(result=bool)
+    def getBloretPassPortLoginStatus(self):
+        config_data = cfg.read()
+        return config_data.get('Bloret_PassPort_Login', False)
+
+    @Slot(result=str)
+    def getPassPortName(self):
+        return self.getBloretPassPortUserName()
+
+    @Slot(result=str)
+    def getPassPortAvatar(self):
+        """获取用户头像 - 优先使用 PassPort 头像，备用使用 Minecraft 账户头像"""
+        print(f"\n[getPassPortAvatar] 方法被调用")
+        config_data = cfg.read()
+        
+        is_logged_in = config_data.get('Bloret_PassPort_Login')
+        print(f"  登录状态: {is_logged_in}")
+        if not is_logged_in:
+            print(f"  未登录，返回空字符串")
+            return ""
+        
+        username = config_data.get('Bloret_PassPort_UserName', '')
+        print(f"  PassPort 用户名: {username}")
+        if not username:
+            print(f"  用户名为空，返回空字符串")
+            return ""
+        
+        cache_dir = os.path.join(BLglobals.cache_path, 'avatars')
+        print(f"  缓存目录: {cache_dir}")
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            print(f"  缓存目录已创建")
+        except Exception as e:
+            print(f"  创建缓存目录失败: {e}")
+        
+        cache_file = os.path.join(cache_dir, f"{username}_passport.png")
+        print(f"  缓存文件路径: {cache_file}")
+        
+        # 从 config.json 读取头像 URL
+        avatar_url = config_data.get('Bloret_PassPort_Avatar', '')
+        print(f"  存储的头像 URL: {avatar_url if avatar_url else '(空)'}")
+        
+        # 如果有有效的头像 URL，尝试下载
+        if avatar_url and (avatar_url.startswith('http://') or avatar_url.startswith('https://')):
+            try:
+                print(f"  开始从 PassPort 头像 URL 下载...")
+                print(f"  请求 URL: {avatar_url}")
+                
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
+                }
+                response = requests.get(avatar_url, timeout=10, headers=headers)
+                print(f"  HTTP 响应状态码: {response.status_code}")
+                print(f"  响应内容大小: {len(response.content)} bytes")
+                
+                if response.status_code == 200 and len(response.content) > 500:
+                    # 保存到缓存
+                    with open(cache_file, 'wb') as f:
+                        f.write(response.content)
+                    print(f"  PassPort 头像已保存到缓存文件")
+                    
+                    local_url = QUrl.fromLocalFile(cache_file).toString()
+                    print(f"  返回本地文件 URL: {local_url}")
+                    print(f"[getPassPortAvatar] 方法执行完成\n")
+                    return local_url
+                else:
+                    print(f"  下载失败：HTTP {response.status_code} 或内容过小")
+            except Exception as e:
+                print(f"  下载头像异常: {type(e).__name__}: {e}")
+        
+        # 如果 PassPort 头像不可用，尝试使用 Minecraft 账户的头像
+        print(f"  PassPort 头像不可用，尝试使用 Minecraft 账户头像...")
+        mc_account_config = config_data.get("MinecraftAccount", {})
+        accounts_list = mc_account_config.get("accounts", [])
+        chosen_index = mc_account_config.get("chosen", 0)
+        
+        if accounts_list and 0 <= chosen_index < len(accounts_list):
+            chosen_account = accounts_list[chosen_index]
+            mc_uuid = chosen_account.get("uuid", "")
+            mc_username = chosen_account.get("username", "")
+            print(f"  选中的 Minecraft 账户: {mc_username}, UUID: {mc_uuid}")
+            
+            # 优先使用 UUID 获取头像
+            avatar_identifier = mc_uuid if mc_uuid else mc_username
+            if avatar_identifier:
+                try:
+                    # 使用 minotar.net 获取头像（更稳定）
+                    fallback_url = f"https://minotar.net/helm/{avatar_identifier}/64"
+                    print(f"  Minecraft 头像 URL: {fallback_url}")
+                    response = requests.get(fallback_url, timeout=10, headers={"User-Agent": "BloretLauncher/1.0"})
+                    print(f"  HTTP 响应状态码: {response.status_code}")
+                    print(f"  响应内容大小: {len(response.content)} bytes")
+                    
+                    if response.status_code == 200 and len(response.content) > 500:
+                        with open(cache_file, 'wb') as f:
+                            f.write(response.content)
+                        print(f"  Minecraft 头像已保存到缓存文件")
+                        local_url = QUrl.fromLocalFile(cache_file).toString()
+                        print(f"  返回本地文件 URL: {local_url}")
+                        print(f"[getPassPortAvatar] 方法执行完成\n")
+                        return local_url
+                    else:
+                        print(f"  Minecraft 头像下载失败：HTTP {response.status_code} 或内容过小")
+                except Exception as e:
+                    print(f"  Minecraft 头像下载异常: {type(e).__name__}: {e}")
+        
+        print(f"  所有方法都失败，返回空字符串")
+        print(f"[getPassPortAvatar] 方法执行完成\n")
+        return ""
+
+    # Removed duplicate getPlayerName, getVanillaVersions, getFabricVersions, getJavaDownloadVersions, downloadJava
+    # ensuring the correct implementations later in the file are used.
+    pass
+
+    @Slot()
+    def loginBloretPassPort(self):
+        from modules.links import Bloret_PassPort_Account_login
+        Bloret_PassPort_Account_login()
+
+    @Slot()
+    def logoutBloretPassPort(self):
+        from modules.Bloret_PassPort import Bloret_PassPort_Account_logout
+        # We need to pass the main window or a mock for homeInterface
+        config_data = cfg.read()
+        config_data['Bloret_PassPort_Login'] = False
+        config_data['Bloret_PassPort_UserName'] = ""
+        config_data['Bloret_PassPort_PassWord'] = ""
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print("Logged out from Bloret PassPort")
+        # 发出信号以刷新 UI（不传递参数，让 QML 主动查询）
+        self.minecraftAccountsChanged.emit([])
+
+    @Slot()
+    def refreshMinecraftAccounts(self):
+        # 发出信号以刷新 UI
+        self.minecraftAccountsChanged.emit([])
+
+    @Slot(result=list)
+    def getMinecraftAccounts(self):
+        config_data = cfg.read()
+        mc_data = config_data.get("MinecraftAccount", {})
+        accounts = mc_data.get("accounts", [])
+        chosen_idx = mc_data.get("chosen", 0)
+        
+        result = []
+        for i, acc in enumerate(accounts):
+            uuid = acc.get("uuid", "")
+            # Generate avatar URL if UUID is present
+            # 使用 minotar.net 的 helmet/avatar 接口，如果没有 UUID 则使用默认头像
+            if uuid:
+                avatar_url = f"https://minotar.net/helm/{uuid}/64"
+            else:
+                # 对于离线账户，使用用户名生成头像
+                username = acc.get("username", "")
+                if username:
+                    avatar_url = f"https://minotar.net/helm/{username}/64"
+                else:
+                    avatar_url = ""
+            result.append({
+                "index": i,
+                "name": acc.get("username", "Unknown"),
+                "type": acc.get("type", "Offline"),
+                "uuid": uuid,
+                "avatarUrl": avatar_url,
+                "isDefault": (i == chosen_idx)
+            })
+        return result
+
+    @Slot(int)
+    def setDefaultMinecraftAccount(self, index):
+        config_data = cfg.read()
+        if "MinecraftAccount" not in config_data:
+            config_data["MinecraftAccount"] = {}
+        config_data["MinecraftAccount"]["chosen"] = index
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Set default Minecraft account to index: {index}")
+        self.minecraftAccountsChanged.emit([])
+
+    @Slot()
+    def manageAccountOnWebsite(self):
+        QDesktopServices.openUrl(QUrl("https://passport.bloret.net/"))
+
+    @Slot()
+    def syncAccountFromPassPort(self):
+        from modules.Bloret_PassPort import sync_bloret_passport_account_to_mc
+        print("Requested sync account from PassPort")
+        def run_sync():
+            try:
+                success = sync_bloret_passport_account_to_mc(None)
+                if success:
+                    self.minecraftAccountsChanged.emit([])
+                    self.syncStatusChanged.emit("success")
+                else:
+                    self.syncStatusChanged.emit("error: 同步失败，请检查是否已登录 Bloret PassPort")
+            except Exception as e:
+                print(f"Error syncing accounts: {e}")
+                self.syncStatusChanged.emit(f"error: {str(e)}")
+        threading.Thread(target=run_sync, daemon=True).start()
+
+    @Slot(result=str)
+    def getIpv6Address(self):
+        from modules.setup_ui import get_ipv6_address
+        addr = get_ipv6_address()
+        return addr if addr else "无法获取 IPv6 地址"
+
+    @Slot(result=str)
+    def checkIpv6Address(self):
+        return self.getIpv6Address()
+
+    @Slot()
+    def takeScreenCut(self):
+        """截图功能"""
+        from modules.ShortCut import ScreenShortCut
+        from PySide6.QtCore import QTimer
+        print("Requested screenshot")
+
+        def start_screenshot():
+            try:
+                self._screenshot_widget = ScreenShortCut()
+                if self._screenshot_widget is not None:
+                    self._screenshot_widget.destroyed.connect(lambda *args: setattr(self, '_screenshot_widget', None))
+            except Exception as e:
+                print(f"Failed to start screenshot: {e}")
+
+        # 使用 QTimer.singleShot 在主线程中执行截图，避免线程问题
+        QTimer.singleShot(0, start_screenshot)
+
+    @Slot(str, str)
+    def startEasytierWithConfig(self, port, password):
+        from modules.easytier import StartEasytierServer
+        print(f"Starting EasyTier for MC port {port} with password {password}")
+        
+        config_data = cfg.read()
+        if not config_data.get("Bloret_PassPort_Login"):
+            self.easytierStatusChanged.emit("未登录", "请先在通行证页面登录")
+            return
+
+        username = config_data.get("Bloret_PassPort_UserName", "")
+        easytier_name = "BLClient" + username
+        
+        def run_et():
+            self.easytierStatusChanged.emit("正在启动", "请稍候...")
+            res = StartEasytierServer(easytier_name, password)
+            if "." in res: # Success with IP (contains IP address)
+                self.easytierStatusChanged.emit("已连接", f"您的虚拟 IP: {res}\n共享端口: {port}")
+            elif res.startswith(i18nText("~")): # Success without IP (local direct mode)
+                # 移除 ~ 前缀，显示友好提示
+                msg = res[1:]  # 移除 ~ 前缀
+                self.easytierStatusChanged.emit("已启动", msg)
+            else: # Error
+                self.easytierStatusChanged.emit("错误", res)
+        threading.Thread(target=run_et, daemon=True).start()
+
+    @Slot(str, str)
+    def joinEasytierWithConfig(self, host_name, password):
+        # In EasyTier, joining is basically starting a server with same name/secret
+        # But for the UI we might want to distinguish.
+        self.startEasytierWithConfig("25565", password) # Join often doesn't need port redirect for the joiner
+
+    @Slot(result=str)
+    def getEasytierStatusTitle(self):
+        return "未连接"
+
+    @Slot(result=str)
+    def getEasytierStatusDesc(self):
+        return "您尚未连接到 Easytier 网络"
+
+    @Slot(result=str)
+    def getEasytierLinkTip(self):
+        return ""
+
+    @Slot(result=str)
+    def getEasytierLinkShow(self):
+        return ""
+
+    @Slot(str)
+    def openUrl(self, url):
+        print(f"Requested to open URL: {url}")
+        QDesktopServices.openUrl(QUrl(url))
+        
+    @Slot()
+    def joinQQBloret(self):
+        from modules.links import open_qq_link
+        open_qq_link()
+
+    @Slot()
+    def joinQQCommunity(self):
+        from modules.links import open_BLC_qq_link
+        open_BLC_qq_link()
+
+    @Slot()
+    def openGithubOrg(self):
+        from modules.links import open_github_bloret
+        open_github_bloret()
+
+    @Slot()
+    def openGithubRepo(self):
+        from modules.links import open_github_bloret_Launcher
+        open_github_bloret_Launcher()
+
+    # ==================== BBBS ====================
+
+    @Slot(result=bool)
+    def isBBBSAuthenticated(self):
+        config_data = cfg.read()
+        return bool(config_data.get('bbbs_session', ''))
+
+    @Slot()
+    def fetchBBBSSummary(self):
+        def run():
+            from modules.bbbs import fetch_summary
+            try:
+                data = fetch_summary()
+                if data is not None:
+                    self.bbbsSummaryReceived.emit(data if isinstance(data, dict) else {"text": str(data)})
+                else:
+                    self.bbbsErrorOccurred.emit("无法获取每日摘要")
+            except Exception as e:
+                self.bbbsErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot()
+    def fetchBBBSLeaderboard(self):
+        def run():
+            from modules.bbbs import fetch_leaderboard_posts
+            try:
+                data = fetch_leaderboard_posts()
+                self.bbbsLeaderboardReceived.emit(data or [])
+            except Exception as e:
+                self.bbbsErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot()
+    def fetchBBBSAllPosts(self):
+        def run():
+            from modules.bbbs import fetch_all_posts
+            try:
+                data = fetch_all_posts()
+                self.bbbsAllPostsReceived.emit(data or [])
+            except Exception as e:
+                self.bbbsErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    # ==================== Live ====================
+
+    @Slot()
+    def fetchLiveSpaceList(self):
+        def run():
+            from modules.bbbs_live import fetch_space_list
+            try:
+                data = fetch_space_list()
+                self.liveSpaceListReceived.emit(data or [])
+            except Exception as e:
+                self.liveErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot(str, str)
+    def joinLiveSpace(self, spaceId, password):
+        def run():
+            from modules.bbbs_live import check_access, verify_password, LiveSSEClient
+            try:
+                access = check_access(spaceId)
+                if access and access.get('needsPassword'):
+                    if password:
+                        result = verify_password(spaceId, password)
+                        if not result or not result.get('success'):
+                            self.liveErrorOccurred.emit("密码验证失败")
+                            return
+                    else:
+                        self.liveErrorOccurred.emit("需要密码才能加入")
+                        return
+
+                self._current_live_space_id = spaceId
+                self._live_sse_client = LiveSSEClient(spaceId, self._handle_live_event)
+                self._live_sse_client.start()
+                self.liveConnectionStateChanged.emit("connecting")
+            except Exception as e:
+                self.liveErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot()
+    def leaveLiveSpace(self):
+        if self._live_sse_client:
+            self._live_sse_client.stop()
+            self._live_sse_client = None
+        if self._live_webrtc_manager:
+            self._live_webrtc_manager.stop()
+            self._live_webrtc_manager = None
+        self._current_live_space_id = None
+        self.liveLeftSpace.emit()
+        self.liveConnectionStateChanged.emit("disconnected")
+
+    @Slot(str)
+    def sendLiveChatMessage(self, message):
+        def run():
+            from modules.bbbs_live import send_signal
+            try:
+                send_signal(self._current_live_space_id, {
+                    "type": "chat",
+                    "payload": {"message": message}
+                })
+            except Exception as e:
+                self.liveErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot(str)
+    def createLiveSpace(self, name):
+        def run():
+            from modules.bbbs_live import create_space
+            try:
+                result = create_space(name)
+                if result and result.get('success'):
+                    self.fetchLiveSpaceList()
+                else:
+                    self.liveErrorOccurred.emit("创建空间失败")
+            except Exception as e:
+                self.liveErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot(bool)
+    def toggleLiveAudio(self, enabled):
+        if self._live_webrtc_manager:
+            self._live_webrtc_manager.toggle_audio(enabled)
+
+    @Slot(bool)
+    def toggleLiveVideo(self, enabled):
+        if self._live_webrtc_manager:
+            self._live_webrtc_manager.toggle_video(enabled)
+
+    def _handle_live_event(self, event):
+        """分发 SSE 事件到对应的 Signal"""
+        event_type = event.get("type", "")
+        if event_type == "init":
+            self.liveJoinedSpace.emit(event)
+            self.liveConnectionStateChanged.emit("connected")
+        elif event_type in ("user-joined", "user-left"):
+            self.liveUserEvent.emit(event)
+        elif event_type == "chat":
+            self.liveChatMessageReceived.emit(event)
+        elif event_type in ("offer", "answer", "ice-candidate"):
+            if self._live_webrtc_manager:
+                self._live_webrtc_manager.handle_signaling(event)
+            self.liveSignalReceived.emit(event)
+        elif event_type == "error":
+            self.liveErrorOccurred.emit(event.get("message", "未知错误"))
+
+    # ========== OOBE 相关方法 ==========
+
+    @Slot(result=bool)
+    def isFirstRun(self):
+        """检查是否是首次运行 - 通过检查配置文件中是否有必要配置项来判断"""
+        try:
+            config_data = cfg.read()
+            # 如果没有设置 minecraft_dir 或者 Java_Path，则认为是首次运行
+            minecraft_dir = config_data.get("minecraft_dir", "")
+            java_path = config_data.get("Java_Path", "")
+            return not minecraft_dir or not java_path
+        except Exception:
+            return True
+
+    @Slot()
+    def completeOOBE(self):
+        """标记 OOBE 已完成 - 从源配置文件复制默认配置，但保留用户已保存的数据"""
+        try:
+            import shutil
+            # 从 modules.config 获取源配置文件路径
+            source_config = cfg.source_config_path if hasattr(cfg, 'source_config_path') else str(SCRIPT_DIR / 'config.json')
+            target_config = BLglobals.config_path
+            
+            # 首先保存用户在 OOBE 中已经设置的数据
+            existing_config = cfg.read()
+            existing_mc_account = existing_config.get("MinecraftAccount", {})
+            existing_java_path = existing_config.get("Java_Path", "")
+            existing_minecraft_dir = existing_config.get("minecraft_dir", "")
+            existing_language = existing_config.get("language", "zh-cn")
+            existing_passport_login = existing_config.get("Bloret_PassPort_Login", False)
+            existing_passport_username = existing_config.get("Bloret_PassPort_UserName", "")
+            existing_passport_admin = existing_config.get("Bloret_PassPort_Admin", False)
+            existing_passport_avatar = existing_config.get("Bloret_PassPort_Avatar", "")
+            existing_passport_password = existing_config.get("Bloret_PassPort_PassWord", "")
+            
+            if os.path.exists(source_config):
+                # 复制默认配置文件
+                shutil.copyfile(source_config, target_config)
+                print(f"OOBE completed: Default config copied to {target_config}")
+                
+                # 读取复制的默认配置
+                config_data = cfg.read()
+                
+                # 恢复用户在 OOBE 中已保存的数据
+                if existing_mc_account.get("accounts") or existing_mc_account.get("chosen", -1) >= 0:
+                    config_data["MinecraftAccount"] = existing_mc_account
+                    print(f"Preserved MinecraftAccount: {existing_mc_account}")
+                
+                if existing_java_path:
+                    config_data["Java_Path"] = existing_java_path
+                    print(f"Preserved Java_Path: {existing_java_path}")
+                
+                if existing_minecraft_dir:
+                    config_data["minecraft_dir"] = existing_minecraft_dir
+                    print(f"Preserved minecraft_dir: {existing_minecraft_dir}")
+                
+                if existing_language and existing_language != "zh-cn":
+                    config_data["language"] = existing_language
+                    print(f"Preserved language: {existing_language}")
+                
+                # 保留 Bloret PassPort 登录状态
+                if existing_passport_login:
+                    config_data["Bloret_PassPort_Login"] = existing_passport_login
+                    config_data["Bloret_PassPort_UserName"] = existing_passport_username
+                    config_data["Bloret_PassPort_Admin"] = existing_passport_admin
+                    if existing_passport_avatar:
+                        config_data["Bloret_PassPort_Avatar"] = existing_passport_avatar
+                    if existing_passport_password:
+                        config_data["Bloret_PassPort_PassWord"] = existing_passport_password
+                    print(f"Preserved PassPort login: {existing_passport_username}")
+                
+                # 标记首次运行完成
+                config_data["first-run"] = False
+                
+                with open(target_config, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                print("OOBE completed: User data preserved")
+            else:
+                # 如果没有源配置文件，创建一个基本的，并保留用户数据
+                config_data = {
+                    "minecraft-part": ".minecraft",
+                    "first-run": False,
+                    "ver": "25.0",
+                    "minecraft_dir": existing_minecraft_dir,
+                    "Java_Path": existing_java_path,
+                    "language": existing_language,
+                    "MinecraftAccount": existing_mc_account,
+                    "Bloret_PassPort_Login": existing_passport_login,
+                    "Bloret_PassPort_UserName": existing_passport_username,
+                    "Bloret_PassPort_Admin": existing_passport_admin,
+                    "Bloret_PassPort_Avatar": existing_passport_avatar,
+                    "Bloret_PassPort_PassWord": existing_passport_password
+                }
+                with open(target_config, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                print("OOBE completed: Created config with user data")
+        except Exception as e:
+            print(f"Error completing OOBE: {e}")
+
+    @Slot(result=str)
+    def getDefaultMinecraftDir(self):
+        """获取默认的 Minecraft 目录路径"""
+        # 默认目录为 %appdata%/Bloret-Launcher/.minecraft
+        return os.path.join(BLglobals.datapath, ".minecraft")
+
+    @Slot(result=str)
+    def selectMinecraftDirectory(self):
+        """让用户选择 Minecraft 目录"""
+        from PySide6.QtWidgets import QFileDialog
+        default_dir = os.path.join(BLglobals.datapath, ".minecraft")
+        selected_dir = QFileDialog.getExistingDirectory(
+            None,
+            self.tr("选择 Minecraft 游戏文件夹"),
+            default_dir
+        )
+        if selected_dir:
+            # 保存到配置
+            try:
+                config_data = cfg.read()
+                config_data["minecraft_dir"] = selected_dir
+                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                print(f"Minecraft directory set to: {selected_dir}")
+                return selected_dir
+            except Exception as e:
+                print(f"Error saving minecraft directory: {e}")
+        return ""
+
+    @Slot(str)
+    def setMinecraftDirectory(self, minecraft_dir):
+        """设置 Minecraft 目录"""
+        try:
+            config_data = cfg.read()
+            config_data["minecraft_dir"] = minecraft_dir
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            print(f"Minecraft directory set to: {minecraft_dir}")
+        except Exception as e:
+            print(f"Error setting minecraft directory: {e}")
+
+    @Slot(result=str)
+    def getAppDataPath(self):
+        """获取 AppData 路径"""
+        import os
+        return os.environ.get('APPDATA', '')
+
+    @Slot()
+    def checkJavaEnvironment(self):
+        """检查 Java 运行环境"""
+        def check_java():
+            try:
+                import subprocess
+                import shutil
+                
+                java_path = ""
+                
+                # 1. 首先尝试从配置获取 Java 路径
+                config_data = cfg.read()
+                config_java_path = config_data.get("Java_Path", "")
+                
+                if config_java_path and os.path.exists(config_java_path):
+                    java_path = config_java_path
+                
+                # 2. 如果配置中没有或无效，尝试在系统 PATH 中查找
+                if not java_path:
+                    # Windows 上需要查找 java.exe
+                    java_exe = shutil.which("java")
+                    if java_exe:
+                        java_path = java_exe
+                
+                # 3. 尝试常见的 Java 安装路径 (Windows)
+                if not java_path:
+                    common_paths = []
+                    
+                    # Program Files 下的 Java
+                    program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
+                    program_files_x86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
+                    
+                    def find_java_in_dir(base_dir):
+                        """递归查找目录下的 java.exe，只搜索 Java 相关文件夹"""
+                        found = []
+                        java_keywords = ("java", "jdk", "jre", "zulu", "adopt", "corretto", "microsoft", "openjdk", "temurin", "graalvm")
+                        try:
+                            for folder in os.listdir(base_dir):
+                                folder_path = os.path.join(base_dir, folder)
+                                if os.path.isdir(folder_path) and folder.lower().startswith(java_keywords):
+                                    # 首先检查直接子目录下的 bin/java.exe
+                                    potential_path = os.path.join(folder_path, "bin", "java.exe")
+                                    if os.path.exists(potential_path):
+                                        found.append(potential_path)
+                                    # 如果没有找到，递归检查子目录（最多 2 层）
+                                    else:
+                                        try:
+                                            for subfolder in os.listdir(folder_path):
+                                                subfolder_path = os.path.join(folder_path, subfolder)
+                                                if os.path.isdir(subfolder_path):
+                                                    potential_path = os.path.join(subfolder_path, "bin", "java.exe")
+                                                    if os.path.exists(potential_path):
+                                                        found.append(potential_path)
+                                        except Exception:
+                                            pass
+                        except Exception:
+                            pass
+                        return found
+                    
+                    for base in [program_files, program_files_x86]:
+                        if os.path.exists(base):
+                            common_paths.extend(find_java_in_dir(base))
+                    
+                    # 检查 JAVA_HOME 环境变量
+                    java_home = os.environ.get("JAVA_HOME", "")
+                    if java_home:
+                        potential_path = os.path.join(java_home, "bin", "java.exe")
+                        if os.path.exists(potential_path):
+                            common_paths.insert(0, potential_path)
+                    
+                    # 测试每个可能的路径
+                    for potential_path in common_paths:
+                        try:
+                            result = subprocess.run(
+                                [potential_path, "-version"],
+                                capture_output=True,
+                                text=True,
+                                timeout=10,
+                                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                            )
+                            if result.returncode == 0:
+                                java_path = potential_path
+                                break
+                        except Exception:
+                            continue
+                
+                # 4. 验证找到的 Java 是否可用
+                if java_path:
+                    try:
+                        result = subprocess.run(
+                            [java_path, "-version"],
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                        )
+                        if result.returncode == 0:
+                            # 保存到配置
+                            config_data["Java_Path"] = java_path
+                            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                                json.dump(config_data, f, indent=4, ensure_ascii=False)
+                            print(f"Java found: {java_path}")
+                            self.javaEnvironmentChecked.emit(True, java_path)
+                            return
+                    except Exception as e:
+                        print(f"Error validating Java: {e}")
+                
+                # 未找到有效的 Java
+                print("Java not found")
+                self.javaEnvironmentChecked.emit(False, "")
+            except Exception as e:
+                print(f"Error checking Java environment: {e}")
+                self.javaEnvironmentChecked.emit(False, "")
+
+        threading.Thread(target=check_java, daemon=True).start()
+
+    @Slot(str)
+    def installJava(self, version="21"):
+        """安装指定版本的 Java"""
+        def install_java():
+            try:
+                from modules.java import InstallJava
+                
+                # 我们使用 modules.java 中的安装逻辑，但需要监听安装完成状态
+                # 这里简化处理，假设安装会在完成后通知
+                InstallJava(version)
+                
+                # 等待一段时间后检查安装结果
+                import time
+                time.sleep(5)  # 给安装一些时间
+                
+                # 重新检查 Java 环境
+                self.checkJavaEnvironment()
+                
+                # 发射安装完成信号
+                config_data = cfg.read()
+                java_path = config_data.get("Java_Path", "")
+                if java_path:
+                    self.javaInstallationComplete.emit(java_path)
+                else:
+                    self.javaInstallationComplete.emit("")
+            except Exception as e:
+                print(f"Error installing Java: {e}")
+                self.javaInstallationComplete.emit("")
+
+        threading.Thread(target=install_java, daemon=True).start()
+
+    @Slot(result=bool)
+    def getMinecraftAccountSynced(self):
+        """检查 Minecraft 账户是否已同步"""
+        try:
+            config_data = cfg.read()
+            mc_account_config = config_data.get("MinecraftAccount", {})
+            accounts_list = mc_account_config.get("accounts", [])
+            return len(accounts_list) > 0 and mc_account_config.get("chosen", -1) >= 0
+        except Exception:
+            return False
+
+    @Slot()
+    def syncMinecraftAccount(self):
+        """同步 Minecraft 账户"""
+        def sync_account():
+            try:
+                from modules.Bloret_PassPort import sync_bloret_passport_account_to_mc
+                sync_bloret_passport_account_to_mc(parent_window=None)
+                self.minecraftAccountsChanged.emit([])
+            except Exception as e:
+                print(f"Error syncing Minecraft account: {e}")
+
+        threading.Thread(target=sync_account, daemon=True).start()
+
+    @Slot(result=str)
+    def getConfigLanguage(self):
+        """获取当前配置的语言"""
+        try:
+            config_data = cfg.read()
+            return config_data.get("language", "zh-cn")
+        except Exception:
+            return "zh-cn"
+
+    @Slot(str)
+    def setLanguage(self, language):
+        """设置界面语言"""
+        try:
+            config_data = cfg.read()
+            config_data["language"] = language
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            
+            # 重新加载语言数据
+            from modules.i18n import reload_language
+            reload_language(language)
+            
+            self.languageChanged.emit()
+            print(f"Language set to: {language}")
+        except Exception as e:
+            print(f"Error setting language: {e}")
 
 
-# 创建 QApplication 实例
-app = QApplication(["Bloret Launcher"])
+class LauncherTrayIcon(QSystemTrayIcon):
+    """RinUI 版系统托盘图标与菜单"""
 
-# # 初始化 FluentTranslator
-# translator = FluentTranslator()
-# app.installTranslator(translator)
+    def __init__(self, main_window):
+        app_instance = QApplication.instance()
+        if app_instance is not None:
+            super().__init__(app_instance)
+        else:
+            super().__init__()
 
-# 默认语言跟随系统语言
-# current_locale = QLocale.system()
+        self.main_window = main_window
+        self._is_refreshing_launch_menu = False
+        self._trigger_reason = self._resolve_trigger_reason()
+        self._context_reason = self._resolve_context_reason()
 
-# # 添加语言切换功能
-# def switch_language(locale):
-#     global translator
-#     app.removeTranslator(translator)  # 移除当前翻译器
-#     translator = FluentTranslator(locale)
-#     app.installTranslator(translator)
-#     window.retranslateUi()  # 重新翻译 UI
+        icon_path = get_app_icon_path(for_tray=True)
+        if icon_path:
+            self.setIcon(QIcon(str(icon_path)))
+        else:
+            self.setIcon(main_window.windowIcon())
 
+        self.setToolTip("Bloret Launcher")
 
+        self.menu = RoundMenu()
+        self.launch_menu = RoundMenu(i18nText("🔼  启动版本"), self.menu)
+        self.menu.addMenu(self.launch_menu)
+        self._refresh_launch_menu()
 
-# 检查写入权限 - 已移除
-# if not check_write_permission():
-#     w = Dialog(i18nText("Bloret Launcher 无法写入文件"), i18nText("Bloret Launcher 需要在安装文件夹写入文件，但是我们在多次尝试后仍无法正常写入文件\n这可能是由于安装文件夹是只读的。\n请考虑将百络谷启动器安装在非 Program Files , Program Files (x86) 等只读的文件夹\n由于没有写入权限，百络谷启动器将退出。"))
-#     if w.exec():
-#         print(i18nText('确认'))
-#     else:
-#         print(i18nText('取消'))
-#     sys.exit(0)
+        self.menu.addSeparator()
+        self.menu.addAction(Action(i18nText('🔡  访问 BBS'), self.menu, triggered=links.open_BBBS_link))
+        self.menu.addAction(Action(i18nText('🔡  访问 Bloret PassPort'), self.menu, triggered=links.open_PassPort_link))
+        self.menu.addAction(Action(i18nText('🔡  访问 百络图床'), self.menu, triggered=links.open_BIMG_WEB_link))
 
-# 创建主窗口并显示
-window = MainWindow()
+        self.menu.addSeparator()
+        self.menu.addAction(Action(i18nText('🔄️  重启程序'), self.menu, triggered=self.main_window.restart_app))
+        self.menu.addAction(Action(i18nText('✅  显示窗口'), self.menu, triggered=self.main_window.show_main_window))
+        self.menu.addAction(Action(i18nText('❎  退出程序'), self.menu, triggered=self.main_window.quit_app))
 
-# 如果启动参数包含 --self-starting，则不显示窗口
-if '--self-starting' in sys.argv:
-    window.hide()  # 直接隐藏主窗口
-else:
-    window.show()  # 否则正常显示主窗口
+        self.activated.connect(self._on_tray_activated)
 
-scale_factor = window.scale_factor
-os.environ["QT_SCALE_FACTOR"] = str(scale_factor)
+    @staticmethod
+    def _resolve_trigger_reason():
+        """兼容不同 PySide 版本的枚举写法。"""
+        reason_enum = getattr(QSystemTrayIcon, "ActivationReason", None)
+        if reason_enum is not None and hasattr(reason_enum, "Trigger"):
+            return reason_enum.Trigger
+        return getattr(QSystemTrayIcon, "Trigger", None)
 
-# 运行应用程序
-sys.exit(app.exec())
+    @staticmethod
+    def _resolve_context_reason():
+        reason_enum = getattr(QSystemTrayIcon, "ActivationReason", None)
+        if reason_enum is not None and hasattr(reason_enum, "Context"):
+            return reason_enum.Context
+        return getattr(QSystemTrayIcon, "Context", None)
+
+    def _refresh_launch_menu(self):
+        if self._is_refreshing_launch_menu:
+            return
+
+        self._is_refreshing_launch_menu = True
+        self.launch_menu.clear()
+
+        try:
+            unique_versions = self._get_tray_launch_versions()
+            if not unique_versions:
+                empty_action = Action(i18nText("暂无可启动版本"), self.launch_menu)
+                empty_action.setEnabled(False)
+                self.launch_menu.addAction(empty_action)
+                return
+
+            for version in unique_versions:
+                action = Action(
+                    version,
+                    self.launch_menu,
+                    triggered=lambda checked=False, v=version: self.main_window.launch_version_from_tray(v),
+                )
+                self.launch_menu.addAction(action)
+
+        except Exception as e:
+            print(f"Failed to refresh tray launch menu: {e}")
+            error_action = Action(i18nText("加载启动列表失败"), self.launch_menu)
+            error_action.setEnabled(False)
+            self.launch_menu.addAction(error_action)
+        finally:
+            self._is_refreshing_launch_menu = False
+
+    @staticmethod
+    def _get_tray_launch_versions():
+        """仅收集托盘菜单需要的名称，避免右键时触发图标解析。"""
+        version_names = []
+
+        try:
+            config_data = cfg.read()
+
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            versions_dir = os.path.join(minecraft_dir, "versions")
+
+            if os.path.isdir(versions_dir):
+                for entry in os.listdir(versions_dir):
+                    version_path = os.path.join(versions_dir, entry)
+                    if os.path.isdir(version_path):
+                        version_names.append(entry)
+
+            customize_items = config_data.get("Customize", [])
+            if isinstance(customize_items, list):
+                for custom_item in customize_items:
+                    if isinstance(custom_item, dict):
+                        custom_name = str(custom_item.get("showname", "")).strip()
+                        if custom_name:
+                            version_names.append(custom_name)
+        except Exception as e:
+            print(f"Failed to collect tray launch versions: {e}")
+
+        return list(dict.fromkeys(version_names))
+
+    def _on_tray_activated(self, reason):
+        try:
+            is_trigger = self._reason_equals(reason, self._trigger_reason)
+            if is_trigger:
+                if self._is_window_hidden_or_minimized():
+                    self.main_window.show_main_window()
+                else:
+                    root_window = getattr(self.main_window, "root_window", None)
+                    if root_window is not None:
+                        root_window.hide()
+                    else:
+                        self.main_window.hide()
+                return
+
+            is_context = self._reason_equals(reason, self._context_reason)
+            if is_context:
+                self._refresh_launch_menu()
+                self.menu.popup(QCursor.pos())
+        except Exception as e:
+            print(f"Tray activation handler failed: {e}")
+
+    def _is_window_hidden_or_minimized(self):
+        """兼容 RinUI/QQuickWindow 的窗口状态判断，避免访问不存在的 QWidget API。"""
+        root_window = getattr(self.main_window, "root_window", None)
+        window_obj = root_window if root_window is not None else self.main_window
+
+        is_visible = True
+        try:
+            if hasattr(window_obj, "isVisible"):
+                is_visible = bool(window_obj.isVisible())
+            elif hasattr(window_obj, "visible"):
+                is_visible = bool(window_obj.visible)
+        except Exception:
+            is_visible = True
+
+        is_minimized = False
+        try:
+            if hasattr(window_obj, "isMinimized"):
+                is_minimized = bool(window_obj.isMinimized())
+            elif hasattr(window_obj, "visibility"):
+                visibility_value = window_obj.visibility()
+                is_minimized = "Minimized" in str(visibility_value)
+        except Exception:
+            is_minimized = False
+
+        return (not is_visible) or is_minimized
+
+    @staticmethod
+    def _reason_equals(reason, expected):
+        if expected is None:
+            return False
+
+        if reason == expected:
+            return True
+
+        try:
+            return int(reason) == int(expected)
+        except Exception:
+            return False
+
+class LauncherV2(RinUIWindow):
+    def __init__(self):
+        super().__init__()
+        self._force_quit = False
+        self.tray_icon = None
+        
+        # Inject Backend to QML BEFORE loading
+        self.backend = Backend()
+        self.backend.setBackendParent(self)
+        self.engine.rootContext().setContextProperty("Backend", self.backend)
+        
+        qml_file = SCRIPT_DIR / "qml" / "main.qml"
+        self.load(str(qml_file))
+        
+        icon_path = get_app_icon_path()
+        if icon_path:
+            self.setIcon(str(icon_path))
+        self.setProperty("title", "Bloret Launcher")
+
+        self._init_system_tray()
+
+        # Check for software updates after UI is ready
+        self.backend.checkForUpdates()
+
+    def _read_minimize_to_tray_on_close(self):
+        minimize_to_tray = True
+        try:
+            if self.backend:
+                minimize_to_tray = bool(self.backend.getMinimizeToTrayOnClose())
+        except Exception:
+            minimize_to_tray = True
+        return minimize_to_tray
+
+    def _can_hide_to_tray(self):
+        return bool(self.tray_icon and self.tray_icon.isVisible())
+
+    def _should_hide_to_tray_on_close(self):
+        return self._read_minimize_to_tray_on_close() and self._can_hide_to_tray()
+
+    def handle_close_request_from_qml(self):
+        """由 QML onClosing 调用，返回 True 表示已拦截关闭并隐藏到托盘。"""
+        if self._force_quit:
+            return False
+
+        if self._should_hide_to_tray_on_close():
+            self.hide()
+            return True
+
+        self._force_quit = True
+        if self.tray_icon:
+            self.tray_icon.hide()
+        return False
+
+    @staticmethod
+    def _reject_close_event(event):
+        if event is None:
+            return
+
+        try:
+            if hasattr(event, "setAccepted"):
+                event.setAccepted(False)
+                return
+        except Exception:
+            pass
+
+        try:
+            if hasattr(event, "ignore"):
+                event.ignore()
+                return
+        except Exception:
+            pass
+
+        try:
+            if hasattr(event, "accepted"):
+                event.accepted = False
+        except Exception:
+            pass
+
+    def _init_system_tray(self):
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            print("System tray is not available on this platform")
+            return
+
+        self.tray_icon = LauncherTrayIcon(self)
+        self.tray_icon.show()
+
+    def launch_version_from_tray(self, version):
+        if version and self.backend:
+            self.backend.launchGame(version)
+
+    def show_main_window(self):
+        root_window = getattr(self, "root_window", None)
+        window_obj = root_window if root_window is not None else self
+
+        try:
+            if hasattr(window_obj, "show"):
+                window_obj.show()
+            else:
+                self.show()
+        except Exception:
+            pass
+
+        try:
+            if hasattr(window_obj, "showNormal"):
+                window_obj.showNormal()
+        except Exception:
+            pass
+
+        try:
+            if hasattr(window_obj, "raise_"):
+                window_obj.raise_()
+        except Exception:
+            pass
+
+        try:
+            if hasattr(window_obj, "requestActivate"):
+                window_obj.requestActivate()
+            elif hasattr(window_obj, "activateWindow"):
+                window_obj.activateWindow()
+        except Exception:
+            pass
+
+    def quit_app(self):
+        self._force_quit = True
+        if self.tray_icon:
+            self.tray_icon.hide()
+        QApplication.quit()
+
+    def restart_app(self):
+        if getattr(sys, 'frozen', False):
+            args = [sys.executable] + sys.argv[1:]
+        else:
+            args = [sys.executable] + sys.argv
+
+        kwargs = {"shell": False}
+        if sys.platform == 'win32':
+            kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        else:
+            kwargs["start_new_session"] = True
+
+        subprocess.Popen(args, **kwargs)
+        self.quit_app()
+
+    def closeEvent(self, event):
+        if self._force_quit:
+            try:
+                super().closeEvent(event)
+            except Exception:
+                event.accept()
+            return
+
+        if self._should_hide_to_tray_on_close():
+            try:
+                event.ignore()
+            except Exception:
+                self._reject_close_event(event)
+            self.hide()
+            return
+
+        self._force_quit = True
+        if self.tray_icon:
+            self.tray_icon.hide()
+        try:
+            super().closeEvent(event)
+        except Exception:
+            event.accept()
+
+if __name__ == "__main__":
+    # app is already created at the top
+    global_icon_path = get_app_icon_path()
+    if global_icon_path:
+        app.setWindowIcon(QIcon(str(global_icon_path)))
+    launcher = LauncherV2()
+    sys.exit(app.exec())

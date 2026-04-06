@@ -82,7 +82,7 @@
             "Labels": {
                 "StrongBodyLabel_11": "QQ",
                 "StrongBodyLabel_12": "GitHub",
-                "CaptionLabel_2": "© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved."
+                "CaptionLabel_2": "© 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved."
             },
             "buttons": {
                 "pushButton": "Bloret",
@@ -580,6 +580,31 @@
         "从 Bloret Passport 获取 Minecraft 账户失败": "Failed to fetch Minecraft account from Bloret PassPort",
         "已成功从 Bloret Passport 同步 Minecraft 账户到本地": "Successfully synced Minecraft account from Bloret PassPort to local",
         "界面上可能不会及时刷新，但已经登录。": "The UI may not refresh immediately, but login has succeeded.",
-        "打开 Bloret PassPort 登录页面": "Open Bloret PassPort login page"
+        "打开 Bloret PassPort 登录页面": "Open Bloret PassPort login page",
+        "当前版本": "Current Version",
+        "Bloret Launcher": "Bloret Launcher",
+        "Minecraft 与 Java": "Minecraft & Java",
+        "选择用于启动 Minecraft 的 Java": "Select the Java to use for launching Minecraft",
+        "Minecraft 文件夹位置": "Minecraft Folder Location",
+        "Minecraft 小工具栏": "Minecraft Toolbar",
+        "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏": "Display a quick toolbar above the Minecraft window when playing",
+        "外观": "Appearance",
+        "语言 / language": "Language",
+        "调整语言设置": "Adjust language settings",
+        "主题": "Theme",
+        "选择界面的颜色模式": "Choose the colour mode of the interface",
+        "日志": "Logs",
+        "日志文件夹位置": "Log Folder Location",
+        "存储所有 Bloret Launcher 日志的文件夹位置": "Folder where all Bloret Launcher logs are stored",
+        "清空日志": "Clear Logs",
+        "清空 log 文件夹所有的日志文件": "Clear all log files in the log folder",
+        "浏览...": "Browse...",
+        "打开": "Open",
+        "清空": "Clear",
+        "设置界面大部分内容需要重启程序后生效。": "Most settings require a restart to take effect.",
+        "准备下载...": "Preparing to download...",
+        "暂停": "Pause",
+        "恢复": "Resume",
+        "最大线程数": "Max Threads"
     }
 }

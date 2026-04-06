@@ -1,4 +1,4 @@
-from qfluentwidgets import MessageBox, Dialog
+from modules.compat_widgets import MessageBox, Dialog
 from modules.log import log
 import os
 import json
@@ -8,12 +8,13 @@ import shutil
 import tempfile
 import threading
 import urllib.parse
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 import time
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from modules.customize import CustomizeAppAdd
 import modules.globals as BLglobals
+import modules.config as cfg
 
 def install_plugin_from_zip(zip_url, plugin_name):
     '''
@@ -279,3 +280,154 @@ def addPlugin(list_url, plugin_name):
     except Exception as e:
         log(f"添加插件时发生错误: {str(e)}")
         return False
+
+
+def get_plugin_root():
+    return os.path.join(BLglobals.datapath, 'Plugin')
+
+
+def _load_manifest(plugin_dir):
+    manifest_path = os.path.join(plugin_dir, "cwplugin.json")
+    if not os.path.exists(manifest_path):
+        return {}
+
+    try:
+        with open(manifest_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception as e:
+        log(f"读取插件清单失败: {manifest_path}, 错误: {str(e)}")
+        return {}
+
+
+def _find_icon_path(plugin_dir, manifest):
+    icon_candidates = []
+    icon_value = manifest.get('icon') if isinstance(manifest, dict) else None
+    if icon_value:
+        icon_candidates.append(os.path.join(plugin_dir, icon_value))
+
+    icon_candidates.extend([
+        os.path.join(plugin_dir, "icon.png"),
+        os.path.join(plugin_dir, "icon.jpg"),
+        os.path.join(plugin_dir, "icon.jpeg"),
+        os.path.join(plugin_dir, "icon.ico"),
+        os.path.join(plugin_dir, "logo.png"),
+    ])
+
+    for candidate in icon_candidates:
+        if candidate and os.path.exists(candidate):
+            return candidate
+
+    return ""
+
+
+def _find_entry_path(plugin_dir, manifest):
+    entry_value = manifest.get('entry') if isinstance(manifest, dict) else None
+    if entry_value:
+        entry_path = os.path.join(plugin_dir, entry_value)
+        if os.path.exists(entry_path):
+            return entry_path
+
+    fallback_entries = [
+        os.path.join(plugin_dir, "main.exe"),
+        os.path.join(plugin_dir, "main.py"),
+        os.path.join(plugin_dir, "main.qml"),
+    ]
+    for candidate in fallback_entries:
+        if os.path.exists(candidate):
+            return candidate
+
+    return ""
+
+
+def list_installed_plugins():
+    plugin_root = get_plugin_root()
+    if not os.path.exists(plugin_root):
+        return []
+
+    plugins = []
+    try:
+        for entry in sorted(os.listdir(plugin_root)):
+            plugin_dir = os.path.join(plugin_root, entry)
+            if not os.path.isdir(plugin_dir):
+                continue
+
+            manifest = _load_manifest(plugin_dir)
+            plugin_id = manifest.get('id') if isinstance(manifest, dict) else None
+            plugin_name = manifest.get('name') if isinstance(manifest, dict) else None
+
+            info = {
+                "id": plugin_id or entry,
+                "name": plugin_name or entry,
+                "version": manifest.get('version', '') if isinstance(manifest, dict) else "",
+                "author": manifest.get('author', '') if isinstance(manifest, dict) else "",
+                "description": manifest.get('description', '') if isinstance(manifest, dict) else "",
+                "url": manifest.get('url', '') if isinstance(manifest, dict) else "",
+                "folderName": entry,
+                "path": plugin_dir,
+                "iconPath": _find_icon_path(plugin_dir, manifest),
+                "entryPath": _find_entry_path(plugin_dir, manifest),
+            }
+            plugins.append(info)
+    except Exception as e:
+        log(f"扫描插件目录失败: {str(e)}")
+        return []
+
+    return plugins
+
+
+def _is_path_under(child_path, root_path):
+    try:
+        child = os.path.abspath(child_path)
+        root = os.path.abspath(root_path)
+        return os.path.commonpath([child, root]) == root
+    except Exception:
+        return False
+
+
+def uninstall_plugin(plugin_name):
+    plugin_root = get_plugin_root()
+    if not os.path.exists(plugin_root):
+        return False, "插件目录不存在"
+
+    target_dir = None
+    target_info = None
+    for plugin in list_installed_plugins():
+        if plugin_name in (plugin.get("folderName"), plugin.get("id"), plugin.get("name")):
+            target_dir = plugin.get("path")
+            target_info = plugin
+            break
+
+    if not target_dir or not os.path.exists(target_dir):
+        return False, "未找到指定插件"
+
+    if not _is_path_under(target_dir, plugin_root):
+        return False, "插件路径无效"
+
+    removed_customize = 0
+    try:
+        config_data = cfg.read()
+        customize = config_data.get("Customize", [])
+        if isinstance(customize, list):
+            new_customize = []
+            for item in customize:
+                item_path = item.get("path", "") if isinstance(item, dict) else ""
+                if item_path and _is_path_under(item_path, target_dir):
+                    removed_customize += 1
+                    continue
+                new_customize.append(item)
+
+            config_data["Customize"] = new_customize
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        log(f"更新自定义程序配置失败: {str(e)}")
+
+    try:
+        shutil.rmtree(target_dir)
+    except Exception as e:
+        log(f"删除插件目录失败: {str(e)}")
+        return False, f"删除插件目录失败: {str(e)}"
+
+    plugin_display = target_info.get("name") if target_info else os.path.basename(target_dir)
+    return True, f"已卸载插件 {plugin_display}，移除 {removed_customize} 个启动项"

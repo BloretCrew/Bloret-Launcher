@@ -10,5 +10,9 @@
     ],
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
-    "editor.wordWrap": "on"
+    "editor.wordWrap": "on",
+    "git.ignoreLimitWarning": true,
+    "workbench.editor.showTabs": "single",
+    "workbench.statusBar.visible": true,
+    "workbench.activityBar.location": "default"
 }

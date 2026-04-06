@@ -33,12 +33,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Qt相关导入 - 用于线程间通信
 try:
-    from PyQt5.QtCore import QObject, pyqtSignal, QTimer
-    from PyQt5.QtWidgets import QApplication
+    from PySide6.QtCore import QObject, Signal as pyqtSignal, QTimer
+    from PySide6.QtWidgets import QApplication
     QT_AVAILABLE = True
 except ImportError:
     QT_AVAILABLE = False
-    print("[Warning] PyQt5 not available for hotkey signal communication")
+    print("[Warning] PySide6 not available for hotkey signal communication")
 
 # 截图功能导入延迟到使用时
 ScreenShortCut = None

@@ -8,18 +8,18 @@ import logging
 import requests
 import random
 
-# 2. 第三方库 (PyQt5)
-from PyQt5.QtWidgets import (
+# 2. 第三方库 (PySide6)
+from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QLabel, QPushButton,
     QSizePolicy, QFileDialog, QFileIconProvider
 )
-from PyQt5.QtGui import QDesktopServices, QPixmap, QColor, QIcon, QMovie
-from PyQt5.QtCore import QUrl, Qt, QSize, QTimer, QDateTime, QFileInfo, QThread, pyqtSignal
-from PyQt5 import uic
+from PySide6.QtGui import QDesktopServices, QPixmap, QColor, QIcon, QMovie
+from PySide6.QtCore import QUrl, Qt, QSize, QTimer, QDateTime, QFileInfo, QThread, Signal as pyqtSignal
+# from PySide6.QtUiTools import QUiLoader # Removed uic for PySide6 compatibility
 
-# 3. 第三方库 (qfluentwidgets)
-from qfluentwidgets import (
+# 3. 兼容控件 (替代 qfluentwidgets)
+from modules.compat_widgets import (
     SpinBox, ComboBox, SwitchButton, LineEdit, InfoBarPosition, InfoBar,
     SubtitleLabel, CardWidget, StrongBodyLabel, BodyLabel, PushButton,
     SmoothScrollArea, RoundMenu, Action, FluentIcon, SearchLineEdit,
@@ -348,12 +348,11 @@ def show_download_dialog(mod_title, slug, parent):
 
 def load_ui(ui_path, parent=None, animate=True):
     '''
-    ### 加载 UI 布局
-    通过 .ui 文件
-    ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    # PySide6 Migration: uic.loadUi is not available. 
+    # Skipping for now as we are migrating to QML or using manual layouts.
+    # widget = uic.loadUi(ui_path)
+    return
     '''
-    widget = uic.loadUi(ui_path)
 
     if parent:
         # 强制使用布局管理（若原布局缺失）
@@ -647,7 +646,7 @@ def setup_home_ui(self, widget):
     '''
     设定 Bloret Launcher 主页 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     if self.config.get('localmod', False):
         InfoBar.warning(
@@ -886,25 +885,63 @@ def setup_home_ui(self, widget):
     if not AskBloriko_Answer:
         log("未找到 AskBloriko_Answer 元素")
 
+    BloretServerIP = widget.findChild(QLabel, "BloretServerIP")
     BloretServerOnlineNumber = widget.findChild(QLabel, "BloretServerOnlineNumber")
     BloretServerText0 = widget.findChild(QLabel, "BloretServerText0")
     BloretServerText1 = widget.findChild(QLabel, "BloretServerText1")
     BloretServer_BestTime = widget.findChild(QLabel, "BloretServer_BestTime")
     if BloretServer_BestTime:
         BloretServer_BestTime.setWordWrap(True)
-    
+
+    def _stringify_server_value(value):
+        if value is None:
+            return ""
+        if isinstance(value, bool):
+            return "是" if value else "否"
+        if isinstance(value, (int, float, str)):
+            return str(value)
+        if isinstance(value, list):
+            items = [str(item) for item in value if str(item).strip()]
+            return "、".join(items)
+        return json.dumps(value, ensure_ascii=False)
+
+    def _collect_extra_lines(value, prefix=""):
+        lines = []
+        if isinstance(value, dict):
+            for key, item in value.items():
+                next_prefix = f"{prefix}.{key}" if prefix else str(key)
+                lines.extend(_collect_extra_lines(item, next_prefix))
+            return lines
+        if isinstance(value, list):
+            if value and all(not isinstance(item, (dict, list)) for item in value):
+                rendered = _stringify_server_value(value)
+                if rendered:
+                    lines.append(f"- **{prefix}**: {rendered}")
+                return lines
+            for index, item in enumerate(value):
+                next_prefix = f"{prefix}[{index}]" if prefix else f"[{index}]"
+                lines.extend(_collect_extra_lines(item, next_prefix))
+            return lines
+
+        rendered = _stringify_server_value(value)
+        if rendered:
+            lines.append(f"- **{prefix}**: {rendered}")
+        return lines
+
     # 修复：正确处理getServerData返回的线程对象
     def update_server_info(data):
         if BloretServerOnlineNumber and BloretServerText0 and BloretServerText1 and BloretServer_BestTime:
             # 检查是否有错误信息
             if "error" in data:
                 log(f"服务器数据获取失败: {data.get('error')}")
+                if BloretServerIP:
+                    BloretServerIP.setText("N/A")
                 BloretServerOnlineNumber.setText("N/A")
                 BloretServerText0.setText("服务器数据获取失败")
                 BloretServerText1.setText("")
                 BloretServer_BestTime.setText("")
                 return
-            
+
             try:
                 # 安全地处理数据，确保数字类型正确转换为字符串
                 real_time_status = data.get('realTimeStatus', {})
@@ -912,9 +949,25 @@ def setup_home_ui(self, widget):
                 players_max = real_time_status.get('playersMax', 'N/A')
                 motd_clean = real_time_status.get('motdClean', ['', ''])
                 best_time = data.get('BestTime', '')
+                server_ip = real_time_status.get('host', data.get('ip', data.get('host', 'bloret.net')))
 
-                log(f"从数据中提取: players_online={players_online}, players_max={players_max}, motd_clean={motd_clean}, best_time={best_time}")
-                
+                displayed_fields = {'BestTime'}
+                displayed_realtime_fields = {'playersOnline', 'playersMax', 'motdClean', 'host'}
+                extra_lines = []
+
+                for key, value in data.items():
+                    if key in displayed_fields or key == 'realTimeStatus':
+                        continue
+                    extra_lines.extend(_collect_extra_lines(value, key))
+
+                if isinstance(real_time_status, dict):
+                    for key, value in real_time_status.items():
+                        if key in displayed_realtime_fields:
+                            continue
+                        extra_lines.extend(_collect_extra_lines(value, f"realTimeStatus.{key}"))
+
+                log(f"从数据中提取: server_ip={server_ip}, players_online={players_online}, players_max={players_max}, motd_clean={motd_clean}, best_time={best_time}, extra_lines_count={len(extra_lines)}")
+
                 # 检查QLabel对象是否存在
                 if not BloretServerOnlineNumber:
                     log("BloretServerOnlineNumber QLabel not found.")
@@ -925,9 +978,12 @@ def setup_home_ui(self, widget):
                 if not BloretServer_BestTime:
                     log("BloretServer_BestTime QLabel not found.")
 
+                if BloretServerIP:
+                    BloretServerIP.setText(str(server_ip))
+
                 # 正确地将数字转换为字符串进行显示
                 BloretServerOnlineNumber.setText(f"{players_online} / {players_max}")
-                
+
                 if motd_clean and len(motd_clean) > 0:
                     BloretServerText0.setText(str(motd_clean[0]))
                 else:
@@ -938,10 +994,18 @@ def setup_home_ui(self, widget):
                 else:
                     BloretServerText1.setText("")
 
-                BloretServer_BestTime.setText(str(best_time))
-                log(f"UI已更新: BloretServerOnlineNumber='{players_online} / {players_max}', BloretServerText0='{motd_clean[0] if motd_clean and len(motd_clean) > 0 else '暂无公告'}', BloretServerText1='{motd_clean[1] if motd_clean and len(motd_clean) > 1 else ''}'")
+                detail_sections = []
+                if str(best_time).strip():
+                    detail_sections.append(str(best_time))
+                if extra_lines:
+                    detail_sections.append("**其余服务器数据**\n" + "\n".join(extra_lines))
+
+                BloretServer_BestTime.setText("\n\n".join(detail_sections))
+                log(f"UI已更新: BloretServerIP='{server_ip}', BloretServerOnlineNumber='{players_online} / {players_max}', extra_lines_count={len(extra_lines)}")
             except Exception as e:
                 log(f"处理服务器数据时出错: {str(e)}")
+                if BloretServerIP:
+                    BloretServerIP.setText("N/A")
                 BloretServerOnlineNumber.setText("N/A")
                 BloretServerText0.setText("数据处理错误")
                 BloretServerText1.setText("")
@@ -956,7 +1020,7 @@ def setup_download_load_ui(self, widget):
     ### 设定 Bloret Launcher 下载界面加载时 UI 布局和操作。
     # ⚠️ 已弃用
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     loading_label = widget.findChild(QLabel, "loading_label")
     if loading_label:
@@ -966,7 +1030,7 @@ def setup_download_old_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInt
     '''
     设定 Bloret Launcher 下载界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     download_way_choose = widget.findChild(ComboBox, "download_way_choose")  # 获取 download_way_choose 元素
     LM_download_way_choose = widget.findChild(ComboBox, "LM_download_way_choose")
@@ -1057,7 +1121,7 @@ def setup_tools_ui(self, widget):
     '''
     设定 Bloret Launcher 小工具界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     name2uuid_button = widget.findChild(QPushButton, "name2uuid_player_Button")
     if name2uuid_button:
@@ -1317,7 +1381,7 @@ def setup_settings_ui(self, widget):
     '''
     设定 Bloret Launcher 设置界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     minecraft_dir_link = widget.findChild(HyperlinkLabel, "minecraft_dir_link")
     if minecraft_dir_link:
@@ -1738,7 +1802,7 @@ def start_online_client(parent, clientpage):
     port_dialog.exec_()
 
 def client_online_client(parent, clientpage):
-    """连接在线客户端服务"""
+    """连接在线客户端服务（加入者模式）"""
     log("client_online_client: 开始执行客户端联机功能", logging.INFO)
     log(f"client_online_client: 传入参数 - parent: {parent}, clientpage: {clientpage}", logging.DEBUG)
 
@@ -1752,62 +1816,72 @@ def client_online_client(parent, clientpage):
     # 检查登录状态
     login_status = config.get("Bloret_PassPort_Login", False)
     log(f"client_online_client: Bloret PassPort 登录状态: {login_status}", logging.INFO)
-    
+
     if not login_status:
         log("client_online_client: 用户未登录，显示登录提示", logging.WARNING)
         # 在主线程中显示消息框
         QTimer.singleShot(0, show_login_message)
         return
-    
+
     log("client_online_client: 用户已登录，继续执行联机流程", logging.INFO)
 
     # 创建连接信息输入对话框
     log("client_online_client: 创建连接信息输入对话框", logging.INFO)
     connect_dialog = MessageBoxBase(parent)
-    connect_dialog.setWindowTitle(i18nText("连接联机服务"))
-    
-    name_label = BodyLabel(i18nText("请输入对方 Bloret PassPort 用户名"))
+    connect_dialog.setWindowTitle(i18nText("连接到房主的网络"))
+
+    name_label = BodyLabel(i18nText("请输入房主的 Bloret PassPort 用户名"))
     name_input = LineEdit()
-    name_input.setPlaceholderText(i18nText('对方用户名'))
+    name_input.setPlaceholderText(i18nText('房主用户名'))
 
     # 密码输入框
-    key_label = BodyLabel(i18nText("请输入对方联机密钥"))
+    key_label = BodyLabel(i18nText("请输入房主的联机密钥"))
     key_input = LineEdit()
-    key_input.setPlaceholderText(i18nText('对方密钥'))
+    key_input.setPlaceholderText(i18nText('房主密钥'))
     # 将密码输入框设置为密码模式
     key_input.setEchoMode(LineEdit.Password)
+
+    # 房主 IP 输入框
+    ip_label = BodyLabel(i18nText("请输入房主的局域网 IP 地址"))
+    ip_input = LineEdit()
+    ip_input.setPlaceholderText(i18nText('例如: 192.168.3.168'))
     
+    # 获取本机 IP 作为提示
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        ip_input.setPlaceholderText(i18nText(f'例如: {local_ip.rsplit(".", 1)[0]}.xxx'))
+    except:
+        pass
+
     connect_dialog.viewLayout.addWidget(name_label)
     connect_dialog.viewLayout.addWidget(name_input)
     connect_dialog.viewLayout.addWidget(key_label)
     connect_dialog.viewLayout.addWidget(key_input)
-    
-    # 添加动图
-    # gif_label = QLabel()
-    # movie = QMovie("ui/icon/OnlineClient.gif")
-    # gif_label.setMovie(movie)
-    # movie.start()
-    
-    # connect_dialog.viewLayout.addWidget(gif_label)
-    
+    connect_dialog.viewLayout.addWidget(ip_label)
+    connect_dialog.viewLayout.addWidget(ip_input)
+
     connect_dialog.yesButton.setText(i18nText("确认"))
     connect_dialog.cancelButton.setText(i18nText("取消"))
-    
+
     log("client_online_client: 对话框组件初始化完成", logging.DEBUG)
-    
+
     def handle_connect_confirm():
         try:
             log("client_online_client: 用户点击确认连接按钮", logging.INFO)
-            
-            # 获取用户输入的 username
+
+            # 获取用户输入的用户名
             username = name_input.text().strip()
             log(f"client_online_client: 获取用户名输入: '{username}'", logging.DEBUG)
-            
+
             if not username:
                 log("client_online_client: 用户名为空，显示错误提示", logging.WARNING)
                 InfoBar.error(
                     title=i18nText('输入错误'),
-                    content=i18nText('请输入对方用户名'),
+                    content=i18nText('请输入房主用户名'),
                     parent=parent
                 )
                 return
@@ -1819,13 +1893,26 @@ def client_online_client(parent, clientpage):
             # 检查联机密钥是否为空
             if not key:
                 key = "NoPassWord"
-            
-            log(f"client_online_client: 开始连接 - 目标用户: {username}, 密钥长度: {len(key)}", logging.INFO)
-            
-            # 调用 StartEasytierServer 函数连接到主机
-            connection_address = StartEasytierServer(username, key)
+
+            # 获取房主 IP
+            peer_ip = ip_input.text().strip()
+            log(f"client_online_client: 获取房主 IP: '{peer_ip}'", logging.DEBUG)
+
+            if not peer_ip:
+                log("client_online_client: 房主 IP 为空，显示错误提示", logging.WARNING)
+                InfoBar.error(
+                    title=i18nText('输入错误'),
+                    content=i18nText('请输入房主的局域网 IP 地址'),
+                    parent=parent
+                )
+                return
+
+            log(f"client_online_client: 开始连接 - 房主用户名: {username}, 密钥长度: {len(key)}, 房主 IP: {peer_ip}", logging.INFO)
+
+            # 调用 StartEasytierServer 函数连接到房主网络（加入者模式）
+            connection_address = StartEasytierServer(username, key, is_host=False, peer_ip=peer_ip)
             log(f"client_online_client: StartEasytierServer 返回结果: {connection_address}", logging.DEBUG)
-            
+
             # 检查是否返回了错误信息
             if isinstance(connection_address, str) and (connection_address.startswith(i18nText("权限错误：")) or connection_address.startswith(i18nText("安全软件阻止："))):
                 log(f"client_online_client: 权限或安全软件错误: {connection_address}", logging.ERROR)
@@ -1833,7 +1920,7 @@ def client_online_client(parent, clientpage):
                     title=i18nText('连接失败'),
                     content=connection_address,
                     parent=parent,
-                    duration=10000  # 显示更长时间以便用户阅读
+                    duration=10000
                 )
                 return
             elif isinstance(connection_address, str) and (connection_address.startswith(i18nText("启动失败:")) or connection_address == i18nText("网络请求失败") or connection_address == i18nText("配置文件不存在") or connection_address == i18nText("frpc程序不存在") or connection_address == i18nText("获取连接信息失败")):
@@ -1844,41 +1931,48 @@ def client_online_client(parent, clientpage):
                     parent=parent
                 )
                 return
+            elif isinstance(connection_address, str) and connection_address.startswith(i18nText("~")):
+                # 连接尝试成功，但未获取到虚拟 IP
+                log("client_online_client: 连接尝试成功，但未获取到虚拟 IP", logging.WARNING)
+                msg = connection_address[1:]  # 移除 ~ 前缀
+                InfoBar.warning(
+                    title=i18nText('连接尝试'),
+                    content=msg,
+                    parent=parent,
+                    duration=10000
+                )
+                return
 
             log("client_online_client: 连接成功，开始获取服务器信息", logging.INFO)
             
-            # 此处发送必要信息到 Bloret PassPort 的 public 数据中，以便客户端读取
-            log("client_online_client: 从 Bloret PassPort 读取客户端公共数据", logging.DEBUG)
+            # 获取虚拟 IP 成功后，从 PassPort 获取房主的服务器信息
             ClinetPublic = readdata("Client", True)
-            log(f"client_online_client: 获取到的原始数据: {ClinetPublic[:200]}{'...' if len(str(ClinetPublic)) > 200 else ''}", logging.DEBUG)
-            
-            # 这里返回的数据是 str, 需要先转换为字典再处理
             ClinetPublic = json.loads(ClinetPublic)
-            log(f"client_online_client: JSON解析成功，数据类型: {type(ClinetPublic)}", logging.DEBUG)
 
-            username = 'BLClient' + username
-            log(f"client_online_client: 构造完整用户名: {username}", logging.DEBUG)
-            
-            # 检查目标用户是否存在
-            if username not in ClinetPublic:
-                log(f"client_online_client: 目标用户 {username} 不存在于公共数据中", logging.ERROR)
+            full_username = 'BLClient' + username
+            if full_username not in ClinetPublic:
+                log(f"client_online_client: 房主 {full_username} 不存在于公共数据中", logging.ERROR)
                 InfoBar.error(
                     title=i18nText('连接失败'),
-                    content=f'用户 {username} 未找到或不在线',
+                    content=f'房主 {username} 未找到或不在线',
                     parent=parent
                 )
                 return
 
-            # 获取 ClientPublic[username] 得到：{ip:connection_address, port:port, username:easytier_name}
-            log(f"client_online_client: 获取用户 {username} 的连接信息", logging.DEBUG)
-            ip = ClinetPublic[username]["ip"]
-            port = ClinetPublic[username]["port"]
-            log(f"client_online_client: 服务器信息 - IP: {ip}, 端口: {port}", logging.INFO)
+            # 获取房主的端口信息
+            port = ClinetPublic[full_username]["port"]
+            log(f"client_online_client: 房主服务器端口: {port}", logging.INFO)
 
-            # 显示连接地址对话框
-            server_address = f"{ip}:{port}"
-            log("client_online_client: 显示连接地址对话框", logging.INFO)
-            show_connection_address_dialog(parent, f"已连接到对方的网络，现在打开 Minecraft，连接服务器 {server_address}\n(请注意联机过程中不要关闭 Bloret Launcher，您可以关闭本窗口，保持 Bloret Launcher 在托盘中运行)", server_address, clientpage, False)
+            # 显示连接成功信息
+            server_address = f"{connection_address}:{port}"
+            show_connection_address_dialog(
+                parent, 
+                f"已成功连接到房主 {username} 的网络！\n\nMinecraft 服务器地址: {server_address}\n\n现在打开 Minecraft，添加服务器并连接。", 
+                server_address, 
+                clientpage, 
+                False
+            )
+            
         except json.JSONDecodeError as e:
             log(f"client_online_client: JSON解析错误: {str(e)}", logging.ERROR)
             InfoBar.error(
@@ -2164,7 +2258,7 @@ def setup_info_ui(self, widget):
     '''
     设定 Bloret Launcher 关于界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     github_org_button = widget.findChild(QPushButton, "pushButton_2")
     if github_org_button:
@@ -2386,7 +2480,7 @@ def setup_download_ui(self, widget):
     设定 Bloret Launcher 下载 UI 布局和操作。
     根据 ui/download.ui 文件设置界面元素和事件处理。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     # 获取配置文件中的Minecraft版本列表
     try:
@@ -2618,7 +2712,7 @@ class ShortCutSettingDialog(MessageBoxBase):
                 parts.append("Meta")
                 
             # 获取键名
-            from PyQt5.QtGui import QKeySequence
+            from PySide6.QtGui import QKeySequence
             key_name = QKeySequence(key).toString()
             if key_name:
                 parts.append(key_name)
@@ -2892,7 +2986,7 @@ def setup_tools_ui(self, widget):
     """
     设定 Bloret Launcher 工具界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     """
     try:
         # 获取截图按钮
@@ -3029,7 +3123,7 @@ def setup_Mod_ui(self, widget):
     '''
     设定 Bloret Launcher 模组界面 UI 布局和操作。
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     # 绑定 OpenMod 按钮点击事件
     Open_Modrinth_Button = widget.findChild(QPushButton, "Open_Modrinth_Button")

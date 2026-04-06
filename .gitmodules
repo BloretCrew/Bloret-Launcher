@@ -1,0 +1,6 @@
+[submodule "BLAPI"]
+	path = BLAPI
+	url = https://github.com/BloretCrew/Bloret-Launcher-API-Tool.git
+[submodule "BL4CW2"]
+	path = BL4CW2
+	url = https://github.com/BloretCrew/Bloret-Launcher4Class-Widget2.git

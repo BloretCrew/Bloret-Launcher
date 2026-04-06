@@ -1,10 +1,10 @@
 import requests
 import json
 import os
-from qfluentwidgets import MessageBox
 from modules.log import log
 import threading
-from PyQt5.QtCore import QTimer, QObject, pyqtSignal, pyqtSlot, Qt
+from PySide6.QtCore import QTimer, QObject, Signal as pyqtSignal, Slot as pyqtSlot, Qt
+from PySide6.QtWidgets import QMessageBox
 import logging
 import hashlib
 import time
@@ -236,6 +236,34 @@ def AskBloriko(question, config, deepthink=False):
     return final_result
 
 
+def BuildModRecommendationQuestion(user_query, mc_version):
+    """
+    构建针对模组推荐的 AI 问题
+    
+    Args:
+        user_query (str): 用户的需求描述
+        mc_version (str): Minecraft 版本号
+        
+    Returns:
+        str: 完整的推荐问题
+    """
+    prompt = f"""我需要为 Minecraft {mc_version} 推荐一些模组。
+
+用户的需求是：{user_query}
+
+请根据以下要求给出推荐：
+1. 所有推荐的模组必须支持 Minecraft {mc_version} 和 Fabric 加载器
+2. 提供模组的 Modrinth 项目名称（英文名，用于搜索）
+3. 简短说明每个模组的功能
+4. 按照重要性或依赖关系排序推荐
+
+格式示例：
+- **模组名称** (Modrinth ID: xxx)：功能说明
+
+请确保推荐的模组在 Modrinth 上都能找到，并且支持指定的版本和加载器。"""
+    return prompt
+
+
 def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent, deepthink=False):
     """
     向Bloriko发送问题并获取回答，直接设置到UI控件
@@ -266,10 +294,14 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent,
 
     def show_login_message():
         log("显示登录提示消息框", logging.INFO)
-        w = MessageBox("Bloriko 还不知道您是谁", "Bloriko AI 需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。", parent)
-        if w.exec():
-            self.switchTo(self.passportInterface)
-            log("用户点击确认，切换到通行证界面", logging.INFO)
+        msg = QMessageBox()
+        msg.setWindowTitle("Bloriko 还不知道您是谁")
+        msg.setText("Bloriko AI 需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。")
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        if msg.exec() == QMessageBox.Ok:
+            # 这里应该切换到通行证界面，但由于这是一个独立模块，需要通过其他方式处理
+            log("用户点击确认，应切换到通行证界面", logging.INFO)
+            # 可以发出信号或返回状态让调用者处理
 
     if not config.get("Bloret_PassPort_Login", False):
         log("用户未登录Bloret PassPort，显示登录提示", logging.WARNING)

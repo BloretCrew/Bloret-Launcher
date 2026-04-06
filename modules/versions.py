@@ -9,7 +9,7 @@ Versions.py
  - [x] 修改自定义选项名称
 
 ***
-###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
 '''
 import logging
 import os
@@ -30,23 +30,24 @@ import sys
 from pathlib import Path
 
 # 第三方库
-import sip  # type: ignore
+# sip is not required for PySide6
 try:
     import send2trash
 except ImportError:
     send2trash = None
     print("[Warning] send2trash not found. Soft deletion to recycle bin will be unavailable.")
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QPixmap, QDesktopServices, QColor
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, 
-    QListWidget, QListWidgetItem, QFileDialog, QLabel, 
-    QSizePolicy, QGridLayout # 新增 QGridLayout
+from PySide6.QtCore import Qt, QThread, Signal as pyqtSignal, QUrl, QMetaObject
+from PySide6.QtGui import QPixmap, QDesktopServices, QColor, QIcon
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
+    QListWidget, QListWidgetItem, QFileDialog, QLabel,
+    QSizePolicy, QGridLayout, QProgressBar, QCheckBox, QLineEdit, QPushButton, QDialog # 新增 QDialog
 )
-from qfluentwidgets import (
-    InfoBar, InfoBarPosition, ComboBox, StrongBodyLabel, 
-    BodyLabel, SubtitleLabel, MessageBoxBase, LineEdit, 
-    PushButton, SwitchButton, CaptionLabel, Pivot, 
+from PySide6.QtUiTools import QUiLoader
+from modules.compat_widgets import (
+    InfoBar, InfoBarPosition, ComboBox, StrongBodyLabel,
+    BodyLabel, SubtitleLabel, MessageBoxBase, LineEdit,
+    PushButton, SwitchButton, CaptionLabel, Pivot,
     SegmentedWidget, CardWidget, IconWidget, FluentIcon,
     PrimaryPushButton, ToolButton, ImageLabel
 )
@@ -59,6 +60,34 @@ from modules.customize import find_Customize
 from modules.i18n import i18nText
 import modules.globals as BLglobals
 import modules.config as cfg
+
+def load_ui_file(ui_file_path):
+    """
+    使用 QUiLoader 加载 UI 文件，兼容 PySide6
+    
+    Args:
+        ui_file_path (str): UI 文件的路径
+    
+    Returns:
+        QWidget: 加载的 UI 对象，如果失败返回 None
+    """
+    try:
+        loader = QUiLoader()
+        # 如果是相对路径，需要转换为绝对路径
+        if not os.path.isabs(ui_file_path):
+            script_dir = Path(__file__).parent.parent.absolute()
+            ui_file_path = os.path.join(script_dir, ui_file_path)
+        
+        if not os.path.exists(ui_file_path):
+            log(f"UI 文件不存在: {ui_file_path}", logging.WARNING)
+            return None
+        
+        with open(ui_file_path, 'r', encoding='utf-8') as f:
+            ui = loader.load(f, None)
+        return ui
+    except Exception as e:
+        log(f"加载 UI 文件失败 {ui_file_path}: {e}", logging.ERROR)
+        return None
 
 def dl_source_launcher_or_meta_get(original_url):
     """
@@ -158,7 +187,7 @@ def open_minecraft_version_folder(self,version,MINECRAFT_DIR):
      MINECRAFT_DIR Minecraft 安装目录
 
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     log(f"正在打开 Minecraft 版本文件夹：{version}")
     
@@ -169,7 +198,6 @@ def open_minecraft_version_folder(self,version,MINECRAFT_DIR):
         # 检查版本文件夹是否存在
         if os.path.exists(version_path) and os.path.isdir(version_path):
             # 使用默认文件管理器打开文件夹
-            from PyQt5.QtCore import QUrl
             QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.abspath(version_path)))
             log(f"成功打开版本文件夹：{version_path}")
         else:
@@ -208,7 +236,7 @@ def delete_minecraft_version(self,version,label,card,MINECRAFT_DIR,homeInterface
 
     
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     log(f"正在删除 Minecraft 版本：{version}")
     
@@ -287,7 +315,7 @@ def Change_minecraft_version_name(self,version,label,MINECRAFT_DIR,homeInterface
      MINECRAFT_DIR Minecraft 安装目录
 
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     log(f"正在修改 Minecraft 版本名称：{version}")
     # 获取新的版本名称
@@ -374,7 +402,7 @@ def delete_Customize(self,version,label,card,customize_list,homeInterface):
      customize_list 自定义选项列表
     
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     log(f"正在删除自定义选项：{version}")
     try:
@@ -443,7 +471,7 @@ def Change_Customize_name(self,version,label,homeInterface):
     ### 将配置文件中 `{version}` 项目换成想要的名称并刷新重读。
 
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     log(f"正在修改自定义选项名称：{version}")
     isOK,item=find_Customize(self,version)
@@ -596,12 +624,10 @@ class LibraryDownloader:
             self._active_downloads += 1
             if download_dialog:
                 try:
-                    from PyQt5.QtWidgets import QLabel
-                    from PyQt5.QtCore import QMetaObject, Qt
                     thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
                     if thread_label:
                         QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                               __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(self._active_downloads)))
+                                               str(self._active_downloads))
                 except Exception as e:
                     log(f"更新libraries_file_working_Thread时出错: {e}")
 
@@ -695,13 +721,11 @@ class LibraryDownloader:
                 self.completed_count += 1
                 if download_dialog:
                     try:
-                        from PyQt5.QtWidgets import QProgressBar, QLabel
-                        from PyQt5.QtCore import QMetaObject, Qt
                         lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
                         if lib_progress_bar:
                             progress_value = int((self.completed_count / self.total_count) * 100)
                             QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
-                                                   __import__('PyQt5.QtCore').QtCore.Q_ARG(int, progress_value))
+                                                   progress_value)
                     except Exception as e:
                         log(f"更新libraries_progress时出错: {e}")
             return True # 成功下载
@@ -716,28 +740,22 @@ class LibraryDownloader:
                 self._active_downloads -= 1
                 if download_dialog:
                     try:
-                        from PyQt5.QtWidgets import QLabel
-                        from PyQt5.QtCore import QMetaObject, Qt
                         thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
                         if thread_label:
                             QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                                   __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(self._active_downloads)))
+                                                   str(self._active_downloads))
                     except Exception as e:
                         log(f"更新libraries_file_working_Thread时出错: {e}")
     
     def download_libraries(self, download_dialog=None):
         if download_dialog:
             try:
-                from PyQt5.QtWidgets import QProgressBar, QLabel
-                from PyQt5.QtCore import QMetaObject, Qt
-                lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
-                thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
                 if lib_progress_bar:
                     QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
-                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(int, 0))
+                                           0)
                 if thread_label:
                     QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(str, "0"))
+                                           "0")
             except Exception as e:
                 log(f"初始化libraries_progress或libraries_file_working_Thread时出错: {e}")
         
@@ -763,16 +781,12 @@ class LibraryDownloader:
         # 显示完成通知
         if download_dialog:
             try:
-                from PyQt5.QtWidgets import QProgressBar, QLabel
-                from PyQt5.QtCore import QMetaObject, Qt
-                lib_progress_bar = download_dialog.findChild(QProgressBar, "libraries_progress")
-                thread_label = download_dialog.findChild(QLabel, "libraries_file_working_Thread")
                 if lib_progress_bar:
                     QMetaObject.invokeMethod(lib_progress_bar, "setValue", Qt.QueuedConnection,
-                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(int, 100))
+                                           100)
                 if thread_label:
                     QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(str, "0"))
+                                           "0")
             except Exception as e:
                 log(f"更新libraries_progress或libraries_file_working_Thread时出错: {e}")
         
@@ -841,15 +855,15 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
     # 如果没有提供下载对话框实例，则创建一个新的对话框
     if download_dialog is None:
         try:
-            # 导入PyQt5相关模块用于创建GUI对话框
-            from PyQt5.QtWidgets import QDialog
-            from PyQt5 import uic
-            import json
+            # 尝试使用 QUiLoader 加载 UI 文件
+            download_dialog = load_ui_file("ui/MCVer_downloading.ui")
             
-            # 创建新的对话框实例
-            download_dialog = QDialog()
-            # 从UI文件加载对话框布局
-            uic.loadUi("ui/MCVer_downloading.ui", download_dialog)
+            # 如果 UI 加载失败，创建一个简单的对话框作为备选方案
+            if download_dialog is None:
+                log("UI 文件加载失败，使用基础对话框代替", logging.WARNING)
+                download_dialog = QDialog()
+                download_dialog.setMinimumWidth(700)
+                download_dialog.setMinimumHeight(400)
             
             # 设置对话框标题，包含版本信息和Fabric Loader状态
             title_text = f"正在下载 Minecraft {version}"
@@ -935,7 +949,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         bool: 安装成功返回True，失败返回False
     
     ***
-    ###### Bloret Launcher 所有 © 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved.
+    ###### Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.
     '''
     try:
         # 创建Windows 11通知，通知用户开始安装Minecraft版本
@@ -1139,16 +1153,16 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         # 设置 First_Step_CheckBox 为 true，表示第一步（版本信息获取）已完成
         if download_dialog:
             try:
-                # 导入PyQt5相关模块用于UI更新
-                from PyQt5.QtWidgets import QCheckBox
+                # 导入PySide6相关模块用于UI更新
+                from PySide6.QtWidgets import QCheckBox
                 # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                from PyQt5.QtCore import QMetaObject, Qt
+                from PySide6.QtCore import QMetaObject, Qt
                 # 查找对话框中的First_Step_CheckBox控件
                 checkbox = download_dialog.findChild(QCheckBox, "First_Step_CheckBox")
                 if checkbox:
                     # 使用invokeMethod在Qt主线程中设置复选框为选中状态
                     QMetaObject.invokeMethod(checkbox, "setChecked", Qt.QueuedConnection, 
-                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(bool, True))
+                                           True)
             except Exception as e:
                 # 如果设置复选框失败，记录错误日志但不中断程序
                 log(f"设置First_Step_CheckBox时出错: {e}")
@@ -1207,10 +1221,10 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                         # 更新客户端JAR进度条显示
                                         if download_dialog and total_size > 0:
                                             try:
-                                                # 导入PyQt5进度条控件
-                                                from PyQt5.QtWidgets import QProgressBar
+                                                # 导入PySide6进度条控件
+                                                from PySide6.QtWidgets import QProgressBar
                                                 # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                                                from PyQt5.QtCore import QMetaObject, Qt
+                                                from PySide6.QtCore import QMetaObject, Qt
                                                 # 查找对话框中的客户端JAR进度条控件
                                                 progress_bar = download_dialog.findChild(QProgressBar, "client_jar_progress")
                                                 if progress_bar:
@@ -1218,7 +1232,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                                     progress_value = int((downloaded_size / total_size) * 100)
                                                     # 使用invokeMethod在Qt主线程中更新进度条
                                                     QMetaObject.invokeMethod(progress_bar, "setValue", Qt.QueuedConnection,
-                                                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(int, progress_value))
+                                                                           progress_value)
                                             except Exception as e:
                                                 # 如果更新进度条失败，记录错误日志但不中断下载
                                                 log(f"更新client_jar_progress时出错: {e}")
@@ -1262,10 +1276,10 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                                     # 更新客户端JAR进度条显示
                                                     if download_dialog and total_size > 0:
                                                         try:
-                                                            # 导入PyQt5进度条控件
-                                                            from PyQt5.QtWidgets import QProgressBar
+                                                            # 导入PySide6进度条控件
+                                                            from PySide6.QtWidgets import QProgressBar
                                                             # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                                                            from PyQt5.QtCore import QMetaObject, Qt
+                                                            from PySide6.QtCore import QMetaObject, Qt
                                                             # 查找对话框中的客户端JAR进度条控件
                                                             progress_bar = download_dialog.findChild(QProgressBar, "client_jar_progress")
                                                             if progress_bar:
@@ -1273,7 +1287,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                                                 progress_value = int((downloaded_size / total_size) * 100)
                                                                 # 使用invokeMethod在Qt主线程中更新进度条
                                                                 QMetaObject.invokeMethod(progress_bar, "setValue", Qt.QueuedConnection,
-                                                                                       __import__('PyQt5.QtCore').QtCore.Q_ARG(int, progress_value))
+                                                                                       progress_value)
                                                         except Exception as e:
                                                             # 如果更新进度条失败，记录错误日志但不中断下载
                                                             log(f"更新client_jar_progress时出错: {e}")
@@ -1318,10 +1332,10 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                             # 更新客户端JAR进度条显示
                                             if download_dialog and total_size > 0:
                                                 try:
-                                                    # 导入PyQt5进度条控件
-                                                    from PyQt5.QtWidgets import QProgressBar
+                                                    # 导入PySide6进度条控件
+                                                    from PySide6.QtWidgets import QProgressBar
                                                     # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                                                    from PyQt5.QtCore import QMetaObject, Qt
+                                                    from PySide6.QtCore import QMetaObject, Qt
                                                     # 查找对话框中的客户端JAR进度条控件
                                                     progress_bar = download_dialog.findChild(QProgressBar, "client_jar_progress")
                                                     if progress_bar:
@@ -1329,7 +1343,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                                         progress_value = int((downloaded_size / total_size) * 100)
                                                         # 使用invokeMethod在Qt主线程中更新进度条
                                                         QMetaObject.invokeMethod(progress_bar, "setValue", Qt.QueuedConnection,
-                                                                               __import__('PyQt5.QtCore').QtCore.Q_ARG(int, progress_value))
+                                                                               progress_value)
                                                 except Exception as e:
                                                     # 如果更新进度条失败，记录错误日志但不中断下载
                                                     log(f"更新client_jar_progress时出错: {e}")
@@ -1562,16 +1576,16 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                         # 更新活动线程数显示（在UI中显示当前活动线程数）
                         if download_dialog:
                             try:
-                                # 导入PyQt5标签控件
-                                from PyQt5.QtWidgets import QLabel
+                                # 导入PySide6标签控件
+                                from PySide6.QtWidgets import QLabel
                                 # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                                from PyQt5.QtCore import QMetaObject, Qt
+                                from PySide6.QtCore import QMetaObject, Qt
                                 # 查找对话框中的活动线程数标签控件
                                 thread_label = download_dialog.findChild(QLabel, "Resources_file_working_Thread")
                                 if thread_label:
                                     # 使用invokeMethod在Qt主线程中更新标签文本
                                     QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                                           __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
+                                                           str(active_downloads))
                             except Exception as e:
                                 # 如果更新UI失败，记录错误日志但不中断下载
                                 log(f"更新Resources_file_working_Thread时出错: {e}")
@@ -1683,16 +1697,16 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                             # 更新活动线程数显示（在UI中显示当前活动线程数）
                             if download_dialog:
                                 try:
-                                    # 导入PyQt5标签控件
-                                    from PyQt5.QtWidgets import QLabel
+                                    # 导入PySide6标签控件
+                                    from PySide6.QtWidgets import QLabel
                                     # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                                    from PyQt5.QtCore import QMetaObject, Qt
+                                    from PySide6.QtCore import QMetaObject, Qt
                                     # 查找对话框中的活动线程数标签控件
                                     thread_label = download_dialog.findChild(QLabel, "Resources_file_working_Thread")
                                     if thread_label:
                                         # 使用invokeMethod在Qt主线程中更新标签文本
                                         QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                                                __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
+                                                                str(active_downloads))
                                 except Exception as e:
                                     # 如果更新UI失败，记录错误日志但不中断下载
                                     log(f"更新Resources_file_working_Thread时出错: {e}")
@@ -1750,17 +1764,17 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                             # 更新资源文件下载进度条和线程数显示（在UI中安全更新）
                             if download_dialog:
                                 try:
-                                    # 导入PyQt5控件
-                                    from PyQt5.QtWidgets import QProgressBar, QLabel
+                                    # 导入PySide6控件
+                                    from PySide6.QtWidgets import QProgressBar, QLabel
                                     # 使用QMetaObject.invokeMethod确保在主线程中执行UI更新
-                                    from PyQt5.QtCore import QMetaObject, Qt
+                                    from PySide6.QtCore import QMetaObject, Qt
                                     
                                     # 更新进度条显示
                                     resources_progress_bar = download_dialog.findChild(QProgressBar, "Resources_progress")
                                     if resources_progress_bar:
                                         # 使用invokeMethod在Qt主线程中更新进度条值
                                         QMetaObject.invokeMethod(resources_progress_bar, "setValue", Qt.QueuedConnection,
-                                                               __import__('PyQt5.QtCore').QtCore.Q_ARG(int, current_progress))
+                                                               __import__('PySide6.QtCore').QtCore.Q_ARG(int, current_progress))
                                         log(f"资源文件下载进度: {current_progress}% ({completed_count}/{assets_count})")
                                     
                                     # 更新活动线程数显示
@@ -1768,7 +1782,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                                     if thread_label:
                                         # 使用invokeMethod在Qt主线程中更新活动线程数文本
                                         QMetaObject.invokeMethod(thread_label, "setText", Qt.QueuedConnection,
-                                                               __import__('PyQt5.QtCore').QtCore.Q_ARG(str, str(active_downloads)))
+                                                               str(active_downloads))
                                 except Exception as e:
                                     # 如果更新UI失败，记录错误日志但不中断下载
                                     log(f"更新资源文件进度时出错: {e}")
@@ -1784,13 +1798,13 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 # 下载完成时更新UI到100%
                 if download_dialog:
                     try:
-                        from PyQt5.QtWidgets import QProgressBar
-                        from PyQt5.QtCore import QMetaObject, Qt
+                        from PySide6.QtWidgets import QProgressBar
+                        from PySide6.QtCore import QMetaObject, Qt
                         
                         resources_progress_bar = download_dialog.findChild(QProgressBar, "Resources_progress")
                         if resources_progress_bar:
                             QMetaObject.invokeMethod(resources_progress_bar, "setValue", Qt.QueuedConnection,
-                                                   __import__('PyQt5.QtCore').QtCore.Q_ARG(int, 100))
+                                                   100)
                             log(f"资源文件下载完成，设置进度条为100%")
                     except Exception as e:
                         log(f"更新资源文件完成进度时出错: {e}")
@@ -2337,8 +2351,8 @@ def on_other_version_selected(self, selected_text, combo_box):
             version_combo.setEnabled(False)
             
             # 显示加载提示信息
-            from qfluentwidgets import InfoBar, InfoBarPosition
-            from PyQt5.QtCore import Qt, QThread, pyqtSignal
+            from modules.compat_widgets import InfoBar, InfoBarPosition
+            from PySide6.QtCore import Qt, QThread, Signal as pyqtSignal
             InfoBar.info(
                 title=i18nText('正在加载'),  # 提示标题
                 content=i18nText(f'正在加载 {category} 版本列表'),  # 提示内容
@@ -3030,7 +3044,7 @@ class ServerPage(QWidget):
         self.vLayout.addLayout(self.headerLayout)
         
         # 2. 列表滚动区
-        from qfluentwidgets import SmoothScrollArea
+        from modules.compat_widgets import SmoothScrollArea
         self.scrollArea = SmoothScrollArea(self)
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setStyleSheet("background-color: transparent; border: none;")
@@ -3319,7 +3333,7 @@ class ModPage(QWidget):
         self.vLayout.addLayout(hLayout)
         
         # 列表区域
-        from qfluentwidgets import SmoothScrollArea
+        from modules.compat_widgets import SmoothScrollArea
         self.scrollArea = SmoothScrollArea(self)
         self.scrollArea.setWidgetResizable(True)
         # --- 修改点开始：禁用水平滚动条 ---
@@ -3349,7 +3363,7 @@ class ModPage(QWidget):
     def open_folder(self):
         if not os.path.exists(self.mods_dir):
             os.makedirs(self.mods_dir, exist_ok=True)
-        from PyQt5.QtCore import QUrl
+        from PySide6.QtCore import QUrl
         QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.abspath(self.mods_dir)))
 
     def load_mods(self):
@@ -3582,7 +3596,7 @@ class ResourcePackPage(QWidget):
         self.vLayout.addLayout(hLayout)
         
         # List
-        from qfluentwidgets import SmoothScrollArea
+        from modules.compat_widgets import SmoothScrollArea
         self.scrollArea = SmoothScrollArea(self)
         self.scrollArea.setWidgetResizable(True)
         # --- 修改点开始：禁用水平滚动条 ---
@@ -3611,7 +3625,7 @@ class ResourcePackPage(QWidget):
     def open_folder(self):
         if not os.path.exists(self.packs_dir):
             os.makedirs(self.packs_dir, exist_ok=True)
-        from PyQt5.QtCore import QUrl
+        from PySide6.QtCore import QUrl
         QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.abspath(self.packs_dir)))
 
     def load_packs(self):
@@ -3857,9 +3871,24 @@ class CoreManageDialog(MessageBoxBase):
             InfoBar.error(title=i18nText("保存失败"), content=str(e), parent=self.widget)
 
 
-def open_core_management(self, version_name, MINECRAFT_DIR, home_interface):
+def open_core_management(parent, version_name, MINECRAFT_DIR, home_interface):
     """ 打开核心管理对话框的入口函数 """
-    dialog = CoreManageDialog(version_name, MINECRAFT_DIR, home_interface, parent=self)
+    dialog = CoreManageDialog(version_name, MINECRAFT_DIR, home_interface, parent=parent)
     if dialog.exec():
         return True # 返回 True 表示需要刷新列表
     return False # 返回 False (如取消或出错) 视情况刷新，但在 setup_ui 中我们做了全量刷新，所以影响不大
+
+
+def show_core_manager_dialog(version_name, minecraft_dir):
+    """从 QML 调用的核心管理对话框入口函数"""
+    from PySide6.QtWidgets import QApplication
+    
+    parent_widget = QApplication.activeWindow()
+    if parent_widget is None:
+        parent_widget = QWidget()
+        parent_widget.hide()
+    
+    dialog = CoreManageDialog(version_name, minecraft_dir, None, parent=parent_widget)
+    result = dialog.exec()
+    
+    return result
