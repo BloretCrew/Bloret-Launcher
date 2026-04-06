@@ -237,6 +237,10 @@ FluentPage {
 
             ColumnLayout {
                 Layout.fillWidth: true
+                    Badge {
+                        text: Qt.platform.os === "windows" ? "Windows √" : "Only For Windows ×"
+                        colorType: Qt.platform.os === "windows" ? "Success" : "Error"
+                    }
                 Label {
                     font.weight: Font.DemiBold
                     text: (Backend ? Backend.tr("Java 运行时环境") : "Java 运行时环境")

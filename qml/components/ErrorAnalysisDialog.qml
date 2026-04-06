@@ -16,6 +16,7 @@ Dialog {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     standardButtons: Dialog.Close
     width: 580
+    height: 450
 
     property var _copyButton: null
 
@@ -27,7 +28,10 @@ Dialog {
         if (!_copyButton && footer && footer.contentItem) {
             var copyBtn = copyButtonComponent.createObject(footer.contentItem)
             if (copyBtn) {
-                footer.contentItem.children[0].children.unshift(copyBtn)
+                var layout = footer.contentItem.children[0]
+                if (layout && layout.children) {
+                    layout.children.insert(0, copyBtn)
+                }
                 _copyButton = copyBtn
             }
         }
@@ -49,9 +53,9 @@ Dialog {
         }
     }
 
+    // 主内容区域
     ColumnLayout {
         spacing: 12
-        Layout.fillWidth: true
 
         // Error icon and title
         RowLayout {
@@ -82,99 +86,120 @@ Dialog {
             color: Theme.currentTheme.colors.cardBorderColor
         }
 
-        // Error message
-        Text {
-            text: errorMessage
-            visible: errorMessage.length > 0
-            typography: Typography.Body
-            color: Theme.currentTheme.colors.textColor
+        // Scrollable content area
+        Flickable {
+            id: contentFlickable
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-        }
+            Layout.fillHeight: true
+            contentWidth: width
+            contentHeight: contentColumn.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
 
-        // Stack trace (collapsible)
-        ColumnLayout {
-            visible: errorStackTrace.length > 0
-            spacing: 6
-            Layout.fillWidth: true
-
-            Button {
-                flat: true
-                text: (stackTraceArea.visible
-                       ? (Backend ? Backend.tr("隐藏详细信息") : "隐藏详细信息")
-                       : (Backend ? Backend.tr("显示详细信息") : "显示详细信息"))
-                onClicked: stackTraceArea.visible = !stackTraceArea.visible
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
             }
 
-            Rectangle {
-                id: stackTraceArea
-                visible: false
-                Layout.fillWidth: true
-                height: Math.min(implicitHeight, 200)
-                color: Theme.currentTheme.colors.controlColor
-                border.color: Theme.currentTheme.colors.cardBorderColor
-                border.width: 1
-                radius: 4
+            ColumnLayout {
+                id: contentColumn
+                spacing: 12
+                width: contentFlickable.width
 
-                Flickable {
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    contentWidth: stackTraceText.implicitWidth
-                    contentHeight: stackTraceText.implicitHeight
-                    clip: true
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    ScrollBar.vertical: ScrollBar {
-                        policy: ScrollBar.AsNeeded
-                    }
-
-                    Text {
-                        id: stackTraceText
-                        text: errorStackTrace
-                        typography: Typography.Caption
-                        font.family: "Consolas, Courier New, monospace"
-                        color: Theme.currentTheme.colors.textSecondaryColor
-                        wrapMode: Text.WrapAnywhere
-                        width: stackTraceArea.width - 32
-                    }
-                }
-            }
-        }
-
-        // Suggestion
-        Rectangle {
-            visible: errorSuggestion.length > 0
-            Layout.fillWidth: true
-            height: suggestionContent.implicitHeight + 20
-            radius: 6
-            color: Qt.rgba(0, 0.4, 0.6, 0.08)
-            border.color: Qt.rgba(0, 0.4, 0.6, 0.2)
-            border.width: 1
-
-            RowLayout {
-                id: suggestionContent
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    top: parent.top
-                    margins: 10
-                }
-                spacing: 8
-
+                // Error message
                 Text {
-                    text: "\uE946"
-                    font.family: "Segoe Fluent Icons"
-                    font.pixelSize: 18
-                    color: Theme.accentColor
-                }
-
-                Text {
-                    text: errorSuggestion
+                    text: errorMessage
+                    visible: errorMessage.length > 0
                     typography: Typography.Body
-                    font.pixelSize: 13
                     color: Theme.currentTheme.colors.textColor
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
+                }
+
+                // Stack trace (collapsible)
+                ColumnLayout {
+                    visible: errorStackTrace.length > 0
+                    spacing: 6
+                    Layout.fillWidth: true
+
+                    Button {
+                        flat: true
+                        text: (stackTraceRect.visible
+                               ? (Backend ? Backend.tr("隐藏详细信息") : "隐藏详细信息")
+                               : (Backend ? Backend.tr("显示详细信息") : "显示详细信息"))
+                        onClicked: stackTraceRect.visible = !stackTraceRect.visible
+                    }
+
+                    Rectangle {
+                        id: stackTraceRect
+                        visible: false
+                        Layout.fillWidth: true
+                        implicitHeight: Math.min(stackTraceText.implicitHeight + 16, 200)
+                        color: Theme.currentTheme.colors.controlColor
+                        border.color: Theme.currentTheme.colors.cardBorderColor
+                        border.width: 1
+                        radius: 4
+
+                        Flickable {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            contentWidth: stackTraceText.implicitWidth
+                            contentHeight: stackTraceText.implicitHeight
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+
+                            ScrollBar.vertical: ScrollBar {
+                                policy: ScrollBar.AsNeeded
+                            }
+
+                            Text {
+                                id: stackTraceText
+                                text: errorStackTrace
+                                typography: Typography.Caption
+                                font.family: "Consolas, Courier New, monospace"
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                wrapMode: Text.WrapAnywhere
+                                width: parent.width
+                            }
+                        }
+                    }
+                }
+
+                // Suggestion
+                Rectangle {
+                    visible: errorSuggestion.length > 0
+                    Layout.fillWidth: true
+                    implicitHeight: suggestionContent.implicitHeight + 20
+                    radius: 6
+                    color: Qt.rgba(0, 0.4, 0.6, 0.08)
+                    border.color: Qt.rgba(0, 0.4, 0.6, 0.2)
+                    border.width: 1
+
+                    RowLayout {
+                        id: suggestionContent
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            top: parent.top
+                            margins: 10
+                        }
+                        spacing: 8
+
+                        Text {
+                            text: "\uE946"
+                            font.family: "Segoe Fluent Icons"
+                            font.pixelSize: 18
+                            color: Theme.accentColor
+                        }
+
+                        Text {
+                            text: errorSuggestion
+                            typography: Typography.Body
+                            font.pixelSize: 13
+                            color: Theme.currentTheme.colors.textColor
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                        }
+                    }
                 }
             }
         }
@@ -185,7 +210,7 @@ Dialog {
         errorMessage = message || ""
         errorStackTrace = stackTrace || ""
         errorSuggestion = analyzeError(message + "\n" + stackTrace)
-        stackTraceArea.visible = false
+        stackTraceRect.visible = false
         open()
     }
 

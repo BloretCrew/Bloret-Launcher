@@ -137,6 +137,29 @@ def Get_Run_Script(mc_version):
                     if os.path.exists(default_path):
                         java_path = default_path
                         break
+
+    # 检测 Java 版本，用于后续兼容性判断
+    java_version = 8  # 默认版本
+    try:
+        result = subprocess.run(
+            [java_path, "-version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        )
+        # Java 版本输出通常在 stderr 中
+        version_output = result.stderr if result.stderr else result.stdout
+        # 提取版本号（例如 "25.0.1" 或 "17.0.8"）
+        import re
+        version_match = re.search(r'version\s+"?(\d+)', version_output)
+        if version_match:
+            java_version = int(version_match.group(1))
+            log(f"检测到 Java版本: {java_version}")
+        else:
+            log(f"无法检测 Java 版本，假定为 8")
+    except Exception as e:
+        log(f"检测 Java 版本失败: {e}，假定为 8")
     
     # --- 账户信息处理 (从 config.json 读取) ---
     mc_account_config = config_data.get("MinecraftAccount", {})
@@ -505,29 +528,11 @@ def Get_Run_Script(mc_version):
     
     log("mods 目录: " + mods_dir)
 
-    # 处理 JavaWrapper.jar 路径 (仅在 Windows 原版中使用)
-    java_wrapper_path = os.path.join(os.getcwd(), "JavaWrapper.jar")
-    if hasattr(sys, '_MEIPASS'):
-        java_wrapper_path = os.path.join(sys._MEIPASS, "JavaWrapper.jar")
-
-    # 仅在 Windows 系统且非 Fabric 环境下尝试使用 JavaWrapper 以处理进程管理
-    # macOS 和 Linux 系统直接启动，避免 Wrapper 兼容性问题
-    # 注意：JavaWrapper 在较新版本的 JDK (17+) 上可能存在兼容性问题导致 NullPointerException
-    use_wrapper = False
-    if platform.system() == "Windows" and not is_fabric and os.path.exists(java_wrapper_path):
-        # 允许通过配置文件手动关闭
-        disable_wrapper = config_data.get('disable_java_wrapper', False)
-        
-        # 启发式检测：检查路径中是否包含较新 JDK 的特征
-        is_new_jdk = any(v in java_path.lower() for v in ["jdk-17", "jdk17", "jdk-21", "jdk21", "jdk-24", "zulu-17", "zulu-21", "zulu-23", "zulu-24"])
-        
-        if not disable_wrapper and not is_new_jdk:
-            use_wrapper = True
-            classpath.append(java_wrapper_path)
-            log("将在启动中使用 JavaWrapper (Windows 适配层)")
-        else:
-            reason = "配置禁用" if disable_wrapper else "检测到较新 JDK 版本"
-            log(f"跳过使用 JavaWrapper ({reason}: {java_path})")
+    # 处理 JavaWrapper.jar 路径
+    # 注意：JavaWrapper 是一个第三方进程管理工具，但它早已停止维护
+    # 它在 Java 17+（包括 Java 25）上会导致严重的 NullPointerException 崩溃
+    # 因此，我们现在默认直接禁用它，改用原生直接启动方式
+    use_wrapper = False  # 强制禁用
 
     # 添加类路径参数
     # 注意：在 shell=False 时，不要手动添加引号。
@@ -544,12 +549,20 @@ def Get_Run_Script(mc_version):
         launch_args.append("net.fabricmc.loader.impl.launch.knot.KnotClient")
     else:
         # 原始 Minecraft 启动方式
+        # 最终检查：即使 use_wrapper 为 True，如果 Java 版本 >= 17 也强制禁用
+        if use_wrapper and java_version >= 17:
+            log(f"⚠️ 最终保护：Java {java_version} >= 17，强制禁用 JavaWrapper")
+            use_wrapper = False
+        
         if use_wrapper:
             # 在 Windows 上，Wrapper 充当启动入口
             launch_args.append("oolloo.jlw.Wrapper")
-        
+            log("⚠️ 使用 JavaWrapper 启动（Java 版本 < 17）")
+
         # 指定 Minecraft 的真正主类
         launch_args.append("net.minecraft.client.main.Main")
+        if not use_wrapper:
+            log(f"✅ 直接启动 Minecraft（未使用 JavaWrapper，Java {java_version}）")
     
     # 游戏目录应该是主 .minecraft 目录，而不是版本特定目录
     # 修改：为了实现版本隔离，game_dir 应该指向 versions_dir

@@ -319,8 +319,14 @@ class MinecraftWindowTool(QWidget):
         )
         
         # 设置窗口属性
-        self.setAttribute(Qt.WA_TranslucentBackground)  # 半透明背景
-        # 提高窗口不透明度（1.0 为完全不透明），根据需要调整此值
+        # 禁用完全透明背景，确保 SimpleCardWidget 背景能正确显示
+        self.setAttribute(Qt.WA_TranslucentBackground, False) 
+        
+        # 设置窗口背景色为 Fluent 风格的半透明深色背景（如果 UI 中没有设置）
+        # 这样可以保证工具条在任何游戏背景下都清晰可见
+        self.setStyleSheet("background-color: rgba(32, 32, 32, 200); border-radius: 8px;")
+        
+        # 提高窗口不透明度（1.0 为完全不透明）
         self.setWindowOpacity(1.0)
         self.setAttribute(Qt.WA_ShowWithoutActivating)  # 显示但不激活
         
