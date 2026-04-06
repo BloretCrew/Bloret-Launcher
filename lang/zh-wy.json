@@ -1,233 +1,4 @@
 {
-    "widgets": {
-        "home": {
-            "Labels": {
-                "Bloret_Launcher_Title": "百絡啓者",
-                "WelcomeToUseBL": "恭迎君使百絡啓者！\n若見漏洞，或有言諫，可至 Github 以書 Issue。\n亦可至 Github 取 Pull request ，以資獻力。",
-                "Info_title": "資",
-                "Welcome_text": "恭迎，",
-                "WillUseAccount_Top": "將以",
-                "WillUseAccount_Down": "登簿礦藝。",
-                "Minecraft_account": "无档案",
-                "Bloret_PassPort_Name": "访客"
-            },
-            "buttons": {
-                "pushButton_2": "百絡 Github 組頁",
-                "pushButton": "該項之 Github 頁",
-                "run": "啓"
-            }
-        },
-        "client": {
-            "TitleLabel": "聯",
-            "SubtitleLabel": "網路",
-            "Labels": {
-                "StrongBodyLabel_17": "網協其六",
-                "CaptionLabel_5": "見君網協其六之设",
-                "ipv6_address": "------:------:------:------:------:------:------:------",
-                "CaptionLabel_12": "<html><head/><body><p>使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。<br/><span style=\" font-weight:700;\">IPV6 是您的运营商提供的一项免费服务，不额外收费。 </span>已拥有的用户点击上方按钮直接使用。<br/>IPV6 联机可能并不稳定，如果您追求稳定性，建议使用下方 Online Client 进行联机。</p></body></html>",
-                "SubtitleLabel_2": "Easytier",
-                "CaptionLabel_9": "<html><head/><body><p>Easytier 是一项开源项目，可以为您提供高效的联机服务。<br/><span style=\" font-weight:700;\">在此处开启联机服务 ，对方需要打开 Bloret Launcher 才能与您一起联机。</span></p></body></html>",
-                "Client_Statue": "未连接",
-                "Client_Statue_Show": "您尚未连接到 Easytier 网络",
-                "CaptionLabel_6": "联机服务 Powered by Easytier"
-            },
-            "buttons": {
-                "GetIPV6AddressGButton": "获取 IPV6 联机地址",
-                "StartOnlineClient": "开启 Easytier 联机服务",
-                "ClientOnlineClient": "连接到对方的网络"
-            }
-        },
-        "download": {
-            "TitleLabel": "下载",
-            "Labels": {
-                "StrongBodyLabel_22": "原版 Minecraft",
-                "CaptionLabel_12": "一键下载安装原版 Minecraft",
-                "StrongBodyLabel_23": "Minecraft + Fabric",
-                "CaptionLabel_13": "可以添加 Mod 的 Minecraft 版本",
-                "StrongBodyLabel_24": "Java",
-                "CaptionLabel_14": "一键下载安装 Java",
-                "StrongBodyLabel": "Java",
-                "StrongBodyLabel_2": "Windows x64",
-                "StrongBodyLabel_25": "自定义程序",
-                "CaptionLabel_15": "添加自定义启动项"
-            },
-            "buttons": {
-                "Minecraft_version_Download": "下载并安装",
-                "Fabric_version_Download": "下载并安装",
-                "Java_version_Download": "下载并安装",
-                "Customize_add": "添加"
-            },
-            "ComboBox": {
-                "Minecraft_version_choose": "",
-                "Fabric_version_choose": "",
-                "Java_version_choose": ""
-            }
-        },
-        "mods": {
-            "TitleLabel": "Mods",
-            "Labels": {
-                "StrongBodyLabel": "让络可帮你挑选合适的 Mod",
-                "CaptionLabel": "无需一个一个找 Mod，让 Bloriko 帮你找齐。",
-                "Bloriko_Important_Info": "Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。"
-            },
-            "buttons": {
-                "Open_Modrinth_Button": "打开 Modrinth"
-            },
-            "SearchLineEdit": {
-                "Search": "在 Modrinth 上搜索"
-            }
-        },
-        "info": {
-            "TitleLabel": "关于",
-            "Labels": {
-                "StrongBodyLabel_11": "QQ",
-                "StrongBodyLabel_12": "Github",
-                "CaptionLabel_2": "© 2025 Bloret Launcher All rights reserved. © 2025 Bloret All rights reserved."
-            },
-            "buttons": {
-                "pushButton": "Bloret",
-                "BLC_QQ": "Bloret Software Community",
-                "pushButton_2": "Bloret Github 组织页面",
-                "button_github": "此项目的 Github"
-            }
-        },
-        "passport": {
-            "TitleLabel": "通行证",
-            "SubtitleLabel": {
-                "label_3": "Minecraft 账户",
-                "SubtitleLabel": "Bloret PassPort"
-            },
-            "Labels": {
-                "Bloret_PassPort_UserName": "未登录",
-                "Sync_From_BloretPassPort_Card": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_title": "通过 Bloret PassPort 管理你的账户",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_sub_title": "轻松登录你的 Minecraft Account，便捷地进行操作。"
-            },
-            "buttons": {
-                "Bloret_PassPort_login": " 登录至 Bloret PassPort",
-                "Bloret_PassPort_logout": "退出登录",
-                "refreshMinecraftAccount": "刷新",
-                "ManageMinecraftAccountOnBloretPassPortWebsite": "在 Bloret PassPort 上管理你的账户",
-                "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from": "从 Bloret PassPort 上同步账户"
-            }
-        },
-        "tools": {
-            "TitleLabel": "小工具",
-            "SubtitleLabel": {
-                "label_3": "屏幕截图",
-                "label": "Minecraft 数据查询"
-            },
-            "Labels": {
-                "StrongBodyLabel_25": "Bloret Launcher Screen Cut",
-                "CaptionLabel_15": "便捷地截取屏幕画面，包括 Minecraft 窗口",
-                "StrongBodyLabel_26": "通过快捷键激活",
-                "ScreenCut_ShortCut": "Ctrl+Alt+A",
-                "name2uuid_text": "查询玩家UUID",
-                "label_2": "查询的结果将显示在这里",
-                "StrongBodyLabel_20": "查询玩家名字",
-                "search_name": "查询的结果将显示在这里",
-                "label_7": "获取玩家的皮肤和披风",
-                "search_skin": "皮肤的查询的结果",
-                "search_cape": "披风的查询的结果"
-            },
-            "buttons": {
-                "ScreenCutButton": "截图",
-                "ScreenCut_ShortCut_Set": "设置快捷键",
-                "name2uuid_player_Button": "查询",
-                "pushButton_5": "复制到剪贴板",
-                "search_name_button": "查询",
-                "search_name_copy": "复制到剪贴板",
-                "skin_search_button": "查询",
-                "search_skin_copy": "复制到剪贴板",
-                "search_cape_copy": "复制到剪贴板"
-            },
-            "LineEdit": {
-                "name2uuid_player_uuid": "玩家名称（正版）",
-                "search_name_type": "玩家UUID",
-                "skin_uuid": "玩家UUID，注意不是名字，如果没有，请到上面获取。"
-            }
-        },
-        "settings": {
-            "TitleLabel": "设置",
-            "SubtitleLabel": {
-                "label_8": "Minecraft",
-                "label_7": "下载",
-                "label_6": "界面",
-                "label_5": "外观",
-                "label": "日志",
-                "SubtitleLabel": "行为"
-            },
-            "Labels": {
-                "StrongBodyLabel_15": "当前版本",
-                "BL_version": "未知",
-                "StrongBodyLabel_23": "Minecraft 文件夹位置",
-                "CaptionLabel_13": "存储所有 Minecraft 信息、资源以及各种版本的文件夹位置",
-                "StrongBodyLabel_22": "最大线程数",
-                "CaptionLabel_12": "下载文件时允许同时下载文件的最大数量\n该数字越大,下载速度越快,但会占用计算机更多性能。",
-                "StrongBodyLabel_17": "缩放",
-                "CaptionLabel_5": "默认启动的窗口大小(重新启动程序后生效)",
-                "StrongBodyLabel_16": "主题",
-                "CaptionLabel_4": "眼睛舒服了",
-                "log_clear_text": "清空日志",
-                "log_clear_subtext": "清空 log 文件夹",
-                "StrongBodyLabel_24": "日志文件夹位置",
-                "CaptionLabel_15": "存储所有 Bloret Launcher 日志的文件夹位置",
-                "label_3": "开机自启动",
-                "CaptionLabel_11": "开机时一并打开 Bloret Launcher, 并最小化至系统托盘",
-                "StrongBodyLabel_18": "重复启动程序",
-                "CaptionLabel_6": "防止 Bloret Launcher 占满您的计算机",
-                "StrongBodyLabel_19": "显示软件打开过程",
-                "CaptionLabel_7": "在软件打开前以通知的形式显示软件在做什么",
-                "StrongBodyLabel_21": "在首页上 显示 Minecraft 账户登录方式",
-                "CaptionLabel_10": "展示你为微软登录或是离线登录",
-                "StrongBodyLabel_20": "本地模式",
-                "CaptionLabel_8": "不连接一部分的互联网，不允许使用 PCFS 服务。",
-                "CaptionLabel_9": "设置界面大部分内容需要重启程序后生效。",
-                "language_Setting_Title": "语言 / language",
-                "language_Setting_Tip_Text": "调整语言设置"
-            },
-            "buttons": {
-                "log_clear_button": "清空日志"
-            },
-            "SpinBox": {
-                "MaxThread_SpinBox": " 个",
-                "Size_Choose": " %"
-            },
-            "SwitchButton": {
-                "Self_starting": {
-                    "onText": "打开",
-                    "offText": "关闭"
-                },
-                "repeat_run_button": {
-                    "onText": "允许",
-                    "offText": "禁止"
-                },
-                "show_runtime_do_button": {
-                    "onText": "显示",
-                    "offText": "不显示"
-                },
-                "home_show_login_mod_button": {
-                    "onText": "展示",
-                    "offText": "隐藏"
-                },
-                "localmod_button": {
-                    "onText": "启用",
-                    "offText": "关闭"
-                }
-            },
-            "ComboBox": {
-                "light_dark_choose": [
-                    "跟随系统",
-                    "深色模式",
-                    "浅色模式"
-                ],
-                "language_Choose": [
-                    "zh-cn",
-                    "en-GB"
-                ]
-            }
-        }
-    },
     "texts": {
         "你还未安装任何版本哦，请前往下载页面安装": "你还未安装任何版本哦，请前往下载页面安装",
         "🔼  启动版本": "🔼  启动版本",
@@ -580,6 +351,166 @@
         "从 Bloret Passport 获取 Minecraft 账户失败": "从 Bloret Passport 获取 Minecraft 账户失败",
         "已成功从 Bloret Passport 同步 Minecraft 账户到本地": "已成功从 Bloret Passport 同步 Minecraft 账户到本地",
         "界面上可能不会及时刷新，但已经登录。": "界面上可能不会及时刷新，但已经登录。",
-        "打开 Bloret PassPort 登录页面": "打开 Bloret PassPort 登录页面"
+        "打开 Bloret PassPort 登录页面": "打开 Bloret PassPort 登录页面",
+        "当前版本": "当前版本",
+        "Bloret Launcher": "Bloret Launcher",
+        "Minecraft 与 Java": "Minecraft 与 Java",
+        "选择用于启动 Minecraft 的 Java": "选择用于启动 Minecraft 的 Java",
+        "Minecraft 文件夹位置": "Minecraft 文件夹位置",
+        "Minecraft 小工具栏": "Minecraft 小工具栏",
+        "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏": "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏",
+        "外观": "外观",
+        "语言 / language": "语言 / language",
+        "调整语言设置": "调整语言设置",
+        "主题": "主题",
+        "选择界面的颜色模式": "选择界面的颜色模式",
+        "日志": "日志",
+        "日志文件夹位置": "日志文件夹位置",
+        "存储所有 Bloret Launcher 日志的文件夹位置": "存储所有 Bloret Launcher 日志的文件夹位置",
+        "清空 log 文件夹所有的日志文件": "清空 log 文件夹所有的日志文件",
+        "浏览...": "浏览...",
+        "打开": "打开",
+        "清空": "清空",
+        "设置界面大部分内容需要重启程序后生效。": "设置界面大部分内容需要重启程序后生效。",
+        "准备下载...": "准备下载...",
+        "暂停": "暂停",
+        "恢复": "恢复",
+        "最大线程数": "最大线程数",
+        "联机服务 Powered by EasyTier. 对方也需要安装 Bloret Launcher 或 EasyTier 才能加入。": "联机服务 Powered by EasyTier. 对方也需要安装 Bloret Launcher 或 EasyTier 才能加入。",
+        "屏幕截图": "屏幕截图",
+        "下载并安装原生 Minecraft 核心": "下载并安装原生 Minecraft 核心",
+        "让络可帮你挑选合适的 Mod": "让络可帮你挑选合适的 Mod",
+        "运行 Minecraft 所需的 Java 环境": "运行 Minecraft 所需的 Java 环境",
+        "通过 Bloret PassPort 管理你的账户": "通过 Bloret PassPort 管理你的账户",
+        "选择 Minecraft 版本": "选择 Minecraft 版本",
+        "打开插件目录": "打开插件目录",
+        "Conveniently manage your Minecraft, conveniently play Bloret.\\n便捷地管理你的 Minecraft，便捷地游玩 Bloret。": "Conveniently manage your Minecraft, conveniently play Bloret.\\n便捷地管理你的 Minecraft，便捷地游玩 Bloret。",
+        "管理已安装插件，查看信息或卸载": "管理已安装插件，查看信息或卸载",
+        "选择安装版本": "选择安装版本",
+        "？": "？",
+        "选择版本:": "选择版本:",
+        "告诉 Bloriko 你的需求...": "告诉 Bloriko 你的需求...",
+        "络可正在思考建议...": "络可正在思考建议...",
+        "刷新": "刷新",
+        "作为加入者": "作为加入者",
+        "确定": "确定",
+        "关于 Minecraft 的任何问题，可以问络可哦 ~": "关于 Minecraft 的任何问题，可以问络可哦 ~",
+        "Java 运行时环境": "Java 运行时环境",
+        "网站管理": "网站管理",
+        "Minecraft 账户": "Minecraft 账户",
+        "卸载成功": "卸载成功",
+        "卸载插件": "卸载插件",
+        "版本类别:": "版本类别:",
+        "作为房主": "作为房主",
+        "v未知": "v未知",
+        "让络可好好想想...": "让络可好好想想...",
+        "搜索": "搜索",
+        "关闭": "关闭",
+        "Minecraft 官方版本": "Minecraft 官方版本",
+        "安装 Fabric 加载器以使用 modern Mod": "安装 Fabric 加载器以使用 modern Mod",
+        "卸载": "卸载",
+        "Bloret PassPort": "Bloret PassPort",
+        "深度思考": "深度思考",
+        "无档案": "无档案",
+        "小工具": "小工具",
+        "Minecraft 数据查询": "Minecraft 数据查询",
+        "Bloret Launcher Screen Cut": "Bloret Launcher Screen Cut",
+        "查看": "查看",
+        "信息": "信息",
+        "披风的查询的结果": "披风的查询的结果",
+        "暂无账户，请从云端同步": "暂无账户，请从云端同步",
+        "连接节点": "连接节点",
+        "访客": "访客",
+        "查看您计算机的 IPV6 配置": "查看您计算机的 IPV6 配置",
+        "Bloriko 的建议": "Bloriko 的建议",
+        "外部程序/整合包": "外部程序/整合包",
+        "未命名插件": "未命名插件",
+        "获取玩家的皮肤和披风": "获取玩家的皮肤和披风",
+        "暂无插件": "暂无插件",
+        "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。": "使用 Bloret 通行证，可享受几乎所有的 Bloret 服务。",
+        "复制": "复制",
+        "请选择要安装此 Mod 的 Fabric 版本:": "请选择要安装此 Mod 的 Fabric 版本:",
+        "前往": "前往",
+        "使用此账户": "使用此账户",
+        "截图": "截图",
+        "网络": "网络",
+        "EasyTier 组网": "EasyTier 组网",
+        "添加您的自定义启动项或整合包文件": "添加您的自定义启动项或整合包文件",
+        "添加自定义项目": "添加自定义项目",
+        "日志已成功清空": "日志已成功清空",
+        "玩家UUID": "玩家UUID",
+        "玩家名称（正版）": "玩家名称（正版）",
+        "IPV6": "IPV6",
+        "请选择要推荐模组的 Minecraft 版本（仅支持 Fabric）：": "请选择要推荐模组的 Minecraft 版本（仅支持 Fabric）：",
+        "确认卸载插件：": "确认卸载插件：",
+        "查询玩家名字": "查询玩家名字",
+        "退出登录": "退出登录",
+        "查询的结果将显示在这里": "查询的结果将显示在这里",
+        "轻松登录你的 Minecraft Account，便捷地进行操作。": "轻松登录你的 Minecraft Account，便捷地进行操作。",
+        "卸载后会删除插件文件，并移除相关启动项。": "卸载后会删除插件文件，并移除相关启动项。",
+        "Mods": "Mods",
+        "查询": "查询",
+        "已成功从云端同步账户": "已成功从云端同步账户",
+        "作者: ": "作者: ",
+        "Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。": "Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。",
+        "皮肤的查询的结果": "皮肤的查询的结果",
+        "发送": "发送",
+        "络可推荐时间段": "络可推荐时间段",
+        "正在加载版本...": "正在加载版本...",
+        "Fabric Loader": "Fabric Loader",
+        "正在使用": "正在使用",
+        "查询中...": "查询中...",
+        "成功": "成功",
+        "插件": "插件",
+        "同步时出错: ": "同步时出错: ",
+        "在 Modrinth 上搜索...": "在 Modrinth 上搜索...",
+        "登录": "登录",
+        "无需一个一个找 Mod，让 Bloriko 帮你找齐。": "无需一个一个找 Mod，让 Bloriko 帮你找齐。",
+        "打开文件夹": "打开文件夹",
+        "插件已卸载": "插件已卸载",
+        "便捷地截取屏幕画面，包括 Minecraft 窗口": "便捷地截取屏幕画面，包括 Minecraft 窗口",
+        "💡 提示：复制上方推荐中的模组名称，在搜索框搜索即可一键安装。": "💡 提示：复制上方推荐中的模组名称，在搜索框搜索即可一键安装。",
+        "卸载失败": "卸载失败",
+        "云端同步": "云端同步",
+        "作者: 未知": "作者: 未知",
+        "Bloret Server 数据信息提供自 百络谷查服网": "Bloret Server 数据信息提供自 百络谷查服网",
+        "启动服务器": "启动服务器",
+        "切换核心": "切换核心",
+        "查询玩家UUID": "查询玩家UUID",
+        "下载并安装": "下载并安装",
+        "已安装的插件": "已安装的插件",
+        "暂无插件描述": "暂无插件描述",
+        "其他版本...": "其他版本...",
+        "连接到对方": "连接到对方",
+        "欢迎使用 Bloret Launcher": "欢迎使用 Bloret Launcher",
+        "欢迎！让我们一起开启 Bloret Launcher 的旅程！接下来，我们需要进行一些必备操作。": "欢迎！让我们一起开启 Bloret Launcher 的旅程！接下来，我们需要进行一些必备操作。",
+        "选择语言": "选择语言",
+        "请选择您希望使用的界面语言：": "请选择您希望使用的界面语言：",
+        "登录 Bloret PassPort": "登录 Bloret PassPort",
+        "登录 Bloret PassPort 以同步您的 Minecraft 账户和设置。": "登录 Bloret PassPort 以同步您的 Minecraft 账户和设置。",
+        "已登录": "已登录",
+        "前往登录": "前往登录",
+        "提示：您可以稍后再登录，但某些功能可能受限。": "提示：您可以稍后再登录，但某些功能可能受限。",
+        "同步 Minecraft 账户": "同步 Minecraft 账户",
+        "从 Bloret PassPort 同步您的 Minecraft 账户信息。": "从 Bloret PassPort 同步您的 Minecraft 账户信息。",
+        "已同步": "已同步",
+        "同步账户": "同步账户",
+        "提示：同步后您可以在此页面看到您的账户信息。": "提示：同步后您可以在此页面看到您的账户信息。",
+        "Java 运行环境": "Java 运行环境",
+        "正在检查 Java 环境...": "正在检查 Java 环境...",
+        "✅ 已检测到 Java 运行环境。": "✅ 已检测到 Java 运行环境。",
+        "❌ 未检测到 Java 运行环境。请安装 Java 以继续。": "❌ 未检测到 Java 运行环境。请安装 Java 以继续。",
+        "重新检测": "重新检测",
+        "安装 Java 21": "安装 Java 21",
+        "推荐安装 Java 21，这是 Minecraft 最新版本的推荐版本。": "推荐安装 Java 21，这是 Minecraft 最新版本的推荐版本。",
+        "Minecraft 游戏文件夹": "Minecraft 游戏文件夹",
+        "请选择或确认您的 Minecraft 游戏文件夹位置。\n如果您已有 Minecraft 版本文件夹，请选择该文件夹。": "请选择或确认您的 Minecraft 游戏文件夹位置。\n如果您已有 Minecraft 版本文件夹，请选择该文件夹。",
+        "Minecraft 文件夹路径": "Minecraft 文件夹路径",
+        "默认路径: %appdata%/Bloret-Launcher": "默认路径: %appdata%/Bloret-Launcher",
+        "提示：如果您不确定，可以使用默认路径，稍后可以在设置中更改。": "提示：如果您不确定，可以使用默认路径，稍后可以在设置中更改。",
+        "返回": "返回",
+        "完成": "完成",
+        "下一步": "下一步",
+        "选择 Minecraft 游戏文件夹": "选择 Minecraft 游戏文件夹"
     }
 }
