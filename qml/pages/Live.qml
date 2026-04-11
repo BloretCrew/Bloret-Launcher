@@ -75,7 +75,10 @@ FluentPage {
             var msgs = chatMessages.slice()
             msgs.push(data)
             chatMessages = msgs
-            chatListView.positionViewAtEnd()
+            // 使用 Qt.callLater 确保在 UI 更新后滚动到底部
+            Qt.callLater(function() {
+                chatListView.positionViewAtEnd()
+            })
         }
         function onLiveConnectionStateChanged(state) {
             connectionState = state
@@ -567,10 +570,15 @@ FluentPage {
                                 }
                                 Label {
                                     text: {
-                                        if (modelData.payload && modelData.payload.message) {
-                                            return modelData.payload.message
+                                        // 兼容多种格式: payload.msg (服务端标准), payload.message (旧格式), 或直接 message
+                                        if (modelData.payload) {
+                                            if (modelData.payload.msg) {
+                                                return modelData.payload.msg
+                                            } else if (modelData.payload.message) {
+                                                return modelData.payload.message
+                                            }
                                         }
-                                        return modelData.message || ""
+                                        return modelData.message || modelData.msg || ""
                                     }
                                     font.pixelSize: 13
                                     color: Theme.currentTheme.colors.textColor

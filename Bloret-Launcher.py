@@ -2365,13 +2365,31 @@ class Backend(QObject):
     def sendLiveChatMessage(self, message):
         def run():
             from modules.bbbs_live import send_signal
+            import time
+            import uuid
             try:
-                send_signal(self._current_live_space_id, {
+                # 生成唯一消息ID
+                username = self.getBloretPassPortUserName()
+                msg_id = f"{username}_{int(time.time()*1000)}_{str(uuid.uuid4())[:8]}"
+                payload = {
+                    "msg": message,
+                    "msgId": msg_id
+                }
+                result = send_signal(self._current_live_space_id, {
                     "type": "chat",
-                    "payload": {"message": message}
+                    "payload": payload
                 })
+                if result is None:
+                    self.liveErrorOccurred.emit("发送消息失败，请检查网络连接或服务器状态")
+                else:
+                    # 在本地显示自己发送的消息(服务器不会广播给自己)
+                    self.liveChatMessageReceived.emit({
+                        "type": "chat",
+                        "from": username,
+                        "payload": payload
+                    })
             except Exception as e:
-                self.liveErrorOccurred.emit(str(e))
+                self.liveErrorOccurred.emit(f"发送消息失败: {str(e)}")
         threading.Thread(target=run, daemon=True).start()
 
     @Slot(str)

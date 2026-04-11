@@ -102,12 +102,20 @@ def send_signal(space_id, signal_data):
     cookies = _get_session_cookie()
     _log_request("POST", url, cookies, signal_data)
     try:
-        response = requests.post(url, json=signal_data, cookies=cookies, timeout=10)
+        # 确保 Content-Type 为 application/json
+        headers = {"Content-Type": "application/json"}
+        response = requests.post(url, json=signal_data, cookies=cookies, headers=headers, timeout=10)
         _log_response(response)
         if response.status_code == 200:
-            return response.json()
+            try:
+                return response.json()
+            except json.JSONDecodeError:
+                log(f"[Live] 响应解析失败,但状态码为 200")
+                return {"success": True}
         else:
-            log(f"[Live] 发送信号失败，状态码: {response.status_code}")
+            # 尝试解析错误响应
+            error_detail = response.text[:200]
+            log(f"[Live] 发送信号失败，状态码: {response.status_code}, 详情: {error_detail}")
             return None
     except requests.exceptions.RequestException as e:
         log(f"[Live] 发送信号网络错误: {e}")
@@ -164,36 +172,64 @@ class LiveSSEClient:
                         self._callback({"type": "error", "message": f"SSE 连接失败: {resp.status_code}"})
                         break
 
+                    # 确保使用 UTF-8 编码
+                    resp.encoding = 'utf-8'
+                    resp.raw.read = lambda amt: resp.raw.read(amt, decode_content=True)
                     reconnect_delay = 1
                     event_type = None
                     data_lines = []
 
-                    for line in resp.iter_lines(decode_unicode=True):
-                        if not self._running:
+                    # 手动读取并解码 UTF-8
+                    buffer = ""
+                    while self._running:
+                        try:
+                            # 读取原始字节并解码为 UTF-8
+                            chunk = resp.raw.read(4096, decode_content=True)
+                            if not chunk:
+                                break
+                            
+                            # 尝试 UTF-8 解码
+                            if isinstance(chunk, bytes):
+                                text = chunk.decode('utf-8', errors='replace')
+                            else:
+                                text = chunk
+                            
+                            buffer += text
+                            
+                            # 按行处理
+                            while '\n' in buffer:
+                                line, buffer = buffer.split('\n', 1)
+                                line = line.strip()
+                                
+                                if not line:
+                                    continue
+                                
+                                if line == "":
+                                    # 空行表示事件结束
+                                    if data_lines:
+                                        data_str = "\n".join(data_lines)
+                                        try:
+                                            payload = json.loads(data_str)
+                                            if event_type:
+                                                payload["type"] = event_type
+                                            self._callback(payload)
+                                        except json.JSONDecodeError as e:
+                                            log(f"[Live SSE] JSON 解析失败: {data_str[:100]}, 错误: {e}")
+                                        event_type = None
+                                        data_lines = []
+                                elif line.startswith("event: "):
+                                    event_type = line[7:].strip()
+                                elif line.startswith("data: "):
+                                    data_lines.append(line[6:])
+                                elif line.startswith("data:"):
+                                    data_lines.append(line[5:])
+                        except UnicodeDecodeError as e:
+                            log(f"[Live SSE] UTF-8 解码错误: {e}")
+                            buffer = ""
+                        except Exception as e:
+                            if self._running:
+                                log(f"[Live SSE] 读取数据错误: {e}")
                             break
-
-                        if line is None:
-                            continue
-
-                        if line == "":
-                            # 空行表示事件结束
-                            if data_lines:
-                                data_str = "\n".join(data_lines)
-                                try:
-                                    payload = json.loads(data_str)
-                                    if event_type:
-                                        payload["type"] = event_type
-                                    self._callback(payload)
-                                except json.JSONDecodeError:
-                                    log(f"[Live SSE] JSON 解析失败: {data_str[:100]}")
-                                event_type = None
-                                data_lines = []
-                        elif line.startswith("event: "):
-                            event_type = line[7:]
-                        elif line.startswith("data: "):
-                            data_lines.append(line[6:])
-                        elif line.startswith("data:"):
-                            data_lines.append(line[5:])
 
             except requests.exceptions.RequestException as e:
                 if self._running:
@@ -203,6 +239,8 @@ class LiveSSEClient:
             except Exception as e:
                 if self._running:
                     log(f"[Live SSE] 未知错误: {e}")
+                    import traceback
+                    log(f"[Live SSE] 错误详情: {traceback.format_exc()}")
                     self._callback({"type": "error", "message": str(e)})
                     break
 
