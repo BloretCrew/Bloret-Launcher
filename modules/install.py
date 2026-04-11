@@ -339,9 +339,7 @@ class LibraryDownloader:
                             if response.status_code == 200:
                                 with open(lib_path, 'wb') as f:
                                     for chunk in response.iter_content(chunk_size=65536):
-
                                         if chunk:
-
                                             f.write(chunk)
                                 log(f"成功下载库文件: {lib_path}")
                                 downloaded = True
