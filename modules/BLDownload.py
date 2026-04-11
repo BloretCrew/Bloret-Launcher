@@ -6,11 +6,45 @@ from modules.win11toast import notify, update_progress
 import logging,os,requests,zipfile,time
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 # 以下导入的部分是 Bloret Launcher 所有 © 2026 Bloret Launcher All rights reserved. © 2026 Bloret All rights reserved.的模块，位于 modules 中
 from modules.safe import handle_exception
 from modules.log import log
 from modules.i18n import i18nText
 import modules.globals as BLglobals
+
+# 创建全局 session 用于连接复用
+_session_cache = {}
+
+def get_optimized_session(max_retries=5, pool_connections=10, pool_maxsize=20):
+    """获取优化的 requests session，支持连接复用和自动重试"""
+    session_key = f"{max_retries}_{pool_connections}_{pool_maxsize}"
+    if session_key not in _session_cache:
+        session = requests.Session()
+        # 配置重试策略（指数退避）
+        retry_strategy = Retry(
+            total=max_retries,
+            backoff_factor=0.5,  # 指数退避因子：0.5, 1, 2, 4...
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "OPTIONS"]
+        )
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=pool_connections,
+            pool_maxsize=pool_maxsize
+        )
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        # 设置优化的 headers
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': '*/*',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive'
+        })
+        _session_cache[session_key] = session
+    return _session_cache[session_key]
 
 def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft, LM_Download_Way_version, parent):
     class BLDownloadDialog(QDialog):
@@ -121,7 +155,9 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                 version_download_url = LM_Download_Way_version.get(LM_download_way_choose)
                 log(f"下载链接:{version_download_url}")
 
-                response = requests.get(version_download_url + file_name, stream=True, timeout=10)
+                # 使用优化的 session 进行下载，支持连接复用和自动重试
+                session = get_optimized_session()
+                response = session.get(version_download_url + file_name, stream=True, timeout=30)
                 response.raise_for_status()
                 log(f"成功获取文件: {file_name}，开始下载")
 
@@ -129,7 +165,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                 downloaded_size = 0
 
                 with open(file_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
+                    for chunk in response.iter_content(chunk_size=65536):
                         f.write(chunk)
                         downloaded_size += len(chunk)
                         progress = int(downloaded_size / total_size * 100)
@@ -218,7 +254,9 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                 for attempt in range(max_retries):
                     try:
                         log(f"准备下载 {file_name} 到 {file_path} (尝试 {attempt + 1}/{max_retries})")
-                        response = requests.get(url, stream=True, timeout=10)
+                        # 使用优化的 session 进行下载，支持连接复用和自动重试
+                        session = get_optimized_session()
+                        response = session.get(url, stream=True, timeout=30)
                         response.raise_for_status()
             
                         total_size = int(response.headers.get('content-length', 0))
@@ -226,7 +264,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                         log(f"下载链接:{url}")
             
                         with open(file_path, 'wb') as f:
-                            for chunk in response.iter_content(chunk_size=8192):
+                            for chunk in response.iter_content(chunk_size=65536):
                                 if chunk:
                                     f.write(chunk)
                                     downloaded_size += len(chunk)
@@ -296,8 +334,9 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                 try:
                     # 记录日志，显示当前尝试次数
                     log(f"开始下载 {file_name} (尝试 {attempt + 1}/{max_retries})")
-                    # 发起 HTTP GET 请求，启用流式下载，设置超时时间为 10 秒
-                    response = requests.get(url, stream=True, timeout=10)
+                    # 使用优化的 session 进行下载，支持连接复用和自动重试
+                    session = get_optimized_session()
+                    response = session.get(url, stream=True, timeout=30)
                     # 检查 HTTP 响应状态码，如果不是 200 则抛出异常
                     response.raise_for_status()
         
@@ -318,7 +357,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                     # 打开文件并写入下载内容
                     with open(file_path, 'wb') as f:
                         # 分块下载文件，每次读取 8192 字节
-                        for chunk in response.iter_content(chunk_size=8192):
+                        for chunk in response.iter_content(chunk_size=65536):
                             if chunk:  # 确保 chunk 不为空
                                 f.write(chunk)  # 写入文件
                                 downloaded_size += len(chunk)  # 更新已下载大小

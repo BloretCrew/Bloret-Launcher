@@ -1,5 +1,7 @@
 # Removed qfluentwidgets imports for PySide6 compatibility
 import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, sys
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 try:
     import send2trash
 except ImportError:
@@ -21,6 +23,16 @@ def get_session():
     """获取线程本地的 requests.Session 对象，实现连接复用"""
     if not hasattr(thread_local_data, "session"):
         thread_local_data.session = requests.Session()
+        # 配置重试策略：针对 429, 500, 502, 503, 504 错误自动重试
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "OPTIONS"]
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy, pool_connections=64, pool_maxsize=64)
+        thread_local_data.session.mount("https://", adapter)
+        thread_local_data.session.mount("http://", adapter)
     return thread_local_data.session
 
 def toggle_current_download_pause():
@@ -323,10 +335,14 @@ class LibraryDownloader:
                             log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
                             # 使用 session 复用连接
                             session = get_session()
-                            response = session.get(url_to_try, proxies=None, timeout=30)
+                            response = session.get(url_to_try, proxies=None, timeout=30, stream=True)
                             if response.status_code == 200:
                                 with open(lib_path, 'wb') as f:
-                                    f.write(response.content)
+                                    for chunk in response.iter_content(chunk_size=65536):
+
+                                        if chunk:
+
+                                            f.write(chunk)
                                 log(f"成功下载库文件: {lib_path}")
                                 downloaded = True
                                 break # 成功下载，跳出重试循环
@@ -339,10 +355,14 @@ class LibraryDownloader:
                                 http_url = url_to_try.replace("https://", "http://")
                                 log(f"尝试使用HTTP协议: {http_url}")
                                 session = get_session()
-                                response = session.get(http_url, proxies=None, timeout=30)
+                                response = session.get(http_url, proxies=None, timeout=30, stream=True)
                                 if response.status_code == 200:
                                     with open(lib_path, 'wb') as f:
-                                        f.write(response.content)
+                                        for chunk in response.iter_content(chunk_size=65536):
+
+                                            if chunk:
+
+                                                f.write(chunk)
                                     log(f"成功下载库文件 (HTTP): {lib_path}")
                                     downloaded = True
                                     break # 成功下载，跳出重试循环
@@ -377,10 +397,14 @@ class LibraryDownloader:
                                 log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
                                 # 使用 session 复用连接
                                 session = get_session()
-                                response = session.get(url_to_try, proxies=None, timeout=30)
+                                response = session.get(url_to_try, proxies=None, timeout=30, stream=True)
                                 if response.status_code == 200:
                                     with open(lib_path, 'wb') as f:
-                                        f.write(response.content)
+                                        for chunk in response.iter_content(chunk_size=65536):
+
+                                            if chunk:
+
+                                                f.write(chunk)
                                     log(f"成功下载库文件: {lib_path}")
                                     downloaded = True
                                     break # 成功下载，跳出重试循环
@@ -439,7 +463,11 @@ class LibraryDownloader:
             response = requests.get(url, timeout=30)
             if response.status_code == 200:
                 with open(file_path, 'wb') as f:
-                    f.write(response.content)
+                    for chunk in response.iter_content(chunk_size=65536):
+
+                        if chunk:
+
+                            f.write(chunk)
                 log(f"成功下载文件: {file_path}")
                 return True
             else:
@@ -462,7 +490,11 @@ def download_file(url, file_path):
         response = requests.get(url, timeout=30)
         if response.status_code == 200:
             with open(file_path, 'wb') as f:
-                f.write(response.content)
+                for chunk in response.iter_content(chunk_size=65536):
+
+                    if chunk:
+
+                        f.write(chunk)
             log(f"成功下载文件: {file_path}")
             return True
         else:
@@ -682,7 +714,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                             downloaded_size = 0
                             
                             with open(client_jar_path, 'wb') as f:
-                                for chunk in response.iter_content(chunk_size=8192):
+                                for chunk in response.iter_content(chunk_size=65536):
                                     if chunk:
                                         f.write(chunk)
                                         downloaded_size += len(chunk)
@@ -708,7 +740,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                                         downloaded_size = 0
                                         
                                         with open(client_jar_path, 'wb') as f:
-                                            for chunk in response.iter_content(chunk_size=8192):
+                                            for chunk in response.iter_content(chunk_size=65536):
                                                 if chunk:
                                                     f.write(chunk)
                                                     downloaded_size += len(chunk)
@@ -734,7 +766,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                                 downloaded_size = 0
                                 
                                 with open(client_jar_path, 'wb') as f:
-                                    for chunk in response.iter_content(chunk_size=8192):
+                                    for chunk in response.iter_content(chunk_size=65536):
                                         if chunk:
                                             f.write(chunk)
                                             downloaded_size += len(chunk)
@@ -823,7 +855,11 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                     response = requests.get(url, timeout=30)
                     if response.status_code == 200:
                         with open(asset_index_path, 'wb') as f:
-                            f.write(response.content)
+                            for chunk in response.iter_content(chunk_size=65536):
+
+                                if chunk:
+
+                                    f.write(chunk)
                         log(f"已下载资源索引: {asset_index_path}")
                         download_success = True
                         break
@@ -838,7 +874,11 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                         response = requests.get(http_url, timeout=30)
                         if response.status_code == 200:
                             with open(asset_index_path, 'wb') as f:
-                                f.write(response.content)
+                                for chunk in response.iter_content(chunk_size=65536):
+
+                                    if chunk:
+
+                                        f.write(chunk)
                             log(f"已下载资源索引: {asset_index_path}")
                             download_success = True
                             break
@@ -919,7 +959,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                                 if response.status_code == 200:
                                     with open(object_path, 'wb') as f:
                                         # 使用固定大小的块进行流式写入，避免内存占用过高
-                                        for chunk in response.iter_content(chunk_size=8192):
+                                        for chunk in response.iter_content(chunk_size=65536):
                                             if chunk:
                                                 f.write(chunk)
                                     download_success = True
@@ -936,7 +976,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                                     response = session.get(http_url, stream=True, timeout=30)
                                     if response.status_code == 200:
                                         with open(object_path, 'wb') as f:
-                                            for chunk in response.iter_content(chunk_size=8192):
+                                            for chunk in response.iter_content(chunk_size=65536):
                                                 if chunk:
                                                     f.write(chunk)
                                         download_success = True
@@ -953,7 +993,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                                     response = session.get(http_url, stream=True, timeout=30)
                                     if response.status_code == 200:
                                         with open(object_path, 'wb') as f:
-                                            for chunk in response.iter_content(chunk_size=8192):
+                                            for chunk in response.iter_content(chunk_size=65536):
                                                 if chunk:
                                                     f.write(chunk)
                                         download_success = True
@@ -1208,7 +1248,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                                     downloaded_size = 0
                                     
                                     with open(client_jar_path, 'wb') as f:
-                                        for chunk in response.iter_content(chunk_size=8192):
+                                        for chunk in response.iter_content(chunk_size=65536):
                                             if chunk:
                                                 f.write(chunk)
                                                 downloaded_size += len(chunk)
@@ -1230,7 +1270,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                                     downloaded_size = 0
                                     
                                     with open(client_jar_path, 'wb') as f:
-                                        for chunk in response.iter_content(chunk_size=8192):
+                                        for chunk in response.iter_content(chunk_size=65536):
                                             if chunk:
                                                 f.write(chunk)
                                                 downloaded_size += len(chunk)
@@ -1341,7 +1381,11 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                                 response = requests.get(url, timeout=30)
                                 if response.status_code == 200:
                                     with open(fabric_api_path, 'wb') as f:
-                                        f.write(response.content)
+                                        for chunk in response.iter_content(chunk_size=65536):
+
+                                            if chunk:
+
+                                                f.write(chunk)
                                     log(f"已下载 Fabric API: {fabric_api_path}")
                                     download_success = True
                                     break
