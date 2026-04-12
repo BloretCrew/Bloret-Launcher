@@ -2,6 +2,7 @@ import requests
 import json
 import threading
 import time
+import logging
 import modules.globals as BLglobals
 import modules.config as cfg
 from modules.log import log
@@ -29,6 +30,34 @@ def _log_response(response):
         log(f"[Live DEBUG] Body: {response.text[:500]}")
     except Exception:
         pass
+
+
+def _request_json(method, path, timeout=10, body=None):
+    url = f"{_get_base_url()}{path}"
+    cookies = _get_session_cookie()
+    _log_request(method, url, cookies, body)
+    try:
+        headers = {"Content-Type": "application/json"} if body is not None else None
+        response = requests.request(
+            method,
+            url,
+            json=body,
+            cookies=cookies,
+            headers=headers,
+            timeout=timeout,
+        )
+        _log_response(response)
+        try:
+            payload = response.json()
+        except json.JSONDecodeError:
+            payload = {"success": response.ok, "raw": response.text[:500]}
+        if response.ok:
+            return payload
+        log(f"[Live] 请求失败: {method} {path} -> {response.status_code}", logging.WARNING)
+        return payload
+    except requests.exceptions.RequestException as e:
+        log(f"[Live] 请求网络错误: {method} {path} -> {e}")
+        return None
 
 
 def _get_session_cookie():
@@ -66,34 +95,12 @@ def fetch_space_list():
 
 def check_access(space_id):
     """GET /api/live/check-access/:spaceId - 检查是否需要密码"""
-    url = f"{_get_base_url()}/api/live/check-access/{space_id}"
-    cookies = _get_session_cookie()
-    _log_request("GET", url, cookies)
-    try:
-        response = requests.get(url, cookies=cookies, timeout=10)
-        _log_response(response)
-        if response.status_code == 200:
-            return response.json()
-        return None
-    except requests.exceptions.RequestException as e:
-        log(f"[Live] 检查访问权限网络错误: {e}")
-        return None
+    return _request_json("GET", f"/api/live/check-access/{space_id}")
 
 
 def verify_password(space_id, password):
     """POST /api/live/verify-password/:spaceId - 验证空间密码"""
-    url = f"{_get_base_url()}/api/live/verify-password/{space_id}"
-    cookies = _get_session_cookie()
-    _log_request("POST", url, cookies, {"password": password})
-    try:
-        response = requests.post(url, json={"password": password}, cookies=cookies, timeout=10)
-        _log_response(response)
-        if response.status_code == 200:
-            return response.json()
-        return {"success": False}
-    except requests.exceptions.RequestException as e:
-        log(f"[Live] 验证密码网络错误: {e}")
-        return {"success": False}
+    return _request_json("POST", f"/api/live/verify-password/{space_id}", body={"password": password}) or {"success": False}
 
 
 def send_signal(space_id, signal_data):
@@ -124,20 +131,34 @@ def send_signal(space_id, signal_data):
 
 def create_space(name):
     """POST /api/live/create - 创建新 Live 空间"""
-    url = f"{_get_base_url()}/api/live/create"
-    cookies = _get_session_cookie()
-    _log_request("POST", url, cookies, {"name": name})
-    try:
-        response = requests.post(url, json={"name": name}, cookies=cookies, timeout=10)
-        _log_response(response)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            log(f"[Live] 创建空间失败，状态码: {response.status_code}")
-            return None
-    except requests.exceptions.RequestException as e:
-        log(f"[Live] 创建空间网络错误: {e}")
-        return None
+    return _request_json("POST", "/api/live/create", body={"name": name})
+
+
+def start_space_easytier(space_id):
+    """POST /api/live/easytier/start/:spaceId - 由房主开启当前 Live 的 EasyTier 网络"""
+    return _request_json("POST", f"/api/live/easytier/start/{space_id}", body={})
+
+
+def stop_space_easytier(space_id):
+    """POST /api/live/easytier/stop/:spaceId - 停止当前 Live 的 EasyTier 网络"""
+    return _request_json("POST", f"/api/live/easytier/stop/{space_id}", body={})
+
+
+def publish_space_easytier_endpoint(space_id, host_virtual_ip, game_port):
+    """POST /api/live/easytier/publish/:spaceId - 上报房主虚拟 IP 和局域网端口"""
+    return _request_json(
+        "POST",
+        f"/api/live/easytier/publish/{space_id}",
+        body={
+            "hostVirtualIp": host_virtual_ip,
+            "gamePort": int(game_port),
+        },
+    )
+
+
+def get_space_easytier_info(space_id):
+    """GET /api/live/easytier/info/:spaceId - 获取当前 Live 的 EasyTier 连接信息"""
+    return _request_json("GET", f"/api/live/easytier/info/{space_id}")
 
 
 # ==================== SSE Client ====================

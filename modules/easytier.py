@@ -1,238 +1,689 @@
-import subprocess
+import copy
+import gzip
+import io
+import logging
+import os
+import platform
 import re
-import sys
+import shutil
+import socket
+import struct
+import subprocess
 import threading
 import time
-import os
+
 from modules.i18n import i18nText
 from modules.log import log
-import logging
 
-easytier_core_process = None
 
-def get_easytier_virtual_ip(cli_path="easytier-cli.exe"):
-    """
-    调用 easytier-cli node info，解析并返回虚拟 IP（如 10.126.126.1）
-    """
+PUBLIC_PEERS = [
+    "tcp://public.easytier.top:11010",
+    "tcp://public1.easytier.top:11010",
+    "tcp://public2.easytier.top:11010",
+]
+
+LAN_PORT_PATTERNS = [
+    re.compile(r"Local game hosted on port (\d+)"),
+    re.compile(r"Started serving on (\d+)"),
+    re.compile(r"本地游戏已在端口 (\d+)"),
+]
+
+_SESSION_LOCK = threading.RLock()
+_LOG_READER_THREADS = []
+_LOG_WATCH_THREAD = None
+_LOG_WATCH_STOP = None
+
+_SESSION = {
+    "space_id": "",
+    "space_name": "",
+    "mode": "",
+    "network_name": "",
+    "network_secret": "",
+    "host_username": "",
+    "proxy_port": None,
+    "virtual_ip": "",
+    "target_host_virtual_ip": "",
+    "target_game_port": None,
+    "game_port": None,
+    "target_address": "",
+    "running": False,
+    "status": "idle",
+    "error": "",
+    "watching_version": "",
+    "log_path": "",
+    "started_at": None,
+}
+
+_PROCESS_STATE = {
+    "process": None,
+    "binary_dir": "",
+}
+
+
+def _get_creationflags():
+    if os.name == "nt":
+        return getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    return 0
+
+
+def _ensure_executable(path):
+    if path and os.name != "nt" and os.path.exists(path):
+        try:
+            current_mode = os.stat(path).st_mode
+            os.chmod(path, current_mode | 0o111)
+        except OSError as exc:
+            log(f"EasyTier chmod 失败: {exc}", logging.WARNING)
+
+
+def _candidate_binary_dirs():
+    cwd = os.getcwd()
+    return [
+        os.path.join(cwd, "EasyTier"),
+        os.path.join(cwd, "easytier"),
+        os.path.join(cwd, "BL4CW2", "net.bloret.launcher", "launcher", "easytier"),
+    ]
+
+
+def _resolve_binary(binary_name):
+    for base_dir in _candidate_binary_dirs():
+        candidate = os.path.join(base_dir, binary_name)
+        if os.path.exists(candidate):
+            _ensure_executable(candidate)
+            return candidate
+    return ""
+
+
+def _binary_paths():
+    core_name = "easytier-core.exe" if os.name == "nt" else "easytier-core"
+    cli_name = "easytier-cli.exe" if os.name == "nt" else "easytier-cli"
+    core_path = _resolve_binary(core_name)
+    cli_path = _resolve_binary(cli_name)
+    binary_dir = os.path.dirname(core_path) if core_path else ""
+    return core_path, cli_path, binary_dir
+
+
+def _decode_output(data):
+    if isinstance(data, str):
+        return data
+    for encoding in ("utf-8", "gbk", "latin-1"):
+        try:
+            return data.decode(encoding)
+        except Exception:
+            continue
+    return data.decode("utf-8", errors="replace")
+
+
+def _reader_thread(stream, label):
     try:
-        # 检查文件是否存在
-        if not os.path.exists(cli_path):
-            log(f"❌ easytier-cli 不存在: {cli_path}", logging.ERROR)
-            return None
+        while True:
+            chunk = stream.readline()
+            if not chunk:
+                break
+            text = _decode_output(chunk).strip()
+            if text:
+                log(f"[EasyTier/{label}] {text}")
+    except Exception as exc:
+        log(f"读取 EasyTier {label} 日志失败: {exc}", logging.WARNING)
 
-        # 执行命令
-        log(f"执行命令: {[cli_path, 'node', 'info']}", logging.DEBUG)
+
+def _allocate_proxy_port(preferred=1080):
+    candidates = [preferred] + list(range(1081, 1096))
+    for port in candidates:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(("127.0.0.1", port))
+                return port
+            except OSError:
+                continue
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+def _start_process(args, binary_dir):
+    process = subprocess.Popen(
+        args,
+        cwd=binary_dir or None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        creationflags=_get_creationflags(),
+    )
+
+    for label, stream in (("stdout", process.stdout), ("stderr", process.stderr)):
+        thread = threading.Thread(target=_reader_thread, args=(stream, label), daemon=True)
+        thread.start()
+        _LOG_READER_THREADS.append(thread)
+
+    return process
+
+
+def _try_get_virtual_ip(cli_path):
+    if not cli_path or not os.path.exists(cli_path):
+        return ""
+
+    try:
         result = subprocess.run(
             [cli_path, "node", "info"],
             capture_output=True,
-            text=True,
-            encoding='gbk',  # Windows 中文系统使用 GBK 编码
-            timeout=5  # 添加超时设置
+            timeout=5,
+            cwd=os.path.dirname(cli_path) or None,
+            creationflags=_get_creationflags(),
         )
-        output = result.stdout
-        log(f"命令输出: {output}", logging.DEBUG)
-        
-        # 如果有错误输出，也记录下来
-        if result.stderr:
-            log(f"easytier-cli 错误输出: {result.stderr}", logging.WARNING)
-
-        # 在输出中查找包含 "Virtual IP" 的行
-        for line in output.splitlines():
-            if "Virtual IP" in line:
-                # 示例行: | Virtual IP     | 10.126.126.1/24                        |
-                parts = line.split('|')
-                if len(parts) >= 3:
-                    ip_with_mask = parts[2].strip()
-                    log(f"Virtual IP 字段内容: '{ip_with_mask}'", logging.DEBUG)
-                    # 如果字段为空，直接返回 None
-                    if not ip_with_mask:
-                        log("Virtual IP 字段为空", logging.WARNING)
-                        return None
-                    # 使用正则提取 IP（兼容 IPv4 和可能的 IPv6）
-                    match = re.search(r'(\d+\.\d+\.\d+\.\d+)', ip_with_mask)
-                    if match:
-                        return match.group(1)
-                    else:
-                        log(f"在 Virtual IP 字段中未找到有效的 IPv4 地址: {ip_with_mask}", logging.WARNING)
-        
-        # 如果输出为空或没有 Virtual IP 行
-        if not output.strip():
-            log("easytier-cli 输出为空", logging.WARNING)
-        else:
-            log(f"完整输出:\n{output}", logging.DEBUG)
-            
-        return None
-
     except subprocess.TimeoutExpired:
-        log("❌ easytier-cli 执行超时", logging.ERROR)
-        return None
-    except subprocess.CalledProcessError as e:
-        log(f"❌ 执行 easytier-cli 失败: {e.stderr}", logging.ERROR)
-        return None
-    except FileNotFoundError:
-        log(f"❌ 未找到 easytier-cli: {cli_path}", logging.ERROR)
-        return None
-    except Exception as e:
-        log(f"❌ 发生错误: {e}", logging.ERROR)
-        return None
+        log("EasyTier CLI 查询虚拟 IP 超时", logging.WARNING)
+        return ""
+    except Exception as exc:
+        log(f"EasyTier CLI 查询失败: {exc}", logging.WARNING)
+        return ""
 
-def _run_easytier_core(name, key, use_public_server=True, is_host=True, peer_ip=None):
-    global easytier_core_process
-    easytier_core_path = os.path.join(os.getcwd(), "easytier", "easytier-core.exe")
+    output = _decode_output(result.stdout or b"")
+    if result.stderr:
+        stderr_text = _decode_output(result.stderr)
+        if stderr_text.strip():
+            log(f"[EasyTier/cli] {stderr_text.strip()}", logging.DEBUG)
 
-    # 检查文件是否存在
-    if not os.path.exists(easytier_core_path):
-        log(f"❌ Easytier core 不存在: {easytier_core_path}", logging.ERROR)
-        return False
+    for line in output.splitlines():
+        if "Virtual IP" not in line:
+            continue
+        match = re.search(r"(\d+\.\d+\.\d+\.\d+)", line)
+        if match:
+            return match.group(1)
+    return ""
 
-    # 如果密码为空，使用默认值
-    if not key or key.strip() == "":
-        key = "NoPassWord"  # 使用与 frp 相同的默认密码
-        log("密码为空，使用默认值: NoPassWord", logging.WARNING)
 
-    # 构建 easytier-core 的参数（不使用 -d，避免 daemon 模式）
-    args = [
-        "--network-name", name,
-        "--network-secret", key,
-    ]
-    
-    # 如果启用公共服务器，添加多个备用服务器地址
-    if use_public_server:
-        # 添加多个公共服务器，增加连接成功率
-        public_servers = [
-            "tcp://public.easytier.top:11010",
-            "tcp://public1.easytier.top:11010",
-            "tcp://public2.easytier.top:11010",
-        ]
-        for server in public_servers:
-            args.extend(["-p", server])
-        log(f"使用公共服务器模式: {', '.join(public_servers)}", logging.INFO)
-    elif not is_host and peer_ip:
-        # 加入者模式：添加房主为对等节点
-        peer_url = f"tcp://{peer_ip}:11010"
-        args.extend(["-p", peer_url])
-        log(f"使用加入者模式，连接到房主节点: {peer_url}", logging.INFO)
+def get_easytier_virtual_ip(cli_path=None):
+    if not cli_path:
+        _, cli_path, _ = _binary_paths()
+    ip = _try_get_virtual_ip(cli_path)
+    if ip:
+        with _SESSION_LOCK:
+            _SESSION["virtual_ip"] = ip
+    return ip or None
+
+
+def _update_target_address_locked():
+    host_ip = _SESSION.get("target_host_virtual_ip") or ""
+    game_port = _SESSION.get("target_game_port")
+    if host_ip and game_port:
+        _SESSION["target_address"] = f"{host_ip}:{game_port}"
     else:
-        # 房主模式：不添加任何公共服务器，仅监听本地端口
-        log("使用房主模式（不添加公共服务器）", logging.INFO)
-        log("提示: 启动后需要将你的 IP 告诉加入者，让他们添加你为对等节点", logging.INFO)
+        _SESSION["target_address"] = ""
 
-    log(f"Easytier core 路径: {easytier_core_path}", logging.DEBUG)
-    log(f"Easytier core 参数: {args}", logging.DEBUG)
 
-    # 直接使用 Popen 启动进程，不使用 PowerShell 和 RunAs
+def _build_command(mode, network_name, network_secret, proxy_port, use_public_servers):
+    core_path, _, binary_dir = _binary_paths()
+    if not core_path:
+        raise FileNotFoundError("未找到 EasyTier 核心程序")
+
+    args = [
+        core_path,
+        "--network-name", network_name,
+        "--network-secret", network_secret,
+        "--no-tun",
+    ]
+
+    if mode == "client" and proxy_port:
+        args.extend(["--proxy-port", str(proxy_port)])
+
+    if use_public_servers:
+        for peer in PUBLIC_PEERS:
+            args.extend(["-p", peer])
+
+    return args, binary_dir
+
+
+def _wait_for_virtual_ip(cli_path, timeout_seconds=12):
+    deadline = time.time() + timeout_seconds
+    last_ip = ""
+    while time.time() < deadline:
+        ip = _try_get_virtual_ip(cli_path)
+        if ip:
+            last_ip = ip
+            break
+        time.sleep(1)
+    return last_ip
+
+
+def _set_session_base(mode, space_id, space_name, network_name, network_secret, host_username, proxy_port):
+    with _SESSION_LOCK:
+        _SESSION.update({
+            "space_id": space_id or "",
+            "space_name": space_name or "",
+            "mode": mode or "",
+            "network_name": network_name or "",
+            "network_secret": network_secret or "",
+            "host_username": host_username or "",
+            "proxy_port": proxy_port,
+            "virtual_ip": "",
+            "game_port": None,
+            "target_host_virtual_ip": "",
+            "target_game_port": None,
+            "target_address": "",
+            "running": False,
+            "status": "starting",
+            "error": "",
+            "watching_version": "",
+            "log_path": "",
+            "started_at": int(time.time()),
+        })
+
+
+def start_live_session(
+    mode,
+    network_name,
+    network_secret,
+    space_id="",
+    space_name="",
+    host_username="",
+    target_host_virtual_ip="",
+    target_game_port=None,
+    use_public_servers=True,
+):
+    if mode not in ("host", "client"):
+        return {"success": False, "message": "未知的 EasyTier 模式", "snapshot": get_live_session_snapshot()}
+
+    stop_live_session()
+
+    proxy_port = _allocate_proxy_port() if mode == "client" else None
+    _set_session_base(mode, space_id, space_name, network_name, network_secret, host_username, proxy_port)
+
     try:
-        easytier_core_process = subprocess.Popen(
-            [easytier_core_path] + args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=os.path.join(os.getcwd(), "easytier"),
-            creationflags=subprocess.CREATE_NO_WINDOW  # 隐藏窗口
-        )
-        log(f"✅ Easytier core server started. PID: {easytier_core_process.pid}")
+        command, binary_dir = _build_command(mode, network_name, network_secret, proxy_port, use_public_servers)
+        process = _start_process(command, binary_dir)
+    except Exception as exc:
+        with _SESSION_LOCK:
+            _SESSION["status"] = "error"
+            _SESSION["error"] = str(exc)
+        log(f"启动 EasyTier 失败: {exc}", logging.ERROR)
+        return {"success": False, "message": str(exc), "snapshot": get_live_session_snapshot()}
+
+    with _SESSION_LOCK:
+        _PROCESS_STATE["process"] = process
+        _PROCESS_STATE["binary_dir"] = binary_dir
+
+    time.sleep(1.5)
+    if process.poll() is not None:
+        stderr_text = ""
+        try:
+            stderr_text = _decode_output(process.stderr.read() or b"").strip()
+        except Exception:
+            pass
+        message = stderr_text or "EasyTier 进程已提前退出"
+        with _SESSION_LOCK:
+            _SESSION["status"] = "error"
+            _SESSION["error"] = message
+        log(f"EasyTier 进程提前退出: {message}", logging.ERROR)
+        return {"success": False, "message": message, "snapshot": get_live_session_snapshot()}
+
+    _, cli_path, _ = _binary_paths()
+    virtual_ip = _wait_for_virtual_ip(cli_path)
+
+    with _SESSION_LOCK:
+        _SESSION["running"] = True
+        _SESSION["status"] = "running"
+        _SESSION["virtual_ip"] = virtual_ip or _SESSION.get("virtual_ip") or ""
+        if target_host_virtual_ip:
+            _SESSION["target_host_virtual_ip"] = target_host_virtual_ip
+        if target_game_port:
+            _SESSION["target_game_port"] = int(target_game_port)
+        _update_target_address_locked()
+
+    snapshot = get_live_session_snapshot()
+    return {"success": True, "message": "EasyTier 已启动", "snapshot": snapshot}
+
+
+def stop_live_session(space_id=None):
+    global _LOG_WATCH_THREAD, _LOG_WATCH_STOP
+
+    with _SESSION_LOCK:
+        if space_id and _SESSION.get("space_id") and _SESSION.get("space_id") != space_id:
+            return False
+
+        process = _PROCESS_STATE.get("process")
+        _PROCESS_STATE["process"] = None
+        _PROCESS_STATE["binary_dir"] = ""
+
+        if _LOG_WATCH_STOP:
+            _LOG_WATCH_STOP.set()
+
+    if process:
+        try:
+            process.terminate()
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+        except Exception as exc:
+            log(f"停止 EasyTier 失败: {exc}", logging.WARNING)
+
+    if _LOG_WATCH_THREAD and _LOG_WATCH_THREAD.is_alive():
+        _LOG_WATCH_THREAD.join(timeout=1)
+    _LOG_WATCH_THREAD = None
+    _LOG_WATCH_STOP = None
+
+    with _SESSION_LOCK:
+        _SESSION.update({
+            "space_id": "",
+            "space_name": "",
+            "mode": "",
+            "network_name": "",
+            "network_secret": "",
+            "host_username": "",
+            "proxy_port": None,
+            "virtual_ip": "",
+            "target_host_virtual_ip": "",
+            "target_game_port": None,
+            "game_port": None,
+            "target_address": "",
+            "running": False,
+            "status": "idle",
+            "error": "",
+            "watching_version": "",
+            "log_path": "",
+            "started_at": None,
+        })
+    return True
+
+
+def get_live_session_snapshot():
+    with _SESSION_LOCK:
+        snapshot = copy.deepcopy(_SESSION)
+        snapshot["local_running"] = snapshot.get("running", False)
+        snapshot["host_address"] = snapshot.get("target_address", "")
+    return snapshot
+
+
+def refresh_live_virtual_ip():
+    ip = get_easytier_virtual_ip()
+    return ip or ""
+
+
+def update_live_target(host_virtual_ip="", game_port=None):
+    with _SESSION_LOCK:
+        if host_virtual_ip is not None:
+            _SESSION["target_host_virtual_ip"] = host_virtual_ip or ""
+        if game_port is not None:
+            _SESSION["target_game_port"] = int(game_port) if game_port else None
+        _update_target_address_locked()
+        return copy.deepcopy(_SESSION)
+
+
+def set_live_game_port(game_port):
+    if not game_port:
+        return
+    with _SESSION_LOCK:
+        if _SESSION.get("game_port") == int(game_port):
+            return
+        _SESSION["game_port"] = int(game_port)
+        log(f"已捕获 Minecraft 局域网端口: {game_port}")
+
+
+def _watch_log_file(log_path, stop_event):
+    last_offset = 0
+    while not stop_event.is_set():
+        try:
+            if not os.path.exists(log_path):
+                time.sleep(1)
+                continue
+
+            current_size = os.path.getsize(log_path)
+            if current_size < last_offset:
+                last_offset = 0
+
+            with open(log_path, "r", encoding="utf-8", errors="ignore") as handle:
+                handle.seek(last_offset)
+                chunk = handle.read()
+                last_offset = handle.tell()
+
+            if chunk:
+                for line in chunk.splitlines():
+                    for pattern in LAN_PORT_PATTERNS:
+                        match = pattern.search(line)
+                        if match:
+                            set_live_game_port(match.group(1))
+                            break
+            time.sleep(1)
+        except Exception as exc:
+            log(f"监听 Minecraft latest.log 失败: {exc}", logging.WARNING)
+            time.sleep(2)
+
+
+def start_host_log_watch(mc_version, minecraft_dir):
+    global _LOG_WATCH_THREAD, _LOG_WATCH_STOP
+
+    with _SESSION_LOCK:
+        if _SESSION.get("mode") != "host" or not _SESSION.get("running"):
+            return ""
+
+    log_path = os.path.join(minecraft_dir, "versions", mc_version, "logs", "latest.log")
+
+    with _SESSION_LOCK:
+        if _SESSION.get("log_path") == log_path and _LOG_WATCH_THREAD and _LOG_WATCH_THREAD.is_alive():
+            return log_path
+
+        if _LOG_WATCH_STOP:
+            _LOG_WATCH_STOP.set()
+
+        _LOG_WATCH_STOP = threading.Event()
+        _SESSION["watching_version"] = mc_version
+        _SESSION["log_path"] = log_path
+
+    _LOG_WATCH_THREAD = threading.Thread(
+        target=_watch_log_file,
+        args=(log_path, _LOG_WATCH_STOP),
+        daemon=True,
+    )
+    _LOG_WATCH_THREAD.start()
+    log(f"开始监听 Live 房主日志: {log_path}")
+    return log_path
+
+
+def _read_nbt_string(stream):
+    length_bytes = stream.read(2)
+    if len(length_bytes) < 2:
+        return ""
+    length = struct.unpack(">H", length_bytes)[0]
+    return stream.read(length).decode("utf-8", errors="ignore")
+
+
+def _read_nbt_payload(stream, tag_type):
+    if tag_type == 8:
+        return _read_nbt_string(stream)
+    if tag_type == 9:
+        list_tag = struct.unpack(">b", stream.read(1))[0]
+        list_length = struct.unpack(">i", stream.read(4))[0]
+        return [_read_nbt_payload(stream, list_tag) for _ in range(list_length)]
+    if tag_type == 10:
+        compound = {}
+        while True:
+            nested_tag_bytes = stream.read(1)
+            if not nested_tag_bytes:
+                break
+            nested_tag = struct.unpack(">b", nested_tag_bytes)[0]
+            if nested_tag == 0:
+                break
+            nested_name = _read_nbt_string(stream)
+            compound[nested_name] = _read_nbt_payload(stream, nested_tag)
+        return compound
+    if tag_type == 1:
+        return struct.unpack(">b", stream.read(1))[0]
+    if tag_type == 2:
+        return struct.unpack(">h", stream.read(2))[0]
+    if tag_type == 3:
+        return struct.unpack(">i", stream.read(4))[0]
+    if tag_type == 7:
+        length = struct.unpack(">i", stream.read(4))[0]
+        return stream.read(length)
+    if tag_type == 11:
+        length = struct.unpack(">i", stream.read(4))[0]
+        return [struct.unpack(">i", stream.read(4))[0] for _ in range(length)]
+    if tag_type == 12:
+        length = struct.unpack(">i", stream.read(4))[0]
+        return [struct.unpack(">q", stream.read(8))[0] for _ in range(length)]
+    raise ValueError(f"暂不支持的 NBT 标签类型: {tag_type}")
+
+
+def _parse_servers_dat(file_path):
+    if not os.path.exists(file_path):
+        return []
+    try:
+        with open(file_path, "rb") as handle:
+            data = handle.read()
+        if data[:2] == b"\x1f\x8b":
+            data = gzip.decompress(data)
+        stream = io.BytesIO(data)
+        root_tag = struct.unpack(">b", stream.read(1))[0]
+        if root_tag != 10:
+            return []
+        _read_nbt_string(stream)
+        root_payload = _read_nbt_payload(stream, 10)
+        servers = root_payload.get("servers", [])
+        return servers if isinstance(servers, list) else []
+    except Exception as exc:
+        log(f"读取 servers.dat 失败: {exc}", logging.WARNING)
+        return []
+
+
+def _write_nbt_string(stream, value):
+    encoded = value.encode("utf-8")
+    stream.write(struct.pack(">H", len(encoded)))
+    stream.write(encoded)
+
+
+def _save_servers_dat(file_path, servers):
+    try:
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        if os.path.exists(file_path):
+            try:
+                shutil.copy(file_path, file_path + ".bak")
+            except Exception:
+                pass
+
+        stream = io.BytesIO()
+        stream.write(struct.pack(">b", 10))
+        _write_nbt_string(stream, "")
+
+        stream.write(struct.pack(">b", 9))
+        _write_nbt_string(stream, "servers")
+        stream.write(struct.pack(">b", 10))
+        stream.write(struct.pack(">i", len(servers)))
+
+        for server in servers:
+            stream.write(struct.pack(">b", 8))
+            _write_nbt_string(stream, "name")
+            _write_nbt_string(stream, server.get("name", "Minecraft Server"))
+
+            stream.write(struct.pack(">b", 8))
+            _write_nbt_string(stream, "ip")
+            _write_nbt_string(stream, server.get("ip", ""))
+
+            icon_value = server.get("icon", "")
+            if icon_value:
+                stream.write(struct.pack(">b", 8))
+                _write_nbt_string(stream, "icon")
+                _write_nbt_string(stream, icon_value)
+
+            stream.write(struct.pack(">b", 0))
+
+        stream.write(struct.pack(">b", 0))
+
+        with gzip.open(file_path, "wb") as handle:
+            handle.write(stream.getvalue())
         return True
-    except Exception as e:
-        log(f"❌ 启动 Easytier core 失败: {e}", logging.ERROR)
+    except Exception as exc:
+        log(f"保存 servers.dat 失败: {exc}", logging.ERROR)
         return False
+
+
+def ensure_live_server_entry(mc_version, minecraft_dir):
+    snapshot = get_live_session_snapshot()
+    if snapshot.get("mode") != "client":
+        return False
+
+    target_address = snapshot.get("target_address")
+    if not target_address:
+        return False
+
+    file_path = os.path.join(minecraft_dir, "versions", mc_version, "servers.dat")
+    servers = _parse_servers_dat(file_path)
+
+    display_name = f"Live | {snapshot.get('host_username') or 'EasyTier'}"
+    updated = False
+    for server in servers:
+        if server.get("name") == display_name or server.get("ip") == target_address:
+            server["name"] = display_name
+            server["ip"] = target_address
+            updated = True
+            break
+
+    if not updated:
+        servers.append({
+            "name": display_name,
+            "ip": target_address,
+        })
+
+    return _save_servers_dat(file_path, servers)
+
+
+def prepare_launch_context(mc_version, minecraft_dir):
+    snapshot = get_live_session_snapshot()
+    context = {
+        "jvm_args": [],
+        "target_address": snapshot.get("target_address", ""),
+        "proxy_port": snapshot.get("proxy_port"),
+        "mode": snapshot.get("mode", ""),
+    }
+
+    if not snapshot.get("running"):
+        return context
+
+    if snapshot.get("mode") == "host":
+        start_host_log_watch(mc_version, minecraft_dir)
+        return context
+
+    if snapshot.get("mode") == "client" and snapshot.get("proxy_port"):
+        ensure_live_server_entry(mc_version, minecraft_dir)
+        proxy_port = int(snapshot["proxy_port"])
+        context["jvm_args"] = [
+            "-DsocksProxyHost=127.0.0.1",
+            f"-DsocksProxyPort={proxy_port}",
+            "-DsocksNonProxyHosts=localhost|127.0.0.1",
+            "-Djava.net.preferIPv4Stack=true",
+        ]
+        return context
+
+    return context
+
 
 def StartEasytierServer(name, key, use_public_server=False, is_host=True, peer_ip=None):
-    """
-    启动 Easytier 服务器
-    
-    参数:
-        name: 网络名称（房主的用户名或加入者的目标用户名）
-        key: 网络密钥
-        use_public_server: 是否使用公共服务器（默认 False）。如果为 True，则尝试连接多个公共服务器
-        is_host: 是否为房主模式（默认 True）。False 为加入者模式
-        peer_ip: 加入者模式下，房主的局域网 IP 地址（可选）
-    """
-    if is_host:
-        mode = "房主模式"
-        log(f"开始启动 Easytier 服务器 ({mode})，网络名称: {name}", logging.INFO)
-    else:
-        mode = "加入者模式"
-        log(f"开始加入 Easytier 网络 ({mode})，目标用户: {name}，房主 IP: {peer_ip}", logging.INFO)
+    network_secret = key.strip() if key and key.strip() else "NoPassWord"
+    mode = "host" if is_host else "client"
 
-    # 启动 Easytier core 服务器线程
-    server_thread = threading.Thread(target=_run_easytier_core, args=(name, key, use_public_server, is_host, peer_ip))
-    server_thread.daemon = True  # 设置为守护线程，主程序退出时自动终止
-    server_thread.start()
+    result = start_live_session(
+        mode=mode,
+        network_name=name,
+        network_secret=network_secret,
+        host_username=name if is_host else "",
+        use_public_servers=use_public_server or True,
+    )
 
-    # 等待一段时间，让 Easytier core 有时间启动
-    log("等待 Easytier core 启动...", logging.INFO)
-    time.sleep(3)  # 只需要等待进程启动
+    if not result.get("success"):
+        return i18nText(f"启动失败: {result.get('message', '未知错误')}")
 
-    # 检查 easytier-core 进程是否正在运行
-    log("检查 easytier-core 进程是否存在...", logging.INFO)
-    core_running = False
-    try:
-        result = subprocess.run(
-            ["tasklist", "/FI", "IMAGENAME eq easytier-core.exe"],
-            capture_output=True,
-            text=True,
-            encoding='gbk'
-        )
-        if "easytier-core.exe" in result.stdout:
-            core_running = True
-            log("✅ easytier-core 进程正在运行", logging.INFO)
-        else:
-            log("⚠️ easytier-core 进程未找到", logging.WARNING)
-    except Exception as e:
-        log(f"检查进程时出错: {e}", logging.WARNING)
+    snapshot = result.get("snapshot") or {}
+    if not is_host and peer_ip:
+        log(f"兼容模式下忽略旧的 peer_ip 参数: {peer_ip}", logging.INFO)
 
-    if not core_running:
-        error_msg = i18nText("启动失败: Easytier Core 未能成功启动，请检查是否授予管理员权限或安全软件是否阻止。")
-        log(f"❌ {error_msg}", logging.ERROR)
-        return error_msg
-
-    # 获取虚拟 IP（只尝试 3 次，快速失败）
-    log("尝试获取虚拟 IP...", logging.INFO)
-    virtual_ip = None
-    retry_count = 0
-    max_retries = 3
-    retry_delay = 2
-
-    while retry_count < max_retries and not virtual_ip:
-        if retry_count > 0:
-            log(f"重试获取虚拟 IP (第 {retry_count + 1} 次尝试)...", logging.INFO)
-            time.sleep(retry_delay)
-
-        virtual_ip = get_easytier_virtual_ip(cli_path="easytier\\easytier-cli.exe")
-        retry_count += 1
-
+    virtual_ip = snapshot.get("virtual_ip") or ""
     if virtual_ip:
-        log(f"✅ 成功获取虚拟 IP: {virtual_ip}", logging.INFO)
         return virtual_ip
-    else:
-        # 没有获取到虚拟 IP
-        if is_host:
-            # 房主模式
-            log("⚠️ 房主模式已启动，但未获取到虚拟 IP（这是正常的，等待加入者连接后会自动分配）", logging.WARNING)
-            log("请按以下步骤操作:", logging.INFO)
-            log("1. 运行 ipconfig 查看你的局域网 IP", logging.INFO)
-            log("2. 将你的局域网 IP 告诉加入者", logging.INFO)
-            log("3. 等待加入者连接后，虚拟 IP 将自动分配", logging.INFO)
-            log("4. 运行 easytier-cli node info 查看虚拟 IP", logging.INFO)
-            return i18nText("~房主模式已启动，请将你的局域网 IP 告诉加入者")
-        else:
-            # 加入者模式
-            log("⚠️ 加入者模式已启动，但未获取到虚拟 IP", logging.WARNING)
-            log("可能原因:", logging.INFO)
-            log("1. 房主尚未启动或房主的 IP 不正确", logging.INFO)
-            log("2. 防火墙阻止了连接", logging.INFO)
-            log("3. 网络不稳定，请稍后重试", logging.INFO)
-            return i18nText("~已尝试连接房主网络，请确认房主已启动 Easytier 并提供了正确的 IP")
+
+    if is_host:
+        return i18nText("~房主模式已启动，等待虚拟 IP 分配")
+    return i18nText("~已尝试连接房主网络，请稍候")
+
 
 def StopEasytierServer():
-    log("正在停止 Easytier 服务器...", logging.INFO)
-    # 使用 taskkill 强制终止 easytier-core.exe 进程
-    try:
-        result = subprocess.run(["taskkill", "/F", "/IM", "easytier-core.exe"], check=True, capture_output=True)
-        log("✅ Easytier core process terminated using taskkill.", logging.INFO)
-        log(f"taskkill 输出: {result.stdout.decode()}", logging.DEBUG)
-    except subprocess.CalledProcessError as e:
-        log(f"❌ 终止 Easytier core 进程失败: {e.stderr.decode()}", logging.ERROR)
-    except FileNotFoundError:
-        log("❌ taskkill 命令未找到，无法终止 Easytier core 进程。", logging.ERROR)
-    except Exception as e:
-        log(f"❌ 终止 Easytier core 进程时发生错误: {e}", logging.ERROR)
+    stop_live_session()
+

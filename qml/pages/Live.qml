@@ -17,6 +17,82 @@ FluentPage {
     property bool videoEnabled: false
     property bool isLoading: false
     property bool isAuthenticated: false
+    property var easytierState: ({})
+    property string liveErrorText: ""
+    property string currentUserName: ""
+
+    function t(text) {
+        return Backend ? Backend.tr(text) : text
+    }
+
+    function normalizeUsers(users) {
+        return Array.isArray(users) ? users : []
+    }
+
+    function normalizeChatHistory(history) {
+        return Array.isArray(history) ? history : []
+    }
+
+    function upsertUser(user) {
+        if (!user || !user.username)
+            return
+        var found = false
+        var nextUsers = []
+        for (var i = 0; i < onlineUsers.length; i++) {
+            var existing = onlineUsers[i]
+            if (existing.username === user.username) {
+                nextUsers.push(user)
+                found = true
+            } else {
+                nextUsers.push(existing)
+            }
+        }
+        if (!found)
+            nextUsers.push(user)
+        onlineUsers = nextUsers
+    }
+
+    function removeUser(user) {
+        if (!user || !user.username)
+            return
+        var filtered = []
+        for (var i = 0; i < onlineUsers.length; i++) {
+            if (onlineUsers[i].username !== user.username)
+                filtered.push(onlineUsers[i])
+        }
+        onlineUsers = filtered
+    }
+
+    function resolveChatText(message) {
+        if (message && message.payload) {
+            if (message.payload.recalled)
+                return t("此消息已撤回")
+            if (message.payload.msg)
+                return message.payload.msg
+            if (message.payload.message)
+                return message.payload.message
+        }
+        return (message && (message.message || message.msg)) || ""
+    }
+
+    function easytierSummaryText() {
+        if (!easytierState.active) {
+            return t("房主尚未在这个 Live 中开启 EasyTier 网络")
+        }
+        if (easytierState.ready) {
+            if (currentSpace.isOwner) {
+                return t("房间地址已经同步到 Live，其他成员现在可以一键连接并通过启动器启动游戏。")
+            }
+            if (easytierState.localIsClient) {
+                return t("你已连接到房主网络。请通过启动器启动 Minecraft，代理和服务器列表会自动配置。")
+            }
+            return t("房主已经开放局域网。连接后通过启动器启动 Minecraft，即可在多人游戏中看到房间。")
+        }
+        if (currentSpace.isOwner && easytierState.localIsHost) {
+            return t("网络已启动。请通过启动器启动游戏，并在游戏内点击“对局域网开放”，端口会自动同步到 Live。")
+        }
+        return t("房主已启动 EasyTier，正在等待游戏内开放局域网。")
+    }
 
     Component.onCompleted: {
         console.log("[Live.qml] ========== Page loaded ==========")
@@ -34,6 +110,7 @@ FluentPage {
             console.log("[Live.qml] Login status:", loggedIn, "| Username:", userName)
             
             isAuthenticated = loggedIn
+            currentUserName = userName
             if (loggedIn) {
                 isLoading = true
                 console.log("[Live.qml] User is logged in, fetching space list...")
@@ -63,6 +140,7 @@ FluentPage {
             console.log("[Live.qml] Accounts changed, re-checking auth status")
             let newAuthStatus = Backend.getBloretPassPortLoginStatus()
             isAuthenticated = newAuthStatus
+            currentUserName = Backend.getBloretPassPortUserName()
             
             if (newAuthStatus && spaceList.length === 0 && !isLoading) {
                 isLoading = true
@@ -82,10 +160,10 @@ FluentPage {
             console.log("[Live.qml] Joined space:", data.name)
             inSpace = true
             currentSpace = data
-            chatMessages = []
-            if (data.users) {
-                onlineUsers = data.users
-            }
+            chatMessages = normalizeChatHistory(data.chatHistory)
+            onlineUsers = normalizeUsers(data.users)
+            if (data.easytier)
+                easytierState = data.easytier
         }
         
         function onLiveLeftSpace() {
@@ -96,22 +174,16 @@ FluentPage {
             onlineUsers = []
             audioEnabled = false
             videoEnabled = false
+            easytierState = {}
+            liveErrorText = ""
         }
         
         function onLiveUserEvent(data) {
             var type = data.type || ""
             if (type === "user-joined" && data.user) {
-                var users = onlineUsers.slice()
-                users.push(data.user)
-                onlineUsers = users
+                upsertUser(data.user)
             } else if (type === "user-left" && data.user) {
-                var filtered = []
-                for (var i = 0; i < onlineUsers.length; i++) {
-                    if (onlineUsers[i].username !== data.user.username) {
-                        filtered.push(onlineUsers[i])
-                    }
-                }
-                onlineUsers = filtered
+                removeUser(data.user)
             }
         }
         
@@ -134,6 +206,11 @@ FluentPage {
         function onLiveErrorOccurred(msg) {
             console.log("[Live.qml] Error occurred:", msg)
             isLoading = false
+            liveErrorText = msg
+        }
+
+        function onLiveEasyTierStateChanged(data) {
+            easytierState = data || {}
         }
     }
 

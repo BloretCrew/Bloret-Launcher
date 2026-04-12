@@ -280,6 +280,18 @@ def Get_Run_Script(mc_version):
         "-Dminecraft.launcher.brand=Bloret-Launcher",
         "-Dminecraft.launcher.version=361"
     ])
+
+    try:
+        from modules.easytier import prepare_launch_context
+        easytier_context = prepare_launch_context(mc_version, minecraft_dir)
+        extra_jvm_args = easytier_context.get("jvm_args", [])
+        if extra_jvm_args:
+            launch_args.extend(extra_jvm_args)
+            log(f"已注入 EasyTier JVM 参数: {extra_jvm_args}")
+        if easytier_context.get("target_address"):
+            log(f"Live EasyTier 目标地址: {easytier_context['target_address']}")
+    except Exception as e:
+        log(f"准备 EasyTier 启动上下文失败: {e}", logging.WARNING)
     
     # 构建类路径 (classpath)
     classpath = []

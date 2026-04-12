@@ -161,6 +161,7 @@ class Backend(QObject):
     liveSignalReceived = Signal(dict)
     liveErrorOccurred = Signal(str)
     liveConnectionStateChanged = Signal(str)
+    liveEasyTierStateChanged = Signal(dict)
 
     # OOBE signals
     javaEnvironmentChecked = Signal(bool, str)  # installed, java_path
@@ -181,6 +182,10 @@ class Backend(QObject):
         self._live_sse_client = None
         self._live_webrtc_manager = None
         self._current_live_space_id = None
+        self._current_live_space = {}
+        self._current_live_easytier_state = {}
+        self._live_easytier_publish_thread = None
+        self._live_easytier_publish_running = False
 
     def setBackendParent(self, parent):
         self.parent = parent
@@ -2314,6 +2319,129 @@ class Backend(QObject):
 
     # ==================== Live ====================
 
+    def _normalize_live_users(self, users_payload):
+        users = []
+        if isinstance(users_payload, dict):
+            for username, state in users_payload.items():
+                users.append({
+                    "username": username,
+                    "state": state if isinstance(state, dict) else {}
+                })
+        elif isinstance(users_payload, list):
+            for item in users_payload:
+                if isinstance(item, dict):
+                    username = item.get("username") or item.get("name") or item.get("from")
+                    if username:
+                        users.append({
+                            "username": username,
+                            "state": item.get("state", {}) if isinstance(item.get("state"), dict) else {}
+                        })
+        return users
+
+    def _normalize_live_chat_history(self, chat_history):
+        if not isinstance(chat_history, list):
+            return []
+
+        normalized = []
+        for item in chat_history:
+            if not isinstance(item, dict):
+                continue
+            normalized.append({
+                "type": "chat",
+                "from": item.get("from", ""),
+                "payload": {
+                    "msg": item.get("msg", ""),
+                    "msgId": item.get("msgId"),
+                    "recalled": item.get("recalled", False),
+                    "time": item.get("time"),
+                }
+            })
+        return normalized
+
+    def _emit_live_easytier_state(self, remote_state=None):
+        try:
+            from modules.easytier import get_live_session_snapshot, update_live_target
+        except Exception:
+            get_live_session_snapshot = None
+            update_live_target = None
+
+        if remote_state is not None:
+            self._current_live_easytier_state = remote_state or {}
+
+        merged = dict(self._current_live_easytier_state or {})
+        session = get_live_session_snapshot() if get_live_session_snapshot else {}
+        same_space = bool(session) and session.get("space_id") == (self._current_live_space_id or "")
+
+        if same_space and session.get("mode") == "client" and update_live_target and merged.get("hostVirtualIp"):
+            update_live_target(merged.get("hostVirtualIp"), merged.get("gamePort"))
+            session = get_live_session_snapshot() if get_live_session_snapshot else session
+
+        merged["active"] = bool(merged.get("enabled"))
+        merged["ready"] = bool(merged.get("hostVirtualIp") and merged.get("gamePort"))
+        merged["hostAddress"] = merged.get("hostAddress") or (
+            f"{merged.get('hostVirtualIp')}:{merged.get('gamePort')}"
+            if merged.get("hostVirtualIp") and merged.get("gamePort")
+            else ""
+        )
+        merged["localRunning"] = bool(same_space and session.get("running"))
+        merged["localMode"] = session.get("mode", "") if same_space else ""
+        merged["localVirtualIp"] = session.get("virtual_ip", "") if same_space else ""
+        merged["localProxyPort"] = session.get("proxy_port") if same_space else None
+        merged["localGamePort"] = session.get("game_port") if same_space else None
+        merged["localTargetAddress"] = session.get("target_address", "") if same_space else ""
+        merged["localIsHost"] = bool(merged["localRunning"] and merged["localMode"] == "host")
+        merged["localIsClient"] = bool(merged["localRunning"] and merged["localMode"] == "client")
+        merged["localError"] = session.get("error", "") if same_space else ""
+
+        self.liveEasyTierStateChanged.emit(merged)
+        return merged
+
+    def _stop_live_easytier_publish_loop(self):
+        self._live_easytier_publish_running = False
+
+    def _start_live_easytier_publish_loop(self):
+        if self._live_easytier_publish_thread and self._live_easytier_publish_thread.is_alive():
+            return
+
+        self._live_easytier_publish_running = True
+        space_id = self._current_live_space_id
+
+        def run():
+            from modules.bbbs_live import publish_space_easytier_endpoint
+            from modules.easytier import get_live_session_snapshot, refresh_live_virtual_ip
+
+            last_published = None
+            while self._live_easytier_publish_running and self._current_live_space_id == space_id:
+                try:
+                    snapshot = get_live_session_snapshot()
+                    if snapshot.get("space_id") != space_id or snapshot.get("mode") != "host" or not snapshot.get("running"):
+                        break
+
+                    if not snapshot.get("virtual_ip"):
+                        refresh_live_virtual_ip()
+                        snapshot = get_live_session_snapshot()
+
+                    self._emit_live_easytier_state()
+
+                    host_ip = snapshot.get("virtual_ip") or ""
+                    game_port = snapshot.get("game_port")
+                    if host_ip and game_port:
+                        publish_key = f"{host_ip}:{game_port}"
+                        if publish_key != last_published:
+                            result = publish_space_easytier_endpoint(space_id, host_ip, game_port)
+                            if result and result.get("success"):
+                                last_published = publish_key
+                                self._emit_live_easytier_state(result.get("easytier", {}))
+                    time.sleep(1)
+                except Exception as e:
+                    log(f"Live EasyTier 房主状态上报失败: {e}", logging.WARNING)
+                    time.sleep(2)
+
+            self._live_easytier_publish_running = False
+
+        self._live_easytier_publish_thread = threading.Thread(target=run, daemon=True)
+        self._live_easytier_publish_thread.start()
+
     @Slot()
     def fetchLiveSpaceList(self):
         def run():
@@ -2330,6 +2458,9 @@ class Backend(QObject):
         def run():
             from modules.bbbs_live import check_access, verify_password, LiveSSEClient
             try:
+                if self._current_live_space_id and self._current_live_space_id != spaceId:
+                    self.leaveLiveSpace()
+
                 access = check_access(spaceId)
                 if access and access.get('needsPassword'):
                     if password:
@@ -2342,6 +2473,8 @@ class Backend(QObject):
                         return
 
                 self._current_live_space_id = spaceId
+                self._current_live_space = {}
+                self._current_live_easytier_state = {}
                 self._live_sse_client = LiveSSEClient(spaceId, self._handle_live_event)
                 self._live_sse_client.start()
                 self.liveConnectionStateChanged.emit("connecting")
@@ -2349,12 +2482,17 @@ class Backend(QObject):
                 # 立即用已有的空间信息发射 joinedSpace 信号，不等待服务器 init 事件
                 space_name = access.get('spaceName', '') if access else ''
                 username = self.getBloretPassPortUserName()
-                self.liveJoinedSpace.emit({
+                initial_space = {
                     "id": spaceId,
                     "name": space_name,
                     "users": [{"username": username}],
                     "spaceName": space_name,
-                })
+                    "chatHistory": [],
+                    "easytier": {},
+                }
+                self._current_live_space = initial_space
+                self.liveJoinedSpace.emit(initial_space)
+                self._emit_live_easytier_state({})
                 self.liveConnectionStateChanged.emit("connected")
             except Exception as e:
                 self.liveErrorOccurred.emit(str(e))
@@ -2362,14 +2500,24 @@ class Backend(QObject):
 
     @Slot()
     def leaveLiveSpace(self):
+        current_space_id = self._current_live_space_id
         if self._live_sse_client:
             self._live_sse_client.stop()
             self._live_sse_client = None
         if self._live_webrtc_manager:
             self._live_webrtc_manager.stop()
             self._live_webrtc_manager = None
+        self._stop_live_easytier_publish_loop()
+        try:
+            from modules.easytier import stop_live_session
+            stop_live_session(space_id=current_space_id)
+        except Exception as e:
+            log(f"离开 Live 时停止 EasyTier 失败: {e}", logging.WARNING)
         self._current_live_space_id = None
+        self._current_live_space = {}
+        self._current_live_easytier_state = {}
         self.liveLeftSpace.emit()
+        self.liveEasyTierStateChanged.emit({})
         self.liveConnectionStateChanged.emit("disconnected")
 
     @Slot(str)
@@ -2417,6 +2565,122 @@ class Backend(QObject):
                 self.liveErrorOccurred.emit(str(e))
         threading.Thread(target=run, daemon=True).start()
 
+    @Slot()
+    def startLiveEasyTier(self):
+        def run():
+            from modules.bbbs_live import start_space_easytier, stop_space_easytier
+            from modules.easytier import start_live_session
+
+            if not self._current_live_space_id:
+                self.liveErrorOccurred.emit("请先加入 Live 空间")
+                return
+
+            try:
+                result = start_space_easytier(self._current_live_space_id)
+                if not result or not result.get("success"):
+                    self.liveErrorOccurred.emit((result or {}).get("error", "开启 EasyTier 失败"))
+                    return
+
+                easytier_info = result.get("easytier", {})
+                local_result = start_live_session(
+                    mode="host",
+                    network_name=easytier_info.get("networkName", ""),
+                    network_secret=easytier_info.get("networkSecret", ""),
+                    space_id=self._current_live_space_id,
+                    space_name=self._current_live_space.get("name", ""),
+                    host_username=self.getBloretPassPortUserName(),
+                )
+                if not local_result.get("success"):
+                    if result.get("created"):
+                        stop_space_easytier(self._current_live_space_id)
+                    self.liveErrorOccurred.emit(local_result.get("message", "本地 EasyTier 启动失败"))
+                    return
+
+                self._emit_live_easytier_state(easytier_info)
+                self._start_live_easytier_publish_loop()
+            except Exception as e:
+                self.liveErrorOccurred.emit(f"开启 EasyTier 失败: {e}")
+
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot()
+    def connectLiveEasyTier(self):
+        def run():
+            from modules.bbbs_live import get_space_easytier_info
+            from modules.easytier import start_live_session
+
+            if not self._current_live_space_id:
+                self.liveErrorOccurred.emit("请先加入 Live 空间")
+                return
+
+            try:
+                result = get_space_easytier_info(self._current_live_space_id)
+                if not result or not result.get("success"):
+                    self.liveErrorOccurred.emit((result or {}).get("error", "获取 EasyTier 信息失败"))
+                    return
+
+                easytier_info = result.get("easytier", {})
+                if not easytier_info.get("enabled"):
+                    self.liveErrorOccurred.emit("房主尚未开启 EasyTier 网络")
+                    return
+                if not easytier_info.get("hostVirtualIp") or not easytier_info.get("gamePort"):
+                    self.liveErrorOccurred.emit("房主已开启网络，但尚未在游戏中开放局域网")
+                    return
+
+                local_result = start_live_session(
+                    mode="client",
+                    network_name=easytier_info.get("networkName", ""),
+                    network_secret=easytier_info.get("networkSecret", ""),
+                    space_id=self._current_live_space_id,
+                    space_name=self._current_live_space.get("name", ""),
+                    host_username=easytier_info.get("hostUsername", ""),
+                    target_host_virtual_ip=easytier_info.get("hostVirtualIp", ""),
+                    target_game_port=easytier_info.get("gamePort"),
+                )
+                if not local_result.get("success"):
+                    self.liveErrorOccurred.emit(local_result.get("message", "连接 EasyTier 失败"))
+                    return
+
+                self._emit_live_easytier_state(easytier_info)
+            except Exception as e:
+                self.liveErrorOccurred.emit(f"连接 EasyTier 失败: {e}")
+
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot()
+    def disconnectLiveEasyTier(self):
+        def run():
+            try:
+                if self._current_live_space.get("isOwner"):
+                    from modules.bbbs_live import stop_space_easytier
+                    result = stop_space_easytier(self._current_live_space_id)
+                    if result and result.get("easytier") is not None:
+                        self._current_live_easytier_state = result.get("easytier", {})
+
+                from modules.easytier import stop_live_session
+                stop_live_session(space_id=self._current_live_space_id)
+                self._stop_live_easytier_publish_loop()
+                self._emit_live_easytier_state(self._current_live_easytier_state)
+            except Exception as e:
+                self.liveErrorOccurred.emit(f"断开 EasyTier 失败: {e}")
+
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot()
+    def refreshLiveEasyTierState(self):
+        def run():
+            from modules.bbbs_live import get_space_easytier_info
+            try:
+                if not self._current_live_space_id:
+                    self.liveEasyTierStateChanged.emit({})
+                    return
+                result = get_space_easytier_info(self._current_live_space_id)
+                if result and result.get("success"):
+                    self._emit_live_easytier_state(result.get("easytier", {}))
+            except Exception as e:
+                log(f"刷新 Live EasyTier 状态失败: {e}", logging.WARNING)
+        threading.Thread(target=run, daemon=True).start()
+
     @Slot(bool)
     def toggleLiveAudio(self, enabled):
         if self._live_webrtc_manager:
@@ -2431,12 +2695,27 @@ class Backend(QObject):
         """分发 SSE 事件到对应的 Signal"""
         event_type = event.get("type", "")
         if event_type == "init":
-            self.liveJoinedSpace.emit(event)
+            normalized_event = dict(event)
+            normalized_event["users"] = self._normalize_live_users(event.get("users"))
+            normalized_event["chatHistory"] = self._normalize_live_chat_history(event.get("chatHistory"))
+            self._current_live_space = normalized_event
+            self.liveJoinedSpace.emit(normalized_event)
+            self._emit_live_easytier_state(event.get("easytier", {}))
             self.liveConnectionStateChanged.emit("connected")
         elif event_type in ("user-joined", "user-left"):
-            self.liveUserEvent.emit(event)
+            normalized_event = dict(event)
+            normalized_event["user"] = {
+                "username": event.get("from", ""),
+                "state": event.get("state", {}) if isinstance(event.get("state"), dict) else {}
+            }
+            self.liveUserEvent.emit(normalized_event)
         elif event_type == "chat":
-            self.liveChatMessageReceived.emit(event)
+            normalized_event = dict(event)
+            if not isinstance(normalized_event.get("payload"), dict):
+                normalized_event["payload"] = {"msg": normalized_event.get("payload", "")}
+            self.liveChatMessageReceived.emit(normalized_event)
+        elif event_type == "easytier-state":
+            self._emit_live_easytier_state(event.get("payload", {}))
         elif event_type in ("offer", "answer", "ice-candidate"):
             if self._live_webrtc_manager:
                 self._live_webrtc_manager.handle_signaling(event)

@@ -74,7 +74,7 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         pyinstaller --onefile --noconsole --icon=bloret.ico --name=Bloret-Launcher --noupx `
-          --add-data "bloret.ico;." --add-data "config.json;." --add-data "ui;ui" --add-data "lang;lang" --add-data "easytier;easytier" --add-data "JavaWrapper.jar;." --add-data "modules;modules" `
+          --add-data "bloret.ico;." --add-data "config.json;." --add-data "ui;ui" --add-data "RinUI;RinUI" --add-data "qml;qml" --add-data "lang;lang" --add-data "easytier;easytier" --add-data "JavaWrapper.jar;." --add-data "modules;modules" `
           --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=win11toast --hidden-import=toml --hidden-import=winsdk --paths=. Bloret-Launcher.py
       shell: pwsh
 
@@ -116,7 +116,7 @@ jobs:
         
         # 使用 --name 参数确保应用名称中间有空格
         pyinstaller --onefile --windowed --name="Bloret Launcher" $ICON_CMD \
-          --add-data "bloret.ico:." --add-data "config.json:." --add-data "ui:ui" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
+          --add-data "bloret.ico:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
           --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
 
         # 生成 DMG 文件
