@@ -4,6 +4,3 @@
 [submodule "BL4CW2"]
 	path = BL4CW2
 	url = https://github.com/BloretCrew/Bloret-Launcher4Class-Widget2.git
-[submodule "BBBS"]
-	path = BBBS
-	url = https://github.com/BloretCrew/BBBS
