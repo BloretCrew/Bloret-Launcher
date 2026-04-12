@@ -2345,6 +2345,17 @@ class Backend(QObject):
                 self._live_sse_client = LiveSSEClient(spaceId, self._handle_live_event)
                 self._live_sse_client.start()
                 self.liveConnectionStateChanged.emit("connecting")
+
+                # 立即用已有的空间信息发射 joinedSpace 信号，不等待服务器 init 事件
+                space_name = access.get('spaceName', '') if access else ''
+                username = self.getBloretPassPortUserName()
+                self.liveJoinedSpace.emit({
+                    "id": spaceId,
+                    "name": space_name,
+                    "users": [{"username": username}],
+                    "spaceName": space_name,
+                })
+                self.liveConnectionStateChanged.emit("connected")
             except Exception as e:
                 self.liveErrorOccurred.emit(str(e))
         threading.Thread(target=run, daemon=True).start()

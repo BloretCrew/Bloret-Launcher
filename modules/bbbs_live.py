@@ -166,15 +166,18 @@ class LiveSSEClient:
 
         while self._running:
             try:
+                log(f"[Live SSE] 正在连接 SSE: {url}")
                 with requests.get(url, stream=True, cookies=cookies, timeout=(10, None)) as resp:
+                    log(f"[Live SSE] 连接响应状态码: {resp.status_code}, Headers Content-Type: {resp.headers.get('Content-Type', 'N/A')}")
                     if resp.status_code != 200:
                         log(f"[Live SSE] 连接失败，状态码: {resp.status_code}")
                         self._callback({"type": "error", "message": f"SSE 连接失败: {resp.status_code}"})
-                        break
+                        time.sleep(reconnect_delay)
+                        reconnect_delay = min(reconnect_delay * 2, 30)
+                        continue
 
                     # 确保使用 UTF-8 编码
                     resp.encoding = 'utf-8'
-                    resp.raw.read = lambda amt: resp.raw.read(amt, decode_content=True)
                     reconnect_delay = 1
                     event_type = None
                     data_lines = []
@@ -184,8 +187,9 @@ class LiveSSEClient:
                     while self._running:
                         try:
                             # 读取原始字节并解码为 UTF-8
-                            chunk = resp.raw.read(4096, decode_content=True)
+                            chunk = resp.raw.read(4096)
                             if not chunk:
+                                log(f"[Live SSE] 流结束 (chunk 为空)")
                                 break
                             
                             # 尝试 UTF-8 解码
@@ -194,35 +198,44 @@ class LiveSSEClient:
                             else:
                                 text = chunk
                             
+                            log(f"[Live SSE] 收到原始数据 ({len(text)} 字节): {repr(text[:200])}")
+                            
                             buffer += text
                             
                             # 按行处理
                             while '\n' in buffer:
                                 line, buffer = buffer.split('\n', 1)
+                                original_line = line
                                 line = line.strip()
                                 
-                                if not line:
-                                    continue
+                                log(f"[Live SSE] 解析行: {repr(original_line)[:100]}")
                                 
                                 if line == "":
-                                    # 空行表示事件结束
+                                    # 空行表示事件结束（SSE 事件分隔符）
                                     if data_lines:
                                         data_str = "\n".join(data_lines)
+                                        log(f"[Live SSE] 事件完成! type={event_type}, data={data_str[:200]}")
                                         try:
                                             payload = json.loads(data_str)
                                             if event_type:
                                                 payload["type"] = event_type
+                                            log(f"[Live SSE] 回调事件: type={payload.get('type', 'unknown')}")
                                             self._callback(payload)
                                         except json.JSONDecodeError as e:
                                             log(f"[Live SSE] JSON 解析失败: {data_str[:100]}, 错误: {e}")
                                         event_type = None
                                         data_lines = []
+                                    else:
+                                        log(f"[Live SSE] 空行但无数据，跳过")
                                 elif line.startswith("event: "):
                                     event_type = line[7:].strip()
+                                    log(f"[Live SSE] 事件类型: {event_type}")
                                 elif line.startswith("data: "):
                                     data_lines.append(line[6:])
                                 elif line.startswith("data:"):
                                     data_lines.append(line[5:])
+                                else:
+                                    log(f"[Live SSE] 忽略未知行: {repr(line)[:80]}")
                         except UnicodeDecodeError as e:
                             log(f"[Live SSE] UTF-8 解码错误: {e}")
                             buffer = ""

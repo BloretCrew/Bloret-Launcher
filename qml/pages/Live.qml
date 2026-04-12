@@ -19,15 +19,38 @@ FluentPage {
     property bool isAuthenticated: false
 
     Component.onCompleted: {
-        if (!Backend) return
-        isAuthenticated = Backend.isBBBSAuthenticated()
-        if (isAuthenticated) {
-            isLoading = true
-            Backend.fetchLiveSpaceList()
+        console.log("[Live.qml] ========== Page loaded ==========")
+        console.log("[Live.qml] Backend available:", Backend !== undefined)
+        
+        if (!Backend) {
+            console.log("[Live.qml] ERROR: Backend is not available!")
+            isLoading = false
+            return
         }
+        
+        try {
+            let loggedIn = Backend.getBloretPassPortLoginStatus()
+            let userName = Backend.getBloretPassPortUserName()
+            console.log("[Live.qml] Login status:", loggedIn, "| Username:", userName)
+            
+            isAuthenticated = loggedIn
+            if (loggedIn) {
+                isLoading = true
+                console.log("[Live.qml] User is logged in, fetching space list...")
+                Backend.fetchLiveSpaceList()
+            } else {
+                console.log("[Live.qml] User is not logged in")
+                isLoading = false
+            }
+        } catch(e) {
+            console.log("[Live.qml] ERROR during initialization:", e)
+            isLoading = false
+        }
+        console.log("[Live.qml] ========== Initialization complete ==========")
     }
 
     Component.onDestruction: {
+        console.log("[Live.qml] Page destroyed")
         if (inSpace && Backend) {
             Backend.leaveLiveSpace()
         }
@@ -35,11 +58,28 @@ FluentPage {
 
     Connections {
         target: Backend
+        
+        function onMinecraftAccountsChanged(accounts) {
+            console.log("[Live.qml] Accounts changed, re-checking auth status")
+            let newAuthStatus = Backend.getBloretPassPortLoginStatus()
+            isAuthenticated = newAuthStatus
+            
+            if (newAuthStatus && spaceList.length === 0 && !isLoading) {
+                isLoading = true
+                Backend.fetchLiveSpaceList()
+            } else if (!newAuthStatus && inSpace) {
+                Backend.leaveLiveSpace()
+            }
+        }
+
         function onLiveSpaceListReceived(data) {
+            console.log("[Live.qml] Space list received:", data.length, "items")
             spaceList = data
             isLoading = false
         }
+        
         function onLiveJoinedSpace(data) {
+            console.log("[Live.qml] Joined space:", data.name)
             inSpace = true
             currentSpace = data
             chatMessages = []
@@ -47,7 +87,9 @@ FluentPage {
                 onlineUsers = data.users
             }
         }
+        
         function onLiveLeftSpace() {
+            console.log("[Live.qml] Left space")
             inSpace = false
             currentSpace = {}
             chatMessages = []
@@ -55,6 +97,7 @@ FluentPage {
             audioEnabled = false
             videoEnabled = false
         }
+        
         function onLiveUserEvent(data) {
             var type = data.type || ""
             if (type === "user-joined" && data.user) {
@@ -71,21 +114,26 @@ FluentPage {
                 onlineUsers = filtered
             }
         }
+        
         function onLiveChatMessageReceived(data) {
             var msgs = chatMessages.slice()
             msgs.push(data)
             chatMessages = msgs
-            // 使用 Qt.callLater 确保在 UI 更新后滚动到底部
             Qt.callLater(function() {
-                chatListView.positionViewAtEnd()
+                if (chatListView) {
+                    chatListView.positionViewAtEnd()
+                }
             })
         }
+        
         function onLiveConnectionStateChanged(state) {
+            console.log("[Live.qml] Connection state changed:", state)
             connectionState = state
         }
+        
         function onLiveErrorOccurred(msg) {
+            console.log("[Live.qml] Error occurred:", msg)
             isLoading = false
-            console.log("[Live] Error:", msg)
         }
     }
 
