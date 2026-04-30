@@ -20,7 +20,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 ; 修改安装目录使用Inno Setup内置宏确保路径正确
-DefaultDirName={userappdata}\{#MyAppName}
+DefaultDirName={userappdata}\{#MyAppName}\bin
 DisableDirPage=no
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ; "ArchitecturesAllowed=x64compatible" 指定安装程序无法运行
