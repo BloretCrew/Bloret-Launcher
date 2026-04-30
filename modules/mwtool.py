@@ -76,46 +76,53 @@ class MinecraftWindowWatcher(QThread):
             log.info("非 Windows 系统跳过窗口监视")
             return
         log.info(f"开始寻找 Minecraft {self.version} 窗口...")
-        
-        hwnd_found = False
-        
-        # 最多寻找 300 秒 (5分钟)
+
+        hwnd = None
+
+        # 阶段 1：最多等待 300 秒找到 Minecraft 窗口
         for _ in range(300):
             if not self.is_running:
+                return
+
+            hwnd = self._find_window()
+            if hwnd and win32gui.IsWindow(hwnd) and win32gui.IsWindowVisible(hwnd):
+                log.info(f"找到 Minecraft 窗口句柄: {hwnd}")
+                time.sleep(1)
                 break
 
-            # 使用加强版的查找逻辑
-            if not hwnd_found:
-                hwnd = self._find_window()
-                if hwnd:
-                    log.info(f"找到窗口句柄: {hwnd}")
-                    # 再次确认窗口有效性
-                    if win32gui.IsWindow(hwnd) and win32gui.IsWindowVisible(hwnd):
-                        time.sleep(1)  # 等待窗口完全初始化
-                        hwnd_found = True
-                        # 注意：这里不再发射 window_found，因为 monitor_thread 已经处理了工具条创建
-                        # 避免重复创建工具条
-            else:
-                # 窗口已找到，现在检查它是否仍然存在
-                if self.mc_pid:
-                    # 通过进程 ID 检查
-                    try:
-                        import psutil
-                        proc = psutil.Process(self.mc_pid)
-                        if not proc.is_running():
-                            log.info("Minecraft 进程已退出，发送窗口关闭信号")
-                            self.window_closed.emit()
-                            return
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        log.info("Minecraft 进程已退出（通过异常检测），发送窗口关闭信号")
-                        self.window_closed.emit()
-                        return
-                
-                # 同时检查窗口句柄是否仍然有效
-                # 这里简单检查窗口是否仍然可见即可
-                time.sleep(2)  # 每 2 秒检查一次
-        
-        log.info("Minecraft 窗口监视器结束")
+            hwnd = None
+            time.sleep(1)
+
+        if not hwnd:
+            log.info("未在超时内找到 Minecraft 窗口，监视器退出")
+            return
+
+        # 阶段 2：无限期监控进程/窗口，直到退出
+        import psutil
+        while self.is_running:
+            process_alive = False
+            window_alive = False
+
+            try:
+                proc = psutil.Process(self.mc_pid)
+                if proc.is_running() and proc.status() != psutil.STATUS_ZOMBIE:
+                    process_alive = True
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                process_alive = False
+
+            try:
+                window_alive = win32gui.IsWindow(hwnd)
+            except Exception:
+                window_alive = False
+
+            if not process_alive and not window_alive:
+                log.info("Minecraft 进程和窗口均已消失，发送窗口关闭信号")
+                self.window_closed.emit()
+                return
+
+            time.sleep(2)
+
+        log.info("Minecraft 窗口监视器被外部停止")
 
     def _find_window(self):
         found_hwnd = []
@@ -368,8 +375,7 @@ class MinecraftWindowTool(QWidget):
             Qt.WindowDoesNotAcceptFocus  # 不接受焦点，但允许交互
         )
         
-        # 设置窗口属性
-        # 禁用完全透明背景，确保背景颜色能正确显示
+        # 设置透明顶层窗口，由 paintEvent 绘制圆角背景，避免打包后原生窗口露出直角背景。
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         
         # 固定为纯白色背景（不透明）
@@ -512,7 +518,7 @@ class MinecraftWindowTool(QWidget):
                 self.icon_label.setFixedSize(25, 25)
                 icon_found = True
                 break
-        
+
         if not icon_found:
             self.icon_label.setText("🎮")
             self.icon_label.setStyleSheet(f"font-size: 20px;")
@@ -527,14 +533,38 @@ class MinecraftWindowTool(QWidget):
         self.version_label.setFont(QFont("Arial", 10))
         self.version_label.setStyleSheet(f"color: {self._subtext_color};")
 
+        # 游戏时间标签
+        self.session_time_label = QLabel("")
+        self.session_time_label.setFont(QFont("Arial", 10))
+        self.session_time_label.setStyleSheet(f"color: {self._subtext_color};")
+
+        # 游戏时间更新定时器
+        self._session_start_time = time.time()
+        self._session_time_timer = QTimer(self)
+        self._session_time_timer.timeout.connect(self._update_session_time)
+        self._session_time_timer.start(1000)
+
         # 添加到布局
         layout.addWidget(self.icon_label)
         layout.addWidget(self.title_label)
         layout.addWidget(self.version_label)
+        layout.addWidget(self.session_time_label)
         layout.addStretch()
 
         self.setLayout(layout)
-        self.resize(400, 40)
+        self.resize(450, 40)
+
+    def _update_session_time(self):
+        """Update the session play time label"""
+        if hasattr(self, 'session_time_label') and hasattr(self, '_session_start_time'):
+            elapsed = time.time() - self._session_start_time
+            h = int(elapsed // 3600)
+            m = int((elapsed % 3600) // 60)
+            s = int(elapsed % 60)
+            if h > 0:
+                self.session_time_label.setText(f"{h}h {m}m {s}s")
+            else:
+                self.session_time_label.setText(f"{m}m {s}s")
 
     def _on_screencut(self):
         """处理 ScreenCutButton 点击事件，调用截图逻辑"""
@@ -794,6 +824,8 @@ class MinecraftWindowTool(QWidget):
         """窗口关闭事件"""
         if hasattr(self, 'update_timer') and self.update_timer.isActive():
             self.update_timer.stop()
+        if hasattr(self, '_session_time_timer') and self._session_time_timer.isActive():
+            self._session_time_timer.stop()
         event.accept()
 
 
