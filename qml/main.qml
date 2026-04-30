@@ -54,11 +54,6 @@ FluentWindow {
             icon: "ic_fluent_puzzle_piece_20_regular"
         },
         {
-            title: (Backend ? Backend.tr("联机") : "联机"),
-            page: Qt.resolvedUrl("pages/Multiplayer.qml"),
-            icon: "ic_fluent_plug_connected_20_regular"
-        },
-        {
             title: (Backend ? Backend.tr("BBBS") : "BBBS"),
             page: Qt.resolvedUrl("pages/BBBS.qml"),
             icon: "ic_fluent_chat_20_regular"

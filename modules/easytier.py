@@ -17,14 +17,15 @@ from modules.log import log
 
 
 PUBLIC_PEERS = [
-    "tcp://public.easytier.top:11010",
-    "tcp://public1.easytier.top:11010",
-    "tcp://public2.easytier.top:11010",
+    "tcp://et1.fuis.top:11010",
 ]
+
+VIRTUAL_IP_PATTERN = re.compile(r"tcp://(\d+\.\d+\.\d+\.\d+):")
 
 LAN_PORT_PATTERNS = [
     re.compile(r"Local game hosted on port (\d+)"),
     re.compile(r"Started serving on (\d+)"),
+    re.compile(r"本地游戏已在端口[\[\s]*(\d+)[\]\s]*上开启"),  # 支持 [port] 或 port 格式
     re.compile(r"本地游戏已在端口 (\d+)"),
 ]
 
@@ -99,6 +100,10 @@ def _binary_paths():
     core_path = _resolve_binary(core_name)
     cli_path = _resolve_binary(cli_name)
     binary_dir = os.path.dirname(core_path) if core_path else ""
+    
+    if not cli_path:
+        log(f"警告：未找到 {cli_name}，虚拟 IP 查询将失败", logging.WARNING)
+    
     return core_path, cli_path, binary_dir
 
 
@@ -122,6 +127,16 @@ def _reader_thread(stream, label):
             text = _decode_output(chunk).strip()
             if text:
                 log(f"[EasyTier/{label}] {text}")
+                
+                # 从日志中提取虚拟 IP（格式：tcp://198.18.0.1:xxxxx）
+                if label == "stdout" and "local_addr" in text:
+                    match = VIRTUAL_IP_PATTERN.search(text)
+                    if match:
+                        virtual_ip = match.group(1)
+                        with _SESSION_LOCK:
+                            if not _SESSION.get("virtual_ip"):
+                                _SESSION["virtual_ip"] = virtual_ip
+                                log(f"从 EasyTier 日志提取虚拟 IP: {virtual_ip}", logging.INFO)
     except Exception as exc:
         log(f"读取 EasyTier {label} 日志失败: {exc}", logging.WARNING)
 
@@ -161,18 +176,19 @@ def _start_process(args, binary_dir):
 
 def _try_get_virtual_ip(cli_path):
     if not cli_path or not os.path.exists(cli_path):
+        log(f"EasyTier CLI 路径不存在: {cli_path}", logging.DEBUG)
         return ""
 
     try:
         result = subprocess.run(
             [cli_path, "node", "info"],
             capture_output=True,
-            timeout=5,
+            timeout=10,  # 增加到 10 秒
             cwd=os.path.dirname(cli_path) or None,
             creationflags=_get_creationflags(),
         )
     except subprocess.TimeoutExpired:
-        log("EasyTier CLI 查询虚拟 IP 超时", logging.WARNING)
+        log("EasyTier CLI 查询虚拟 IP 超时（可能进程还在初始化）", logging.DEBUG)
         return ""
     except Exception as exc:
         log(f"EasyTier CLI 查询失败: {exc}", logging.WARNING)
@@ -189,7 +205,11 @@ def _try_get_virtual_ip(cli_path):
             continue
         match = re.search(r"(\d+\.\d+\.\d+\.\d+)", line)
         if match:
-            return match.group(1)
+            ip = match.group(1)
+            log(f"成功获取 EasyTier 虚拟 IP: {ip}", logging.DEBUG)
+            return ip
+    
+    log(f"未在 CLI 输出中找到虚拟 IP，输出: {output[:200]}", logging.DEBUG)
     return ""
 
 
@@ -236,14 +256,33 @@ def _build_command(mode, network_name, network_secret, proxy_port, use_public_se
 
 def _wait_for_virtual_ip(cli_path, timeout_seconds=12):
     deadline = time.time() + timeout_seconds
-    last_ip = ""
+    retry_count = 0
+    
     while time.time() < deadline:
         ip = _try_get_virtual_ip(cli_path)
         if ip:
-            last_ip = ip
-            break
+            log(f"虚拟 IP 获取成功（CLI 第 {retry_count+1} 次尝试）", logging.INFO)
+            return ip
+        
+        # 检查日志中是否已提取到虚拟 IP
+        with _SESSION_LOCK:
+            if _SESSION.get("virtual_ip"):
+                log(f"虚拟 IP 已从日志中提取: {_SESSION['virtual_ip']}", logging.INFO)
+                return _SESSION["virtual_ip"]
+        
+        retry_count += 1
         time.sleep(1)
-    return last_ip
+    
+    # 超时后返回日志中提取的 IP（如果有）
+    with _SESSION_LOCK:
+        ip = _SESSION.get("virtual_ip", "")
+    
+    if ip:
+        log(f"虚拟 IP 最终获取成功（从日志）: {ip}", logging.INFO)
+        return ip
+    
+    log(f"虚拟 IP 获取超时（{retry_count} 次重试），进程继续运行", logging.WARNING)
+    return ""
 
 
 def _set_session_base(mode, space_id, space_name, network_name, network_secret, host_username, proxy_port):
@@ -477,6 +516,45 @@ def start_host_log_watch(mc_version, minecraft_dir):
     _LOG_WATCH_THREAD.start()
     log(f"开始监听 Live 房主日志: {log_path}")
     return log_path
+
+
+def try_start_live_game_port_watch():
+    """尝试自动启动日志监听（仅在房主模式下）。
+    返回是否成功启动了监听。
+    """
+    with _SESSION_LOCK:
+        if _SESSION.get("mode") != "host" or not _SESSION.get("running"):
+            return False
+    
+    # 获取 Minecraft 目录和当前版本
+    from modules import globals as BLglobals
+    from modules.launch import Get_Run_Script
+    
+    minecraft_dir = BLglobals.minecraft_dir
+    if not minecraft_dir or not os.path.exists(minecraft_dir):
+        log(f"[Live Log Watch] Minecraft 目录不存在: {minecraft_dir}", logging.WARNING)
+        return False
+    
+    # 尝试获取最后运行的版本
+    # 这是一个简化版本 - 实际上可能需要从配置读取
+    try:
+        versions_dir = os.path.join(minecraft_dir, "versions")
+        if os.path.exists(versions_dir):
+            versions = [d for d in os.listdir(versions_dir) 
+                       if os.path.isdir(os.path.join(versions_dir, d))]
+            if versions:
+                # 选择最新修改的版本（作为可能的最后运行版本）
+                latest_version = max(versions, 
+                                    key=lambda v: os.path.getmtime(os.path.join(versions_dir, v)))
+                started_log_watch = start_host_log_watch(latest_version, minecraft_dir)
+                if started_log_watch:
+                    log(f"[Live Log Watch] 已启动日志监听，版本: {latest_version}", logging.INFO)
+                    return True
+    except Exception as e:
+        log(f"[Live Log Watch] 启动日志监听失败: {e}", logging.DEBUG)
+        return False
+    
+    return False
 
 
 def _read_nbt_string(stream):
