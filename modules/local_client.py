@@ -6,6 +6,7 @@ from modules.log import log
 import logging
 from modules.i18n import i18nText
 import modules.globals as BLglobals
+from modules.process_utils import hidden_process_kwargs
 
 def OnlineClient(port):
     """
@@ -66,14 +67,13 @@ def OnlineClient(port):
         log(i18nText("正在启动 frpc 客户端..."))
         
         # 启动 frpc 进程
-        creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
         process = subprocess.Popen(
             [frpc_path, "-c", "frpc.toml"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             encoding='utf-8',
-            creationflags=creation_flags  # 隐藏控制台窗口（仅Windows）
+            **hidden_process_kwargs(),
         )
         
         # 读取并记录输出

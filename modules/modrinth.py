@@ -7,6 +7,7 @@ import subprocess
 import threading
 from PySide6.QtWidgets import QWidget, QFileDialog
 from modules.i18n import i18nText
+from modules.process_utils import hidden_process_kwargs
 
 def search_mods(search_term):
     url = f"https://api.modrinth.com/v2/search?query={search_term}&limit=10"
@@ -156,7 +157,8 @@ def add_mrpack(parent_widget: QWidget = None):
                     stderr=subprocess.STDOUT,
                     text=True,
                     bufsize=1,
-                    universal_newlines=True
+                    universal_newlines=True,
+                    **hidden_process_kwargs(),
                 )
                 
                 # 实时输出日志

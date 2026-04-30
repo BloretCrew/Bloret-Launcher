@@ -8,6 +8,7 @@ from threading import Thread
 from modules.log import log
 from modules.i18n import i18nText
 import modules.globals as BLglobals
+from modules.process_utils import hidden_process_kwargs
 
 java_versions = {
         "25": {
@@ -157,7 +158,8 @@ def _install_java_thread(Java_Version):
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
+                **hidden_process_kwargs(),
             )
             
             # 等待进程完成

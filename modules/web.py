@@ -15,6 +15,7 @@ from modules.win11toast import toast
 import modules.globals as BLglobals
 from modules.log import log
 import modules.config as cfg
+from modules.process_utils import hidden_process_kwargs
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -175,7 +176,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
                 from modules.launch import Get_Run_Script
                 launch_args, game_dir = Get_Run_Script(version)
-                process = subprocess.Popen(launch_args, cwd=game_dir)
+                process = subprocess.Popen(launch_args, cwd=game_dir, **hidden_process_kwargs())
 
                 self._redirect_or_json_success(query_params, {
                     'status': 'success',

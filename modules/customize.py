@@ -4,6 +4,7 @@ from modules.log import log
 from modules.i18n import i18nText
 from modules.safe import handle_exception
 import modules.globals as BLglobals
+from modules.process_utils import hidden_process_kwargs
 
 
 def CustomizeRun(self,version):
@@ -29,7 +30,7 @@ def CustomizeRun(self,version):
                     duration=5000,
                     parent=self
                 )
-                subprocess.Popen(program_path, shell=True)
+                subprocess.Popen(program_path, shell=True, **hidden_process_kwargs())
                 return
             else:
                 InfoBar.error(

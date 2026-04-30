@@ -6,6 +6,7 @@ from modules.log import log
 from modules.safe import handle_exception
 from modules.i18n import i18nText
 import modules.globals as BLglobals
+from modules.process_utils import hidden_process_kwargs
 
 def update_to_latest_version(self):
     try:
@@ -97,7 +98,7 @@ def update_to_latest_version(self):
         })
         
         # 启动安装程序并退出当前程序
-        subprocess.Popen([file_name, "--quickstart"])
+        subprocess.Popen([file_name, "--quickstart"], **hidden_process_kwargs())
         sys.exit(0)
         
     except Exception as e:

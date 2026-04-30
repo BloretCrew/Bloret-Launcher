@@ -9,6 +9,7 @@ if sys.platform == "win32":
 from modules.log import log
 from modules.safe import handle_exception
 from modules.i18n import i18nText
+from modules.process_utils import hidden_process_kwargs
 
 def get_system_theme_color():
     """获取系统主题颜色"""
@@ -111,7 +112,7 @@ def restart():
         args = [sys.executable] + sys.argv
         
     if sys.platform == "win32":
-        subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, shell=False)
+        subprocess.Popen(args, shell=False, **hidden_process_kwargs(creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS))
     else:
         # Linux/macOS 使用 start_new_session, 相当于 DETACHED_PROCESS
         subprocess.Popen(args, start_new_session=True, shell=False)

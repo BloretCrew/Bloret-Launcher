@@ -12,6 +12,7 @@ from PySide6.QtCore import QObject, Signal as pyqtSignal
 from modules.log import log
 from modules.safe import handle_exception
 import modules.globals as BLglobals
+from modules.process_utils import hidden_process_kwargs
 
 def IsNeedUpdate(NowVersion, LatestVersion):
     """
@@ -75,7 +76,7 @@ def handle_first_run(self):
             updating_folder = os.path.join(parent_dir, "updating")
             updata_ps1_file = os.path.join(parent_dir, "updata.ps1")
             if os.path.exists(updating_folder):
-                subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-Command", f"Remove-Item -Path '{updating_folder}' -Recurse -Force"], check=True)
+                subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-Command", f"Remove-Item -Path '{updating_folder}' -Recurse -Force"], check=True, **hidden_process_kwargs())
                 log(f"删除文件夹: {updating_folder}")
             if os.path.exists(updata_ps1_file):
                 os.remove(updata_ps1_file)

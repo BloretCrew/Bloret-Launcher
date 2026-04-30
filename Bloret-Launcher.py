@@ -63,6 +63,7 @@ import modules.links as links
 import socket
 import send2trash
 from modules.compat_widgets import Action, RoundMenu
+from modules.process_utils import hidden_process_kwargs
 
 
 def get_app_icon_path(for_tray=False):
@@ -287,6 +288,7 @@ class Backend(QObject):
                     encoding='utf-8',
                     errors='replace',
                     bufsize=1,  # 行缓冲
+                    **hidden_process_kwargs(),
                 )
 
                 import uuid as _uuid
@@ -1635,7 +1637,7 @@ class Backend(QObject):
                                     last_progress = progress
 
                 self.updateProgressUpdated.emit(0.95, i18nText("正在启动安装程序..."))
-                subprocess.Popen([file_name, "--quickstart"])
+                subprocess.Popen([file_name, "--quickstart"], **hidden_process_kwargs())
                 sys.exit(0)
 
             except Exception as e:
@@ -3379,7 +3381,10 @@ class LauncherV2(RinUIWindow):
 
         kwargs = {"shell": False}
         if sys.platform == 'win32':
-            kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+            kwargs = hidden_process_kwargs(
+                **kwargs,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+            )
         else:
             kwargs["start_new_session"] = True
 
