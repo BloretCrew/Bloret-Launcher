@@ -172,11 +172,17 @@ jobs:
         Exec=bloret-launcher
         Icon=bloret-launcher
         Terminal=false
-        Categories=Development;Game
+        Categories=Game;
         EOF
           cp AppDir/bloret-launcher.desktop AppDir/usr/share/applications/bloret-launcher.desktop
-          cp bloret.ico AppDir/bloret-launcher.ico
-          cp bloret.ico AppDir/.DirIcon
+          if [ -f "Bloret-Fluent.png" ]; then
+            cp Bloret-Fluent.png AppDir/bloret-launcher.png
+          elif [ -f "img/BL.png" ]; then
+            cp img/BL.png AppDir/bloret-launcher.png
+          else
+            python -c "from PIL import Image; Image.open('bloret.ico').save('AppDir/bloret-launcher.png')"
+          fi
+          cp AppDir/bloret-launcher.png AppDir/.DirIcon
           curl -L -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage"
           chmod +x appimagetool
           ./appimagetool --appimage-extract-and-run AppDir "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.AppImage"
