@@ -12,7 +12,7 @@ else:
     win32con = None
     win32api = None
     win32process = None
-from PySide6.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout, QVBoxLayout, QPushButton
+from PySide6.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy
 from PySide6.QtCore import Qt, QTimer, Signal as pyqtSignal, QObject, QThread, QEventLoop
 from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QPainterPath, QColor
 # from PySide6.QtUiTools import QUiLoader # Removed uic for PySide6 compatibility
@@ -551,8 +551,21 @@ class MinecraftWindowTool(QWidget):
         layout.addWidget(self.session_time_label)
         layout.addStretch()
 
+        self._close_btn = QPushButton("✕")
+        self._close_btn.setFixedSize(24, 24)
+        self._close_btn.setStyleSheet(
+            "QPushButton { border: none; font-size: 14px; color: #999999; background: transparent; border-radius: 4px; }"
+            "QPushButton:hover { background-color: #e81123; color: white; }"
+        )
+        self._close_btn.setCursor(Qt.PointingHandCursor)
+        self._close_btn.clicked.connect(self._on_close_clicked)
+        layout.addWidget(self._close_btn)
+
         self.setLayout(layout)
         self.resize(450, 40)
+
+    def _on_close_clicked(self):
+        hide_minecraft_tool()
 
     def _update_session_time(self):
         """Update the session play time label"""

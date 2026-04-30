@@ -14,10 +14,12 @@ Dialog {
     property var instances: []
     property var recentRuns: []
     property var chatHistory: ({})
+    property bool toolVisible: Backend ? Backend.isMinecraftToolVisible() : false
 
     function refresh() {
         instances = Backend ? Backend.getRunningInstances() : []
         recentRuns = Backend ? Backend.getRecentRuns() : []
+        toolVisible = Backend ? Backend.isMinecraftToolVisible() : false
     }
 
     function getSessionTime() {
@@ -150,6 +152,20 @@ Dialog {
                             chatDialog.mcVersion = modelData.name
                             chatDialog.chatMessages = chatHistory[modelData.name] || []
                             chatDialog.open()
+                        }
+                    }
+
+                    Button {
+                        visible: modelData.type === "minecraft"
+                        text: toolVisible
+                            ? (Backend ? Backend.tr("隐藏工具栏") : "隐藏工具栏")
+                            : (Backend ? Backend.tr("工具栏") : "工具栏")
+                        flat: true
+                        onClicked: {
+                            if (Backend) {
+                                Backend.toggleMinecraftTool()
+                                toolVisible = Backend.isMinecraftToolVisible()
+                            }
                         }
                     }
 

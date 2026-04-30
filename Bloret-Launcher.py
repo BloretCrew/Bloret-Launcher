@@ -636,6 +636,17 @@ class Backend(QObject):
                 print(f"terminateInstance failed: {e}")
         self.runningInstancesChanged.emit(self.getRunningInstances())
 
+    @Slot(result=bool)
+    def isMinecraftToolVisible(self):
+        from modules import mwtool
+        return mwtool.is_tool_visible()
+
+    @Slot()
+    def toggleMinecraftTool(self):
+        from modules import mwtool
+        if mwtool.is_tool_visible():
+            mwtool.hide_minecraft_tool()
+
     @Slot(result=dict)
     def getActivityInfo(self):
         return BLglobals.BL_Activity
