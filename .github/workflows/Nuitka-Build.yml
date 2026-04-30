@@ -67,7 +67,7 @@ jobs:
       run: |
         EASYTIER_ARG=""
         if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
-        python -m nuitka --standalone --onefile --enable-plugin=pyside6 --include-qt-plugins=sensible --include-data-dir=qml=qml --include-data-dir=RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
+        python -m nuitka --standalone --onefile --enable-plugin=pyside6 --include-qt-plugins=sensible --include-data-dir=qml=qml --include-data-dir=RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang --include-data-files=Bloret.png=Bloret.png --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
       shell: bash
 
     - name: 修复 OpenSSL 依赖 (macOS)
@@ -231,7 +231,7 @@ jobs:
           mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/bloret-launcher
           cp Bloret-Launcher AppDir/usr/bin/bloret-launcher
           chmod +x AppDir/usr/bin/bloret-launcher
-          cp -r qml RinUI icon lang config.json LICENSE bloret.ico JavaWrapper.jar AppDir/usr/share/bloret-launcher/
+          cp -r qml RinUI icon lang config.json LICENSE bloret.ico Bloret.png Bloret-Fluent.png JavaWrapper.jar AppDir/usr/share/bloret-launcher/
           if [ -d "easytier" ]; then cp -r easytier AppDir/usr/share/bloret-launcher/; fi
           cp servers.dat AppDir/usr/share/bloret-launcher/ || true
           cat > AppDir/bloret-launcher.desktop << EOF

@@ -82,7 +82,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         pyinstaller --onefile --windowed --name=Bloret-Launcher \
-          --add-data "bloret.ico:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
+          --add-data "bloret.ico:." --add-data "Bloret.png:." --add-data "Bloret-Fluent.png:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "icon:icon" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
           --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
       shell: bash
 
@@ -160,7 +160,7 @@ jobs:
           mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/bloret-launcher
           cp dist/Bloret-Launcher AppDir/usr/bin/bloret-launcher
           chmod +x AppDir/usr/bin/bloret-launcher
-          cp -r RinUI qml ui lang config.json LICENSE bloret.ico JavaWrapper.jar AppDir/usr/share/bloret-launcher/
+          cp -r RinUI qml ui icon lang config.json LICENSE bloret.ico Bloret.png Bloret-Fluent.png JavaWrapper.jar AppDir/usr/share/bloret-launcher/
           if [ -d "easytier" ]; then cp -r easytier AppDir/usr/share/bloret-launcher/; fi
           cp servers.dat AppDir/usr/share/bloret-launcher/ || true
           cat > AppDir/bloret-launcher.desktop << EOF
