@@ -156,76 +156,30 @@ jobs:
         elif [ "${{ runner.os }}" == "macOS" ]; then
           cp *.dmg ${{ env.OUTPUT_DIR }}/
         elif [ "${{ runner.os }}" == "Linux" ]; then
-          cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/
-          VERSION=$(python -c "import json; print(json.load(open('config.json'))['ver'])")
-          mkdir linux_pkg_ready
-          # 生成 bloret-launcher.desktop 条目，为创建启动菜单快捷方式作准备
-          cat > linux_pkg_ready/bloret-launcher.desktop << EOF
+          ARCH=$(uname -m)
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/bloret-launcher
+          cp dist/Bloret-Launcher AppDir/usr/bin/bloret-launcher
+          chmod +x AppDir/usr/bin/bloret-launcher
+          cp -r RinUI qml ui lang config.json LICENSE bloret.ico JavaWrapper.jar AppDir/usr/share/bloret-launcher/
+          if [ -d "easytier" ]; then cp -r easytier AppDir/usr/share/bloret-launcher/; fi
+          cp servers.dat AppDir/usr/share/bloret-launcher/ || true
+          cat > AppDir/bloret-launcher.desktop << EOF
         [Desktop Entry]
         Type=Application
         Name=Bloret Launcher
         GenericName=Minecraft
         Comment=A Minecraft Launcher designed by BloretValley administrator.
-        Exec=/usr/share/bloret-launcher/Bloret-Launcher %U
-        Icon=/usr/share/bloret-launcher/bloret.ico
+        Exec=bloret-launcher
+        Icon=bloret-launcher
         Terminal=false
         Categories=Development;Game
         EOF
-          # 生成安装后执行脚本，用于刷新启动菜单软件库
-          echo "update-desktop-database /usr/share/applications" > ./linux_pkg_ready/postinstall.sh
-          # 生成卸载后执行脚本，还是用于刷新启动菜单软件库（
-          echo "update-desktop-database /usr/share/applications" > ./linux_pkg_ready/postremove.sh
-          # 生成 nfpm 配置
-          cat > nfpm.yaml <<EOF
-        name: "bloret-launcher"
-        arch: "amd64"
-        platform: "linux"
-        version: "${VERSION}"
-        section: "default"
-        priority: "extra"
-        maintainer: "Bloret <admin@bloret.net>"
-        description: "Bloret Launcher"
-        homepage: "https://launcher.bloret.net"
-        license: "GPL-3.0"
-        contents:
-          - src: "dist/"
-            dst: "/usr/share/bloret-launcher"
-          - src: "linux_pkg_ready/bloret-launcher.desktop"
-            dst: "/usr/share/applications/bloret-launcher.desktop"
-          - src: "bloret.ico"
-            dst: "/usr/share/bloret-launcher/bloret.ico"
-          - src: "config.json"
-            dst: "/usr/share/bloret-launcher/config.json"
-          - src: "JavaWrapper.jar"
-            dst: "/usr/share/bloret-launcher/JavaWrapper.jar"
-          - src: "LICENSE"
-            dst: "/usr/share/bloret-launcher/LICENSE"
-          - src: "servers.dat"
-            dst: "/usr/share/bloret-launcher/servers.dat"
-          - src: "ui/"
-            dst: "/usr/share/bloret-launcher/ui"
-          - src: "RinUI/"
-            dst: "/usr/share/bloret-launcher/RinUI"
-          - src: "qml/"
-            dst: "/usr/share/bloret-launcher/qml"
-          - src: "lang/"
-            dst: "/usr/share/bloret-launcher/lang"
-          - src: "easytier/"
-            dst: "/usr/share/bloret-launcher/easytier"
-        scripts:
-          postinstall: ./linux_pkg_ready/postinstall.sh
-          postremove: ./linux_pkg_ready/postremove.sh
-        EOF
-          # 安装 nfpm
-          curl -sfL https://github.com/goreleaser/nfpm/releases/download/v2.41.2/nfpm_2.41.2_Linux_x86_64.tar.gz | tar xz nfpm
-          ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager deb
-          ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager rpm
-          ./nfpm pkg --target ${{ env.OUTPUT_DIR }}/ --packager archlinux
-          mkdir -p zip_contents
-          cp dist/Bloret-Launcher zip_contents/
-          cp -r RinUI qml ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar zip_contents/ || true
-          cp servers.dat zip_contents/ || true
-          cd zip_contents && zip -r ../${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.zip . && cd ..
+          cp AppDir/bloret-launcher.desktop AppDir/usr/share/applications/bloret-launcher.desktop
+          cp bloret.ico AppDir/bloret-launcher.ico
+          cp bloret.ico AppDir/.DirIcon
+          curl -L -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage"
+          chmod +x appimagetool
+          ./appimagetool --appimage-extract-and-run AppDir "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.AppImage"
         fi
         cp -r RinUI qml ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
         cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
