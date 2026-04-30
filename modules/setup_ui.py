@@ -7,6 +7,7 @@ import socket
 import logging
 import requests
 import random
+import sys
 
 # 2. 第三方库 (PySide6)
 from PySide6.QtWidgets import (
@@ -76,6 +77,12 @@ def load_config():
         return {}
 
 config = load_config()
+
+
+def resource_path(relative_path):
+    """Resolve bundled resources in PyInstaller onefile builds."""
+    base_path = getattr(sys, "_MEIPASS", os.getcwd())
+    return os.path.join(base_path, relative_path)
 
 def scan_java_paths():
     """扫描系统中的 Java 安装路径"""
@@ -596,7 +603,7 @@ def get_all_launch_items():
             version_path = os.path.join(versions_dir, d)
             if os.path.isdir(version_path):
                 # 默认图标
-                icon = QIcon("ui/icon/Grass_Block.png")
+                icon = QIcon(resource_path("ui/icon/Grass_Block.png"))
                 
                 # 尝试从 .BL.json 获取元数据
                 if d in versions_metadata:
@@ -608,7 +615,7 @@ def get_all_launch_items():
                         icon = QIcon(icon_path)
                     # 如果是 Fabric 版本且没有自定义图标，使用 Fabric 图标
                     elif meta.get("Fabric", False):
-                         icon = QIcon("ui/icon/fabric.png")
+                         icon = QIcon(resource_path("ui/icon/fabric.png"))
                 
                 items.append({
                     "name": d,
@@ -693,10 +700,10 @@ def setup_home_ui(self, widget):
                     else:
                         log(f"活动图片下载失败，状态码: {response.status_code}")
                         # 下载失败时加载一个默认图标，防止留空
-                        activity_icon.setPixmap(QPixmap("ui/icon/Grass_Block.png"))
+                        activity_icon.setPixmap(QPixmap(resource_path("ui/icon/Grass_Block.png")))
                 except Exception as e:
                     log(f"加载网络活动图片出错: {str(e)}")
-                    activity_icon.setPixmap(QPixmap("ui/icon/Grass_Block.png"))
+                    activity_icon.setPixmap(QPixmap(resource_path("ui/icon/Grass_Block.png")))
             else:
                 # 本地文件直接加载
                 activity_icon.setPixmap(QPixmap(icon_source))
@@ -1280,7 +1287,7 @@ def setup_passport_ui(self, widget, homeInterface):
             avatar_label = ImageLabel(card)
             avatar_label.setFixedSize(45, 45)
             avatar_label.setBorderRadius(4, 4, 4, 4)
-            avatar_label.setPixmap(QPixmap("ui/icon/DefaultHead.png"))
+            avatar_label.setPixmap(QPixmap(resource_path("ui/icon/DefaultHead.png")))
             
             # 异步加载头像 (使用线程)
             thread = AvatarLoaderThread(username)
@@ -1704,7 +1711,7 @@ def start_online_client(parent, clientpage):
 
     # 添加动图
     gif_label = QLabel()
-    movie = QMovie("ui/icon/OnlineClient.gif")
+    movie = QMovie(resource_path("ui/icon/OnlineClient.gif"))
     gif_label.setMovie(movie)
     movie.start()
     movie.setScaledSize(QSize(500, 280))  # 设置动图大小
@@ -2195,7 +2202,7 @@ def show_ipv6_dialog(parent, ipv6_address):
     
     # 添加动图
     gif_label = QLabel()
-    movie = QMovie("ui/icon/OnlineClient.gif")
+    movie = QMovie(resource_path("ui/icon/OnlineClient.gif"))
     gif_label.setMovie(movie)
     movie.start()
     
@@ -2226,7 +2233,7 @@ def show_ipv6_dialog(parent, ipv6_address):
         
         # 添加动图
         gif_label = QLabel()
-        movie = QMovie("ui/icon/OnlineClient.gif")
+        movie = QMovie(resource_path("ui/icon/OnlineClient.gif"))
         gif_label.setMovie(movie)
         movie.start()
         
@@ -2271,7 +2278,7 @@ def setup_info_ui(self, widget):
         qq_group_button.clicked.connect(open_qq_link)
     qq_icon = widget.findChild(QLabel, "QQ_icon")
     if qq_icon:
-        qq_icon.setPixmap(QPixmap("ui/icon/qq.png"))
+        qq_icon.setPixmap(QPixmap(resource_path("ui/icon/qq.png")))
     BLC_QQ = widget.findChild(QPushButton, "BLC_QQ")
     if BLC_QQ:
         BLC_QQ.clicked.connect(open_BLC_qq_link)
