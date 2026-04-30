@@ -6,7 +6,6 @@ dist/
 logs/
 /cache
 /minescript
-# /temp
 /config
 run.bat
 /logs

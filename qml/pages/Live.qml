@@ -17,9 +17,22 @@ FluentPage {
     property bool videoEnabled: false
     property bool isLoading: false
     property bool isAuthenticated: false
-    property var easytierState: ({})
+    property var easytierState: ({
+        active: false,
+        ready: false,
+        hostAddress: "",
+        localRunning: false,
+        localMode: "",
+        localVirtualIp: "",
+        localProxyPort: null,
+        localGamePort: null,
+        localIsHost: false,
+        localIsClient: false,
+        localError: ""
+    })
     property string liveErrorText: ""
     property string currentUserName: ""
+    property bool easytierStartPending: false
 
     function t(text) {
         return Backend ? Backend.tr(text) : text
@@ -31,6 +44,26 @@ FluentPage {
 
     function normalizeChatHistory(history) {
         return Array.isArray(history) ? history : []
+    }
+
+    function restoreLiveStateFromBackend() {
+        if (!Backend)
+            return
+        inSpace = Backend.isInLiveSpace()
+        connectionState = Backend.getCurrentLiveConnectionState()
+        easytierState = Backend.getCurrentLiveEasyTierState() || {}
+        if (inSpace) {
+            var liveSpace = Backend.getCurrentLiveSpace() || {}
+            currentSpace = liveSpace
+            chatMessages = normalizeChatHistory(liveSpace.chatHistory)
+            onlineUsers = normalizeUsers(liveSpace.users)
+            liveErrorText = ""
+        } else {
+            currentSpace = {}
+            chatMessages = []
+            onlineUsers = []
+            easytierState = {}
+        }
     }
 
     function upsertUser(user) {
@@ -76,98 +109,85 @@ FluentPage {
     }
 
     function easytierSummaryText() {
-        if (!easytierState.active) {
+        if (!easytierState.active)
             return t("房主尚未在这个 Live 中开启 EasyTier 网络")
-        }
         if (easytierState.ready) {
-            if (currentSpace.isOwner) {
-                return t("房间地址已经同步到 Live，其他成员现在可以一键连接并通过启动器启动游戏。")
-            }
-            if (easytierState.localIsClient) {
+            if (currentSpace.isOwner)
+                return t("房间地址已经同步到 Live，其他成员现在可以一键连接，并通过启动器启动 Minecraft。")
+            if (easytierState.localIsClient)
                 return t("你已连接到房主网络。请通过启动器启动 Minecraft，代理和服务器列表会自动配置。")
-            }
             return t("房主已经开放局域网。连接后通过启动器启动 Minecraft，即可在多人游戏中看到房间。")
         }
-        if (currentSpace.isOwner && easytierState.localIsHost) {
+        if (currentSpace.isOwner && easytierState.localIsHost)
             return t("网络已启动。请通过启动器启动游戏，并在游戏内点击“对局域网开放”，端口会自动同步到 Live。")
-        }
         return t("房主已启动 EasyTier，正在等待游戏内开放局域网。")
     }
 
     Component.onCompleted: {
         console.log("[Live.qml] ========== Page loaded ==========")
-        console.log("[Live.qml] Backend available:", Backend !== undefined)
-        
         if (!Backend) {
-            console.log("[Live.qml] ERROR: Backend is not available!")
             isLoading = false
             return
         }
-        
+
         try {
-            let loggedIn = Backend.getBloretPassPortLoginStatus()
-            let userName = Backend.getBloretPassPortUserName()
-            console.log("[Live.qml] Login status:", loggedIn, "| Username:", userName)
-            
-            isAuthenticated = loggedIn
-            currentUserName = userName
-            if (loggedIn) {
+            isAuthenticated = Backend.getBloretPassPortLoginStatus()
+            currentUserName = Backend.getBloretPassPortUserName()
+            restoreLiveStateFromBackend()
+            if (isAuthenticated) {
                 isLoading = true
-                console.log("[Live.qml] User is logged in, fetching space list...")
                 Backend.fetchLiveSpaceList()
-            } else {
-                console.log("[Live.qml] User is not logged in")
-                isLoading = false
             }
-        } catch(e) {
+        } catch (e) {
             console.log("[Live.qml] ERROR during initialization:", e)
             isLoading = false
         }
-        console.log("[Live.qml] ========== Initialization complete ==========")
+    }
+
+    onVisibleChanged: {
+        if (visible && Backend) {
+            isAuthenticated = Backend.getBloretPassPortLoginStatus()
+            currentUserName = Backend.getBloretPassPortUserName()
+            restoreLiveStateFromBackend()
+        }
     }
 
     Component.onDestruction: {
         console.log("[Live.qml] Page destroyed")
-        if (inSpace && Backend) {
-            Backend.leaveLiveSpace()
-        }
     }
 
     Connections {
         target: Backend
-        
+
         function onMinecraftAccountsChanged(accounts) {
-            console.log("[Live.qml] Accounts changed, re-checking auth status")
-            let newAuthStatus = Backend.getBloretPassPortLoginStatus()
-            isAuthenticated = newAuthStatus
+            if (!Backend)
+                return
+            isAuthenticated = Backend.getBloretPassPortLoginStatus()
             currentUserName = Backend.getBloretPassPortUserName()
-            
-            if (newAuthStatus && spaceList.length === 0 && !isLoading) {
+            restoreLiveStateFromBackend()
+            if (isAuthenticated && spaceList.length === 0 && !isLoading) {
                 isLoading = true
                 Backend.fetchLiveSpaceList()
-            } else if (!newAuthStatus && inSpace) {
+            } else if (!isAuthenticated && inSpace) {
                 Backend.leaveLiveSpace()
             }
         }
 
         function onLiveSpaceListReceived(data) {
-            console.log("[Live.qml] Space list received:", data.length, "items")
-            spaceList = data
+            spaceList = data || []
             isLoading = false
         }
-        
+
         function onLiveJoinedSpace(data) {
-            console.log("[Live.qml] Joined space:", data.name)
             inSpace = true
-            currentSpace = data
-            chatMessages = normalizeChatHistory(data.chatHistory)
-            onlineUsers = normalizeUsers(data.users)
-            if (data.easytier)
-                easytierState = data.easytier
+            currentSpace = data || {}
+            chatMessages = normalizeChatHistory(currentSpace.chatHistory)
+            onlineUsers = normalizeUsers(currentSpace.users)
+            easytierState = currentSpace.easytier || {}
+            liveErrorText = ""
         }
-        
+
         function onLiveLeftSpace() {
-            console.log("[Live.qml] Left space")
             inSpace = false
             currentSpace = {}
             chatMessages = []
@@ -176,49 +196,48 @@ FluentPage {
             videoEnabled = false
             easytierState = {}
             liveErrorText = ""
+            easytierStartPending = false
         }
-        
+
         function onLiveUserEvent(data) {
             var type = data.type || ""
-            if (type === "user-joined" && data.user) {
+            if (type === "user-joined" && data.user)
                 upsertUser(data.user)
-            } else if (type === "user-left" && data.user) {
+            else if (type === "user-left" && data.user)
                 removeUser(data.user)
-            }
         }
-        
+
         function onLiveChatMessageReceived(data) {
             var msgs = chatMessages.slice()
             msgs.push(data)
             chatMessages = msgs
             Qt.callLater(function() {
-                if (chatListView) {
+                if (chatListView)
                     chatListView.positionViewAtEnd()
-                }
             })
         }
-        
+
         function onLiveConnectionStateChanged(state) {
-            console.log("[Live.qml] Connection state changed:", state)
             connectionState = state
         }
-        
+
         function onLiveErrorOccurred(msg) {
-            console.log("[Live.qml] Error occurred:", msg)
             isLoading = false
             liveErrorText = msg
+            easytierStartPending = false
         }
 
         function onLiveEasyTierStateChanged(data) {
             easytierState = data || {}
+            if (easytierStartPending && (easytierState.active || easytierState.localRunning))
+                easytierStartPending = false
         }
     }
 
-    // 密码对话框
     Dialog {
         id: passwordDialog
         modal: true
-        title: (Backend ? Backend.tr("输入密码") : "输入密码")
+        title: t("输入密码")
         width: 360
 
         property string targetSpaceId: ""
@@ -228,7 +247,7 @@ FluentPage {
             spacing: 12
 
             Label {
-                text: (Backend ? Backend.tr("该 Live 空间需要密码才能加入") : "该 Live 空间需要密码才能加入")
+                text: t("该 Live 空间需要密码才能加入")
                 color: Theme.currentTheme.colors.textSecondaryColor
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
@@ -236,7 +255,7 @@ FluentPage {
 
             TextField {
                 id: passwordInput
-                placeholderText: (Backend ? Backend.tr("请输入密码") : "请输入密码")
+                placeholderText: t("请输入密码")
                 Layout.fillWidth: true
                 echoMode: TextInput.Password
                 onAccepted: joinWithPasswordBtn.clicked()
@@ -244,14 +263,17 @@ FluentPage {
 
             RowLayout {
                 Layout.fillWidth: true
+
                 Item { Layout.fillWidth: true }
+
                 Button {
-                    text: (Backend ? Backend.tr("取消") : "取消")
+                    text: t("取消")
                     onClicked: passwordDialog.close()
                 }
+
                 Button {
                     id: joinWithPasswordBtn
-                    text: (Backend ? Backend.tr("加入") : "加入")
+                    text: t("加入")
                     highlighted: true
                     onClicked: {
                         if (passwordInput.text.trim() !== "") {
@@ -265,11 +287,10 @@ FluentPage {
         }
     }
 
-    // 创建空间对话框
     Dialog {
         id: createSpaceDialog
         modal: true
-        title: (Backend ? Backend.tr("创建 Live 空间") : "创建 Live 空间")
+        title: t("创建 Live 空间")
         width: 360
 
         ColumnLayout {
@@ -278,21 +299,24 @@ FluentPage {
 
             TextField {
                 id: spaceNameInput
-                placeholderText: (Backend ? Backend.tr("空间名称") : "空间名称")
+                placeholderText: t("空间名称")
                 Layout.fillWidth: true
                 onAccepted: createSpaceBtn.clicked()
             }
 
             RowLayout {
                 Layout.fillWidth: true
+
                 Item { Layout.fillWidth: true }
+
                 Button {
-                    text: (Backend ? Backend.tr("取消") : "取消")
+                    text: t("取消")
                     onClicked: createSpaceDialog.close()
                 }
+
                 Button {
                     id: createSpaceBtn
-                    text: (Backend ? Backend.tr("创建") : "创建")
+                    text: t("创建")
                     highlighted: true
                     onClicked: {
                         if (spaceNameInput.text.trim() !== "") {
@@ -309,32 +333,33 @@ FluentPage {
     content: ColumnLayout {
         spacing: 18
 
-        // 页面标题
         RowLayout {
             Layout.fillWidth: true
             spacing: 10
+
             Label {
                 text: "Live"
                 font.pixelSize: 32
                 font.weight: Font.Bold
                 color: Theme.currentTheme.colors.textColor
             }
+
             Label {
-                text: (Backend ? Backend.tr("实时空间") : "实时空间")
+                text: t("实时空间")
                 font.pixelSize: 14
                 color: Theme.currentTheme.colors.textSecondaryColor
                 Layout.alignment: Qt.AlignBottom
                 Layout.bottomMargin: 5
             }
-            
+
             Badge {
                 text: "Bloret BBS"
                 colorType: "Success"
             }
+
             Item { Layout.fillWidth: true }
         }
 
-        // 未登录提示
         Frame {
             Layout.fillWidth: true
             visible: !isAuthenticated
@@ -351,48 +376,48 @@ FluentPage {
                 Layout.alignment: Qt.AlignHCenter
 
                 Label {
-                    text: (Backend ? Backend.tr("请先登录 Bloret PassPort") : "请先登录 Bloret PassPort")
+                    text: t("请先登录 Bloret PassPort")
                     font.pixelSize: 18
                     font.weight: Font.DemiBold
                     color: Theme.currentTheme.colors.textColor
                     Layout.alignment: Qt.AlignHCenter
                 }
+
                 Label {
-                    text: (Backend ? Backend.tr("登录后即可加入 Live 空间进行实时聊天和共享") : "登录后即可加入 Live 空间进行实时聊天和共享")
+                    text: t("登录后即可加入 Live 空间，进行实时聊天和联机。")
                     color: Theme.currentTheme.colors.textSecondaryColor
                     Layout.alignment: Qt.AlignHCenter
                 }
+
                 Button {
-                    text: (Backend ? Backend.tr("前往登录") : "前往登录")
+                    text: t("前往登录")
                     highlighted: true
                     Layout.alignment: Qt.AlignHCenter
                     onClicked: {
-                        if (Backend) Backend.loginBloretPassPort()
+                        if (Backend)
+                            Backend.loginBloretPassPort()
                     }
                 }
             }
         }
 
-        // 加载中
         ProgressBar {
             Layout.fillWidth: true
             indeterminate: true
             visible: isLoading && isAuthenticated
         }
 
-        // ==================== 空间列表视图 ====================
         ColumnLayout {
             Layout.fillWidth: true
             visible: isAuthenticated && !inSpace
             spacing: 12
 
-            // 操作栏
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 10
 
                 Button {
-                    text: (Backend ? Backend.tr("刷新") : "刷新")
+                    text: t("刷新")
                     icon.name: "ic_fluent_arrow_sync_20_regular"
                     flat: true
                     onClicked: {
@@ -400,19 +425,20 @@ FluentPage {
                         Backend.fetchLiveSpaceList()
                     }
                 }
+
                 Item { Layout.fillWidth: true }
+
                 Button {
-                    text: (Backend ? Backend.tr("创建空间") : "创建空间")
+                    text: t("创建空间")
                     icon.name: "ic_fluent_add_20_regular"
                     highlighted: true
                     onClicked: createSpaceDialog.open()
                 }
             }
 
-            // 空间列表
             Label {
                 visible: spaceList.length === 0 && !isLoading
-                text: (Backend ? Backend.tr("暂无 Live 空间") : "暂无 Live 空间")
+                text: t("暂无 Live 空间")
                 color: Theme.currentTheme.colors.textSecondaryColor
             }
 
@@ -432,7 +458,6 @@ FluentPage {
                         width: parent.width
                         spacing: 15
 
-                        // 空间图标
                         Rectangle {
                             width: 44
                             height: 44
@@ -448,20 +473,20 @@ FluentPage {
                             }
                         }
 
-                        // 空间信息
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 4
 
                             RowLayout {
                                 spacing: 8
+
                                 Label {
                                     text: modelData.name || ""
                                     font.pixelSize: 15
                                     font.weight: Font.DemiBold
                                     color: Theme.currentTheme.colors.textColor
                                 }
-                                // 密码标识
+
                                 Rectangle {
                                     visible: modelData.hasPassword || false
                                     width: lockIcon.implicitWidth + 10
@@ -473,7 +498,7 @@ FluentPage {
                                     Label {
                                         id: lockIcon
                                         anchors.centerIn: parent
-                                        text: "🔒"
+                                        text: "锁"
                                         font.pixelSize: 11
                                     }
                                 }
@@ -481,22 +506,23 @@ FluentPage {
 
                             RowLayout {
                                 spacing: 10
+
                                 Label {
-                                    text: (Backend ? Backend.tr("创建者: ") : "创建者: ") + (modelData.owner || "")
+                                    text: t("创建者: ") + (modelData.owner || "")
                                     font.pixelSize: 12
                                     color: Theme.currentTheme.colors.textSecondaryColor
                                 }
+
                                 Label {
-                                    text: (Backend ? Backend.tr("在线: ") : "在线: ") + String(modelData.userCount || 0)
+                                    text: t("在线: ") + String(modelData.userCount || 0)
                                     font.pixelSize: 12
                                     color: Theme.currentTheme.colors.textSecondaryColor
                                 }
                             }
                         }
 
-                        // 加入按钮
                         Button {
-                            text: (Backend ? Backend.tr("加入") : "加入")
+                            text: t("加入")
                             highlighted: true
                             onClicked: {
                                 if (modelData.hasPassword) {
@@ -512,13 +538,11 @@ FluentPage {
             }
         }
 
-        // ==================== 活跃空间视图 ====================
         ColumnLayout {
             Layout.fillWidth: true
             visible: isAuthenticated && inSpace
             spacing: 12
 
-            // 顶部栏
             Frame {
                 Layout.fillWidth: true
                 padding: 12
@@ -539,22 +563,26 @@ FluentPage {
                         color: Theme.currentTheme.colors.textColor
                     }
 
-                    // 连接状态
                     Rectangle {
                         width: 8
                         height: 8
                         radius: 4
                         color: {
-                            if (connectionState === "connected") return Theme.currentTheme.colors.systemSuccessColor
-                            if (connectionState === "connecting") return Theme.currentTheme.colors.systemCautionColor
+                            if (connectionState === "connected")
+                                return Theme.currentTheme.colors.systemSuccessColor
+                            if (connectionState === "connecting")
+                                return Theme.currentTheme.colors.systemCautionColor
                             return Theme.currentTheme.colors.textTertialyColor
                         }
                     }
+
                     Label {
                         text: {
-                            if (connectionState === "connected") return (Backend ? Backend.tr("已连接") : "已连接")
-                            if (connectionState === "connecting") return (Backend ? Backend.tr("连接中...") : "连接中...")
-                            return (Backend ? Backend.tr("未连接") : "未连接")
+                            if (connectionState === "connected")
+                                return t("已连接")
+                            if (connectionState === "connecting")
+                                return t("连接中...")
+                            return t("未连接")
                         }
                         font.pixelSize: 12
                         color: Theme.currentTheme.colors.textSecondaryColor
@@ -562,22 +590,22 @@ FluentPage {
 
                     Item { Layout.fillWidth: true }
 
-                    // 媒体控制
                     Button {
                         icon.name: audioEnabled ? "ic_fluent_mic_on_20_regular" : "ic_fluent_mic_off_20_regular"
                         flat: true
                         ToolTip.visible: hovered
-                        ToolTip.text: audioEnabled ? (Backend ? Backend.tr("关闭麦克风") : "关闭麦克风") : (Backend ? Backend.tr("开启麦克风") : "开启麦克风")
+                        ToolTip.text: audioEnabled ? t("关闭麦克风") : t("开启麦克风")
                         onClicked: {
                             audioEnabled = !audioEnabled
                             Backend.toggleLiveAudio(audioEnabled)
                         }
                     }
+
                     Button {
                         icon.name: videoEnabled ? "ic_fluent_video_20_regular" : "ic_fluent_video_off_20_regular"
                         flat: true
                         ToolTip.visible: hovered
-                        ToolTip.text: videoEnabled ? (Backend ? Backend.tr("关闭摄像头") : "关闭摄像头") : (Backend ? Backend.tr("开启摄像头") : "开启摄像头")
+                        ToolTip.text: videoEnabled ? t("关闭摄像头") : t("开启摄像头")
                         onClicked: {
                             videoEnabled = !videoEnabled
                             Backend.toggleLiveVideo(videoEnabled)
@@ -585,13 +613,12 @@ FluentPage {
                     }
 
                     Button {
-                        text: (Backend ? Backend.tr("离开") : "离开")
+                        text: t("离开")
                         onClicked: Backend.leaveLiveSpace()
                     }
                 }
             }
 
-            // 在线用户
             Frame {
                 Layout.fillWidth: true
                 padding: 10
@@ -607,7 +634,7 @@ FluentPage {
                     spacing: 8
 
                     Label {
-                        text: (Backend ? Backend.tr("在线: ") : "在线: ")
+                        text: t("在线: ")
                         font.pixelSize: 13
                         color: Theme.currentTheme.colors.textSecondaryColor
                     }
@@ -633,7 +660,253 @@ FluentPage {
                 }
             }
 
-            // 聊天区域
+            Frame {
+                Layout.fillWidth: true
+                padding: 12
+                visible: inSpace
+                background: Rectangle {
+                    color: Theme.currentTheme.colors.cardColor
+                    radius: 8
+                    border.color: Theme.currentTheme.colors.cardBorderColor
+                }
+
+                ColumnLayout {
+                    width: parent.width
+                    spacing: 8
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Label {
+                            text: "EasyTier"
+                            font.pixelSize: 15
+                            font.weight: Font.DemiBold
+                            color: Theme.currentTheme.colors.textColor
+                        }
+
+                        Badge {
+                            text: {
+                                if (!easytierState.active)
+                                    return t("未启用")
+                                if (easytierState.ready)
+                                    return t("就绪")
+                                if (easytierState.localRunning)
+                                    return t("已连接")
+                                return t("启动中")
+                            }
+                            colorType: {
+                                if (!easytierState.active)
+                                    return "Default"
+                                if (easytierState.ready)
+                                    return "Success"
+                                return "Caution"
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        RowLayout {
+                            spacing: 8
+
+                            BusyIndicator {
+                                visible: easytierStartPending
+                                running: easytierStartPending
+                                Layout.preferredWidth: 16
+                                Layout.preferredHeight: 16
+                            }
+
+                            Button {
+                                visible: (currentSpace.isOwner === true) && (easytierState.localRunning !== true)
+                                enabled: !easytierStartPending
+                                text: t("开始网络")
+                                highlighted: true
+                                onClicked: {
+                                    easytierStartPending = true
+                                    Backend.startLiveEasyTier()
+                                }
+                            }
+                        }
+
+                        Button {
+                            visible: (currentSpace.isOwner === true) && (easytierState.localRunning === true)
+                            text: t("关闭网络")
+                            onClicked: Backend.disconnectLiveEasyTier()
+                        }
+
+                        Button {
+                            visible: (currentSpace.isOwner !== true) && (easytierState.active === true) && (easytierState.localRunning !== true)
+                            text: t("连接房主网络")
+                            highlighted: true
+                            enabled: easytierState.ready === true
+                            onClicked: Backend.connectLiveEasyTier()
+                        }
+
+                        Button {
+                            visible: (currentSpace.isOwner !== true) && (easytierState.localRunning === true)
+                            text: t("断开连接")
+                            onClicked: Backend.disconnectLiveEasyTier()
+                        }
+                    }
+
+                    // --- 操作提示（未启动网络时显示步骤引导）---
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: !easytierState.active && !easytierState.localRunning
+                        spacing: 6
+
+                        Label {
+                            text: currentSpace.isOwner
+                                ? t("房主操作步骤：")
+                                : t("加入者操作步骤：")
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                            color: Theme.currentTheme.colors.textColor
+                        }
+
+                        Label {
+                            visible: currentSpace.isOwner
+                            Layout.fillWidth: true
+                            text: t("1. 点击「开始网络」启动 EasyTier\n2. 通过启动器启动 Minecraft 并进入存档\n3. 在游戏内点击「对局域网开放」\n4. 端口号会自动检测，如未检测到可手动输入")
+                            font.pixelSize: 12
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            wrapMode: Text.Wrap
+                        }
+
+                        Label {
+                            visible: !currentSpace.isOwner
+                            Layout.fillWidth: true
+                            text: t("1. 等待房主启动 EasyTier 网络\n2. 网络就绪后点击「连接房主网络」\n3. 通过启动器启动 Minecraft\n4. 在多人游戏里使用下方房主地址直连")
+                            font.pixelSize: 12
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: (currentSpace.isOwner !== true) && (easytierState.ready === true)
+                        spacing: 8
+
+                        Label {
+                            text: t("房主地址:")
+                            font.pixelSize: 12
+                            color: Theme.currentTheme.colors.textTertialyColor
+                        }
+
+                        TextField {
+                            Layout.fillWidth: true
+                            readOnly: true
+                            selectByMouse: true
+                            text: easytierState.hostAddress || ""
+                            placeholderText: t("等待房主开放局域网")
+                        }
+                    }
+
+                    // --- 网络运行中的状态摘要 ---
+                    Label {
+                        Layout.fillWidth: true
+                        visible: easytierState.active || easytierState.localRunning
+                        text: easytierSummaryText()
+                        font.pixelSize: 13
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        wrapMode: Text.Wrap
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: easytierState.localRunning
+                        spacing: 16
+
+                        Label {
+                            visible: easytierState.localVirtualIp && easytierState.localVirtualIp !== ""
+                            text: t("虚拟 IP: ") + easytierState.localVirtualIp
+                            font.pixelSize: 12
+                            color: Theme.currentTheme.colors.textTertialyColor
+                        }
+
+                        Label {
+                            visible: (typeof easytierState.localProxyPort === 'number' && easytierState.localProxyPort > 0) && (easytierState.localIsClient === true)
+                            text: t("代理端口: ") + easytierState.localProxyPort
+                            font.pixelSize: 12
+                            color: Theme.currentTheme.colors.textTertialyColor
+                        }
+
+                        Label {
+                            visible: easytierState.hostAddress && easytierState.hostAddress !== ""
+                            text: t("目标地址: ") + easytierState.hostAddress
+                            font.pixelSize: 12
+                            color: Theme.currentTheme.colors.textTertialyColor
+                        }
+
+                        Label {
+                            visible: (typeof easytierState.localGamePort === 'number' && easytierState.localGamePort > 0) && (easytierState.localIsHost === true)
+                            text: t("局域网端口: ") + easytierState.localGamePort
+                            font.pixelSize: 12
+                            color: Theme.currentTheme.colors.textTertialyColor
+                        }
+                    }
+
+                    // --- 房主手动输入端口（网络运行中始终可用）---
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: (easytierState.localRunning === true) && (easytierState.localIsHost === true)
+                        spacing: 8
+
+                        Label {
+                            text: typeof easytierState.localGamePort === 'number' && easytierState.localGamePort > 0
+                                ? t("游戏端口（已自动检测，可手动修改）:")
+                                : t("游戏端口（请输入局域网开放后显示的端口号）:")
+                            font.pixelSize: 12
+                            color: typeof easytierState.localGamePort === 'number' && easytierState.localGamePort > 0
+                                ? Theme.currentTheme.colors.textTertialyColor
+                                : Theme.currentTheme.colors.systemCautionColor
+                        }
+
+                        TextField {
+                            id: gamePortInput
+                            Layout.preferredWidth: 100
+                            placeholderText: "25565"
+                            inputMethodHints: Qt.ImhDigitsOnly
+                            text: {
+                                if (typeof easytierState.localGamePort === 'number' && easytierState.localGamePort > 0)
+                                    return String(easytierState.localGamePort)
+                                return "25565"
+                            }
+                        }
+
+                        Button {
+                            text: t("应用")
+                            onClicked: {
+                                var port = parseInt(gamePortInput.text)
+                                if (port > 0 && port <= 65535) {
+                                    Backend.setLiveGamePort(port)
+                                } else {
+                                    liveErrorText = t("端口号必须在 1 到 65535 之间")
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Label {
+                            text: t("Minecraft 默认: 25565，局域网开放端口在游戏聊天中显示")
+                            font.pixelSize: 11
+                            color: Theme.currentTheme.colors.textTertialyColor
+                        }
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: easytierState.localError !== ""
+                        text: easytierState.localError || ""
+                        font.pixelSize: 12
+                        color: Theme.currentTheme.colors.systemCriticalColor
+                        wrapMode: Text.Wrap
+                    }
+                }
+            }
+
             Frame {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -649,7 +922,6 @@ FluentPage {
                     anchors.fill: parent
                     spacing: 0
 
-                    // 消息列表
                     ListView {
                         id: chatListView
                         Layout.fillWidth: true
@@ -663,7 +935,6 @@ FluentPage {
                             width: chatListView.width - 20
                             spacing: 8
 
-                            // 用户头像
                             Rectangle {
                                 width: 28
                                 height: 28
@@ -682,7 +953,6 @@ FluentPage {
                                 }
                             }
 
-                            // 消息内容
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 2
@@ -693,18 +963,9 @@ FluentPage {
                                     font.weight: Font.DemiBold
                                     color: Theme.currentTheme.colors.textColor
                                 }
+
                                 Label {
-                                    text: {
-                                        // 兼容多种格式: payload.msg (服务端标准), payload.message (旧格式), 或直接 message
-                                        if (modelData.payload) {
-                                            if (modelData.payload.msg) {
-                                                return modelData.payload.msg
-                                            } else if (modelData.payload.message) {
-                                                return modelData.payload.message
-                                            }
-                                        }
-                                        return modelData.message || modelData.msg || ""
-                                    }
+                                    text: resolveChatText(modelData)
                                     font.pixelSize: 13
                                     color: Theme.currentTheme.colors.textColor
                                     wrapMode: Text.Wrap
@@ -713,23 +974,20 @@ FluentPage {
                             }
                         }
 
-                        // 空消息提示
                         Label {
                             anchors.centerIn: parent
                             visible: chatMessages.length === 0
-                            text: (Backend ? Backend.tr("暂无消息，发送第一条吧") : "暂无消息，发送第一条吧")
+                            text: t("暂无消息，发送第一条吧")
                             color: Theme.currentTheme.colors.textTertialyColor
                         }
                     }
 
-                    // 分隔线
                     Rectangle {
                         Layout.fillWidth: true
                         height: 1
                         color: Theme.currentTheme.colors.cardBorderColor
                     }
 
-                    // 输入区域
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.margins: 10
@@ -737,7 +995,7 @@ FluentPage {
 
                         TextField {
                             id: chatInput
-                            placeholderText: (Backend ? Backend.tr("输入消息...") : "输入消息...")
+                            placeholderText: t("输入消息...")
                             Layout.fillWidth: true
                             onAccepted: sendChatBtn.clicked()
                         }
@@ -745,7 +1003,7 @@ FluentPage {
                         Button {
                             id: sendChatBtn
                             icon.name: "ic_fluent_send_20_regular"
-                            text: (Backend ? Backend.tr("发送") : "发送")
+                            text: t("发送")
                             highlighted: true
                             onClicked: {
                                 if (chatInput.text.trim() !== "" && Backend) {
@@ -759,7 +1017,6 @@ FluentPage {
             }
         }
 
-        // 底部留白
         Item { height: 24 }
     }
 }

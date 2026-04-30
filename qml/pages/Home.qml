@@ -471,6 +471,27 @@ Rectangle {
                 onClicked: { if (Backend) Backend.takeScreenCut() }
             }
 
+            Label {
+                id: homeSessionTime
+                text: ""
+                font.pixelSize: 13
+                color: Theme.currentTheme.colors.textSecondaryColor
+                visible: text !== ""
+
+                Connections {
+                    target: Backend
+                    function onPlayTimeTick() {
+                        if (Backend)
+                            homeSessionTime.text = Backend.getSessionPlayTimeFormatted()
+                    }
+                }
+
+                Component.onCompleted: {
+                    if (Backend)
+                        homeSessionTime.text = Backend.getSessionPlayTimeFormatted()
+                }
+            }
+
             Button {
                 text: (Backend ? Backend.tr("正在运行") : "正在运行")
                 icon.name: "ic_fluent_apps_list_20_regular"

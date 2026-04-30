@@ -94,6 +94,13 @@ Dialog {
                                 font.pixelSize: 12
                                 color: Theme.currentTheme.colors.textSecondaryColor
                             }
+
+                            Label {
+                                visible: itemData.playTimeFormatted && itemData.playTimeFormatted !== ""
+                                text: itemData.playTimeFormatted
+                                font.pixelSize: 12
+                                color: Theme.currentTheme.colors.textTertialyColor
+                            }
                             
                             Button {
                                 text: Backend ? Backend.tr("选择") : "选择"
@@ -175,7 +182,7 @@ Dialog {
     }
     
     function open() {
-        launchItems = Backend ? Backend.getLaunchItems() : []
+        launchItems = Backend ? Backend.getLaunchItemsSortedByPlayTime() : []
         visible = true
     }
 }

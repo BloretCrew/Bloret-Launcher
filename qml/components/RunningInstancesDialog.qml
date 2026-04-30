@@ -20,6 +20,10 @@ Dialog {
         recentRuns = Backend ? Backend.getRecentRuns() : []
     }
 
+    function getSessionTime() {
+        return Backend ? Backend.getSessionPlayTimeFormatted() : ""
+    }
+
     onOpened: refresh()
 
     Component.onCompleted: {
@@ -105,10 +109,35 @@ Dialog {
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
-                        Text {
-                            text: modelData.type === "minecraft" ? "Minecraft" : (Backend ? Backend.tr("自定义程序") : "自定义程序")
-                            typography: Typography.Caption
-                            color: Theme.currentTheme.colors.textSecondaryColor
+                        RowLayout {
+                            spacing: 8
+
+                            Text {
+                                text: modelData.type === "minecraft" ? "Minecraft" : (Backend ? Backend.tr("自定义程序") : "自定义程序")
+                                typography: Typography.Caption
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+
+                            Text {
+                                id: sessionTimeLabel
+                                text: ""
+                                typography: Typography.Caption
+                                color: Theme.currentTheme.colors.textTertialyColor
+                                visible: text !== ""
+
+                                Connections {
+                                    target: Backend
+                                    function onPlayTimeTick() {
+                                        if (Backend)
+                                            sessionTimeLabel.text = Backend.getSessionPlayTimeFormatted()
+                                    }
+                                }
+
+                                Component.onCompleted: {
+                                    if (Backend)
+                                        sessionTimeLabel.text = Backend.getSessionPlayTimeFormatted()
+                                }
+                            }
                         }
                     }
 

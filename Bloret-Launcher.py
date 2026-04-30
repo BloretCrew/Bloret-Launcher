@@ -63,6 +63,9 @@ import modules.links as links
 import socket
 import send2trash
 from modules.compat_widgets import Action, RoundMenu
+from modules.log import log
+import time
+import logging
 from modules.process_utils import hidden_process_kwargs
 
 
@@ -170,6 +173,7 @@ class Backend(QObject):
 
     # Minecraft crash analysis signal
     minecraftCrashDetected = Signal(str, str, str)  # title, message, stack_trace
+    playTimeTick = Signal()  # emitted every second while game is running
 
     def __init__(self):
         super().__init__()
@@ -179,14 +183,20 @@ class Backend(QObject):
         self._is_launching = False
         self._launch_session_id = 0
         self._screenshot_widget = None
+        # Play time tracking
+        self._play_time_sessions = {}  # instance_id -> session dict
+        self._play_time_timer = None
         # Live state
         self._live_sse_client = None
         self._live_webrtc_manager = None
         self._current_live_space_id = None
         self._current_live_space = {}
         self._current_live_easytier_state = {}
+        self._current_live_easytier_merged_state = {}
+        self._current_live_connection_state = "disconnected"
         self._live_easytier_publish_thread = None
         self._live_easytier_publish_running = False
+        self._live_space_list_cache = []
 
     def setBackendParent(self, parent):
         self.parent = parent
@@ -297,6 +307,10 @@ class Backend(QObject):
                     "name": version, "type": "minecraft",
                     "pid": proc.pid, "suspended": False
                 }
+                # Start play time tracking
+                from modules.play_time import start_session
+                self._play_time_sessions[instance_id] = start_session(version)
+                self._start_play_time_tick()
                 self._recordRecentRun(version, "minecraft")
                 self.runningInstancesChanged.emit(self.getRunningInstances())
 
@@ -335,6 +349,8 @@ class Backend(QObject):
 
                         # 进程结束后检查
                         p.wait()
+                        # End play time tracking
+                        self._end_play_time_session(instance_id)
                         if p.returncode != 0 and not evt.is_set():
                             print(f"\n[错误] Minecraft {ver} 进程异常退出，返回码: {p.returncode}")
                             self.minecraftCrashDetected.emit(
@@ -496,11 +512,89 @@ class Backend(QObject):
             print(f"读取最近运行失败: {e}")
         return []
 
+    # ========== 游戏时间 ==========
+
+    def _start_play_time_tick(self):
+        """Start a 1-second timer that emits playTimeTick"""
+        from PySide6.QtCore import QTimer
+        if self._play_time_timer is not None:
+            return
+        self._play_time_timer = QTimer()
+        self._play_time_timer.timeout.connect(self.playTimeTick.emit)
+        self._play_time_timer.start(1000)
+
+    def _stop_play_time_tick(self):
+        """Stop the tick timer when no sessions are active"""
+        if self._play_time_timer and not self._play_time_sessions:
+            self._play_time_timer.stop()
+            self._play_time_timer = None
+
+    def _end_play_time_session(self, instance_id):
+        """End a play time session and accumulate to total"""
+        session = self._play_time_sessions.pop(instance_id, None)
+        if session:
+            from modules.play_time import end_session
+            end_session(session)
+        self._stop_play_time_tick()
+
+    @Slot(result=dict)
+    def getAllPlayTimes(self):
+        from modules.play_time import get_all_play_times
+        return get_all_play_times()
+
+    @Slot(str, result=float)
+    def getPlayTime(self, versionName):
+        from modules.play_time import get_total_play_time
+        return get_total_play_time(versionName)
+
+    @Slot(str, result=str)
+    def getPlayTimeFormatted(self, versionName):
+        from modules.play_time import get_total_play_time, format_duration_long
+        return format_duration_long(get_total_play_time(versionName))
+
+    @Slot(result=str)
+    def getSessionPlayTimeFormatted(self):
+        """Get current session elapsed time for the first running instance"""
+        import time
+        from modules.play_time import format_duration_long
+        if not self._play_time_sessions:
+            return ""
+        session = next(iter(self._play_time_sessions.values()), None)
+        if session and session.get("start"):
+            elapsed = time.time() - session["start"]
+            return format_duration_long(elapsed)
+        return ""
+
+    @Slot(result=list)
+    def getLaunchItemsSortedByPlayTime(self):
+        """Get launch items sorted by total play time (descending)"""
+        from modules.setup_ui import get_all_launch_items
+        from modules.play_time import get_all_play_times, format_duration
+        items = get_all_launch_items()
+        times = get_all_play_times()
+        qml_items = []
+        for item in items:
+            icon_path = "../../icon/Grass_Block.png"
+            if item.get("type") == "custom":
+                icon_path = "../../icon/exeapps.png"
+            total = times.get(item["name"], 0)
+            qml_items.append({
+                "name": item["name"],
+                "type": item["type"],
+                "path": item["path"],
+                "icon": icon_path,
+                "playTime": total,
+                "playTimeFormatted": format_duration(total),
+            })
+        qml_items.sort(key=lambda x: x.get("playTime", 0), reverse=True)
+        return qml_items
+
     @Slot(result=list)
     def getRunningInstances(self):
         import psutil
         dead = [k for k, v in BLglobals.running_instances.items() if not psutil.pid_exists(v["pid"])]
         for k in dead:
+            self._end_play_time_session(k)
             del BLglobals.running_instances[k]
         return [{"id": k, **v} for k, v in BLglobals.running_instances.items()]
 
@@ -534,6 +628,7 @@ class Backend(QObject):
     def terminateInstance(self, instance_id):
         import psutil
         entry = BLglobals.running_instances.pop(instance_id, None)
+        self._end_play_time_session(instance_id)
         if entry and psutil.pid_exists(entry["pid"]):
             try:
                 psutil.Process(entry["pid"]).kill()
@@ -2378,23 +2473,25 @@ class Backend(QObject):
             update_live_target(merged.get("hostVirtualIp"), merged.get("gamePort"))
             session = get_live_session_snapshot() if get_live_session_snapshot else session
 
-        merged["active"] = bool(merged.get("enabled"))
+        # 确保所有必要的字段都存在且类型正确（防止 QML undefined 错误）
+        merged["active"] = bool(merged.get("enabled", False))
         merged["ready"] = bool(merged.get("hostVirtualIp") and merged.get("gamePort"))
         merged["hostAddress"] = merged.get("hostAddress") or (
             f"{merged.get('hostVirtualIp')}:{merged.get('gamePort')}"
             if merged.get("hostVirtualIp") and merged.get("gamePort")
             else ""
         )
-        merged["localRunning"] = bool(same_space and session.get("running"))
+        merged["localRunning"] = bool(same_space and session.get("running", False))
         merged["localMode"] = session.get("mode", "") if same_space else ""
         merged["localVirtualIp"] = session.get("virtual_ip", "") if same_space else ""
         merged["localProxyPort"] = session.get("proxy_port") if same_space else None
         merged["localGamePort"] = session.get("game_port") if same_space else None
         merged["localTargetAddress"] = session.get("target_address", "") if same_space else ""
-        merged["localIsHost"] = bool(merged["localRunning"] and merged["localMode"] == "host")
-        merged["localIsClient"] = bool(merged["localRunning"] and merged["localMode"] == "client")
+        merged["localIsHost"] = bool(merged.get("localRunning", False) and merged.get("localMode") == "host")
+        merged["localIsClient"] = bool(merged.get("localRunning", False) and merged.get("localMode") == "client")
         merged["localError"] = session.get("error", "") if same_space else ""
 
+        self._current_live_easytier_merged_state = merged
         self.liveEasyTierStateChanged.emit(merged)
         return merged
 
@@ -2403,7 +2500,9 @@ class Backend(QObject):
 
     def _start_live_easytier_publish_loop(self):
         if self._live_easytier_publish_thread and self._live_easytier_publish_thread.is_alive():
-            return
+            log("[EasyTier Publish] 旧发布线程仍在运行，等待其结束", logging.WARNING)
+            self._stop_live_easytier_publish_loop()
+            self._live_easytier_publish_thread.join(timeout=5)
 
         self._live_easytier_publish_running = True
         space_id = self._current_live_space_id
@@ -2413,13 +2512,29 @@ class Backend(QObject):
             from modules.easytier import get_live_session_snapshot, refresh_live_virtual_ip
 
             last_published = None
+            loop_count = 0
             while self._live_easytier_publish_running and self._current_live_space_id == space_id:
                 try:
+                    loop_count += 1
                     snapshot = get_live_session_snapshot()
-                    if snapshot.get("space_id") != space_id or snapshot.get("mode") != "host" or not snapshot.get("running"):
+                    
+                    # 详细日志用于诊断
+                    if loop_count <= 3 or loop_count % 10 == 0:
+                        log(f"[EasyTier Publish Loop #{loop_count}] space_id={snapshot.get('space_id')}, mode={snapshot.get('mode')}, running={snapshot.get('running')}", logging.DEBUG)
+                    
+                    if snapshot.get("space_id") != space_id:
+                        log(f"[EasyTier Publish] 空间 ID 不匹配，停止发布循环", logging.INFO)
+                        break
+                    if snapshot.get("mode") != "host":
+                        log(f"[EasyTier Publish] 模式不是 host（当前={snapshot.get('mode')}），停止发布循环", logging.INFO)
+                        break
+                    if not snapshot.get("running"):
+                        log(f"[EasyTier Publish] EasyTier 未运行，停止发布循环", logging.INFO)
                         break
 
                     if not snapshot.get("virtual_ip"):
+                        if loop_count <= 1:
+                            log(f"[EasyTier Publish] 虚拟 IP 为空，刷新中...", logging.DEBUG)
                         refresh_live_virtual_ip()
                         snapshot = get_live_session_snapshot()
 
@@ -2427,22 +2542,39 @@ class Backend(QObject):
 
                     host_ip = snapshot.get("virtual_ip") or ""
                     game_port = snapshot.get("game_port")
+                    
+                    # 详细诊断日志
+                    if loop_count <= 3 or loop_count % 10 == 0:
+                        log(f"[EasyTier Publish] host_ip={host_ip}, game_port={game_port}", logging.DEBUG)
+                    
                     if host_ip and game_port:
                         publish_key = f"{host_ip}:{game_port}"
                         if publish_key != last_published:
+                            log(f"[EasyTier Publish] 上报端点: {publish_key}", logging.INFO)
                             result = publish_space_easytier_endpoint(space_id, host_ip, game_port)
                             if result and result.get("success"):
                                 last_published = publish_key
+                                log(f"[EasyTier Publish] 上报成功", logging.INFO)
                                 self._emit_live_easytier_state(result.get("easytier", {}))
+                            else:
+                                log(f"[EasyTier Publish] 上报失败: {result}", logging.WARNING)
+                    elif host_ip and not game_port:
+                        if loop_count <= 1:
+                            log(f"[EasyTier Publish] 有虚拟 IP ({host_ip}) 但无游戏端口，等待 Minecraft LAN 世界启动", logging.DEBUG)
+                    
                     time.sleep(1)
                 except Exception as e:
                     log(f"Live EasyTier 房主状态上报失败: {e}", logging.WARNING)
+                    import traceback
+                    log(f"[EasyTier Publish] 错误堆栈:\n{traceback.format_exc()}", logging.DEBUG)
                     time.sleep(2)
 
+            log(f"[EasyTier Publish] 发布循环已停止（运行了 {loop_count} 次迭代）", logging.INFO)
             self._live_easytier_publish_running = False
 
         self._live_easytier_publish_thread = threading.Thread(target=run, daemon=True)
         self._live_easytier_publish_thread.start()
+        log(f"[EasyTier Publish] 发布循环已启动，空间 ID: {space_id}", logging.INFO)
 
     @Slot()
     def fetchLiveSpaceList(self):
@@ -2450,15 +2582,32 @@ class Backend(QObject):
             from modules.bbbs_live import fetch_space_list
             try:
                 data = fetch_space_list()
+                self._live_space_list_cache = data or []
                 self.liveSpaceListReceived.emit(data or [])
             except Exception as e:
                 self.liveErrorOccurred.emit(str(e))
         threading.Thread(target=run, daemon=True).start()
 
+    @Slot(result=bool)
+    def isInLiveSpace(self):
+        return bool(self._current_live_space_id)
+
+    @Slot(result=dict)
+    def getCurrentLiveSpace(self):
+        return dict(self._current_live_space or {})
+
+    @Slot(result=dict)
+    def getCurrentLiveEasyTierState(self):
+        return dict(self._current_live_easytier_merged_state or {})
+
+    @Slot(result=str)
+    def getCurrentLiveConnectionState(self):
+        return self._current_live_connection_state or "disconnected"
+
     @Slot(str, str)
     def joinLiveSpace(self, spaceId, password):
         def run():
-            from modules.bbbs_live import check_access, verify_password, LiveSSEClient
+            from modules.bbbs_live import check_access, verify_password, LiveSSEClient, get_space_easytier_info
             try:
                 if self._current_live_space_id and self._current_live_space_id != spaceId:
                     self.leaveLiveSpace()
@@ -2479,11 +2628,20 @@ class Backend(QObject):
                 self._current_live_easytier_state = {}
                 self._live_sse_client = LiveSSEClient(spaceId, self._handle_live_event)
                 self._live_sse_client.start()
+                self._current_live_connection_state = "connecting"
                 self.liveConnectionStateChanged.emit("connecting")
 
                 # 立即用已有的空间信息发射 joinedSpace 信号，不等待服务器 init 事件
                 space_name = access.get('spaceName', '') if access else ''
                 username = self.getBloretPassPortUserName()
+
+                # 从缓存的空间列表判断 isOwner
+                is_owner = False
+                for sp in self._live_space_list_cache:
+                    if sp.get("id") == spaceId and sp.get("owner") == username:
+                        is_owner = True
+                        break
+
                 initial_space = {
                     "id": spaceId,
                     "name": space_name,
@@ -2491,11 +2649,21 @@ class Backend(QObject):
                     "spaceName": space_name,
                     "chatHistory": [],
                     "easytier": {},
+                    "isOwner": is_owner,
                 }
                 self._current_live_space = initial_space
                 self.liveJoinedSpace.emit(initial_space)
                 self._emit_live_easytier_state({})
+                self._current_live_connection_state = "connected"
                 self.liveConnectionStateChanged.emit("connected")
+
+                # 用户进入房间后立即检测是否已有进行中的 EasyTier 网络
+                try:
+                    easytier_result = get_space_easytier_info(spaceId)
+                    if easytier_result and easytier_result.get("success"):
+                        self._emit_live_easytier_state(easytier_result.get("easytier", {}))
+                except Exception as e:
+                    log(f"加入 Live 后检测 EasyTier 状态失败: {e}", logging.DEBUG)
             except Exception as e:
                 self.liveErrorOccurred.emit(str(e))
         threading.Thread(target=run, daemon=True).start()
@@ -2518,6 +2686,7 @@ class Backend(QObject):
         self._current_live_space_id = None
         self._current_live_space = {}
         self._current_live_easytier_state = {}
+        self._current_live_connection_state = "disconnected"
         self.liveLeftSpace.emit()
         self.liveEasyTierStateChanged.emit({})
         self.liveConnectionStateChanged.emit("disconnected")
@@ -2544,6 +2713,13 @@ class Backend(QObject):
                     self.liveErrorOccurred.emit("发送消息失败，请检查网络连接或服务器状态")
                 else:
                     # 在本地显示自己发送的消息(服务器不会广播给自己)
+                    chat_history = list(self._current_live_space.get("chatHistory") or [])
+                    chat_history.append({
+                        "type": "chat",
+                        "from": username,
+                        "payload": payload
+                    })
+                    self._current_live_space["chatHistory"] = chat_history
                     self.liveChatMessageReceived.emit({
                         "type": "chat",
                         "from": username,
@@ -2571,7 +2747,7 @@ class Backend(QObject):
     def startLiveEasyTier(self):
         def run():
             from modules.bbbs_live import start_space_easytier, stop_space_easytier
-            from modules.easytier import start_live_session
+            from modules.easytier import start_live_session, try_start_live_game_port_watch
 
             if not self._current_live_space_id:
                 self.liveErrorOccurred.emit("请先加入 Live 空间")
@@ -2599,8 +2775,22 @@ class Backend(QObject):
                     return
 
                 self._emit_live_easytier_state(easytier_info)
+
+                # 立即刷新一次状态，确保 UI 能快速响应本地运行状态
+                import time
+                time.sleep(0.5)
+                self._emit_live_easytier_state()
+
+                # 启动日志监听以捕获 Minecraft LAN 端口
+                if try_start_live_game_port_watch():
+                    log("已启动 Minecraft 日志监听，将自动捕获 LAN 端口", logging.INFO)
+
+                log(f"[EasyTier] 本地会话已启动，准备启动发布循环，space_id={self._current_live_space_id}", logging.INFO)
                 self._start_live_easytier_publish_loop()
             except Exception as e:
+                log(f"[EasyTier] startLiveEasyTier 异常: {e}", logging.ERROR)
+                import traceback
+                log(f"[EasyTier] 堆栈: {traceback.format_exc()}", logging.ERROR)
                 self.liveErrorOccurred.emit(f"开启 EasyTier 失败: {e}")
 
         threading.Thread(target=run, daemon=True).start()
@@ -2644,6 +2834,11 @@ class Backend(QObject):
                     return
 
                 self._emit_live_easytier_state(easytier_info)
+                
+                # 立即刷新一次状态，确保 UI 能快速响应本地运行状态
+                import time
+                time.sleep(0.5)
+                self._emit_live_easytier_state()
             except Exception as e:
                 self.liveErrorOccurred.emit(f"连接 EasyTier 失败: {e}")
 
@@ -2683,6 +2878,37 @@ class Backend(QObject):
                 log(f"刷新 Live EasyTier 状态失败: {e}", logging.WARNING)
         threading.Thread(target=run, daemon=True).start()
 
+    @Slot(int)
+    def setLiveGamePort(self, port):
+        """手动设置 Minecraft LAN 世界的端口（自动检测失败时使用）"""
+        def run():
+            from modules.easytier import set_live_game_port, get_live_session_snapshot
+            try:
+                if port > 0 and port <= 65535:
+                    set_live_game_port(port)
+                    log(f"已手动设置游戏端口: {port}", logging.INFO)
+                    self._emit_live_easytier_state()
+                    # 立即发布到服务器，确保网页端同步
+                    if self._current_live_space_id:
+                        snapshot = get_live_session_snapshot()
+                        host_ip = snapshot.get("virtual_ip", "")
+                        if host_ip and port:
+                            try:
+                                from modules.bbbs_live import publish_space_easytier_endpoint
+                                result = publish_space_easytier_endpoint(self._current_live_space_id, host_ip, port)
+                                if result and result.get("success"):
+                                    log(f"[EasyTier] 手动设置端口后发布成功: {host_ip}:{port}", logging.INFO)
+                                    self._emit_live_easytier_state(result.get("easytier", {}))
+                                else:
+                                    log(f"[EasyTier] 手动设置端口后发布失败: {result}", logging.WARNING)
+                            except Exception as e:
+                                log(f"[EasyTier] 手动设置端口后发布异常: {e}", logging.WARNING)
+                else:
+                    self.liveErrorOccurred.emit(f"无效的端口号: {port}")
+            except Exception as e:
+                self.liveErrorOccurred.emit(f"设置端口失败: {e}")
+        threading.Thread(target=run, daemon=True).start()
+
     @Slot(bool)
     def toggleLiveAudio(self, enabled):
         if self._live_webrtc_manager:
@@ -2700,9 +2926,26 @@ class Backend(QObject):
             normalized_event = dict(event)
             normalized_event["users"] = self._normalize_live_users(event.get("users"))
             normalized_event["chatHistory"] = self._normalize_live_chat_history(event.get("chatHistory"))
+            # 确保 isOwner 有值：服务端不返回时从缓存列表推算
+            if "isOwner" not in normalized_event:
+                username = self.getBloretPassPortUserName()
+                space_id = normalized_event.get("id", "")
+                is_owner = any(
+                    sp.get("id") == space_id and sp.get("owner") == username
+                    for sp in self._live_space_list_cache
+                )
+                normalized_event["isOwner"] = is_owner
             self._current_live_space = normalized_event
             self.liveJoinedSpace.emit(normalized_event)
-            self._emit_live_easytier_state(event.get("easytier", {}))
+
+            # 部分服务端 init 事件不会携带 easytier（或返回空对象），
+            # 这里避免用空对象覆盖 join 阶段已拉取到的 EasyTier 状态。
+            init_easytier = event.get("easytier")
+            if isinstance(init_easytier, dict) and init_easytier:
+                self._emit_live_easytier_state(init_easytier)
+            else:
+                self._emit_live_easytier_state()
+            self._current_live_connection_state = "connected"
             self.liveConnectionStateChanged.emit("connected")
         elif event_type in ("user-joined", "user-left"):
             normalized_event = dict(event)
@@ -2710,14 +2953,28 @@ class Backend(QObject):
                 "username": event.get("from", ""),
                 "state": event.get("state", {}) if isinstance(event.get("state"), dict) else {}
             }
+            users = self._normalize_live_users(self._current_live_space.get("users"))
+            username = normalized_event["user"].get("username", "")
+            if event_type == "user-joined" and username:
+                next_users = [user for user in users if user.get("username") != username]
+                next_users.append(normalized_event["user"])
+                self._current_live_space["users"] = next_users
+            elif event_type == "user-left" and username:
+                self._current_live_space["users"] = [
+                    user for user in users if user.get("username") != username
+                ]
             self.liveUserEvent.emit(normalized_event)
         elif event_type == "chat":
             normalized_event = dict(event)
             if not isinstance(normalized_event.get("payload"), dict):
                 normalized_event["payload"] = {"msg": normalized_event.get("payload", "")}
+            chat_history = list(self._current_live_space.get("chatHistory") or [])
+            chat_history.append(normalized_event)
+            self._current_live_space["chatHistory"] = chat_history
             self.liveChatMessageReceived.emit(normalized_event)
         elif event_type == "easytier-state":
-            self._emit_live_easytier_state(event.get("payload", {}))
+            remote_state = {k: v for k, v in event.items() if k != "type"}
+            self._emit_live_easytier_state(remote_state)
         elif event_type in ("offer", "answer", "ice-candidate"):
             if self._live_webrtc_manager:
                 self._live_webrtc_manager.handle_signaling(event)
