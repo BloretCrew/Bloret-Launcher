@@ -14,7 +14,7 @@ else:
     win32process = None
 from PySide6.QtWidgets import QWidget, QApplication, QLabel, QHBoxLayout, QVBoxLayout, QPushButton
 from PySide6.QtCore import Qt, QTimer, Signal as pyqtSignal, QObject, QThread, QEventLoop
-from PySide6.QtGui import QFont, QIcon, QPixmap
+from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QPainterPath, QColor
 # from PySide6.QtUiTools import QUiLoader # Removed uic for PySide6 compatibility
 from modules.compat_widgets import CardWidget as SimpleCardWidget, BodyLabel, StrongBodyLabel
 from .ShortCut import ScreenShortCut
@@ -370,17 +370,16 @@ class MinecraftWindowTool(QWidget):
         
         # 设置窗口属性
         # 禁用完全透明背景，确保背景颜色能正确显示
-        self.setAttribute(Qt.WA_TranslucentBackground, False) 
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
         
         # 固定为纯白色背景（不透明）
         bg_color = "#ffffff"
         text_color = "#000000"
         subtext_color = "#666666"
+        self._bg_color = bg_color
+        self._corner_radius = 8
         
-        self.setStyleSheet(f"""
-            background-color: {bg_color}; 
-            border-radius: 8px;
-        """)
+        self.setStyleSheet("background-color: transparent;")
         self._text_color = text_color
         self._subtext_color = subtext_color
         
@@ -399,6 +398,17 @@ class MinecraftWindowTool(QWidget):
             
         # 添加延迟创建定时器，确保窗口创建完成后再显示
         QTimer.singleShot(500, self.ensure_visible)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(self._bg_color))
+        rect = self.rect().adjusted(0, 0, -1, -1)
+        path = QPainterPath()
+        path.addRoundedRect(rect, self._corner_radius, self._corner_radius)
+        painter.drawPath(path)
+        super().paintEvent(event)
         
     def init_ui(self):
         """初始化UI：优先从 UI 文件加载，失败时回退到备用 UI"""
