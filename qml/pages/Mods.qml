@@ -11,6 +11,7 @@ FluentPage {
     property string blorikoStatus: ""
     property var fabricVersions: []
     property string selectedFabricVersion: ""
+    property var blorikoSlugs: []
 
     Component.onCompleted: {
         if (Backend) {
@@ -23,6 +24,7 @@ FluentPage {
         function onModrinthResultsReceived(results) {
             console.log("Received Modrinth results:", results)
             modResults = results
+            searchBusyIndicator.visible = false
         }
         function onBlorikoResponseReceived(response) {
             blorikoStatus = response
@@ -30,6 +32,26 @@ FluentPage {
             blorikoDialog.text = response
             blorikoDialog.open()
         }
+        function onBlorikoModSuggestionReceived(response, slugs) {
+            blorikoStatus = response
+            versionSelectDialog.close()
+            blorikoDialog.text = response
+            blorikoDialog.slugs = slugs
+            blorikoDialog.open()
+        }
+        function onDownloadNotify(title, text, success) {
+            downloadInfoBar.severity = success ? Severity.Success : Severity.Error
+            downloadInfoBar.title = title
+            downloadInfoBar.text = text
+            downloadInfoBar.visible = true
+            downloadInfoBarTimer.start()
+        }
+    }
+
+    Timer {
+        id: downloadInfoBarTimer
+        interval: 4000
+        onTriggered: downloadInfoBar.visible = false
     }
 
     function formatNumber(num) {
@@ -43,6 +65,13 @@ FluentPage {
         // anchors.fill: parent // Removed to avoid layout conflict inside Flickable
         // anchors.margins: 20
         spacing: 20
+
+        InfoBar {
+            id: downloadInfoBar
+            Layout.fillWidth: true
+            visible: false
+            timeout: 4000
+        }
 
         // --- Header ---
 
@@ -121,16 +150,56 @@ FluentPage {
         // --- Modrinth Search Section ---
         RowLayout {
             Layout.fillWidth: true
+            spacing: 8
+
+            ComboBox {
+                id: categoryFilter
+                implicitWidth: 120
+                model: [
+                    Backend ? Backend.tr("全部") : "全部",
+                    Backend ? Backend.tr("Mod") : "Mod",
+                    Backend ? Backend.tr("资源包") : "资源包",
+                    Backend ? Backend.tr("光影包") : "光影包",
+                    Backend ? Backend.tr("数据包") : "数据包",
+                    Backend ? Backend.tr("模组包") : "模组包"
+                ]
+                property var categoryValues: [
+                    "",
+                    "mod",
+                    "resourcepack",
+                    "shader",
+                    "datapack",
+                    "modpack"
+                ]
+            }
+
             TextField {
                 id: modSearchInput
                 Layout.fillWidth: true
                 placeholderText: (Backend ? Backend.tr("在 Modrinth 上搜索...") : "在 Modrinth 上搜索...")
-                onAccepted: { if (Backend) Backend.searchModrinth(modSearchInput.text) }
+                onAccepted: {
+                    if (Backend) {
+                        searchBusyIndicator.visible = true
+                        Backend.searchModrinth(modSearchInput.text, categoryFilter.categoryValues[categoryFilter.currentIndex])
+                    }
+                }
             }
             Button {
                 text: (Backend ? Backend.tr("搜索") : "搜索")
-                onClicked: { if (Backend) Backend.searchModrinth(modSearchInput.text) }
+                onClicked: {
+                    if (Backend) {
+                        searchBusyIndicator.visible = true
+                        Backend.searchModrinth(modSearchInput.text, categoryFilter.categoryValues[categoryFilter.currentIndex])
+                    }
+                }
             }
+        }
+
+        BusyIndicator {
+            id: searchBusyIndicator
+            Layout.alignment: Qt.AlignHCenter
+            running: visible
+            visible: false
         }
 
         // Mod List
@@ -246,15 +315,24 @@ FluentPage {
                     Button {
                         text: (Backend ? Backend.tr("查看") : "查看")
                         onClicked: { 
-                            if (Backend) Backend.openUrl("https://modrinth.com/mod/" + modelData.slug) 
+                            if (Backend) {
+                                var ptype = modelData.project_type || "mod"
+                                Backend.openUrl("https://modrinth.com/" + ptype + "/" + modelData.slug)
+                            }
                         }
                     }
                     Button {
                         text: (Backend ? Backend.tr("下载") : "下载")
                         highlighted: true
                         onClicked: { 
-                            downloadTargetDialog.modId = modelData.id
-                            downloadTargetDialog.open()
+                            if (modelData.project_type === "mod") {
+                                downloadTargetDialog.modId = modelData.id
+                                downloadTargetDialog.open()
+                            } else {
+                                folderDownloadDialog.modId = modelData.id
+                                folderDownloadDialog.modName = modelData.name
+                                folderDownloadDialog.open()
+                            }
                         }
                     }
                 }
@@ -267,27 +345,25 @@ FluentPage {
         id: blorikoDialog
         title: (Backend ? Backend.tr("Bloriko 的建议") : "Bloriko 的建议")
         property string text: ""
+        property var slugs: []
         width: Math.min(parent.width * 0.9, 650)
-        height: Math.min(parent.height * 0.9, 550)
         x: (parent.width - width) / 2
         y: (parent.height - height) / 2
         modal: true
-        
-        // 显式设置 Padding 以避开 Dialog 的标题区域
-        padding: 0
-        topPadding: 60
-        leftPadding: 20
-        rightPadding: 20
-        bottomPadding: 20
 
-        contentItem: ColumnLayout {
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.topMargin: 56
+            anchors.leftMargin: 20
+            anchors.rightMargin: 20
+            anchors.bottomMargin: 20
             spacing: 15
 
             ScrollView {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                Layout.preferredHeight: 400
                 clip: true
-                
+
                 TextArea {
                     text: blorikoDialog.text
                     wrapMode: Text.Wrap
@@ -302,21 +378,43 @@ FluentPage {
                 }
             }
 
+            Label {
+                text: (Backend ? Backend.tr("💡 提示：复制上方推荐中的模组名称，在搜索框搜索即可一键安装。") : "💡 提示：复制上方推荐中的模组名称，在搜索框搜索即可一键安装。")
+                font.pixelSize: 12
+                color: Theme.currentTheme.colors.textSecondaryColor
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+                visible: blorikoDialog.slugs.length === 0
+            }
+
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 15
+                spacing: 10
 
-                Label {
-                    text: (Backend ? Backend.tr("💡 提示：复制上方推荐中的模组名称，在搜索框搜索即可一键安装。") : "💡 提示：复制上方推荐中的模组名称，在搜索框搜索即可一键安装。")
-                    font.pixelSize: 12
-                    color: Theme.currentTheme.colors.textSecondaryColor
-                    wrapMode: Text.Wrap
-                    Layout.fillWidth: true
-                }
+                Item { Layout.fillWidth: true }
 
                 Button {
                     text: (Backend ? Backend.tr("关闭") : "关闭")
                     onClicked: blorikoDialog.close()
+                }
+
+                Button {
+                    text: blorikoDialog.slugs.length > 0
+                        ? (Backend ? Backend.tr("一键安装全部") : "一键安装全部")
+                        : (Backend ? Backend.tr("关闭") : "关闭")
+                    highlighted: true
+                    visible: blorikoDialog.slugs.length > 0
+                    onClicked: {
+                        if (blorikoDialog.slugs.length > 0 && Backend) {
+                            var ver = modsPage.selectedFabricVersion
+                            if (ver && ver !== "") {
+                                for (var i = 0; i < blorikoDialog.slugs.length; i++) {
+                                    Backend.downloadMod(blorikoDialog.slugs[i], ver)
+                                }
+                            }
+                            blorikoDialog.close()
+                        }
+                    }
                 }
             }
         }
@@ -455,6 +553,72 @@ FluentPage {
             if (Backend && downloadVersionCombo.currentText !== "") {
                 Backend.downloadMod(downloadTargetDialog.modId, downloadVersionCombo.currentText)
             }
+        }
+    }
+
+    Dialog {
+        id: folderDownloadDialog
+        title: (Backend ? Backend.tr("选择保存位置") : "选择保存位置")
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        width: 400
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+        modal: true
+
+        property string modId: ""
+        property string modName: ""
+        property string selectedFolder: ""
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.topMargin: 56
+            anchors.leftMargin: 15
+            anchors.rightMargin: 15
+            anchors.bottomMargin: 15
+            spacing: 12
+
+            Label {
+                text: (Backend ? Backend.tr("请选择保存「%1」的文件夹：").arg(folderDownloadDialog.modName) : "请选择保存「" + folderDownloadDialog.modName + "」的文件夹：")
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+                color: Theme.currentTheme.colors.textColor
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                TextField {
+                    id: folderPathInput
+                    Layout.fillWidth: true
+                    placeholderText: (Backend ? Backend.tr("文件夹路径") : "文件夹路径")
+                    text: folderDownloadDialog.selectedFolder
+                    readOnly: true
+                }
+
+                Button {
+                    text: (Backend ? Backend.tr("浏览...") : "浏览...")
+                    onClicked: {
+                        if (Backend) {
+                            var folder = Backend.selectFolder()
+                            if (folder && folder.length > 0) {
+                                folderDownloadDialog.selectedFolder = folder
+                                folderPathInput.text = folder
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        onAccepted: {
+            if (Backend && folderDownloadDialog.selectedFolder !== "") {
+                Backend.downloadToFile(folderDownloadDialog.modId, "", folderDownloadDialog.selectedFolder)
+            }
+        }
+
+        onClosed: {
+            selectedFolder = ""
         }
     }
 }

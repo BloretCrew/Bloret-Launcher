@@ -1,4 +1,4 @@
-import requests, logging
+import requests, logging, json
 import sys
 from modules.log import log
 from requests.adapters import HTTPAdapter
@@ -9,8 +9,11 @@ from PySide6.QtWidgets import QWidget, QFileDialog
 from modules.i18n import i18nText
 from modules.process_utils import hidden_process_kwargs
 
-def search_mods(search_term):
+def search_mods(search_term, facets=None):
     url = f"https://api.modrinth.com/v2/search?query={search_term}&limit=10"
+    
+    if facets:
+        url += f"&facets={requests.utils.quote(json.dumps(facets))}"
     
     # 创建一个包含重试策略的会话
     session = requests.Session()
@@ -83,28 +86,30 @@ def Get_Mod_File_Download_Url(slug, loaders=None, game_versions=None):
     session.mount("https://", adapter)
     
     # 构建查询参数
-    params = {}
+    query_parts = []
     if loaders:
-        # 确保loaders是列表格式
         if isinstance(loaders, str):
-            params['loaders'] = f'["{loaders}"]'
-        else:
-            params['loaders'] = f'["{loaders[0]}"]' if isinstance(loaders, list) else f'["{loaders}"]'
-            
+            loaders = [loaders]
+        query_parts.append(f'loaders={requests.utils.quote(json.dumps(loaders))}')
     if game_versions:
-        # 确保game_versions是列表格式
         if isinstance(game_versions, str):
-            params['game_versions'] = f'["{game_versions}"]'
-        else:
-            params['game_versions'] = f'["{game_versions[0]}"]' if isinstance(game_versions, list) else f'["{game_versions}"]'
+            game_versions = [game_versions]
+        query_parts.append(f'game_versions={requests.utils.quote(json.dumps(game_versions))}')
     
+    if query_parts:
+        url = url + "?" + "&".join(query_parts)
+
     try:
         # 发送GET请求
-        response = session.get(url, params=params, timeout=10)
+        response = session.get(url, timeout=10)
         if response.status_code == 200:
             data = response.json()
-            # 返回第一个版本的第一个文件的下载URL
             if data and len(data) > 0 and "files" in data[0] and len(data[0]["files"]) > 0:
+                for f in data[0]["files"]:
+                    if f.get("filename", "").endswith(".jar"):
+                        log(f"找到项目 {slug} 的文件: {f['filename']}", logging.INFO)
+                        return f["url"]
+                log(f"未找到项目 {slug} 的JAR文件，返回第一个文件的URL {data[0]["files"][0]["url"]}", logging.WARNING)
                 return data[0]["files"][0]["url"]
             else:
                 log(f"未找到项目 {slug} 的文件", logging.ERROR)

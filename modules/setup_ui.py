@@ -156,7 +156,12 @@ class DownloadDialog(MessageBoxBase):
             # 只添加启用了Fabric的版本
             fabric_versions = []
             for folder in version_folders:
+                is_fabric = False
                 if folder in self.version_mappings and self.version_mappings[folder].get("Fabric", False):
+                    is_fabric = True
+                if not is_fabric and "fabric" in folder.lower():
+                    is_fabric = True
+                if is_fabric:
                     fabric_versions.append(folder)
             
             self.versionCombo.addItems(fabric_versions)
@@ -3337,8 +3342,8 @@ class BlorikoModRecommendationDialog(MessageBoxBase):
                 if folder in self.version_mappings:
                     if self.version_mappings[folder].get("Fabric", False):
                         is_fabric = True
-                # 后备检查：如果文件夹名包含 fabric
-                elif "fabric" in folder.lower():
+                # 后备检查：如果文件夹名包含 fabric（即使在 .BL.json 中存在记录也需要检查）
+                if not is_fabric and "fabric" in folder.lower():
                     is_fabric = True
                 
                 if is_fabric:

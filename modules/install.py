@@ -246,6 +246,79 @@ def update_bl_json(minecraft_dir, version_id, fabric_loader=False, icon_path=Non
         log(f"更新 .BL.json 文件失败: {e}，版本ID: {version_id}, Fabric: {fabric_loader}", logging.ERROR)
         return False
 
+def repair_bl_json(minecraft_dir):
+    """
+    检查并修复 .BL.json 文件：如果缺失则生成，如果版本记录不全则补全。
+    扫描 versions 目录下所有子文件夹，确保每个已安装版本在 .BL.json 中都有记录。
+    
+    Args:
+        minecraft_dir: Minecraft 安装目录
+    """
+    try:
+        versions_path = os.path.join(minecraft_dir, "versions")
+        bl_json_path = os.path.join(versions_path, ".BL.json")
+        
+        # 如果 versions 目录不存在，无需修复
+        if not os.path.isdir(versions_path):
+            log("versions 目录不存在，跳过 .BL.json 修复", logging.INFO)
+            return
+        
+        # 读取现有 .BL.json（或创建空结构）
+        bl_data = {"versions": {}}
+        if os.path.exists(bl_json_path):
+            try:
+                with open(bl_json_path, 'r', encoding='utf-8') as f:
+                    bl_data = json.load(f)
+                if "versions" not in bl_data or not isinstance(bl_data.get("versions"), dict):
+                    bl_data["versions"] = {}
+            except Exception as e:
+                log(f"读取 .BL.json 失败: {e}，将重新创建", logging.WARNING)
+                bl_data = {"versions": {}}
+        
+        existing_versions = set(bl_data["versions"].keys())
+        
+        # 扫描 versions 目录下所有子文件夹
+        added = 0
+        for entry in os.listdir(versions_path):
+            entry_path = os.path.join(versions_path, entry)
+            if not os.path.isdir(entry_path):
+                continue
+            
+            # 跳过已有的记录
+            if entry in existing_versions:
+                continue
+            
+            # 检测是否为 Fabric 版本（通过文件夹名）
+            is_fabric = "fabric" in entry.lower()
+            
+            # 提取基础版本号（去除 Fabric 标识）
+            base_version = entry.split("-")[0] if "-" in entry else entry
+            
+            # 创建版本条目
+            version_entry = {
+                "Fabric": is_fabric,
+                "client": True,
+                "version": base_version,
+                "setup_time": int(time.time())
+            }
+            
+            bl_data["versions"][entry] = version_entry
+            added += 1
+            log(f".BL.json 补全: 添加版本 {entry} (Fabric: {is_fabric})")
+        
+        # 写回文件
+        os.makedirs(versions_path, exist_ok=True)
+        with open(bl_json_path, 'w', encoding='utf-8') as f:
+            json.dump(bl_data, f, indent=4, ensure_ascii=False)
+        
+        if added > 0:
+            log(f".BL.json 修复完成: 新增 {added} 个版本记录")
+        else:
+            log(".BL.json 检查完成: 所有版本记录完整")
+            
+    except Exception as e:
+        log(f".BL.json 修复失败: {e}", logging.ERROR)
+
 class LibraryDownloader:
     def __init__(self, missing_libraries, max_workers=64):
         self.missing_libraries = missing_libraries
