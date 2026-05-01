@@ -131,6 +131,7 @@ class Backend(QObject):
     serverInfoChanged = Signal(dict)
     queryResultReceived = Signal(dict)
     blorikoResponseReceived = Signal(str)
+    blorikoModSuggestionReceived = Signal(str, list)  # clean_text, slug_list
     syncStatusChanged = Signal(str)
     languageChanged = Signal()
     downloadDialogRequested = Signal(str)
@@ -139,6 +140,7 @@ class Backend(QObject):
     downloadPaused = Signal(bool)
     coreManagerRequested = Signal(str, dict)
     activityInfoChanged = Signal(dict)
+    downloadNotify = Signal(str, str, bool)
     launchDialogRequested = Signal(str)
     launchProgressUpdated = Signal(float, str, str)
     launchDialogClosed = Signal()
@@ -1338,17 +1340,56 @@ class Backend(QObject):
     @Slot(str, str, bool)
     def askBlorikoForModsWithVersion(self, query, version, deep_think):
         """
-        带 Minecraft 版本的模组推荐请求
-        
-        Args:
-            query (str): 用户的需求描述
-            version (str): Minecraft 版本号
-            deep_think (bool): 是否启用深度思考
+        带 Minecraft 版本的模组推荐请求（提取 slug 用于一键安装）
         """
-        from modules.Bloriko import BuildModRecommendationQuestion
+        import re as _re
+        import json as _json
         print(f"Bloriko Mod suggestion request with version: '{query}' for MC {version}")
-        recommendation_question = BuildModRecommendationQuestion(query, version)
-        self.askBloriko(recommendation_question, deep_think)
+        
+        prompt = (
+            f"User is playing Minecraft version {version} using the FABRIC loader. "
+            f"User Request: {query}. "
+            f"Please recommend some suitable Modrinth mods that are compatible with FABRIC. "
+            f"Describe why you chose them briefly. "
+            f"\n\nEXTREMELY IMPORTANT: At the very end of your response, you MUST provide a JSON block containing ONLY a list of the Modrinth slugs (project IDs) for these mods. "
+            f"Format strictly like this:\n```json\n[\"slug-1\", \"slug-2\", \"slug-3\"]\n```"
+        )
+        
+        def run_ask():
+            try:
+                config_data = cfg.read()
+                if not config_data.get("Bloret_PassPort_Login", False):
+                    self.blorikoModSuggestionReceived.emit("未登录: 请先登录 Bloret PassPort 以使用 AI 功能。", [])
+                    return
+                
+                from modules.Bloriko import AskBloriko
+                response_text = AskBloriko(prompt, config_data, deepthink=deep_think)
+                
+                json_match = _re.search(r'```json\s*(\[.*?\])\s*```', response_text, _re.DOTALL)
+                slugs = []
+                clean_text = response_text
+                
+                if json_match:
+                    json_str = json_match.group(1)
+                    try:
+                        slugs = _json.loads(json_str)
+                        clean_text = response_text.replace(json_match.group(0), "").strip()
+                    except _json.JSONDecodeError:
+                        print("Bloriko AI 返回的 JSON 格式错误")
+
+                if not slugs:
+                    slug_fallback = _re.findall(r'modrinth\.com/mod/([a-zA-Z0-9_-]+)', response_text)
+                    if not slug_fallback:
+                        slug_fallback = _re.findall(r'`([a-zA-Z0-9_-]+)`', response_text)
+                    if slug_fallback:
+                        slugs = list(dict.fromkeys(slug_fallback))
+                        print(f"Fallback extracted slugs: {slugs}")
+                
+                self.blorikoModSuggestionReceived.emit(clean_text, slugs)
+            except Exception as e:
+                print(f"Error in askBlorikoForModsWithVersion: {e}")
+                self.blorikoModSuggestionReceived.emit(f"错误: {str(e)}", [])
+        threading.Thread(target=run_ask, daemon=True).start()
 
     @Slot(result=list)
     def getVanillaVersions(self):
@@ -1952,33 +1993,50 @@ class Backend(QObject):
 
     @Slot(result=list)
     def getFabricVersions(self):
-        """从 .BL.json 读取 Fabric 版本列表（与旧版 setup_Mod_ui 一致）"""
+        """从 .BL.json 读取 Fabric 版本列表，后备检查文件夹名"""
         try:
             config_data = cfg.read()
             mc_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
             bl_json_path = os.path.join(mc_dir, "versions", ".BL.json")
-            if not os.path.exists(bl_json_path):
-                return []
-            with open(bl_json_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            versions = data.get("versions", {})
-            # 只返回 Fabric 版本
+            
+            version_mappings = {}
+            if os.path.exists(bl_json_path):
+                with open(bl_json_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                version_mappings = data.get("versions", {})
+            
             fabric_versions = []
-            for ver_name, ver_info in versions.items():
-                if ver_info.get("Fabric", False):
-                    fabric_versions.append(ver_name)
+            versions_path = os.path.join(mc_dir, "versions")
+            if os.path.exists(versions_path):
+                for d in os.listdir(versions_path):
+                    if not os.path.isdir(os.path.join(versions_path, d)):
+                        continue
+                    is_fabric = False
+                    if d in version_mappings:
+                        if version_mappings[d].get("Fabric", False):
+                            is_fabric = True
+                    if not is_fabric and "fabric" in d.lower():
+                        is_fabric = True
+                    if is_fabric:
+                        fabric_versions.append(d)
+            
             return sorted(fabric_versions, reverse=True)
         except Exception as e:
             print(f"Error getting Fabric versions: {e}")
             return []
 
-    @Slot(str)
-    def searchModrinth(self, query):
+    @Slot(str, str)
+    def searchModrinth(self, query, category=""):
         from modules.modrinth import search_mods
-        print(f"Modrinth search request: '{query}'")
+        print(f"Modrinth search request: '{query}', category: '{category}'")
         def run_search():
             try:
-                data = search_mods(query)
+                facets = None
+                if category == "mod":
+                    facets = [["project_type:mod"], ["categories:fabric"]]
+                elif category:
+                    facets = [[f"project_type:{category}"]]
+                data = search_mods(query, facets=facets)
                 results = []
                 if isinstance(data, dict) and "hits" in data:
                     for hit in data["hits"]:
@@ -1991,7 +2049,8 @@ class Backend(QObject):
                             "author": hit.get("author", ""),
                             "downloads": hit.get("downloads", 0),
                             "follows": hit.get("follows", 0),
-                            "categories": hit.get("display_categories", [])
+                            "categories": hit.get("display_categories", []),
+                            "project_type": hit.get("project_type", "mod")
                         })
                 self.modrinthResultsReceived.emit(results)
             except Exception as e:
@@ -2035,43 +2094,90 @@ class Backend(QObject):
                 
                 print(f"Detected game version: {game_version}")
 
-                # 首先尝试以 mod_id 作为 slug 获取下载 URL
+                # 获取下载 URL（先按 fabric 查，查不到则不限 loader）
                 url = Get_Mod_File_Download_Url(mod_id, loaders=["fabric"], game_versions=[game_version] if game_version else None)
+                if not url:
+                    url = Get_Mod_File_Download_Url(mod_id, loaders=None, game_versions=[game_version] if game_version else None)
                 if url:
-                    print(f"Found download URL: {url}")
-                    # 获取 Minecraft 目录
-                    
-                    mods_dir = os.path.join(mc_dir, "versions", version_name, "mods")
-                    
-                    # 确保 mods 目录存在
-                    os.makedirs(mods_dir, exist_ok=True)
-                    
-                    # 从 URL 获取文件名
                     filename = url.split('/')[-1]
                     if not filename or '.' not in filename:
                         filename = f"{mod_id}.jar"
-                    
+
+                    if filename.endswith(".mrpack"):
+                        print(f"获取到 mrpack 而非 jar，跳过: {filename}")
+                        return
+
+                    print(f"Found download URL: {url}")
+                    mods_dir = os.path.join(mc_dir, "versions", version_name, "mods")
+                    os.makedirs(mods_dir, exist_ok=True)
                     file_path = os.path.join(mods_dir, filename)
                     
-                    # 下载文件
                     print(f"Downloading mod to: {file_path}")
                     response = requests.get(url, timeout=30)
                     if response.status_code == 200:
                         with open(file_path, 'wb') as f:
                             f.write(response.content)
                         print(f"Successfully downloaded mod to: {file_path}")
+                        self.downloadNotify.emit(self.tr("下载成功"), f"{self.tr('已下载')} {filename} -> {mods_dir}", True)
                     else:
                         print(f"Failed to download: HTTP {response.status_code}")
+                        self.downloadNotify.emit(self.tr("下载失败"), f"HTTP {response.status_code}", False)
                 else:
                     print(f"Could not find download URL for {mod_id}")
-                    # 尝试打开 Modrinth 页面
-                    QDesktopServices.openUrl(QUrl(f"https://modrinth.com/mod/{mod_id}"))
+                    self.downloadNotify.emit(self.tr("下载失败"), f"{self.tr('未找到')} {mod_id} {self.tr('的下载链接')}", False)
             except Exception as e:
                 print(f"Error downloading mod: {e}")
                 import traceback
                 traceback.print_exc()
+                self.downloadNotify.emit(self.tr("下载失败"), str(e), False)
         
         threading.Thread(target=run_download, daemon=True).start()
+
+    @Slot(str, str, str)
+    def downloadToFile(self, mod_id, game_version, target_folder):
+        """下载模组/资源到指定文件夹"""
+        from modules.modrinth import Get_Mod_File_Download_Url
+        print(f"Download to file: {mod_id}, game_version: {game_version}, folder: {target_folder}")
+
+        def run_download():
+            try:
+                url = Get_Mod_File_Download_Url(mod_id, loaders=None, game_versions=[game_version] if game_version else None)
+                if url:
+                    filename = url.split('/')[-1]
+                    if not filename or '.' not in filename:
+                        filename = f"{mod_id}.jar"
+                    if filename.endswith(".mrpack"):
+                        filename = filename.replace(".mrpack", ".zip")
+                    os.makedirs(target_folder, exist_ok=True)
+                    file_path = os.path.join(target_folder, filename)
+                    print(f"Downloading to: {file_path}")
+                    response = requests.get(url, timeout=30)
+                    if response.status_code == 200:
+                        with open(file_path, 'wb') as f:
+                            f.write(response.content)
+                        print(f"Successfully downloaded to: {file_path}")
+                        self.downloadNotify.emit(self.tr("下载成功"), f"{self.tr('已下载')} {filename} -> {target_folder}", True)
+                    else:
+                        print(f"Failed to download: HTTP {response.status_code}")
+                        self.downloadNotify.emit(self.tr("下载失败"), f"HTTP {response.status_code}", False)
+                else:
+                    print(f"Could not find download URL for {mod_id}")
+                    self.downloadNotify.emit(self.tr("下载失败"), f"{self.tr('未找到')} {mod_id} {self.tr('的下载链接')}", False)
+            except Exception as e:
+                print(f"Error downloading: {e}")
+                self.downloadNotify.emit(self.tr("下载失败"), str(e), False)
+
+        threading.Thread(target=run_download, daemon=True).start()
+
+    @Slot(result=str)
+    def selectFolder(self):
+        from PySide6.QtWidgets import QFileDialog
+        folder = QFileDialog.getExistingDirectory(
+            None,
+            self.tr("选择保存文件夹"),
+            ""
+        )
+        return folder if folder else ""
 
     @Slot(result=str)
     def getBloretPassPortUserName(self):
@@ -3089,6 +3195,18 @@ class Backend(QObject):
                 with open(target_config, 'w', encoding='utf-8') as f:
                     json.dump(config_data, f, indent=4, ensure_ascii=False)
                 print("OOBE completed: Created config with user data")
+        
+            # OOBE 完成后检查并修复 .BL.json
+            try:
+                from modules.install import repair_bl_json
+                final_config = cfg.read()
+                final_mc_dir = final_config.get('minecraft_dir', '')
+                if final_mc_dir:
+                    repair_bl_json(final_mc_dir)
+                    print("OOBE completed: .BL.json checked and repaired")
+            except Exception as e:
+                print(f"OOBE .BL.json 检查失败: {e}")
+
         except Exception as e:
             print(f"Error completing OOBE: {e}")
 
@@ -3523,6 +3641,16 @@ class LauncherV2(RinUIWindow):
         self.backend = Backend()
         self.backend.setBackendParent(self)
         self.engine.rootContext().setContextProperty("Backend", self.backend)
+        
+        # 启动时检查并修复 .BL.json
+        try:
+            from modules.install import repair_bl_json
+            config_data = cfg.read()
+            mc_dir = config_data.get('minecraft_dir', '')
+            if mc_dir:
+                repair_bl_json(mc_dir)
+        except Exception as e:
+            print(f"启动时 .BL.json 检查失败: {e}")
         
         qml_file = SCRIPT_DIR / "qml" / "main.qml"
         self.load(str(qml_file))

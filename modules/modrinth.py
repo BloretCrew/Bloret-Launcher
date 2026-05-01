@@ -109,8 +109,9 @@ def Get_Mod_File_Download_Url(slug, loaders=None, game_versions=None):
                     if f.get("filename", "").endswith(".jar"):
                         log(f"找到项目 {slug} 的文件: {f['filename']}", logging.INFO)
                         return f["url"]
-                log(f"未找到项目 {slug} 的JAR文件，返回第一个文件的URL {data[0]["files"][0]["url"]}", logging.WARNING)
-                return data[0]["files"][0]["url"]
+                first_url = data[0]["files"][0]["url"]
+                log(f"未找到项目 {slug} 的JAR文件，返回第一个文件的URL {first_url}", logging.WARNING)
+                return first_url
             else:
                 log(f"未找到项目 {slug} 的文件", logging.ERROR)
                 return None
