@@ -12,6 +12,11 @@ SCRIPT_DIR = Path(__file__).parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+# Fix for Segmentation Fault when typing on Linux (e.g. openSUSE with IBus under Wayland/XWayland)
+if sys.platform.startswith('linux'):
+    if os.environ.get('QT_IM_MODULE') == 'ibus':
+        os.environ.pop('QT_IM_MODULE', None)
+
 # Create the QApplication early so it can be used in shims and module imports
 from PySide6.QtWidgets import QApplication, QFileDialog, QSystemTrayIcon
 from PySide6.QtCore import QLocale, Qt, QTranslator, QObject, Slot, Signal, Property, QUrl
