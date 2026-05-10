@@ -272,10 +272,52 @@ jobs:
         name: ${{ matrix.artifact }}
         path: "${{ env.OUTPUT_DIR }}/"
 
+  Build-FreeBSD:
+    runs-on: ubuntu-latest
+    name: Build FreeBSD
+    env:
+      PYTHON_VERSION: '3.10'
+      OUTPUT_DIR: 'output'
+    steps:
+    - name: 检出最新版本
+      uses: actions/checkout@v4
+
+    - name: 在 FreeBSD VM 中构建
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        prepare: |
+          pkg update -y
+          pkg install -y python3 py39-pip py39-pillow git fuse fuse2
+        run: |
+          python3 -m pip install --upgrade pip wheel
+          pip3 install -r requirements.txt
+          pip3 install "setuptools>=75.8.1,<80"
+          pip3 install --upgrade nuitka
+          pip3 install pillow zstandard ordered-set
+          EASYTIER_ARG=""
+          if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
+          python3 -m nuitka --standalone --onefile --enable-plugin=pyside6 --include-qt-plugins=sensible --include-data-dir=qml=qml --include-data-dir=RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang --include-data-files=Bloret.png=Bloret.png --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
+
+    - name: 收集产物
+      run: |
+        mkdir -p ${{ env.OUTPUT_DIR }}
+        cp Bloret-Launcher ${{ env.OUTPUT_DIR }}/Bloret-Launcher-FreeBSD
+        cp -r qml RinUI icon lang config.json LICENSE bloret.ico Bloret.png Bloret-Fluent.png JavaWrapper.jar ${{ env.OUTPUT_DIR }}/ || true
+        if [ -d "easytier" ]; then cp -r easytier ${{ env.OUTPUT_DIR }}/; fi
+        cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
+      shell: bash
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher-FreeBSD
+        path: "${{ env.OUTPUT_DIR }}/"
+
   Upload-To-Release:
     # 仅在 release 事件时运行，不在 workflow_dispatch 时运行
     if: github.event_name == 'release'
-    needs: [Build-All, Build-Setup]
+    needs: [Build-All, Build-Setup, Build-FreeBSD]
     runs-on: ubuntu-latest
     steps:
       - name: 下载 Windows 构建产物
@@ -302,6 +344,12 @@ jobs:
           name: Bloret-Launcher-MacOS-ARM
           path: Bloret-Launcher-MacOS-ARM
 
+      - name: 下载 FreeBSD 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: Bloret-Launcher-FreeBSD
+          path: Bloret-Launcher-FreeBSD
+
       - name: 下载安装程序
         uses: actions/download-artifact@v4
         with:
@@ -314,6 +362,7 @@ jobs:
           cp Bloret-Launcher-Linux/*.AppImage release_assets/
           # cp Bloret-Launcher-MacOS-Intel/*.dmg release_assets/ || true
           cp Bloret-Launcher-MacOS-ARM/*.dmg release_assets/ || true
+          cp Bloret-Launcher-FreeBSD/Bloret-Launcher-FreeBSD release_assets/ || true
           cp Bloret-Launcher-Setup.exe release_assets/
 
       - name: 上传到 Release

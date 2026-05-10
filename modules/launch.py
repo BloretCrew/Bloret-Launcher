@@ -4,7 +4,7 @@ except ImportError:
     InfoBar = None
     InfoBarPosition = None
     ComboBox = None
-import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, psutil
+import logging, os, json, platform, requests, shutil, subprocess, concurrent.futures, threading, time, psutil
 try:
     import send2trash
 except ImportError:
@@ -106,7 +106,8 @@ def Get_Run_Script(mc_version):
             java_dir = config_data.get('java_dir', '') 
             
             if java_dir and os.path.exists(java_dir):
-                java_exe_path = os.path.join(java_dir, "bin", "java.exe")
+                java_bin = "java.exe" if sys.platform == "win32" else "java"
+                java_exe_path = os.path.join(java_dir, "bin", java_bin)
                 if os.path.exists(java_exe_path):
                     java_path = java_exe_path
             else:
@@ -123,7 +124,7 @@ def Get_Run_Script(mc_version):
                     r"C:\Program Files\Zulu\zulu-21\bin\java.exe"
                 ]
                 
-                # Mac/Linux defaults
+                # Mac/Linux/FreeBSD defaults
                 if sys.platform != "win32":
                     default_java_paths = [
                          "/usr/bin/java",
@@ -132,6 +133,13 @@ def Get_Run_Script(mc_version):
                          "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home/bin/java",
                          "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home/bin/java"
                     ]
+                    # FreeBSD-specific Java paths (OpenJDK installed via pkg or ports)
+                    if platform.system() == "FreeBSD":
+                        default_java_paths.extend([
+                            "/usr/local/openjdk17/bin/java",
+                            "/usr/local/openjdk21/bin/java",
+                            "/usr/local/openjdk24/bin/java",
+                        ])
                 
                 for default_path in default_java_paths:
                     if os.path.exists(default_path):
@@ -311,7 +319,7 @@ def Get_Run_Script(mc_version):
                         if not os_rule or (os_rule.get("name", "").lower() == platform.system().lower() or 
                                           (os_rule.get("name") == "windows" and platform.system() == "Windows") or
                                           (os_rule.get("name") == "osx" and platform.system() == "Darwin") or
-                                          (os_rule.get("name") == "linux" and platform.system() == "Linux")):
+                                          (os_rule.get("name") == "linux" and platform.system() in ("Linux", "FreeBSD"))):
                             should_include = True
                             break
             

@@ -92,7 +92,10 @@ def is_dark_theme():
             handle_exception(e)
             return False
     else:
-        # Linux 暂时默认浅色
+        # Linux/FreeBSD: check GTK_THEME for dark mode hint
+        gtk_theme = os.environ.get("GTK_THEME", "").lower()
+        if "dark" in gtk_theme:
+            return True
         return False
 
 def send_system_notification(title, message):

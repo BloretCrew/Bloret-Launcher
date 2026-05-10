@@ -197,6 +197,44 @@ jobs:
         name: ${{ matrix.artifact }}
         path: "${{ env.OUTPUT_DIR }}/"
 
+  Build-FreeBSD:
+    needs: Set-Version
+    runs-on: ubuntu-latest
+    name: Build FreeBSD
+    steps:
+    - name: 检出最新版本
+      uses: actions/checkout@v2
+
+    - name: 在 FreeBSD VM 中构建
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        prepare: |
+          pkg update -y
+          pkg install -y python3 py39-pip py39-pillow git
+        run: |
+          python3 -m pip install --upgrade pip
+          grep -ivE '^(pywin32|win11toast|winsdk)' requirements.txt > req_unix.txt
+          pip3 install -r req_unix.txt
+          pip3 install pyinstaller
+          pyinstaller --onefile --windowed --name=Bloret-Launcher \
+            --add-data "bloret.ico:." --add-data "Bloret.png:." --add-data "Bloret-Fluent.png:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "icon:icon" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
+            --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
+
+    - name: 收集产物
+      run: |
+        mkdir -p ${{ env.OUTPUT_DIR }}
+        cp dist/Bloret-Launcher ${{ env.OUTPUT_DIR }}/Bloret-Launcher-FreeBSD
+        cp -r RinUI qml ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/ || true
+        cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
+      shell: bash
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher-FreeBSD
+        path: "${{ env.OUTPUT_DIR }}/"
+
   Code-Package:
     needs: Set-Version
     runs-on: windows-latest

@@ -103,16 +103,20 @@ def scan_java_paths():
         os.path.join(os.path.expanduser("~"), ".jdks"),
         "/Library/Java/JavaVirtualMachines",  # macOS
         "/usr/lib/jvm",                       # Linux
-        "/usr/java"                           # Linux alternative
+        "/usr/java",                          # Linux alternative
+        "/usr/local/openjdk17",               # FreeBSD (pkg)
+        "/usr/local/openjdk21",               # FreeBSD (pkg)
+        "/usr/local/openjdk24",               # FreeBSD (pkg)
     ]
     
     for root in common_roots:
         if os.path.exists(root):
             try:
+                java_bin = "java.exe" if sys.platform == "win32" else "java"
                 for dirpath, dirnames, filenames in os.walk(root):
-                    # 简单优化：只查找 bin 目录下的 java.exe
-                    if os.path.basename(dirpath) == 'bin' and "java.exe" in filenames:
-                        full_path = os.path.join(dirpath, "java.exe")
+                    # 简单优化：只查找 bin 目录下的 java 可执行文件
+                    if os.path.basename(dirpath) == 'bin' and java_bin in filenames:
+                        full_path = os.path.join(dirpath, java_bin)
                         if full_path not in java_paths:
                             java_paths.append(full_path)
             except Exception:
