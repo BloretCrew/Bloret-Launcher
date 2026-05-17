@@ -1,0 +1,227 @@
+:root {
+    --fluent-primary: #0078d4;
+    --fluent-primary-hover: #106ebe;
+    --fluent-bg: #1a1a2e;
+    --fluent-surface: rgba(255, 255, 255, 0.08);
+    --fluent-surface-hover: rgba(255, 255, 255, 0.15);
+    --fluent-text-primary: #ffffff;
+    --fluent-text-secondary: rgba(255, 255, 255, 0.7);
+    --fluent-border: rgba(255, 255, 255, 0.12);
+    --joystick-size: 140px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--fluent-bg);
+    color: var(--fluent-text-primary);
+    font-family: "Segoe UI", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
+    touch-action: none;
+}
+
+.gamepad-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+}
+
+.back-btn {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--fluent-border);
+    border-radius: 50%;
+    color: var(--fluent-text-primary);
+    cursor: pointer;
+    z-index: 10;
+    transition: background 0.15s;
+}
+
+.back-btn:active {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.touch-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+}
+
+.touch-hint {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--fluent-text-secondary);
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.joystick-area {
+    position: absolute;
+    bottom: 120px;
+    width: var(--joystick-size);
+    height: var(--joystick-size);
+    z-index: 5;
+}
+
+#joystick-left {
+    left: 20px;
+}
+
+#joystick-right {
+    right: 20px;
+}
+
+.joystick-area canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--fluent-surface);
+    border: 2px solid var(--fluent-border);
+}
+
+.joystick-label {
+    text-align: center;
+    font-size: 12px;
+    color: var(--fluent-text-secondary);
+    margin-top: 4px;
+}
+
+.action-buttons {
+    position: absolute;
+    right: 16px;
+    bottom: 280px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    z-index: 5;
+}
+
+.action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 56px;
+    height: 56px;
+    background: var(--fluent-surface);
+    border: 1px solid var(--fluent-border);
+    border-radius: 12px;
+    color: var(--fluent-text-primary);
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.1s, transform 0.1s;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.action-btn:active, .action-btn.active {
+    background: var(--fluent-primary);
+    transform: scale(0.92);
+}
+
+.action-btn span {
+    font-weight: 600;
+}
+
+.hotbar-buttons {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    z-index: 5;
+}
+
+.hotbar-btn {
+    width: 38px;
+    height: 38px;
+    background: var(--fluent-surface);
+    border: 1px solid var(--fluent-border);
+    border-radius: 8px;
+    color: var(--fluent-text-primary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.1s, transform 0.1s;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.hotbar-btn:active, .hotbar-btn.active {
+    background: var(--fluent-primary);
+    transform: scale(0.92);
+}
+
+@media (max-height: 600px) {
+    .action-buttons {
+        bottom: 200px;
+    }
+    .joystick-area {
+        bottom: 80px;
+    }
+    .action-btn {
+        width: 48px;
+        height: 48px;
+    }
+    .hotbar-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 360px) {
+    :root {
+        --joystick-size: 120px;
+    }
+    #joystick-left {
+        left: 10px;
+    }
+    #joystick-right {
+        right: 10px;
+    }
+    .action-buttons {
+        right: 10px;
+    }
+    .action-btn {
+        width: 48px;
+        height: 48px;
+    }
+    .hotbar-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 11px;
+    }
+}

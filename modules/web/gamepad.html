@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>虚拟手柄 - Bloret Launcher</title>
+    <link rel="stylesheet" href="/gamepad.css">
+</head>
+<body>
+    <div class="gamepad-container">
+        <button class="back-btn" onclick="location.href='/remoter'">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+            </svg>
+        </button>
+
+        <div class="touch-area" id="touch-area">
+            <div class="touch-hint" id="touch-hint">
+                点击 = 右键 &nbsp;|&nbsp; 长按 = 摧毁
+            </div>
+        </div>
+
+        <div class="joystick-area" id="joystick-left">
+            <canvas id="canvas-left" width="140" height="140"></canvas>
+            <div class="joystick-label">移动</div>
+        </div>
+
+        <div class="joystick-area" id="joystick-right">
+            <canvas id="canvas-right" width="140" height="140"></canvas>
+            <div class="joystick-label">视角</div>
+        </div>
+
+        <div class="action-buttons" id="action-buttons">
+            <!-- 默认按键，会被动态替换 -->
+            <button class="action-btn" data-key="space" data-label="空格">
+                <span>跳跃</span>
+            </button>
+            <button class="action-btn" data-key="shift" data-label="Shift">
+                <span>潜行</span>
+            </button>
+            <button class="action-btn" data-key="e" data-label="E">
+                <span>E</span>
+            </button>
+            <button class="action-btn" data-key="q" data-label="Q">
+                <span>Q</span>
+            </button>
+            <button class="action-btn" data-key="f" data-label="F">
+                <span>F</span>
+            </button>
+            <button class="action-btn" data-key="t" data-label="T">
+                <span>T</span>
+            </button>
+        </div>
+
+        <div class="hotbar-buttons">
+            <button class="hotbar-btn" data-key="1">1</button>
+            <button class="hotbar-btn" data-key="2">2</button>
+            <button class="hotbar-btn" data-key="3">3</button>
+            <button class="hotbar-btn" data-key="4">4</button>
+            <button class="hotbar-btn" data-key="5">5</button>
+            <button class="hotbar-btn" data-key="6">6</button>
+            <button class="hotbar-btn" data-key="7">7</button>
+            <button class="hotbar-btn" data-key="8">8</button>
+            <button class="hotbar-btn" data-key="9">9</button>
+        </div>
+    </div>
+
+    <script>
+        const activeKeys = new Set();
+        
+        // 游戏手柄配置
+        let gamepadConfig = {
+            move_sensitivity: 50,
+            view_sensitivity: 50,
+            button_layout: 'default'
+        };
+        
+        // 加载配置
+        async function loadGamepadConfig() {
+            try {
+                const res = await fetch('/api/v1/gamepad/config');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    gamepadConfig = data.data;
+                    console.log('Gamepad config loaded:', gamepadConfig);
+                    
+                    // 如果有自定义布局数据，加载它
+                    if (gamepadConfig.layout_data) {
+                        try {
+                            const layoutData = JSON.parse(gamepadConfig.layout_data);
+                            applyCustomLayout(layoutData);
+                        } catch (e) {
+                            console.error('Parse layout data error:', e);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Load gamepad config error:', e);
+            }
+        }
+        
+        // 应用自定义布局
+        function applyCustomLayout(layoutData) {
+            const container = document.getElementById('action-buttons');
+            if (!container || !layoutData || layoutData.length === 0) return;
+            
+            // 清空现有按键
+            container.innerHTML = '';
+            
+            // 根据布局数据创建按键
+            layoutData.forEach(btn => {
+                const button = document.createElement('button');
+                button.className = 'action-btn';
+                button.dataset.key = btn.key;
+                button.dataset.label = btn.label;
+                button.innerHTML = `<span>${btn.label}</span>`;
+                
+                // 设置位置（使用绝对定位）
+                button.style.position = 'absolute';
+                button.style.left = `${btn.x * 100}%`;
+                button.style.top = `${btn.y * 100}%`;
+                button.style.transform = 'translate(-50%, -50%)';
+                
+                container.appendChild(button);
+            });
+            
+            // 设置容器为相对定位
+            container.style.position = 'relative';
+            container.style.width = '100%';
+            container.style.height = '200px';
+            
+            // 重新绑定按钮事件
+            bindActionButtonEvents();
+        }
+        
+        // 绑定按键事件
+        function bindActionButtonEvents() {
+            document.querySelectorAll('.action-btn').forEach(btn => {
+                const key = btn.dataset.key;
+                
+                const startHandler = (e) => {
+                    e.preventDefault();
+                    activeKeys.add(key);
+                    sendKey(key, 'down');
+                    btn.classList.add('active');
+                };
+                
+                const endHandler = (e) => {
+                    e.preventDefault();
+                    activeKeys.delete(key);
+                    sendKey(key, 'up');
+                    btn.classList.remove('active');
+                };
+                
+                btn.addEventListener('touchstart', startHandler, { passive: false });
+                btn.addEventListener('touchend', endHandler, { passive: false });
+                btn.addEventListener('touchcancel', endHandler);
+                btn.addEventListener('mousedown', startHandler);
+                btn.addEventListener('mouseup', endHandler);
+                btn.addEventListener('mouseleave', endHandler);
+            });
+        }
+        
+        // 页面加载时获取配置
+        loadGamepadConfig();
+
+        async function sendKey(key, action) {
+            try {
+                await fetch('/api/v1/remote/key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, action })
+                });
+            } catch (e) {
+                console.error('Send key error:', e);
+            }
+        }
+
+        async function sendMouse(action, dx = 0, dy = 0) {
+            try {
+                await fetch('/api/v1/remote/mouse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, dx, dy })
+                });
+            } catch (e) {
+                console.error('Send mouse error:', e);
+            }
+        }
+
+        class VirtualJoystick {
+            constructor(canvasId, onMove) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.onMove = onMove;
+                this.active = false;
+                this.touchId = null;
+                this.centerX = this.canvas.width / 2;
+                this.centerY = this.canvas.height / 2;
+                this.maxRadius = this.canvas.width / 2 - 10;
+                this.knobX = this.centerX;
+                this.knobY = this.centerY;
+                this.knobRadius = 22;
+                this.draw();
+                this.bindEvents();
+            }
+
+            draw() {
+                const ctx = this.ctx;
+                const w = this.canvas.width;
+                const h = this.canvas.height;
+                ctx.clearRect(0, 0, w, h);
+
+                ctx.beginPath();
+                ctx.arc(this.centerX, this.centerY, this.maxRadius, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(this.knobX, this.knobY, this.knobRadius, 0, Math.PI * 2);
+                ctx.fillStyle = this.active ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)';
+                ctx.fill();
+            }
+
+            bindEvents() {
+                const canvas = this.canvas;
+
+                canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.changedTouches[0];
+                    this.touchId = touch.identifier;
+                    this.active = true;
+                    this.handleMove(touch.clientX, touch.clientY);
+                }, { passive: false });
+
+                canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    for (let t of e.changedTouches) {
+                        if (t.identifier === this.touchId) {
+                            this.handleMove(t.clientX, t.clientY);
+                        }
+                    }
+                }, { passive: false });
+
+                canvas.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    for (let t of e.changedTouches) {
+                        if (t.identifier === this.touchId) {
+                            this.active = false;
+                            this.touchId = null;
+                            this.knobX = this.centerX;
+                            this.knobY = this.centerY;
+                            this.draw();
+                            this.onMove(0, 0);
+                        }
+                    }
+                }, { passive: false });
+
+                canvas.addEventListener('touchcancel', (e) => {
+                    this.active = false;
+                    this.touchId = null;
+                    this.knobX = this.centerX;
+                    this.knobY = this.centerY;
+                    this.draw();
+                    this.onMove(0, 0);
+                });
+            }
+
+            handleMove(clientX, clientY) {
+                const rect = this.canvas.getBoundingClientRect();
+                const scaleX = this.canvas.width / rect.width;
+                const scaleY = this.canvas.height / rect.height;
+                const x = (clientX - rect.left) * scaleX;
+                const y = (clientY - rect.top) * scaleY;
+
+                let dx = x - this.centerX;
+                let dy = y - this.centerY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > this.maxRadius) {
+                    dx = (dx / dist) * this.maxRadius;
+                    dy = (dy / dist) * this.maxRadius;
+                }
+
+                this.knobX = this.centerX + dx;
+                this.knobY = this.centerY + dy;
+                this.draw();
+
+                const nx = dx / this.maxRadius;
+                const ny = dy / this.maxRadius;
+                this.onMove(nx, ny);
+            }
+        }
+
+        let isSprinting = false;
+
+        const leftJoystick = new VirtualJoystick('canvas-left', (nx, ny) => {
+            // 根据配置调整移动灵敏度（阈值反向：灵敏度越高，阈值越低）
+            const moveSensitivity = gamepadConfig.move_sensitivity / 100;
+            const threshold = 0.4 - (moveSensitivity * 0.25); // 范围 0.15 - 0.4
+            const sprintThreshold = 0.7;
+            const newKeys = new Set();
+            if (ny < -threshold) newKeys.add('w');
+            if (ny > threshold) newKeys.add('s');
+            if (nx < -threshold) newKeys.add('a');
+            if (nx > threshold) newKeys.add('d');
+
+            // 计算摇杆移动幅度
+            const magnitude = Math.sqrt(nx * nx + ny * ny);
+            
+            // 当幅度较大且有向前移动时，启用疾跑
+            const shouldSprint = magnitude > sprintThreshold && ny < -threshold;
+            
+            if (shouldSprint && !isSprinting) {
+                sendKey('ctrl', 'down');
+                isSprinting = true;
+            } else if (!shouldSprint && isSprinting) {
+                sendKey('ctrl', 'up');
+                isSprinting = false;
+            }
+
+            for (const k of newKeys) {
+                if (!activeKeys.has(k)) {
+                    activeKeys.add(k);
+                    sendKey(k, 'down');
+                }
+            }
+            for (const k of activeKeys) {
+                if (['w','a','s','d'].includes(k) && !newKeys.has(k)) {
+                    activeKeys.delete(k);
+                    sendKey(k, 'up');
+                }
+            }
+        });
+
+        const rightJoystick = new VirtualJoystick('canvas-right', (nx, ny) => {
+            // 存储摇杆状态，由动画循环处理
+            rightJoystickState.nx = nx;
+            rightJoystickState.ny = ny;
+        });
+
+        // 右摇杆状态
+        const rightJoystickState = { nx: 0, ny: 0 };
+        
+        // 视角旋转平滑处理
+        let accumulatedDx = 0;
+        let accumulatedDy = 0;
+        let lastSendTime = 0;
+        const SEND_INTERVAL = 16; // 约60fps
+        
+        function updateViewRotation(currentTime) {
+            requestAnimationFrame(updateViewRotation);
+            
+            const { nx, ny } = rightJoystickState;
+            const magnitude = Math.sqrt(nx * nx + ny * ny);
+            
+            // 如果摇杆偏移很小，重置累积器
+            if (magnitude < 0.08) {
+                accumulatedDx = 0;
+                accumulatedDy = 0;
+                return;
+            }
+            
+            // 使用二次响应曲线
+            const curvedMagnitude = magnitude * magnitude;
+            
+            // 根据配置调整视角灵敏度
+            const viewSensitivity = gamepadConfig.view_sensitivity / 100;
+            const baseSensitivity = 4 + (viewSensitivity * 8);
+            const maxSensitivity = 12 + (viewSensitivity * 16);
+            const sensitivity = baseSensitivity + (maxSensitivity - baseSensitivity) * curvedMagnitude;
+            
+            // 累积移动量
+            accumulatedDx += nx * sensitivity;
+            accumulatedDy += ny * sensitivity;
+            
+            // 按固定间隔发送累积的移动量
+            if (currentTime - lastSendTime >= SEND_INTERVAL) {
+                const dx = Math.round(accumulatedDx);
+                const dy = Math.round(accumulatedDy);
+                
+                if (dx !== 0 || dy !== 0) {
+                    sendMouse('move', dx, dy);
+                    accumulatedDx = 0;
+                    accumulatedDy = 0;
+                }
+                
+                lastSendTime = currentTime;
+            }
+        }
+        
+        // 启动视角旋转循环
+        requestAnimationFrame(updateViewRotation);
+
+        // 绑定初始按键事件
+        bindActionButtonEvents();
+
+        document.querySelectorAll('.hotbar-btn').forEach(btn => {
+            const key = btn.dataset.key;
+            const handler = (e) => {
+                e.preventDefault();
+                sendKey(key, 'down');
+                setTimeout(() => sendKey(key, 'up'), 100);
+                btn.classList.add('active');
+                setTimeout(() => btn.classList.remove('active'), 150);
+            };
+            btn.addEventListener('touchstart', handler, { passive: false });
+            btn.addEventListener('click', handler);
+        });
+
+        const touchArea = document.getElementById('touch-area');
+        let touchStartTime = 0;
+        let touchStartId = null;
+        let touchHandled = false;
+        let longPressTimer = null;
+        let isLeftButtonDown = false;
+
+        touchArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            touchStartTime = Date.now();
+            touchStartId = touch.identifier;
+            touchHandled = false;
+            
+            // 设置长按定时器，300ms后触发摧毁（左键按下）
+            longPressTimer = setTimeout(() => {
+                if (!touchHandled) {
+                    sendMouse('left_down');
+                    isLeftButtonDown = true;
+                    touchHandled = true;
+                }
+            }, 300);
+        }, { passive: false });
+
+        touchArea.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            for (let t of e.changedTouches) {
+                if (t.identifier === touchStartId) {
+                    // 清除长按定时器
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+                    
+                    // 如果左键按下状态，释放左键
+                    if (isLeftButtonDown) {
+                        sendMouse('left_up');
+                        isLeftButtonDown = false;
+                    }
+                    
+                    // 如果是短按且没有处理过，触发右键点击
+                    const elapsed = Date.now() - touchStartTime;
+                    if (elapsed < 300 && !touchHandled) {
+                        sendMouse('right_click');
+                    }
+                    touchHandled = true;
+                }
+            }
+        }, { passive: false });
+
+        touchArea.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (let t of e.changedTouches) {
+                if (t.identifier === touchStartId) {
+                    // 移动时取消长按定时器
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+                    
+                    // 如果左键按下状态，释放左键
+                    if (isLeftButtonDown) {
+                        sendMouse('left_up');
+                        isLeftButtonDown = false;
+                    }
+                    touchHandled = true;
+                }
+            }
+        }, { passive: false });
+
+        document.addEventListener('contextmenu', e => e.preventDefault());
+    </script>
+</body>
+</html>

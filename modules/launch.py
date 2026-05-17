@@ -42,7 +42,7 @@ if platform.system() == "Windows":
 else:
     mwtool = None
 
-def Get_Run_Script(mc_version):
+def Get_Run_Script(mc_version, skip_completion=False):
     """
     根据 config.json 的内容生成启动 .minecraft 文件夹中指定版本的命令
     支持 Fabric 加载器启动
@@ -50,6 +50,7 @@ def Get_Run_Script(mc_version):
     
     Args:
         mc_version (str): 要启动的 Minecraft 版本号
+        skip_completion (bool): 是否跳过文件补全，直接启动
         
     Returns:
         tuple: (launch_args, game_dir) 启动参数列表和工作目录
@@ -492,25 +493,31 @@ def Get_Run_Script(mc_version):
     
     # 检查是否有缺失的库文件并尝试下载
     if missing_libraries:
-        log(f"发现 {len(missing_libraries)} 个缺失的库文件，正在尝试下载...")
-        
-        # 从 config.json 读取 MaxThread
-        max_workers = config_data.get("MaxThread", 64)
-        
-        # 创建下载器并启动下载线程
-        downloader = LibraryDownloader(missing_libraries, max_workers)
-        download_thread = threading.Thread(target=downloader.download_libraries)
-        download_thread.daemon = True
-        download_thread.start()
-        
-        # 等待下载完成
-        downloader.completed_event.wait()
-        
-        # 重新检查库文件并添加到类路径中
-        for lib, lib_path in missing_libraries:
-            if os.path.exists(lib_path) and lib_path not in classpath:
-                classpath.append(lib_path)
-                log(f"添加之前缺失但现已下载的库: {lib_path}")
+        if skip_completion:
+            log(f"跳过文件补全：发现 {len(missing_libraries)} 个缺失的库文件，但用户选择跳过补全")
+            # 记录跳过的库文件，但不中断启动流程
+            for lib, lib_path in missing_libraries:
+                log(f"跳过补全的库文件: {lib_path}", logging.WARNING)
+        else:
+            log(f"发现 {len(missing_libraries)} 个缺失的库文件，正在尝试下载...")
+            
+            # 从 config.json 读取 MaxThread
+            max_workers = config_data.get("MaxThread", 64)
+            
+            # 创建下载器并启动下载线程
+            downloader = LibraryDownloader(missing_libraries, max_workers)
+            download_thread = threading.Thread(target=downloader.download_libraries)
+            download_thread.daemon = True
+            download_thread.start()
+            
+            # 等待下载完成
+            downloader.completed_event.wait()
+            
+            # 重新检查库文件并添加到类路径中
+            for lib, lib_path in missing_libraries:
+                if os.path.exists(lib_path) and lib_path not in classpath:
+                    classpath.append(lib_path)
+                    log(f"添加之前缺失但现已下载的库: {lib_path}")
     
     # 添加自定义参数 - 设置 Java 运行临时目录
     # 在 macOS 上使用标准缓存目录，Windows/Linux 使用环境变量或数据目录

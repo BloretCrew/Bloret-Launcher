@@ -10,12 +10,16 @@ Dialog {
     property string launchStatus: ""
     property string launchDetail: ""
     property double launchProgress: 0.0
+    property bool isCompletionPhase: false  // 是否处于文件补全阶段
 
     title: launchTitle
     modal: true
     closePolicy: Popup.NoAutoClose
     standardButtons: Dialog.Close
     width: 520
+
+    signal skipCompletionClicked()
+    signal cancelLaunchClicked()
 
     ColumnLayout {
         spacing: 12
@@ -43,12 +47,40 @@ Dialog {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
         }
+
+        // 文件补全阶段显示的按钮
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+            visible: isCompletionPhase
+
+            Button {
+                text: (Backend ? Backend.tr("跳过补全") : "跳过补全")
+                icon.name: "ic_fluent_skip_forward_20_regular"
+                onClicked: {
+                    skipCompletionClicked()
+                }
+            }
+
+            Button {
+                text: (Backend ? Backend.tr("取消启动") : "取消启动")
+                icon.name: "ic_fluent_dismiss_20_regular"
+                onClicked: {
+                    cancelLaunchClicked()
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+        }
     }
 
     function updateLaunchProgress(progress, status, detail) {
         launchProgress = progress
         launchStatus = status
         launchDetail = detail || ""
+        
+        // 检测是否处于文件补全阶段
+        isCompletionPhase = (status.indexOf("补全文件") >= 0 || status.indexOf("跳过文件补全") >= 0) && progress < 95
     }
 
     onOpened: {

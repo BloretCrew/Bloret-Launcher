@@ -509,6 +509,42 @@ Rectangle {
                 onClicked: {
                     if (currentVersion && Backend) Backend.launchGame(currentVersion)
                 }
+                
+                // 添加右键菜单支持跳过补全启动
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: function(mouse) {
+                        if (mouse.button === Qt.LeftButton) {
+                            if (currentVersion && Backend) Backend.launchGame(currentVersion)
+                        } else if (mouse.button === Qt.RightButton) {
+                            skipCompletionMenu.popup()
+                        }
+                    }
+                    onPressAndHold: function(mouse) {
+                        skipCompletionMenu.popup()
+                    }
+                }
+                
+                Menu {
+                    id: skipCompletionMenu
+                    
+                    MenuItem {
+                        text: (Backend ? Backend.tr("正常启动（补全文件）") : "正常启动（补全文件）")
+                        icon.name: "ic_fluent_play_20_regular"
+                        onTriggered: {
+                            if (currentVersion && Backend) Backend.launchGame(currentVersion)
+                        }
+                    }
+                    
+                    MenuItem {
+                        text: (Backend ? Backend.tr("跳过补全启动") : "跳过补全启动")
+                        icon.name: "ic_fluent_skip_forward_20_regular"
+                        onTriggered: {
+                            if (currentVersion && Backend) Backend.launchGameWithSkip(currentVersion, true)
+                        }
+                    }
+                }
             }
         }
     }

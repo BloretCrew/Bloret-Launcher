@@ -355,16 +355,329 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             logger.exception(f"Error handling open API path {api_path}: {e}")
             self._send_json(500, {'status': 'error', 'message': str(e)})
 
+    def _handle_remote_api(self, api_path, query_params):
+        try:
+            if api_path == '/api/v1/running/instances':
+                import psutil
+                dead = [k for k, v in BLglobals.running_instances.items() if not psutil.pid_exists(v["pid"])]
+                for k in dead:
+                    del BLglobals.running_instances[k]
+                instances = []
+                for k, v in BLglobals.running_instances.items():
+                    instances.append({
+                        "id": k,
+                        "name": v["name"],
+                        "type": v["type"],
+                        "pid": v["pid"],
+                        "suspended": v["suspended"]
+                    })
+                self._send_json(200, {"status": "success", "data": instances})
+                return
+
+            if api_path == '/api/v1/recent/runs':
+                recent = []
+                try:
+                    recent_path = os.path.join(BLglobals.datapath, 'recent_runs.json')
+                    if os.path.exists(recent_path):
+                        with open(recent_path, 'r', encoding='utf-8') as f:
+                            recent = json.load(f)
+                except Exception:
+                    pass
+                self._send_json(200, {"status": "success", "data": recent})
+                return
+
+            if api_path.startswith('/api/v1/running/suspend/'):
+                instance_id = api_path.split('/')[-1]
+                entry = BLglobals.running_instances.get(instance_id)
+                if not entry:
+                    self._send_json(404, {'status': 'error', 'message': 'Instance not found'})
+                    return
+                import psutil
+                if not psutil.pid_exists(entry["pid"]):
+                    self._send_json(404, {'status': 'error', 'message': 'Process not found'})
+                    return
+                pid = entry["pid"]
+                try:
+                    if platform.system() == "Windows":
+                        import ctypes
+                        handle = ctypes.windll.kernel32.OpenProcess(0x1F0FFF, False, pid)
+                        if entry["suspended"]:
+                            ctypes.windll.ntdll.NtResumeProcess(handle)
+                        else:
+                            ctypes.windll.ntdll.NtSuspendProcess(handle)
+                        ctypes.windll.kernel32.CloseHandle(handle)
+                    else:
+                        import signal
+                        import os as _os
+                        _os.kill(pid, signal.SIGCONT if entry["suspended"] else signal.SIGSTOP)
+                    entry["suspended"] = not entry["suspended"]
+                    self._send_json(200, {'status': 'success', 'message': f'Instance {instance_id} toggled'})
+                except Exception as e:
+                    self._send_json(500, {'status': 'error', 'message': str(e)})
+                return
+
+            if api_path.startswith('/api/v1/running/terminate/'):
+                instance_id = api_path.split('/')[-1]
+                entry = BLglobals.running_instances.pop(instance_id, None)
+                if entry:
+                    import psutil
+                    if psutil.pid_exists(entry["pid"]):
+                        try:
+                            psutil.Process(entry["pid"]).kill()
+                        except Exception:
+                            pass
+                self._send_json(200, {'status': 'success', 'message': f'Instance {instance_id} terminated'})
+                return
+
+            if api_path == '/api/v1/launch/start':
+                version = query_params.get('version', [None])[0]
+                if not version:
+                    self._send_json(400, {'status': 'error', 'message': '缺少必填参数 version'})
+                    return
+
+                import uuid
+                session_id = str(uuid.uuid4())
+                
+                # 重置启动状态
+                BLglobals.launch_status = {
+                    "session_id": session_id,
+                    "progress": 0,
+                    "status": "准备启动...",
+                    "detail": "",
+                    "finished": False
+                }
+
+                from modules.launch import Get_Run_Script
+                launch_args, game_dir = Get_Run_Script(version)
+                process = subprocess.Popen(launch_args, cwd=game_dir, **hidden_process_kwargs())
+
+                # 将实例添加到运行列表
+                instance_id = str(uuid.uuid4())
+                BLglobals.running_instances[instance_id] = {
+                    "name": version, "type": "minecraft",
+                    "pid": process.pid, "suspended": False
+                }
+                
+                # 记录最近运行
+                try:
+                    recent_path = os.path.join(BLglobals.datapath, 'recent_runs.json')
+                    recent = []
+                    if os.path.exists(recent_path):
+                        with open(recent_path, 'r', encoding='utf-8') as f:
+                            recent = json.load(f)
+                    
+                    # 移除已存在的相同版本记录
+                    recent = [r for r in recent if r.get('name') != version]
+                    
+                    # 添加新记录到开头
+                    from datetime import datetime
+                    recent.insert(0, {
+                        "name": version,
+                        "type": "minecraft",
+                        "lastRun": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    })
+                    
+                    # 只保留最近20条记录
+                    recent = recent[:20]
+                    
+                    with open(recent_path, 'w', encoding='utf-8') as f:
+                        json.dump(recent, f, ensure_ascii=False, indent=2)
+                except Exception as e:
+                    logger.error(f"Failed to save recent run: {e}")
+
+                # 启动 Minecraft 窗口监控和小工具栏
+                try:
+                    from modules.launch import monitor_minecraft_window
+                    monitor_minecraft_window(version, mc_pid=process.pid)
+                    logger.info(f"Started Minecraft window monitor for {version} (PID: {process.pid})")
+                except Exception as e:
+                    logger.error(f"Failed to start Minecraft window monitor: {e}")
+
+                # 更新启动状态
+                BLglobals.launch_status["progress"] = 100
+                BLglobals.launch_status["status"] = "启动完成"
+                BLglobals.launch_status["detail"] = f"PID: {process.pid}"
+                BLglobals.launch_status["finished"] = True
+
+                self._send_json(200, {
+                    'status': 'success',
+                    'message': '启动命令已执行',
+                    'data': {'version': version, 'pid': process.pid, 'session_id': session_id}
+                })
+                return
+
+            if api_path == '/api/v1/launch/status':
+                self._send_json(200, {
+                    'status': 'success',
+                    'data': BLglobals.launch_status
+                })
+                return
+
+            if api_path == '/api/v1/gamepad/config':
+                config_data = cfg.read()
+                self._send_json(200, {
+                    'status': 'success',
+                    'data': {
+                        'move_sensitivity': config_data.get('gamepad_move_sensitivity', 50),
+                        'view_sensitivity': config_data.get('gamepad_view_sensitivity', 50),
+                        'button_layout': config_data.get('gamepad_button_layout', 'default'),
+                        'layout_data': config_data.get('gamepad_layout_data', '')
+                    }
+                })
+                return
+
+            self._send_json(404, {'status': 'error', 'message': f'Unknown remote API path: {api_path}'})
+        except Exception as e:
+            logger.exception(f"Error handling remote API path {api_path}: {e}")
+            self._send_json(500, {'status': 'error', 'message': str(e)})
+
+    def _handle_remote_key(self):
+        if self.command != 'POST':
+            self._send_json(405, {'status': 'error', 'message': 'Method not allowed'})
+            return
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(body)
+            key_name = data.get('key', '')
+            action = data.get('action', '')
+            if not key_name or action not in ('down', 'up'):
+                self._send_json(400, {'status': 'error', 'message': 'Missing key or invalid action'})
+                return
+            vk_code = self._get_vk_code(key_name)
+            if vk_code is None:
+                self._send_json(400, {'status': 'error', 'message': f'Unknown key: {key_name}'})
+                return
+            if sys.platform == 'win32':
+                import win32api
+                import win32con
+                if action == 'down':
+                    win32api.keybd_event(vk_code, 0, 0, 0)
+                else:
+                    win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)
+                self._send_json(200, {'status': 'success', 'message': f'Key {key_name} {action}'})
+            else:
+                self._send_json(501, {'status': 'error', 'message': 'Remote control only supported on Windows'})
+        except Exception as e:
+            logger.exception(f"Error handling remote key: {e}")
+            self._send_json(500, {'status': 'error', 'message': str(e)})
+
+    def _handle_remote_mouse(self):
+        if self.command != 'POST':
+            self._send_json(405, {'status': 'error', 'message': 'Method not allowed'})
+            return
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(body)
+            action = data.get('action', '')
+            dx = int(data.get('dx', 0))
+            dy = int(data.get('dy', 0))
+            if sys.platform == 'win32':
+                import win32api
+                import win32con
+                if action == 'move':
+                    win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, dx, dy, 0, 0)
+                elif action == 'left_down':
+                    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+                elif action == 'left_up':
+                    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+                elif action == 'right_down':
+                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
+                elif action == 'right_up':
+                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0)
+                elif action == 'left_click':
+                    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+                    time.sleep(0.05)
+                    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+                elif action == 'right_click':
+                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
+                    time.sleep(0.05)
+                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0)
+                else:
+                    self._send_json(400, {'status': 'error', 'message': f'Unknown mouse action: {action}'})
+                    return
+                self._send_json(200, {'status': 'success', 'message': f'Mouse {action}'})
+            else:
+                self._send_json(501, {'status': 'error', 'message': 'Remote control only supported on Windows'})
+        except Exception as e:
+            logger.exception(f"Error handling remote mouse: {e}")
+            self._send_json(500, {'status': 'error', 'message': str(e)})
+
+    def _get_vk_code(self, key_name):
+        if sys.platform != 'win32':
+            return None
+        import win32con
+        key_map = {
+            'w': 0x57, 'a': 0x41, 's': 0x53, 'd': 0x44,
+            'W': 0x57, 'A': 0x41, 'S': 0x53, 'D': 0x44,
+            'up': win32con.VK_UP, 'down': win32con.VK_DOWN,
+            'left': win32con.VK_LEFT, 'right': win32con.VK_RIGHT,
+            'space': win32con.VK_SPACE,
+            'shift': win32con.VK_LSHIFT,
+            'ctrl': win32con.VK_LCONTROL,
+            'e': 0x45, 'E': 0x45,
+            'q': 0x51, 'Q': 0x51,
+            'f': 0x46, 'F': 0x46,
+            't': 0x54, 'T': 0x54,
+            'enter': win32con.VK_RETURN,
+            'escape': win32con.VK_ESCAPE,
+            '1': 0x31, '2': 0x32, '3': 0x33, '4': 0x34, '5': 0x35,
+            '6': 0x36, '7': 0x37, '8': 0x38, '9': 0x39,
+        }
+        return key_map.get(key_name)
+
+    def do_POST(self):
+        parsed_path = urllib.parse.urlparse(self.path)
+        request_path = parsed_path.path
+        if request_path == '/api/v1/remote/key' or request_path == '/api/v1/remote/mouse':
+            if not self._is_remoter_enabled():
+                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
+                return
+            if request_path == '/api/v1/remote/key':
+                self._handle_remote_key()
+            else:
+                self._handle_remote_mouse()
+            return
+        self._send_json(404, {'status': 'error', 'message': 'Not found'})
+
     def do_GET(self):
         parsed_path = urllib.parse.urlparse(self.path)
         request_path = parsed_path.path
         query_params = urllib.parse.parse_qs(parsed_path.query)
 
+        if request_path == '/' or request_path == '/remoter':
+            self._serve_remoter_page()
+            return
+        if request_path == '/gamepad':
+            self._serve_gamepad_page()
+            return
+        if request_path == '/remoter.css':
+            self._serve_file('web/remoter.css', 'text/css; charset=utf-8')
+            return
+        if request_path == '/gamepad.css':
+            self._serve_file('web/gamepad.css', 'text/css; charset=utf-8')
+            return
+
+        if request_path.startswith('/api/v1/remote/'):
+            if not self._is_remoter_enabled():
+                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
+                return
+            self._handle_remote_api(request_path, query_params)
+            return
+
+        # 这些接口不需要 OAuth 认证，用于手机网页显示
+        if request_path in ['/api/v1/running/instances', '/api/v1/recent/runs', '/api/v1/launch/start', '/api/v1/launch/status', '/api/v1/gamepad/config']:
+            if not self._is_remoter_enabled():
+                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
+                return
+            self._handle_remote_api(request_path, query_params)
+            return
+
         if request_path.startswith('/api/v1/'):
             self._handle_open_api(request_path, query_params)
             return
 
-        # 处理 /login/Bloret-PassPort 路径
         if self.path.startswith('/login/Bloret-PassPort'):
             # 解析查询参数
             parsed_path = urllib.parse.urlparse(self.path)
@@ -1133,6 +1446,73 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 </html>
         '''
 
+    def _serve_file(self, relative_path, content_type):
+        try:
+            file_path = os.path.join(os.path.dirname(__file__), relative_path)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            self.send_response(200)
+            self.send_header('Content-type', content_type)
+            self.end_headers()
+            self.wfile.write(content.encode('utf-8'))
+        except Exception as e:
+            logger.error(f"Error serving file {relative_path}: {e}")
+            self.send_response(404)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b"File not found")
+
+    def _is_remoter_enabled(self):
+        try:
+            config_data = cfg.read()
+            return config_data.get('web_remoter_enabled', True)
+        except Exception:
+            return True
+
+    def _serve_remoter_page(self):
+        if not self._is_remoter_enabled():
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(b'<html><body><h1>Web Remoter is disabled</h1><p>Enable it in Bloret Launcher settings.</p></body></html>')
+            return
+        try:
+            html_path = os.path.join(os.path.dirname(__file__), 'web', 'remoter.html')
+            with open(html_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(content.encode('utf-8'))
+        except Exception as e:
+            logger.error(f"Error serving remoter page: {e}")
+            self.send_response(500)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(f"<html><body><h1>Error loading remoter page: {str(e)}</h1></body></html>".encode('utf-8'))
+
+    def _serve_gamepad_page(self):
+        if not self._is_remoter_enabled():
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(b'<html><body><h1>Web Remoter is disabled</h1></body></html>')
+            return
+        try:
+            html_path = os.path.join(os.path.dirname(__file__), 'web', 'gamepad.html')
+            with open(html_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(content.encode('utf-8'))
+        except Exception as e:
+            logger.error(f"Error serving gamepad page: {e}")
+            self.send_response(500)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(f"<html><body><h1>Error loading gamepad page: {str(e)}</h1></body></html>".encode('utf-8'))
+
     def log_message(self, format, *args):
         # 重写日志消息格式
         logger.info("%s - - [%s] %s\n" %
@@ -1144,9 +1524,9 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
 def start_server():
     """启动Web服务器"""
-    server_address = ('localhost', 25252)
+    server_address = ('0.0.0.0', 25252)
     httpd = HTTPServer(server_address, WebRequestHandler)
-    logger.info("Starting web server on port 25252...")
+    logger.info("Starting web server on 0.0.0.0:25252...")
     httpd.serve_forever()
 
 # 当模块被导入时启动服务器

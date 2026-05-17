@@ -18,6 +18,7 @@
     "home_show_login_mod": true,
     "self-starting": false,
     "MaxThread": 64,
+    "SkipFileCompletion": false,
     "Minecraft_Versions": [
         "1.21.8",
         "1.21.7"
@@ -33,5 +34,8 @@
     },
     "mwtool_switch_open": true,
     "show_account_on_home": true,
-    "minimize_to_tray_on_close": true
+    "minimize_to_tray_on_close": true,
+    "gamepad_move_sensitivity": 50,
+    "gamepad_view_sensitivity": 50,
+    "gamepad_button_layout": "default"
 }

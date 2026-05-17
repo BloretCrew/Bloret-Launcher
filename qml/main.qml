@@ -181,6 +181,18 @@ FluentWindow {
 
     LaunchProgressDialog {
         id: launchProgressDialog
+
+        onSkipCompletionClicked: {
+            // 跳过补全，直接启动
+            if (Backend) {
+                Backend.skipCurrentLaunchCompletion()
+            }
+        }
+
+        onCancelLaunchClicked: {
+            // 取消启动
+            launchProgressDialog.close()
+        }
     }
 
     UpdateDialog {

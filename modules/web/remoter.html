@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Bloret Launcher 遥控器</title>
+    <link rel="stylesheet" href="/remoter.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="header-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                    <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+                </svg>
+            </div>
+            <h1 class="header-title">Bloret Launcher</h1>
+        </header>
+
+        <div id="gamepad-card" class="card gamepad-card hidden" onclick="location.href='/gamepad'">
+            <div class="card-icon gamepad-icon">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                    <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                </svg>
+            </div>
+            <div class="card-content">
+                <h2 class="card-title">进入遥控器手柄</h2>
+                <p class="card-subtitle">点击打开虚拟手柄，远程操控 Minecraft</p>
+            </div>
+            <div class="card-arrow">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                </svg>
+            </div>
+        </div>
+
+        <main class="main-content">
+            <section class="section">
+                <h2 class="section-title">正在运行</h2>
+                <div id="running-list" class="list-container">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" class="empty-icon">
+                            <path d="M13 3v6h8l-10 12v-6H3l10-12z"/>
+                        </svg>
+                        <p>没有正在运行的实例</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">最近运行</h2>
+                <div id="recent-list" class="list-container">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" class="empty-icon">
+                            <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                        </svg>
+                        <p>暂无运行记录</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer">
+            <p>Bloret Launcher Web Remoter</p>
+        </footer>
+    </div>
+
+    <!-- 启动进度模态对话框 -->
+    <div id="launch-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="launch-title">正在启动</h2>
+            </div>
+            <div class="modal-body">
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="launch-progress" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <span id="launch-progress-text" class="progress-text">0%</span>
+                </div>
+                <p id="launch-status" class="launch-status">准备中...</p>
+                <p id="launch-detail" class="launch-detail"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="launch-close-btn" class="btn btn-ghost hidden" onclick="closeLaunchModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pollTimer = null;
+        let hasRunningInstances = false;
+
+        async function fetchData() {
+            try {
+                const [runningRes, recentRes] = await Promise.all([
+                    fetch('/api/v1/running/instances'),
+                    fetch('/api/v1/recent/runs')
+                ]);
+                const runningData = await runningRes.json();
+                const recentData = await recentRes.json();
+                renderRunning(runningData.data || []);
+                renderRecent(recentData.data || []);
+            } catch (e) {
+                console.error('Fetch error:', e);
+            }
+        }
+
+        function renderRunning(instances) {
+            const container = document.getElementById('running-list');
+            const gamepadCard = document.getElementById('gamepad-card');
+            hasRunningInstances = instances.length > 0;
+
+            if (hasRunningInstances) {
+                gamepadCard.classList.remove('hidden');
+            } else {
+                gamepadCard.classList.add('hidden');
+            }
+
+            if (instances.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" class="empty-icon">
+                            <path d="M13 3v6h8l-10 12v-6H3l10-12z"/>
+                        </svg>
+                        <p>没有正在运行的实例</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = instances.map(inst => `
+                <div class="list-item">
+                    <div class="list-item-info">
+                        <div class="list-item-name">${escapeHtml(inst.name)}</div>
+                        <div class="list-item-meta">
+                            <span class="type-badge ${inst.type === 'minecraft' ? 'type-mc' : 'type-custom'}">
+                                ${inst.type === 'minecraft' ? 'Minecraft' : '自定义程序'}
+                            </span>
+                            <span class="list-item-pid">PID: ${inst.pid}</span>
+                            ${inst.suspended ? '<span class="status-suspended">已挂起</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="list-item-actions">
+                        <button class="btn btn-ghost" onclick="toggleInstance('${inst.id}')">
+                            ${inst.suspended ? '恢复' : '挂起'}
+                        </button>
+                        <button class="btn btn-danger" onclick="terminateInstance('${inst.id}')">结束</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderRecent(recentRuns) {
+            const container = document.getElementById('recent-list');
+            if (!recentRuns || recentRuns.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" class="empty-icon">
+                            <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                        </svg>
+                        <p>暂无运行记录</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = recentRuns.map(run => `
+                <div class="list-item">
+                    <div class="list-item-info">
+                        <div class="list-item-name">${escapeHtml(run.name)}</div>
+                        <div class="list-item-meta">
+                            <span class="type-badge ${run.type === 'minecraft' ? 'type-mc' : 'type-custom'}">
+                                ${run.type === 'minecraft' ? 'Minecraft' : '自定义程序'}
+                            </span>
+                            <span class="list-item-time">${run.lastRun || ''}</span>
+                        </div>
+                    </div>
+                    ${run.type === 'minecraft' ? `
+                        <div class="list-item-actions">
+                            <button class="btn btn-primary" onclick="launchGame('${escapeHtml(run.name)}')">启动</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function toggleInstance(id) {
+            try {
+                await fetch(`/api/v1/running/suspend/${id}`, { method: 'POST' });
+                fetchData();
+            } catch (e) {
+                console.error('Toggle instance error:', e);
+            }
+        }
+
+        async function terminateInstance(id) {
+            if (!confirm('确定要结束此实例吗？')) return;
+            try {
+                await fetch(`/api/v1/running/terminate/${id}`, { method: 'POST' });
+                fetchData();
+            } catch (e) {
+                console.error('Terminate instance error:', e);
+            }
+        }
+
+        let launchPollTimer = null;
+        let launchSessionId = null;
+
+        async function launchGame(name) {
+            try {
+                // 显示启动模态对话框
+                showLaunchModal(name);
+                
+                // 发送启动请求
+                const res = await fetch(`/api/v1/launch/start?version=${encodeURIComponent(name)}`);
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    launchSessionId = data.data.session_id;
+                    // 开始轮询启动状态
+                    startLaunchPolling();
+                } else {
+                    updateLaunchStatus(100, '启动失败', data.message || '未知错误', true);
+                }
+            } catch (e) {
+                console.error('Launch game error:', e);
+                updateLaunchStatus(100, '启动失败', '网络错误', true);
+            }
+        }
+
+        function showLaunchModal(name) {
+            document.getElementById('launch-title').textContent = `正在启动 ${name}`;
+            document.getElementById('launch-progress').style.width = '0%';
+            document.getElementById('launch-progress-text').textContent = '0%';
+            document.getElementById('launch-status').textContent = '准备中...';
+            document.getElementById('launch-detail').textContent = '';
+            document.getElementById('launch-close-btn').classList.add('hidden');
+            document.getElementById('launch-modal').classList.remove('hidden');
+        }
+
+        function closeLaunchModal() {
+            document.getElementById('launch-modal').classList.add('hidden');
+            stopLaunchPolling();
+            fetchData();
+        }
+
+        function updateLaunchStatus(progress, status, detail, isFinal) {
+            document.getElementById('launch-progress').style.width = `${progress}%`;
+            document.getElementById('launch-progress-text').textContent = `${progress}%`;
+            document.getElementById('launch-status').textContent = status;
+            document.getElementById('launch-detail').textContent = detail || '';
+            
+            if (isFinal) {
+                document.getElementById('launch-close-btn').classList.remove('hidden');
+                stopLaunchPolling();
+            }
+        }
+
+        function startLaunchPolling() {
+            stopLaunchPolling();
+            launchPollTimer = setInterval(pollLaunchStatus, 500);
+        }
+
+        function stopLaunchPolling() {
+            if (launchPollTimer) {
+                clearInterval(launchPollTimer);
+                launchPollTimer = null;
+            }
+        }
+
+        async function pollLaunchStatus() {
+            try {
+                const res = await fetch('/api/v1/launch/status');
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    const status = data.data;
+                    updateLaunchStatus(
+                        status.progress || 0,
+                        status.status || '启动中...',
+                        status.detail || '',
+                        status.finished || false
+                    );
+                    
+                    // 如果启动完成，3秒后自动关闭对话框
+                    if (status.finished && status.progress >= 100) {
+                        setTimeout(() => {
+                            closeLaunchModal();
+                        }, 3000);
+                    }
+                }
+            } catch (e) {
+                console.error('Poll launch status error:', e);
+            }
+        }
+
+        fetchData();
+        pollTimer = setInterval(fetchData, 1500);
+    </script>
+</body>
+</html>

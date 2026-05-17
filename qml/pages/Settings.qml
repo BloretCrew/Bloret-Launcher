@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
+import "../components"
 
 FluentPage {
     id: settingsPage
@@ -15,6 +16,7 @@ FluentPage {
     property string themeMode: ""
     property var languages: []
     property bool traySupported: true
+    property string localIPAddress: ""
 
     Component.onCompleted: {
         refreshData();
@@ -40,6 +42,11 @@ FluentPage {
         _homeSection = Backend ? Backend.tr("首页") : "首页";
         _showAccountTitle = Backend ? Backend.tr("显示账户信息") : "显示账户信息";
         _showAccountDesc = Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息";
+        _webRemoterSection = Backend ? Backend.tr("Web 遥控器") : "Web 遥控器";
+        _webRemoterTitle = Backend ? Backend.tr("启用 Web 遥控器") : "启用 Web 遥控器";
+        _webRemoterDesc = Backend ? Backend.tr("开启后可通过手机浏览器访问 http://电脑IP:25252 遥控 Minecraft") : "开启后可通过手机浏览器访问 http://电脑IP:25252 遥控 Minecraft";
+        _webRemoterQRTitle = Backend ? Backend.tr("连接二维码") : "连接二维码";
+        _webRemoterQRDesc = Backend ? Backend.tr("扫描二维码快速访问遥控器页面") : "扫描二维码快速访问遥控器页面";
         _closeToTrayTitle = Backend ? Backend.tr("关闭按钮最小化到托盘") : "关闭按钮最小化到托盘";
         _closeToTrayDesc = Backend ? Backend.tr("开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序") : "开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序";
         _closeToTrayUnavailableDesc = Backend ? Backend.tr("当前平台不支持托盘") : "当前平台不支持托盘";
@@ -57,6 +64,13 @@ FluentPage {
         _openText = Backend ? Backend.tr("打开") : "打开";
         _clearText = Backend ? Backend.tr("清空") : "清空";
         _restartTip = Backend ? Backend.tr("设置界面大部分内容需要重启程序后生效。") : "设置界面大部分内容需要重启程序后生效。";
+        _gamepadSection = Backend ? Backend.tr("虚拟手柄") : "虚拟手柄";
+        _moveSensitivityTitle = Backend ? Backend.tr("移动摇杆灵敏度") : "移动摇杆灵敏度";
+        _moveSensitivityDesc = Backend ? Backend.tr("控制移动摇杆的响应速度") : "控制移动摇杆的响应速度";
+        _viewSensitivityTitle = Backend ? Backend.tr("视角摇杆灵敏度") : "视角摇杆灵敏度";
+        _viewSensitivityDesc = Backend ? Backend.tr("控制视角旋转的速度") : "控制视角旋转的速度";
+        _buttonLayoutTitle = Backend ? Backend.tr("按键布局") : "按键布局";
+        _buttonLayoutDesc = Backend ? Backend.tr("选择虚拟手柄的按键排列方式") : "选择虚拟手柄的按键排列方式";
     }
 
     property string _versionTitle: Backend ? Backend.tr("当前版本") : "当前版本"
@@ -70,6 +84,11 @@ FluentPage {
     property string _homeSection: Backend ? Backend.tr("首页") : "首页"
     property string _showAccountTitle: Backend ? Backend.tr("显示账户信息") : "显示账户信息"
     property string _showAccountDesc: Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息"
+    property string _webRemoterSection: Backend ? Backend.tr("Web 遥控器") : "Web 遥控器"
+    property string _webRemoterTitle: Backend ? Backend.tr("启用 Web 遥控器") : "启用 Web 遥控器"
+    property string _webRemoterDesc: Backend ? Backend.tr("开启后可通过手机浏览器访问 http://电脑IP:25252 遥控 Minecraft") : "开启后可通过手机浏览器访问 http://电脑IP:25252 遥控 Minecraft"
+    property string _webRemoterQRTitle: Backend ? Backend.tr("连接二维码") : "连接二维码"
+    property string _webRemoterQRDesc: Backend ? Backend.tr("扫描二维码快速访问遥控器页面") : "扫描二维码快速访问遥控器页面"
     property string _closeToTrayTitle: Backend ? Backend.tr("关闭按钮最小化到托盘") : "关闭按钮最小化到托盘"
     property string _closeToTrayDesc: Backend ? Backend.tr("开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序") : "开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序"
     property string _closeToTrayUnavailableDesc: Backend ? Backend.tr("当前平台不支持托盘") : "当前平台不支持托盘"
@@ -87,6 +106,13 @@ FluentPage {
     property string _openText: Backend ? Backend.tr("打开") : "打开"
     property string _clearText: Backend ? Backend.tr("清空") : "清空"
     property string _restartTip: Backend ? Backend.tr("设置界面大部分内容需要重启程序后生效。") : "设置界面大部分内容需要重启程序后生效。"
+    property string _gamepadSection: Backend ? Backend.tr("虚拟手柄") : "虚拟手柄"
+    property string _moveSensitivityTitle: Backend ? Backend.tr("移动摇杆灵敏度") : "移动摇杆灵敏度"
+    property string _moveSensitivityDesc: Backend ? Backend.tr("控制移动摇杆的响应速度") : "控制移动摇杆的响应速度"
+    property string _viewSensitivityTitle: Backend ? Backend.tr("视角摇杆灵敏度") : "视角摇杆灵敏度"
+    property string _viewSensitivityDesc: Backend ? Backend.tr("控制视角旋转的速度") : "控制视角旋转的速度"
+    property string _buttonLayoutTitle: Backend ? Backend.tr("按键布局") : "按键布局"
+    property string _buttonLayoutDesc: Backend ? Backend.tr("选择虚拟手柄的按键排列方式") : "选择虚拟手柄的按键排列方式"
 
     function refreshData() {
         refreshTranslations();
@@ -119,6 +145,8 @@ FluentPage {
             showAccountSwitch.checked = Backend.getShowAccountOnHome();
             minimizeToTraySwitch.checked = Backend.getMinimizeToTrayOnClose();
             traySupported = Backend.isSystemTrayAvailable();
+            webRemoterSwitch.checked = Backend.getWebRemoterEnabled();
+            localIPAddress = Backend.getLocalIPAddress();
         }
     }
 
@@ -242,6 +270,150 @@ FluentPage {
                     if (Backend)
                         Backend.setMinimizeToTrayOnClose(checked);
                 }
+            }
+        }
+    }
+
+    Label {
+        font.pixelSize: 20
+        font.weight: Font.DemiBold
+        text: _webRemoterSection
+        Layout.topMargin: 10
+        color: Theme.currentTheme.colors.textColor
+    }
+
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 4
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: _webRemoterTitle
+            description: _webRemoterDesc
+            icon.name: "ic_fluent_game_controller_20_regular"
+            Switch {
+                id: webRemoterSwitch
+                checked: true
+                onCheckedChanged: {
+                    if (Backend)
+                        Backend.setWebRemoterEnabled(checked);
+                }
+            }
+        }
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: _webRemoterQRTitle
+            description: "http://" + localIPAddress + ":25252/"
+            icon.name: "ic_fluent_qr_code_20_regular"
+            Rectangle {
+                width: 120
+                height: 120
+                color: "transparent"
+                Layout.alignment: Qt.AlignVCenter
+                Image {
+                    anchors.fill: parent
+                    fillMode: Image.PreserveAspectFit
+                    source: Backend ? Backend.getWebRemoterQRCode() : ""
+                }
+            }
+        }
+    }
+
+    Label {
+        font.pixelSize: 20
+        font.weight: Font.DemiBold
+        text: _gamepadSection
+        Layout.topMargin: 10
+        color: Theme.currentTheme.colors.textColor
+    }
+
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 4
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: _moveSensitivityTitle
+            description: _moveSensitivityDesc
+            icon.name: "ic_fluent_thumb_like_20_regular"
+            RowLayout {
+                spacing: 10
+                Slider {
+                    id: moveSensitivitySlider
+                    from: 10
+                    to: 100
+                    stepSize: 5
+                    value: Backend ? Backend.getGamepadMoveSensitivity() : 50
+                    onMoved: {
+                        if (Backend) Backend.setGamepadMoveSensitivity(value);
+                    }
+                }
+                Label {
+                    text: moveSensitivitySlider.value.toFixed(0)
+                    font.weight: Font.DemiBold
+                    color: Theme.currentTheme.colors.textColor
+                    Layout.preferredWidth: 30
+                }
+            }
+        }
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: _viewSensitivityTitle
+            description: _viewSensitivityDesc
+            icon.name: "ic_fluent_eye_20_regular"
+            RowLayout {
+                spacing: 10
+                Slider {
+                    id: viewSensitivitySlider
+                    from: 10
+                    to: 100
+                    stepSize: 5
+                    value: Backend ? Backend.getGamepadViewSensitivity() : 50
+                    onMoved: {
+                        if (Backend) Backend.setGamepadViewSensitivity(value);
+                    }
+                }
+                Label {
+                    text: viewSensitivitySlider.value.toFixed(0)
+                    font.weight: Font.DemiBold
+                    color: Theme.currentTheme.colors.textColor
+                    Layout.preferredWidth: 30
+                }
+            }
+        }
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: _buttonLayoutTitle
+            description: _buttonLayoutDesc
+            icon.name: "ic_fluent_keyboard_20_regular"
+            Button {
+                text: Backend ? Backend.tr("编辑布局") : "编辑布局"
+                icon.name: "ic_fluent_edit_20_regular"
+                onClicked: {
+                    var layoutData = Backend ? Backend.getGamepadLayoutData() : "[]";
+                    try {
+                        var buttons = JSON.parse(layoutData);
+                        if (buttons.length === 0) {
+                            buttons = gamepadLayoutEditor.getDefaultButtons();
+                        }
+                        gamepadLayoutEditor.loadLayout(buttons);
+                    } catch (e) {
+                        gamepadLayoutEditor.loadLayout(gamepadLayoutEditor.getDefaultButtons());
+                    }
+                    gamepadLayoutEditor.open();
+                }
+            }
+        }
+    }
+
+    GamepadLayoutEditor {
+        id: gamepadLayoutEditor
+        onLayoutSaved: function(newButtons) {
+            if (Backend) {
+                Backend.setGamepadLayoutData(JSON.stringify(newButtons));
             }
         }
     }
