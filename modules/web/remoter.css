@@ -667,27 +667,16 @@ body {
     overflow: hidden;
 }
 
-/* 游戏手柄预览区域 - 与 gamepad.html 使用相同尺寸 */
-.gamepad-preview {
+/* 全屏编辑区域 */
+.gamepad-editor-fullscreen {
     flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
-    overflow: hidden;
-}
-
-.gamepad-container-preview {
     position: relative;
-    width: 100%;
-    height: 100%;
     background: radial-gradient(ellipse at center, #1a1a2e 0%, #0d0d1a 100%);
-    border-radius: 20px;
     overflow: hidden;
 }
 
-/* 摇杆预览 - 与 gamepad.html 使用相同位置 */
-.joystick-area-preview {
+/* 摇杆位置与 gamepad.html 一致 */
+.editor-joystick {
     position: absolute;
     width: 140px;
     height: 140px;
@@ -700,17 +689,17 @@ body {
     z-index: 2;
 }
 
-.joystick-area-preview.left {
+.editor-joystick.left {
     bottom: 120px;
     left: 20px;
 }
 
-.joystick-area-preview.right {
+.editor-joystick.right {
     bottom: 120px;
     right: 20px;
 }
 
-.joystick-circle-preview {
+.editor-joystick-base {
     width: 120px;
     height: 120px;
     border-radius: 50%;
@@ -718,13 +707,13 @@ body {
     border: 2px solid rgba(255,255,255,0.2);
 }
 
-.joystick-area-preview span {
+.editor-joystick span {
     font-size: 12px;
     color: rgba(255,255,255,0.5);
 }
 
-/* 快捷栏预览 - 与 gamepad.html 使用相同位置 */
-.hotbar-preview {
+/* 快捷栏位置与 gamepad.html 一致 */
+.editor-hotbar {
     position: absolute;
     bottom: 16px;
     left: 50%;
@@ -735,7 +724,7 @@ body {
     z-index: 2;
 }
 
-.hotbar-preview span {
+.editor-hotbar span {
     width: 38px;
     height: 38px;
     display: flex;
@@ -756,6 +745,67 @@ body {
     width: 100%;
     height: 100%;
     z-index: 3;
+}
+
+/* 底部控制面板 */
+.layout-control-panel {
+    background: rgba(0, 0, 0, 0.8);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 12px 16px;
+    max-height: 30vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.layout-buttons-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.layout-button-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.layout-button-item:active,
+.layout-button-item.selected {
+    background: rgba(0, 120, 212, 0.3);
+    border-color: #0078d4;
+}
+
+.layout-button-item span:first-child {
+    font-size: 14px;
+    color: #fff;
+}
+
+.layout-button-pos {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+}
+
+.layout-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.layout-actions .btn {
+    flex: 1;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+}
+
+.layout-actions .btn:active {
+    background: rgba(255,255,255,0.2);
 }
 
 /* 底部面板 */

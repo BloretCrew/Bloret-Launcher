@@ -9,12 +9,31 @@
     <link rel="stylesheet" href="/gamepad.css">
 </head>
 <body>
-    <div class="gamepad-container">
-        <button class="back-btn" onclick="location.href='/remoter'">
+    <div class="gamepad-container" id="gamepad-container">
+        <button class="back-btn" id="back-btn" onclick="location.href='/remoter'">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                 <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
             </svg>
         </button>
+        
+        <!-- 编辑模式按钮 -->
+        <button class="edit-btn" id="edit-btn" onclick="toggleEditMode()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+            </svg>
+        </button>
+        
+        <!-- 编辑模式顶部栏 -->
+        <div class="edit-toolbar" id="edit-toolbar">
+            <button class="edit-toolbar-btn add" onclick="showAddKeyDialog()">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+                添加
+            </button>
+            <button class="edit-toolbar-btn cancel" onclick="cancelEdit()">放弃</button>
+            <button class="edit-toolbar-btn save" onclick="saveLayout()">保存</button>
+        </div>
 
         <div class="touch-area" id="touch-area">
             <div class="touch-hint" id="touch-hint">
@@ -33,7 +52,6 @@
         </div>
 
         <div class="action-buttons" id="action-buttons">
-            <!-- 默认按键，会被动态替换 -->
             <button class="action-btn" data-key="space" data-label="空格">
                 <span>跳跃</span>
             </button>
@@ -67,128 +85,357 @@
         </div>
     </div>
 
+    <!-- 添加按键对话框 -->
+    <div id="add-key-dialog" class="add-key-dialog hidden">
+        <div class="add-key-header">
+            <span>选择按键</span>
+            <button onclick="closeAddKeyDialog()">✕</button>
+        </div>
+        <div class="add-key-content" id="add-key-content"></div>
+    </div>
+
     <script>
+        // ============ 状态变量 ============
         const activeKeys = new Set();
+        let isEditMode = false;
+        let currentLayout = [];
+        let editingButton = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
         
         // 游戏手柄配置
         let gamepadConfig = {
             move_sensitivity: 50,
             view_sensitivity: 50,
-            button_layout: 'default'
+            layout_data: ''
         };
-        
-        // 加载配置
+
+        // 可用按键列表
+        const availableKeys = [
+            { key: "space", label: "空格" },
+            { key: "shift", label: "Shift" },
+            { key: "ctrl", label: "Ctrl" },
+            { key: "alt", label: "Alt" },
+            { key: "enter", label: "回车" },
+            { key: "escape", label: "Esc" },
+            { key: "tab", label: "Tab" },
+            { key: "backspace", label: "退格" },
+            { key: "a", label: "A" }, { key: "b", label: "B" }, { key: "c", label: "C" },
+            { key: "d", label: "D" }, { key: "e", label: "E" }, { key: "f", label: "F" },
+            { key: "g", label: "G" }, { key: "h", label: "H" }, { key: "i", label: "I" },
+            { key: "j", label: "J" }, { key: "k", label: "K" }, { key: "l", label: "L" },
+            { key: "m", label: "M" }, { key: "n", label: "N" }, { key: "o", label: "O" },
+            { key: "p", label: "P" }, { key: "q", label: "Q" }, { key: "r", label: "R" },
+            { key: "s", label: "S" }, { key: "t", label: "T" }, { key: "u", label: "U" },
+            { key: "v", label: "V" }, { key: "w", label: "W" }, { key: "x", label: "X" },
+            { key: "y", label: "Y" }, { key: "z", label: "Z" },
+            { key: "0", label: "0" }, { key: "1", label: "1" }, { key: "2", label: "2" },
+            { key: "3", label: "3" }, { key: "4", label: "4" }, { key: "5", label: "5" },
+            { key: "6", label: "6" }, { key: "7", label: "7" }, { key: "8", label: "8" },
+            { key: "9", label: "9" },
+            { key: "up", label: "↑" }, { key: "down", label: "↓" },
+            { key: "left", label: "←" }, { key: "right", label: "→" },
+            { key: "f1", label: "F1" }, { key: "f2", label: "F2" }, { key: "f3", label: "F3" },
+            { key: "f4", label: "F4" }, { key: "f5", label: "F5" }, { key: "f6", label: "F6" },
+            { key: "f7", label: "F7" }, { key: "f8", label: "F8" }, { key: "f9", label: "F9" },
+            { key: "f10", label: "F10" }, { key: "f11", label: "F11" }, { key: "f12", label: "F12" }
+        ];
+
+        // ============ 配置加载 ============
         async function loadGamepadConfig() {
             try {
                 const res = await fetch('/api/v1/gamepad/config');
                 const data = await res.json();
                 if (data.status === 'success') {
                     gamepadConfig = data.data;
-                    console.log('Gamepad config loaded:', gamepadConfig);
-                    
-                    // 如果有自定义布局数据，加载它
                     if (gamepadConfig.layout_data) {
                         try {
-                            const layoutData = JSON.parse(gamepadConfig.layout_data);
-                            applyCustomLayout(layoutData);
+                            currentLayout = JSON.parse(gamepadConfig.layout_data);
+                            applyLayout();
                         } catch (e) {
-                            console.error('Parse layout data error:', e);
+                            console.error('Parse layout error:', e);
+                            currentLayout = getDefaultLayout();
                         }
+                    } else {
+                        currentLayout = getDefaultLayout();
                     }
                 }
             } catch (e) {
-                console.error('Load gamepad config error:', e);
+                console.error('Load config error:', e);
+                currentLayout = getDefaultLayout();
             }
         }
-        
-        // 应用自定义布局
-        function applyCustomLayout(layoutData) {
-            if (!layoutData || layoutData.length === 0) return;
-            
-            // 移除 action-buttons 容器中的默认按键
-            const actionButtons = document.getElementById('action-buttons');
-            if (actionButtons) {
-                actionButtons.style.display = 'none';
-            }
-            
-            // 移除之前创建的自定义按键
-            document.querySelectorAll('.custom-action-btn').forEach(el => el.remove());
-            
-            // 获取游戏手柄容器
-            const gamepadContainer = document.querySelector('.gamepad-container');
-            if (!gamepadContainer) return;
-            
-            // 创建一个固定大小的内部容器，用于放置自定义按键
-            let customContainer = document.getElementById('custom-buttons-container');
-            if (!customContainer) {
-                customContainer = document.createElement('div');
-                customContainer.id = 'custom-buttons-container';
-                customContainer.style.cssText = `
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    pointer-events: none;
-                    z-index: 10;
-                `;
-                gamepadContainer.appendChild(customContainer);
-            }
-            customContainer.innerHTML = '';
-            
-            // 根据布局数据创建按键
-            layoutData.forEach(btn => {
-                const button = document.createElement('button');
-                button.className = 'action-btn custom-action-btn';
-                button.dataset.key = btn.key;
-                button.dataset.label = btn.label;
-                button.innerHTML = `<span>${btn.label}</span>`;
-                
-                // 设置位置（使用绝对定位）
-                button.style.position = 'absolute';
-                button.style.left = `${btn.x * 100}%`;
-                button.style.top = `${btn.y * 100}%`;
-                button.style.transform = 'translate(-50%, -50%)';
-                button.style.pointerEvents = 'auto';
-                
-                customContainer.appendChild(button);
-            });
-            
-            // 重新绑定按钮事件
-            bindActionButtonEvents();
-        }
-        
-        // 绑定按键事件
-        function bindActionButtonEvents() {
-            document.querySelectorAll('.action-btn').forEach(btn => {
-                const key = btn.dataset.key;
-                
-                const startHandler = (e) => {
-                    e.preventDefault();
-                    activeKeys.add(key);
-                    sendKey(key, 'down');
-                    btn.classList.add('active');
-                };
-                
-                const endHandler = (e) => {
-                    e.preventDefault();
-                    activeKeys.delete(key);
-                    sendKey(key, 'up');
-                    btn.classList.remove('active');
-                };
-                
-                btn.addEventListener('touchstart', startHandler, { passive: false });
-                btn.addEventListener('touchend', endHandler, { passive: false });
-                btn.addEventListener('touchcancel', endHandler);
-                btn.addEventListener('mousedown', startHandler);
-                btn.addEventListener('mouseup', endHandler);
-                btn.addEventListener('mouseleave', endHandler);
-            });
-        }
-        
-        // 页面加载时获取配置
-        loadGamepadConfig();
 
+        function getDefaultLayout() {
+            return [
+                { key: "space", label: "空格", x: 0.5, y: 0.45 },
+                { key: "shift", label: "Shift", x: 0.2, y: 0.55 },
+                { key: "e", label: "E", x: 0.8, y: 0.35 },
+                { key: "q", label: "Q", x: 0.2, y: 0.35 },
+                { key: "f", label: "F", x: 0.7, y: 0.55 },
+                { key: "t", label: "T", x: 0.85, y: 0.45 }
+            ];
+        }
+
+        // ============ 布局应用 ============
+        function applyLayout() {
+            const container = document.getElementById('gamepad-container');
+            const defaultButtons = document.getElementById('action-buttons');
+            
+            // 隐藏默认按键
+            if (defaultButtons) {
+                defaultButtons.style.display = 'none';
+            }
+            
+            // 移除旧的自定义按键
+            document.querySelectorAll('.custom-btn').forEach(el => el.remove());
+            
+            // 创建自定义按键
+            currentLayout.forEach((btn, index) => {
+                const el = document.createElement('button');
+                el.className = 'action-btn custom-btn';
+                el.dataset.index = index;
+                el.dataset.key = btn.key;
+                el.innerHTML = `<span>${btn.label}</span>`;
+                el.style.position = 'absolute';
+                el.style.left = `${btn.x * 100}%`;
+                el.style.top = `${btn.y * 100}%`;
+                el.style.transform = 'translate(-50%, -50%)';
+                el.style.zIndex = '10';
+                
+                container.appendChild(el);
+            });
+            
+            // 绑定事件
+            bindButtonEvents();
+        }
+
+        // ============ 按钮事件绑定 ============
+        function bindButtonEvents() {
+            document.querySelectorAll('.action-btn, .custom-btn').forEach(btn => {
+                // 移除旧事件
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                if (isEditMode) {
+                    // 编辑模式：拖拽
+                    newBtn.addEventListener('touchstart', onEditTouchStart, { passive: false });
+                    newBtn.addEventListener('mousedown', onEditMouseDown);
+                    newBtn.classList.add('editing');
+                } else {
+                    // 正常模式：按键
+                    const key = newBtn.dataset.key;
+                    newBtn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        activeKeys.add(key);
+                        sendKey(key, 'down');
+                        newBtn.classList.add('active');
+                    }, { passive: false });
+                    newBtn.addEventListener('touchend', (e) => {
+                        e.preventDefault();
+                        activeKeys.delete(key);
+                        sendKey(key, 'up');
+                        newBtn.classList.remove('active');
+                    }, { passive: false });
+                    newBtn.addEventListener('mousedown', (e) => {
+                        activeKeys.add(key);
+                        sendKey(key, 'down');
+                        newBtn.classList.add('active');
+                    });
+                    newBtn.addEventListener('mouseup', () => {
+                        activeKeys.delete(key);
+                        sendKey(key, 'up');
+                        newBtn.classList.remove('active');
+                    });
+                    newBtn.addEventListener('mouseleave', () => {
+                        activeKeys.delete(key);
+                        sendKey(key, 'up');
+                        newBtn.classList.remove('active');
+                    });
+                }
+            });
+        }
+
+        // ============ 编辑模式 ============
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const toolbar = document.getElementById('edit-toolbar');
+            const editBtn = document.getElementById('edit-btn');
+            const backBtn = document.getElementById('back-btn');
+            const container = document.getElementById('gamepad-container');
+            
+            if (isEditMode) {
+                toolbar.classList.add('visible');
+                editBtn.style.display = 'none';
+                backBtn.style.display = 'none';
+                container.classList.add('edit-mode');
+            } else {
+                toolbar.classList.remove('visible');
+                editBtn.style.display = 'flex';
+                backBtn.style.display = 'flex';
+                container.classList.remove('edit-mode');
+            }
+            
+            bindButtonEvents();
+        }
+
+        function cancelEdit() {
+            // 重新加载布局
+            if (gamepadConfig.layout_data) {
+                try {
+                    currentLayout = JSON.parse(gamepadConfig.layout_data);
+                } catch (e) {
+                    currentLayout = getDefaultLayout();
+                }
+            } else {
+                currentLayout = getDefaultLayout();
+            }
+            applyLayout();
+            toggleEditMode();
+        }
+
+        async function saveLayout() {
+            try {
+                const layoutData = JSON.stringify(currentLayout);
+                await fetch(`/api/v1/config/set?key=gamepad_layout_data&value=${encodeURIComponent(layoutData)}`);
+                await fetch(`/api/v1/config/set?key=gamepad_button_layout&value=custom`);
+                gamepadConfig.layout_data = layoutData;
+                toggleEditMode();
+                alert('布局已保存');
+            } catch (e) {
+                console.error('Save error:', e);
+                alert('保存失败');
+            }
+        }
+
+        // ============ 拖拽功能 ============
+        function onEditTouchStart(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const btn = e.currentTarget;
+            const index = parseInt(btn.dataset.index);
+            if (isNaN(index)) return;
+            
+            editingButton = btn;
+            const touch = e.changedTouches[0];
+            const rect = btn.parentElement.getBoundingClientRect();
+            dragOffsetX = touch.clientX - (rect.left + currentLayout[index].x * rect.width);
+            dragOffsetY = touch.clientY - (rect.top + currentLayout[index].y * rect.height);
+            
+            btn.classList.add('dragging');
+            
+            document.addEventListener('touchmove', onEditTouchMove, { passive: false });
+            document.addEventListener('touchend', onEditTouchEnd);
+        }
+
+        function onEditTouchMove(e) {
+            e.preventDefault();
+            if (!editingButton) return;
+            
+            const index = parseInt(editingButton.dataset.index);
+            if (isNaN(index)) return;
+            
+            const touch = e.changedTouches[0];
+            const rect = editingButton.parentElement.getBoundingClientRect();
+            let x = (touch.clientX - dragOffsetX - rect.left) / rect.width;
+            let y = (touch.clientY - dragOffsetY - rect.top) / rect.height;
+            
+            x = Math.max(0.05, Math.min(0.95, x));
+            y = Math.max(0.05, Math.min(0.95, y));
+            
+            currentLayout[index].x = x;
+            currentLayout[index].y = y;
+            
+            editingButton.style.left = `${x * 100}%`;
+            editingButton.style.top = `${y * 100}%`;
+        }
+
+        function onEditTouchEnd() {
+            if (editingButton) {
+                editingButton.classList.remove('dragging');
+                editingButton = null;
+            }
+            document.removeEventListener('touchmove', onEditTouchMove);
+            document.removeEventListener('touchend', onEditTouchEnd);
+        }
+
+        function onEditMouseDown(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const btn = e.currentTarget;
+            const index = parseInt(btn.dataset.index);
+            if (isNaN(index)) return;
+            
+            editingButton = btn;
+            const rect = btn.parentElement.getBoundingClientRect();
+            dragOffsetX = e.clientX - (rect.left + currentLayout[index].x * rect.width);
+            dragOffsetY = e.clientY - (rect.top + currentLayout[index].y * rect.height);
+            
+            btn.classList.add('dragging');
+            
+            document.addEventListener('mousemove', onEditMouseMove);
+            document.addEventListener('mouseup', onEditMouseUp);
+        }
+
+        function onEditMouseMove(e) {
+            if (!editingButton) return;
+            
+            const index = parseInt(editingButton.dataset.index);
+            if (isNaN(index)) return;
+            
+            const rect = editingButton.parentElement.getBoundingClientRect();
+            let x = (e.clientX - dragOffsetX - rect.left) / rect.width;
+            let y = (e.clientY - dragOffsetY - rect.top) / rect.height;
+            
+            x = Math.max(0.05, Math.min(0.95, x));
+            y = Math.max(0.05, Math.min(0.95, y));
+            
+            currentLayout[index].x = x;
+            currentLayout[index].y = y;
+            
+            editingButton.style.left = `${x * 100}%`;
+            editingButton.style.top = `${y * 100}%`;
+        }
+
+        function onEditMouseUp() {
+            if (editingButton) {
+                editingButton.classList.remove('dragging');
+                editingButton = null;
+            }
+            document.removeEventListener('mousemove', onEditMouseMove);
+            document.removeEventListener('mouseup', onEditMouseUp);
+        }
+
+        // ============ 添加按键 ============
+        function showAddKeyDialog() {
+            const dialog = document.getElementById('add-key-dialog');
+            const content = document.getElementById('add-key-content');
+            
+            let html = '';
+            availableKeys.forEach(k => {
+                html += `<button class="add-key-option" onclick="addKey('${k.key}', '${k.label}')">${k.label}</button>`;
+            });
+            
+            content.innerHTML = html;
+            dialog.classList.remove('hidden');
+        }
+
+        function closeAddKeyDialog() {
+            document.getElementById('add-key-dialog').classList.add('hidden');
+        }
+
+        function addKey(key, label) {
+            currentLayout.push({
+                key: key,
+                label: label,
+                x: 0.5,
+                y: 0.5
+            });
+            applyLayout();
+            closeAddKeyDialog();
+        }
+
+        // ============ 正常模式功能 ============
         async function sendKey(key, action) {
             try {
                 await fetch('/api/v1/remote/key', {
@@ -213,6 +460,7 @@
             }
         }
 
+        // 摇杆实现
         class VirtualJoystick {
             constructor(canvasId, onMove) {
                 this.canvas = document.getElementById(canvasId);
@@ -252,6 +500,7 @@
                 const canvas = this.canvas;
 
                 canvas.addEventListener('touchstart', (e) => {
+                    if (isEditMode) return;
                     e.preventDefault();
                     const touch = e.changedTouches[0];
                     this.touchId = touch.identifier;
@@ -260,6 +509,7 @@
                 }, { passive: false });
 
                 canvas.addEventListener('touchmove', (e) => {
+                    if (isEditMode) return;
                     e.preventDefault();
                     for (let t of e.changedTouches) {
                         if (t.identifier === this.touchId) {
@@ -269,6 +519,7 @@
                 }, { passive: false });
 
                 canvas.addEventListener('touchend', (e) => {
+                    if (isEditMode) return;
                     e.preventDefault();
                     for (let t of e.changedTouches) {
                         if (t.identifier === this.touchId) {
@@ -321,9 +572,9 @@
         let isSprinting = false;
 
         const leftJoystick = new VirtualJoystick('canvas-left', (nx, ny) => {
-            // 根据配置调整移动灵敏度（阈值反向：灵敏度越高，阈值越低）
+            if (isEditMode) return;
             const moveSensitivity = gamepadConfig.move_sensitivity / 100;
-            const threshold = 0.4 - (moveSensitivity * 0.25); // 范围 0.15 - 0.4
+            const threshold = 0.4 - (moveSensitivity * 0.25);
             const sprintThreshold = 0.7;
             const newKeys = new Set();
             if (ny < -threshold) newKeys.add('w');
@@ -331,10 +582,7 @@
             if (nx < -threshold) newKeys.add('a');
             if (nx > threshold) newKeys.add('d');
 
-            // 计算摇杆移动幅度
             const magnitude = Math.sqrt(nx * nx + ny * ny);
-            
-            // 当幅度较大且有向前移动时，启用疾跑
             const shouldSprint = magnitude > sprintThreshold && ny < -threshold;
             
             if (shouldSprint && !isSprinting) {
@@ -360,47 +608,39 @@
         });
 
         const rightJoystick = new VirtualJoystick('canvas-right', (nx, ny) => {
-            // 存储摇杆状态，由动画循环处理
+            if (isEditMode) return;
             rightJoystickState.nx = nx;
             rightJoystickState.ny = ny;
         });
 
-        // 右摇杆状态
         const rightJoystickState = { nx: 0, ny: 0 };
-        
-        // 视角旋转平滑处理
         let accumulatedDx = 0;
         let accumulatedDy = 0;
         let lastSendTime = 0;
-        const SEND_INTERVAL = 16; // 约60fps
+        const SEND_INTERVAL = 16;
         
         function updateViewRotation(currentTime) {
             requestAnimationFrame(updateViewRotation);
+            if (isEditMode) return;
             
             const { nx, ny } = rightJoystickState;
             const magnitude = Math.sqrt(nx * nx + ny * ny);
             
-            // 如果摇杆偏移很小，重置累积器
             if (magnitude < 0.08) {
                 accumulatedDx = 0;
                 accumulatedDy = 0;
                 return;
             }
             
-            // 使用二次响应曲线
             const curvedMagnitude = magnitude * magnitude;
-            
-            // 根据配置调整视角灵敏度
             const viewSensitivity = gamepadConfig.view_sensitivity / 100;
             const baseSensitivity = 4 + (viewSensitivity * 8);
             const maxSensitivity = 12 + (viewSensitivity * 16);
             const sensitivity = baseSensitivity + (maxSensitivity - baseSensitivity) * curvedMagnitude;
             
-            // 累积移动量
             accumulatedDx += nx * sensitivity;
             accumulatedDy += ny * sensitivity;
             
-            // 按固定间隔发送累积的移动量
             if (currentTime - lastSendTime >= SEND_INTERVAL) {
                 const dx = Math.round(accumulatedDx);
                 const dy = Math.round(accumulatedDy);
@@ -415,15 +655,13 @@
             }
         }
         
-        // 启动视角旋转循环
         requestAnimationFrame(updateViewRotation);
 
-        // 绑定初始按键事件
-        bindActionButtonEvents();
-
+        // 快捷栏
         document.querySelectorAll('.hotbar-btn').forEach(btn => {
             const key = btn.dataset.key;
             const handler = (e) => {
+                if (isEditMode) return;
                 e.preventDefault();
                 sendKey(key, 'down');
                 setTimeout(() => sendKey(key, 'up'), 100);
@@ -434,6 +672,7 @@
             btn.addEventListener('click', handler);
         });
 
+        // 触摸区域
         const touchArea = document.getElementById('touch-area');
         let touchStartTime = 0;
         let touchStartId = null;
@@ -442,13 +681,13 @@
         let isLeftButtonDown = false;
 
         touchArea.addEventListener('touchstart', (e) => {
+            if (isEditMode) return;
             e.preventDefault();
             const touch = e.changedTouches[0];
             touchStartTime = Date.now();
             touchStartId = touch.identifier;
             touchHandled = false;
             
-            // 设置长按定时器，300ms后触发摧毁（左键按下）
             longPressTimer = setTimeout(() => {
                 if (!touchHandled) {
                     sendMouse('left_down');
@@ -459,22 +698,20 @@
         }, { passive: false });
 
         touchArea.addEventListener('touchend', (e) => {
+            if (isEditMode) return;
             e.preventDefault();
             for (let t of e.changedTouches) {
                 if (t.identifier === touchStartId) {
-                    // 清除长按定时器
                     if (longPressTimer) {
                         clearTimeout(longPressTimer);
                         longPressTimer = null;
                     }
                     
-                    // 如果左键按下状态，释放左键
                     if (isLeftButtonDown) {
                         sendMouse('left_up');
                         isLeftButtonDown = false;
                     }
                     
-                    // 如果是短按且没有处理过，触发右键点击
                     const elapsed = Date.now() - touchStartTime;
                     if (elapsed < 300 && !touchHandled) {
                         sendMouse('right_click');
@@ -485,16 +722,15 @@
         }, { passive: false });
 
         touchArea.addEventListener('touchmove', (e) => {
+            if (isEditMode) return;
             e.preventDefault();
             for (let t of e.changedTouches) {
                 if (t.identifier === touchStartId) {
-                    // 移动时取消长按定时器
                     if (longPressTimer) {
                         clearTimeout(longPressTimer);
                         longPressTimer = null;
                     }
                     
-                    // 如果左键按下状态，释放左键
                     if (isLeftButtonDown) {
                         sendMouse('left_up');
                         isLeftButtonDown = false;
@@ -505,6 +741,16 @@
         }, { passive: false });
 
         document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // 初始化
+        loadGamepadConfig().then(() => {
+            bindButtonEvents();
+            // 检查是否需要自动进入编辑模式
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('edit') === '1') {
+                setTimeout(() => toggleEditMode(), 300);
+            }
+        });
     </script>
 </body>
 </html>
