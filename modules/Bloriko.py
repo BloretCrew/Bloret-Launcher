@@ -13,6 +13,10 @@ import modules.globals as BLglobals
 
 timeout = 600 # second
 
+OAUTH_APP_ID = "BloretLauncher"
+OAUTH_APP_SECRET = "s4d56f4a68sd46g54asd46f54a5dsf654asdf546"
+AI_API_URL = f"{BLglobals.server_ip}:20000/v1/chat/completions"
+
 class BlorikoSignals(QObject):
     """Bloriko 信号类"""
     responseReceived = pyqtSignal(str)  # 当接收到 AI 响应时发出
@@ -45,161 +49,277 @@ class UIUpdater(QObject):
             log(f"UIUpdater: 更新UI时发生错误: {str(e)}", logging.ERROR)
 
 
-def continue_ai_response(connection_id):
-    """
-    当AI响应需要继续获取结果时调用此函数
+def _build_auth_header(user_token):
+    """构建 OpenAI 兼容的 Bearer Token 认证头"""
+    return f"Bearer {OAUTH_APP_ID};{OAUTH_APP_SECRET};{user_token}"
+
+
+def _parse_ai_response(result):
+    """解析 OpenAI 兼容格式的非流式 AI 响应
     
     Args:
-        connection_id (str): 连接ID
+        result (dict): 解析后的 JSON 响应
         
     Returns:
-        str: AI的完整回复内容
+        str: AI 回复内容
     """
-    url = f"{BLglobals.server_ip}:20000/api/aicontinue?connectionId={connection_id}"
+    try:
+        choices = result.get("choices", [])
+        if choices:
+            message = choices[0].get("message", {})
+            content = message.get("content", "")
+            if content:
+                return content
+        return "未能获取到 AI 回复内容"
+    except Exception as e:
+        log(f"解析AI响应时出错: {str(e)}", logging.ERROR)
+        return "解析 AI 响应失败"
+
+
+def _parse_stream_response(response, on_chunk=None):
+    """解析 OpenAI 兼容格式的流式 SSE 响应
     
-    log(f"开始继续获取AI响应，连接ID: {connection_id}", logging.INFO)
+    Args:
+        response: requests 响应对象 (stream=True)
+        on_chunk: 可选回调，每次收到新内容时调用，参数为当前累计内容
+        
+    Returns:
+        str: AI 完整回复内容
+    """
+    collected = []
+    buffer = ""
     
-    while True:  # 持续重试直到成功
-        try:
-            log(f"发送继续请求到: {url}", logging.DEBUG)
-            log(f"请求 json: {{'connectionId': '{connection_id}'}}", logging.DEBUG)
+    # 使用 iter_content 代替 iter_lines，手动按行分割
+    for chunk_bytes in response.iter_content(chunk_size=None):
+        if not chunk_bytes:
+            continue
+        text = chunk_bytes.decode("utf-8", errors="replace")
+        buffer += text
+        
+        # 按换行符分割，逐行处理
+        while "\n" in buffer:
+            line, buffer = buffer.split("\n", 1)
+            line = line.strip()
+            if not line:
+                continue
             
-            response = requests.get(url)
-            log(f"继续获取响应状态码: {response.status_code}", logging.DEBUG)
-            log(f"响应内容： {response.text}", logging.DEBUG)
+            log(f"SSE行: {repr(line[:300])}", logging.DEBUG)
             
-            response.raise_for_status()
-            result = response.json()
-            
-            log(f"继续获取响应结果: {result}", logging.DEBUG)
-            
-            if result.get("status"):
-                if "content" in result:
-                    content = result["content"]
-                    log(f"成功获取到完整回复内容，长度: {len(content)}字符", logging.INFO)
-                    return content
-                elif "message" in result:
-                    message = result["message"]
-                    log(f"AI还在处理中: {message}，等待5秒后重试", logging.INFO)
-                    # 还在处理中，等待5秒后重试
-                    time.sleep(5)
-                    continue  # 继续循环重试
-                else:
-                    log("继续获取响应成功但无内容", logging.WARNING)
-                    return "未能获取到 AI 回复内容"
+            if line.startswith("data: "):
+                data_str = line[len("data: "):]
+                if data_str.strip() == "[DONE]":
+                    log("流式响应收到 [DONE] 标记", logging.DEBUG)
+                    return "".join(collected) if collected else "未能获取到 AI 回复内容"
+                try:
+                    chunk_obj = json.loads(data_str)
+                    choices = chunk_obj.get("choices", [])
+                    if choices:
+                        delta = choices[0].get("delta", {})
+                        content = delta.get("content", "")
+                        if not content:
+                            message = choices[0].get("message", {})
+                            content = message.get("content", "")
+                        if content:
+                            collected.append(content)
+                            full = "".join(collected)
+                            if on_chunk:
+                                on_chunk(full)
+                except json.JSONDecodeError:
+                    log(f"流式响应JSON解析失败: {data_str[:200]}", logging.WARNING)
             else:
-                # status == false，等待5秒后重试
-                error_msg = result.get("error", "未知错误")
-                log(f"继续获取失败(status=false): {error_msg}，等待5秒后重试", logging.WARNING)
-                time.sleep(5)
-                continue  # 继续循环重试
-                
-        except requests.exceptions.RequestException as e:
-            log(f"继续获取请求失败: {str(e)}，等待5秒后重试", logging.ERROR)
-            time.sleep(5)
-            continue  # 继续循环重试
-        except json.JSONDecodeError as e:
-            log(f"继续获取响应JSON解析失败: {str(e)}，等待5秒后重试", logging.ERROR)
-            time.sleep(5)
-            continue  # 继续循环重试
-        except Exception as e:
-            log(f"继续获取发生未知错误: {str(e)}，等待5秒后重试", logging.ERROR)
-            time.sleep(5)
-            continue  # 继续循环重试
+                # 可能是整个 JSON 响应（非SSE格式）
+                try:
+                    chunk_obj = json.loads(line)
+                    choices = chunk_obj.get("choices", [])
+                    if choices:
+                        msg = choices[0].get("message", {})
+                        content = msg.get("content", "")
+                        if content:
+                            log("检测到非流式JSON响应，直接提取content", logging.INFO)
+                            return content
+                        delta = choices[0].get("delta", {})
+                        content = delta.get("content", "")
+                        if content:
+                            collected.append(content)
+                            full = "".join(collected)
+                            if on_chunk:
+                                on_chunk(full)
+                except (json.JSONDecodeError, KeyError, IndexError):
+                    pass
+    
+    # 处理 buffer 中剩余的数据
+    if buffer.strip():
+        line = buffer.strip()
+        log(f"SSE行(尾): {repr(line[:300])}", logging.DEBUG)
+        if line.startswith("data: "):
+            data_str = line[len("data: "):]
+            if data_str.strip() != "[DONE]":
+                try:
+                    chunk_obj = json.loads(data_str)
+                    choices = chunk_obj.get("choices", [])
+                    if choices:
+                        delta = choices[0].get("delta", {})
+                        content = delta.get("content", "")
+                        if content:
+                            collected.append(content)
+                except json.JSONDecodeError:
+                    pass
+    
+    result = "".join(collected)
+    if not result:
+        return "未能获取到 AI 回复内容"
+    return result
+
+
+def _parse_stream_response_text(text, on_chunk=None):
+    """从完整的 SSE 文本中解析响应
+    
+    Args:
+        text (str): 完整的 SSE 响应文本
+        on_chunk: 可选回调
+        
+    Returns:
+        str: AI 回复内容
+    """
+    collected = []
+    lines = text.split("\n")
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        log(f"SSE行(text): {repr(line[:300])}", logging.DEBUG)
+        if line.startswith("data: "):
+            data_str = line[len("data: "):]
+            if data_str.strip() == "[DONE]":
+                log("流式响应收到 [DONE] 标记", logging.DEBUG)
+                break
+            try:
+                chunk_obj = json.loads(data_str)
+                choices = chunk_obj.get("choices", [])
+                if choices:
+                    # 先尝试 delta 格式（标准 OpenAI 流式）
+                    delta = choices[0].get("delta", {})
+                    content = delta.get("content", "")
+                    # 再尝试 message 格式（Bloret 服务端）
+                    if not content:
+                        message = choices[0].get("message", {})
+                        content = message.get("content", "")
+                    if content:
+                        collected.append(content)
+                        full = "".join(collected)
+                        if on_chunk:
+                            on_chunk(full)
+            except json.JSONDecodeError:
+                log(f"SSE文本JSON解析失败: {data_str[:200]}", logging.WARNING)
+        else:
+            try:
+                chunk_obj = json.loads(line)
+                choices = chunk_obj.get("choices", [])
+                if choices:
+                    # 先尝试 message 格式
+                    msg = choices[0].get("message", {})
+                    content = msg.get("content", "")
+                    if content:
+                        log("检测到非流式JSON响应，直接提取content", logging.INFO)
+                        return content
+                    # 再尝试 delta 格式
+                    delta = choices[0].get("delta", {})
+                    content = delta.get("content", "")
+                    if content:
+                        collected.append(content)
+                        full = "".join(collected)
+                        if on_chunk:
+                            on_chunk(full)
+            except (json.JSONDecodeError, KeyError, IndexError):
+                pass
+    result = "".join(collected)
+    if not result:
+        return "未能获取到 AI 回复内容"
+    return result
 
 
 def AskBloriko(question, config, deepthink=False):
     """
-    向Bloriko发送问题并获取回答
+    向Bloriko发送问题并获取回答（流式）
     
     Args:
         question (str): 用户的问题
         config (dict): 配置信息
+        deepthink (bool): 保留参数，当前未使用
         
     Returns:
         str: AI的回复内容
     """
     log(f"开始处理AI请求，问题长度: {len(question)}字符", logging.INFO)
     
-    # 获取用户信息
-    user_name = config.get("Bloret_PassPort_UserName", "")
     user_token = config.get("Bloret_PassPort_PassWord", "")
     
-    log(f"获取用户信息 - 用户名: {user_name}, token长度: {len(user_token) if user_token else 0}", logging.DEBUG)
+    log(f"token状态: {'已设置' if user_token else '未设置'} (长度: {len(user_token) if user_token else 0})", logging.DEBUG)
     
-    if not user_name:
-        log("用户名为空", logging.ERROR)
-        return "用户名为空"
+    if not user_token:
+        log("用户token为空", logging.ERROR)
+        return "用户token为空"
     
     def make_request():
-        url = f"{BLglobals.server_ip}:20000/api/ai"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": _build_auth_header(user_token)
+        }
         
         payload = {
-            "pause": True,
             "model": "Bloriko",
-            "deepthink": deepthink,
-            "OauthApp": {
-                "app_id": "BloretLauncher",
-                "app_secret": "s4d56f4a68sd46g54asd46f54a5dsf654asdf546"
-            },
-            "user": {
-                "name": user_name,
-                "token": user_token
-            },
-            "context": [
-                {
-                    "role": "user",
-                    "content": question
-                }
-            ]
+            "messages": [
+                {"role": "user", "content": question}
+            ],
+            "stream": True
         }
         
-        headers = {
-            "Content-Type": "application/json"
-        }
-        
-        log(f"准备发送AI请求到: {url}", logging.INFO)
+        log(f"准备发送AI请求到: {AI_API_URL}", logging.INFO)
+        log(f"请求headers: Authorization=Bearer ****;{user_token[:8]}...", logging.DEBUG)
         log(f"请求payload: {payload}", logging.DEBUG)
         
         try:
-            log("开始发送POST请求...", logging.DEBUG)
-            response = requests.post(url, json=payload, headers=headers, timeout=timeout)
+            log("开始发送POST请求(流式)...", logging.DEBUG)
+            response = requests.post(AI_API_URL, json=payload, headers=headers, timeout=timeout, stream=True)
             log(f"收到响应，状态码: {response.status_code}", logging.INFO)
-            log(f"响应头: {dict(response.headers)}", logging.DEBUG)
             
             response.raise_for_status()
-            result = response.json()
             
-            log(f"响应JSON解析成功: {result}", logging.DEBUG)
+            content_type = response.headers.get("Content-Type", "")
+            log(f"响应Content-Type: {content_type}", logging.INFO)
+            if "application/json" in content_type:
+                result = response.json()
+                log(f"JSON响应内容: {result}", logging.DEBUG)
+                if "error" in result:
+                    error_msg = result["error"].get("message", "未知错误")
+                    error_type = result["error"].get("type", "unknown")
+                    log(f"AI响应返回错误: [{error_type}] {error_msg}", logging.ERROR)
+                    if error_type == "authentication_error" or "认证" in error_msg or "认证失败" in error_msg:
+                        return "Bloret PassPort 认证失败，请重新登录"
+                    return f"请求失败: {error_msg}"
+                return _parse_ai_response(result)
             
-            if result.get("status"):
-                log("AI响应状态为成功", logging.INFO)
-                if result.get("pause"):
-                    connection_id = result.get("connectionId")
-                    log(f"检测到pause=true，需要继续获取结果，连接ID: {connection_id}", logging.INFO)
-                    if connection_id:
-                        return continue_ai_response(connection_id)
-                    else:
-                        log("警告: pause=true但没有connectionId", logging.WARNING)
-                        return "未能获取到 AI 回复内容"
-                else:
-                    content = result.get("content", "未能获取到 AI 回复内容")
-                    log(f"直接获取到AI回复内容，长度: {len(content)}字符", logging.INFO)
-                    return content
-            else:
-                error_msg = result.get("error", "未知错误")
-                log(f"AI响应状态为失败，错误信息: {error_msg}", logging.ERROR)
-                # 特殊处理认证失败情况
-                if "认证失败" in error_msg or "权限" in error_msg:
-                    log(f"Bloret PassPort 认证失败: {error_msg}", logging.ERROR)
-                    return "Bloret PassPort 认证失败，请重新登录"
-                return f"请求失败: {error_msg}"
+            log("进入流式SSE解析...", logging.INFO)
+            
+            # 诊断：打印响应头和原始内容
+            log(f"响应头: {dict(response.headers)}", logging.DEBUG)
+            raw_bytes = response.content
+            log(f"响应原始字节数: {len(raw_bytes)}", logging.INFO)
+            raw_text = raw_bytes.decode("utf-8", errors="replace")
+            log(f"响应原始文本(前500字符): {repr(raw_text[:500])}", logging.INFO)
+            
+            # 如果有内容，直接解析
+            if raw_text.strip():
+                return _parse_stream_response_text(raw_text, on_chunk=None)
+            
+            return _parse_stream_response(response)
                 
         except requests.exceptions.HTTPError as e:
             log(f"HTTP错误: {type(e).__name__}: {str(e)}", logging.ERROR)
             log(f"HTTP状态码: {e.response.status_code if e.response else '未知'}", logging.ERROR)
-            log(f"HTTP响应头: {dict(e.response.headers) if e.response else '无响应'}", logging.ERROR)
             log(f"HTTP响应内容: {e.response.text if e.response else '无响应内容'}", logging.ERROR)
+            if e.response and e.response.status_code == 401:
+                return "Bloret PassPort 认证失败，请重新登录"
             return f"请求失败: {str(e)}"
         except requests.exceptions.RequestException as e:
             log(f"请求异常: {type(e).__name__}: {str(e)}", logging.ERROR)
@@ -266,7 +386,7 @@ def BuildModRecommendationQuestion(user_query, mc_version):
 
 def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent, deepthink=False):
     """
-    向Bloriko发送问题并获取回答，直接设置到UI控件
+    向Bloriko发送问题并获取回答（流式），直接设置到UI控件
     
     Args:
         question (str): 用户的问题
@@ -299,26 +419,19 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent,
         msg.setText("Bloriko AI 需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。")
         msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
         if msg.exec() == QMessageBox.Ok:
-            # 这里应该切换到通行证界面，但由于这是一个独立模块，需要通过其他方式处理
             log("用户点击确认，应切换到通行证界面", logging.INFO)
-            # 可以发出信号或返回状态让调用者处理
 
     if not config.get("Bloret_PassPort_Login", False):
         log("用户未登录Bloret PassPort，显示登录提示", logging.WARNING)
-        # 在主线程中显示消息框
         QTimer.singleShot(0, show_login_message)
         return "未登录"
 
-    # 获取用户信息
-    user_name = config.get("Bloret_PassPort_UserName", "")
     user_token = config.get("Bloret_PassPort_PassWord", "")
     
-    log(f"当前用户: {user_name}", logging.DEBUG)
     log(f"用户token: {'已设置' if user_token else '未设置'} (长度: {len(user_token) if user_token else 0})", logging.DEBUG)
     
-    # 检查必要的用户信息
-    if not user_name:
-        log("用户名为空，无法使用 Bloriko 功能", logging.ERROR)
+    if not user_token:
+        log("用户token为空，无法使用 Bloriko 功能", logging.ERROR)
         return "用户名为空"
 
     # 初始化信号和UI更新器，并绑定到控件上防止被垃圾回收
@@ -331,102 +444,84 @@ def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent,
     AskBloriko_Answer._bloriko_updater = ui_updater
 
     def make_request():
-        url = f"{BLglobals.server_ip}:20000/api/ai"
-        log(f"准备发送请求到 Bloriko AI 服务，URL: {url}", logging.INFO)
+        log(f"准备发送请求到 Bloriko AI 服务，URL: {AI_API_URL}", logging.INFO)
         
-        # 构造请求体，适配新的API格式
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": _build_auth_header(user_token)
+        }
+        
         payload = {
-            "pause": True,  # 允许暂停，以便处理工具调用
             "model": "Bloriko",
-            "deepthink": deepthink,
-            "OauthApp": {
-                "app_id": "BloretLauncher",
-                "app_secret": "s4d56f4a68sd46g54asd46f54a5dsf654asdf546"
-            },
-            "user": {
-                "name": user_name,
-                "token": user_token
-            },
-            "context": [
-                {
-                    "role": "user",
-                    "content": question
-                }
-            ]
+            "messages": [
+                {"role": "user", "content": question}
+            ],
+            "stream": True
         }
         log(f"请求体数据: {payload}", logging.DEBUG)
         
-        # 设置请求头
-        headers = {
-            "Content-Type": "application/json"
-        }
-        log("已设置请求头信息", logging.DEBUG)
-        
         result_content = ""
         
-        # 发送 POST 请求
         try:
-            log("正在发送 POST 请求到 Bloriko AI 服务", logging.INFO)
-            response = requests.post(url, json=payload, headers=headers, timeout=timeout)
+            log("正在发送 POST 请求到 Bloriko AI 服务(流式)", logging.INFO)
+            response = requests.post(AI_API_URL, json=payload, headers=headers, timeout=timeout, stream=True)
             log(f"收到响应，状态码: {response.status_code}", logging.INFO)
             
-            response.raise_for_status()  # 如果响应状态码不是 200，会抛出异常
-            result = response.json()
-            log(f"成功解析响应 JSON，响应内容大小: {len(str(result))} 字符", logging.DEBUG)
+            response.raise_for_status()
             
-            # 根据新的API格式处理响应
-            if result.get("status"):
-                # 成功响应
-                log("AI响应状态为成功", logging.INFO)
-                if result.get("pause"):
-                    # AI正在使用工具，需要继续获取结果
-                    connection_id = result.get("connectionId")
-                    if connection_id:
-                        log(f"AI正在使用工具，连接ID: {connection_id}，开始继续获取结果", logging.INFO)
-                        result_content = continue_ai_response(connection_id)
-                        log(f"最终回复内容长度: {len(result_content)}字符", logging.INFO)
+            content_type = response.headers.get("Content-Type", "")
+            log(f"响应Content-Type: {content_type}", logging.INFO)
+            if "application/json" in content_type:
+                result = response.json()
+                log(f"JSON响应内容: {result}", logging.DEBUG)
+                if "error" in result:
+                    error_msg = result["error"].get("message", "未知错误")
+                    error_type = result["error"].get("type", "unknown")
+                    log(f"AI响应返回错误: [{error_type}] {error_msg}", logging.ERROR)
+                    if error_type == "authentication_error" or "认证" in error_msg:
+                        result_content = "Bloret PassPort 认证失败，请重新登录"
                     else:
-                        result_content = "未能获取到连接ID"
-                        log("响应中未找到 connectionId 字段", logging.WARNING)
+                        result_content = f"AI服务错误: {error_msg}"
                 else:
-                    # 直接获取到完整响应
-                    if "content" in result:
-                        result_content = result["content"]
-                        log(f"直接获取到完整回复内容，长度: {len(result_content)}字符", logging.INFO)
-                    else:
-                        result_content = "未能获取到 AI 回复内容"
-                        log("响应中未找到 content 字段", logging.WARNING)
+                    result_content = _parse_ai_response(result)
+                    log(f"获取到AI回复内容，长度: {len(result_content)}字符", logging.INFO)
             else:
-                # 错误响应
-                error_msg = result.get("error", "未知错误")
-                log(f"AI响应状态为失败，错误信息: {error_msg}", logging.ERROR)
-                if "认证失败" in error_msg or "权限" in error_msg:
-                    result_content = "Bloret PassPort 认证失败，请重新登录"
-                    log(f"认证失败: {error_msg}", logging.ERROR)
+                def on_stream_chunk(partial_content):
+                    signals.responseReceived.emit(partial_content)
+                
+                log("进入流式SSE解析...", logging.INFO)
+                # 诊断：打印响应头和原始内容
+                log(f"响应头: {dict(response.headers)}", logging.DEBUG)
+                raw_bytes = response.content
+                log(f"响应原始字节数: {len(raw_bytes)}", logging.INFO)
+                raw_text = raw_bytes.decode("utf-8", errors="replace")
+                log(f"响应原始文本(前500字符): {repr(raw_text[:500])}", logging.INFO)
+                
+                if raw_text.strip():
+                    result_content = _parse_stream_response_text(raw_text, on_chunk=on_stream_chunk)
                 else:
-                    result_content = f"AI服务错误: {error_msg}"
-                    log(f"AI服务返回错误: {error_msg}", logging.ERROR)
+                    result_content = _parse_stream_response(response, on_chunk=on_stream_chunk)
+                log(f"流式响应完成，内容长度: {len(result_content)}字符", logging.INFO)
                     
         except requests.exceptions.HTTPError as e:
-            # 处理HTTP错误（包括400错误）
             result_content = f"请求失败: {str(e)}"
             log(f"HTTP错误: {type(e).__name__}: {str(e)}", logging.ERROR)
             if e.response:
                 log(f"HTTP状态码: {e.response.status_code}", logging.ERROR)
                 log(f"HTTP响应内容: {e.response.text}", logging.ERROR)
+                if e.response.status_code == 401:
+                    result_content = "Bloret PassPort 认证失败，请重新登录"
         except requests.exceptions.RequestException as e:
-            # 处理其他请求异常
             result_content = f"请求失败: {str(e)}"
             log(f"请求 Bloriko AI 服务失败: {type(e).__name__}: {str(e)}", logging.ERROR)
         except json.JSONDecodeError as e:
-            # 处理响应不是有效 JSON 的情况
             result_content = "服务器响应不是有效的 JSON 格式"
             log(f"JSON解析失败: {str(e)}", logging.ERROR)
         except Exception as e:
             result_content = f"未知错误: {str(e)}"
             log(f"处理 Bloriko 响应时发生未知错误: {type(e).__name__}: {str(e)}", logging.ERROR)
         
-        # 通过信号发送结果到主线程更新UI
+        # 最终发送完整结果到主线程更新UI
         log(f"发送信号通知UI更新，内容长度: {len(result_content)}", logging.DEBUG)
         signals.responseReceived.emit(result_content)
         return result_content
