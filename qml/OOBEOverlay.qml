@@ -19,7 +19,7 @@ Rectangle {
     color: bgColor
 
     property int currentPage: 0
-    property int totalPages: 6
+    property int totalPages: 7
     property var selectedLanguage: "zh-cn"
     property string selectedJavaPath: ""
     property string minecraftDirPath: ""
@@ -120,6 +120,7 @@ Rectangle {
                                 case 3: return Backend ? Backend.tr("同步") : "Sync"
                                 case 4: return "Java"
                                 case 5: return Backend ? Backend.tr("目录") : "Folder"
+                                case 6: return Backend ? Backend.tr("遥控") : "Remote"
                                 default: return ""
                             }
                         }
@@ -735,6 +736,75 @@ Rectangle {
                         }
                     }
                 }
+
+                // 第 6 页：手机遥控手柄
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: oobeOverlay.currentPage === 6
+
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: 24
+
+                        Text {
+                            text: Backend ? Backend.tr("手机遥控手柄") : "Mobile Remote Gamepad"
+                            Layout.alignment: Qt.AlignHCenter
+                            typography: Typography.Title
+                        }
+
+                        Text {
+                            text: Backend ? Backend.tr("您可以将手机作为 Minecraft 的遥控手柄使用！\n扫描下方二维码，或在浏览器打开以下地址访问遥控页面：") : "You can use your mobile phone as a remote gamepad for Minecraft!\nScan the QR code below, or open the following address in your browser to access the remote page:"
+                            Layout.alignment: Qt.AlignHCenter
+                            wrapMode: Text.Wrap
+                            Layout.preferredWidth: 550
+                            horizontalAlignment: Text.AlignHCenter
+                            typography: Typography.Body
+                            color: textColor
+                        }
+
+                        Rectangle {
+                            width: 150
+                            height: 150
+                            color: "transparent"
+                            Layout.alignment: Qt.AlignHCenter
+                            border.width: 1
+                            border.color: inactiveColor
+                            radius: 8
+
+                            Image {
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                fillMode: Image.PreserveAspectFit
+                                source: Backend ? Backend.getWebRemoterQRCode() : ""
+                            }
+                        }
+
+                        Text {
+                            text: Backend ? Backend.tr("扫码或在浏览器打开：") : "Scan or open in browser:"
+                            Layout.alignment: Qt.AlignHCenter
+                            typography: Typography.Body
+                            color: textColor
+                        }
+
+                        Text {
+                            text: Backend ? "http://" + Backend.getLocalIPAddress() + ":25252/" : "http://127.0.0.1:25252/"
+                            Layout.alignment: Qt.AlignHCenter
+                            typography: Typography.Caption
+                            color: primaryColor
+                        }
+
+                        Text {
+                            text: Backend ? Backend.tr("提示：确保手机和电脑在同一网络下。") : "Tip: Make sure your phone and computer are on the same network."
+                            Layout.alignment: Qt.AlignHCenter
+                            wrapMode: Text.Wrap
+                            Layout.preferredWidth: 550
+                            horizontalAlignment: Text.AlignHCenter
+                            typography: Typography.Caption
+                            color: textColor
+                        }
+                    }
+                }
             }
         }
     }
@@ -794,6 +864,7 @@ Rectangle {
             case 3: return oobeOverlay.minecraftAccounts.length > 0
             case 4: return oobeOverlay.javaInstalled
             case 5: return true
+            case 6: return true
             default: return false
         }
     }
