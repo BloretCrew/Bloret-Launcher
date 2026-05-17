@@ -7,6 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Bloret Launcher 遥控器</title>
     <link rel="stylesheet" href="/remoter.css">
+    <script src="/dialog.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -391,6 +392,7 @@
                         </div>
                     </div>
                     <div class="list-item-actions">
+                        ${inst.type === 'minecraft' ? `<button class="btn btn-chat" onclick="openChat('${inst.id}', '${escapeHtml(inst.name)}')">聊天</button>` : ''}
                         <button class="btn btn-ghost" onclick="toggleInstance('${inst.id}')">
                             ${inst.suspended ? '恢复' : '挂起'}
                         </button>
@@ -449,13 +451,18 @@
         }
 
         async function terminateInstance(id) {
-            if (!confirm('确定要结束此实例吗？')) return;
+            const confirmed = await fluentConfirm('确定要结束此实例吗？', '结束实例', { dangerMode: true, confirmText: '结束' });
+            if (!confirmed) return;
             try {
                 await fetch(`/api/v1/running/terminate/${id}`, { method: 'POST' });
                 fetchData();
             } catch (e) {
                 console.error('Terminate instance error:', e);
             }
+        }
+
+        function openChat(id, name) {
+            location.href = `/chat-manager?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`;
         }
 
         let launchPollTimer = null;

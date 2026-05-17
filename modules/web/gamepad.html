@@ -7,6 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>虚拟手柄 - Bloret Launcher</title>
     <link rel="stylesheet" href="/gamepad.css">
+    <script src="/dialog.js"></script>
 </head>
 <body>
     <div class="gamepad-container" id="gamepad-container">
@@ -94,6 +95,9 @@
         <div class="add-key-content" id="add-key-content"></div>
     </div>
 
+    <!-- 系统键盘输入框 -->
+    <input type="text" id="system-keyboard" class="system-keyboard-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="输入文字...">
+
     <script>
         // ============ 状态变量 ============
         const activeKeys = new Set();
@@ -141,6 +145,76 @@
             { key: "f10", label: "F10" }, { key: "f11", label: "F11" }, { key: "f12", label: "F12" }
         ];
 
+        // ============ 系统键盘 ============
+        let lastInputValue = '';
+        let keyboardActive = false;
+
+        function openKeyboard() {
+            const input = document.getElementById('system-keyboard');
+            if (!input) return;
+            input.value = '';
+            lastInputValue = '';
+            input.classList.add('active');
+            input.focus();
+            keyboardActive = true;
+        }
+
+        function closeKeyboard() {
+            const input = document.getElementById('system-keyboard');
+            if (!input) return;
+            input.classList.remove('active');
+            input.blur();
+            input.value = '';
+            keyboardActive = false;
+        }
+
+        function handleSystemInput(e) {
+            if (!keyboardActive) return;
+            const input = e.target;
+            const currentValue = input.value;
+            
+            // 检测新增的字符
+            if (currentValue.length > lastInputValue.length) {
+                const newChars = currentValue.substring(lastInputValue.length);
+                for (const char of newChars) {
+                    sendCharToPC(char);
+                }
+            } else if (currentValue.length < lastInputValue.length) {
+                // 检测删除（退格）
+                const deletedCount = lastInputValue.length - currentValue.length;
+                for (let i = 0; i < deletedCount; i++) {
+                    sendKey('backspace', 'down');
+                    setTimeout(() => sendKey('backspace', 'up'), 20);
+                }
+            }
+            
+            lastInputValue = currentValue;
+            input.value = '';
+        }
+
+        function sendCharToPC(char) {
+            if (char === '\n' || char === '\r') {
+                sendKey('enter', 'down');
+                setTimeout(() => sendKey('enter', 'up'), 20);
+                return;
+            }
+            
+            // 对于普通字符，直接发送
+            const lowerChar = char.toLowerCase();
+            const isUpper = char !== lowerChar;
+            
+            if (isUpper) {
+                sendKey('shift', 'down');
+            }
+            sendKey(lowerChar, 'down');
+            setTimeout(() => {
+                sendKey(lowerChar, 'up');
+                if (isUpper) {
+                    sendKey('shift', 'up');
+                }
+            }, 20);
+        }
+
         // ============ 配置加载 ============
         async function loadGamepadConfig() {
             try {
@@ -150,7 +224,8 @@
                     gamepadConfig = data.data;
                     if (gamepadConfig.layout_data) {
                         try {
-                            currentLayout = JSON.parse(gamepadConfig.layout_data);
+                            const raw = gamepadConfig.layout_data;
+                            currentLayout = typeof raw === 'string' ? JSON.parse(raw) : raw;
                             applyLayout();
                         } catch (e) {
                             console.error('Parse layout error:', e);
@@ -225,33 +300,60 @@
                 } else {
                     // 正常模式：按键
                     const key = newBtn.dataset.key;
-                    newBtn.addEventListener('touchstart', (e) => {
-                        e.preventDefault();
-                        activeKeys.add(key);
-                        sendKey(key, 'down');
-                        newBtn.classList.add('active');
-                    }, { passive: false });
-                    newBtn.addEventListener('touchend', (e) => {
-                        e.preventDefault();
-                        activeKeys.delete(key);
-                        sendKey(key, 'up');
-                        newBtn.classList.remove('active');
-                    }, { passive: false });
-                    newBtn.addEventListener('mousedown', (e) => {
-                        activeKeys.add(key);
-                        sendKey(key, 'down');
-                        newBtn.classList.add('active');
-                    });
-                    newBtn.addEventListener('mouseup', () => {
-                        activeKeys.delete(key);
-                        sendKey(key, 'up');
-                        newBtn.classList.remove('active');
-                    });
-                    newBtn.addEventListener('mouseleave', () => {
-                        activeKeys.delete(key);
-                        sendKey(key, 'up');
-                        newBtn.classList.remove('active');
-                    });
+                    if (key === 't') {
+                        newBtn.addEventListener('touchstart', (e) => {
+                            e.preventDefault();
+                            sendKey('t', 'down');
+                            newBtn.classList.add('active');
+                        }, { passive: false });
+                        newBtn.addEventListener('touchend', (e) => {
+                            e.preventDefault();
+                            sendKey('t', 'up');
+                            newBtn.classList.remove('active');
+                            openKeyboard();
+                        }, { passive: false });
+                        newBtn.addEventListener('mousedown', (e) => {
+                            sendKey('t', 'down');
+                            newBtn.classList.add('active');
+                        });
+                        newBtn.addEventListener('mouseup', () => {
+                            sendKey('t', 'up');
+                            newBtn.classList.remove('active');
+                            openKeyboard();
+                        });
+                        newBtn.addEventListener('mouseleave', () => {
+                            sendKey('t', 'up');
+                            newBtn.classList.remove('active');
+                        });
+                    } else {
+                        newBtn.addEventListener('touchstart', (e) => {
+                            e.preventDefault();
+                            activeKeys.add(key);
+                            sendKey(key, 'down');
+                            newBtn.classList.add('active');
+                        }, { passive: false });
+                        newBtn.addEventListener('touchend', (e) => {
+                            e.preventDefault();
+                            activeKeys.delete(key);
+                            sendKey(key, 'up');
+                            newBtn.classList.remove('active');
+                        }, { passive: false });
+                        newBtn.addEventListener('mousedown', (e) => {
+                            activeKeys.add(key);
+                            sendKey(key, 'down');
+                            newBtn.classList.add('active');
+                        });
+                        newBtn.addEventListener('mouseup', () => {
+                            activeKeys.delete(key);
+                            sendKey(key, 'up');
+                            newBtn.classList.remove('active');
+                        });
+                        newBtn.addEventListener('mouseleave', () => {
+                            activeKeys.delete(key);
+                            sendKey(key, 'up');
+                            newBtn.classList.remove('active');
+                        });
+                    }
                 }
             });
         }
@@ -283,7 +385,8 @@
             // 重新加载布局
             if (gamepadConfig.layout_data) {
                 try {
-                    currentLayout = JSON.parse(gamepadConfig.layout_data);
+                    const raw = gamepadConfig.layout_data;
+                    currentLayout = typeof raw === 'string' ? JSON.parse(raw) : raw;
                 } catch (e) {
                     currentLayout = getDefaultLayout();
                 }
@@ -296,15 +399,19 @@
 
         async function saveLayout() {
             try {
-                const layoutData = JSON.stringify(currentLayout);
-                await fetch(`/api/v1/config/set?key=gamepad_layout_data&value=${encodeURIComponent(layoutData)}`);
-                await fetch(`/api/v1/config/set?key=gamepad_button_layout&value=custom`);
+                const layoutData = currentLayout;
+                await fetch('/api/v1/gamepad/config/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        gamepad_layout_data: layoutData,
+                        gamepad_button_layout: 'custom'
+                    })
+                });
                 gamepadConfig.layout_data = layoutData;
                 toggleEditMode();
-                alert('布局已保存');
             } catch (e) {
                 console.error('Save error:', e);
-                alert('保存失败');
             }
         }
 
@@ -741,6 +848,14 @@
         }, { passive: false });
 
         document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // 系统键盘事件监听
+        document.addEventListener('DOMContentLoaded', () => {
+            const sysKeyboard = document.getElementById('system-keyboard');
+            if (sysKeyboard) {
+                sysKeyboard.addEventListener('input', handleSystemInput);
+            }
+        });
 
         // 初始化
         loadGamepadConfig().then(() => {

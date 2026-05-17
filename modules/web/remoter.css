@@ -263,6 +263,15 @@ body {
     background: var(--fluent-danger-hover);
 }
 
+.btn-chat {
+    background: var(--fluent-success);
+    color: white;
+}
+
+.btn-chat:active {
+    background: #0b5c0b;
+}
+
 .empty-state {
     display: flex;
     flex-direction: column;
