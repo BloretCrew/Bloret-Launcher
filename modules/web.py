@@ -526,6 +526,118 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 })
                 return
 
+            # 手柄配置保存（不需要 OAuth）
+            if api_path == '/api/v1/gamepad/config/save':
+                if self.command != 'POST':
+                    self._send_json(405, {'status': 'error', 'message': 'Method not allowed'})
+                    return
+                try:
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    body = self.rfile.read(content_length).decode('utf-8')
+                    data = json.loads(body)
+                    config_data = cfg.read()
+                    for key, value in data.items():
+                        config_data[key] = value
+                    with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                        json.dump(config_data, f, ensure_ascii=False, indent=4)
+                    self._send_json(200, {'status': 'success', 'message': 'Gamepad config saved'})
+                except Exception as e:
+                    logger.exception(f"Error saving gamepad config: {e}")
+                    self._send_json(500, {'status': 'error', 'message': str(e)})
+                return
+
+            # 聊天日志 API
+            if api_path == '/api/v1/chat/log':
+                instance_id = query_params.get('instance_id', [None])[0]
+                if not instance_id:
+                    self._send_json(400, {'status': 'error', 'message': 'Missing instance_id'})
+                    return
+                entry = BLglobals.running_instances.get(instance_id)
+                if not entry:
+                    self._send_json(404, {'status': 'error', 'message': 'Instance not found'})
+                    return
+                # 获取 Minecraft 日志文件路径
+                config_data = cfg.read()
+                minecraft_dir = config_data.get('minecraft_dir', '') or os.path.join(BLglobals.datapath, '.minecraft')
+                mc_version = entry.get('name', '')
+                log_path = os.path.join(minecraft_dir, 'versions', mc_version, 'logs', 'latest.log')
+                if not os.path.exists(log_path):
+                    self._send_json(200, {'status': 'success', 'data': {'lines': [], 'log_path': log_path}})
+                    return
+                try:
+                    import re
+                    with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        all_lines = f.readlines()
+                    # 过滤聊天消息：匹配 [时间] [线程/级别]: [CHAT] 消息格式
+                    chat_pattern = re.compile(r'\[([^\]]+)\]\s*\[[^\]]+\]:\s*(?:\[System\]\s*)?\[CHAT\]\s*(.*)')
+                    chat_lines = []
+                    for line in all_lines:
+                        line = line.rstrip('\n\r')
+                        if chat_pattern.search(line):
+                            chat_lines.append(line)
+                    # 返回最近的聊天消息
+                    total = len(chat_lines)
+                    limit = int(query_params.get('limit', ['200'])[0])
+                    start = max(0, total - limit)
+                    lines = chat_lines[start:total]
+                    self._send_json(200, {
+                        'status': 'success',
+                        'data': {
+                            'lines': lines,
+                            'total': total,
+                            'log_path': log_path
+                        }
+                    })
+                except Exception as e:
+                    self._send_json(500, {'status': 'error', 'message': str(e)})
+                return
+
+            # 聊天发送 API
+            if api_path == '/api/v1/chat/send':
+                if self.command != 'POST':
+                    self._send_json(405, {'status': 'error', 'message': 'Method not allowed'})
+                    return
+                content_length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_length).decode('utf-8')
+                data = json.loads(body)
+                message = data.get('message', '')
+                if not message:
+                    self._send_json(400, {'status': 'error', 'message': 'Missing message'})
+                    return
+                if sys.platform != 'win32':
+                    self._send_json(501, {'status': 'error', 'message': 'Chat send only supported on Windows'})
+                    return
+                import win32api
+                import win32con
+                import time as _time
+                # 模拟按键输入消息
+                for char in message:
+                    vk = self._get_vk_code(char.lower())
+                    if vk is not None:
+                        need_shift = char.isupper() or char in '!@#$%^&*()_+{}|:"<>?~'
+                        if need_shift:
+                            win32api.keybd_event(win32con.VK_LSHIFT, 0, 0, 0)
+                        win32api.keybd_event(vk, 0, 0, 0)
+                        win32api.keybd_event(vk, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        if need_shift:
+                            win32api.keybd_event(win32con.VK_LSHIFT, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        _time.sleep(0.02)
+                    else:
+                        # 尝试直接使用字符的扫描码
+                        try:
+                            import ctypes
+                            ctypes.windll.user32.SendInput(1, ctypes.byref(
+                                _make_key_input(char, True)
+                            ), ctypes.sizeof(_make_key_input(char, True)))
+                            _time.sleep(0.02)
+                        except Exception:
+                            pass
+                # 发送回车
+                win32api.keybd_event(win32con.VK_RETURN, 0, 0, 0)
+                win32api.keybd_event(win32con.VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
+                self._send_json(200, {'status': 'success', 'message': 'Message sent'})
+                return
+
             self._send_json(404, {'status': 'error', 'message': f'Unknown remote API path: {api_path}'})
         except Exception as e:
             logger.exception(f"Error handling remote API path {api_path}: {e}")
@@ -604,6 +716,44 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             logger.exception(f"Error handling remote mouse: {e}")
             self._send_json(500, {'status': 'error', 'message': str(e)})
 
+    def _handle_chat_send(self):
+        if self.command != 'POST':
+            self._send_json(405, {'status': 'error', 'message': 'Method not allowed'})
+            return
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(body)
+            message = data.get('message', '')
+            if not message:
+                self._send_json(400, {'status': 'error', 'message': 'Missing message'})
+                return
+            if sys.platform != 'win32':
+                self._send_json(501, {'status': 'error', 'message': 'Chat send only supported on Windows'})
+                return
+            import win32api
+            import win32con
+            import time as _time
+            # 模拟按键输入消息
+            for char in message:
+                vk = self._get_vk_code(char.lower())
+                if vk is not None:
+                    need_shift = char.isupper() or char in '!@#$%^&*()_+{}|:"<>?~'
+                    if need_shift:
+                        win32api.keybd_event(win32con.VK_LSHIFT, 0, 0, 0)
+                    win32api.keybd_event(vk, 0, 0, 0)
+                    win32api.keybd_event(vk, 0, win32con.KEYEVENTF_KEYUP, 0)
+                    if need_shift:
+                        win32api.keybd_event(win32con.VK_LSHIFT, 0, win32con.KEYEVENTF_KEYUP, 0)
+                    _time.sleep(0.02)
+            # 发送回车
+            win32api.keybd_event(win32con.VK_RETURN, 0, 0, 0)
+            win32api.keybd_event(win32con.VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
+            self._send_json(200, {'status': 'success', 'message': 'Message sent'})
+        except Exception as e:
+            logger.exception(f"Error handling chat send: {e}")
+            self._send_json(500, {'status': 'error', 'message': str(e)})
+
     def _get_vk_code(self, key_name):
         if sys.platform != 'win32':
             return None
@@ -647,6 +797,18 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             'end': win32con.VK_END,
             'pageup': win32con.VK_PRIOR,
             'pagedown': win32con.VK_NEXT,
+            # 标点符号
+            '.': 0xBE,
+            ',': 0xBC,
+            '/': 0xBF,
+            ';': 0xBA,
+            "'": 0xDE,
+            '[': 0xDB,
+            ']': 0xDD,
+            '\\': 0xDC,
+            '-': 0xBD,
+            '=': 0xBB,
+            '`': 0xC0,
         }
         return key_map.get(key_name)
 
@@ -662,6 +824,24 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             else:
                 self._handle_remote_mouse()
             return
+        if request_path == '/api/v1/chat/send':
+            if not self._is_remoter_enabled():
+                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
+                return
+            self._handle_chat_send()
+            return
+        if request_path.startswith('/api/v1/running/suspend/') or request_path.startswith('/api/v1/running/terminate/'):
+            if not self._is_remoter_enabled():
+                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
+                return
+            self._handle_remote_api(request_path, urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query))
+            return
+        if request_path == '/api/v1/gamepad/config/save':
+            if not self._is_remoter_enabled():
+                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
+                return
+            self._handle_remote_api(request_path, {})
+            return
         self._send_json(404, {'status': 'error', 'message': 'Not found'})
 
     def do_GET(self):
@@ -675,11 +855,20 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         if request_path == '/gamepad':
             self._serve_gamepad_page()
             return
+        if request_path == '/chat-manager':
+            self._serve_chat_manager_page()
+            return
         if request_path == '/remoter.css':
             self._serve_file('web/remoter.css', 'text/css; charset=utf-8')
             return
         if request_path == '/gamepad.css':
             self._serve_file('web/gamepad.css', 'text/css; charset=utf-8')
+            return
+        if request_path == '/chat-manager.css':
+            self._serve_file('web/chat-manager.css', 'text/css; charset=utf-8')
+            return
+        if request_path == '/dialog.js':
+            self._serve_file('web/dialog.js', 'application/javascript; charset=utf-8')
             return
 
         if request_path.startswith('/api/v1/remote/'):
@@ -690,7 +879,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             return
 
         # 这些接口不需要 OAuth 认证，用于手机网页显示
-        if request_path in ['/api/v1/running/instances', '/api/v1/recent/runs', '/api/v1/launch/start', '/api/v1/launch/status', '/api/v1/gamepad/config']:
+        if request_path in ['/api/v1/running/instances', '/api/v1/recent/runs', '/api/v1/launch/start', '/api/v1/launch/status', '/api/v1/gamepad/config', '/api/v1/chat/log']:
             if not self._is_remoter_enabled():
                 self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
                 return
@@ -1543,6 +1732,28 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
             self.wfile.write(f"<html><body><h1>Error loading gamepad page: {str(e)}</h1></body></html>".encode('utf-8'))
+
+    def _serve_chat_manager_page(self):
+        if not self._is_remoter_enabled():
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(b'<html><body><h1>Web Remoter is disabled</h1></body></html>')
+            return
+        try:
+            html_path = os.path.join(os.path.dirname(__file__), 'web', 'chat-manager.html')
+            with open(html_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(content.encode('utf-8'))
+        except Exception as e:
+            logger.error(f"Error serving chat manager page: {e}")
+            self.send_response(500)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(f"<html><body><h1>Error loading chat manager page: {str(e)}</h1></body></html>".encode('utf-8'))
 
     def log_message(self, format, *args):
         # 重写日志消息格式

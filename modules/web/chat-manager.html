@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>聊天记录 - Bloret Launcher</title>
+    <link rel="stylesheet" href="/chat-manager.css">
+</head>
+<body>
+    <div class="chat-container">
+        <header class="chat-header">
+            <button class="back-btn" onclick="location.href='/remoter'">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+            </button>
+            <div class="header-info">
+                <h1 class="header-title" id="instance-name">聊天记录</h1>
+                <span class="header-status" id="connection-status">连接中...</span>
+            </div>
+            <button class="header-btn" id="refresh-btn" onclick="loadChatLog()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                </svg>
+            </button>
+        </header>
+
+        <main class="chat-main">
+            <div class="chat-messages" id="chat-messages">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" class="empty-icon">
+                        <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+                    </svg>
+                    <p>正在加载聊天记录...</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="chat-footer">
+            <span class="footer-hint">自动刷新中 · 仅显示聊天消息</span>
+        </footer>
+    </div>
+
+    <script>
+        // ============ 状态变量 ============
+        let instanceId = '';
+        let instanceName = '';
+        let pollTimer = null;
+        let autoScroll = true;
+        let lastLinesJson = '';
+
+        // ============ 初始化 ============
+        function init() {
+            const params = new URLSearchParams(window.location.search);
+            instanceId = params.get('id') || '';
+            instanceName = params.get('name') || '未知实例';
+            
+            document.getElementById('instance-name').textContent = instanceName;
+            
+            if (!instanceId) {
+                document.getElementById('connection-status').textContent = '未指定实例';
+                document.getElementById('chat-messages').innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" class="empty-icon">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                        </svg>
+                        <p>未指定实例</p>
+                    </div>`;
+                return;
+            }
+
+            loadChatLog();
+            startPolling();
+        }
+
+        // ============ 加载聊天日志 ============
+        async function loadChatLog() {
+            if (!instanceId) return;
+
+            try {
+                const response = await fetch(`/api/v1/chat/log?instance_id=${encodeURIComponent(instanceId)}&limit=500`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    const lines = data.data.lines || [];
+                    const linesJson = JSON.stringify(lines);
+                    
+                    // 只在内容变化时更新 DOM
+                    if (linesJson !== lastLinesJson) {
+                        renderChatMessages(lines);
+                        lastLinesJson = linesJson;
+                    }
+                    
+                    document.getElementById('connection-status').textContent = 
+                        lines.length > 0 ? `${lines.length} 条消息` : '暂无聊天';
+                } else {
+                    document.getElementById('connection-status').textContent = '加载失败';
+                }
+            } catch (e) {
+                console.error('Load chat log error:', e);
+                document.getElementById('connection-status').textContent = '连接失败';
+            }
+        }
+
+        // ============ 渲染聊天消息 ============
+        function renderChatMessages(lines) {
+            const container = document.getElementById('chat-messages');
+            const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
+
+            let html = '';
+            for (const line of lines) {
+                html += formatChatLine(line);
+            }
+
+            if (!html) {
+                html = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" class="empty-icon">
+                            <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+                        </svg>
+                        <p>暂无聊天记录</p>
+                    </div>`;
+            }
+
+            container.innerHTML = html;
+
+            if (wasAtBottom && autoScroll) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        // ============ 格式化聊天行 ============
+        function formatChatLine(line) {
+            // 匹配 [时间] [线程/级别]: [CHAT] 消息格式
+            const match = line.match(/^\[(\d{2}:\d{2}:\d{2})\]\s*\[[^\]]+\]:\s*(?:\[System\]\s*)?\[CHAT\]\s*(.*)$/);
+            if (match) {
+                const time = match[1];
+                const content = match[2];
+                
+                // 尝试提取玩家名：<玩家名> 消息
+                const playerMatch = content.match(/^<([^>]+)>\s*(.*)$/);
+                if (playerMatch) {
+                    const player = playerMatch[1];
+                    const msg = playerMatch[2];
+                    return `<div class="chat-line player-chat">
+                        <span class="chat-time">${time}</span>
+                        <span class="chat-player">&lt;${escapeHtml(player)}&gt;</span>
+                        <span class="chat-message">${escapeHtml(msg)}</span>
+                    </div>`;
+                }
+                
+                // 系统消息
+                return `<div class="chat-line system-msg">
+                    <span class="chat-time">${time}</span>
+                    <span class="chat-message">${escapeHtml(content)}</span>
+                </div>`;
+            }
+            
+            // 其他格式
+            return `<div class="chat-line other-msg">
+                <span class="chat-message">${escapeHtml(line)}</span>
+            </div>`;
+        }
+
+        // ============ HTML 转义 ============
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============ 轮询更新 ============
+        function startPolling() {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(loadChatLog, 1500);
+        }
+
+        function stopPolling() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        }
+
+        // ============ 事件监听 ============
+        document.addEventListener('DOMContentLoaded', init);
+
+        // 滚动检测
+        document.getElementById('chat-messages').addEventListener('scroll', function() {
+            const container = this;
+            autoScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
+        });
+
+        // 页面离开时停止轮询
+        window.addEventListener('beforeunload', stopPolling);
+    </script>
+</body>
+</html>
