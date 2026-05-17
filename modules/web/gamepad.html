@@ -103,16 +103,43 @@
         
         // 应用自定义布局
         function applyCustomLayout(layoutData) {
-            const container = document.getElementById('action-buttons');
-            if (!container || !layoutData || layoutData.length === 0) return;
+            if (!layoutData || layoutData.length === 0) return;
             
-            // 清空现有按键
-            container.innerHTML = '';
+            // 移除 action-buttons 容器中的默认按键
+            const actionButtons = document.getElementById('action-buttons');
+            if (actionButtons) {
+                actionButtons.style.display = 'none';
+            }
+            
+            // 移除之前创建的自定义按键
+            document.querySelectorAll('.custom-action-btn').forEach(el => el.remove());
+            
+            // 获取游戏手柄容器
+            const gamepadContainer = document.querySelector('.gamepad-container');
+            if (!gamepadContainer) return;
+            
+            // 创建一个固定大小的内部容器，用于放置自定义按键
+            let customContainer = document.getElementById('custom-buttons-container');
+            if (!customContainer) {
+                customContainer = document.createElement('div');
+                customContainer.id = 'custom-buttons-container';
+                customContainer.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    pointer-events: none;
+                    z-index: 10;
+                `;
+                gamepadContainer.appendChild(customContainer);
+            }
+            customContainer.innerHTML = '';
             
             // 根据布局数据创建按键
             layoutData.forEach(btn => {
                 const button = document.createElement('button');
-                button.className = 'action-btn';
+                button.className = 'action-btn custom-action-btn';
                 button.dataset.key = btn.key;
                 button.dataset.label = btn.label;
                 button.innerHTML = `<span>${btn.label}</span>`;
@@ -122,14 +149,10 @@
                 button.style.left = `${btn.x * 100}%`;
                 button.style.top = `${btn.y * 100}%`;
                 button.style.transform = 'translate(-50%, -50%)';
+                button.style.pointerEvents = 'auto';
                 
-                container.appendChild(button);
+                customContainer.appendChild(button);
             });
-            
-            // 设置容器为相对定位
-            container.style.position = 'relative';
-            container.style.width = '100%';
-            container.style.height = '200px';
             
             // 重新绑定按钮事件
             bindActionButtonEvents();

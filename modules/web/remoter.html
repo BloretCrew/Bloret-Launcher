@@ -17,26 +17,31 @@
                 </svg>
             </div>
             <h1 class="header-title">Bloret Launcher</h1>
+            <button class="header-btn" onclick="showSettings()">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                </svg>
+            </button>
         </header>
 
-        <div id="gamepad-card" class="card gamepad-card hidden" onclick="location.href='/gamepad'">
-            <div class="card-icon gamepad-icon">
-                <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-                    <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-                </svg>
-            </div>
-            <div class="card-content">
-                <h2 class="card-title">进入遥控器手柄</h2>
-                <p class="card-subtitle">点击打开虚拟手柄，远程操控 Minecraft</p>
-            </div>
-            <div class="card-arrow">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-                </svg>
-            </div>
-        </div>
-
         <main class="main-content">
+            <div id="gamepad-card" class="card gamepad-card hidden" onclick="location.href='/gamepad'">
+                <div class="card-icon gamepad-icon">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                        <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">进入遥控器手柄</h2>
+                    <p class="card-subtitle">点击打开虚拟手柄，远程操控 Minecraft</p>
+                </div>
+                <div class="card-arrow">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                    </svg>
+                </div>
+            </div>
+
             <section class="section">
                 <h2 class="section-title">正在运行</h2>
                 <div id="running-list" class="list-container">
@@ -90,9 +95,534 @@
         </div>
     </div>
 
+    <!-- 设置模态对话框 -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeSettings()"></div>
+        <div class="modal-content modal-fullscreen">
+            <div class="modal-header">
+                <h2>设置</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeSettings()">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body settings-body">
+                <div class="settings-section">
+                    <h3 class="settings-section-title">虚拟手柄设置</h3>
+                    
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <div class="settings-item-title">移动摇杆灵敏度</div>
+                            <div class="settings-item-desc">控制移动摇杆的响应速度</div>
+                        </div>
+                        <div class="settings-item-control">
+                            <input type="range" id="move-sensitivity" min="10" max="100" step="5" value="50" oninput="updateSensitivityLabel('move')">
+                            <span id="move-sensitivity-label" class="sensitivity-label">50</span>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <div class="settings-item-title">视角摇杆灵敏度</div>
+                            <div class="settings-item-desc">控制视角旋转的速度</div>
+                        </div>
+                        <div class="settings-item-control">
+                            <input type="range" id="view-sensitivity" min="10" max="100" step="5" value="50" oninput="updateSensitivityLabel('view')">
+                            <span id="view-sensitivity-label" class="sensitivity-label">50</span>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <div class="settings-item-title">按键布局</div>
+                            <div class="settings-item-desc">自定义虚拟手柄按键位置</div>
+                        </div>
+                        <div class="settings-item-control">
+                            <button class="btn btn-primary" onclick="openLayoutEditor()">编辑布局</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全屏按键布局编辑器 -->
+    <div id="layout-editor-page" class="layout-editor-page hidden">
+        <div class="layout-editor-header">
+            <button class="btn btn-ghost btn-icon" onclick="closeLayoutEditor()">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+            </button>
+            <h2>编辑按键布局</h2>
+            <button class="btn btn-primary" onclick="saveLayout()">保存</button>
+        </div>
+        
+        <!-- 全屏编辑区域 -->
+        <div class="gamepad-editor-fullscreen">
+            <!-- 左摇杆 -->
+            <div class="editor-joystick left">
+                <div class="editor-joystick-base"></div>
+                <span>移动</span>
+            </div>
+            
+            <!-- 右摇杆 -->
+            <div class="editor-joystick right">
+                <div class="editor-joystick-base"></div>
+                <span>视角</span>
+            </div>
+            
+            <!-- 快捷栏 -->
+            <div class="editor-hotbar">
+                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                <span>6</span><span>7</span><span>8</span><span>9</span>
+            </div>
+            
+            <!-- 画布用于绘制可编辑的按键 -->
+            <canvas id="layout-canvas"></canvas>
+        </div>
+        
+        <!-- 底部控制面板 -->
+        <div class="layout-control-panel">
+            <div class="layout-buttons-list" id="layout-buttons-list"></div>
+            <div class="layout-actions">
+                <button class="btn btn-ghost" onclick="addLayoutKey()">添加按键</button>
+                <button class="btn btn-ghost" onclick="resetLayout()">重置默认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加按键对话框 -->
+    <div id="add-key-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeAddKeyModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>添加按键</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeAddKeyModal()">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>选择按键:</p>
+                <div id="key-options" class="key-options"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeAddKeyModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmAddKey()">添加</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let pollTimer = null;
         let hasRunningInstances = false;
+        
+        // 设置相关变量
+        let gamepadConfig = {
+            move_sensitivity: 50,
+            view_sensitivity: 50,
+            button_layout: 'default',
+            layout_data: ''
+        };
+        let currentLayout = [];
+        let selectedLayoutIndex = -1;
+        let selectedAddKey = '';
+        
+        // 可用按键列表
+        const availableKeys = [
+            // 修饰键
+            { key: "space", label: "空格" },
+            { key: "shift", label: "Shift" },
+            { key: "ctrl", label: "Ctrl" },
+            { key: "alt", label: "Alt" },
+            // 功能键
+            { key: "enter", label: "回车" },
+            { key: "escape", label: "Esc" },
+            { key: "tab", label: "Tab" },
+            { key: "backspace", label: "退格" },
+            // 字母键
+            { key: "a", label: "A" },
+            { key: "b", label: "B" },
+            { key: "c", label: "C" },
+            { key: "d", label: "D" },
+            { key: "e", label: "E" },
+            { key: "f", label: "F" },
+            { key: "g", label: "G" },
+            { key: "h", label: "H" },
+            { key: "i", label: "I" },
+            { key: "j", label: "J" },
+            { key: "k", label: "K" },
+            { key: "l", label: "L" },
+            { key: "m", label: "M" },
+            { key: "n", label: "N" },
+            { key: "o", label: "O" },
+            { key: "p", label: "P" },
+            { key: "q", label: "Q" },
+            { key: "r", label: "R" },
+            { key: "s", label: "S" },
+            { key: "t", label: "T" },
+            { key: "u", label: "U" },
+            { key: "v", label: "V" },
+            { key: "w", label: "W" },
+            { key: "x", label: "X" },
+            { key: "y", label: "Y" },
+            { key: "z", label: "Z" },
+            // 数字键
+            { key: "1", label: "1" },
+            { key: "2", label: "2" },
+            { key: "3", label: "3" },
+            { key: "4", label: "4" },
+            { key: "5", label: "5" },
+            { key: "6", label: "6" },
+            { key: "7", label: "7" },
+            { key: "8", label: "8" },
+            { key: "9", label: "9" },
+            { key: "0", label: "0" },
+            // 方向键
+            { key: "up", label: "↑" },
+            { key: "down", label: "↓" },
+            { key: "left", label: "←" },
+            { key: "right", label: "→" },
+            // F键
+            { key: "f1", label: "F1" },
+            { key: "f2", label: "F2" },
+            { key: "f3", label: "F3" },
+            { key: "f4", label: "F4" },
+            { key: "f5", label: "F5" },
+            { key: "f6", label: "F6" },
+            { key: "f7", label: "F7" },
+            { key: "f8", label: "F8" },
+            { key: "f9", label: "F9" },
+            { key: "f10", label: "F10" },
+            { key: "f11", label: "F11" },
+            { key: "f12", label: "F12" },
+            // 其他常用键
+            { key: "insert", label: "Ins" },
+            { key: "delete", label: "Del" },
+            { key: "home", label: "Home" },
+            { key: "end", label: "End" },
+            { key: "pageup", label: "PgUp" },
+            { key: "pagedown", label: "PgDn" }
+        ];
+        
+        // 默认布局
+        function getDefaultLayout() {
+            return [
+                { key: "space", label: "跳跃", x: 0.5, y: 0.3, size: 1.0 },
+                { key: "shift", label: "潜行", x: 0.2, y: 0.5, size: 1.0 },
+                { key: "e", label: "E", x: 0.8, y: 0.1, size: 0.8 },
+                { key: "q", label: "Q", x: 0.2, y: 0.1, size: 0.8 },
+                { key: "f", label: "F", x: 0.7, y: 0.5, size: 0.8 },
+                { key: "t", label: "T", x: 0.9, y: 0.3, size: 0.8 }
+            ];
+        }
+        
+        // 加载配置
+        async function loadGamepadConfig() {
+            try {
+                const res = await fetch('/api/v1/gamepad/config');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    gamepadConfig = data.data;
+                    document.getElementById('move-sensitivity').value = gamepadConfig.move_sensitivity;
+                    document.getElementById('move-sensitivity-label').textContent = gamepadConfig.move_sensitivity;
+                    document.getElementById('view-sensitivity').value = gamepadConfig.view_sensitivity;
+                    document.getElementById('view-sensitivity-label').textContent = gamepadConfig.view_sensitivity;
+                    
+                    // 加载布局数据
+                    if (gamepadConfig.layout_data) {
+                        try {
+                            currentLayout = JSON.parse(gamepadConfig.layout_data);
+                        } catch (e) {
+                            currentLayout = getDefaultLayout();
+                        }
+                    } else {
+                        currentLayout = getDefaultLayout();
+                    }
+                }
+            } catch (e) {
+                console.error('Load gamepad config error:', e);
+            }
+        }
+        
+        // 显示设置
+        function showSettings() {
+            loadGamepadConfig();
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+        
+        // 关闭设置
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+        
+        // 更新灵敏度标签
+        function updateSensitivityLabel(type) {
+            const slider = document.getElementById(type + '-sensitivity');
+            const label = document.getElementById(type + '-sensitivity-label');
+            label.textContent = slider.value;
+            
+            // 保存配置
+            const configKey = type + '_sensitivity';
+            gamepadConfig[configKey] = parseInt(slider.value);
+            saveGamepadConfig();
+        }
+        
+        // 保存配置
+        async function saveGamepadConfig() {
+            try {
+                await fetch(`/api/v1/config/set?key=gamepad_move_sensitivity&value=${gamepadConfig.move_sensitivity}`);
+                await fetch(`/api/v1/config/set?key=gamepad_view_sensitivity&value=${gamepadConfig.view_sensitivity}`);
+            } catch (e) {
+                console.error('Save gamepad config error:', e);
+            }
+        }
+        
+        // 打开布局编辑器
+        function openLayoutEditor() {
+            selectedLayoutIndex = -1;
+            loadGamepadConfig().then(() => {
+                drawLayoutCanvas();
+                renderLayoutButtonsList();
+                // 关闭设置对话框，打开布局编辑器
+                document.getElementById('settings-modal').classList.add('hidden');
+                document.getElementById('layout-editor-page').classList.remove('hidden');
+            });
+        }
+        
+        // 关闭布局编辑器
+        function closeLayoutEditor() {
+            document.getElementById('layout-editor-page').classList.add('hidden');
+            // 重新打开设置对话框
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+        
+        // 绘制布局画布
+        function drawLayoutCanvas() {
+            const canvas = document.getElementById('layout-canvas');
+            const container = canvas.parentElement;
+            
+            // 设置画布尺寸为容器大小
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            // 绘制按键
+            currentLayout.forEach((btn, index) => {
+                const x = btn.x * w;
+                const y = btn.y * h;
+                const size = 48 * (btn.size || 1.0);
+                const isSelected = (index === selectedLayoutIndex);
+                
+                // 按键阴影
+                if (isSelected) {
+                    ctx.shadowColor = '#0078d4';
+                    ctx.shadowBlur = 10;
+                }
+                
+                // 按键背景
+                ctx.beginPath();
+                ctx.roundRect(x - size/2, y - size/2, size, size, 12, 12);
+                ctx.fillStyle = isSelected ? '#0078d4' : 'rgba(255,255,255,0.12)';
+                ctx.fill();
+                
+                // 按键边框
+                ctx.strokeStyle = isSelected ? '#0078d4' : 'rgba(255,255,255,0.25)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // 重置阴影
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                
+                // 按键文字
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(btn.label, x, y);
+            });
+        }
+        
+        // 渲染按键列表
+        function renderLayoutButtonsList() {
+            const container = document.getElementById('layout-buttons-list');
+            container.innerHTML = currentLayout.map((btn, index) => `
+                <div class="layout-button-item ${index === selectedLayoutIndex ? 'selected' : ''}" onclick="selectLayoutButton(${index})">
+                    <span>${btn.label} (${btn.key})</span>
+                    <span class="layout-button-pos">X:${Math.round(btn.x*100)}% Y:${Math.round(btn.y*100)}%</span>
+                    <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); removeLayoutButton(${index})">删除</button>
+                </div>
+            `).join('');
+        }
+        
+        // 选择按键
+        function selectLayoutButton(index) {
+            selectedLayoutIndex = index;
+            drawLayoutCanvas();
+            renderLayoutButtonsList();
+        }
+        
+        // 删除按键
+        function removeLayoutButton(index) {
+            currentLayout.splice(index, 1);
+            if (selectedLayoutIndex === index) selectedLayoutIndex = -1;
+            drawLayoutCanvas();
+            renderLayoutButtonsList();
+        }
+        
+        // 添加按键
+        function addLayoutKey() {
+            selectedAddKey = '';
+            const container = document.getElementById('key-options');
+            
+            // 按分类组织按键
+            const categories = [
+                { name: '修饰键', keys: availableKeys.filter(k => ['space', 'shift', 'ctrl', 'alt'].includes(k.key)) },
+                { name: '功能键', keys: availableKeys.filter(k => ['enter', 'escape', 'tab', 'backspace'].includes(k.key)) },
+                { name: '字母键', keys: availableKeys.filter(k => k.key.length === 1 && k.key >= 'a' && k.key <= 'z') },
+                { name: '数字键', keys: availableKeys.filter(k => k.key.length === 1 && k.key >= '0' && k.key <= '9') },
+                { name: '方向键', keys: availableKeys.filter(k => ['up', 'down', 'left', 'right'].includes(k.key)) },
+                { name: 'F键', keys: availableKeys.filter(k => k.key.startsWith('f') && k.key.length <= 3) },
+                { name: '其他键', keys: availableKeys.filter(k => ['insert', 'delete', 'home', 'end', 'pageup', 'pagedown'].includes(k.key)) }
+            ];
+            
+            let html = '';
+            categories.forEach(cat => {
+                if (cat.keys.length > 0) {
+                    html += `<div class="key-category">${cat.name}</div>`;
+                    html += cat.keys.map(k => `
+                        <button class="key-option ${selectedAddKey === k.key ? 'selected' : ''}" onclick="selectAddKey('${k.key}')">${k.label}</button>
+                    `).join('');
+                }
+            });
+            
+            container.innerHTML = html;
+            document.getElementById('add-key-modal').classList.remove('hidden');
+        }
+        
+        // 关闭添加按键对话框
+        function closeAddKeyModal() {
+            document.getElementById('add-key-modal').classList.add('hidden');
+        }
+        
+        // 选择要添加的按键
+        function selectAddKey(key) {
+            selectedAddKey = key;
+            document.querySelectorAll('.key-option').forEach(el => {
+                el.classList.toggle('selected', el.textContent === availableKeys.find(k => k.key === key)?.label);
+            });
+        }
+        
+        // 确认添加按键
+        function confirmAddKey() {
+            if (!selectedAddKey) return;
+            const keyInfo = availableKeys.find(k => k.key === selectedAddKey);
+            if (keyInfo) {
+                currentLayout.push({
+                    key: keyInfo.key,
+                    label: keyInfo.label,
+                    x: 0.5,
+                    y: 0.5,
+                    size: 1.0
+                });
+                drawLayoutCanvas();
+                renderLayoutButtonsList();
+            }
+            closeAddKeyModal();
+        }
+        
+        // 重置布局
+        function resetLayout() {
+            currentLayout = getDefaultLayout();
+            selectedLayoutIndex = -1;
+            drawLayoutCanvas();
+            renderLayoutButtonsList();
+        }
+        
+        // 保存布局
+        async function saveLayout() {
+            try {
+                const layoutData = JSON.stringify(currentLayout);
+                await fetch(`/api/v1/config/set?key=gamepad_layout_data&value=${encodeURIComponent(layoutData)}`);
+                await fetch(`/api/v1/config/set?key=gamepad_button_layout&value=custom`);
+                closeLayoutEditor();
+                alert('布局已保存');
+            } catch (e) {
+                console.error('Save layout error:', e);
+                alert('保存失败');
+            }
+        }
+        
+        // 画布拖拽事件
+        (function() {
+            const canvas = document.getElementById('layout-canvas');
+            let isDragging = false;
+            let dragIndex = -1;
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+            
+            function getCanvasSize() {
+                const container = canvas.parentElement;
+                return { w: container.clientWidth, h: container.clientHeight };
+            }
+            
+            canvas.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                const { w, h } = getCanvasSize();
+                
+                for (let i = currentLayout.length - 1; i >= 0; i--) {
+                    const btn = currentLayout[i];
+                    const bx = btn.x * w;
+                    const by = btn.y * h;
+                    const size = 50 * (btn.size || 1.0);
+                    
+                    if (x >= bx - size/2 && x <= bx + size/2 && y >= by - size/2 && y <= by + size/2) {
+                        isDragging = true;
+                        dragIndex = i;
+                        dragOffsetX = x - bx;
+                        dragOffsetY = y - by;
+                        selectedLayoutIndex = i;
+                        drawLayoutCanvas();
+                        renderLayoutButtonsList();
+                        break;
+                    }
+                }
+            });
+            
+            canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                if (isDragging && dragIndex >= 0) {
+                    const touch = e.touches[0];
+                    const rect = canvas.getBoundingClientRect();
+                    const { w, h } = getCanvasSize();
+                    const x = (touch.clientX - rect.left - dragOffsetX) / w;
+                    const y = (touch.clientY - rect.top - dragOffsetY) / h;
+                    
+                    currentLayout[dragIndex].x = Math.max(0.05, Math.min(0.95, x));
+                    currentLayout[dragIndex].y = Math.max(0.05, Math.min(0.95, y));
+                    drawLayoutCanvas();
+                    renderLayoutButtonsList();
+                }
+            });
+            
+            canvas.addEventListener('touchend', function() {
+                isDragging = false;
+                dragIndex = -1;
+            });
+        })();
 
         async function fetchData() {
             try {

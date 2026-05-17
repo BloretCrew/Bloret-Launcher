@@ -69,8 +69,6 @@ FluentPage {
         _moveSensitivityDesc = Backend ? Backend.tr("控制移动摇杆的响应速度") : "控制移动摇杆的响应速度";
         _viewSensitivityTitle = Backend ? Backend.tr("视角摇杆灵敏度") : "视角摇杆灵敏度";
         _viewSensitivityDesc = Backend ? Backend.tr("控制视角旋转的速度") : "控制视角旋转的速度";
-        _buttonLayoutTitle = Backend ? Backend.tr("按键布局") : "按键布局";
-        _buttonLayoutDesc = Backend ? Backend.tr("选择虚拟手柄的按键排列方式") : "选择虚拟手柄的按键排列方式";
     }
 
     property string _versionTitle: Backend ? Backend.tr("当前版本") : "当前版本"
@@ -111,8 +109,6 @@ FluentPage {
     property string _moveSensitivityDesc: Backend ? Backend.tr("控制移动摇杆的响应速度") : "控制移动摇杆的响应速度"
     property string _viewSensitivityTitle: Backend ? Backend.tr("视角摇杆灵敏度") : "视角摇杆灵敏度"
     property string _viewSensitivityDesc: Backend ? Backend.tr("控制视角旋转的速度") : "控制视角旋转的速度"
-    property string _buttonLayoutTitle: Backend ? Backend.tr("按键布局") : "按键布局"
-    property string _buttonLayoutDesc: Backend ? Backend.tr("选择虚拟手柄的按键排列方式") : "选择虚拟手柄的按键排列方式"
 
     function refreshData() {
         refreshTranslations();
@@ -381,39 +377,6 @@ FluentPage {
                     color: Theme.currentTheme.colors.textColor
                     Layout.preferredWidth: 30
                 }
-            }
-        }
-
-        SettingCard {
-            Layout.fillWidth: true
-            title: _buttonLayoutTitle
-            description: _buttonLayoutDesc
-            icon.name: "ic_fluent_keyboard_20_regular"
-            Button {
-                text: Backend ? Backend.tr("编辑布局") : "编辑布局"
-                icon.name: "ic_fluent_edit_20_regular"
-                onClicked: {
-                    var layoutData = Backend ? Backend.getGamepadLayoutData() : "[]";
-                    try {
-                        var buttons = JSON.parse(layoutData);
-                        if (buttons.length === 0) {
-                            buttons = gamepadLayoutEditor.getDefaultButtons();
-                        }
-                        gamepadLayoutEditor.loadLayout(buttons);
-                    } catch (e) {
-                        gamepadLayoutEditor.loadLayout(gamepadLayoutEditor.getDefaultButtons());
-                    }
-                    gamepadLayoutEditor.open();
-                }
-            }
-        }
-    }
-
-    GamepadLayoutEditor {
-        id: gamepadLayoutEditor
-        onLayoutSaved: function(newButtons) {
-            if (Backend) {
-                Backend.setGamepadLayoutData(JSON.stringify(newButtons));
             }
         }
     }

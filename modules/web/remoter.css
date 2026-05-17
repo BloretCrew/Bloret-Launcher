@@ -405,3 +405,428 @@ body {
         font-size: 12px;
     }
 }
+
+/* Header 按钮样式 */
+.header-btn {
+    background: none;
+    border: none;
+    color: var(--fluent-text-primary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background 0.15s;
+}
+
+.header-btn:active {
+    background: var(--fluent-surface);
+}
+
+.btn-icon {
+    padding: 8px;
+    min-width: auto;
+}
+
+/* 全屏模态框 */
+.modal-fullscreen {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+}
+
+/* 设置页面样式 */
+.settings-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.settings-section {
+    margin-bottom: 24px;
+}
+
+.settings-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--fluent-text-primary);
+    margin: 0 0 16px 0;
+}
+
+.settings-item {
+    background: var(--fluent-surface);
+    border: 1px solid var(--fluent-border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.settings-item-info {
+    margin-bottom: 12px;
+}
+
+.settings-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fluent-text-primary);
+    margin-bottom: 4px;
+}
+
+.settings-item-desc {
+    font-size: 12px;
+    color: var(--fluent-text-secondary);
+}
+
+.settings-item-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.settings-item-control input[type="range"] {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255,255,255,0.2);
+    border-radius: 3px;
+    outline: none;
+}
+
+.settings-item-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--fluent-primary);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.sensitivity-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fluent-text-primary);
+    min-width: 30px;
+    text-align: center;
+}
+
+/* 布局编辑器样式 */
+.layout-hint {
+    font-size: 12px;
+    color: var(--fluent-text-secondary);
+    margin: 0 0 12px 0;
+}
+
+#layout-canvas {
+    width: 100%;
+    height: 250px;
+    border-radius: 8px;
+    border: 1px solid var(--fluent-border);
+    margin-bottom: 12px;
+}
+
+.layout-buttons-list {
+    max-height: 150px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.layout-button-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--fluent-surface);
+    border: 1px solid var(--fluent-border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.layout-button-item:active,
+.layout-button-item.selected {
+    background: rgba(0, 120, 212, 0.2);
+    border-color: var(--fluent-primary);
+}
+
+.layout-button-item span:first-child {
+    font-size: 14px;
+    color: var(--fluent-text-primary);
+}
+
+.layout-button-pos {
+    font-size: 12px;
+    color: var(--fluent-text-secondary);
+}
+
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.layout-footer {
+    justify-content: space-between;
+}
+
+/* 添加按键对话框样式 */
+#add-key-modal {
+    z-index: 3000;
+}
+
+#add-key-modal .modal-content {
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#add-key-modal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.key-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.key-category {
+    width: 100%;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--fluent-text-secondary);
+    margin-top: 12px;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--fluent-border);
+}
+
+.key-category:first-child {
+    margin-top: 0;
+}
+
+.key-option {
+    padding: 6px 12px;
+    background: var(--fluent-surface);
+    border: 1px solid var(--fluent-border);
+    border-radius: 6px;
+    color: var(--fluent-text-primary);
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 13px;
+    min-width: 40px;
+    text-align: center;
+}
+
+.key-option:active,
+.key-option.selected {
+    background: var(--fluent-primary);
+    border-color: var(--fluent-primary);
+}
+
+/* 全屏布局编辑器页面 */
+.layout-editor-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2000;
+    background: #0d0d1a;
+    display: flex;
+    flex-direction: column;
+}
+
+.layout-editor-page.hidden {
+    display: none;
+}
+
+.layout-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.5);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.layout-editor-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.layout-editor-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 游戏手柄预览区域 - 与 gamepad.html 使用相同尺寸 */
+.gamepad-preview {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    overflow: hidden;
+}
+
+.gamepad-container-preview {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, #0d0d1a 100%);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+/* 摇杆预览 - 与 gamepad.html 使用相同位置 */
+.joystick-area-preview {
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0.5;
+    z-index: 2;
+}
+
+.joystick-area-preview.left {
+    bottom: 120px;
+    left: 20px;
+}
+
+.joystick-area-preview.right {
+    bottom: 120px;
+    right: 20px;
+}
+
+.joystick-circle-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.2);
+}
+
+.joystick-area-preview span {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+}
+
+/* 快捷栏预览 - 与 gamepad.html 使用相同位置 */
+.hotbar-preview {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    opacity: 0.4;
+    z-index: 2;
+}
+
+.hotbar-preview span {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.5);
+}
+
+/* 画布 */
+#layout-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+}
+
+/* 底部面板 */
+.layout-bottom-panel {
+    background: rgba(0, 0, 0, 0.5);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 12px 16px;
+    max-height: 40vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.layout-hint {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    margin: 0 0 12px 0;
+    text-align: center;
+}
+
+.layout-buttons-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.layout-button-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.layout-button-item:active,
+.layout-button-item.selected {
+    background: rgba(0, 120, 212, 0.3);
+    border-color: #0078d4;
+}
+
+.layout-button-item span:first-child {
+    font-size: 14px;
+    color: #fff;
+}
+
+.layout-button-pos {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+}
+
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.layout-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.layout-actions .btn {
+    flex: 1;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+}
+
+.layout-actions .btn:active {
+    background: rgba(255,255,255,0.2);
+}

@@ -184,6 +184,7 @@ class Backend(QObject):
         self._last_core_manager_request_time = 0  # 防止重复请求
         self._is_launching = False
         self._launch_session_id = 0
+        self._current_launching_version = ""  # 当前正在启动的版本
         self._screenshot_widget = None
         # Play time tracking
         self._play_time_sessions = {}  # instance_id -> session dict
@@ -244,8 +245,33 @@ class Backend(QObject):
             print("Launch request ignored: another launch is already in progress")
             return
 
+        # 读取配置文件中的SkipFileCompletion选项
+        try:
+            import modules.config as cfg
+            config_data = cfg.read()
+            skip_completion = config_data.get("SkipFileCompletion", False)
+        except Exception as e:
+            print(f"Error reading SkipFileCompletion config: {e}")
+            skip_completion = False
+
+        if skip_completion:
+            print("SkipFileCompletion is enabled, launching with skip_completion=True")
+            self.launchGameWithSkip(version, skip_completion=True)
+        else:
+            print("SkipFileCompletion is disabled, launching with normal completion")
+            self.launchGameWithSkip(version, skip_completion=False)
+
+    @Slot(str, bool)
+    def launchGameWithSkip(self, version, skip_completion=False):
+        print(f"Requested to launch game with skip_completion={skip_completion}: {version}")
+
+        if self._is_launching:
+            print("Launch request ignored: another launch is already in progress")
+            return
+
         self._is_launching = True
         self._launch_session_id += 1
+        self._current_launching_version = version  # 存储当前启动的版本
         launch_session_id = self._launch_session_id
         self.launchDialogRequested.emit(f"正在启动 {version}")
 
@@ -286,8 +312,11 @@ class Backend(QObject):
                 else:
                     emit_progress(65, "档案同步失败，将使用本地缓存档案", "")
 
-                emit_progress(80, "正在补全文件并解析启动参数...", "如有缺失文件会自动下载")
-                launch_args, game_dir = Get_Run_Script(version)
+                if skip_completion:
+                    emit_progress(80, "跳过文件补全，直接解析启动参数...", "用户选择跳过文件补全")
+                else:
+                    emit_progress(80, "正在补全文件并解析启动参数...", "如有缺失文件会自动下载")
+                launch_args, game_dir = Get_Run_Script(version, skip_completion=skip_completion)
 
                 emit_progress(95, "正在执行启动命令...", "")
                 print(f"Launching with args: {launch_args}")
@@ -401,6 +430,25 @@ class Backend(QObject):
                 )
 
         threading.Thread(target=run_launch, daemon=True).start()
+
+    @Slot()
+    def skipCurrentLaunchCompletion(self):
+        """跳过当前启动的文件补全过程"""
+        if not self._is_launching:
+            print("No launch in progress to skip completion")
+            return
+        
+        version = self._current_launching_version
+        if not version:
+            print("No version to skip completion for")
+            return
+        
+        print(f"Skipping file completion for version: {version}")
+        # 关闭当前启动对话框
+        self.launchDialogClosed.emit()
+        # 重新启动游戏，跳过补全
+        self._is_launching = False
+        self.launchGameWithSkip(version, skip_completion=True)
 
     # ========== 聊天记录持久化 ==========
 
@@ -1905,11 +1953,153 @@ class Backend(QObject):
         print(f"Minimize to tray on close updated to: {enabled}")
 
     @Slot(result=bool)
+    def getWebRemoterEnabled(self):
+        config_data = cfg.read()
+        return config_data.get('web_remoter_enabled', True)
+
+    @Slot(bool)
+    def setWebRemoterEnabled(self, enabled):
+        config_data = cfg.read()
+        config_data['web_remoter_enabled'] = enabled
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Web Remoter enabled updated to: {enabled}")
+
+    @Slot(result=str)
+    def getLocalIPAddress(self):
+        try:
+            import socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "127.0.0.1"
+
+    @Slot(result=str)
+    def getWebRemoterQRCode(self):
+        try:
+            ip = self.getLocalIPAddress()
+            url = f"http://{ip}:25252/"
+            import subprocess
+            result = subprocess.run(
+                ["qrencode", "-t", "SVG", "-o", "-", "-s", "6", "-m", "1", url],
+                capture_output=True, timeout=5
+            )
+            if result.returncode == 0 and result.stdout:
+                import base64
+                return "data:image/svg+xml;base64," + base64.b64encode(result.stdout).decode()
+        except Exception:
+            pass
+        try:
+            import qrcode
+            import io
+            import base64
+            ip = self.getLocalIPAddress()
+            url = f"http://{ip}:25252/"
+            qr = qrcode.QRCode(version=1, box_size=6, border=1)
+            qr.add_data(url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+        except Exception:
+            return ""
+
+    @Slot(result=bool)
     def isSystemTrayAvailable(self):
         try:
             return QSystemTrayIcon.isSystemTrayAvailable()
         except Exception:
             return False
+
+    @Slot(result=int)
+    def getGamepadMoveSensitivity(self):
+        try:
+            config_data = cfg.read()
+            return config_data.get('gamepad_move_sensitivity', 50)
+        except Exception:
+            return 50
+
+    @Slot(int)
+    def setGamepadMoveSensitivity(self, value):
+        try:
+            config_data = cfg.read()
+            config_data['gamepad_move_sensitivity'] = max(10, min(100, value))
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            print(f"setGamepadMoveSensitivity failed: {e}")
+
+    @Slot(result=int)
+    def getGamepadViewSensitivity(self):
+        try:
+            config_data = cfg.read()
+            return config_data.get('gamepad_view_sensitivity', 50)
+        except Exception:
+            return 50
+
+    @Slot(int)
+    def setGamepadViewSensitivity(self, value):
+        try:
+            config_data = cfg.read()
+            config_data['gamepad_view_sensitivity'] = max(10, min(100, value))
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            print(f"setGamepadViewSensitivity failed: {e}")
+
+    @Slot(result=str)
+    def getGamepadButtonLayout(self):
+        try:
+            config_data = cfg.read()
+            return config_data.get('gamepad_button_layout', 'default')
+        except Exception:
+            return 'default'
+
+    @Slot(str)
+    def setGamepadButtonLayout(self, layout):
+        try:
+            config_data = cfg.read()
+            config_data['gamepad_button_layout'] = layout
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            print(f"setGamepadButtonLayout failed: {e}")
+
+    @Slot(result=str)
+    def getGamepadLayoutData(self):
+        try:
+            config_data = cfg.read()
+            layout_data = config_data.get('gamepad_layout_data', '')
+            if not layout_data:
+                # 返回默认布局
+                default_layout = [
+                    {"key": "space", "label": "跳跃", "x": 0.5, "y": 0.3, "size": 1.0},
+                    {"key": "shift", "label": "潜行", "x": 0.2, "y": 0.5, "size": 1.0},
+                    {"key": "e", "label": "E", "x": 0.8, "y": 0.1, "size": 0.8},
+                    {"key": "q", "label": "Q", "x": 0.2, "y": 0.1, "size": 0.8},
+                    {"key": "f", "label": "F", "x": 0.7, "y": 0.5, "size": 0.8},
+                    {"key": "t", "label": "T", "x": 0.9, "y": 0.3, "size": 0.8}
+                ]
+                return json.dumps(default_layout)
+            return layout_data
+        except Exception as e:
+            print(f"getGamepadLayoutData failed: {e}")
+            return "[]"
+
+    @Slot(str)
+    def setGamepadLayoutData(self, layoutData):
+        try:
+            config_data = cfg.read()
+            config_data['gamepad_layout_data'] = layoutData
+            config_data['gamepad_button_layout'] = 'custom'
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            print(f"setGamepadLayoutData failed: {e}")
 
     @Slot(str)
     def queryUUID(self, name):

@@ -105,18 +105,20 @@ class MinecraftWindowWatcher(QThread):
 
             try:
                 proc = psutil.Process(self.mc_pid)
-                if proc.is_running() and proc.status() != psutil.STATUS_ZOMBIE:
+                # 检查进程是否真正运行（排除僵尸进程）
+                if proc.is_running() and proc.status() not in [psutil.STATUS_ZOMBIE, psutil.STATUS_DEAD]:
                     process_alive = True
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 process_alive = False
 
             try:
-                window_alive = win32gui.IsWindow(hwnd)
+                window_alive = win32gui.IsWindow(hwnd) and win32gui.IsWindowVisible(hwnd)
             except Exception:
                 window_alive = False
 
-            if not process_alive and not window_alive:
-                log.info("Minecraft 进程和窗口均已消失，发送窗口关闭信号")
+            # 如果进程不存在或窗口不存在，就认为 Minecraft 已关闭
+            if not process_alive or not window_alive:
+                log.info(f"Minecraft 已关闭 (进程存活: {process_alive}, 窗口存活: {window_alive})，发送窗口关闭信号")
                 self.window_closed.emit()
                 return
 
@@ -956,7 +958,13 @@ def hide_minecraft_tool():
     """隐藏 Minecraft 工具栏"""
     try:
         if tool_manager:
-            tool_manager.hide_tool()
+            # 确保在主线程中执行 UI 操作
+            app = QApplication.instance()
+            if app and QThread.currentThread() != app.thread():
+                # 如果不在主线程，使用 QTimer 在主线程中执行
+                QTimer.singleShot(0, tool_manager.hide_tool)
+            else:
+                tool_manager.hide_tool()
     except Exception as e:
         log.error(f"隐藏 Minecraft 工具栏失败: {e}")
 

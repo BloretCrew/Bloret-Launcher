@@ -609,21 +609,44 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             return None
         import win32con
         key_map = {
-            'w': 0x57, 'a': 0x41, 's': 0x53, 'd': 0x44,
-            'W': 0x57, 'A': 0x41, 'S': 0x53, 'D': 0x44,
+            # 字母键
+            'a': 0x41, 'b': 0x42, 'c': 0x43, 'd': 0x44,
+            'e': 0x45, 'f': 0x46, 'g': 0x47, 'h': 0x48,
+            'i': 0x49, 'j': 0x4A, 'k': 0x4B, 'l': 0x4C,
+            'm': 0x4D, 'n': 0x4E, 'o': 0x4F, 'p': 0x50,
+            'q': 0x51, 'r': 0x52, 's': 0x53, 't': 0x54,
+            'u': 0x55, 'v': 0x56, 'w': 0x57, 'x': 0x58,
+            'y': 0x59, 'z': 0x5A,
+            # 数字键
+            '0': 0x30, '1': 0x31, '2': 0x32, '3': 0x33, '4': 0x34,
+            '5': 0x35, '6': 0x36, '7': 0x37, '8': 0x38, '9': 0x39,
+            # 方向键
             'up': win32con.VK_UP, 'down': win32con.VK_DOWN,
             'left': win32con.VK_LEFT, 'right': win32con.VK_RIGHT,
+            # 修饰键
             'space': win32con.VK_SPACE,
             'shift': win32con.VK_LSHIFT,
             'ctrl': win32con.VK_LCONTROL,
-            'e': 0x45, 'E': 0x45,
-            'q': 0x51, 'Q': 0x51,
-            'f': 0x46, 'F': 0x46,
-            't': 0x54, 'T': 0x54,
+            'alt': win32con.VK_LMENU,
+            # 功能键
             'enter': win32con.VK_RETURN,
             'escape': win32con.VK_ESCAPE,
-            '1': 0x31, '2': 0x32, '3': 0x33, '4': 0x34, '5': 0x35,
-            '6': 0x36, '7': 0x37, '8': 0x38, '9': 0x39,
+            'tab': win32con.VK_TAB,
+            'backspace': win32con.VK_BACK,
+            # F键
+            'f1': win32con.VK_F1, 'f2': win32con.VK_F2,
+            'f3': win32con.VK_F3, 'f4': win32con.VK_F4,
+            'f5': win32con.VK_F5, 'f6': win32con.VK_F6,
+            'f7': win32con.VK_F7, 'f8': win32con.VK_F8,
+            'f9': win32con.VK_F9, 'f10': win32con.VK_F10,
+            'f11': win32con.VK_F11, 'f12': win32con.VK_F12,
+            # 其他常用键
+            'insert': win32con.VK_INSERT,
+            'delete': win32con.VK_DELETE,
+            'home': win32con.VK_HOME,
+            'end': win32con.VK_END,
+            'pageup': win32con.VK_PRIOR,
+            'pagedown': win32con.VK_NEXT,
         }
         return key_map.get(key_name)
 
@@ -668,6 +691,14 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
         # 这些接口不需要 OAuth 认证，用于手机网页显示
         if request_path in ['/api/v1/running/instances', '/api/v1/recent/runs', '/api/v1/launch/start', '/api/v1/launch/status', '/api/v1/gamepad/config']:
+            if not self._is_remoter_enabled():
+                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
+                return
+            self._handle_remote_api(request_path, query_params)
+            return
+
+        # 这些路径前缀的接口也不需要 OAuth 认证
+        if request_path.startswith('/api/v1/running/suspend/') or request_path.startswith('/api/v1/running/terminate/'):
             if not self._is_remoter_enabled():
                 self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
                 return
