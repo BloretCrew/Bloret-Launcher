@@ -213,7 +213,6 @@ jobs:
           --window-pos 200 120 \
           --window-size 600 400 \
           --icon-size 100 \
-          --icon "Bloret Launcher.app" 150 250 \
           --hide-extension "Bloret Launcher.app" \
           --app-drop-link 450 250 \
           "$DMG_NAME" \
