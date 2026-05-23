@@ -44,6 +44,11 @@ FluentWindow {
             icon: "ic_fluent_arrow_download_20_regular"
         },
         {
+            title: (Backend ? Backend.tr("核心") : "核心"),
+            page: Qt.resolvedUrl("pages/Cores.qml"),
+            icon: "ic_fluent_cube_20_regular"
+        },
+        {
             title: (Backend ? Backend.tr("小工具") : "小工具"),
             page: Qt.resolvedUrl("pages/Tools.qml"),
             icon: "ic_fluent_wrench_20_regular"
