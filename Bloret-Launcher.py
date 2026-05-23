@@ -1554,6 +1554,22 @@ class Backend(QObject):
         self.downloadDialogRequested.emit(title)
         InstallMinecraftVersion(version, Fabric_Loader=True, VersionName=versionName, backend=self)
 
+    @Slot(str, str)
+    def downloadForge(self, version, versionName):
+        from modules.install import InstallMinecraftVersion
+        print(f"Requested download Forge: {version} as {versionName}")
+        title = f"正在下载 Minecraft {version} 和 Forge"
+        self.downloadDialogRequested.emit(title)
+        InstallMinecraftVersion(version, VersionName=versionName, backend=self, Loader_Type="forge")
+
+    @Slot(str, str)
+    def downloadNeoForge(self, version, versionName):
+        from modules.install import InstallMinecraftVersion
+        print(f"Requested download NeoForge: {version} as {versionName}")
+        title = f"正在下载 Minecraft {version} 和 NeoForge"
+        self.downloadDialogRequested.emit(title)
+        InstallMinecraftVersion(version, VersionName=versionName, backend=self, Loader_Type="neoforge")
+
     @Slot()
     def toggleDownloadPause(self):
         from modules.install import toggle_current_download_pause

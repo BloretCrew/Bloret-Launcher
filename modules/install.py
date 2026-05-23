@@ -1,5 +1,6 @@
 # Removed qfluentwidgets imports for PySide6 compatibility
-import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, sys
+import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, sys, subprocess
+import xml.etree.ElementTree as ET
 try:
     import send2trash
 except ImportError:
@@ -137,6 +138,10 @@ def dl_source_library_get(original_url):
         mirror_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/libraries/"))
     elif "maven.fabricmc.net" in original_url:
         mirror_urls.append(original_url.replace("https://maven.fabricmc.net/", "https://bmclapi2.bangbang93.com/maven/"))
+    elif "maven.minecraftforge.net" in original_url:
+        mirror_urls.append(original_url.replace("https://maven.minecraftforge.net/", "https://bmclapi2.bangbang93.com/maven/"))
+    elif "maven.neoforged.net/releases" in original_url:
+        mirror_urls.append(original_url.replace("https://maven.neoforged.net/releases/", "https://bmclapi2.bangbang93.com/maven/"))
     
     # 添加 BMCLAPI 镜像源
     mirror_urls.append(original_url
@@ -154,6 +159,301 @@ def dl_source_library_get(original_url):
     candidate_urls.append(original_url)
     
     return candidate_urls
+
+def _request_json_from_urls(urls, timeout=30):
+    for url in urls:
+        try:
+            response = requests.get(url, timeout=timeout)
+            if response.status_code == 200:
+                return response.json()
+            log(f"获取 JSON 失败: {url}, HTTP {response.status_code}", logging.WARNING)
+        except requests.exceptions.RequestException as e:
+            log(f"请求 JSON 失败: {url}, {e}", logging.WARNING)
+    return None
+
+def _request_text_from_urls(urls, timeout=30):
+    for url in urls:
+        try:
+            response = requests.get(url, timeout=timeout)
+            if response.status_code == 200:
+                return response.text
+            log(f"获取文本失败: {url}, HTTP {response.status_code}", logging.WARNING)
+        except requests.exceptions.RequestException as e:
+            log(f"请求文本失败: {url}, {e}", logging.WARNING)
+    return None
+
+def _get_java_path_for_installer():
+    config_data = cfg.read()
+    for key in ("java_path", "Java_Path"):
+        java_path = config_data.get(key, "")
+        if java_path and java_path != "Auto" and os.path.exists(java_path):
+            return java_path
+    java_in_path = shutil.which("java")
+    if java_in_path:
+        return java_in_path
+    return "java"
+
+def _ensure_launcher_profile(minecraft_dir, minecraft_version):
+    """Forge installer expects a launcher profile in the target .minecraft directory."""
+    try:
+        os.makedirs(minecraft_dir, exist_ok=True)
+        profile_path = os.path.join(minecraft_dir, "launcher_profiles.json")
+        default_profile = {
+            "profiles": {
+                "BloretLauncher": {
+                    "name": "BloretLauncher",
+                    "type": "custom",
+                    "created": "1970-01-01T00:00:00.000Z",
+                    "lastUsed": "1970-01-01T00:00:00.000Z",
+                    "gameDir": minecraft_dir
+                }
+            },
+            "selectedProfile": "BloretLauncher",
+            "clientToken": "00000000000000000000000000000000"
+        }
+
+        if os.path.exists(profile_path):
+            try:
+                with open(profile_path, 'r', encoding='utf-8') as f:
+                    existing = json.load(f)
+                if not isinstance(existing, dict):
+                    existing = {}
+            except Exception:
+                existing = {}
+        else:
+            existing = {}
+
+        profiles = existing.get("profiles") if isinstance(existing.get("profiles"), dict) else {}
+        if not profiles:
+            existing["profiles"] = default_profile["profiles"]
+        else:
+            profiles.setdefault("BloretLauncher", default_profile["profiles"]["BloretLauncher"])
+            existing["profiles"] = profiles
+
+        if not existing.get("selectedProfile"):
+            existing["selectedProfile"] = "BloretLauncher"
+        if not existing.get("clientToken"):
+            existing["clientToken"] = default_profile["clientToken"]
+
+        with open(profile_path, 'w', encoding='utf-8') as f:
+            json.dump(existing, f, indent=4, ensure_ascii=False)
+        log(f"已确保 launcher_profiles.json 存在: {profile_path}")
+        return True
+    except Exception as e:
+        log(f"创建 launcher_profiles.json 失败: {e}", logging.WARNING)
+        return False
+
+def _maven_metadata_versions(metadata_url):
+    # Forge / NeoForge 的版本元数据以官方 Maven 为准，避免镜像数据滞后导致误判
+    metadata_text = _request_text_from_urls([metadata_url])
+    if not metadata_text:
+        return []
+    try:
+        root = ET.fromstring(metadata_text)
+        return [node.text for node in root.findall("./versioning/versions/version") if node.text]
+    except ET.ParseError as e:
+        log(f"解析 Maven metadata 失败: {metadata_url}, {e}", logging.ERROR)
+        return []
+
+def _version_sort_key(value):
+    parts = []
+    for item in value.replace("-", ".").split("."):
+        if item.isdigit():
+            parts.append(int(item))
+        else:
+            parts.append(item)
+    return parts
+
+def _latest_forge_version(minecraft_version):
+    metadata_url = "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml"
+    versions = [v for v in _maven_metadata_versions(metadata_url) if v.startswith(f"{minecraft_version}-")]
+    if not versions:
+        return None
+    return sorted(versions, key=_version_sort_key)[-1]
+
+def _latest_neoforge_version(minecraft_version):
+    metadata_url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml"
+    versions = _maven_metadata_versions(metadata_url)
+    parts = minecraft_version.split(".")
+    if len(parts) < 2 or parts[0] != "1":
+        return None
+    patch = parts[2] if len(parts) > 2 else "0"
+    prefix = f"{parts[1]}.{patch}."
+    matched = [v for v in versions if v.startswith(prefix)]
+    if not matched:
+        return None
+    return sorted(matched, key=_version_sort_key)[-1]
+
+def _merge_loader_json(base_data, loader_data, target_id):
+    merged = dict(base_data)
+    for key, value in loader_data.items():
+        if key == "libraries":
+            continue
+        merged[key] = value
+    base_libraries = base_data.get("libraries", [])
+    loader_libraries = loader_data.get("libraries", [])
+    seen = set()
+    libraries = []
+    for lib in loader_libraries + base_libraries:
+        name = lib.get("name", "")
+        if name and name in seen:
+            continue
+        if name:
+            seen.add(name)
+        libraries.append(lib)
+    merged["libraries"] = libraries
+    merged["id"] = target_id
+    merged.pop("inheritsFrom", None)
+    return merged
+
+def _install_forge_like_loader(loader_type, minecraft_version, minecraft_dir, versions_dir, vanilla_version_dir, version_data, version_name, max_thread_value):
+    is_neoforge = loader_type == "neoforge"
+    display_name = "NeoForge" if is_neoforge else "Forge"
+    log(f"开始安装 {display_name} 到 Minecraft {minecraft_version}")
+
+    loader_version = _latest_neoforge_version(minecraft_version) if is_neoforge else _latest_forge_version(minecraft_version)
+    if not loader_version:
+        raise RuntimeError(f"未找到适用于 Minecraft {minecraft_version} 的 {display_name} 版本")
+
+    if is_neoforge:
+        installer_url = f"https://maven.neoforged.net/releases/net/neoforged/neoforge/{loader_version}/neoforge-{loader_version}-installer.jar"
+        installer_filename = f"neoforge-{loader_version}-installer.jar"
+        install_commands = [["--install-client", minecraft_dir], ["--installClient", minecraft_dir], ["--install-client"], ["--installClient"]]
+        target_id = f"{version_name}-NeoForge {loader_version}"
+    else:
+        installer_url = f"https://maven.minecraftforge.net/net/minecraftforge/forge/{loader_version}/forge-{loader_version}-installer.jar"
+        installer_filename = f"forge-{loader_version}-installer.jar"
+        install_commands = [["--installClient", minecraft_dir], ["--installClient"]]
+        target_id = f"{version_name}-Forge {loader_version.split('-', 1)[1]}"
+
+    temp_dir = os.path.join(BLglobals.datapath, "temp", "loaders")
+    os.makedirs(temp_dir, exist_ok=True)
+    installer_path = os.path.join(temp_dir, installer_filename)
+    downloaded = False
+    for url in dl_source_library_get(installer_url):
+        if download_file(url, installer_path):
+            downloaded = True
+            break
+    if not downloaded:
+        raise RuntimeError(f"{display_name} installer 下载失败")
+
+    _ensure_launcher_profile(minecraft_dir, minecraft_version)
+
+    before_dirs = {d for d in os.listdir(versions_dir) if os.path.isdir(os.path.join(versions_dir, d))}
+    java_path = _get_java_path_for_installer()
+    install_success = False
+    last_error = ""
+    for args in install_commands:
+        cmd = [java_path, "-jar", installer_path] + args
+        log(f"执行 {display_name} installer: {' '.join(cmd)}")
+        process = subprocess.Popen(
+            cmd,
+            cwd=minecraft_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+        )
+        captured_lines = []
+        last_output_time = time.time()
+        try:
+            while True:
+                line = process.stdout.readline() if process.stdout else ""
+                if line:
+                    stripped = line.rstrip()
+                    captured_lines.append(stripped)
+                    last_output_time = time.time()
+                    log(f"{display_name} installer: {stripped}")
+                    continue
+
+                if process.poll() is not None:
+                    break
+
+                if time.time() - last_output_time > 15:
+                    log(f"{display_name} installer 仍在运行，等待输出...", logging.INFO)
+                    last_output_time = time.time()
+                time.sleep(0.5)
+
+            return_code = process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            return_code = process.wait()
+            captured_lines.append("installer timeout")
+
+        last_error = "\n".join(captured_lines[-20:]).strip()
+        if return_code == 0:
+            install_success = True
+            break
+        log(f"{display_name} installer 执行失败，返回码 {return_code}: {last_error}", logging.WARNING)
+    if not install_success:
+        raise RuntimeError(f"{display_name} installer 执行失败: {last_error}")
+
+    after_dirs = {d for d in os.listdir(versions_dir) if os.path.isdir(os.path.join(versions_dir, d))}
+    candidates = [d for d in after_dirs - before_dirs if display_name.lower() in d.lower() or "forge" in d.lower()]
+    if not candidates:
+        candidates = [d for d in after_dirs if loader_version.lower() in d.lower() or display_name.lower() in d.lower()]
+    if not candidates:
+        raise RuntimeError(f"{display_name} installer 未生成版本目录")
+    generated_id = sorted(candidates, key=lambda d: os.path.getmtime(os.path.join(versions_dir, d)), reverse=True)[0]
+    generated_dir = os.path.join(versions_dir, generated_id)
+    generated_json_path = os.path.join(generated_dir, f"{generated_id}.json")
+    if not os.path.exists(generated_json_path):
+        json_files = [f for f in os.listdir(generated_dir) if f.endswith(".json")]
+        if not json_files:
+            raise RuntimeError(f"{display_name} 版本 JSON 不存在: {generated_dir}")
+        generated_json_path = os.path.join(generated_dir, json_files[0])
+
+    with open(generated_json_path, 'r', encoding='utf-8') as f:
+        loader_data = json.load(f)
+
+    target_dir = os.path.join(versions_dir, target_id)
+    if generated_dir != target_dir:
+        if os.path.exists(target_dir):
+            shutil.rmtree(target_dir)
+        os.rename(generated_dir, target_dir)
+
+    target_json_path = os.path.join(target_dir, f"{target_id}.json")
+    merged_data = _merge_loader_json(version_data, loader_data, target_id)
+    with open(target_json_path, 'w', encoding='utf-8') as f:
+        json.dump(merged_data, f, ensure_ascii=False, indent=4)
+    for file_name in os.listdir(target_dir):
+        if file_name.endswith(".json") and file_name != f"{target_id}.json":
+            try:
+                os.remove(os.path.join(target_dir, file_name))
+            except OSError:
+                pass
+
+    vanilla_jar = os.path.join(vanilla_version_dir, f"{version_name}.jar")
+    if not os.path.exists(vanilla_jar):
+        vanilla_jar = os.path.join(vanilla_version_dir, f"{minecraft_version}.jar")
+    target_jar = os.path.join(target_dir, f"{target_id}.jar")
+    if os.path.exists(vanilla_jar):
+        shutil.copy2(vanilla_jar, target_jar)
+    else:
+        log(f"未找到原版客户端 JAR，{display_name} 启动可能失败: {vanilla_jar}", logging.WARNING)
+
+    processed_libraries = []
+    for lib in merged_data.get("libraries", []):
+        if "name" in lib:
+            parts = lib['name'].split(":")
+            if len(parts) >= 3:
+                group = parts[0].replace(".", "/")
+                artifact = parts[1]
+                version_lib = parts[2]
+                lib_filename = f"{artifact}-{version_lib}.jar"
+                lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
+                processed_libraries.append((lib, lib_path))
+    if processed_libraries:
+        downloader = LibraryDownloader(processed_libraries, max_workers=max_thread_value)
+        _current_download_state['downloader'] = downloader
+        if _current_download_state.get('cancelled'):
+            return False
+        downloader.download_libraries()
+
+    os.makedirs(os.path.join(target_dir, "mods"), exist_ok=True)
+    os.makedirs(os.path.join(target_dir, "resourcepacks"), exist_ok=True)
+    return target_id
 
 def dl_source_assets_get(original_url):
     """
@@ -330,6 +630,7 @@ class LibraryDownloader:
         self.lock = threading.Lock()
         self.completed_event = threading.Event()
         self._paused = False
+        self._cancelled = False
         self._pause_cond = threading.Condition(self.lock)
 
     @property
@@ -347,12 +648,32 @@ class LibraryDownloader:
             self._paused = False
             self._pause_cond.notify_all()
             log("下载已恢复")
+
+    def cancel(self):
+        with self.lock:
+            self._cancelled = True
+            self._paused = False
+            self._pause_cond.notify_all()
+            self.completed_event.set()
+            log("下载已取消")
+
+    @property
+    def is_cancelled(self):
+        with self.lock:
+            return self._cancelled
         
     def download_single_library(self, lib_item):
         with self.lock:
+            if self._cancelled:
+                return False
             while self._paused:
                 self._pause_cond.wait()
+                if self._cancelled:
+                    return False
         lib, lib_path = lib_item
+
+        if self.is_cancelled:
+            return False
 
         if os.path.exists(lib_path):
             expected_size = lib.get("downloads", {}).get("artifact", {}).get("size")
@@ -379,6 +700,8 @@ class LibraryDownloader:
             self._active_downloads += 1
 
         try:
+            if self.is_cancelled:
+                return False
             # 确保目录存在
             os.makedirs(os.path.dirname(lib_path), exist_ok=True)
             
@@ -391,7 +714,11 @@ class LibraryDownloader:
 
                 downloaded = False
                 for url_to_try in candidate_urls:
+                    if self.is_cancelled:
+                        return False
                     for attempt in range(3): # 尝试3次
+                        if self.is_cancelled:
+                            return False
                         try:
                             log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
                             # 使用 session 复用连接
@@ -488,9 +815,13 @@ class LibraryDownloader:
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="LibraryDownloader") as executor:
             futures = [executor.submit(self.download_single_library, lib_item) for lib_item in self.missing_libraries]
             concurrent.futures.wait(futures)
+            if self.is_cancelled:
+                return False
         
         all_downloads_successful = True
         for future in futures:
+            if self.is_cancelled:
+                return False
             if not future.result():
                 all_downloads_successful = False
                 break
@@ -545,7 +876,7 @@ def download_file(url, file_path):
         log(f"下载文件失败 {url}: {str(e)}", logging.ERROR)
         return False
 
-def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None, backend=None):
+def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None, backend=None, Loader_Type="vanilla"):
     global _current_download_state
     
     _current_download_state = {
@@ -558,10 +889,12 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
     if VersionName is None:
         VersionName = version
         
-    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir, Fabric_Loader, VersionName, backend))
+    if Fabric_Loader:
+        Loader_Type = "fabric"
+    thread = Thread(target=_install_minecraft_version_threaded, args=(version, minecraft_dir, Fabric_Loader, VersionName, backend, Loader_Type))
     thread.start()
 
-def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Loader=False, VersionName=None, backend=None):
+def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Loader=False, VersionName=None, backend=None, Loader_Type="vanilla"):
     global _current_download_state
     
     def update_progress_ui(progress, status, speed="", downloaded="", total=""):
@@ -601,6 +934,12 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         if minecraft_dir is None:
             minecraft_dir = os.path.join(BLglobals.datapath, '.minecraft')
             
+        if Loader_Type is None:
+            Loader_Type = "vanilla"
+        Loader_Type = Loader_Type.lower()
+        if Loader_Type == "fabric":
+            Fabric_Loader = True
+
         # 如果未提供VersionName，则使用version作为默认值
         if VersionName is None:
             VersionName = version
@@ -1471,6 +1810,40 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                     'value': 1.0
                 })
                 # 不返回False，继续执行后续代码，确保Minecraft版本安装成功
+
+        forge_like_version_id_final = None
+        if Loader_Type in ("forge", "neoforge"):
+            display_name = "NeoForge" if Loader_Type == "neoforge" else "Forge"
+            update_progress({
+                'status': f'正在安装 {display_name}...',
+                'value': 0.9,
+                'valueStringOverride': '90%'
+            })
+            update_progress_ui(90, f"正在安装 {display_name}...", "", "", "")
+            try:
+                forge_like_version_id_final = _install_forge_like_loader(
+                    Loader_Type,
+                    version,
+                    minecraft_dir,
+                    versions_dir,
+                    version_dir,
+                    version_data,
+                    VersionName,
+                    max_thread_value
+                )
+                update_progress({
+                    'status': f'{display_name} 安装完成!',
+                    'value': 1,
+                    'valueStringOverride': '100%'
+                })
+                log(f"{display_name} 安装完成到 {forge_like_version_id_final}")
+                update_bl_json(minecraft_dir, version, False, None)
+            except Exception as e:
+                log(f"安装 {display_name} 失败: {e}，但将继续完成 Minecraft 安装流程", logging.WARNING)
+                update_progress({
+                    'status': f'Minecraft 版本 {version} 安装完成，但 {display_name} 安装失败!',
+                    'value': 1.0
+                })
         
         log(f"Minecraft 版本 {version} 安装完成")
         update_progress({
@@ -1508,6 +1881,10 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                 # 如果安装了Fabric版本，同时记录原版版本
                 update_bl_json(minecraft_dir, version, False, vanilla_icon_path)
                 log(f"已将 Fabric 版本 {fabric_version_id_final} 和原版版本 {version} 记录到 .BL.json 文件")
+            elif forge_like_version_id_final:
+                update_bl_json(minecraft_dir, forge_like_version_id_final, False, vanilla_icon_path)
+                update_bl_json(minecraft_dir, version, False, vanilla_icon_path)
+                log(f"已将 {forge_like_version_id_final} 和原版版本 {version} 记录到 .BL.json 文件")
             else:
                 update_bl_json(minecraft_dir, version, False, vanilla_icon_path)
         except Exception as e:
@@ -1522,6 +1899,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                 # 确定目标版本目录
                 if fabric_version_id_final:
                     target_version_dir = os.path.join(minecraft_dir, "versions", fabric_version_id_final)
+                elif forge_like_version_id_final:
+                    target_version_dir = os.path.join(minecraft_dir, "versions", forge_like_version_id_final)
                 else:
                     target_version_dir = os.path.join(minecraft_dir, "versions", version)
                 

@@ -7,12 +7,15 @@ Dialog {
     id: versionDialog
     property string version: ""
     property bool fabric: false
+    property string loaderType: fabric ? "fabric" : "vanilla"
     property string resultName: ""
 
     signal confirmed(string versionName)
     property var validationResult: ({valid: true, error: "", exists: false})
 
-    title: (fabric ? (Backend ? Backend.tr("安装 Fabric 版本 %1").arg(version) : "安装 Fabric 版本 " + version)
+    title: (loaderType === "fabric" ? (Backend ? Backend.tr("安装 Fabric 版本 %1").arg(version) : "安装 Fabric 版本 " + version)
+                    : loaderType === "forge" ? (Backend ? Backend.tr("安装 Forge 版本 %1").arg(version) : "安装 Forge 版本 " + version)
+                    : loaderType === "neoforge" ? (Backend ? Backend.tr("安装 NeoForge 版本 %1").arg(version) : "安装 NeoForge 版本 " + version)
                     : (Backend ? Backend.tr("安装 Minecraft 版本 %1").arg(version) : "安装 Minecraft 版本 " + version))
     modal: true
     standardButtons: Dialog.Ok | Dialog.Cancel

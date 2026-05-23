@@ -11,13 +11,13 @@ Dialog {
     
     signal versionSelected(string version)
     
-    property var categories: ["百络谷支持版本", "正式版本", "快照版本", "远古版本"]
+    property var categories: ["正式版本", "快照版本", "远古版本"]
     property var currentVersions: []
     property string selectedVersion: ""
     property bool isLoading: false
     
-    width: 500
-    height: 320
+    width: 420
+    height: 280
     
     Component.onCompleted: {
         console.log("[SelectVersionDialog] Component.onCompleted")
@@ -42,19 +42,6 @@ Dialog {
         
         let category = categories[categoryIndex]
         console.log(`[SelectVersionDialog] updateVersionList: category=${category}`)
-        
-        if (category === "百络谷支持版本") {
-            console.log("[SelectVersionDialog] Loading Bloret versions synchronously")
-            currentVersions = Backend.getVersionsByCategory(category)
-            console.log(`[SelectVersionDialog] Got ${currentVersions.length} Bloret versions`)
-            versionCombo.model = currentVersions
-            if (currentVersions.length > 0) {
-                versionCombo.currentIndex = 0
-                selectedVersion = currentVersions[0]
-            }
-            isLoading = false
-            return
-        }
         
         console.log(`[SelectVersionDialog] Loading ${category} asynchronously`)
         isLoading = true
@@ -81,30 +68,78 @@ Dialog {
     }
     
     contentItem: ColumnLayout {
-        spacing: 15
+        spacing: 12
         
-        RowLayout {
+        Frame {
             Layout.fillWidth: true
-            spacing: 10
-            
-            Label {
-                text: (Backend ? Backend.tr("版本类别:") : "版本类别:")
-                Layout.alignment: Qt.AlignVCenter
+            padding: 12
+            background: Rectangle {
+                color: Theme.currentTheme.colors.cardColor
+                radius: 8
+                border.color: Theme.currentTheme.colors.cardBorderColor
             }
-            
-            ComboBox {
-                id: categoryCombo
-                Layout.fillWidth: true
-                model: selectVersionDialog.categories
-                currentIndex: 0
-                enabled: !isLoading
-                onCurrentIndexChanged: {
-                    console.log(`[SelectVersionDialog] Category changed to index ${currentIndex}`)
-                    updateVersionList(currentIndex)
+
+            ColumnLayout {
+                width: parent.width
+                spacing: 10
+                
+                Label {
+                    text: (Backend ? Backend.tr("版本类别") : "版本类别")
+                    font.weight: Font.DemiBold
+                    font.pixelSize: 13
+                    color: Theme.currentTheme.colors.textColor
+                }
+                
+                ComboBox {
+                    id: categoryCombo
+                    Layout.fillWidth: true
+                    model: selectVersionDialog.categories
+                    currentIndex: 0
+                    enabled: !isLoading
+                    onCurrentIndexChanged: {
+                        console.log(`[SelectVersionDialog] Category changed to index ${currentIndex}`)
+                        updateVersionList(currentIndex)
+                    }
                 }
             }
         }
         
+        Frame {
+            Layout.fillWidth: true
+            padding: 12
+            background: Rectangle {
+                color: Theme.currentTheme.colors.cardColor
+                radius: 8
+                border.color: Theme.currentTheme.colors.cardBorderColor
+            }
+            visible: !isLoading
+
+            ColumnLayout {
+                width: parent.width
+                spacing: 10
+                
+                Label {
+                    text: (Backend ? Backend.tr("选择版本") : "选择版本")
+                    font.weight: Font.DemiBold
+                    font.pixelSize: 13
+                    color: Theme.currentTheme.colors.textColor
+                }
+                
+                ComboBox {
+                    id: versionCombo
+                    Layout.fillWidth: true
+                    model: currentVersions
+                    enabled: !isLoading
+                    onCurrentTextChanged: {
+                        if (currentText) {
+                            selectedVersion = currentText
+                            console.log(`[SelectVersionDialog] Version selected: ${currentText}`)
+                        }
+                    }
+                }
+            }
+        }
+
         RowLayout {
             Layout.fillWidth: true
             spacing: 10
@@ -119,33 +154,11 @@ Dialog {
         Label {
             text: (Backend ? Backend.tr("正在加载版本...") : "正在加载版本...")
             visible: isLoading
+            font.pixelSize: 13
+            color: Theme.currentTheme.colors.textSecondaryColor
             Layout.alignment: Qt.AlignHCenter
         }
-        
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 10
-            visible: !isLoading
-            
-            Label {
-                text: (Backend ? Backend.tr("选择版本:") : "选择版本:")
-                Layout.alignment: Qt.AlignVCenter
-            }
-            
-            ComboBox {
-                id: versionCombo
-                Layout.fillWidth: true
-                model: currentVersions
-                enabled: !isLoading
-                onCurrentTextChanged: {
-                    if (currentText) {
-                        selectedVersion = currentText
-                        console.log(`[SelectVersionDialog] Version selected: ${currentText}`)
-                    }
-                }
-            }
-        }
-        
+
         Item {
             Layout.fillHeight: true
         }

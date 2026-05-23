@@ -4,7 +4,7 @@ except ImportError:
     InfoBar = None
     InfoBarPosition = None
     ComboBox = None
-import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, psutil
+import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, psutil, subprocess
 try:
     import send2trash
 except ImportError:
@@ -341,11 +341,20 @@ def Get_Run_Script(mc_version, skip_completion=False):
                         # 记录缺失的库文件
                         missing_libraries.append((lib, lib_path))
     
-    # 检查是否为 Fabric 版本
-    is_fabric = "fabric" in mc_version.lower() or any("fabric" in lib.get("name", "").lower() for lib in version_data.get("libraries", []))
+    # 检查是否为加载器版本
+    library_names = [lib.get("name", "").lower() for lib in version_data.get("libraries", [])]
+    is_fabric = "fabric" in mc_version.lower() or any("fabric" in name for name in library_names)
+    is_forge_like = (
+        "forge" in mc_version.lower()
+        or any("minecraftforge" in name or "neoforged" in name for name in library_names)
+        or "net.minecraftforge" in version_data.get("mainClass", "")
+        or "cpw.mods" in version_data.get("mainClass", "")
+    )
 
     if is_fabric:
         log(f"检测到 Fabric 版本: {mc_version}")
+    elif is_forge_like:
+        log(f"检测到 Forge/NeoForge 版本: {mc_version}")
     else:
         log(f"检测到原版: {mc_version}")
     
@@ -538,7 +547,7 @@ def Get_Run_Script(mc_version, skip_completion=False):
     launch_args.append(f'-Djava.io.tmpdir={temp_dir}')
     
     # 初始化mods_dir变量 - 使用版本目录下的mods文件夹
-    mods_dir = os.path.join(versions_dir, "mods")
+    mods_dir = os.path.join(versions_dir, mc_version, "mods")
     
     # 确保mods目录存在
     if not os.path.exists(mods_dir):
@@ -566,6 +575,9 @@ def Get_Run_Script(mc_version, skip_completion=False):
     if is_fabric:
         # Fabric 使用 KnotClient 主类
         launch_args.append("net.fabricmc.loader.impl.launch.knot.KnotClient")
+    elif is_forge_like:
+        main_class = version_data.get("mainClass") or "cpw.mods.bootstraplauncher.BootstrapLauncher"
+        launch_args.append(main_class)
     else:
         # 原始 Minecraft 启动方式
         # 最终检查：即使 use_wrapper 为 True，如果 Java 版本 >= 17 也强制禁用
@@ -609,9 +621,55 @@ def Get_Run_Script(mc_version, skip_completion=False):
     log(f"- 登录名称: {username}")
     log(f"- UUID: {user_uuid}")
     log(f"- AccessToken: {'******' if access_token else 'N/A'}")
+    game_variables = {
+        "auth_player_name": username,
+        "version_name": mc_version,
+        "game_directory": game_dir,
+        "assets_root": assets_dir,
+        "assets_index_name": str(asset_index),
+        "auth_uuid": user_uuid,
+        "auth_access_token": access_token if login_method == 2 else "00000000000000000000000000000000",
+        "user_type": user_type if login_method == 2 else "legacy",
+        "version_type": version_type,
+        "clientid": client_id,
+        "auth_xuid": xuid,
+    }
+
+    def replace_game_variables(value):
+        if not isinstance(value, str):
+            return value
+        for key, replacement in game_variables.items():
+            value = value.replace("${" + key + "}", str(replacement))
+        return value
+
+    def append_version_game_arguments():
+        appended = False
+        arguments = version_data.get("arguments", {}).get("game", [])
+        for arg in arguments:
+            if isinstance(arg, str):
+                launch_args.append(replace_game_variables(arg))
+                appended = True
+            elif isinstance(arg, dict):
+                value = arg.get("value")
+                if isinstance(value, list):
+                    for item in value:
+                        launch_args.append(replace_game_variables(item))
+                        appended = True
+                elif isinstance(value, str):
+                    launch_args.append(replace_game_variables(value))
+                    appended = True
+        if appended:
+            return True
+        minecraft_arguments = version_data.get("minecraftArguments")
+        if minecraft_arguments:
+            launch_args.extend(replace_game_variables(minecraft_arguments).split())
+            return True
+        return False
     
     # 根据登录方式设置启动参数
-    if login_method == 0:  # 离线登录
+    if is_forge_like and append_version_game_arguments():
+        log("已使用版本 JSON 中的 Forge/NeoForge 游戏参数")
+    elif login_method == 0:  # 离线登录
         launch_args.extend([
             "--username", username,
             "--version", mc_version,
