@@ -26,10 +26,14 @@ FluentPage {
 
     property var vanillaVersions: []
     property var fabricVersions: []
+    property var forgeVersions: []
+    property var neoForgeVersions: []
     property var javaVersions: []
     property var bloretVersions: []
     property var minecraftVersionList: []
     property var fabricVersionList: [] // 新增：Fabric 版本列表
+    property var forgeVersionList: []
+    property var neoForgeVersionList: []
     property string currentSelectionTarget: "" // 新增：记录当前选择的是原版还是Fabric
     property bool _ignoreIndexChange: false // 防止 onCurrentIndexChanged 循环触发
 
@@ -42,17 +46,28 @@ FluentPage {
             minecraftVersionList.push((Backend ? Backend.tr("其他版本...") : "其他版本..."))
             vanillaCombo.model = minecraftVersionList
             
-            // 初始化 Fabric 列表：使用相同的百络谷版本作为推荐 + "其他版本..."
-            // Fabric 支持几乎所有版本，所以逻辑和原版下载类似，让用户从"其他版本"里选
+            // 初始化加载器列表：使用相同的百络谷版本作为推荐 + "其他版本..."
             fabricVersionList = bloretVersions.slice()
             fabricVersionList.push((Backend ? Backend.tr("其他版本...") : "其他版本..."))
             fabricCombo.model = fabricVersionList
+
+            forgeVersionList = bloretVersions.slice()
+            forgeVersionList.push((Backend ? Backend.tr("其他版本...") : "其他版本..."))
+            forgeCombo.model = forgeVersionList
+
+            neoForgeVersionList = bloretVersions.slice()
+            neoForgeVersionList.push((Backend ? Backend.tr("其他版本...") : "其他版本..."))
+            neoForgeCombo.model = neoForgeVersionList
             
             javaVersions = Backend.getJavaDownloadVersions()
             
             versionDialog.confirmed.connect(function(name){
-                if (versionDialog.fabric) {
+                if (versionDialog.loaderType === "fabric") {
                     Backend.downloadFabric(fabricCombo.currentText, name)
+                } else if (versionDialog.loaderType === "forge") {
+                    Backend.downloadForge(forgeCombo.currentText, name)
+                } else if (versionDialog.loaderType === "neoforge") {
+                    Backend.downloadNeoForge(neoForgeCombo.currentText, name)
                 } else {
                     Backend.downloadVanilla(vanillaCombo.currentText, name)
                 }
@@ -80,6 +95,20 @@ FluentPage {
                 fabricCombo.model = fabricVersionList
             }
             fabricCombo.currentIndex = fabricVersionList.indexOf(version)
+        } else if (currentSelectionTarget === "forge") {
+            let index = forgeVersionList.indexOf(version)
+            if (index === -1) {
+                forgeVersionList.splice(forgeVersionList.length - 1, 0, version)
+                forgeCombo.model = forgeVersionList
+            }
+            forgeCombo.currentIndex = forgeVersionList.indexOf(version)
+        } else if (currentSelectionTarget === "neoforge") {
+            let index = neoForgeVersionList.indexOf(version)
+            if (index === -1) {
+                neoForgeVersionList.splice(neoForgeVersionList.length - 1, 0, version)
+                neoForgeCombo.model = neoForgeVersionList
+            }
+            neoForgeCombo.currentIndex = neoForgeVersionList.indexOf(version)
         }
         _ignoreIndexChange = false
     }
@@ -143,6 +172,7 @@ FluentPage {
                     }
                     versionDialog.version = ver
                     versionDialog.fabric = false
+                    versionDialog.loaderType = "vanilla"
                     versionDialog.open()
                 }
             }
@@ -210,6 +240,135 @@ FluentPage {
                     }
                     versionDialog.version = ver
                     versionDialog.fabric = true
+                    versionDialog.loaderType = "fabric"
+                    versionDialog.open()
+                }
+            }
+        }
+    }
+
+    // --- Forge Loader Card ---
+    Frame {
+        Layout.fillWidth: true
+        padding: 15
+        background: Rectangle {
+            color: Theme.currentTheme.colors.cardColor
+            radius: 8
+            border.color: Theme.currentTheme.colors.controlBorderColor
+        }
+
+        RowLayout {
+            width: parent.width
+            spacing: 15
+
+            Image {
+                source: "../../icon/Command_Block.gif"
+                sourceSize { width: 40; height: 40 }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Label {
+                    font.weight: Font.DemiBold
+                    text: (Backend ? Backend.tr("Forge Loader") : "Forge Loader")
+                    color: Theme.currentTheme.colors.textColor
+                }
+                Label {
+                    text: (Backend ? Backend.tr("安装 Forge 加载器以使用 Forge Mod") : "安装 Forge 加载器以使用 Forge Mod")
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                }
+            }
+
+            ComboBox {
+                id: forgeCombo
+                Layout.preferredWidth: 150
+                onCurrentIndexChanged: {
+                    if (_ignoreIndexChange) return
+                    if (model[currentIndex] === (Backend ? Backend.tr("其他版本...") : "其他版本...")) {
+                        currentSelectionTarget = "forge"
+                        selectVersionDialog.open()
+                    }
+                }
+            }
+
+            Button {
+                text: (Backend ? Backend.tr("下载并安装") : "下载并安装")
+                highlighted: true
+                onClicked: {
+                    if (!Backend) return
+                    let ver = forgeCombo.currentText
+                    if (ver === (Backend ? Backend.tr("其他版本...") : "其他版本...")) {
+                        currentSelectionTarget = "forge"
+                        selectVersionDialog.open()
+                        return
+                    }
+                    versionDialog.version = ver
+                    versionDialog.fabric = false
+                    versionDialog.loaderType = "forge"
+                    versionDialog.open()
+                }
+            }
+        }
+    }
+
+    // --- NeoForge Loader Card ---
+    Frame {
+        Layout.fillWidth: true
+        padding: 15
+        background: Rectangle {
+            color: Theme.currentTheme.colors.cardColor
+            radius: 8
+            border.color: Theme.currentTheme.colors.controlBorderColor
+        }
+
+        RowLayout {
+            width: parent.width
+            spacing: 15
+
+            Image {
+                source: "../../icon/Command_Block.gif"
+                sourceSize { width: 40; height: 40 }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Label {
+                    font.weight: Font.DemiBold
+                    text: (Backend ? Backend.tr("NeoForge Loader") : "NeoForge Loader")
+                    color: Theme.currentTheme.colors.textColor
+                }
+                Label {
+                    text: (Backend ? Backend.tr("安装 NeoForge 加载器以使用 NeoForge Mod") : "安装 NeoForge 加载器以使用 NeoForge Mod")
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                }
+            }
+
+            ComboBox {
+                id: neoForgeCombo
+                Layout.preferredWidth: 150
+                onCurrentIndexChanged: {
+                    if (_ignoreIndexChange) return
+                    if (model[currentIndex] === (Backend ? Backend.tr("其他版本...") : "其他版本...")) {
+                        currentSelectionTarget = "neoforge"
+                        selectVersionDialog.open()
+                    }
+                }
+            }
+
+            Button {
+                text: (Backend ? Backend.tr("下载并安装") : "下载并安装")
+                highlighted: true
+                onClicked: {
+                    if (!Backend) return
+                    let ver = neoForgeCombo.currentText
+                    if (ver === (Backend ? Backend.tr("其他版本...") : "其他版本...")) {
+                        currentSelectionTarget = "neoforge"
+                        selectVersionDialog.open()
+                        return
+                    }
+                    versionDialog.version = ver
+                    versionDialog.fabric = false
+                    versionDialog.loaderType = "neoforge"
                     versionDialog.open()
                 }
             }
