@@ -342,7 +342,7 @@ class Ui_Form(object):
         self.AskBloriko_Edit.setPlaceholderText(_translate("Form", "关于 Minecraft 的任何问题，可以问络可哦 ~"))
         self.Bloriko_DeepThink_CheckBox.setText(_translate("Form", "深度思考"))
         self.AskBloriko_Button.setText(_translate("Form", "发送"))
-        self.Bloriko_Important_Info.setText(_translate("Form", "Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。"))
+        self.Bloriko_Important_Info.setText(_translate("Form", "络可依靠 AI。络可也可能犯错，请核实重要信息。"))
         self.Info_title.setText(_translate("Form", "信息"))
         self.BloretServerName.setText(_translate("Form", "Bloret"))
         self.BloretServerIP.setText(_translate("Form", "bloret.net "))

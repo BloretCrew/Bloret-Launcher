@@ -106,7 +106,7 @@ FluentPage {
                             color: Theme.currentTheme.colors.textColor
                         }
                         Label {
-                            text: (Backend ? Backend.tr("无需一个一个找 Mod，让 Bloriko 帮你找齐。") : "无需一个一个找 Mod，让 Bloriko 帮你找齐。")
+                            text: (Backend ? Backend.tr("无需一个一个找 Mod，让络可帮你找齐。") : "无需一个一个找 Mod，让络可帮你找齐。")
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
                     }
@@ -142,7 +142,7 @@ FluentPage {
         }
 
         Label {
-            text: (Backend ? Backend.tr("Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。") : "Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。")
+            text: (Backend ? Backend.tr("络可依靠 AI。络可也可能犯错，请核实重要信息。") : "络可依靠 AI。络可也可能犯错，请核实重要信息。")
             color: Theme.currentTheme.colors.textTertialyColor
             font.pixelSize: 12
         }

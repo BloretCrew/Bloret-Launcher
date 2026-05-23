@@ -123,7 +123,7 @@
             <item>
              <widget class="CaptionLabel" name="CaptionLabel">
               <property name="text">
-               <string>无需一个一个找 Mod，让 Bloriko 帮你找齐。</string>
+               <string>无需一个一个找 Mod，让络可帮你找齐。</string>
               </property>
              </widget>
             </item>
@@ -182,7 +182,7 @@
        <item>
         <widget class="CaptionLabel" name="Bloriko_Important_Info">
          <property name="text">
-          <string>Bloriko 依靠 AI。Bloriko 也可能犯错，请核实重要信息。</string>
+          <string>络可依靠 AI。络可也可能犯错，请核实重要信息。</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
