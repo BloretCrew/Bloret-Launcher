@@ -39,6 +39,8 @@ FluentPage {
         _mcFolderTitle = Backend ? Backend.tr("Minecraft 文件夹位置") : "Minecraft 文件夹位置";
         _mcToolbarTitle = Backend ? Backend.tr("Minecraft 小工具栏") : "Minecraft 小工具栏";
         _mcToolbarDesc = Backend ? Backend.tr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏") : "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏";
+        _sourceTitle = Backend ? Backend.tr("下载源") : "下载源";
+        _sourceDesc = Backend ? Backend.tr("选择下载来源：BMCLApi（优先镜像，失败回退官方）、Bloret GitCode（仅 1.21.7/1.21.8）或 Mojang 官方直连") : "选择下载来源：BMCLApi（优先镜像，失败回退官方）、Bloret GitCode（仅 1.21.7/1.21.8）或 Mojang 官方直连";
         _homeSection = Backend ? Backend.tr("首页") : "首页";
         _showAccountTitle = Backend ? Backend.tr("显示账户信息") : "显示账户信息";
         _showAccountDesc = Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息";
@@ -79,6 +81,8 @@ FluentPage {
     property string _mcFolderTitle: Backend ? Backend.tr("Minecraft 文件夹位置") : "Minecraft 文件夹位置"
     property string _mcToolbarTitle: Backend ? Backend.tr("Minecraft 小工具栏") : "Minecraft 小工具栏"
     property string _mcToolbarDesc: Backend ? Backend.tr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏") : "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"
+    property string _sourceTitle: Backend ? Backend.tr("下载源") : "下载源"
+    property string _sourceDesc: Backend ? Backend.tr("选择下载来源：BMCLApi（优先镜像，失败回退官方）、Bloret GitCode（仅 1.21.7/1.21.8）或 Mojang 官方直连") : "选择下载来源：BMCLApi（优先镜像，失败回退官方）、Bloret GitCode（仅 1.21.7/1.21.8）或 Mojang 官方直连"
     property string _homeSection: Backend ? Backend.tr("首页") : "首页"
     property string _showAccountTitle: Backend ? Backend.tr("显示账户信息") : "显示账户信息"
     property string _showAccountDesc: Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息"
@@ -222,6 +226,38 @@ FluentPage {
             icon.name: "ic_fluent_window_dev_tools_20_filled"
             Switch {
                 checked: true
+            }
+        }
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: _sourceTitle
+            description: _sourceDesc
+            icon.name: "ic_fluent_globe_20_regular"
+            ComboBox {
+                id: sourceCombo
+                width: 220
+                height: 32
+                model: [
+                    { text: qsTr("BMCLAPI"), value: "bmclapi" },
+                    { text: qsTr("Bloret"), value: "gitcode" },
+                    { text: qsTr("Mojang"), value: "official" }
+                ]
+                textRole: "text"
+                valueRole: "value"
+                currentIndex: {
+                    if (!Backend) return 0;
+                    var src = Backend.getDownloadSource();
+                    for (var i = 0; i < sourceCombo.model.length; i++) {
+                        if (sourceCombo.model[i].value === src)
+                            return i;
+                    }
+                    return 0;
+                }
+                onCurrentValueChanged: {
+                    if (Backend)
+                        Backend.setDownloadSource(currentValue);
+                }
             }
         }
     }
