@@ -1,6 +1,7 @@
 # Removed qfluentwidgets imports for PySide6 compatibility
 import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, sys, subprocess
 import xml.etree.ElementTree as ET
+from urllib.parse import urlparse
 try:
     import send2trash
 except ImportError:
