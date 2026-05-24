@@ -50,8 +50,10 @@ Dialog {
                         Layout.fillWidth: true
                         height: 60
                         radius: 8
-                        color: mouseArea.containsMouse ? Theme.currentTheme.colors.subtleFillColorSecondary : Theme.currentTheme.colors.cardColor
-                        border.color: Theme.currentTheme.colors.cardBorderColor
+                        color: mouseArea.containsMouse
+                            ? (Theme.currentTheme && Theme.currentTheme.colors ? Theme.currentTheme.colors.subtleFillColorSecondary : "#f0f0f0")
+                            : (Theme.currentTheme && Theme.currentTheme.colors ? Theme.currentTheme.colors.cardColor : "#ffffff")
+                        border.color: (Theme.currentTheme && Theme.currentTheme.colors) ? Theme.currentTheme.colors.cardBorderColor : "#d0d0d0"
                         
                         property var itemData: modelData
                         property bool isHovered: mouseArea.containsMouse

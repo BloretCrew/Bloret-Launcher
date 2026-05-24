@@ -155,6 +155,15 @@ FluentWindow {
             downloadDialog.setPaused(paused)
         }
 
+        function onDownloadErrorOccurred(title, message, version, versionName, loaderType) {
+            downloadErrorDialog.errorTitle = title
+            downloadErrorDialog.errorMessage = message
+            downloadErrorDialog.version = version
+            downloadErrorDialog.versionName = versionName
+            downloadErrorDialog.loaderType = loaderType
+            downloadErrorDialog.open()
+        }
+
         function onUpdateAvailable(currentVer, latestVer, updateText) {
             updateDialog.showUpdate(currentVer, latestVer, updateText)
         }
@@ -165,6 +174,11 @@ FluentWindow {
 
         function onUpdateFailed(message) {
             updateDialog.showError(message)
+        }
+
+        function onCoreManagerRequested(versionName, coreData) {
+            coreManagerDialog.close()
+            coreManagerDialog.openWithVersion(versionName)
         }
 
         function onMinecraftCrashDetected(title, message, stackTrace) {
@@ -194,6 +208,56 @@ FluentWindow {
         }
     }
 
+    Dialog {
+        id: downloadErrorDialog
+
+        property string errorTitle: ""
+        property string errorMessage: ""
+        property string version: ""
+        property string versionName: ""
+        property string loaderType: "vanilla"
+
+        title: errorTitle
+        modal: true
+        width: Math.min(520, window.width - 80)
+        standardButtons: Dialog.NoButton
+
+        ColumnLayout {
+            spacing: 16
+            width: parent.width
+
+            Text {
+                text: downloadErrorDialog.errorMessage
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                typography: Typography.Body
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                Button {
+                    text: Backend ? Backend.tr("关闭") : "关闭"
+                    onClicked: downloadErrorDialog.close()
+                }
+
+                Button {
+                    text: Backend ? Backend.tr("重试") : "重试"
+                    highlighted: true
+                    onClicked: {
+                        downloadErrorDialog.close()
+                        if (Backend) {
+                            Backend.retryDownload(downloadErrorDialog.loaderType, downloadErrorDialog.version, downloadErrorDialog.versionName)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     LaunchProgressDialog {
         id: launchProgressDialog
 
@@ -216,6 +280,10 @@ FluentWindow {
 
     ErrorAnalysisDialog {
         id: errorAnalysisDialog
+    }
+
+    CoreManagerDialog {
+        id: coreManagerDialog
     }
 
     // OOBE 覆盖层

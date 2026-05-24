@@ -158,7 +158,7 @@ FluentPage {
         Label {
             text: Backend ? Backend.getBloretVersion() : "2.0.0-Beta"
             font.weight: Font.DemiBold
-            color: Theme.accentColor
+            color: Theme.accentColor || Theme.currentTheme.colors.textColor
             Layout.alignment: Qt.AlignVCenter
         }
     }

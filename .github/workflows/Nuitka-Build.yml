@@ -20,8 +20,8 @@ jobs:
             artifact: Bloret-Launcher-Linux
           # - os: macos-15-intel
           #   artifact: Bloret-Launcher-MacOS-Intel
-          - os: macos-latest
-            artifact: Bloret-Launcher-MacOS-ARM
+          # - os: macos-latest
+          #   artifact: Bloret-Launcher-MacOS-ARM
     runs-on: ${{ matrix.os }}
     env:
       PYTHON_VERSION: '3.10'
