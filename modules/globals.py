@@ -39,3 +39,6 @@ launch_status = {  # 启动状态存储
     "detail": "",
     "finished": False
 }
+
+download_source = "bmclapi"  # "bmclapi" | "gitcode" | "official"  下载源
+current_minecraft_version = None  # 当前安装中的 Minecraft 版本，供 gitcode 源使用

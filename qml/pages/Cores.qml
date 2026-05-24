@@ -10,10 +10,6 @@ FluentPage {
 
     property var launchItems: []
 
-    CoreManagerDialog {
-        id: coreManagerDialog
-    }
-
     Component.onCompleted: {
         refreshLaunchItems()
     }
@@ -110,7 +106,7 @@ FluentPage {
                                 ToolTip.text: Backend ? Backend.tr("核心管理") : "核心管理"
                                 visible: itemData.type === "minecraft"
                                 onClicked: {
-                                    coreManagerDialog.openWithVersion(itemData.name)
+                                    if (Backend) Backend.showCoreManager(itemData.name)
                                 }
                             }
                         }
@@ -136,7 +132,7 @@ FluentPage {
                                 icon.name: "ic_fluent_settings_20_regular"
                                 visible: itemData.type === "minecraft"
                                 onTriggered: {
-                                    coreManagerDialog.openWithVersion(itemData.name)
+                                    if (Backend) Backend.showCoreManager(itemData.name)
                                 }
                             }
 

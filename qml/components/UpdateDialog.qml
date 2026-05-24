@@ -40,7 +40,7 @@ Dialog {
                 text: (Backend ? Backend.tr("最新版本") : "最新版本") + ": " + latestVersion
                 typography: Typography.Body
                 font.weight: Font.DemiBold
-                color: Theme.accentColor
+                color: Theme.accentColor || Theme.currentTheme.colors.textColor
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
             }
