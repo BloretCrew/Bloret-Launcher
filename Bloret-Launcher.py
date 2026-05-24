@@ -177,6 +177,9 @@ class Backend(QObject):
     minecraftCrashDetected = Signal(str, str, str)  # title, message, stack_trace
     playTimeTick = Signal()  # emitted every second while game is running
 
+    # Resource Pack Editor signal
+    resourcePackEditorRequested = Signal()
+
     def __init__(self):
         super().__init__()
         self._server_info = {}
@@ -217,6 +220,15 @@ class Backend(QObject):
     @Slot(result=str)
     def helloFromPython(self):
         return "Hello from PySide6 Backend!"
+
+    @Slot(result=bool)
+    def openResourcePackEditor(self):
+        try:
+            self.resourcePackEditorRequested.emit()
+            return True
+        except Exception as e:
+            print(f"Failed to open ResourcePack Editor: {e}")
+            return False
         
     @Slot(result=str)
     def getTips(self):
@@ -3847,6 +3859,14 @@ class LauncherV2(RinUIWindow):
         self.backend = Backend()
         self.backend.setBackendParent(self)
         self.engine.rootContext().setContextProperty("Backend", self.backend)
+
+        # Inject ResourcePackEditor Backend
+        try:
+            from modules.resourcepack_editor import ResourcePackEditorBackend
+            self.rp_editor_backend = ResourcePackEditorBackend()
+            self.engine.rootContext().setContextProperty("RPEditor", self.rp_editor_backend)
+        except Exception as e:
+            print(f"Failed to load ResourcePack Editor backend: {e}")
         
         # 启动时检查并修复 .BL.json
         try:

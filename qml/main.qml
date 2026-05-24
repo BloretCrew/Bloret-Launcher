@@ -170,6 +170,16 @@ FluentWindow {
         function onMinecraftCrashDetected(title, message, stackTrace) {
             errorAnalysisDialog.showError(title, message, stackTrace)
         }
+
+        function onResourcePackEditorRequested() {
+            var component = Qt.createComponent("ResourcePackEditor/ResourcePackEditorWindow.qml")
+            if (component.status === Component.Ready) {
+                var editorWindow = component.createObject(null)
+                editorWindow.show()
+            } else {
+                console.error("Failed to create ResourcePackEditor window:", component.errorString())
+            }
+        }
     }
 
     DownloadDialog {

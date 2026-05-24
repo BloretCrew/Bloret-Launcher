@@ -10,3 +10,4 @@ Send2Trash
 winsdk; sys_platform == 'win32'
 toml
 psutil
+dulwich

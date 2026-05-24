@@ -309,5 +309,57 @@ FluentPage {
                 }
             }
         }
+
+        // --- Resource Pack Editor Section ---
+        Label {
+            font.pixelSize: 20
+            font.weight: Font.DemiBold
+            text: (Backend ? Backend.tr("资源包工具") : "资源包工具")
+            Layout.topMargin: 10
+            color: Theme.currentTheme.colors.textColor
+        }
+
+        Frame {
+            Layout.fillWidth: true
+            padding: 15
+            background: Rectangle {
+                color: Theme.currentTheme.colors.cardColor
+                radius: 8
+                border.color: Theme.currentTheme.colors.controlBorderColor
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 15
+
+                Image {
+                    source: "../../icon/Grass_Block.png"
+                    sourceSize { width: 40; height: 40 }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Label {
+                        font.weight: Font.DemiBold
+                        font.pixelSize: 16
+                        text: (Backend ? Backend.tr("Bloret 资源包编辑器") : "Bloret 资源包编辑器")
+                        color: Theme.currentTheme.colors.textColor
+                    }
+                    Label {
+                        text: (Backend ? Backend.tr("创建和编辑 Minecraft 资源包，内置 Git 版本管理，无需编程基础") : "创建和编辑 Minecraft 资源包，内置 Git 版本管理，无需编程基础")
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        wrapMode: Text.Wrap
+                    }
+                }
+
+                Button {
+                    text: (Backend ? Backend.tr("打开编辑器") : "打开编辑器")
+                    highlighted: true
+                    onClicked: {
+                        if (Backend) Backend.openResourcePackEditor()
+                    }
+                }
+            }
+        }
     }
 }
