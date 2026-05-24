@@ -123,7 +123,7 @@ Item {
                                     text: fileItem.name
                                     font.pixelSize: 11
                                     color: {
-                                        if (fileItem.type === "dir") return Theme.currentTheme.colors.accentColor
+                                        if (fileItem.type === "dir") return Theme.accentColor || "#0078D4"
                                         return Theme.currentTheme.colors.textColor
                                     }
                                     elide: Text.ElideRight

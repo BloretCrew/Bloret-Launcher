@@ -135,7 +135,7 @@ Rectangle {
                         if (itemData.gitStatus === "U") return "#2196F3"
                         if (itemData.gitStatus === "M") return "#FF9800"
                         if (itemData.gitStatus === "A") return "#4CAF50"
-                        if (itemData.type === "dir") return Theme.currentTheme.colors.accentColor
+                        if (itemData.type === "dir") return Theme.accentColor || "#0078D4"
                         return Theme.currentTheme.colors.textColor
                     }
                     elide: Text.ElideRight

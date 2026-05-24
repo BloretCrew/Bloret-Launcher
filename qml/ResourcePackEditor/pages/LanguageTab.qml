@@ -97,7 +97,7 @@ Item {
                 delegate: Rectangle {
                     width: langList.width
                     height: 32
-                    color: ListView.isCurrentItem ? Theme.currentTheme.colors.accentColor : "transparent"
+                    color: ListView.isCurrentItem ? (Theme.accentColor || "#0078D4") : "transparent"
                     radius: 4
 
                     Label {
@@ -174,7 +174,7 @@ Item {
                                         text: modelData.key
                                         font.pixelSize: 11
                                         font.family: "monospace"
-                                        color: Theme.currentTheme.colors.accentColor
+                                        color: Theme.accentColor || "#0078D4"
                                         elide: Text.ElideMiddle
                                         Layout.fillWidth: true
                                     }

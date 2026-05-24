@@ -5,7 +5,7 @@ import Qt.labs.platform 1.1
 import RinUI
 import "pages"
 
-FluentWindow {
+FluentWindowBase {
     id: editorWindow
     visible: false
     title: "Bloret 资源包编辑器"
@@ -17,215 +17,248 @@ FluentWindow {
     property string currentFilePath: ""
     property var fileTreeModel: []
     property int currentTabIndex: 0
+    property string pendingPackPath: ""
 
-    navigationView.navExpandWidth: 0
-    navigationItems: []
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
 
-    Connections {
-        target: RPEditor
-        function onPackLoaded(info) {
-            var data = JSON.parse(info.stats)
-            fileTreeModel = RPEditor.getFileTree()
-            statsLabel.text = "文件: " + data.files + " | 贴图: " + data.textures + " | 语言: " + data.languages
-        }
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
+            Layout.topMargin: 4
+            spacing: 2
 
-        function onFileTreeChanged(tree) {
-            fileTreeModel = tree
-        }
+            Repeater {
+                model: ["概览", "pack.mcmeta", "语言", "贴图", "文件", "Agent"]
 
-        function onStatusMessage(type, msg) {
-            statusBarText.text = msg
-        }
-
-        function onErrorOccurred(msg) {
-            statusBarText.text = "⚠ " + msg
-            statusBarText.color = "#F44336"
-            errorTimer.start()
-        }
-    }
-
-    Component.onCompleted: {
-        if (RPEditor && !RPEditor.isPackOpen()) {
-            folderDialog.open()
-        }
-    }
-
-    FolderDialog {
-        id: folderDialog
-        title: "选择资源包文件夹或压缩包"
-        onAccepted: {
-            if (folderDialog.folder) {
-                var pathStr = folderDialog.folder.toString()
-                if (pathStr.startsWith("file://")) {
-                    pathStr = pathStr.slice(7)
+                Button {
+                    text: modelData
+                    flat: true
+                    highlighted: currentTabIndex === index
+                    onClicked: currentTabIndex = index
                 }
-                pathStr = decodeURIComponent(pathStr)
-                RPEditor.openPack(pathStr)
-            } else {
-                editorWindow.close()
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Label {
+                id: statsLabel
+                font.pixelSize: 12
+                color: Theme.currentTheme.colors.textSecondaryColor
+                verticalAlignment: Text.AlignVCenter
             }
         }
-        onRejected: {
-            editorWindow.close()
-        }
-    }
 
-    Item {
-        anchors.fill: parent
+        Item {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.topMargin: 4
 
-        Rectangle {
-            id: sidebar
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 0
-            width: 280
-            color: Theme.currentTheme.colors.cardColor
-            border.color: Theme.currentTheme.colors.controlBorderColor
-            border.width: 1
-
-            ColumnLayout {
+            RowLayout {
                 anchors.fill: parent
                 spacing: 0
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    color: "transparent"
-
-                    Label {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 12
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "文件列表"
-                        font.pixelSize: 13
-                        font.weight: Font.DemiBold
-                        color: Theme.currentTheme.colors.textColor
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 1
-                    color: Theme.currentTheme.colors.controlBorderColor
-                }
-
-                FileTreeSidebar {
+                StackLayout {
+                    id: tabContent
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    model: fileTreeModel
-                    onFileSelected: function(fp) { currentFilePath = fp }
-                }
-            }
-        }
+                    currentIndex: currentTabIndex
 
-        ColumnLayout {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: sidebar.left
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 28
-            spacing: 0
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 16
-                Layout.rightMargin: 16
-                Layout.topMargin: 8
-                spacing: 8
-
-                Button {
-                    id: tab0
-                    text: "概览"
-                    flat: true
-                    highlighted: currentTabIndex === 0
-                    onClicked: currentTabIndex = 0
-                }
-                Button {
-                    id: tab1
-                    text: "pack.mcmeta"
-                    flat: true
-                    highlighted: currentTabIndex === 1
-                    onClicked: currentTabIndex = 1
-                }
-                Button {
-                    id: tab2
-                    text: "语言"
-                    flat: true
-                    highlighted: currentTabIndex === 2
-                    onClicked: currentTabIndex = 2
-                }
-                Button {
-                    id: tab3
-                    text: "贴图"
-                    flat: true
-                    highlighted: currentTabIndex === 3
-                    onClicked: currentTabIndex = 3
-                }
-                Button {
-                    id: tab4
-                    text: "文件"
-                    flat: true
-                    highlighted: currentTabIndex === 4
-                    onClicked: currentTabIndex = 4
-                }
-                Button {
-                    id: tab5
-                    text: "Agent"
-                    flat: true
-                    highlighted: currentTabIndex === 5
-                    onClicked: currentTabIndex = 5
+                    OverviewTab {}
+                    McmetaTab {}
+                    LanguageTab {}
+                    TextureTab {}
+                    FileBrowserTab {}
+                    AgentTab {}
                 }
 
-                Item { Layout.fillWidth: true }
+                Rectangle {
+                    id: sidebar
+                    Layout.preferredWidth: 280
+                    Layout.fillHeight: true
+                    color: Theme.currentTheme.colors.cardColor
+                    border.color: Theme.currentTheme.colors.controlBorderColor
+                    border.width: 1
 
-                Label {
-                    id: statsLabel
-                    font.pixelSize: 12
-                    color: Theme.currentTheme.colors.textSecondaryColor
-                    verticalAlignment: Text.AlignVCenter
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 0
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            color: "transparent"
+
+                            Label {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "文件列表"
+                                font.pixelSize: 13
+                                font.weight: Font.DemiBold
+                                color: Theme.currentTheme.colors.textColor
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: Theme.currentTheme.colors.controlBorderColor
+                        }
+
+                        FileTreeSidebar {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            model: fileTreeModel
+                            onFileSelected: function(fp) { currentFilePath = fp }
+                        }
+                    }
                 }
-            }
-
-            StackLayout {
-                id: tabContent
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.topMargin: 8
-                currentIndex: currentTabIndex
-
-                OverviewTab {}
-                McmetaTab {}
-                LanguageTab {}
-                TextureTab {}
-                FileBrowserTab {}
-                AgentTab {}
             }
         }
 
         Rectangle {
-            anchors.left: parent.left
-            anchors.right: sidebar.left
-            anchors.bottom: parent.bottom
-            height: 28
+            Layout.fillWidth: true
+            height: 24
             color: "transparent"
 
             Label {
                 id: statusBarText
-                anchors.fill: parent
+                anchors.left: parent.left
                 anchors.leftMargin: 16
-                verticalAlignment: Text.AlignVCenter
+                anchors.verticalCenter: parent.verticalCenter
                 font.pixelSize: 11
                 color: Theme.currentTheme.colors.textSecondaryColor
             }
         }
-    }
 
-    Timer {
-        id: errorTimer
-        interval: 5000
-        onTriggered: {
-            statusBarText.color = Theme.currentTheme.colors.textSecondaryColor
+        Connections {
+            target: RPEditor
+            function onPackLoaded(info) {
+                var data = JSON.parse(info.stats)
+                fileTreeModel = RPEditor.getFileTree()
+                statsLabel.text = "文件: " + data.files + " | 贴图: " + data.textures + " | 语言: " + data.languages
+            }
+
+            function onFileTreeChanged(tree) {
+                fileTreeModel = tree
+            }
+
+            function onStatusMessage(type, msg) {
+                statusBarText.text = msg
+                statusBarText.color = Theme.currentTheme.colors.textSecondaryColor
+            }
+
+            function onErrorOccurred(msg) {
+                statusBarText.text = "⚠ " + msg
+                statusBarText.color = "#F44336"
+                errorTimer.start()
+            }
+
+            function onPackMissingStructure(path) {
+                pendingPackPath = path
+                createStructureTimer.start()
+            }
+        }
+
+        Component.onCompleted: {
+            if (RPEditor && !RPEditor.isPackOpen()) {
+                folderDialog.open()
+            }
+        }
+
+        FolderDialog {
+            id: folderDialog
+            title: "选择资源包文件夹或压缩包"
+            onAccepted: {
+                if (folderDialog.folder) {
+                    var pathStr = folderDialog.folder.toString()
+                    if (pathStr.startsWith("file://")) {
+                        pathStr = pathStr.slice(7)
+                    }
+                    pathStr = decodeURIComponent(pathStr)
+                    RPEditor.openPack(pathStr)
+                } else {
+                    editorWindow.close()
+                }
+            }
+            onRejected: {
+                editorWindow.close()
+            }
+        }
+
+        Dialog {
+            id: createStructureDialog
+            title: "创建资源包"
+            modal: true
+            width: 480
+            closePolicy: Popup.CloseOnEscape
+
+            ColumnLayout {
+                width: parent.width
+                spacing: 12
+
+                Label {
+                    text: "该目录不是有效的 Minecraft 资源包。"
+                    font.pixelSize: 14
+                    font.weight: Font.DemiBold
+                    color: Theme.currentTheme.colors.textColor
+                }
+
+                Label {
+                    text: "是否自动创建基础资源包结构？\n\n将生成：\n  • pack.mcmeta（资源包元数据）\n  • assets/minecraft/（标准命名空间）\n  • assets/minecraft/lang/en_us.json（语言文件）\n  • assets/minecraft/textures/（贴图目录）\n  • assets/minecraft/models/（模型目录）"
+                    font.pixelSize: 12
+                    lineHeight: 1.5
+                    wrapMode: Text.Wrap
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 8
+
+                    Item { Layout.fillWidth: true }
+
+                    Button {
+                        text: "取消"
+                        flat: true
+                        onClicked: createStructureDialog.reject()
+                    }
+
+                    Button {
+                        text: "创建"
+                        onClicked: createStructureDialog.accept()
+                    }
+                }
+            }
+
+            onAccepted: {
+                if (pendingPackPath && RPEditor) {
+                    RPEditor.createBasicStructure(pendingPackPath)
+                }
+            }
+            onRejected: {
+                editorWindow.close()
+            }
+        }
+
+        Timer {
+            id: createStructureTimer
+            interval: 0
+            repeat: false
+            onTriggered: {
+                createStructureDialog.open()
+            }
+        }
+
+        Timer {
+            id: errorTimer
+            interval: 5000
+            onTriggered: {
+                statusBarText.color = Theme.currentTheme.colors.textSecondaryColor
+            }
         }
     }
 }

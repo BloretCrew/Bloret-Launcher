@@ -16,6 +16,7 @@ class ResourcePackEditorBackend(QObject):
     gitStatusChanged = Signal(str)
     statusMessage = Signal(str, str)
     errorOccurred = Signal(str)
+    packMissingStructure = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -36,6 +37,7 @@ class ResourcePackEditorBackend(QObject):
         if not path.exists():
             self.errorOccurred.emit(f"路径不存在: {path}")
             return False
+
         if path.suffix.lower() == ".zip":
             extract_dir = path.parent / path.stem
             try:
@@ -50,11 +52,20 @@ class ResourcePackEditorBackend(QObject):
         else:
             self.errorOccurred.emit("请选择 zip 文件或文件夹")
             return False
+
+        if not (self._pack_path / "pack.mcmeta").exists():
+            self.packMissingStructure.emit(str(self._pack_path))
+            self._pack_path = None
+            return False
+
         self._git = ResourcePackGit(str(self._pack_path))
         self._git.init_if_needed()
         self._analyzer = PackAnalyzer(self._pack_path)
         if not self._analyzer.is_valid_pack():
             self.errorOccurred.emit("该目录不是有效的资源包（缺少 pack.mcmeta）")
+            self._pack_path = None
+            self._git = None
+            self._analyzer = None
             return False
         self._refresh()
         return True
@@ -62,6 +73,33 @@ class ResourcePackEditorBackend(QObject):
     @Slot(str, result=bool)
     def openPack(self, path):
         return self.open_pack(path)
+
+    @Slot(str, result=bool)
+    def createBasicStructure(self, path):
+        path = Path(path)
+        try:
+            assets_dir = path / "assets" / "minecraft"
+            assets_dir.mkdir(parents=True, exist_ok=True)
+            (assets_dir / "lang").mkdir(exist_ok=True)
+            (assets_dir / "textures").mkdir(exist_ok=True)
+            (assets_dir / "models").mkdir(exist_ok=True)
+            mcmeta = {
+                "pack": {
+                    "pack_format": 42,
+                    "description": "My Resource Pack"
+                }
+            }
+            (path / "pack.mcmeta").write_text(
+                json.dumps(mcmeta, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+            (assets_dir / "lang" / "en_us.json").write_text(
+                json.dumps({"pack.name": "My Resource Pack", "pack.description": ""}, indent=2),
+                encoding="utf-8"
+            )
+        except Exception as e:
+            self.errorOccurred.emit(f"创建资源包结构失败: {e}")
+            return False
+        return self.open_pack(str(path))
 
     def _refresh(self):
         if self._analyzer is None:

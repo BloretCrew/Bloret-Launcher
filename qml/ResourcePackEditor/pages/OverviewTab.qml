@@ -36,12 +36,15 @@ Item {
         commitCount.text = String(RPEditor ? RPEditor.getCommitCount() : 0)
     }
 
-    ScrollView {
+    Flickable {
         anchors.fill: parent
         anchors.margins: 16
+        contentHeight: contentColumn.implicitHeight
         clip: true
+        boundsBehavior: Flickable.StopAtBounds
 
         ColumnLayout {
+            id: contentColumn
             width: parent.width
             spacing: 16
 
@@ -54,11 +57,13 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
+                Layout.preferredHeight: cardInfoColumn.implicitHeight + 32
                 radius: 8
                 color: Theme.currentTheme.colors.cardColor
                 border.color: Theme.currentTheme.colors.controlBorderColor
 
                 ColumnLayout {
+                    id: cardInfoColumn
                     anchors.fill: parent
                     anchors.margins: 16
                     spacing: 12
@@ -97,11 +102,13 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
+                Layout.preferredHeight: cardStatsColumn.implicitHeight + 32
                 radius: 8
                 color: Theme.currentTheme.colors.cardColor
                 border.color: Theme.currentTheme.colors.controlBorderColor
 
                 ColumnLayout {
+                    id: cardStatsColumn
                     anchors.fill: parent
                     anchors.margins: 16
                     spacing: 12
@@ -120,20 +127,24 @@ Item {
                         Layout.fillWidth: true
 
                         ColumnLayout {
-                            Label { id: fileCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; color: Theme.currentTheme.colors.accentColor }
-                            Label { text: "总文件"; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+                            Layout.fillWidth: true
+                            Label { id: fileCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; Layout.alignment: Qt.AlignHCenter; color: Theme.accentColor || "#0078D4" }
+                            Label { text: "总文件"; Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
                         }
                         ColumnLayout {
-                            Label { id: textureCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; color: "#FF9800" }
-                            Label { text: "贴图"; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+                            Layout.fillWidth: true
+                            Label { id: textureCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; Layout.alignment: Qt.AlignHCenter; color: "#FF9800" }
+                            Label { text: "贴图"; Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
                         }
                         ColumnLayout {
-                            Label { id: langCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; color: "#4CAF50" }
-                            Label { text: "语言文件"; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+                            Layout.fillWidth: true
+                            Label { id: langCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; Layout.alignment: Qt.AlignHCenter; color: "#4CAF50" }
+                            Label { text: "语言文件"; Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
                         }
                         ColumnLayout {
-                            Label { id: modelCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; color: "#2196F3" }
-                            Label { text: "模型"; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+                            Layout.fillWidth: true
+                            Label { id: modelCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; Layout.alignment: Qt.AlignHCenter; color: "#2196F3" }
+                            Label { text: "模型"; Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
                         }
                     }
                 }
@@ -141,11 +152,13 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
+                Layout.preferredHeight: cardActionsColumn.implicitHeight + 32
                 radius: 8
                 color: Theme.currentTheme.colors.cardColor
                 border.color: Theme.currentTheme.colors.controlBorderColor
 
                 ColumnLayout {
+                    id: cardActionsColumn
                     anchors.fill: parent
                     anchors.margins: 16
                     spacing: 12
@@ -194,16 +207,35 @@ Item {
         title: "提交更改"
         modal: true
         width: 400
-        standardButtons: Dialog.Ok | Dialog.Cancel
+        closePolicy: Popup.CloseOnEscape
 
         ColumnLayout {
-            anchors.fill: parent
+            width: parent.width
             spacing: 8
 
             TextField {
                 id: commitMsgInput
                 Layout.fillWidth: true
                 placeholderText: "输入提交信息..."
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 8
+
+                Item { Layout.fillWidth: true }
+
+                Button {
+                    text: "取消"
+                    flat: true
+                    onClicked: commitDialog.reject()
+                }
+
+                Button {
+                    text: "提交"
+                    highlighted: true
+                    onClicked: commitDialog.accept()
+                }
             }
         }
 

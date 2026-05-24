@@ -39,11 +39,9 @@ FluentPage {
     }
 
     ColumnLayout {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.margins: 20
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        Layout.margins: 20
         spacing: 20
 
         InfoBar {
