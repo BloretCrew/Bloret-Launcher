@@ -138,7 +138,6 @@ class Backend(QObject):
     downloadProgressUpdated = Signal(float, str, str, str, str)
     downloadDialogClosed = Signal()
     downloadPaused = Signal(bool)
-    downloadErrorOccurred = Signal(str, str, str, str, str)
     coreManagerRequested = Signal(str, dict)
     activityInfoChanged = Signal(dict)
     downloadNotify = Signal(str, str, bool)
@@ -1571,27 +1570,6 @@ class Backend(QObject):
         self.downloadDialogRequested.emit(title)
         InstallMinecraftVersion(version, VersionName=versionName, backend=self, Loader_Type="neoforge")
 
-    @Slot(str, str, str)
-    def retryDownload(self, loaderType, version, versionName):
-        from modules.install import InstallMinecraftVersion
-        loader_titles = {
-            "fabric": "Fabric Loader",
-            "forge": "Forge",
-            "neoforge": "NeoForge",
-        }
-        if loaderType == "vanilla":
-            title = f"正在重新下载 Minecraft {version}"
-        else:
-            title = f"正在重新下载 Minecraft {version} 和 {loader_titles.get(loaderType, loaderType)}"
-        self.downloadDialogRequested.emit(title)
-        InstallMinecraftVersion(
-            version,
-            Fabric_Loader=(loaderType == "fabric"),
-            VersionName=versionName,
-            backend=self,
-            Loader_Type=loaderType,
-        )
-
     @Slot()
     def toggleDownloadPause(self):
         from modules.install import toggle_current_download_pause
@@ -1610,9 +1588,6 @@ class Backend(QObject):
 
     def setDownloadPaused(self, paused):
         self.downloadPaused.emit(paused)
-
-    def showDownloadError(self, title, message, version, versionName, loaderType):
-        self.downloadErrorOccurred.emit(title, message, version, versionName, loaderType)
 
     @Slot(str)
     def downloadJava(self, version):
@@ -2005,20 +1980,6 @@ class Backend(QObject):
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print(f"Web Remoter enabled updated to: {enabled}")
-
-    @Slot(result=str)
-    def getDownloadSource(self):
-        config_data = cfg.read()
-        return config_data.get('download_source', 'bmclapi')
-
-    @Slot(str)
-    def setDownloadSource(self, source):
-        config_data = cfg.read()
-        config_data['download_source'] = source
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
-        BLglobals.download_source = source
-        print(f"Download source updated to: {source}")
 
     @Slot(result=str)
     def getLocalIPAddress(self):

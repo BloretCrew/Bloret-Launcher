@@ -102,72 +102,68 @@ def safe_ui_update(widget, method, value, widget_type=None):
         log(f"UI更新失败: {e}")
     return False
 
-def _gitcode_base_url(version=None):
-    """返回 GitCode 镜像源的基准 URL。"""
-    v = version or BLglobals.current_minecraft_version
-    if not v:
-        return None
-    return f"https://raw.gitcode.com/Bloret/{v}/raw/main"
-
 def dl_source_launcher_or_meta_get(original_url):
     """
     根据PCL启动器的DlSourceLauncherOrMetaGet方法实现
     返回下载URL的镜像源列表
-    根据 download_source 选择 BMCLAPI / GitCode / 官方。
     """
     if not original_url:
         raise Exception("无对应的 json 下载地址")
-    if BLglobals.download_source != "bmclapi":
-        return [original_url]
     
+    # 官方源
     official_urls = [original_url]
+    
+    # 镜像源
     mirror_urls = [original_url
         .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com")
         .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com")
         .replace("https://launcher.mojang.com", "https://bmclapi2.bangbang93.com")
         .replace("https://launchermeta.mojang.com", "https://bmclapi2.bangbang93.com")
     ]
+    
+    # 根据是否优先使用官方源决定URL顺序
+    # 这里我们默认使用镜像源优先，与PCL的逻辑保持一致
     return mirror_urls + official_urls
 
 def dl_source_library_get(original_url):
     """
-    返回库文件URL的镜像源列表。
-    根据 download_source 选择 BMCLAPI/maven / GitCode/libraries / 官方。
+    根据PCL启动器的DlSourceLibraryGet方法实现
+    返回库文件URL的镜像源列表
     """
-    if BLglobals.download_source == "official":
-        return [original_url]
-    if BLglobals.download_source == "gitcode":
-        base = _gitcode_base_url()
-        if base:
-            mirror = original_url
-            for src in ["https://libraries.minecraft.net", "https://piston-data.mojang.com",
-                         "https://piston-meta.mojang.com", "https://launcher.mojang.com",
-                         "https://launchermeta.mojang.com",
-                         "https://maven.neoforged.net/releases",
-                         "https://maven.minecraftforge.net"]:
-                if src in mirror:
-                    mirror = mirror.replace(src, f"{base}/libraries")
-                    break
-            if mirror != original_url:
-                return [mirror, original_url]
-        return [original_url]
-    mirror = original_url
-    # NeoForge Maven: /releases/net/neoforged/neoforge/...
-    if "maven.neoforged.net/releases" in mirror:
-        mirror = mirror.replace("https://maven.neoforged.net/releases", "https://bmclapi2.bangbang93.com/maven")
-    # Forge Maven: /net/minecraftforge/forge/...
-    elif "maven.minecraftforge.net" in mirror:
-        mirror = mirror.replace("https://maven.minecraftforge.net", "https://bmclapi2.bangbang93.com/maven")
-    else:
-        for src in ["https://piston-data.mojang.com", "https://piston-meta.mojang.com",
-                     "https://libraries.minecraft.net", "https://launcher.mojang.com",
-                     "https://launchermeta.mojang.com"]:
-            if src in mirror:
-                mirror = mirror.replace(src, "https://bmclapi2.bangbang93.com/maven")
-                break
-    if mirror != original_url:
-        return [mirror, original_url]
-    return [original_url]
+    candidate_urls = []
+    
+    parsed_url = urlparse(original_url)
+    host = (parsed_url.hostname or "").lower()
+    path = parsed_url.path or ""
+
+    # 镜像源
+    mirror_urls = []
+    if host == "libraries.minecraft.net":
+        mirror_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/"))
+        mirror_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/libraries/"))
+    elif host == "maven.fabricmc.net":
+        mirror_urls.append(original_url.replace("https://maven.fabricmc.net/", "https://bmclapi2.bangbang93.com/maven/"))
+    elif host == "maven.minecraftforge.net":
+        mirror_urls.append(original_url.replace("https://maven.minecraftforge.net/", "https://bmclapi2.bangbang93.com/maven/"))
+    elif host == "maven.neoforged.net" and path.startswith("/releases/"):
+        mirror_urls.append(original_url.replace("https://maven.neoforged.net/releases/", "https://bmclapi2.bangbang93.com/maven/"))
+    
+    # 添加 BMCLAPI 镜像源
+    mirror_urls.append(original_url
+        .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/maven")
+        .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/maven")
+        .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/maven"))
+    mirror_urls.append(original_url
+        .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
+        .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
+        .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/libraries"))
+
+    # 优先添加镜像源
+    candidate_urls.extend(mirror_urls)
+    # 最后添加官方源
+    candidate_urls.append(original_url)
+    
+    return candidate_urls
 
 def _request_json_from_urls(urls, timeout=30):
     for url in urls:
@@ -180,16 +176,15 @@ def _request_json_from_urls(urls, timeout=30):
             log(f"请求 JSON 失败: {url}, {e}", logging.WARNING)
     return None
 
-def _request_text_from_urls(urls, timeout=30, context=""):
-    prefix = f"[{context}] " if context else ""
+def _request_text_from_urls(urls, timeout=30):
     for url in urls:
         try:
             response = requests.get(url, timeout=timeout)
             if response.status_code == 200:
                 return response.text
-            log(f"{prefix}获取失败: {url}, HTTP {response.status_code}", logging.WARNING)
+            log(f"获取文本失败: {url}, HTTP {response.status_code}", logging.WARNING)
         except requests.exceptions.RequestException as e:
-            log(f"{prefix}请求失败: {url}, {e}", logging.WARNING)
+            log(f"请求文本失败: {url}, {e}", logging.WARNING)
     return None
 
 def _get_java_path_for_installer():
@@ -253,21 +248,10 @@ def _ensure_launcher_profile(minecraft_dir, minecraft_version):
         log(f"创建 launcher_profiles.json 失败: {e}", logging.WARNING)
         return False
 
-def _maven_metadata_versions(metadata_url, label=""):
-    label = label or metadata_url
-    metadata_text = None
-    for attempt in range(3):
-        metadata_text = _request_text_from_urls([metadata_url], context=f"{label} 第{attempt+1}/3次")
-        if metadata_text:
-            if attempt > 0:
-                log(f"{label}: 第{attempt+1}/3次重试成功", logging.INFO)
-            break
-        if attempt < 2:
-            wait = 1.5 * (attempt + 1)
-            log(f"{label}: 第{attempt+1}/3次失败，{wait:.0f}秒后重试", logging.WARNING)
-            time.sleep(wait)
+def _maven_metadata_versions(metadata_url):
+    # Forge / NeoForge 的版本元数据以官方 Maven 为准，避免镜像数据滞后导致误判
+    metadata_text = _request_text_from_urls([metadata_url])
     if not metadata_text:
-        log(f"{label}: 3次重试全部失败", logging.ERROR)
         return []
     try:
         root = ET.fromstring(metadata_text)
@@ -285,76 +269,25 @@ def _version_sort_key(value):
             parts.append(item)
     return parts
 
-def _neo_versions_from_maven(minecraft_version, is_neoforge):
-    """从官方 Maven 获取 Forge/NeoForge 版本列表"""
-    if is_neoforge:
-        label = "NeoForge Maven"
-        url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml"
-        versions = _maven_metadata_versions(url, label=label)
-        parts = minecraft_version.split(".")
-        if len(parts) < 2 or parts[0] != "1":
-            return None
-        patch = parts[2] if len(parts) > 2 else "0"
-        prefix = f"{parts[1]}.{patch}."
-        matched = [v for v in versions if v.startswith(prefix)]
-    else:
-        label = "Forge Maven"
-        url = "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml"
-        versions = _maven_metadata_versions(url, label=label)
-        matched = [v for v in versions if v.startswith(f"{minecraft_version}-")]
+def _latest_forge_version(minecraft_version):
+    metadata_url = "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml"
+    versions = [v for v in _maven_metadata_versions(metadata_url) if v.startswith(f"{minecraft_version}-")]
+    if not versions:
+        return None
+    return sorted(versions, key=_version_sort_key)[-1]
+
+def _latest_neoforge_version(minecraft_version):
+    metadata_url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml"
+    versions = _maven_metadata_versions(metadata_url)
+    parts = minecraft_version.split(".")
+    if len(parts) < 2 or parts[0] != "1":
+        return None
+    patch = parts[2] if len(parts) > 2 else "0"
+    prefix = f"{parts[1]}.{patch}."
+    matched = [v for v in versions if v.startswith(prefix)]
     if not matched:
         return None
     return sorted(matched, key=_version_sort_key)[-1]
-
-def _neo_versions_from_bmclapi(minecraft_version, is_neoforge):
-    """从 BMCLAPI Maven 镜像获取版本列表（官方 Maven 不可用时的 fallback）"""
-    label = "NeoForge BMCLAPI" if is_neoforge else "Forge BMCLAPI"
-    if is_neoforge:
-        xml_url = "https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge/maven-metadata.xml"
-        versions = _maven_metadata_versions(xml_url, label=label)
-        parts = minecraft_version.split(".")
-        if len(parts) < 2 or parts[0] != "1":
-            return None
-        patch = parts[2] if len(parts) > 2 else "0"
-        prefix = f"{parts[1]}.{patch}."
-        matched = [v for v in versions if v.startswith(prefix)]
-    else:
-        xml_url = "https://bmclapi2.bangbang93.com/maven/net/minecraftforge/forge/maven-metadata.xml"
-        versions = _maven_metadata_versions(xml_url, label=label)
-        matched = [v for v in versions if v.startswith(f"{minecraft_version}-")]
-    if not matched:
-        log(f"{label}: 未找到适用于 Minecraft {minecraft_version} 的版本", logging.WARNING)
-        return None
-    result = sorted(matched, key=_version_sort_key)[-1]
-    log(f"{label}: 最新版本 {result}", logging.INFO)
-    return result
-
-def _latest_neoforge_version(minecraft_version):
-    # 优先尝试官方 Maven（权威数据），失败则降级到 BMCLAPI
-    # 官方 Maven 的版本号是短格式如 21.8.48-beta（无 1. 前缀），
-    # BMCLAPI 返回的也是相同格式
-    is_neoforge = True
-    result = _neo_versions_from_maven(minecraft_version, is_neoforge)
-    if result:
-        return result
-    log("NeoForge Maven: 不可用，降级到 BMCLAPI", logging.WARNING)
-    result = _neo_versions_from_bmclapi(minecraft_version, is_neoforge)
-    if result:
-        return result
-    log("NeoForge: 所有版本源均不可用", logging.ERROR)
-    return None
-
-def _latest_forge_version(minecraft_version):
-    is_neoforge = False
-    result = _neo_versions_from_maven(minecraft_version, is_neoforge)
-    if result:
-        return result
-    log("Forge Maven: 不可用，降级到 BMCLAPI", logging.WARNING)
-    result = _neo_versions_from_bmclapi(minecraft_version, is_neoforge)
-    if result:
-        return result
-    log("Forge: 所有版本源均不可用", logging.ERROR)
-    return None
 
 def _merge_loader_json(base_data, loader_data, target_id):
     merged = dict(base_data)
@@ -378,7 +311,7 @@ def _merge_loader_json(base_data, loader_data, target_id):
     merged.pop("inheritsFrom", None)
     return merged
 
-def _install_forge_like_loader(loader_type, minecraft_version, minecraft_dir, versions_dir, vanilla_version_dir, version_data, version_name, max_thread_value, status_callback=None):
+def _install_forge_like_loader(loader_type, minecraft_version, minecraft_dir, versions_dir, vanilla_version_dir, version_data, version_name, max_thread_value):
     is_neoforge = loader_type == "neoforge"
     display_name = "NeoForge" if is_neoforge else "Forge"
     log(f"开始安装 {display_name} 到 Minecraft {minecraft_version}")
@@ -437,18 +370,13 @@ def _install_forge_like_loader(loader_type, minecraft_version, minecraft_dir, ve
                     captured_lines.append(stripped)
                     last_output_time = time.time()
                     log(f"{display_name} installer: {stripped}")
-                    if status_callback:
-                        status_callback(90, f"{display_name}: {stripped}", "", "", "")
                     continue
 
                 if process.poll() is not None:
                     break
 
                 if time.time() - last_output_time > 15:
-                    msg = f"{display_name} installer 仍在运行，等待输出..."
-                    log(msg, logging.INFO)
-                    if status_callback:
-                        status_callback(90, msg, "", "", "")
+                    log(f"{display_name} installer 仍在运行，等待输出...", logging.INFO)
                     last_output_time = time.time()
                 time.sleep(0.5)
 
@@ -519,8 +447,6 @@ def _install_forge_like_loader(loader_type, minecraft_version, minecraft_dir, ve
                 artifact = parts[1]
                 version_lib = parts[2]
                 lib_filename = f"{artifact}-{version_lib}.jar"
-                if len(parts) >= 4:
-                    lib_filename = f"{artifact}-{version_lib}-{parts[3]}.jar"
                 lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
                 processed_libraries.append((lib, lib_path))
     if processed_libraries:
@@ -538,29 +464,21 @@ def dl_source_assets_get(original_url):
     """
     根据PCL启动器的DlSourceAssetsGet方法实现
     返回资源文件URL的镜像源列表
-    根据 download_source 选择 BMCLAPI/assets / GitCode/assets / 官方。
     """
     original_url = original_url.replace("http://resources.download.minecraft.net", "https://resources.download.minecraft.net")
-    if BLglobals.download_source == "official":
-        return [original_url]
-    if BLglobals.download_source == "gitcode":
-        base = _gitcode_base_url()
-        if base:
-            mirror = original_url
-            for src in ["https://resources.download.minecraft.net", "https://piston-data.mojang.com",
-                         "https://piston-meta.mojang.com"]:
-                if src in mirror:
-                    mirror = mirror.replace(src, f"{base}/assets")
-                    break
-            if mirror != original_url:
-                return [mirror, original_url]
-        return [original_url]
+    
+    # 官方源
     official_urls = [original_url]
+    
+    # 镜像源
     mirror_urls = [original_url
         .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/assets")
         .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/assets")
         .replace("https://resources.download.minecraft.net", "https://bmclapi2.bangbang93.com/assets")
     ]
+    
+    # 根据是否优先使用官方源决定URL顺序
+    # 这里我们默认使用镜像源优先，与PCL的逻辑保持一致
     return mirror_urls + official_urls
 
 # 初始化全局变量
@@ -707,16 +625,13 @@ def repair_bl_json(minecraft_dir):
         log(f".BL.json 修复失败: {e}", logging.ERROR)
 
 class LibraryDownloader:
-    def __init__(self, missing_libraries, max_workers=20, progress_callback=None):
+    def __init__(self, missing_libraries, max_workers=64):
         self.missing_libraries = missing_libraries
         self.max_workers = max_workers
         self.completed_count = 0
         self.total_count = len(missing_libraries)
-        self.progress_callback = progress_callback
-        self._last_reported_progress = -1
         self._active_downloads = 0
         self._active_downloads_lock = threading.Lock()
-        self._download_semaphore = threading.Semaphore(12)
         self.lock = threading.Lock()
         self.completed_event = threading.Event()
         self._paused = False
@@ -752,59 +667,6 @@ class LibraryDownloader:
         with self.lock:
             return self._cancelled
         
-    def _try_download(self, url, file_path, timeout):
-        """尝试从单个 URL 下载文件，使用流式写入和会话复用"""
-        try:
-            session = get_session()
-            response = session.get(url, proxies=None, timeout=timeout, stream=True)
-            if response.status_code == 200:
-                with open(file_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=65536):
-                        if chunk:
-                            f.write(chunk)
-                return True
-            else:
-                log(f"下载失败 (HTTP {response.status_code}): {url}", logging.WARNING)
-                return False
-        except requests.exceptions.SSLError as e:
-            log(f"SSL错误: {url}: {str(e)}", logging.WARNING)
-            try:
-                http_url = url.replace("https://", "http://")
-                session = get_session()
-                response = session.get(http_url, proxies=None, timeout=timeout, stream=True)
-                if response.status_code == 200:
-                    with open(file_path, 'wb') as f:
-                        for chunk in response.iter_content(chunk_size=65536):
-                            if chunk:
-                                f.write(chunk)
-                    return True
-                log(f"HTTP下载失败 (HTTP {response.status_code}): {http_url}", logging.WARNING)
-                return False
-            except requests.exceptions.RequestException as e2:
-                log(f"HTTP协议也失败: {http_url}: {str(e2)}", logging.WARNING)
-                return False
-        except requests.exceptions.RequestException as e:
-            log(f"下载异常: {url}: {str(e)}", logging.WARNING)
-            return False
-        except Exception as e:
-            log(f"未知下载错误: {url}: {str(e)}", logging.WARNING)
-            return False
-
-    def _try_download_urls(self, candidate_urls, file_path):
-        """遍历候选 URL 列表，逐个尝试下载，最多重试 2 次"""
-        max_attempts = 2
-        for url_to_try in candidate_urls:
-            for attempt in range(max_attempts):
-                if self.is_cancelled:
-                    return False
-                timeout = 15 if attempt == 0 else 8
-                log(f"正在下载库文件 (尝试 {attempt + 1}/{max_attempts}): {url_to_try} -> {file_path}")
-                if self._try_download(url_to_try, file_path, timeout):
-                    return True
-                if attempt < max_attempts - 1:
-                    time.sleep(0.5 * (attempt + 1))
-        return False
-
     def download_single_library(self, lib_item):
         with self.lock:
             if self._cancelled:
@@ -826,6 +688,8 @@ class LibraryDownloader:
                     log(f"库文件已存在且大小匹配，跳过下载: {lib_path}")
                     with self.lock:
                         self.completed_count += 1
+                    with self._active_downloads_lock:
+                        self._active_downloads -= 1
                     return True
                 else:
                     log(f"库文件已存在但大小不匹配，重新下载: {lib_path} (预期: {expected_size}, 实际: {actual_size})")
@@ -833,56 +697,112 @@ class LibraryDownloader:
                 log(f"库文件已存在，但未提供预期大小，跳过下载: {lib_path}")
                 with self.lock:
                     self.completed_count += 1
+                with self._active_downloads_lock:
+                    self._active_downloads -= 1
                 return True
 
-        # 使用信号量限制并发下载数
-        acquired = self._download_semaphore.acquire(blocking=True, timeout=None)
-        if not acquired:
-            return False
+        with self._active_downloads_lock:
+            self._active_downloads += 1
+
         try:
             if self.is_cancelled:
                 return False
+            # 确保目录存在
             os.makedirs(os.path.dirname(lib_path), exist_ok=True)
-
+            
+            # 下载库文件
             if "downloads" in lib and "artifact" in lib["downloads"]:
                 artifact = lib["downloads"]["artifact"]
-                candidate_urls = dl_source_library_get(artifact["url"])
+                original_url = artifact["url"]
+                
+                candidate_urls = dl_source_library_get(original_url)
 
-                with self._active_downloads_lock:
-                    self._active_downloads += 1
-                downloaded = self._try_download_urls(candidate_urls, lib_path)
-                with self._active_downloads_lock:
-                    self._active_downloads -= 1
-
+                downloaded = False
+                for url_to_try in candidate_urls:
+                    if self.is_cancelled:
+                        return False
+                    for attempt in range(3): # 尝试3次
+                        if self.is_cancelled:
+                            return False
+                        try:
+                            log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
+                            # 使用 session 复用连接
+                            session = get_session()
+                            response = session.get(url_to_try, proxies=None, timeout=30)
+                            if response.status_code == 200:
+                                with open(lib_path, 'wb') as f:
+                                    f.write(response.content)
+                                log(f"成功下载库文件: {lib_path}")
+                                downloaded = True
+                                break # 成功下载，跳出重试循环
+                            else:
+                                log(f"下载失败 (HTTP {response.status_code}) (尝试 {attempt + 1}/3): {url_to_try}", logging.WARNING)
+                        except requests.exceptions.SSLError as e:
+                            log(f"SSL错误 (尝试 {attempt + 1}/3) {url_to_try}: {str(e)}", logging.WARNING)
+                            # 尝试使用HTTP协议
+                            try:
+                                http_url = url_to_try.replace("https://", "http://")
+                                log(f"尝试使用HTTP协议: {http_url}")
+                                session = get_session()
+                                response = session.get(http_url, proxies=None, timeout=30)
+                                if response.status_code == 200:
+                                    with open(lib_path, 'wb') as f:
+                                        f.write(response.content)
+                                    log(f"成功下载库文件 (HTTP): {lib_path}")
+                                    downloaded = True
+                                    break # 成功下载，跳出重试循环
+                                else:
+                                    log(f"HTTP下载失败 (HTTP {response.status_code}) (尝试 {attempt + 1}/3): {http_url}", logging.WARNING)
+                            except requests.exceptions.RequestException as e2:
+                                log(f"HTTP协议也失败 (尝试 {attempt + 1}/3) {http_url}: {str(e2)}", logging.WARNING)
+                        except requests.exceptions.RequestException as e:
+                            log(f"下载异常 (尝试 {attempt + 1}/3) {url_to_try}: {str(e)}", logging.WARNING)
+                        except Exception as e:
+                            log(f"未知下载错误 (尝试 {attempt + 1}/3) {url_to_try}: {str(e)}", logging.WARNING)
+                        time.sleep(1) # 等待1秒后重试
+                    if downloaded: # 如果已下载，跳出URL循环
+                        break
+                
                 if not downloaded:
                     log(f"所有镜像源和重试都下载失败: {lib_path}", logging.ERROR)
                     return False
             elif "name" in lib:
+                # 处理 Maven 风格的库名称
                 parts = lib["name"].split(":")
                 if len(parts) >= 3:
                     group_id, artifact_id, version = parts[0:3]
-                    classifier = parts[3] if len(parts) >= 4 else None
-                    jar_name = f"{artifact_id}-{version}"
-                    if classifier:
-                        jar_name += f"-{classifier}"
-                    jar_name += ".jar"
-                    if any(ns in lib["name"] for ns in ["net.fabricmc", "fabric-loader"]):
-                        base_url = "https://maven.fabricmc.net"
-                    else:
-                        base_url = "https://libraries.minecraft.net"
-                    original_url = f"{base_url}/{group_id.replace('.', '/')}/{artifact_id}/{version}/{jar_name}"
+                    
+                    original_url = f"https://maven.fabricmc.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar" # Fabric Maven
                     candidate_urls = dl_source_library_get(original_url)
 
-                    with self._active_downloads_lock:
-                        self._active_downloads += 1
-                    downloaded = self._try_download_urls(candidate_urls, lib_path)
-                    with self._active_downloads_lock:
-                        self._active_downloads -= 1
-
+                    downloaded = False
+                    for url_to_try in candidate_urls:
+                        for attempt in range(3): # 尝试3次
+                            try:
+                                log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
+                                # 使用 session 复用连接
+                                session = get_session()
+                                response = session.get(url_to_try, proxies=None, timeout=30)
+                                if response.status_code == 200:
+                                    with open(lib_path, 'wb') as f:
+                                        f.write(response.content)
+                                    log(f"成功下载库文件: {lib_path}")
+                                    downloaded = True
+                                    break # 成功下载，跳出重试循环
+                                else:
+                                    log(f"下载失败 (HTTP {response.status_code}) (尝试 {attempt + 1}/3): {url_to_try}", logging.WARNING)
+                            except requests.exceptions.RequestException as e:
+                                log(f"下载异常 (尝试 {attempt + 1}/3) {url_to_try}: {str(e)}", logging.WARNING)
+                            except Exception as e:
+                                log(f"未知下载错误 (尝试 {attempt + 1}/3) {url_to_try}: {str(e)}", logging.WARNING)
+                            time.sleep(1) # 等待1秒后重试
+                        if downloaded: # 如果已下载，跳出URL循环
+                            break
+                    
                     if not downloaded:
                         log(f"所有镜像源和重试都下载失败: {lib_path}", logging.ERROR)
                         return False
-
+            
             with self.lock:
                 self.completed_count += 1
             return True
@@ -890,29 +810,26 @@ class LibraryDownloader:
             log(f"下载库文件失败 {lib_path}: {str(e)}", logging.WARNING)
             with self.lock:
                 self.completed_count += 1
-            return False
         finally:
-            self._download_semaphore.release()
+            with self._active_downloads_lock:
+                self._active_downloads -= 1
     
     def download_libraries(self):
         log(f"使用 {self.max_workers} 个线程下载库文件")
         
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="LibraryDownloader") as executor:
             futures = [executor.submit(self.download_single_library, lib_item) for lib_item in self.missing_libraries]
-            all_downloads_successful = True
-            done_count = 0
-            for future in concurrent.futures.as_completed(futures):
-                if self.is_cancelled:
-                    return False
-                done_count += 1
-                if self.progress_callback and self.total_count > 0:
-                    pct = int(done_count / self.total_count * 100)
-                    if pct != self._last_reported_progress:
-                        self._last_reported_progress = pct
-                        self.progress_callback(max(10, min(pct, 90)), "正在下载库文件...", "", "", "")
-                if not future.result():
-                    all_downloads_successful = False
-                    break
+            concurrent.futures.wait(futures)
+            if self.is_cancelled:
+                return False
+        
+        all_downloads_successful = True
+        for future in futures:
+            if self.is_cancelled:
+                return False
+            if not future.result():
+                all_downloads_successful = False
+                break
 
         if not all_downloads_successful:
             log("库文件下载失败", logging.ERROR)
@@ -928,13 +845,10 @@ class LibraryDownloader:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             
             log(f"正在下载文件: {url} -> {file_path}")
-            session = get_session()
-            response = session.get(url, timeout=30, stream=True)
+            response = requests.get(url, timeout=30)
             if response.status_code == 200:
                 with open(file_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=65536):
-                        if chunk:
-                            f.write(chunk)
+                    f.write(response.content)
                 log(f"成功下载文件: {file_path}")
                 return True
             else:
@@ -954,13 +868,10 @@ def download_file(url, file_path):
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         
         log(f"正在下载文件: {url} -> {file_path}")
-        session = get_session()
-        response = session.get(url, timeout=30, stream=True)
+        response = requests.get(url, timeout=30)
         if response.status_code == 200:
             with open(file_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=65536):
-                    if chunk:
-                        f.write(chunk)
+                f.write(response.content)
             log(f"成功下载文件: {file_path}")
             return True
         else:
@@ -990,7 +901,6 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
 
 def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Loader=False, VersionName=None, backend=None, Loader_Type="vanilla"):
     global _current_download_state
-    BLglobals.current_minecraft_version = version
     
     def update_progress_ui(progress, status, speed="", downloaded="", total=""):
         if backend:
@@ -999,11 +909,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
     def close_dialog_ui():
         if backend:
             backend.closeDownloadDialog()
-
-    def show_download_error_ui(title, message):
-        if backend and hasattr(backend, "showDownloadError"):
-            loader_type = "fabric" if Fabric_Loader else Loader_Type
-            backend.showDownloadError(title, message, version, VersionName or version, loader_type)
     
     '''
     下载并安装指定版本的 Minecraft，可选安装 Fabric Loader
@@ -1125,10 +1030,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         
         # 使用PCL风格的镜像源处理
         version_info_urls = dl_source_launcher_or_meta_get(original_url)
-        # GitCode 源使用版本名构造的 URL
-        if BLglobals.download_source == "gitcode":
-            gc_url = f"{_gitcode_base_url()}/versions/{version}/{version}.json"
-            version_info_urls.insert(0, gc_url)
 
         log(f"正在获取版本详细信息: {version_info_urls}")
         version_data = None
@@ -1183,10 +1084,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
             
             # 使用PCL风格的镜像源处理
             client_urls = dl_source_launcher_or_meta_get(client_url)
-            # GitCode 源使用版本名构造的 URL
-            if BLglobals.download_source == "gitcode":
-                gc_url = f"{_gitcode_base_url()}/versions/{version}/{version}.jar"
-                client_urls.insert(0, gc_url)
 
             client_jar_path = os.path.join(version_dir, f"{VersionName}.jar")  # 使用VersionName作为JAR文件名
             log(f"正在下载客户端JAR文件: {client_urls}")
@@ -1303,11 +1200,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                     log(f"库缺少 'name' 字段: {lib}", logging.WARNING)
 
         if processed_libraries:
-            _current_download_state['downloader'] = LibraryDownloader(
-                processed_libraries,
-                max_workers=max_thread_value,
-                progress_callback=update_progress_ui
-            )
+            _current_download_state['downloader'] = LibraryDownloader(processed_libraries, max_workers=max_thread_value)
 
         natives_dir = os.path.join(version_dir, f"{VersionName}-natives")
         os.makedirs(natives_dir, exist_ok=True)
@@ -1916,10 +1809,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                 
             except Exception as e:
                 log(f"安装 Fabric Loader 失败: {e}，但将继续完成 Minecraft 安装流程", logging.WARNING)
-                show_download_error_ui(
-                    "Fabric Loader 安装失败",
-                    f"Minecraft {version} 原版已安装完成，但 Fabric Loader 安装失败。\n\n错误信息：{e}\n\n你可以点击“重试”重新安装。"
-                )
                 # 即使Fabric安装失败，原版Minecraft仍然安装成功，继续完成整个安装流程
                 update_progress({
                     'status': f'Minecraft 版本 {version} 安装完成，但 Fabric Loader 安装失败!',
@@ -1945,8 +1834,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                     version_dir,
                     version_data,
                     VersionName,
-                    max_thread_value,
-                    status_callback=update_progress_ui
+                    max_thread_value
                 )
                 update_progress({
                     'status': f'{display_name} 安装完成!',
@@ -1957,10 +1845,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                 update_bl_json(minecraft_dir, version, False, None)
             except Exception as e:
                 log(f"安装 {display_name} 失败: {e}，但将继续完成 Minecraft 安装流程", logging.WARNING)
-                show_download_error_ui(
-                    f"{display_name} 安装失败",
-                    f"Minecraft {version} 原版已安装完成，但 {display_name} 安装失败。\n\n错误信息：{e}\n\n你可以点击“重试”重新安装。"
-                )
                 update_progress({
                     'status': f'Minecraft 版本 {version} 安装完成，但 {display_name} 安装失败!',
                     'value': 1.0
