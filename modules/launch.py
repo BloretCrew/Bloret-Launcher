@@ -552,6 +552,15 @@ def Get_Run_Script(mc_version, skip_completion=False):
     # 检查是否有缺失的库文件并尝试下载
     if missing_libraries:
         if skip_completion:
+            if is_fabric:
+                missing_preview = "\n".join(f"- {lib_path}" for _, lib_path in missing_libraries[:10])
+                if len(missing_libraries) > 10:
+                    missing_preview += f"\n- ... 还有 {len(missing_libraries) - 10} 个缺失文件"
+                raise FileNotFoundError(
+                    "Fabric 启动缺少必要库文件，不能跳过文件补全。\n"
+                    "请先补全缺失库文件后再启动。\n"
+                    f"缺失文件:\n{missing_preview}"
+                )
             log(f"跳过文件补全：发现 {len(missing_libraries)} 个缺失的库文件，但用户选择跳过补全")
             # 记录跳过的库文件，但不中断启动流程
             for lib, lib_path in missing_libraries:
@@ -635,17 +644,19 @@ def Get_Run_Script(mc_version, skip_completion=False):
                 mp_jars.append(p)
             else:
                 remaining.append(p)
-        launch_args.extend(["--module-path", os.pathsep.join(mp_jars)])
-        launch_args.append("--add-modules=ALL-MODULE-PATH")
-        launch_args.extend([
-            "-DignoreList=securejarhandler,bootstraplauncher",
-            f"-DlibraryDirectory={libraries_dir}",
-        ])
-        # 命名模块的 --add-opens 目标必须是模块名而非 ALL-UNNAMED
-        launch_args.extend([
-            "--add-opens", "java.base/java.lang.invoke=cpw.mods.securejarhandler",
-        ])
-        # Forge/NeoForge 不需要游戏 JAR 在 classpath 上，
+        if mp_jars:
+            # 只有 NeoForge 用 fancymodloader 架构时才加 --module-path
+            launch_args.extend(["--module-path", os.pathsep.join(mp_jars)])
+            launch_args.append("--add-modules=ALL-MODULE-PATH")
+            launch_args.extend([
+                "-DignoreList=securejarhandler,bootstraplauncher",
+                f"-DlibraryDirectory={libraries_dir}",
+            ])
+            # 命名模块的 --add-opens 目标必须是模块名而非 ALL-UNNAMED
+            launch_args.extend([
+                "--add-opens", "java.base/java.lang.invoke=cpw.mods.securejarhandler",
+            ])
+        # 不再需要游戏 JAR 在 classpath 上，
         # 它会被 ModLauncher 当作非法自动模块名引起 split-package 冲突。
         classpath = [p for p in remaining if p != client_jar_path]
     launch_args.extend(["-cp", os.pathsep.join(classpath)])  # 使用系统分隔符 (Windows: ;, Unix: :)
