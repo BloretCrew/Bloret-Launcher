@@ -92,9 +92,9 @@ Dialog {
                             Rectangle {
                                 width: 50
                                 height: 50
-                                color: Theme.currentTheme.colors.subtleFillColorTertiary
+                                color: (Theme.currentTheme && Theme.currentTheme.colors) ? Theme.currentTheme.colors.subtleFillColorTertiary : "#f0f0f0"
                                 radius: 4
-                                border.color: Theme.currentTheme.colors.cardBorderColor
+                                border.color: (Theme.currentTheme && Theme.currentTheme.colors) ? Theme.currentTheme.colors.cardBorderColor : "#d0d0d0"
                                 Image {
                                     id: coreIcon
                                     anchors.centerIn: parent

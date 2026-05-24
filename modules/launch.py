@@ -42,6 +42,30 @@ if platform.system() == "Windows":
 else:
     mwtool = None
 
+def _extract_lib_key(path):
+    """从 Maven 仓库路径 (group/artifact/version/artifact-version[-classifier].jar) 提取去重键"""
+    try:
+        parts = path.replace("\\", "/").split("/")
+        jar_name = parts[-1]
+        version_dir = parts[-2]
+        artifact_id = parts[-3]
+        lib_idx = parts.index("libraries") if "libraries" in parts else -1
+        if lib_idx == -1:
+            return None
+        group_id = ".".join(parts[lib_idx + 1:-3])
+        stem = jar_name[:-4]
+        prefix = f"{artifact_id}-{version_dir}"
+        if stem == prefix:
+            classifier = ""
+        elif stem.startswith(prefix + "-"):
+            classifier = stem[len(prefix) + 1:]
+        else:
+            classifier = ""
+        return (group_id, artifact_id, classifier)
+    except Exception:
+        return None
+
+
 def Get_Run_Script(mc_version, skip_completion=False):
     """
     根据 config.json 的内容生成启动 .minecraft 文件夹中指定版本的命令
@@ -95,7 +119,27 @@ def Get_Run_Script(mc_version, skip_completion=False):
             if "libraries" in parent_data:
                 parent_libs = parent_data["libraries"]
                 child_libs = version_data.get("libraries", [])
-                version_data["libraries"] = parent_libs + child_libs
+                merged_libs = parent_libs + child_libs
+                deduped_libs = []
+                seen_lib_keys = set()
+                for lib in reversed(merged_libs):
+                    lib_name = lib.get("name", "")
+                    if lib_name:
+                        parts = lib_name.split(":")
+                        if len(parts) >= 3:
+                            group_id = parts[0]
+                            artifact_id = parts[1]
+                            classifier = parts[3] if len(parts) >= 4 else ""
+                            lib_key = (group_id, artifact_id, classifier)
+                        else:
+                            lib_key = (lib_name,)
+                    else:
+                        lib_key = (json.dumps(lib, sort_keys=True, ensure_ascii=False),)
+                    if lib_key in seen_lib_keys:
+                        continue
+                    seen_lib_keys.add(lib_key)
+                    deduped_libs.append(lib)
+                version_data["libraries"] = list(reversed(deduped_libs))
             # 合并 arguments
             if "arguments" in parent_data:
                 if "arguments" not in version_data:
@@ -360,7 +404,9 @@ def Get_Run_Script(mc_version, skip_completion=False):
                         elif arch in ("x86", "i386", "i686"):
                             current_classifier += "-x86"
                         if classifier != current_classifier:
-                            should_include = False
+                            alt_classifier = current_classifier.replace("natives-osx", "natives-macos")
+                            if classifier != alt_classifier:
+                                should_include = False
             
             if should_include:
                 lib_path = None
@@ -621,6 +667,19 @@ def Get_Run_Script(mc_version, skip_completion=False):
     # 它在 Java 17+（包括 Java 25）上会导致严重的 NullPointerException 崩溃
     # 因此，我们现在默认直接禁用它，改用原生直接启动方式
     use_wrapper = False  # 强制禁用
+
+    # 最终 classpath 去重：相同 group:artifact:classifier 只保留后出现的版本
+    dedup_keys = set()
+    deduped_cp = []
+    for p in reversed(classpath):
+        key = _extract_lib_key(p)
+        if key is None:
+            deduped_cp.append(p)
+        elif key not in dedup_keys:
+            dedup_keys.add(key)
+            deduped_cp.append(p)
+    classpath = list(reversed(deduped_cp))
+    log(f"classpath 去重完成: {len(classpath)} 个库")
 
     # 添加类路径 / 模块路径参数
     # 注意：在 shell=False 时，不要手动添加引号。

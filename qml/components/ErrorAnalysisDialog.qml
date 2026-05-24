@@ -29,8 +29,8 @@ Dialog {
             var copyBtn = copyButtonComponent.createObject(footer.contentItem)
             if (copyBtn) {
                 var layout = footer.contentItem.children[0]
-                if (layout && layout.children) {
-                    layout.children.insert(0, copyBtn)
+                if (layout && layout.addItem) {
+                    layout.addItem(copyBtn)
                 }
                 _copyButton = copyBtn
             }
@@ -185,11 +185,11 @@ Dialog {
                         spacing: 8
 
                         Text {
-                            text: "\uE946"
-                            font.family: "Segoe Fluent Icons"
-                            font.pixelSize: 18
-                            color: Theme.accentColor
-                        }
+                        text: "\uE946"
+                        font.family: "Segoe Fluent Icons"
+                        font.pixelSize: 18
+                        color: Theme.accentColor || Theme.currentTheme.colors.textColor
+                    }
 
                         Text {
                             text: errorSuggestion
