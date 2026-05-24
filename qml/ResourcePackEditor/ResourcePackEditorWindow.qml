@@ -31,7 +31,7 @@ FluentWindowBase {
             spacing: 2
 
             Repeater {
-                model: ["概览", "pack.mcmeta", "语言", "贴图", "文件", "Git", "Agent"]
+                model: ["概览", "pack.mcmeta", "pack.png", "语言", "贴图", "方块状态", "模型", "声音", "字体", "文本", "粒子", "特殊文件", "OptiFine", "文件", "Git", "Agent"]
 
                 Button {
                     text: modelData
@@ -68,8 +68,17 @@ FluentWindowBase {
 
                     OverviewTab {}
                     McmetaTab {}
+                    PackIconTab {}
                     LanguageTab {}
                     TextureTab {}
+                    BlockstatesTab {}
+                    ModelsTab {}
+                    SoundsTab {}
+                    FontsTab {}
+                    TextsTab {}
+                    ParticlesTab {}
+                    SpecialFilesTab {}
+                    OptifineTab {}
                     FileBrowserTab {}
                     GitTab {}
                     AgentTab {}

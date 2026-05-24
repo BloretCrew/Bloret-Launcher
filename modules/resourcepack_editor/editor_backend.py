@@ -388,3 +388,104 @@ class ResourcePackEditorBackend(QObject):
         except Exception as e:
             self.errorOccurred.emit(f"重命名失败: {e}")
             return False
+
+    @Slot(result=list)
+    def getBlockstates(self):
+        if self._analyzer is None:
+            return []
+        return self._analyzer.get_blockstates()
+
+    @Slot(result=list)
+    def getModels(self):
+        if self._analyzer is None:
+            return []
+        return self._analyzer.get_models()
+
+    @Slot(result=list)
+    def getSoundsJson(self):
+        if self._analyzer is None:
+            return []
+        return self._analyzer.get_sounds_json()
+
+    @Slot(result=list)
+    def getSoundFiles(self):
+        if self._analyzer is None:
+            return []
+        return self._analyzer.get_sound_files()
+
+    @Slot(result=list)
+    def getFonts(self):
+        if self._analyzer is None:
+            return []
+        return self._analyzer.get_fonts()
+
+    @Slot(result=list)
+    def getTexts(self):
+        if self._analyzer is None:
+            return []
+        return self._analyzer.get_texts()
+
+    @Slot(result=list)
+    def getParticles(self):
+        if self._analyzer is None:
+            return []
+        return self._analyzer.get_particles()
+
+    @Slot(result=list)
+    def getOptifineCem(self):
+        if self._analyzer is None:
+            return []
+        return self._analyzer.get_optifine_cem()
+
+    @Slot(result=list)
+    def getOptifineCit(self):
+        if self._analyzer is None:
+            return []
+        return self._analyzer.get_optifine_cit()
+
+    @Slot(result=list)
+    def getSpecialFiles(self):
+        if self._analyzer is None:
+            return []
+        return self._analyzer.get_special_files()
+
+    @Slot(result=list)
+    def getNamespaces(self):
+        if self._analyzer is None:
+            return []
+        return self._analyzer.get_namespaces()
+
+    @Slot(str, result=str)
+    def getPackPngPath(self):
+        if self._pack_path is None:
+            return ""
+        p = self._pack_path / "pack.png"
+        if p.exists():
+            return "file://" + str(p)
+        return ""
+
+    @Slot(str, result=str)
+    def readRawFile(self, relPath):
+        if self._pack_path is None:
+            return ""
+        full = self._pack_path / relPath
+        if not full.exists():
+            return ""
+        try:
+            return full.read_text(encoding="utf-8")
+        except Exception:
+            return ""
+
+    @Slot(str, str, result=bool)
+    def saveRawFile(self, relPath, content):
+        if self._pack_path is None:
+            return False
+        full = self._pack_path / relPath
+        try:
+            full.parent.mkdir(parents=True, exist_ok=True)
+            full.write_text(content, encoding="utf-8")
+            self.statusMessage.emit("saved", f"已保存: {relPath}")
+            return True
+        except Exception as e:
+            self.errorOccurred.emit(f"保存失败: {e}")
+            return False
