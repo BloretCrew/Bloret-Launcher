@@ -112,6 +112,9 @@ try:
     BLglobals.minecraft_dir = config_data.get('minecraft_dir', '')
     log(f"Minecraft目录已设置为: '{BLglobals.minecraft_dir}'")
 
+    BLglobals.download_source = config_data.get('download_source', 'bmclapi')
+    log(f"下载源: {BLglobals.download_source}")
+
     # 检查minecraft目录是否存在
     if BLglobals.minecraft_dir:
         if os.path.exists(BLglobals.minecraft_dir):

@@ -89,89 +89,90 @@ def load_ui_file(ui_file_path):
         log(f"加载 UI 文件失败 {ui_file_path}: {e}", logging.ERROR)
         return None
 
+def _gitcode_base_url(version=None):
+    v = version or BLglobals.current_minecraft_version
+    if not v:
+        return None
+    return f"https://raw.gitcode.com/Bloret/{v}/raw/main"
+
 def dl_source_launcher_or_meta_get(original_url):
     """
     根据PCL启动器的DlSourceLauncherOrMetaGet方法实现
     返回下载URL的镜像源列表
+    根据 download_source 选择 BMCLAPI / GitCode / 官方。
     """
     if not original_url:
         raise Exception("无对应的 json 下载地址")
+    if BLglobals.download_source != "bmclapi":
+        return [original_url]
     
-    # 官方源
     official_urls = [original_url]
-    
-    # 镜像源
     mirror_urls = [original_url
         .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com")
         .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com")
         .replace("https://launcher.mojang.com", "https://bmclapi2.bangbang93.com")
         .replace("https://launchermeta.mojang.com", "https://bmclapi2.bangbang93.com")
     ]
-    
-    # 根据是否优先使用官方源决定URL顺序
-    # 这里我们默认使用镜像源优先，与PCL的逻辑保持一致
     return mirror_urls + official_urls
 
 def dl_source_library_get(original_url):
     """
-    根据PCL启动器的DlSourceLibraryGet方法实现
-    返回库文件URL的镜像源列表
+    返回库文件URL的镜像源列表。
+    根据 download_source 选择 BMCLAPI/maven / GitCode/libraries / 官方。
     """
-    # 检查是否包含Forge/Fabric等特定库
-    special_libs = ["minecraftforge", "fabricmc", "neoforged"]
-    use_official_only = any(lib in original_url for lib in special_libs)
-    
-    if use_official_only:
-        # 不添加原版源
-        return [
-            original_url
-                .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/maven")
-                .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/maven")
-                .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/maven"),
-            original_url
-                .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
-                .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
-                .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/libraries")
-        ]
-    else:
-        # 官方源
-        official_urls = [original_url]
-        
-        # 镜像源
-        mirror_urls = [
-            original_url
-                .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/maven")
-                .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/maven")
-                .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/maven"),
-            original_url
-                .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
-                .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
-                .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/libraries")
-        ]
-        
-        # 根据是否优先使用官方源决定URL顺序
-        # 这里我们默认使用镜像源优先，与PCL的逻辑保持一致
-        return mirror_urls + official_urls
+    if BLglobals.download_source == "official":
+        return [original_url]
+    if BLglobals.download_source == "gitcode":
+        base = _gitcode_base_url()
+        if base:
+            mirror = original_url
+            for src in ["https://libraries.minecraft.net", "https://piston-data.mojang.com",
+                         "https://piston-meta.mojang.com", "https://launcher.mojang.com",
+                         "https://launchermeta.mojang.com"]:
+                if src in mirror:
+                    mirror = mirror.replace(src, f"{base}/libraries")
+                    break
+            if mirror != original_url:
+                return [mirror, original_url]
+        return [original_url]
+    mirror = original_url
+    for src in ["https://piston-data.mojang.com", "https://piston-meta.mojang.com",
+                 "https://libraries.minecraft.net", "https://launcher.mojang.com",
+                 "https://launchermeta.mojang.com"]:
+        if src in mirror:
+            mirror = mirror.replace(src, "https://bmclapi2.bangbang93.com/maven")
+            break
+    if mirror != original_url:
+        return [mirror, original_url]
+    return [original_url]
 
 def dl_source_assets_get(original_url):
     """
     根据PCL启动器的DlSourceAssetsGet方法实现
     返回资源文件URL的镜像源列表
+    根据 download_source 选择 BMCLAPI/assets / GitCode/assets / 官方。
     """
     original_url = original_url.replace("http://resources.download.minecraft.net", "https://resources.download.minecraft.net")
-    
-    # 官方源
+    if BLglobals.download_source == "official":
+        return [original_url]
+    if BLglobals.download_source == "gitcode":
+        base = _gitcode_base_url()
+        if base:
+            mirror = original_url
+            for src in ["https://resources.download.minecraft.net", "https://piston-data.mojang.com",
+                         "https://piston-meta.mojang.com"]:
+                if src in mirror:
+                    mirror = mirror.replace(src, f"{base}/assets")
+                    break
+            if mirror != original_url:
+                return [mirror, original_url]
+        return [original_url]
     official_urls = [original_url]
-    
-    # 镜像源
     mirror_urls = [original_url
         .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/assets")
         .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/assets")
         .replace("https://resources.download.minecraft.net", "https://bmclapi2.bangbang93.com/assets")
     ]
-    
-    # 根据是否优先使用官方源决定URL顺序
-    # 这里我们默认使用镜像源优先，与PCL的逻辑保持一致
     return mirror_urls + official_urls
 
 # 初始化全局变量
@@ -640,16 +641,7 @@ class LibraryDownloader:
                 artifact = lib["downloads"]["artifact"]
                 original_url = artifact["url"]
                 
-                candidate_urls = []
-                # 优先添加原始 URL
-                candidate_urls.append(original_url)
-                
-                # 如果原始 URL 是 Minecraft 官方库，添加 BMCLAPI 镜像
-                if "libraries.minecraft.net" in original_url:
-                    candidate_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/"))
-                # 如果原始 URL 是 Fabric Maven 库，添加 BMCLAPI 镜像
-                elif "maven.fabricmc.net" in original_url:
-                    candidate_urls.append(original_url.replace("https://maven.fabricmc.net/", "https://bmclapi2.bangbang93.com/maven/"))
+                candidate_urls = [original_url]
 
                 downloaded = False
                 for url_to_try in candidate_urls:
@@ -681,11 +673,15 @@ class LibraryDownloader:
                 parts = lib["name"].split(":")
                 if len(parts) >= 3:
                     group_id, artifact_id, version = parts[0:3]
+                    classifier = parts[3] if len(parts) >= 4 else None
+                    jar_name = f"{artifact_id}-{version}"
+                    if classifier:
+                        jar_name += f"-{classifier}"
+                    jar_name += ".jar"
                     
                     candidate_urls = [
-                        f"https://maven.fabricmc.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar", # Fabric Maven
-                        f"https://bmclapi2.bangbang93.com/maven/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar",  # BMCLAPI镜像
-                        f"https://libraries.minecraft.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar",  # 官方源
+                        f"https://maven.fabricmc.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{jar_name}", # Fabric Maven
+                        f"https://libraries.minecraft.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{jar_name}",  # 官方源
                     ]
 
                     downloaded = False
@@ -936,6 +932,7 @@ def toggle_pause_download(download_dialog):
             download_dialog.pause_button.setText(i18nText("恢复下载"))
 
 def _install_minecraft_version_threaded(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False):
+    BLglobals.current_minecraft_version = version
     '''
     下载并安装指定版本的 Minecraft，可选安装 Fabric Loader
     
@@ -1080,6 +1077,10 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         # 使用PCL风格的镜像源处理，获取多个可用的镜像URL
         # dl_source_launcher_or_meta_get函数会将官方URL转换为多个镜像源URL
         version_info_urls = dl_source_launcher_or_meta_get(original_url)
+        # GitCode 源使用版本名构造的 URL
+        if BLglobals.download_source == "gitcode":
+            gc_url = f"{_gitcode_base_url()}/versions/{version}/{version}.json"
+            version_info_urls.insert(0, gc_url)
 
         # 记录正在获取版本详细信息的日志
         log(f"正在获取版本详细信息: {version_info_urls}")
@@ -1183,6 +1184,10 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             
             # 使用PCL风格的镜像源处理，获取多个可用的镜像URL
             client_urls = dl_source_launcher_or_meta_get(client_url)
+            # GitCode 源使用版本名构造的 URL
+            if BLglobals.download_source == "gitcode":
+                gc_url = f"{_gitcode_base_url()}/versions/{version}/{version}.jar"
+                client_urls.insert(0, gc_url)
 
             # 构建客户端JAR文件的本地保存路径
             client_jar_path = os.path.join(version_dir, f"{version}.jar")
