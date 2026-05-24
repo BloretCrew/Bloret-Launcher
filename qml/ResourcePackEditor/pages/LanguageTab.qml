@@ -210,7 +210,7 @@ Item {
         title: "编辑翻译键"
         modal: true
         width: 500
-        standardButtons: Dialog.Save | Dialog.Cancel
+        closePolicy: Popup.CloseOnEscape
 
         ColumnLayout {
             width: parent.width
@@ -221,6 +221,22 @@ Item {
 
             Label { text: "值"; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
             TextArea { id: editValueInput; Layout.fillWidth: true; Layout.preferredHeight: 60; wrapMode: Text.Wrap }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 8
+                Item { Layout.fillWidth: true }
+                Button {
+                    text: "取消"
+                    flat: true
+                    onClicked: editDialog.reject()
+                }
+                Button {
+                    text: "保存"
+                    highlighted: true
+                    onClicked: editDialog.accept()
+                }
+            }
         }
 
         onAccepted: {

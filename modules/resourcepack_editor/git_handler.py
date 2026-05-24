@@ -33,19 +33,20 @@ class ResourcePackGit:
         status = porcelain.status(self._repo)
         result = {}
         for f in status.staged.get("add", []):
-            result[f] = "A"
+            result[f.decode("utf-8", errors="replace") if isinstance(f, bytes) else f] = "A"
         for f in status.staged.get("modify", []):
-            result[f] = "M"
+            result[f.decode("utf-8", errors="replace") if isinstance(f, bytes) else f] = "M"
         for f in status.staged.get("delete", []):
-            result[f] = "D"
+            result[f.decode("utf-8", errors="replace") if isinstance(f, bytes) else f] = "D"
         for f in status.unstaged:
-            existing = result.get(f, "")
+            path = f.decode("utf-8", errors="replace") if isinstance(f, bytes) else f
+            existing = result.get(path, "")
             if existing == "A":
-                result[f] = "M"
+                result[path] = "M"
             else:
-                result[f] = "M"
+                result[path] = "M"
         for f in status.untracked:
-            result[f] = "U"
+            result[f.decode("utf-8", errors="replace") if isinstance(f, bytes) else f] = "U"
         return result
 
     def get_file_status(self, file_path):
@@ -83,3 +84,103 @@ class ResourcePackGit:
             return count
         except Exception:
             return 0
+
+    def get_log(self, max_count=50):
+        if self._repo is None:
+            return []
+        try:
+            commits = []
+            for i, entry in enumerate(self._repo.get_walker(self._repo.head())):
+                if i >= max_count:
+                    break
+                commit = entry.commit
+                commits.append({
+                    "id": commit.id.decode("ascii"),
+                    "author": commit.author.decode("utf-8", errors="replace"),
+                    "message": commit.message.decode("utf-8", errors="replace").strip(),
+                    "timestamp": commit.commit_time,
+                })
+            return commits
+        except Exception:
+            return []
+
+    def stage_all(self):
+        if self._repo is None:
+            self.init_if_needed()
+        try:
+            status = porcelain.status(self._repo)
+            all_files = []
+            for f in status.unstaged:
+                all_files.append(f.decode("utf-8", errors="replace") if isinstance(f, bytes) else f)
+            for f in status.untracked:
+                all_files.append(f.decode("utf-8", errors="replace") if isinstance(f, bytes) else f)
+            if all_files:
+                porcelain.add(self._repo, paths=all_files)
+            return True
+        except Exception:
+            return False
+
+    def unstage_all(self):
+        if self._repo is None:
+            self.init_if_needed()
+        try:
+            porcelain.reset(self._repo, mode="soft", treeish=None)
+            return True
+        except Exception:
+            return False
+
+    def get_diff(self, file_path=None):
+        if self._repo is None:
+            return ""
+        try:
+            if file_path:
+                full_path = self.repo_path / file_path
+                if full_path.exists():
+                    with open(str(full_path), "rb") as f:
+                        current = f.read()
+                    try:
+                        blob = self._repo.object_store[porcelain.index_entry_blob(self._repo, file_path)]
+                        original = blob.data
+                    except Exception:
+                        original = b""
+                    diff_lines = []
+                    import difflib
+                    a = original.decode("utf-8", errors="replace").splitlines(keepends=True)
+                    b = current.decode("utf-8", errors="replace").splitlines(keepends=True)
+                    for line in difflib.unified_diff(a, b, fromfile=f"a/{file_path}", tofile=f"b/{file_path}"):
+                        diff_lines.append(line.rstrip("\n"))
+                    return "\n".join(diff_lines)
+            else:
+                return ""
+        except Exception:
+            return ""
+
+    def get_staged_files(self):
+        if self._repo is None:
+            return []
+        try:
+            status = porcelain.status(self._repo)
+            files = []
+            for op, paths in status.staged.items():
+                for f in paths:
+                    files.append({
+                        "path": f.decode("utf-8", errors="replace") if isinstance(f, bytes) else f,
+                        "operation": op,
+                    })
+            return files
+        except Exception:
+            return []
+
+    def get_unstaged_files(self):
+        if self._repo is None:
+            return []
+        try:
+            status = porcelain.status(self._repo)
+            files = []
+            for f in status.unstaged:
+                files.append(f.decode("utf-8", errors="replace") if isinstance(f, bytes) else f)
+            for f in status.untracked:
+                files.append(f.decode("utf-8", errors="replace") if isinstance(f, bytes) else f)
+            return files
+        except Exception:
+            return []

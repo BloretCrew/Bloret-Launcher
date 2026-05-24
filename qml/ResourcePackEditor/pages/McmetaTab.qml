@@ -48,12 +48,15 @@ Item {
         jsonPreview.text = raw
     }
 
-    ScrollView {
+    Flickable {
         anchors.fill: parent
         anchors.margins: 16
+        contentHeight: contentColumn.implicitHeight
         clip: true
+        boundsBehavior: Flickable.StopAtBounds
 
         ColumnLayout {
+            id: contentColumn
             width: parent.width
             spacing: 16
 
@@ -73,11 +76,13 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
+                Layout.preferredHeight: settingsColumn.implicitHeight + 32
                 radius: 8
                 color: Theme.currentTheme.colors.cardColor
                 border.color: Theme.currentTheme.colors.controlBorderColor
 
                 ColumnLayout {
+                    id: settingsColumn
                     anchors.fill: parent
                     anchors.margins: 16
                     spacing: 16
@@ -153,11 +158,13 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
+                Layout.preferredHeight: previewColumn.implicitHeight + 32
                 radius: 8
                 color: Theme.currentTheme.colors.cardColor
                 border.color: Theme.currentTheme.colors.controlBorderColor
 
                 ColumnLayout {
+                    id: previewColumn
                     anchors.fill: parent
                     anchors.margins: 16
                     spacing: 8

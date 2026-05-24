@@ -145,14 +145,179 @@ Rectangle {
 
             MouseArea {
                 anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (itemData.type === "dir") {
-                        fileTreeRoot.toggleExpand(itemData.path)
+                onClicked: function(mouse) {
+                    if (mouse.button === Qt.RightButton) {
+                        contextMenu._contextItem = itemData
+                        contextMenu.popup()
                     } else {
-                        fileTreeRoot.fileSelected(itemData.path)
+                        if (itemData.type === "dir") {
+                            fileTreeRoot.toggleExpand(itemData.path)
+                        } else {
+                            fileTreeRoot.fileSelected(itemData.path)
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    Menu {
+        id: contextMenu
+        property var _contextItem: null
+
+        title: _contextItem ? _contextItem.name : ""
+
+        MenuItem {
+            text: "暂存"
+            enabled: contextMenu._contextItem && contextMenu._contextItem.gitStatus !== "" && contextMenu._contextItem.gitStatus !== "A"
+            onTriggered: {
+                if (RPEditor && contextMenu._contextItem) {
+                    RPEditor.stageFile(contextMenu._contextItem.path)
+                }
+            }
+        }
+
+        MenuItem {
+            text: "取消暂存"
+            enabled: contextMenu._contextItem && contextMenu._contextItem.gitStatus === "A"
+            onTriggered: {
+                if (RPEditor && contextMenu._contextItem) {
+                    RPEditor.unstageFile(contextMenu._contextItem.path)
+                }
+            }
+        }
+
+        MenuSeparator {}
+
+        MenuItem {
+            text: "创建文件"
+            onTriggered: {
+                createFileDialog._parentPath = contextMenu._contextItem ? (contextMenu._contextItem.type === "dir" ? contextMenu._contextItem.path : "") : ""
+                createFileDialog.open()
+            }
+        }
+
+        MenuItem {
+            text: "重命名"
+            enabled: contextMenu._contextItem && contextMenu._contextItem.type === "file"
+            onTriggered: {
+                if (contextMenu._contextItem) {
+                    renameDialog._oldPath = contextMenu._contextItem.path
+                    renameDialog._oldName = contextMenu._contextItem.name
+                    renameInput.text = contextMenu._contextItem.name
+                    renameDialog.open()
+                }
+            }
+        }
+
+        MenuSeparator {}
+
+        MenuItem {
+            text: "删除"
+            enabled: contextMenu._contextItem
+            onTriggered: {
+                if (RPEditor && contextMenu._contextItem) {
+                    RPEditor.deleteFile(contextMenu._contextItem.path)
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: createFileDialog
+        title: "创建文件"
+        modal: true
+        width: 360
+        closePolicy: Popup.CloseOnEscape
+        property string _parentPath: ""
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 8
+
+            Label {
+                text: "文件名"
+                font.pixelSize: 12
+                color: Theme.currentTheme.colors.textSecondaryColor
+            }
+
+            TextField {
+                id: createFileNameInput
+                Layout.fillWidth: true
+                placeholderText: "例如: pack.mcmeta"
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 8
+                Item { Layout.fillWidth: true }
+                Button {
+                    text: "取消"
+                    flat: true
+                    onClicked: createFileDialog.reject()
+                }
+                Button {
+                    text: "创建"
+                    highlighted: true
+                    onClicked: createFileDialog.accept()
+                }
+            }
+        }
+
+        onAccepted: {
+            if (createFileNameInput.text.trim() && RPEditor) {
+                RPEditor.createFile(_parentPath, createFileNameInput.text.trim())
+                createFileNameInput.text = ""
+            }
+        }
+    }
+
+    Dialog {
+        id: renameDialog
+        title: "重命名"
+        modal: true
+        width: 360
+        closePolicy: Popup.CloseOnEscape
+        property string _oldPath: ""
+        property string _oldName: ""
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 8
+
+            Label {
+                text: "新名称"
+                font.pixelSize: 12
+                color: Theme.currentTheme.colors.textSecondaryColor
+            }
+
+            TextField {
+                id: renameInput
+                Layout.fillWidth: true
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 8
+                Item { Layout.fillWidth: true }
+                Button {
+                    text: "取消"
+                    flat: true
+                    onClicked: renameDialog.reject()
+                }
+                Button {
+                    text: "重命名"
+                    highlighted: true
+                    onClicked: renameDialog.accept()
+                }
+            }
+        }
+
+        onAccepted: {
+            if (renameInput.text.trim() && RPEditor && _oldPath) {
+                RPEditor.renameFile(_oldPath, renameInput.text.trim())
             }
         }
     }

@@ -31,7 +31,7 @@ FluentWindowBase {
             spacing: 2
 
             Repeater {
-                model: ["概览", "pack.mcmeta", "语言", "贴图", "文件", "Agent"]
+                model: ["概览", "pack.mcmeta", "语言", "贴图", "文件", "Git", "Agent"]
 
                 Button {
                     text: modelData
@@ -71,6 +71,7 @@ FluentWindowBase {
                     LanguageTab {}
                     TextureTab {}
                     FileBrowserTab {}
+                    GitTab {}
                     AgentTab {}
                 }
 

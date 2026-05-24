@@ -124,7 +124,7 @@ Item {
         modal: true
         width: 400
         height: 450
-        standardButtons: Dialog.Close
+        closePolicy: Popup.CloseOnEscape
 
         ColumnLayout {
             width: parent.width
@@ -152,6 +152,15 @@ Item {
                 font.family: "monospace"
                 elide: Text.ElideMiddle
                 color: Theme.currentTheme.colors.textSecondaryColor
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                Button {
+                    text: "关闭"
+                    onClicked: previewDialog.close()
+                }
             }
         }
     }

@@ -275,3 +275,116 @@ class ResourcePackEditorBackend(QObject):
         if self._analyzer is None:
             return "{}"
         return json.dumps(self._analyzer.get_stats())
+
+    @Slot(str, result=str)
+    def getDiff(self, filePath):
+        if self._git is None:
+            return ""
+        return self._git.get_diff(filePath) or ""
+
+    @Slot(result=str)
+    def getStagedFiles(self):
+        if self._git is None:
+            return "[]"
+        return json.dumps(self._git.get_staged_files(), ensure_ascii=False)
+
+    @Slot(result=str)
+    def getUnstagedFiles(self):
+        if self._git is None:
+            return "[]"
+        return json.dumps(self._git.get_unstaged_files(), ensure_ascii=False)
+
+    @Slot(str, result=str)
+    def getCommitLog(self, maxCount):
+        if self._git is None:
+            return "[]"
+        return json.dumps(self._git.get_log(maxCount), ensure_ascii=False)
+
+    @Slot(result=bool)
+    def stageAll(self):
+        if self._git is None:
+            return False
+        try:
+            self._git.stage_all()
+            self.statusMessage.emit("staged", "已暂存所有更改")
+            self._refresh()
+            return True
+        except Exception as e:
+            self.errorOccurred.emit(f"暂存失败: {e}")
+            return False
+
+    @Slot(result=bool)
+    def unstageAll(self):
+        if self._git is None:
+            return False
+        try:
+            self._git.unstage_all()
+            self.statusMessage.emit("unstage", "已取消所有暂存")
+            self._refresh()
+            return True
+        except Exception as e:
+            self.errorOccurred.emit(f"取消暂存失败: {e}")
+            return False
+
+    @Slot(str, str, result=bool)
+    def stagePath(self, path, mode):
+        if self._git is None:
+            return False
+        try:
+            if mode == "stage":
+                self._git.stage_file(path)
+            elif mode == "unstage":
+                self._git.unstage_file(path)
+            self._refresh()
+            return True
+        except Exception as e:
+            self.errorOccurred.emit(f"操作失败: {e}")
+            return False
+
+    @Slot(str, result=bool)
+    def deleteFile(self, filePath):
+        if self._pack_path is None:
+            return False
+        full_path = self._pack_path / filePath
+        try:
+            if full_path.is_file():
+                full_path.unlink()
+            elif full_path.is_dir():
+                shutil.rmtree(str(full_path))
+            self.statusMessage.emit("deleted", f"已删除: {filePath}")
+            self._refresh()
+            return True
+        except Exception as e:
+            self.errorOccurred.emit(f"删除失败: {e}")
+            return False
+
+    @Slot(str, str, result=bool)
+    def createFile(self, parentPath, fileName):
+        if self._pack_path is None:
+            return False
+        try:
+            full_dir = self._pack_path / parentPath if parentPath else self._pack_path
+            full_dir.mkdir(parents=True, exist_ok=True)
+            full_path = full_dir / fileName
+            full_path.touch()
+            self.statusMessage.emit("created", f"已创建: {fileName}")
+            self._refresh()
+            return True
+        except Exception as e:
+            self.errorOccurred.emit(f"创建失败: {e}")
+            return False
+
+    @Slot(str, str, result=bool)
+    def renameFile(self, oldPath, newName):
+        if self._pack_path is None:
+            return False
+        try:
+            old_full = self._pack_path / oldPath
+            new_full = old_full.parent / newName
+            old_full.rename(new_full)
+            self.statusMessage.emit("renamed", f"已重命名: {oldPath} → {newName}")
+            self._refresh()
+            return True
+        except Exception as e:
+            self.errorOccurred.emit(f"重命名失败: {e}")
+            return False
