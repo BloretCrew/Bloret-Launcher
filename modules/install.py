@@ -1,6 +1,7 @@
 # Removed qfluentwidgets imports for PySide6 compatibility
 import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, sys, subprocess
 import xml.etree.ElementTree as ET
+from urllib.parse import urlparse
 try:
     import send2trash
 except ImportError:
@@ -131,16 +132,20 @@ def dl_source_library_get(original_url):
     """
     candidate_urls = []
     
+    parsed_url = urlparse(original_url)
+    host = (parsed_url.hostname or "").lower()
+    path = parsed_url.path or ""
+
     # 镜像源
     mirror_urls = []
-    if "libraries.minecraft.net" in original_url:
+    if host == "libraries.minecraft.net":
         mirror_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/"))
         mirror_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/libraries/"))
-    elif "maven.fabricmc.net" in original_url:
+    elif host == "maven.fabricmc.net":
         mirror_urls.append(original_url.replace("https://maven.fabricmc.net/", "https://bmclapi2.bangbang93.com/maven/"))
-    elif "maven.minecraftforge.net" in original_url:
+    elif host == "maven.minecraftforge.net":
         mirror_urls.append(original_url.replace("https://maven.minecraftforge.net/", "https://bmclapi2.bangbang93.com/maven/"))
-    elif "maven.neoforged.net/releases" in original_url:
+    elif host == "maven.neoforged.net" and path.startswith("/releases/"):
         mirror_urls.append(original_url.replace("https://maven.neoforged.net/releases/", "https://bmclapi2.bangbang93.com/maven/"))
     
     # 添加 BMCLAPI 镜像源
