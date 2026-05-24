@@ -56,7 +56,7 @@ Dialog {
 
             Button {
                 text: (Backend ? Backend.tr("跳过补全") : "跳过补全")
-                icon.name: "ic_fluent_skip_forward_20_regular"
+                icon.name: "ic_fluent_skip_forward_tab_20_regular"
                 onClicked: {
                     skipCompletionClicked()
                 }
