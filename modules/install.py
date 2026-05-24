@@ -969,17 +969,6 @@ def download_file(url, file_path):
     except Exception as e:
         log(f"下载文件失败 {url}: {str(e)}", logging.ERROR)
         return False
-        if response.status_code == 200:
-            with open(file_path, 'wb') as f:
-                f.write(response.content)
-            log(f"成功下载文件: {file_path}")
-            return True
-        else:
-            log(f"下载文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
-            return False
-    except Exception as e:
-        log(f"下载文件失败 {url}: {str(e)}", logging.ERROR)
-        return False
 
 def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None, backend=None, Loader_Type="vanilla"):
     global _current_download_state
@@ -1010,6 +999,11 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
     def close_dialog_ui():
         if backend:
             backend.closeDownloadDialog()
+
+    def show_download_error_ui(title, message):
+        if backend and hasattr(backend, "showDownloadError"):
+            loader_type = "fabric" if Fabric_Loader else Loader_Type
+            backend.showDownloadError(title, message, version, VersionName or version, loader_type)
     
     '''
     下载并安装指定版本的 Minecraft，可选安装 Fabric Loader
@@ -1922,6 +1916,10 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                 
             except Exception as e:
                 log(f"安装 Fabric Loader 失败: {e}，但将继续完成 Minecraft 安装流程", logging.WARNING)
+                show_download_error_ui(
+                    "Fabric Loader 安装失败",
+                    f"Minecraft {version} 原版已安装完成，但 Fabric Loader 安装失败。\n\n错误信息：{e}\n\n你可以点击“重试”重新安装。"
+                )
                 # 即使Fabric安装失败，原版Minecraft仍然安装成功，继续完成整个安装流程
                 update_progress({
                     'status': f'Minecraft 版本 {version} 安装完成，但 Fabric Loader 安装失败!',
@@ -1959,6 +1957,10 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                 update_bl_json(minecraft_dir, version, False, None)
             except Exception as e:
                 log(f"安装 {display_name} 失败: {e}，但将继续完成 Minecraft 安装流程", logging.WARNING)
+                show_download_error_ui(
+                    f"{display_name} 安装失败",
+                    f"Minecraft {version} 原版已安装完成，但 {display_name} 安装失败。\n\n错误信息：{e}\n\n你可以点击“重试”重新安装。"
+                )
                 update_progress({
                     'status': f'Minecraft 版本 {version} 安装完成，但 {display_name} 安装失败!',
                     'value': 1.0
