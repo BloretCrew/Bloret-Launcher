@@ -1982,6 +1982,20 @@ class Backend(QObject):
         print(f"Web Remoter enabled updated to: {enabled}")
 
     @Slot(result=str)
+    def getDownloadSource(self):
+        config_data = cfg.read()
+        return config_data.get('download_source', 'bmclapi')
+
+    @Slot(str)
+    def setDownloadSource(self, source):
+        config_data = cfg.read()
+        config_data['download_source'] = source
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        BLglobals.download_source = source
+        print(f"Download source updated to: {source}")
+
+    @Slot(result=str)
     def getLocalIPAddress(self):
         try:
             import socket

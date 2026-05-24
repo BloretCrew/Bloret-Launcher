@@ -83,6 +83,34 @@ def Get_Run_Script(mc_version, skip_completion=False):
     with open(version_json_path, 'r', encoding='utf-8') as f:
         version_data = json.load(f)
     
+    # 解析 inheritedFrom，合并父版本数据（Forge 1.21+ 等修改版需要）
+    inherits_from = version_data.get("inheritsFrom")
+    if inherits_from:
+        parent_version_dir = os.path.join(minecraft_dir, "versions", inherits_from)
+        parent_json_path = os.path.join(parent_version_dir, f"{inherits_from}.json")
+        if os.path.exists(parent_json_path):
+            with open(parent_json_path, 'r', encoding='utf-8') as f:
+                parent_data = json.load(f)
+            # 合并 libraries（父版本在前，当前版本在后）
+            if "libraries" in parent_data:
+                parent_libs = parent_data["libraries"]
+                child_libs = version_data.get("libraries", [])
+                version_data["libraries"] = parent_libs + child_libs
+            # 合并 arguments
+            if "arguments" in parent_data:
+                if "arguments" not in version_data:
+                    version_data["arguments"] = {}
+                for arg_key in parent_data["arguments"]:
+                    if arg_key not in version_data["arguments"]:
+                        version_data["arguments"][arg_key] = parent_data["arguments"][arg_key]
+                    elif isinstance(version_data["arguments"][arg_key], list) and isinstance(parent_data["arguments"][arg_key], list):
+                        version_data["arguments"][arg_key] = parent_data["arguments"][arg_key] + version_data["arguments"][arg_key]
+            # 其他字段从父版本继承
+            for field in ["assetIndex", "releaseTime"]:
+                if field not in version_data and field in parent_data:
+                    version_data[field] = parent_data[field]
+            log(f"已从父版本 {inherits_from} 继承库和配置，合并后总共 {len(version_data['libraries'])} 个库")
+    
     # 获取客户端 JAR 文件路径
     client_jar_path = os.path.join(versions_dir, f"{mc_version}.jar")
     if not os.path.exists(client_jar_path):
@@ -223,6 +251,7 @@ def Get_Run_Script(mc_version, skip_completion=False):
         "--add-opens", "java.base/jdk.internal.loader=ALL-UNNAMED",
         "--add-opens", "java.base/java.net=ALL-UNNAMED",
         "--add-opens", "java.base/java.security=ALL-UNNAMED",
+        "--add-opens", "java.base/java.lang.invoke=ALL-UNNAMED",
         "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",
         "--add-exports", "java.base/jdk.internal.misc=ALL-UNNAMED",
         "--add-exports", "java.base/jdk.internal.ref=ALL-UNNAMED",
@@ -315,6 +344,21 @@ def Get_Run_Script(mc_version, skip_completion=False):
                                           (os_rule.get("name") == "linux" and platform.system() == "Linux")):
                             should_include = True
                             break
+            # JPMS 兼容: 只保留当前平台的 native JAR，避免多平台 native 模块冲突
+            if should_include and "name" in lib:
+                parts = lib["name"].split(":")
+                if len(parts) >= 4:
+                    classifier = parts[3]
+                    if classifier.startswith("natives-"):
+                        os_name = platform.system().lower()
+                        arch = platform.machine().lower()
+                        current_classifier = f"natives-{os_name}"
+                        if arch in ("arm64", "aarch64"):
+                            current_classifier += "-arm64"
+                        elif arch in ("x86", "i386", "i686"):
+                            current_classifier += "-x86"
+                        if classifier != current_classifier:
+                            should_include = False
             
             if should_include:
                 lib_path = None
@@ -325,11 +369,16 @@ def Get_Run_Script(mc_version, skip_completion=False):
                     parts = lib["name"].split(":")
                     if len(parts) >= 3:
                         group_id, artifact_id, lib_version = parts[0:3]
+                        classifier = parts[3] if len(parts) >= 4 else None
+                        jar_name = f"{artifact_id}-{lib_version}"
+                        if classifier:
+                            jar_name += f"-{classifier}"
+                        jar_name += ".jar"
                         relative_path = os.path.join(
                             group_id.replace(".", "/"),
                             artifact_id,
                             lib_version,
-                            f"{artifact_id}-{lib_version}.jar"
+                            jar_name
                         )
                         lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
                 
@@ -343,13 +392,13 @@ def Get_Run_Script(mc_version, skip_completion=False):
     
     # 检查是否为加载器版本
     library_names = [lib.get("name", "").lower() for lib in version_data.get("libraries", [])]
-    is_fabric = "fabric" in mc_version.lower() or any("fabric" in name for name in library_names)
     is_forge_like = (
         "forge" in mc_version.lower()
         or any("minecraftforge" in name or "neoforged" in name for name in library_names)
         or "net.minecraftforge" in version_data.get("mainClass", "")
         or "cpw.mods" in version_data.get("mainClass", "")
     )
+    is_fabric = (not is_forge_like) and ("fabric" in mc_version.lower() or any("fabric" in name for name in library_names))
 
     if is_fabric:
         log(f"检测到 Fabric 版本: {mc_version}")
@@ -367,7 +416,7 @@ def Get_Run_Script(mc_version, skip_completion=False):
         f"-Xmx{java_max_memory}m"   # 最大堆内存
     ])
     
-    # 添加 Fabric 特定参数和处理
+    # 添加 Fabric 特定参数和处理（Forge/NeoForge 优先，防止库名误匹配）
     if is_fabric:
         launch_args.append("-DFabricMcEmu=net.minecraft.client.main.Main")
         
@@ -562,8 +611,43 @@ def Get_Run_Script(mc_version, skip_completion=False):
     # 因此，我们现在默认直接禁用它，改用原生直接启动方式
     use_wrapper = False  # 强制禁用
 
-    # 添加类路径参数
+    # 添加类路径 / 模块路径参数
     # 注意：在 shell=False 时，不要手动添加引号。
+    if is_forge_like:
+        # Forge/NeoForge 1.21+ 使用 JPMS BootstrapLauncher。
+        # 只有 bootstraplauncher + securejarhandler 需放在 --module-path
+        # 作为命名模块供 JVM 引导。其他 JAR（包括 ASM、sponge-mixin 等）
+        # 都放 -cp，BootstrapLauncher 会扫描 classpath 通过 JarMetadata
+        # 自行发现模块并创建子模块层。
+        # 
+        # BootstrapLauncher 默认 ignoreList="asm,securejarhandler"，
+        # 这会导致 asm-*.jar 被跳过，sponge-mixin 解析不到 asm-util。
+        # 我们覆盖为只忽略 securejarhandler 和 bootstraplauncher
+        # （它们在 --module-path 上，classpath 上同名会冲突）。
+        # ASM 不带忽略即可被 JarModuleFinder 发现并加入子层。
+        mp_jars = []
+        remaining = []
+        for p in classpath:
+            fn = os.path.basename(p).lower()
+            if fn.startswith('bootstraplauncher-') and fn.endswith('.jar'):
+                mp_jars.append(p)
+            elif fn.startswith('securejarhandler-') and fn.endswith('.jar'):
+                mp_jars.append(p)
+            else:
+                remaining.append(p)
+        launch_args.extend(["--module-path", os.pathsep.join(mp_jars)])
+        launch_args.append("--add-modules=ALL-MODULE-PATH")
+        launch_args.extend([
+            "-DignoreList=securejarhandler,bootstraplauncher",
+            f"-DlibraryDirectory={libraries_dir}",
+        ])
+        # 命名模块的 --add-opens 目标必须是模块名而非 ALL-UNNAMED
+        launch_args.extend([
+            "--add-opens", "java.base/java.lang.invoke=cpw.mods.securejarhandler",
+        ])
+        # Forge/NeoForge 不需要游戏 JAR 在 classpath 上，
+        # 它会被 ModLauncher 当作非法自动模块名引起 split-package 冲突。
+        classpath = [p for p in remaining if p != client_jar_path]
     launch_args.extend(["-cp", os.pathsep.join(classpath)])  # 使用系统分隔符 (Windows: ;, Unix: :)
     
     # Add Fabric Loader arguments to ensure mods are loaded
@@ -669,6 +753,21 @@ def Get_Run_Script(mc_version, skip_completion=False):
     # 根据登录方式设置启动参数
     if is_forge_like and append_version_game_arguments():
         log("已使用版本 JSON 中的 Forge/NeoForge 游戏参数")
+        # Forge 1.21+ 的 game args 可能缺少 accessToken/version/uuid，补充
+        def _ensure_arg(name, default_val, *extra):
+            flag = f"--{name}"
+            if flag not in launch_args:
+                launch_args.append(flag)
+                launch_args.append(default_val)
+        _ensure_arg("accessToken", access_token if login_method == 2 else "00000000000000000000000000000000")
+        _ensure_arg("version", mc_version)
+        _ensure_arg("username", username)
+        _ensure_arg("uuid", user_uuid)
+        _ensure_arg("gameDir", game_dir)
+        _ensure_arg("assetsDir", assets_dir)
+        _ensure_arg("assetIndex", str(asset_index))
+        _ensure_arg("versionType", version_type)
+        _ensure_arg("userType", user_type if login_method == 2 else "legacy")
     elif login_method == 0:  # 离线登录
         launch_args.extend([
             "--username", username,
