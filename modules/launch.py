@@ -351,6 +351,8 @@ def Get_Run_Script(mc_version, skip_completion=False):
                     classifier = parts[3]
                     if classifier.startswith("natives-"):
                         os_name = platform.system().lower()
+                        if os_name == "darwin":
+                            os_name = "osx"
                         arch = platform.machine().lower()
                         current_classifier = f"natives-{os_name}"
                         if arch in ("arm64", "aarch64"):
