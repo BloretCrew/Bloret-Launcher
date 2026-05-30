@@ -402,7 +402,7 @@ Flickable {
 
                             TextField {
                                 text: model.code
-                                onEdited: languageModel.setProperty(index, "code", text)
+                                onEditingFinished: languageModel.setProperty(index, "code", text)
                                 placeholderText: "code (e.g. en_us)"
                                 Layout.preferredWidth: 100
                                 color: Theme.currentTheme.colors.textColor
@@ -415,7 +415,7 @@ Flickable {
                             }
                             TextField {
                                 text: model.name
-                                onEdited: languageModel.setProperty(index, "name", text)
+                                onEditingFinished: languageModel.setProperty(index, "name", text)
                                 placeholderText: "Display Name"
                                 Layout.fillWidth: true
                                 color: Theme.currentTheme.colors.textColor
@@ -515,7 +515,7 @@ Flickable {
                             spacing: 8
                             TextField {
                                 text: model.pattern
-                                onEdited: filterNamespaceModel.setProperty(index, "pattern", text)
+                                onEditingFinished: filterNamespaceModel.setProperty(index, "pattern", text)
                                 placeholderText: "Regex pattern"
                                 Layout.fillWidth: true
                                 color: Theme.currentTheme.colors.textColor
@@ -528,7 +528,7 @@ Flickable {
                             }
                             TextField {
                                 text: model.replace
-                                onEdited: filterNamespaceModel.setProperty(index, "replace", text)
+                                onEditingFinished: filterNamespaceModel.setProperty(index, "replace", text)
                                 placeholderText: "Replace"
                                 Layout.preferredWidth: 120
                                 color: Theme.currentTheme.colors.textColor
@@ -573,7 +573,7 @@ Flickable {
                             spacing: 8
                             TextField {
                                 text: model.pattern
-                                onEdited: filterPathModel.setProperty(index, "pattern", text)
+                                onEditingFinished: filterPathModel.setProperty(index, "pattern", text)
                                 placeholderText: "Regex pattern"
                                 Layout.fillWidth: true
                                 color: Theme.currentTheme.colors.textColor
@@ -586,7 +586,7 @@ Flickable {
                             }
                             TextField {
                                 text: model.replace
-                                onEdited: filterPathModel.setProperty(index, "replace", text)
+                                onEditingFinished: filterPathModel.setProperty(index, "replace", text)
                                 placeholderText: "Replace"
                                 Layout.preferredWidth: 120
                                 color: Theme.currentTheme.colors.textColor
@@ -673,7 +673,7 @@ Flickable {
 
                             TextField {
                                 text: model.dirName
-                                onEdited: overlayModel.setProperty(index, "dirName", text)
+                                onEditingFinished: overlayModel.setProperty(index, "dirName", text)
                                 placeholderText: "directory"
                                 Layout.preferredWidth: 120
                                 color: Theme.currentTheme.colors.textColor
@@ -687,7 +687,7 @@ Flickable {
                             Text { text: "min:"; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
                             TextField {
                                 text: model.minFormat
-                                onEdited: overlayModel.setProperty(index, "minFormat", text)
+                                onEditingFinished: overlayModel.setProperty(index, "minFormat", text)
                                 placeholderText: "min"
                                 Layout.preferredWidth: 60
                                 color: Theme.currentTheme.colors.textColor
@@ -701,7 +701,7 @@ Flickable {
                             Text { text: "max:"; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
                             TextField {
                                 text: model.maxFormat
-                                onEdited: overlayModel.setProperty(index, "maxFormat", text)
+                                onEditingFinished: overlayModel.setProperty(index, "maxFormat", text)
                                 placeholderText: "max"
                                 Layout.preferredWidth: 60
                                 color: Theme.currentTheme.colors.textColor
