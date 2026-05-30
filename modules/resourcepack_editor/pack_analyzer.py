@@ -42,6 +42,11 @@ class PackAnalyzer:
         self._walk_dir(self.root_path, "", items, git_statuses)
         return items
 
+    @staticmethod
+    def _posix(p):
+        """Normalize path separators to forward slashes for cross-platform consistency."""
+        return p.replace(os.sep, "/")
+
     def _walk_dir(self, base_path, relative_path, items, git_statuses, depth=0):
         try:
             entries = sorted(
@@ -55,6 +60,7 @@ class PackAnalyzer:
             if entry.startswith("."):
                 continue
             entry_rel = os.path.join(relative_path, entry) if relative_path else entry
+            entry_rel = self._posix(entry_rel)
             entry_path = base_path / entry_rel
             is_dir = entry_path.is_dir()
             status = git_statuses.get(entry_rel, "")
@@ -83,7 +89,7 @@ class PackAnalyzer:
                 for root, _dirs, files in os.walk(textures_dir):
                     for f in sorted(files):
                         if f.lower().endswith((".png", ".jpg", ".jpeg", ".gif")):
-                            rel = os.path.relpath(os.path.join(root, f), self.root_path)
+                            rel = self._posix(os.path.relpath(os.path.join(root, f), self.root_path))
                             textures.append(
                                 {"path": rel, "name": f, "namespace": namespace.name}
                             )
@@ -103,7 +109,7 @@ class PackAnalyzer:
                     if f.suffix == ".json":
                         languages.append(
                             {
-                                "path": str(f.relative_to(self.root_path)),
+                                "path": self._posix(str(f.relative_to(self.root_path))),
                                 "name": f.stem,
                                 "namespace": namespace.name,
                             }
@@ -159,7 +165,7 @@ class PackAnalyzer:
             if bs_dir.exists():
                 for f in sorted(bs_dir.iterdir()):
                     if f.suffix == ".json":
-                        rel = str(f.relative_to(self.root_path))
+                        rel = self._posix(str(f.relative_to(self.root_path)))
                         results.append({"path": rel, "name": f.stem, "namespace": namespace.name})
         return results
 
@@ -178,7 +184,7 @@ class PackAnalyzer:
                 for root, _dirs, files in os.walk(models_dir):
                     for f in sorted(files):
                         if f.endswith(".json"):
-                            rel = os.path.relpath(os.path.join(root, f), self.root_path)
+                            rel = self._posix(os.path.relpath(os.path.join(root, f), self.root_path))
                             kind = "block" if "block" in rel else "item" if "item" in rel else "other"
                             results.append({"path": rel, "name": f, "namespace": namespace.name, "kind": kind})
         return results
@@ -193,7 +199,7 @@ class PackAnalyzer:
                 continue
             sj = namespace / "sounds.json"
             if sj.exists():
-                rel = str(sj.relative_to(self.root_path))
+                rel = self._posix(str(sj.relative_to(self.root_path)))
                 results.append({"path": rel, "namespace": namespace.name})
         return results
 
@@ -211,7 +217,7 @@ class PackAnalyzer:
             for root, _dirs, files in os.walk(sounds_dir):
                 for f in sorted(files):
                     if f.lower().endswith((".ogg", ".mp3", ".wav")):
-                        rel = os.path.relpath(os.path.join(root, f), self.root_path)
+                        rel = self._posix(os.path.relpath(os.path.join(root, f), self.root_path))
                         results.append({"path": rel, "name": f, "namespace": namespace.name})
         return results
 
@@ -227,7 +233,7 @@ class PackAnalyzer:
             if font_dir.exists():
                 for f in sorted(font_dir.iterdir()):
                     if f.suffix == ".json":
-                        rel = str(f.relative_to(self.root_path))
+                        rel = self._posix(str(f.relative_to(self.root_path)))
                         results.append({"path": rel, "name": f.stem, "namespace": namespace.name})
         return results
 
@@ -242,7 +248,7 @@ class PackAnalyzer:
             texts_dir = namespace / "texts"
             if texts_dir.exists():
                 for f in sorted(texts_dir.iterdir()):
-                    rel = str(f.relative_to(self.root_path))
+                    rel = self._posix(str(f.relative_to(self.root_path)))
                     ftype = "json" if f.suffix == ".json" else "txt"
                     results.append({"path": rel, "name": f.name, "namespace": namespace.name, "type": ftype})
         return results
@@ -259,7 +265,7 @@ class PackAnalyzer:
             if p_dir.exists():
                 for f in sorted(p_dir.iterdir()):
                     if f.suffix == ".json":
-                        rel = str(f.relative_to(self.root_path))
+                        rel = self._posix(str(f.relative_to(self.root_path)))
                         results.append({"path": rel, "name": f.stem, "namespace": namespace.name})
         return results
 
@@ -275,7 +281,7 @@ class PackAnalyzer:
             if cem_dir.exists():
                 for f in sorted(cem_dir.iterdir()):
                     if f.suffix in (".jem", ".jpm"):
-                        rel = str(f.relative_to(self.root_path))
+                        rel = self._posix(str(f.relative_to(self.root_path)))
                         results.append({"path": rel, "name": f.name, "namespace": namespace.name, "kind": f.suffix[1:]})
         return results
 
@@ -292,7 +298,7 @@ class PackAnalyzer:
                 continue
             for root, _dirs, files in os.walk(cit_dir):
                 for f in sorted(files):
-                    rel = os.path.relpath(os.path.join(root, f), self.root_path)
+                    rel = self._posix(os.path.relpath(os.path.join(root, f), self.root_path))
                     ftype = "properties" if f.endswith(".properties") else "texture" if f.endswith(".png") else "other"
                     results.append({"path": rel, "name": f, "namespace": namespace.name, "type": ftype})
         return results
@@ -306,13 +312,13 @@ class PackAnalyzer:
         for name in special:
             p = mc / name
             if p.exists():
-                rel = str(p.relative_to(self.root_path))
+                rel = self._posix(str(p.relative_to(self.root_path)))
                 results.append({"path": rel, "name": name})
         lang_dir = mc / "lang"
         if lang_dir.exists():
             dep = lang_dir / "deprecated.json"
             if dep.exists():
-                results.append({"path": str(dep.relative_to(self.root_path)), "name": "deprecated.json"})
+                results.append({"path": self._posix(str(dep.relative_to(self.root_path))), "name": "deprecated.json"})
         return results
 
     def get_namespaces(self):

@@ -14,6 +14,22 @@ FluentWindowBase {
     minimumWidth: 900
     minimumHeight: 600
 
+    // 覆盖背景：动态创建的窗口无法应用系统 backdrop 特效，使用不透明背景
+    background: Rectangle {
+        anchors.fill: parent
+        color: Theme.currentTheme.colors.backgroundColor
+        border.color: Theme.currentTheme.colors.windowBorderColor
+        layer.enabled: true
+        border.width: 1
+        radius: Theme.currentTheme.appearance.windowRadius
+        z: -1
+        clip: true
+
+        Behavior on color {
+            ColorAnimation { duration: 150 }
+        }
+    }
+
     property string currentFilePath: ""
     property var fileTreeModel: []
     property int currentTabIndex: 0
@@ -189,6 +205,10 @@ FluentWindowBase {
                         pathStr = pathStr.slice(7)
                     }
                     pathStr = decodeURIComponent(pathStr)
+                    // On Windows, file URL produces /C:/path — strip leading slash
+                    if (Qt.platform.os === "windows" && pathStr.length > 1 && pathStr[0] === "/" && pathStr[1] !== "/") {
+                        pathStr = pathStr.slice(1)
+                    }
                     RPEditor.openPack(pathStr)
                 } else {
                     editorWindow.close()

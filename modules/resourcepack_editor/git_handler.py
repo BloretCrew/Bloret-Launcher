@@ -1,11 +1,18 @@
 import os
 from pathlib import Path
-from dulwich import porcelain
-from dulwich.repo import Repo
+
+try:
+    from dulwich import porcelain
+    from dulwich.repo import Repo
+    HAS_DULWICH = True
+except ImportError:
+    HAS_DULWICH = False
 
 
 class ResourcePackGit:
     def __init__(self, repo_path):
+        if not HAS_DULWICH:
+            raise ImportError("dulwich is required for git operations. Install it with: pip install dulwich")
         self.repo_path = Path(repo_path)
         self._repo = None
 

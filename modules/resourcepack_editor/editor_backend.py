@@ -58,8 +58,11 @@ class ResourcePackEditorBackend(QObject):
             self._pack_path = None
             return False
 
-        self._git = ResourcePackGit(str(self._pack_path))
-        self._git.init_if_needed()
+        try:
+            self._git = ResourcePackGit(str(self._pack_path))
+            self._git.init_if_needed()
+        except ImportError:
+            self._git = None
         self._analyzer = PackAnalyzer(self._pack_path)
         if not self._analyzer.is_valid_pack():
             self.errorOccurred.emit("该目录不是有效的资源包（缺少 pack.mcmeta）")
@@ -455,13 +458,13 @@ class ResourcePackEditorBackend(QObject):
             return []
         return self._analyzer.get_namespaces()
 
-    @Slot(str, result=str)
+    @Slot(result=str)
     def getPackPngPath(self):
         if self._pack_path is None:
             return ""
         p = self._pack_path / "pack.png"
         if p.exists():
-            return "file://" + str(p)
+            return p.as_uri()
         return ""
 
     @Slot(str, result=str)
