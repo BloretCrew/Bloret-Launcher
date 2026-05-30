@@ -3867,6 +3867,14 @@ class LauncherV2(RinUIWindow):
             self.engine.rootContext().setContextProperty("RPEditor", self.rp_editor_backend)
         except Exception as e:
             print(f"Failed to load ResourcePack Editor backend: {e}")
+
+        # Inject AI Agent Backend
+        try:
+            from modules.resourcepack_editor.agent_backend import AgentBackend
+            self.agent_backend = AgentBackend()
+            self.engine.rootContext().setContextProperty("Agent", self.agent_backend)
+        except Exception as e:
+            print(f"Failed to load AI Agent backend: {e}")
         
         # 启动时检查并修复 .BL.json
         try:

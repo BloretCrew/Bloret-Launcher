@@ -4,10 +4,17 @@ import zipfile
 import tempfile
 import shutil
 from pathlib import Path
+from datetime import datetime
 from PySide6.QtCore import QObject, Signal, Slot, Property
 
 from .git_handler import ResourcePackGit
 from .pack_analyzer import PackAnalyzer
+
+# 数据存储路径
+try:
+    from modules.globals import datapath as _datapath
+except ImportError:
+    _datapath = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'Bloret-Launcher')
 
 
 class ResourcePackEditorBackend(QObject):
@@ -23,6 +30,77 @@ class ResourcePackEditorBackend(QObject):
         self._pack_path = None
         self._git = None
         self._analyzer = None
+        self._recent_packs_path = os.path.join(_datapath, 'recent_resource_packs.json')
+
+    # ========== 最近打开的资源包 ==========
+
+    def _record_recent_pack(self, path):
+        """记录最近打开的资源包路径"""
+        try:
+            recent = self._load_recent_packs()
+            path_str = str(path)
+            # 移除同路径旧记录
+            recent = [r for r in recent if r.get("path") != path_str]
+            # 插入到最前面
+            recent.insert(0, {
+                "path": path_str,
+                "name": Path(path_str).name,
+                "lastOpen": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            # 最多保留 15 条
+            recent = recent[:15]
+            os.makedirs(os.path.dirname(self._recent_packs_path), exist_ok=True)
+            with open(self._recent_packs_path, 'w', encoding='utf-8') as f:
+                json.dump(recent, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"记录最近资源包失败: {e}")
+
+    def _load_recent_packs(self):
+        """加载最近打开的资源包列表"""
+        try:
+            if os.path.exists(self._recent_packs_path):
+                with open(self._recent_packs_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"读取最近资源包失败: {e}")
+        return []
+
+    @Slot(result=list)
+    def getRecentPacks(self):
+        """获取最近打开的资源包列表，返回有效路径的列表"""
+        recent = self._load_recent_packs()
+        # 只返回仍然存在的路径
+        valid = []
+        for item in recent:
+            p = Path(item["path"])
+            if p.exists():
+                valid.append({
+                    "path": item["path"],
+                    "name": item.get("name", p.name),
+                    "lastOpen": item.get("lastOpen", "")
+                })
+        return valid
+
+    @Slot(str, result=str)
+    def extractZipToSameDir(self, zipPath):
+        """将压缩包解压到同目录下的同名文件夹，返回解压后的路径"""
+        zip_path = Path(zipPath)
+        if not zip_path.exists():
+            self.errorOccurred.emit(f"压缩包不存在: {zipPath}")
+            return ""
+        if zip_path.suffix.lower() != ".zip":
+            self.errorOccurred.emit("请选择 .zip 格式的压缩包")
+            return ""
+        extract_dir = zip_path.parent / zip_path.stem
+        try:
+            with zipfile.ZipFile(str(zip_path), "r") as zf:
+                zf.extractall(str(extract_dir))
+            return str(extract_dir)
+        except Exception as e:
+            self.errorOccurred.emit(f"解压失败: {e}")
+            return ""
+
+    # ========== 基本属性 ==========
 
     @Slot(result=str)
     def getPackPath(self):
@@ -70,6 +148,7 @@ class ResourcePackEditorBackend(QObject):
             self._git = None
             self._analyzer = None
             return False
+        self._record_recent_pack(self._pack_path)
         self._refresh()
         return True
 
