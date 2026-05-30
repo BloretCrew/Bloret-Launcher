@@ -10,7 +10,9 @@
       "Bash(cmd.exe //c \"python check_qml.py\")",
       "Bash(python)",
       "Bash(find \"f:\\\\GitProjects\\\\Bloret-Launcher\" -name \"*.py\" -exec grep -l \"Avatar\\\\|Circular\" {} \\\\;)",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "Bash(python -c \"import RinUI; print\\([x for x in dir\\(RinUI\\) if 'Window' in x or 'window' in x]\\)\")",
+      "Bash(python *)"
     ]
   }
 }

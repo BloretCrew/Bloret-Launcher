@@ -4,9 +4,7 @@
     Bloret Launcher
   </h1>
   <p>
-   Conveniently manage your Minecraft, conveniently play Bloret. 
-   <br>
-   便捷地管理你的 Minecraft，便捷地游玩 Bloret。
+   Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Any OS, Any usage.
   </p>
 </div>
 

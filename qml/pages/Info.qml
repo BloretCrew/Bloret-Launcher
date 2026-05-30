@@ -44,7 +44,7 @@ FluentPage {
                 }
 
                 Label {
-                    text: (Backend ? Backend.tr("Conveniently manage your Minecraft, conveniently play Bloret.\n便捷地管理你的 Minecraft，便捷地游玩 Bloret。") : "Conveniently manage your Minecraft, conveniently play Bloret.\n便捷地管理你的 Minecraft，便捷地游玩 Bloret。")
+                    text: (Backend ? Backend.tr("Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Any OS, Any usage.") : "Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Any OS, Any usage.")
                     color: Theme.currentTheme.colors.textSecondaryColor
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true

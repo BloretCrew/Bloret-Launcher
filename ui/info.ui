@@ -133,8 +133,7 @@
                    </size>
                   </property>
                   <property name="text">
-                   <string>Conveniently manage your Minecraft, conveniently play Bloret. 
-便捷地管理你的 Minecraft，便捷地游玩 Bloret。</string>
+                   <string>Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Any OS, Any usage.</string>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
