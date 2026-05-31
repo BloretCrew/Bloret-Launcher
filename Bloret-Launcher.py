@@ -2078,18 +2078,26 @@ class Backend(QObject):
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print(f"Theme mode updated to: {mode}")
 
-    @Slot(result=bool)
+    @Slot(result=str)
     def getShowAccountOnHome(self):
         config_data = cfg.read()
-        return config_data.get('show_account_on_home', True)
+        val = config_data.get('show_account_on_home', 'compact')
+        # 向后兼容旧版布尔值
+        if val is True:
+            return 'full'
+        if val is False:
+            return 'hidden'
+        if val not in ('compact', 'full', 'hidden'):
+            return 'compact'
+        return val
 
-    @Slot(bool)
-    def setShowAccountOnHome(self, show):
+    @Slot(str)
+    def setShowAccountOnHome(self, mode):
         config_data = cfg.read()
-        config_data['show_account_on_home'] = show
+        config_data['show_account_on_home'] = mode
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=4, ensure_ascii=False)
-        print(f"Show account on home updated to: {show}")
+        print(f"Show account on home updated to: {mode}")
 
     @Slot(result=bool)
     def getMinimizeToTrayOnClose(self):
@@ -2103,6 +2111,19 @@ class Backend(QObject):
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print(f"Minimize to tray on close updated to: {enabled}")
+
+    @Slot(result=bool)
+    def getRepeatRun(self):
+        config_data = cfg.read()
+        return config_data.get('repeat_run', False)
+
+    @Slot(bool)
+    def setRepeatRun(self, enabled):
+        config_data = cfg.read()
+        config_data['repeat_run'] = enabled
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"Repeat run updated to: {enabled}")
 
     # ========== 资源包编辑器全局设置 ==========
 
@@ -4193,5 +4214,41 @@ if __name__ == "__main__":
     global_icon_path = get_app_icon_path()
     if global_icon_path:
         app.setWindowIcon(QIcon(str(global_icon_path)))
+
+    # --- Single-instance mutex ---
+    _mutex_handle = None
+    if sys.platform == "win32":
+        import ctypes
+        _mutex_handle = ctypes.windll.kernel32.CreateMutexW(
+            None, False, "Global\\BloretLauncherMutex"
+        )
+        _already_running = (
+            _mutex_handle and ctypes.windll.kernel32.GetLastError() == 183
+        )
+    else:
+        import fcntl, tempfile
+        _lock_path = os.path.join(tempfile.gettempdir(), "bloret.lock")
+        _lock_file = open(_lock_path, "w")
+        try:
+            fcntl.lockf(_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            _already_running = False
+        except IOError:
+            _already_running = True
+
+    if _already_running:
+        config_data = cfg.read()
+        if not config_data.get('repeat_run', False):
+            from PySide6.QtWidgets import QMessageBox
+            box = QMessageBox()
+            box.setIcon(QMessageBox.Warning)
+            box.setWindowTitle(i18nText("Bloret Launcher 已在运行"))
+            box.setText(i18nText(
+                "Bloret Launcher 已经在运行中。\n请勿重复打开。"
+            ))
+            box.setStandardButtons(QMessageBox.Ok)
+            box.open()  # non-modal
+            box.finished.connect(lambda _: sys.exit(0))
+            sys.exit(app.exec())
+
     launcher = LauncherV2()
     sys.exit(app.exec())

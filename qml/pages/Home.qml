@@ -12,7 +12,7 @@ FluentPage {
     property var serverInfo: ({})
     property var launchItems: []
     property string currentVersion: ""
-    property bool showAccountOnHome: true
+    property string showAccountOnHome: "compact"
 
     Component.onCompleted: {
         // 从后端获取活动信息（从 API https://launcher.bloret.net/api/info 获取）
@@ -371,11 +371,12 @@ Rectangle {
                 Layout.alignment: Qt.AlignVCenter
                 spacing: 2
                 
+                // 完整展示：头像 + PassPort 名 + Minecraft 身份
                 RowLayout {
                     spacing: 8
                     Layout.fillWidth: true
-                    visible: showAccountOnHome
-                    
+                    visible: showAccountOnHome === "full"
+
                     // 用户头像
                     Rectangle {
                         width: 32; height: 32
@@ -411,7 +412,7 @@ Rectangle {
                             }
                         }
                     }
-                    
+
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 0
@@ -427,6 +428,15 @@ Rectangle {
                             font.pixelSize: 12
                         }
                     }
+                }
+
+                // 简略展示：单行文本
+                Label {
+                    Layout.fillWidth: true
+                    visible: showAccountOnHome === "compact"
+                    text: Backend ? Backend.tr("以身份 ") + Backend.getPlayerName() + Backend.tr(" 启动 Minecraft") : ""
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    font.pixelSize: 12
                 }
                 
                 RowLayout {

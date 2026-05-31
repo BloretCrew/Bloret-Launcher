@@ -55,17 +55,8 @@ FluentPage {
         return Backend.formatPlayTime(seconds)
     }
 
-    content: Flickable {
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        contentHeight: contentColumn.height + 40
-        clip: true
-
-        ColumnLayout {
+    content: ColumnLayout {
             id: contentColumn
-            width: parent.width - 40
-            x: 20
-            y: 20
             spacing: 20
 
             // ===== Overview Section =====
@@ -360,14 +351,14 @@ FluentPage {
                         Rectangle {
                             width: 40; height: 40
                             radius: 8
-                            color: Theme.currentTheme.colors.brandColor
+                            color: Theme.currentTheme.colors.primaryColor
                             opacity: 0.15
                             Label {
                                 anchors.centerIn: parent
                                 text: modelData.version ? modelData.version.charAt(0).toUpperCase() : "?"
                                 font.pixelSize: 16
                                 font.weight: Font.Bold
-                                color: Theme.currentTheme.colors.brandColor
+                                color: Theme.currentTheme.colors.primaryColor
                             }
                         }
 
@@ -506,14 +497,14 @@ FluentPage {
                         Rectangle {
                             width: 36; height: 36
                             radius: 8
-                            color: Theme.currentTheme.colors.brandColor
+                            color: Theme.currentTheme.colors.primaryColor
                             opacity: 0.12
                             Label {
                                 anchors.centerIn: parent
                                 text: modelData.version ? modelData.version.charAt(0).toUpperCase() : "?"
                                 font.pixelSize: 14
                                 font.weight: Font.Bold
-                                color: Theme.currentTheme.colors.brandColor
+                                color: Theme.currentTheme.colors.primaryColor
                             }
                         }
 
@@ -601,5 +592,4 @@ FluentPage {
 
             Item { height: 20 }
         }
-    }
 }

@@ -44,6 +44,9 @@ FluentPage {
         _homeSection = Backend ? Backend.tr("首页") : "首页";
         _showAccountTitle = Backend ? Backend.tr("显示账户信息") : "显示账户信息";
         _showAccountDesc = Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息";
+        _showAccountModeCompact = Backend ? Backend.tr("简略展示") : "简略展示";
+        _showAccountModeFull = Backend ? Backend.tr("完整展示") : "完整展示";
+        _showAccountModeHidden = Backend ? Backend.tr("隐藏") : "隐藏";
         _webRemoterSection = Backend ? Backend.tr("Web 遥控器") : "Web 遥控器";
         _webRemoterTitle = Backend ? Backend.tr("启用 Web 遥控器") : "启用 Web 遥控器";
         _webRemoterDesc = Backend ? Backend.tr("开启后可通过手机浏览器访问 http://电脑IP:25252 遥控 Minecraft") : "开启后可通过手机浏览器访问 http://电脑IP:25252 遥控 Minecraft";
@@ -52,6 +55,8 @@ FluentPage {
         _closeToTrayTitle = Backend ? Backend.tr("关闭按钮最小化到托盘") : "关闭按钮最小化到托盘";
         _closeToTrayDesc = Backend ? Backend.tr("开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序") : "开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序";
         _closeToTrayUnavailableDesc = Backend ? Backend.tr("当前平台不支持托盘") : "当前平台不支持托盘";
+        _repeatRunTitle = Backend ? Backend.tr("允许重复打开 Bloret Launcher") : "允许重复打开 Bloret Launcher";
+        _repeatRunDesc = Backend ? Backend.tr("开启后可同时打开多个 Bloret Launcher 实例") : "开启后可同时打开多个 Bloret Launcher 实例";
         _appearanceSection = Backend ? Backend.tr("外观") : "外观";
         _langTitle = Backend ? Backend.tr("语言 / language") : "语言 / language";
         _langDesc = Backend ? Backend.tr("调整语言设置") : "调整语言设置";
@@ -86,6 +91,9 @@ FluentPage {
     property string _homeSection: Backend ? Backend.tr("首页") : "首页"
     property string _showAccountTitle: Backend ? Backend.tr("显示账户信息") : "显示账户信息"
     property string _showAccountDesc: Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息"
+    property string _showAccountModeCompact: Backend ? Backend.tr("简略展示") : "简略展示"
+    property string _showAccountModeFull: Backend ? Backend.tr("完整展示") : "完整展示"
+    property string _showAccountModeHidden: Backend ? Backend.tr("隐藏") : "隐藏"
     property string _webRemoterSection: Backend ? Backend.tr("Web 遥控器") : "Web 遥控器"
     property string _webRemoterTitle: Backend ? Backend.tr("启用 Web 遥控器") : "启用 Web 遥控器"
     property string _webRemoterDesc: Backend ? Backend.tr("开启后可通过手机浏览器访问 http://电脑IP:25252 遥控 Minecraft") : "开启后可通过手机浏览器访问 http://电脑IP:25252 遥控 Minecraft"
@@ -94,6 +102,8 @@ FluentPage {
     property string _closeToTrayTitle: Backend ? Backend.tr("关闭按钮最小化到托盘") : "关闭按钮最小化到托盘"
     property string _closeToTrayDesc: Backend ? Backend.tr("开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序") : "开启后点击窗口关闭按钮仅隐藏到系统托盘；关闭后将直接退出程序"
     property string _closeToTrayUnavailableDesc: Backend ? Backend.tr("当前平台不支持托盘") : "当前平台不支持托盘"
+    property string _repeatRunTitle: Backend ? Backend.tr("允许重复打开 Bloret Launcher") : "允许重复打开 Bloret Launcher"
+    property string _repeatRunDesc: Backend ? Backend.tr("开启后可同时打开多个 Bloret Launcher 实例") : "开启后可同时打开多个 Bloret Launcher 实例"
     property string _appearanceSection: Backend ? Backend.tr("外观") : "外观"
     property string _langTitle: Backend ? Backend.tr("语言 / language") : "语言 / language"
     property string _langDesc: Backend ? Backend.tr("调整语言设置") : "调整语言设置"
@@ -142,9 +152,10 @@ FluentPage {
                 }
             }
 
-            showAccountSwitch.checked = Backend.getShowAccountOnHome();
+            showAccountCombo.currentIndex = ["compact", "full", "hidden"].indexOf(Backend.getShowAccountOnHome());
             minimizeToTraySwitch.checked = Backend.getMinimizeToTrayOnClose();
             traySupported = Backend.isSystemTrayAvailable();
+            repeatRunSwitch.checked = Backend.getRepeatRun();
             webRemoterSwitch.checked = Backend.getWebRemoterEnabled();
             localIPAddress = Backend.getLocalIPAddress();
         }
@@ -279,12 +290,19 @@ FluentPage {
             title: _showAccountTitle
             description: _showAccountDesc
             icon.name: "ic_fluent_person_20_regular"
-            Switch {
-                id: showAccountSwitch
-                checked: true
-                onCheckedChanged: {
+            ComboBox {
+                id: showAccountCombo
+                model: [
+                    { text: _showAccountModeCompact, value: "compact" },
+                    { text: _showAccountModeFull, value: "full" },
+                    { text: _showAccountModeHidden, value: "hidden" }
+                ]
+                textRole: "text"
+                valueRole: "value"
+                Layout.preferredWidth: 150
+                onActivated: {
                     if (Backend)
-                        Backend.setShowAccountOnHome(checked);
+                        Backend.setShowAccountOnHome(currentValue);
                 }
             }
         }
@@ -301,6 +319,21 @@ FluentPage {
                 onCheckedChanged: {
                     if (Backend)
                         Backend.setMinimizeToTrayOnClose(checked);
+                }
+            }
+        }
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: _repeatRunTitle
+            description: _repeatRunDesc
+            icon.name: "ic_fluent_window_multiple_20_regular"
+            Switch {
+                id: repeatRunSwitch
+                checked: false
+                onCheckedChanged: {
+                    if (Backend)
+                        Backend.setRepeatRun(checked);
                 }
             }
         }
