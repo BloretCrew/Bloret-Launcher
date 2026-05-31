@@ -176,6 +176,7 @@ class Backend(QObject):
     # Minecraft crash analysis signal
     minecraftCrashDetected = Signal(str, str, str)  # title, message, stack_trace
     playTimeTick = Signal()  # emitted every second while game is running
+    statisticsUpdated = Signal()  # emitted when play statistics are updated
 
     # Resource Pack Editor signal
     resourcePackEditorRequested = Signal()
@@ -192,6 +193,9 @@ class Backend(QObject):
         # Play time tracking
         self._play_time_sessions = {}  # instance_id -> session dict
         self._play_time_timer = None
+        self._detailed_sessions = {}  # instance_id -> detailed session dict
+        self._focus_monitor_thread = None
+        self._focus_monitor_running = False
         # Live state
         self._live_sse_client = None
         self._live_webrtc_manager = None
@@ -351,9 +355,11 @@ class Backend(QObject):
                     "pid": proc.pid, "suspended": False
                 }
                 # Start play time tracking
-                from modules.play_time import start_session
+                from modules.play_time import start_session, start_detailed_session
                 self._play_time_sessions[instance_id] = start_session(version)
+                self._detailed_sessions[instance_id] = start_detailed_session(version)
                 self._start_play_time_tick()
+                self._start_focus_monitor()
                 self._recordRecentRun(version, "minecraft")
                 self.runningInstancesChanged.emit(self.getRunningInstances())
 
@@ -597,6 +603,13 @@ class Backend(QObject):
         if session:
             from modules.play_time import end_session
             end_session(session)
+        detailed = self._detailed_sessions.pop(instance_id, None)
+        if detailed:
+            from modules.play_time import end_detailed_session
+            end_detailed_session(detailed)
+            self.statisticsUpdated.emit()
+        if not self._play_time_sessions and not self._detailed_sessions:
+            self._stop_focus_monitor()
         self._stop_play_time_tick()
 
     @Slot(result=dict)
@@ -626,6 +639,117 @@ class Backend(QObject):
             elapsed = time.time() - session["start"]
             return format_duration_long(elapsed)
         return ""
+
+    # ========== Focus monitoring for foreground/background time ==========
+
+    def _start_focus_monitor(self):
+        if self._focus_monitor_running:
+            return
+        self._focus_monitor_running = True
+        self._focus_monitor_thread = threading.Thread(target=self._focus_monitor_loop, daemon=True)
+        self._focus_monitor_thread.start()
+
+    def _stop_focus_monitor(self):
+        self._focus_monitor_running = False
+
+    def _focus_monitor_loop(self):
+        import time
+        while self._focus_monitor_running:
+            try:
+                is_fg = self._is_minecraft_foreground()
+                for sid, session in list(self._detailed_sessions.items()):
+                    from modules.play_time import update_session_focus
+                    update_session_focus(session, is_fg)
+            except Exception:
+                pass
+            time.sleep(2)
+
+    @staticmethod
+    def _is_minecraft_foreground():
+        try:
+            if sys.platform == 'win32':
+                import ctypes
+                hwnd = ctypes.windll.user32.GetForegroundWindow()
+                if hwnd:
+                    length = ctypes.windll.user32.GetWindowTextLengthW(hwnd) + 1
+                    buf = ctypes.create_unicode_buffer(length)
+                    ctypes.windll.user32.GetWindowTextW(hwnd, buf, length)
+                    title = buf.value.lower()
+                    return 'minecraft' in title
+            elif sys.platform == 'darwin':
+                import subprocess
+                result = subprocess.run(
+                    ['osascript', '-e', 'tell application "System Events" to get name of first application process whose frontmost is true'],
+                    capture_output=True, text=True, timeout=3
+                )
+                return 'minecraft' in result.stdout.lower()
+            else:
+                import subprocess
+                result = subprocess.run(
+                    ['xdotool', 'getactivewindow', 'getwindowname'],
+                    capture_output=True, text=True, timeout=3
+                )
+                return 'minecraft' in result.stdout.lower()
+        except Exception:
+            pass
+        return False
+
+    # ========== Statistics Slots ==========
+
+    @Slot(result=dict)
+    def getPlayStatisticsOverview(self):
+        from modules.play_time import get_overview_stats
+        return get_overview_stats()
+
+    @Slot(str, result=list)
+    def getPlayStatisticsByDate(self, date):
+        from modules.play_time import get_sessions
+        result = get_sessions(date_filter=date, page=1, page_size=1000)
+        return result.get("sessions", [])
+
+    @Slot(str, result=list)
+    def getPlayStatisticsByVersion(self, version):
+        from modules.play_time import get_sessions
+        result = get_sessions(version_filter=version, page=1, page_size=1000)
+        return result.get("sessions", [])
+
+    @Slot(str, str, int, int, result=dict)
+    def getPlayStatisticsPaginated(self, dateFilter, versionFilter, page, pageSize):
+        from modules.play_time import get_sessions
+        return get_sessions(
+            date_filter=dateFilter if dateFilter else None,
+            version_filter=versionFilter if versionFilter else None,
+            page=page,
+            page_size=pageSize,
+        )
+
+    @Slot(str, str, result=list)
+    def getPlayStatisticsDaily(self, dateFrom, dateTo):
+        from modules.play_time import get_daily_stats
+        return get_daily_stats(
+            date_from=dateFrom if dateFrom else None,
+            date_to=dateTo if dateTo else None,
+        )
+
+    @Slot(result=list)
+    def getPlayStatisticsVersions(self):
+        from modules.play_time import get_version_stats
+        return get_version_stats()
+
+    @Slot(result=list)
+    def getPlayStatisticsDates(self):
+        from modules.play_time import get_all_dates
+        return get_all_dates()
+
+    @Slot(result=list)
+    def getPlayStatisticsAllVersions(self):
+        from modules.play_time import get_all_versions
+        return get_all_versions()
+
+    @Slot(float, result=str)
+    def formatPlayTime(self, seconds):
+        from modules.play_time import format_duration_full
+        return format_duration_full(seconds)
 
     @Slot(result=list)
     def getLaunchItemsSortedByPlayTime(self):

@@ -54,6 +54,11 @@ FluentWindow {
             icon: "ic_fluent_wrench_20_regular"
         },
         {
+            title: (Backend ? Backend.tr("统计") : "统计"),
+            page: Qt.resolvedUrl("pages/Statistics.qml"),
+            icon: "ic_fluent_data_bar_horizontal_20_regular"
+        },
+        {
             title: (Backend ? Backend.tr("Mods") : "Mods"),
             page: Qt.resolvedUrl("pages/Mods.qml"),
             icon: "ic_fluent_puzzle_piece_20_regular"
