@@ -137,6 +137,7 @@ class Backend(QObject):
     downloadDialogRequested = Signal(str)
     downloadProgressUpdated = Signal(float, str, str, str, str)
     downloadDialogClosed = Signal()
+    downloadCompleted = Signal(str)  # message — 安装完成时通知 UI
     downloadPaused = Signal(bool)
     coreManagerRequested = Signal(str, dict)
     activityInfoChanged = Signal(dict)
@@ -175,6 +176,9 @@ class Backend(QObject):
 
     # Minecraft crash analysis signal
     minecraftCrashDetected = Signal(str, str, str)  # title, message, stack_trace
+
+    # Version list signals
+    versionListReady = Signal(str, list)  # category, versions
     playTimeTick = Signal()  # emitted every second while game is running
     statisticsUpdated = Signal()  # emitted when play statistics are updated
 
@@ -210,6 +214,29 @@ class Backend(QObject):
 
     def setBackendParent(self, parent):
         self.parent = parent
+        # 后台预加载版本列表，避免阻塞 UI
+        self._prefetch_version_list()
+
+    def _prefetch_version_list(self):
+        """在后台线程中预加载版本列表"""
+        import threading
+        def _fetch():
+            try:
+                api_url = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
+                response = requests.get(api_url, timeout=15)
+                if response.status_code == 200:
+                    data = response.json()
+                    all_versions = data.get("versions", [])
+                    self._versions_cache["正式版本"] = [v["id"] for v in all_versions if v.get("type") == "release"]
+                    self._versions_cache["快照版本"] = [v["id"] for v in all_versions if v.get("type") == "snapshot"]
+                    self._versions_cache["远古版本"] = [v["id"] for v in all_versions if v.get("type") in ["old_alpha", "old_beta"]]
+                    self._manifest_fetched = True
+                    for cat, versions in self._versions_cache.items():
+                        self.versionListReady.emit(cat, versions)
+                    print(f"[DEBUG] Prefetch done: {', '.join(f'{k}({len(v)})' for k,v in self._versions_cache.items())}")
+            except Exception as e:
+                print(f"[ERROR] Prefetch version list failed: {e}")
+        threading.Thread(target=_fetch, daemon=True).start()
 
     @Slot(result=bool)
     def handleWindowCloseRequest(self):
@@ -1588,51 +1615,12 @@ class Backend(QObject):
     
     @Slot(str, result=list)
     def getVersionsByCategory(self, category):
-        """根据类别返回版本列表"""
-        try:
-            print(f"[DEBUG] Getting versions for category: {category}")
-            
-            if category == "百络谷支持版本":
-                print(f"[DEBUG] Returning Bloret supported versions: {len(BLglobals.ver_id_bloret)} items")
-                return BLglobals.ver_id_bloret
-            
-            # 检查是否已有一网打尽的标志，或者直接检查缓存
-            if category in self._versions_cache:
-                print(f"[DEBUG] Found cached versions for {category}: {len(self._versions_cache[category])} items")
-                return self._versions_cache[category]
-            
-            # 如果之前已经获取过清单但这个分类不在缓存里（说明是无效分类或者新分类），直接返回空
-            if getattr(self, '_manifest_fetched', False):
-                 return []
-
-            # 从BMCLAPI获取版本清单
-            api_url = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
-            print(f"[DEBUG] Fetching version manifest from: {api_url}")
-            
-            response = requests.get(api_url, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                all_versions = data.get("versions", [])
-                print(f"[DEBUG] Total versions fetched: {len(all_versions)}")
-                
-                # 一次性处理所有分类并缓存
-                self._versions_cache["正式版本"] = [v["id"] for v in all_versions if v.get("type") == "release"]
-                self._versions_cache["快照版本"] = [v["id"] for v in all_versions if v.get("type") == "snapshot"]
-                # 把 old_alpha 和 old_beta 都归为远古版本
-                self._versions_cache["远古版本"] = [v["id"] for v in all_versions if v.get("type") in ["old_alpha", "old_beta"]]
-                
-                self._manifest_fetched = True
-                
-                result = self._versions_cache.get(category, [])
-                print(f"[DEBUG] Cached result for {category}: {len(result)} items")
-                return result
-            else:
-                print(f"[ERROR] Failed to fetch versions: HTTP {response.status_code}")
-                return []
-        except Exception as e:
-            print(f"[ERROR] Exception getting versions by category {category}: {type(e).__name__}: {e}")
-            return []
+        """根据类别返回版本列表（非阻塞，数据由后台线程预加载）"""
+        if category == "百络谷支持版本":
+            from modules.install import fetch_fastdownload_versions
+            fastdownload = fetch_fastdownload_versions()
+            return list(fastdownload.keys())
+        return self._versions_cache.get(category, [])
 
     # Removed incorrect getFabricVersions implementation here to use the correct one below
 
@@ -1721,6 +1709,19 @@ class Backend(QObject):
 
     def closeDownloadDialog(self):
         self.downloadDialogClosed.emit()
+
+    def notifyDownloadComplete(self, message="Minecraft 安装完成"):
+        self.downloadCompleted.emit(message)
+        try:
+            from modules.win11toast import notify
+            notify(progress={
+                'title': 'Bloret Launcher',
+                'status': message,
+                'value': '100',
+                'valueStringOverride': '100%'
+            })
+        except Exception as e:
+            print(f"发送安装完成通知失败: {e}")
 
     def setDownloadPaused(self, paused):
         self.downloadPaused.emit(paused)
@@ -2077,6 +2078,20 @@ class Backend(QObject):
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print(f"Theme mode updated to: {mode}")
+
+    @Slot(result=str)
+    def getDownloadSource(self):
+        config_data = cfg.read()
+        return config_data.get('download_source', 'bmclapi')
+
+    @Slot(str)
+    def setDownloadSource(self, source):
+        config_data = cfg.read()
+        config_data['download_source'] = source
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        BLglobals.download_source = source
+        print(f"Download source updated to: {source}")
 
     @Slot(result=str)
     def getShowAccountOnHome(self):

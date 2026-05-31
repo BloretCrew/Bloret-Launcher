@@ -138,13 +138,9 @@ FluentWindow {
         }
 
         function onDownloadDialogRequested(title) {
+            downloadDialog.resetDialog()
             downloadDialog.downloadTitle = title
-            downloadDialog.downloadProgress = 0
             downloadDialog.downloadStatus = Backend ? Backend.tr("准备下载...") : "准备下载..."
-            downloadDialog.downloadSpeed = ""
-            downloadDialog.downloadedSize = ""
-            downloadDialog.totalSize = ""
-            downloadDialog.isPaused = false
             downloadDialog.open()
         }
 
@@ -154,6 +150,10 @@ FluentWindow {
 
         function onDownloadDialogClosed() {
             downloadDialog.close()
+        }
+
+        function onDownloadCompleted(message) {
+            downloadDialog.setCompleted(message)
         }
 
         function onDownloadPaused(paused) {

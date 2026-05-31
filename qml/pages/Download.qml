@@ -37,27 +37,33 @@ FluentPage {
     property string currentSelectionTarget: "" // 新增：记录当前选择的是原版还是Fabric
     property bool _ignoreIndexChange: false // 防止 onCurrentIndexChanged 循环触发
 
+    function updateBloretVersionLists() {
+        if (!Backend) return
+        bloretVersions = Backend.getVersionsByCategory("百络谷支持版本")
+        if (bloretVersions.length === 0) return
+
+        // 初始化原版列表：百络谷版本 + "其他版本..."
+        minecraftVersionList = bloretVersions.slice()
+        minecraftVersionList.push(Backend.tr("其他版本..."))
+        vanillaCombo.model = minecraftVersionList
+
+        // 初始化加载器列表：使用相同的百络谷版本作为推荐 + "其他版本..."
+        fabricVersionList = bloretVersions.slice()
+        fabricVersionList.push(Backend.tr("其他版本..."))
+        fabricCombo.model = fabricVersionList
+
+        forgeVersionList = bloretVersions.slice()
+        forgeVersionList.push(Backend.tr("其他版本..."))
+        forgeCombo.model = forgeVersionList
+
+        neoForgeVersionList = bloretVersions.slice()
+        neoForgeVersionList.push(Backend.tr("其他版本..."))
+        neoForgeCombo.model = neoForgeVersionList
+    }
+
     Component.onCompleted: {
         if (Backend) {
-            bloretVersions = Backend.getVersionsByCategory("百络谷支持版本")
-            
-            // 初始化原版列表：百络谷版本 + "其他版本..."
-            minecraftVersionList = bloretVersions.slice()
-            minecraftVersionList.push((Backend ? Backend.tr("其他版本...") : "其他版本..."))
-            vanillaCombo.model = minecraftVersionList
-            
-            // 初始化加载器列表：使用相同的百络谷版本作为推荐 + "其他版本..."
-            fabricVersionList = bloretVersions.slice()
-            fabricVersionList.push((Backend ? Backend.tr("其他版本...") : "其他版本..."))
-            fabricCombo.model = fabricVersionList
-
-            forgeVersionList = bloretVersions.slice()
-            forgeVersionList.push((Backend ? Backend.tr("其他版本...") : "其他版本..."))
-            forgeCombo.model = forgeVersionList
-
-            neoForgeVersionList = bloretVersions.slice()
-            neoForgeVersionList.push((Backend ? Backend.tr("其他版本...") : "其他版本..."))
-            neoForgeCombo.model = neoForgeVersionList
+            updateBloretVersionLists()
             
             javaVersions = Backend.getJavaDownloadVersions()
             

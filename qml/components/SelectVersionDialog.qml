@@ -20,51 +20,41 @@ Dialog {
     height: 280
     
     Component.onCompleted: {
-        console.log("[SelectVersionDialog] Component.onCompleted")
         if (Backend) {
-            updateVersionList(0)
+            refreshCurrentCategory()
         }
     }
-    
+
     onAboutToShow: {
-        console.log("[SelectVersionDialog] Dialog about to show")
         if (!currentVersions || currentVersions.length === 0) {
-            console.log("[SelectVersionDialog] Versions not loaded, loading now...")
-            updateVersionList(categoryCombo.currentIndex)
+            refreshCurrentCategory()
         }
     }
-    
-    function updateVersionList(categoryIndex) {
-        if (!Backend) {
-            console.error("[SelectVersionDialog] Backend not available")
-            return
-        }
-        
-        let category = categories[categoryIndex]
-        console.log(`[SelectVersionDialog] updateVersionList: category=${category}`)
-        
-        console.log(`[SelectVersionDialog] Loading ${category} asynchronously`)
-        isLoading = true
-        loadingTimer.start()
-    }
-    
-    Timer {
-        id: loadingTimer
-        interval: 100
-        running: false
-        onTriggered: {
-            console.log("[SelectVersionDialog] Timer triggered")
-            let category = selectVersionDialog.categories[categoryCombo.currentIndex]
-            console.log(`[SelectVersionDialog] Fetching ${category} from backend`)
-            currentVersions = Backend.getVersionsByCategory(category)
-            console.log(`[SelectVersionDialog] Got ${currentVersions.length} versions`)
-            versionCombo.model = currentVersions
-            if (currentVersions.length > 0) {
-                versionCombo.currentIndex = 0
-                selectedVersion = currentVersions[0]
+
+    Connections {
+        target: Backend
+        function onVersionListReady(category, versions) {
+            if (category === categories[categoryCombo.currentIndex]) {
+                refreshCurrentCategory()
             }
-            isLoading = false
         }
+    }
+
+    function refreshCurrentCategory() {
+        if (!Backend) return
+        let category = categories[categoryCombo.currentIndex]
+        currentVersions = Backend.getVersionsByCategory(category)
+        versionCombo.model = currentVersions
+        if (currentVersions.length > 0) {
+            versionCombo.currentIndex = 0
+            selectedVersion = currentVersions[0]
+        }
+        isLoading = currentVersions.length === 0
+    }
+
+    function updateVersionList(categoryIndex) {
+        categoryCombo.currentIndex = categoryIndex
+        refreshCurrentCategory()
     }
     
     contentItem: ColumnLayout {

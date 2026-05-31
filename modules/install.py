@@ -102,6 +102,145 @@ def safe_ui_update(widget, method, value, widget_type=None):
         log(f"UI更新失败: {e}")
     return False
 
+# ── Bloret 快速下载源（Git Clone） ──
+
+_FASTDOWNLOAD_API = "https://launcher.bloret.net/api/fastdownload"
+_fastdownload_cache = None  # 缓存 API 返回结果
+
+def fetch_fastdownload_versions():
+    """
+    从 fastdownload API 获取支持的版本列表。
+    返回 {version: git_url} 字典，失败返回空字典。
+    """
+    global _fastdownload_cache
+    if _fastdownload_cache is not None:
+        return _fastdownload_cache
+
+    try:
+        resp = requests.get(_FASTDOWNLOAD_API, timeout=10)
+        if resp.status_code != 200:
+            log(f"fastdownload API 请求失败: HTTP {resp.status_code}", logging.WARNING)
+            _fastdownload_cache = {}
+            return {}
+        data = resp.json()
+        if not data.get("enabled", False):
+            log("fastdownload API 返回 enabled=false", logging.INFO)
+            _fastdownload_cache = {}
+            return {}
+        result = {}
+        for entry in data.get("versions", []):
+            v = entry.get("version", "")
+            url = entry.get("url", "")
+            if v and url:
+                result[v] = url
+        _fastdownload_cache = result
+        log(f"fastdownload API 获取到 {len(result)} 个版本: {list(result.keys())}")
+        return result
+    except Exception as e:
+        log(f"fastdownload API 请求异常: {e}", logging.WARNING)
+        _fastdownload_cache = {}
+        return {}
+
+
+class _DownloadCancelled(Exception):
+    """用户取消下载时抛出"""
+    pass
+
+
+class _GitProgressStream:
+    """捕获 dulwich 的进度输出并转发到 UI，支持取消"""
+    def __init__(self, backend=None):
+        self._backend = backend
+        self._buf = b""
+
+    def write(self, data):
+        if _current_download_state.get('cancelled'):
+            raise _DownloadCancelled("用户取消了下载")
+        if isinstance(data, bytes):
+            self._buf += data
+        else:
+            self._buf += data.encode("utf-8", errors="replace")
+        # dulwich 输出格式如 "Receiving objects:  45% (100/222)\r"
+        while b"\r" in self._buf:
+            line, self._buf = self._buf.split(b"\r", 1)
+            text = line.decode("utf-8", errors="replace").strip()
+            if text and self._backend:
+                self._backend.updateDownloadProgress(0.3, text, "", "", "")
+                log(f"[git] {text}")
+
+    def flush(self):
+        pass
+
+    def fileno(self):
+        raise OSError("GitProgressStream has no fileno")
+
+
+def bloret_git_clone_download(version, minecraft_dir, backend=None):
+    """
+    使用 dulwich clone 从 Bloret Git 仓库下载 Minecraft 版本文件。
+    如果版本不在 fastdownload API 列表中，返回 False（回退正常下载）。
+    成功返回 True。
+    """
+    from dulwich import porcelain
+    import tempfile
+
+    fastdownload = fetch_fastdownload_versions()
+    if version not in fastdownload:
+        log(f"版本 {version} 不在 fastdownload 列表中，回退正常下载")
+        return False
+
+    git_url = fastdownload[version]
+    log(f"版本 {version} 在 fastdownload 列表中，使用 git clone: {git_url}")
+
+    def update_progress(progress, status):
+        if backend:
+            backend.updateDownloadProgress(progress, status, "", "", "")
+
+    tmp_dir = None
+    try:
+        # 1. 克隆到临时目录
+        tmp_dir = tempfile.mkdtemp(prefix="bloret_git_")
+        update_progress(0.05, i18nText("正在从 Bloret 仓库克隆文件..."))
+        log(f"开始 git clone {git_url} -> {tmp_dir}")
+
+        progress_stream = _GitProgressStream(backend)
+        porcelain.clone(git_url, tmp_dir, depth=1, errstream=progress_stream, outstream=progress_stream)
+        log(f"git clone 完成: {tmp_dir}")
+
+        update_progress(0.6, i18nText("正在复制文件到 Minecraft 目录..."))
+
+        # 2. 将克隆内容复制到 .minecraft（合并覆盖）
+        os.makedirs(minecraft_dir, exist_ok=True)
+        for item in os.listdir(tmp_dir):
+            if item == ".git":
+                continue
+            src = os.path.join(tmp_dir, item)
+            dst = os.path.join(minecraft_dir, item)
+            if os.path.isdir(src):
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+            else:
+                shutil.copy2(src, dst)
+
+        update_progress(0.9, i18nText("文件复制完成"))
+        log(f"Bloret git clone 下载完成: {version}")
+        return True
+
+    except _DownloadCancelled:
+        log("Bloret git clone 下载被用户取消")
+        return False
+    except Exception as e:
+        log(f"Bloret git clone 下载失败: {e}", logging.ERROR)
+        return False
+    finally:
+        # 3. 清理临时目录
+        if tmp_dir and os.path.exists(tmp_dir):
+            try:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+                log(f"已清理临时目录: {tmp_dir}")
+            except Exception:
+                pass
+
+
 def dl_source_launcher_or_meta_get(original_url):
     """
     根据PCL启动器的DlSourceLauncherOrMetaGet方法实现
@@ -957,295 +1096,130 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         versions_dir = os.path.join(minecraft_dir, "versions")
         os.makedirs(versions_dir, exist_ok=True)
 
-        # 1. 获取版本清单，使用PCL风格的镜像源处理
-        update_progress({
-            'value': 0.1, 
-            'valueStringOverride': '10%',
-            'status': i18nText('正在获取版本清单...')
-        })
-
-        # 创建 LibraryDownloader 实例
-        # 假设 missing_libraries 在后续步骤中获取
-        # 这里先创建一个空的，后续再更新
-
-
-        
-        # 定义版本清单URL列表，使用PCL风格的镜像源处理
-        manifest_urls = dl_source_launcher_or_meta_get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
-        
-        manifest_data = None
-        for url in manifest_urls:
+        # ── Bloret 快速下载源：Git Clone ──
+        _bloret_git_done = False
+        version_data = None
+        max_thread_value = 64  # 默认值，实际值在下载区块内从配置读取
+        if BLglobals.download_source == "gitcode":
             try:
-                log(f"正在获取版本清单: {url}")
-                response = requests.get(url, proxies=None, timeout=30)
-                if response.status_code == 200:
-                    manifest_data = response.json()
-                    break
-                else:
-                    log(f"获取版本清单失败: {url}, HTTP {response.status_code}", logging.WARNING)
-            except requests.exceptions.ConnectionError as e:
-                log(f"网络连接错误: {url}, {e}", logging.WARNING)
-                # 尝试使用HTTP协议
+                if bloret_git_clone_download(version, minecraft_dir, backend):
+                    _bloret_git_done = True
+                    # 从克隆的文件中加载 version_data（后续 Loader 安装需要）
+                    version_json_path = os.path.join(version_dir, f"{version}.json")
+                    if not os.path.exists(version_json_path):
+                        version_json_path = os.path.join(version_dir, f"{VersionName}.json")
+                    if os.path.exists(version_json_path):
+                        with open(version_json_path, 'r', encoding='utf-8') as f:
+                            version_data = json.load(f)
+                        log(f"从克隆文件加载 version_data: {version_json_path}")
+                    else:
+                        log("克隆完成但未找到 version JSON，将回退正常下载", logging.WARNING)
+                        _bloret_git_done = False
+            except Exception as e:
+                log(f"Bloret git clone 流程异常: {e}，回退正常下载", logging.WARNING)
+                _bloret_git_done = False
+
+        # 检查是否被取消
+        if _current_download_state.get('cancelled'):
+            log("安装已被用户取消")
+            return False
+
+        # 如果 Bloret git clone 已成功，跳过所有下载步骤，直接进入 Loader 安装
+        if _bloret_git_done:
+            log("Bloret git clone 已完成，跳过常规下载步骤")
+            update_progress({
+                'value': 0.9,
+                'valueStringOverride': '90%',
+                'status': i18nText('Minecraft 核心文件已通过 Bloret 快速下载完成')
+            })
+
+        if not _bloret_git_done:
+            # 1. 获取版本清单，使用PCL风格的镜像源处理
+            update_progress({
+                'value': 0.1, 
+                'valueStringOverride': '10%',
+                'status': i18nText('正在获取版本清单...')
+            })
+
+            # 创建 LibraryDownloader 实例
+            # 假设 missing_libraries 在后续步骤中获取
+            # 这里先创建一个空的，后续再更新
+
+
+        
+            # 定义版本清单URL列表，使用PCL风格的镜像源处理
+            manifest_urls = dl_source_launcher_or_meta_get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
+        
+            manifest_data = None
+            for url in manifest_urls:
                 try:
-                    http_url = url.replace("https://", "http://")
-                    log(f"尝试使用HTTP协议: {http_url}")
-                    response = requests.get(http_url, proxies=None, timeout=30)
+                    log(f"正在获取版本清单: {url}")
+                    response = requests.get(url, proxies=None, timeout=30)
                     if response.status_code == 200:
                         manifest_data = response.json()
                         break
-                except requests.exceptions.ConnectionError as e2:
-                    log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
-            except requests.exceptions.RequestException as e:
-                log(f"请求错误: {url}, {e}", logging.WARNING)
-        
-        if not manifest_data:
-            log("所有版本清单URL都获取失败", logging.ERROR)
-            return False
-
-        # 2. 在清单中查找指定版本
-        update_progress({
-            'value': 0.2, 
-            'valueStringOverride': '20%',
-            'status': i18nText('正在查找指定版本...')
-        })
-        version_info = None
-        for ver in manifest_data.get("versions", []):
-            if ver.get("id") == version:
-                version_info = ver
-                break
-
-        if not version_info:
-            log(f"未找到版本 {version}", logging.ERROR)
-            return False
-
-        log(f"找到版本信息: {version_info}")
-
-        # 3. 获取版本详细信息URL并使用PCL风格的镜像源处理
-        update_progress({
-            'value': 0.3, 
-            'valueStringOverride': '30%',
-            'status': i18nText('正在获取版本详细信息...')
-        })
-        original_url = version_info.get("url")
-        
-        # 使用PCL风格的镜像源处理
-        version_info_urls = dl_source_launcher_or_meta_get(original_url)
-
-        log(f"正在获取版本详细信息: {version_info_urls}")
-        version_data = None
-        
-        for url in version_info_urls:
-            try:
-                log(f"正在获取版本详细信息: {url}")
-                response = requests.get(url, timeout=30)
-                if response.status_code == 200:
-                    version_data = response.json()
-                    break
-                else:
-                    log(f"获取版本详细信息失败: {url}, HTTP {response.status_code}", logging.WARNING)
-            except requests.exceptions.ConnectionError as e:
-                log(f"网络连接错误: {url}, {e}", logging.WARNING)
-                # 尝试使用HTTP协议
-                try:
-                    http_url = url.replace("https://", "http://")
-                    log(f"尝试使用HTTP协议: {http_url}")
-                    response = requests.get(http_url, timeout=30)
-                    if response.status_code == 200:
-                        version_data = response.json()
-                        break
-                except requests.exceptions.ConnectionError as e2:
-                    log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
-            except requests.exceptions.RequestException as e:
-                log(f"请求错误: {url}, {e}", logging.WARNING)
-        
-        if not version_data:
-            log("所有版本详细信息URL都获取失败", logging.ERROR)
-            return False
-
-        # 5. 确保版本目录存在
-        update_progress({
-            'value': 0.4, 
-            'valueStringOverride': '40%',
-            'status': i18nText('正在确保版本目录存在...')
-        })
-        os.makedirs(version_dir, exist_ok=True)
-
-        # 保存版本JSON文件
-        version_json_path = os.path.join(version_dir, f"{VersionName}.json")  # JSON文件名也使用VersionName
-        with open(version_json_path, 'w', encoding='utf-8') as f:
-            json.dump(version_data, f, ensure_ascii=False, indent=4)
-
-        log(f"已保存版本JSON文件: {version_json_path}")
-
-        update_progress_ui(10, i18nText("正在下载客户端JAR文件..."), "", "", "")
-        if "downloads" in version_data and "client" in version_data["downloads"]:
-            client_info = version_data["downloads"]["client"]
-            client_url = client_info["url"]
-            
-            # 使用PCL风格的镜像源处理
-            client_urls = dl_source_launcher_or_meta_get(client_url)
-
-            client_jar_path = os.path.join(version_dir, f"{VersionName}.jar")  # 使用VersionName作为JAR文件名
-            log(f"正在下载客户端JAR文件: {client_urls}")
-
-            download_success = False
-            for url in client_urls:
-                try:
-                    log(f"正在下载客户端JAR文件: {url}")
-                    with requests.Session() as session:
-                        response = session.get(url, stream=True, timeout=30)
-                        if response.status_code == 200:
-                            total_size = int(response.headers.get('content-length', 0))
-                            downloaded_size = 0
-                            
-                            with open(client_jar_path, 'wb') as f:
-                                for chunk in response.iter_content(chunk_size=8192):
-                                    if chunk:
-                                        f.write(chunk)
-                                        downloaded_size += len(chunk)
-                                        
-                                        if total_size > 0:
-                                            progress_value = int((downloaded_size / total_size) * 100)
-                                            if progress_value % 5 == 0 or progress_value == 100:
-                                                update_progress_ui(progress_value, i18nText("正在下载客户端JAR文件..."), 
-                                                    "", f"{downloaded_size // 1024 // 1024}MB", f"{total_size // 1024 // 1024}MB")
-                            
-                            log(f"已下载客户端JAR文件: {client_jar_path}")
-                            download_success = True
-                            break
-                        else:
-                            log(f"下载客户端JAR文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
-                            if response.status_code == 403:
-                                original_url = client_info["url"]
-                                log(f"尝试使用原始URL: {original_url}")
-                                with requests.Session() as session:
-                                    response = session.get(original_url, stream=True, timeout=30)
-                                    if response.status_code == 200:
-                                        total_size = int(response.headers.get('content-length', 0))
-                                        downloaded_size = 0
-                                        
-                                        with open(client_jar_path, 'wb') as f:
-                                            for chunk in response.iter_content(chunk_size=8192):
-                                                if chunk:
-                                                    f.write(chunk)
-                                                    downloaded_size += len(chunk)
-                                                    
-                                                    if total_size > 0:
-                                                        progress_value = int((downloaded_size / total_size) * 100)
-                                                        if progress_value % 5 == 0 or progress_value == 100:
-                                                            update_progress_ui(progress_value, i18nText("正在下载客户端JAR文件..."), 
-                                                                "", f"{downloaded_size // 1024 // 1024}MB", f"{total_size // 1024 // 1024}MB")
-                                        
-                                        log(f"已下载客户端JAR文件: {client_jar_path}")
-                                        download_success = True
-                                        break
+                    else:
+                        log(f"获取版本清单失败: {url}, HTTP {response.status_code}", logging.WARNING)
                 except requests.exceptions.ConnectionError as e:
                     log(f"网络连接错误: {url}, {e}", logging.WARNING)
+                    # 尝试使用HTTP协议
                     try:
                         http_url = url.replace("https://", "http://")
                         log(f"尝试使用HTTP协议: {http_url}")
-                        with requests.Session() as session:
-                            response = session.get(http_url, stream=True, timeout=30)
-                            if response.status_code == 200:
-                                total_size = int(response.headers.get('content-length', 0))
-                                downloaded_size = 0
-                                
-                                with open(client_jar_path, 'wb') as f:
-                                    for chunk in response.iter_content(chunk_size=8192):
-                                        if chunk:
-                                            f.write(chunk)
-                                            downloaded_size += len(chunk)
-                                            
-                                            if total_size > 0:
-                                                progress_value = int((downloaded_size / total_size) * 100)
-                                                if progress_value % 5 == 0 or progress_value == 100:
-                                                    update_progress_ui(progress_value, i18nText("正在下载客户端JAR文件..."), 
-                                                        "", f"{downloaded_size // 1024 // 1024}MB", f"{total_size // 1024 // 1024}MB")
-                                
-                                log(f"已下载客户端JAR文件: {client_jar_path}")
-                                download_success = True
-                                break
+                        response = requests.get(http_url, proxies=None, timeout=30)
+                        if response.status_code == 200:
+                            manifest_data = response.json()
+                            break
                     except requests.exceptions.ConnectionError as e2:
                         log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
                 except requests.exceptions.RequestException as e:
                     log(f"请求错误: {url}, {e}", logging.WARNING)
-            
-            if not download_success:
-                log("所有客户端JAR文件URL都下载失败", logging.ERROR)
-                return False
-        else:
-            log(i18nText("版本信息中未找到客户端下载链接"), logging.ERROR)
-            return False
-
-        # 加载 config.json 文件
-        config = cfg.read()
-        # 创建 LibraryDownloader 实例
-        max_thread_value = config.get("MaxThread", 64)
-        # 处理主版本库文件
-        processed_libraries = []
-        if "libraries" in version_data:
-            for lib in version_data["libraries"]:
-                if "name" in lib:
-                    parts = lib['name'].split(":")
-                    if len(parts) == 3:
-                        group = parts[0].replace(".", "/")
-                        artifact = parts[1]
-                        version_lib = parts[2]
-                        lib_filename = f"{artifact}-{version_lib}.jar"
-                        lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
-                        processed_libraries.append((lib, lib_path))
-                    else:
-                        log(f"无法解析库名称: {lib['name']}", logging.WARNING)
-                else:
-                    log(f"库缺少 'name' 字段: {lib}", logging.WARNING)
-
-        if processed_libraries:
-            _current_download_state['downloader'] = LibraryDownloader(processed_libraries, max_workers=max_thread_value)
-
-        natives_dir = os.path.join(version_dir, f"{VersionName}-natives")
-        os.makedirs(natives_dir, exist_ok=True)
-
-        update_progress_ui(60, i18nText("正在下载库文件..."), "", "", "")
-        libraries_dir = os.path.join(minecraft_dir, "libraries")
-        os.makedirs(libraries_dir, exist_ok=True)
-
-        if _current_download_state['downloader'] is not None:
-            _current_download_state['downloader'].download_libraries()
         
-        # 下载资源索引，使用PCL风格的镜像源处理
-        if "assetIndex" in version_data:
-            asset_index = version_data["assetIndex"]
-            asset_index_url = asset_index["url"]
-            
+            if not manifest_data:
+                log("所有版本清单URL都获取失败", logging.ERROR)
+                return False
+
+            # 2. 在清单中查找指定版本
+            update_progress({
+                'value': 0.2, 
+                'valueStringOverride': '20%',
+                'status': i18nText('正在查找指定版本...')
+            })
+            version_info = None
+            for ver in manifest_data.get("versions", []):
+                if ver.get("id") == version:
+                    version_info = ver
+                    break
+
+            if not version_info:
+                log(f"未找到版本 {version}", logging.ERROR)
+                return False
+
+            log(f"找到版本信息: {version_info}")
+
+            # 3. 获取版本详细信息URL并使用PCL风格的镜像源处理
+            update_progress({
+                'value': 0.3, 
+                'valueStringOverride': '30%',
+                'status': i18nText('正在获取版本详细信息...')
+            })
+            original_url = version_info.get("url")
+        
             # 使用PCL风格的镜像源处理
-            asset_index_urls = dl_source_launcher_or_meta_get(asset_index_url)
-            
-            assets_dir = os.path.join(minecraft_dir, "assets")
-            indexes_dir = os.path.join(assets_dir, "indexes")
-            objects_dir = os.path.join(assets_dir, "objects")
-            
-            os.makedirs(indexes_dir, exist_ok=True)
-            os.makedirs(objects_dir, exist_ok=True)
-            
-            asset_index_id = asset_index["id"]
-            asset_index_path = os.path.join(indexes_dir, f"{asset_index_id}.json")
-            
-            update_progress({'status': i18nText("正在下载资源索引...")})
-            log(f"正在下载资源索引: {asset_index_urls}")
-            
-            download_success = False
-            for url in asset_index_urls:
+            version_info_urls = dl_source_launcher_or_meta_get(original_url)
+
+            log(f"正在获取版本详细信息: {version_info_urls}")
+            version_data = None
+        
+            for url in version_info_urls:
                 try:
-                    log(f"正在下载资源索引: {url}")
+                    log(f"正在获取版本详细信息: {url}")
                     response = requests.get(url, timeout=30)
                     if response.status_code == 200:
-                        with open(asset_index_path, 'wb') as f:
-                            f.write(response.content)
-                        log(f"已下载资源索引: {asset_index_path}")
-                        download_success = True
+                        version_data = response.json()
                         break
                     else:
-                        log(f"下载资源索引失败: {url}, HTTP {response.status_code}", logging.WARNING)
+                        log(f"获取版本详细信息失败: {url}, HTTP {response.status_code}", logging.WARNING)
                 except requests.exceptions.ConnectionError as e:
                     log(f"网络连接错误: {url}, {e}", logging.WARNING)
                     # 尝试使用HTTP协议
@@ -1254,191 +1228,394 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                         log(f"尝试使用HTTP协议: {http_url}")
                         response = requests.get(http_url, timeout=30)
                         if response.status_code == 200:
-                            with open(asset_index_path, 'wb') as f:
-                                f.write(response.content)
-                            log(f"已下载资源索引: {asset_index_path}")
-                            download_success = True
+                            version_data = response.json()
                             break
                     except requests.exceptions.ConnectionError as e2:
                         log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
                 except requests.exceptions.RequestException as e:
                     log(f"请求错误: {url}, {e}", logging.WARNING)
-            
-            if not download_success:
-                log("所有资源索引URL都下载失败", logging.ERROR)
+        
+            if not version_data:
+                log("所有版本详细信息URL都获取失败", logging.ERROR)
                 return False
-                
-            # 读取资源索引并下载资源文件
-            with open(asset_index_path, 'r', encoding='utf-8') as f:
-                asset_index_data = json.load(f)
+
+            # 5. 确保版本目录存在
+            update_progress({
+                'value': 0.4, 
+                'valueStringOverride': '40%',
+                'status': i18nText('正在确保版本目录存在...')
+            })
+            os.makedirs(version_dir, exist_ok=True)
+
+            # 保存版本JSON文件
+            version_json_path = os.path.join(version_dir, f"{VersionName}.json")  # JSON文件名也使用VersionName
+            with open(version_json_path, 'w', encoding='utf-8') as f:
+                json.dump(version_data, f, ensure_ascii=False, indent=4)
+
+            log(f"已保存版本JSON文件: {version_json_path}")
+
+            update_progress_ui(10, i18nText("正在下载客户端JAR文件..."), "", "", "")
+            if "downloads" in version_data and "client" in version_data["downloads"]:
+                client_info = version_data["downloads"]["client"]
+                client_url = client_info["url"]
             
-            if "objects" in asset_index_data:
-                assets_count = len(asset_index_data['objects'])
-                update_progress({'status': f"开始下载资源文件，共 {assets_count} 个..."})
-                log(f"开始下载资源文件，共 {assets_count} 个")
-                
-                # 使用线程池进行多线程下载
-                
-                # 设置最大线程数，根据系统资源限制调整默认值
-                try:
-                    with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-                        config_data = json.load(f)
-                    max_workers = config_data.get("MaxThread", 64)
-                except Exception:
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    handle_exception(exc_type, exc_value, exc_traceback)
-                    max_workers = 64  # 读取失败时使用默认值64
-                log(f"使用 {max_workers} 个线程下载资源文件")
-                
-                # 确保线程池创建时的线程安全
-                if not threading.current_thread() is threading.main_thread():
-                    log("警告：资源文件下载不在主线程中运行，可能导致Qt线程问题", logging.WARNING)
-                
-                # 用于跟踪活动下载线程数的变量
-                active_downloads = 0
-                active_downloads_lock = threading.Lock()
-                
-                def update_thread_count():
-                    pass
-                
-                # 创建多线程下载资源文件
-                def download_asset(asset_name, asset_info):
-                    # 增加活动下载计数
-                    nonlocal active_downloads
-                    with active_downloads_lock:
-                        active_downloads += 1
-                        update_thread_count()  # 更新线程数显示
-                    
+                # 使用PCL风格的镜像源处理
+                client_urls = dl_source_launcher_or_meta_get(client_url)
+
+                client_jar_path = os.path.join(version_dir, f"{VersionName}.jar")  # 使用VersionName作为JAR文件名
+                log(f"正在下载客户端JAR文件: {client_urls}")
+
+                download_success = False
+                for url in client_urls:
                     try:
-                        hash_value = asset_info["hash"]
-                        hash_prefix = hash_value[:2]
-                        object_path = os.path.join(objects_dir, hash_prefix, hash_value)
-                        
-                        # 如果文件已存在且大小正确，则跳过
-                        if os.path.exists(object_path) and os.path.getsize(object_path) == asset_info["size"]:
-                            return True
-                        
-                        # 创建目录
-                        os.makedirs(os.path.dirname(object_path), exist_ok=True)
-                        
-                        # 构建URL，使用PCL风格的镜像源处理
-                        asset_url = f"https://resources.download.minecraft.net/{hash_prefix}/{hash_value}"
-                        asset_urls = dl_source_assets_get(asset_url)
-                        
-                        # 下载文件
-                        download_success = False
-                        for url in asset_urls:
-                            try:
-                                log(f"正在下载资源文件: {url}")
-                                # 使用 get_session() 复用线程内的连接，显著提升大量小文件下载速度
-                                session = get_session()
-                                response = session.get(url, stream=True, timeout=30)
+                        log(f"正在下载客户端JAR文件: {url}")
+                        with requests.Session() as session:
+                            response = session.get(url, stream=True, timeout=30)
+                            if response.status_code == 200:
+                                total_size = int(response.headers.get('content-length', 0))
+                                downloaded_size = 0
+                            
+                                with open(client_jar_path, 'wb') as f:
+                                    for chunk in response.iter_content(chunk_size=8192):
+                                        if chunk:
+                                            f.write(chunk)
+                                            downloaded_size += len(chunk)
+                                        
+                                            if total_size > 0:
+                                                progress_value = int((downloaded_size / total_size) * 100)
+                                                if progress_value % 5 == 0 or progress_value == 100:
+                                                    update_progress_ui(progress_value, i18nText("正在下载客户端JAR文件..."), 
+                                                        "", f"{downloaded_size // 1024 // 1024}MB", f"{total_size // 1024 // 1024}MB")
+                            
+                                log(f"已下载客户端JAR文件: {client_jar_path}")
+                                download_success = True
+                                break
+                            else:
+                                log(f"下载客户端JAR文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
+                                if response.status_code == 403:
+                                    original_url = client_info["url"]
+                                    log(f"尝试使用原始URL: {original_url}")
+                                    with requests.Session() as session:
+                                        response = session.get(original_url, stream=True, timeout=30)
+                                        if response.status_code == 200:
+                                            total_size = int(response.headers.get('content-length', 0))
+                                            downloaded_size = 0
+                                        
+                                            with open(client_jar_path, 'wb') as f:
+                                                for chunk in response.iter_content(chunk_size=8192):
+                                                    if chunk:
+                                                        f.write(chunk)
+                                                        downloaded_size += len(chunk)
+                                                    
+                                                        if total_size > 0:
+                                                            progress_value = int((downloaded_size / total_size) * 100)
+                                                            if progress_value % 5 == 0 or progress_value == 100:
+                                                                update_progress_ui(progress_value, i18nText("正在下载客户端JAR文件..."), 
+                                                                    "", f"{downloaded_size // 1024 // 1024}MB", f"{total_size // 1024 // 1024}MB")
+                                        
+                                            log(f"已下载客户端JAR文件: {client_jar_path}")
+                                            download_success = True
+                                            break
+                    except requests.exceptions.ConnectionError as e:
+                        log(f"网络连接错误: {url}, {e}", logging.WARNING)
+                        try:
+                            http_url = url.replace("https://", "http://")
+                            log(f"尝试使用HTTP协议: {http_url}")
+                            with requests.Session() as session:
+                                response = session.get(http_url, stream=True, timeout=30)
                                 if response.status_code == 200:
-                                    with open(object_path, 'wb') as f:
-                                        # 使用固定大小的块进行流式写入，避免内存占用过高
+                                    total_size = int(response.headers.get('content-length', 0))
+                                    downloaded_size = 0
+                                
+                                    with open(client_jar_path, 'wb') as f:
                                         for chunk in response.iter_content(chunk_size=8192):
                                             if chunk:
                                                 f.write(chunk)
+                                                downloaded_size += len(chunk)
+                                            
+                                                if total_size > 0:
+                                                    progress_value = int((downloaded_size / total_size) * 100)
+                                                    if progress_value % 5 == 0 or progress_value == 100:
+                                                        update_progress_ui(progress_value, i18nText("正在下载客户端JAR文件..."), 
+                                                            "", f"{downloaded_size // 1024 // 1024}MB", f"{total_size // 1024 // 1024}MB")
+                                
+                                    log(f"已下载客户端JAR文件: {client_jar_path}")
                                     download_success = True
                                     break
-                                else:
-                                    log(f"下载资源文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
-                            except requests.exceptions.SSLError as e:
-                                log(f"SSL连接错误: {url}, {e}", logging.WARNING)
-                                # 尝试使用HTTP协议
-                                try:
-                                    http_url = url.replace("https://", "http://")
-                                    log(f"尝试使用HTTP协议: {http_url}")
-                                    session = get_session()
-                                    response = session.get(http_url, stream=True, timeout=30)
-                                    if response.status_code == 200:
-                                        with open(object_path, 'wb') as f:
-                                            for chunk in response.iter_content(chunk_size=8192):
-                                                if chunk:
-                                                    f.write(chunk)
-                                        download_success = True
-                                        break
-                                except requests.exceptions.RequestException as e2:
-                                    log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
-                            except requests.exceptions.ConnectionError as e:
-                                log(f"网络连接错误: {url}, {e}", logging.WARNING)
-                                # 尝试使用HTTP协议
-                                try:
-                                    http_url = url.replace("https://", "http://")
-                                    log(f"尝试使用HTTP协议: {http_url}")
-                                    session = get_session()
-                                    response = session.get(http_url, stream=True, timeout=30)
-                                    if response.status_code == 200:
-                                        with open(object_path, 'wb') as f:
-                                            for chunk in response.iter_content(chunk_size=8192):
-                                                if chunk:
-                                                    f.write(chunk)
-                                        download_success = True
-                                        break
-                                except requests.exceptions.RequestException as e2:
-                                    log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
-                            except requests.exceptions.RequestException as e:
-                                log(f"下载资源文件时发生网络请求错误: {asset_name}, {url}, {e}", logging.WARNING)
-                        
-                        if not download_success:
-                            log(f"所有资源文件URL都下载失败: {asset_name}", logging.WARNING)
-                            return False
-                        
-                        return True
+                        except requests.exceptions.ConnectionError as e2:
+                            log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
+                    except requests.exceptions.RequestException as e:
+                        log(f"请求错误: {url}, {e}", logging.WARNING)
+            
+                if not download_success:
+                    log("所有客户端JAR文件URL都下载失败", logging.ERROR)
+                    return False
+            else:
+                log(i18nText("版本信息中未找到客户端下载链接"), logging.ERROR)
+                return False
+
+            # 加载 config.json 文件
+            config = cfg.read()
+            # 创建 LibraryDownloader 实例
+            max_thread_value = config.get("MaxThread", 64)
+            # 处理主版本库文件
+            processed_libraries = []
+            if "libraries" in version_data:
+                for lib in version_data["libraries"]:
+                    if "name" in lib:
+                        parts = lib['name'].split(":")
+                        if len(parts) == 3:
+                            group = parts[0].replace(".", "/")
+                            artifact = parts[1]
+                            version_lib = parts[2]
+                            lib_filename = f"{artifact}-{version_lib}.jar"
+                            lib_path = os.path.join(minecraft_dir, "libraries", group, artifact, version_lib, lib_filename)
+                            processed_libraries.append((lib, lib_path))
+                        else:
+                            log(f"无法解析库名称: {lib['name']}", logging.WARNING)
+                    else:
+                        log(f"库缺少 'name' 字段: {lib}", logging.WARNING)
+
+            if processed_libraries:
+                _current_download_state['downloader'] = LibraryDownloader(processed_libraries, max_workers=max_thread_value)
+
+            natives_dir = os.path.join(version_dir, f"{VersionName}-natives")
+            os.makedirs(natives_dir, exist_ok=True)
+
+            update_progress_ui(60, i18nText("正在下载库文件..."), "", "", "")
+            libraries_dir = os.path.join(minecraft_dir, "libraries")
+            os.makedirs(libraries_dir, exist_ok=True)
+
+            if _current_download_state['downloader'] is not None:
+                _current_download_state['downloader'].download_libraries()
+        
+            # 下载资源索引，使用PCL风格的镜像源处理
+            if "assetIndex" in version_data:
+                asset_index = version_data["assetIndex"]
+                asset_index_url = asset_index["url"]
+            
+                # 使用PCL风格的镜像源处理
+                asset_index_urls = dl_source_launcher_or_meta_get(asset_index_url)
+            
+                assets_dir = os.path.join(minecraft_dir, "assets")
+                indexes_dir = os.path.join(assets_dir, "indexes")
+                objects_dir = os.path.join(assets_dir, "objects")
+            
+                os.makedirs(indexes_dir, exist_ok=True)
+                os.makedirs(objects_dir, exist_ok=True)
+            
+                asset_index_id = asset_index["id"]
+                asset_index_path = os.path.join(indexes_dir, f"{asset_index_id}.json")
+            
+                update_progress({'status': i18nText("正在下载资源索引...")})
+                log(f"正在下载资源索引: {asset_index_urls}")
+            
+                download_success = False
+                for url in asset_index_urls:
+                    try:
+                        log(f"正在下载资源索引: {url}")
+                        response = requests.get(url, timeout=30)
+                        if response.status_code == 200:
+                            with open(asset_index_path, 'wb') as f:
+                                f.write(response.content)
+                            log(f"已下载资源索引: {asset_index_path}")
+                            download_success = True
+                            break
+                        else:
+                            log(f"下载资源索引失败: {url}, HTTP {response.status_code}", logging.WARNING)
+                    except requests.exceptions.ConnectionError as e:
+                        log(f"网络连接错误: {url}, {e}", logging.WARNING)
+                        # 尝试使用HTTP协议
+                        try:
+                            http_url = url.replace("https://", "http://")
+                            log(f"尝试使用HTTP协议: {http_url}")
+                            response = requests.get(http_url, timeout=30)
+                            if response.status_code == 200:
+                                with open(asset_index_path, 'wb') as f:
+                                    f.write(response.content)
+                                log(f"已下载资源索引: {asset_index_path}")
+                                download_success = True
+                                break
+                        except requests.exceptions.ConnectionError as e2:
+                            log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
+                    except requests.exceptions.RequestException as e:
+                        log(f"请求错误: {url}, {e}", logging.WARNING)
+            
+                if not download_success:
+                    log("所有资源索引URL都下载失败", logging.ERROR)
+                    return False
+                
+                # 读取资源索引并下载资源文件
+                with open(asset_index_path, 'r', encoding='utf-8') as f:
+                    asset_index_data = json.load(f)
+            
+                if "objects" in asset_index_data:
+                    assets_count = len(asset_index_data['objects'])
+                    update_progress({'status': f"开始下载资源文件，共 {assets_count} 个..."})
+                    log(f"开始下载资源文件，共 {assets_count} 个")
+                
+                    # 使用线程池进行多线程下载
+                
+                    # 设置最大线程数，根据系统资源限制调整默认值
+                    try:
+                        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                            config_data = json.load(f)
+                        max_workers = config_data.get("MaxThread", 64)
                     except Exception:
                         exc_type, exc_value, exc_traceback = sys.exc_info()
                         handle_exception(exc_type, exc_value, exc_traceback)
-                        return False
-                    finally:
-                        # 减少活动下载计数
+                        max_workers = 64  # 读取失败时使用默认值64
+                    log(f"使用 {max_workers} 个线程下载资源文件")
+                
+                    # 确保线程池创建时的线程安全
+                    if not threading.current_thread() is threading.main_thread():
+                        log("警告：资源文件下载不在主线程中运行，可能导致Qt线程问题", logging.WARNING)
+                
+                    # 用于跟踪活动下载线程数的变量
+                    active_downloads = 0
+                    active_downloads_lock = threading.Lock()
+                
+                    def update_thread_count():
+                        pass
+                
+                    # 创建多线程下载资源文件
+                    def download_asset(asset_name, asset_info):
+                        # 增加活动下载计数
+                        nonlocal active_downloads
                         with active_downloads_lock:
-                            active_downloads -= 1
+                            active_downloads += 1
                             update_thread_count()  # 更新线程数显示
-                
-                update_progress_ui(0, i18nText("正在下载资源文件..."), "", "", "")
-                
-                with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="AssetsDownloader") as executor:
-                    future_to_asset = {executor.submit(download_asset, asset_name, asset_info): asset_name 
-                                      for asset_name, asset_info in asset_index_data["objects"].items()}
                     
-                    success_count = 0
-                    failed_count = 0
-                    completed_count = 0
-                    for future in concurrent.futures.as_completed(future_to_asset):
-                        asset_name = future_to_asset[future]
                         try:
-                            success = future.result()
-                            if success:
-                                success_count += 1
-                            else:
-                                failed_count += 1
-                        except Exception as e:
-                            log(f"处理资源文件时发生错误: {asset_name}, {str(e)}", logging.WARNING)
-                            failed_count += 1
+                            hash_value = asset_info["hash"]
+                            hash_prefix = hash_value[:2]
+                            object_path = os.path.join(objects_dir, hash_prefix, hash_value)
+                        
+                            # 如果文件已存在且大小正确，则跳过
+                            if os.path.exists(object_path) and os.path.getsize(object_path) == asset_info["size"]:
+                                return True
+                        
+                            # 创建目录
+                            os.makedirs(os.path.dirname(object_path), exist_ok=True)
+                        
+                            # 构建URL，使用PCL风格的镜像源处理
+                            asset_url = f"https://resources.download.minecraft.net/{hash_prefix}/{hash_value}"
+                            asset_urls = dl_source_assets_get(asset_url)
+                        
+                            # 下载文件
+                            download_success = False
+                            for url in asset_urls:
+                                try:
+                                    log(f"正在下载资源文件: {url}")
+                                    # 使用 get_session() 复用线程内的连接，显著提升大量小文件下载速度
+                                    session = get_session()
+                                    response = session.get(url, stream=True, timeout=30)
+                                    if response.status_code == 200:
+                                        with open(object_path, 'wb') as f:
+                                            # 使用固定大小的块进行流式写入，避免内存占用过高
+                                            for chunk in response.iter_content(chunk_size=8192):
+                                                if chunk:
+                                                    f.write(chunk)
+                                        download_success = True
+                                        break
+                                    else:
+                                        log(f"下载资源文件失败: {url}, HTTP {response.status_code}", logging.WARNING)
+                                except requests.exceptions.SSLError as e:
+                                    log(f"SSL连接错误: {url}, {e}", logging.WARNING)
+                                    # 尝试使用HTTP协议
+                                    try:
+                                        http_url = url.replace("https://", "http://")
+                                        log(f"尝试使用HTTP协议: {http_url}")
+                                        session = get_session()
+                                        response = session.get(http_url, stream=True, timeout=30)
+                                        if response.status_code == 200:
+                                            with open(object_path, 'wb') as f:
+                                                for chunk in response.iter_content(chunk_size=8192):
+                                                    if chunk:
+                                                        f.write(chunk)
+                                            download_success = True
+                                            break
+                                    except requests.exceptions.RequestException as e2:
+                                        log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
+                                except requests.exceptions.ConnectionError as e:
+                                    log(f"网络连接错误: {url}, {e}", logging.WARNING)
+                                    # 尝试使用HTTP协议
+                                    try:
+                                        http_url = url.replace("https://", "http://")
+                                        log(f"尝试使用HTTP协议: {http_url}")
+                                        session = get_session()
+                                        response = session.get(http_url, stream=True, timeout=30)
+                                        if response.status_code == 200:
+                                            with open(object_path, 'wb') as f:
+                                                for chunk in response.iter_content(chunk_size=8192):
+                                                    if chunk:
+                                                        f.write(chunk)
+                                            download_success = True
+                                            break
+                                    except requests.exceptions.RequestException as e2:
+                                        log(f"HTTP协议也失败: {http_url}, {e2}", logging.WARNING)
+                                except requests.exceptions.RequestException as e:
+                                    log(f"下载资源文件时发生网络请求错误: {asset_name}, {url}, {e}", logging.WARNING)
+                        
+                            if not download_success:
+                                log(f"所有资源文件URL都下载失败: {asset_name}", logging.WARNING)
+                                return False
+                        
+                            return True
+                        except Exception:
+                            exc_type, exc_value, exc_traceback = sys.exc_info()
+                            handle_exception(exc_type, exc_value, exc_traceback)
+                            return False
                         finally:
-                            completed_count += 1
-                        
-                        current_progress = int((completed_count / assets_count) * 100)
-                        last_progress = int(((completed_count - 1) / assets_count) * 100) if completed_count > 0 else 0
-                        
-                        if current_progress // 10 > last_progress // 10 or completed_count == assets_count:
-                            update_progress_ui(current_progress, i18nText("正在下载资源文件..."), 
-                                "", f"{completed_count}", f"{assets_count}")
-                            log(f"资源文件下载进度: {current_progress}% ({completed_count}/{assets_count})")
+                            # 减少活动下载计数
+                            with active_downloads_lock:
+                                active_downloads -= 1
+                                update_thread_count()  # 更新线程数显示
+                
+                    update_progress_ui(0, i18nText("正在下载资源文件..."), "", "", "")
+                
+                    with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="AssetsDownloader") as executor:
+                        future_to_asset = {executor.submit(download_asset, asset_name, asset_info): asset_name 
+                                          for asset_name, asset_info in asset_index_data["objects"].items()}
                     
-                    try:
-                        concurrent.futures.wait(future_to_asset, timeout=60)
-                    except Exception as e:
-                        log(f"等待资源文件下载完成时出错: {e}")
+                        success_count = 0
+                        failed_count = 0
+                        completed_count = 0
+                        for future in concurrent.futures.as_completed(future_to_asset):
+                            asset_name = future_to_asset[future]
+                            try:
+                                success = future.result()
+                                if success:
+                                    success_count += 1
+                                else:
+                                    failed_count += 1
+                            except Exception as e:
+                                log(f"处理资源文件时发生错误: {asset_name}, {str(e)}", logging.WARNING)
+                                failed_count += 1
+                            finally:
+                                completed_count += 1
+                        
+                            current_progress = int((completed_count / assets_count) * 100)
+                            last_progress = int(((completed_count - 1) / assets_count) * 100) if completed_count > 0 else 0
+                        
+                            if current_progress // 10 > last_progress // 10 or completed_count == assets_count:
+                                update_progress_ui(current_progress, i18nText("正在下载资源文件..."), 
+                                    "", f"{completed_count}", f"{assets_count}")
+                                log(f"资源文件下载进度: {current_progress}% ({completed_count}/{assets_count})")
+                    
+                        try:
+                            concurrent.futures.wait(future_to_asset, timeout=60)
+                        except Exception as e:
+                            log(f"等待资源文件下载完成时出错: {e}")
                 
-                update_progress_ui(100, i18nText("资源文件下载完成!"), "", f"{assets_count}", f"{assets_count}")
+                    update_progress_ui(100, i18nText("资源文件下载完成!"), "", f"{assets_count}", f"{assets_count}")
                 
-                # 输出下载结果
-                log(f"资源文件下载完成: 成功 {success_count} 个, 失败 {failed_count} 个")
+                    # 输出下载结果
+                    log(f"资源文件下载完成: 成功 {success_count} 个, 失败 {failed_count} 个")
                 
-                # 如果有失败的资源文件，记录警告
-                if failed_count > 0:
-                    log(f"有 {failed_count} 个资源文件下载失败，但不影响游戏运行", logging.WARNING)
+                    # 如果有失败的资源文件，记录警告
+                    if failed_count > 0:
+                        log(f"有 {failed_count} 个资源文件下载失败，但不影响游戏运行", logging.WARNING)
         
         # 如果需要安装Fabric Loader
         if Fabric_Loader:
@@ -1920,13 +2097,19 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                 log(f"未找到 servers.dat 文件: {servers_dat_source}，跳过复制", logging.INFO)
         except Exception as e:
             log(f"复制 servers.dat 文件时出错: {e}，但安装流程继续", logging.WARNING)
-        
+
+        # 通知 UI 安装完成（对话框不关闭，秒表暂停）
+        if backend:
+            backend.notifyDownloadComplete(i18nText(f"Minecraft {version} 安装完成！"))
         return True
-        
+
     except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         handle_exception(exc_type, exc_value, exc_traceback)
         log(f"安装 Minecraft 版本 {version} 时发生错误: {str(e)}", logging.ERROR)
+        close_dialog_ui()
         return False
     finally:
-        close_dialog_ui()
+        _current_download_state['downloader'] = None
+        _current_download_state['cancelled'] = False
+        _current_download_state['is_paused'] = False
