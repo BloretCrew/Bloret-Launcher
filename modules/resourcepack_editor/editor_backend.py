@@ -688,3 +688,37 @@ class ResourcePackEditorBackend(QObject):
         except Exception as e:
             self.errorOccurred.emit(f"保存失败: {e}")
             return False
+
+    @Slot(result=str)
+    def validateMcmetaAdvanced(self):
+        """对 pack.mcmeta 进行深度验证，返回 JSON 格式的验证报告"""
+        if self._pack_path is None:
+            return json.dumps({"valid": False, "errors": ["未打开资源包"]}, ensure_ascii=False)
+        try:
+            from .agent_tools import _execute_validate_mcmeta_advanced
+            return _execute_validate_mcmeta_advanced(self._pack_path)
+        except Exception as e:
+            return json.dumps({"valid": False, "errors": [str(e)]}, ensure_ascii=False)
+
+    @Slot(str, result=str)
+    def getMcReference(self, topic):
+        """查询 Minecraft 资源包技术参考信息"""
+        try:
+            from .agent_tools import _execute_get_mc_reference
+            return _execute_get_mc_reference(self._pack_path or Path("."), topic=topic)
+        except Exception as e:
+            return f"查询失败: {str(e)}"
+
+    @Slot(str, str, result=str)
+    def createResourceTemplate(self, templateType, optionsJson="{}"):
+        """创建资源包模板文件"""
+        if self._pack_path is None:
+            return "错误: 未打开资源包"
+        try:
+            options = json.loads(optionsJson) if optionsJson else {}
+            from .agent_tools import _execute_create_resource_template
+            result = _execute_create_resource_template(self._pack_path, template_type=templateType, options=options)
+            self._refresh_file_tree()
+            return result
+        except Exception as e:
+            return f"错误: {str(e)}"

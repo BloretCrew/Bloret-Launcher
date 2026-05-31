@@ -27,6 +27,10 @@ from .agent_tools import (
     READ_ONLY_TOOLS, WRITE_TOOLS,
     SUB_AGENT_TYPES, SPAWN_AGENT_TOOL,
 )
+from .knowledge_base import (
+    AGENT_SYSTEM_PROMPT_TEMPLATE, PACK_FORMAT_TABLE,
+    build_dynamic_context,
+)
 
 log = logging.getLogger(__name__)
 
@@ -208,7 +212,7 @@ class AgentLoop:
     # ================================================================
 
     def _build_system_prompt(self) -> str:
-        """构建动态系统提示词，注入资源包元数据"""
+        """构建动态系统提示词，注入资源包知识和元数据"""
         # 子 Agent 使用覆盖的系统提示
         if self._system_prompt_override:
             log.info("[SubAgent] 使用子 Agent 覆盖系统提示")
@@ -217,72 +221,81 @@ class AgentLoop:
         log.info(f"[AgentLoop] 构建系统提示词, pack_path='{self.pack_path}'")
         pack_path = str(self.pack_path)
 
-        # 基础提示
-        prompt = f"""你是 Bloret Launcher 资源包编辑器的 AI 助手。你可以帮助用户创建和编辑 Minecraft 资源包。
+        # 收集动态上下文
+        mcmeta_data = None
+        file_stats = None
+        namespaces = None
 
-你当前正在编辑的资源包: {pack_path}
-
-你的能力（通过工具调用）：
-- read_file: 读取文件内容
-- write_file: 写入文件
-- edit_file: 精确替换文件中的文本
-- list_files: 列出匹配模式的文件
-- search_text: 搜索文件内容
-- get_pack_info: 获取资源包基本信息
-- analyze_pack: 分析资源包结构
-- read_language: 读取语言文件
-- edit_language: 编辑语言文件（添加/修改/删除条目）
-- validate_json: 验证 JSON 格式
-- get_file_tree: 获取文件树
-- ask_user: 向用户提问（支持单选、多选、文本输入）
-- execute_command: 在资源包目录下前台执行终端命令（阻塞等待完成，用于编译、验证等）
-- execute_command_background: 在资源包目录下后台执行终端命令（立即返回，用于长时间运行的命令）
-- spawn_agent: 生成子 Agent 处理子任务。explore=只读探索, plan=规划, general=通用
-
-规则：
-1. 所有文件路径都是相对于资源包根目录的
-2. 修改文件前，先用 read_file 确认当前内容
-3. 修改后告知用户做了什么改动
-4. JSON 文件必须保持有效格式（用 validate_json 验证）
-5. 对于批量操作，先列出计划再执行
-6. 如果不确定用户的意图，先提问
-7. 回复使用中文"""
-
-        # 动态注入资源包元数据
+        # 读取 pack.mcmeta
         try:
             mcmeta_path = self.pack_path / "pack.mcmeta"
             if mcmeta_path.exists():
-                mcmeta = json.loads(mcmeta_path.read_text(encoding="utf-8"))
-                pack_info = mcmeta.get("pack", {})
-                pack_format = pack_info.get("pack_format", "未知")
-                description = pack_info.get("description", "无描述")
-                prompt += f"\n\n资源包信息：pack_format={pack_format}, 描述={description}"
+                mcmeta_data = json.loads(mcmeta_path.read_text(encoding="utf-8"))
         except Exception:
             pass
 
         # 文件统计
         try:
-            file_count = sum(1 for f in self.pack_path.rglob("*") if f.is_file())
-            prompt += f"\n文件总数: {file_count}"
-        except Exception:
-            pass
+            all_files = [f for f in self.pack_path.rglob("*") if f.is_file()]
+            textures_count = 0
+            models_count = 0
+            blockstates_count = 0
+            sounds_count = 0
+            fonts_count = 0
+            particles_count = 0
 
-        # 命名空间
-        try:
             assets_dir = self.pack_path / "assets"
             if assets_dir.exists():
                 namespaces = [d.name for d in assets_dir.iterdir() if d.is_dir()]
-                if namespaces:
-                    prompt += f"\n命名空间: {', '.join(namespaces)}"
+                for ns in namespaces:
+                    ns_dir = assets_dir / ns
+                    tex_dir = ns_dir / "textures"
+                    if tex_dir.exists():
+                        textures_count += len([f for f in tex_dir.rglob("*") if f.is_file() and f.suffix.lower() in (".png", ".mcmeta")])
+                    model_dir = ns_dir / "models"
+                    if model_dir.exists():
+                        models_count += len([f for f in model_dir.rglob("*.json") if f.is_file()])
+                    bs_dir = ns_dir / "blockstates"
+                    if bs_dir.exists():
+                        blockstates_count += len([f for f in bs_dir.rglob("*.json") if f.is_file()])
+                    sounds_dir = ns_dir / "sounds"
+                    if sounds_dir.exists():
+                        sounds_count += len([f for f in sounds_dir.rglob("*") if f.is_file()])
+                    font_dir = ns_dir / "font"
+                    if font_dir.exists():
+                        fonts_count += len([f for f in font_dir.rglob("*.json") if f.is_file()])
+                    particle_dir = ns_dir / "particles"
+                    if particle_dir.exists():
+                        particles_count += len([f for f in particle_dir.rglob("*.json") if f.is_file()])
+
+            file_stats = {
+                "total_files": len(all_files),
+                "total_size_kb": sum(f.stat().st_size for f in all_files) // 1024,
+                "textures_count": textures_count,
+                "models_count": models_count,
+                "blockstates_count": blockstates_count,
+                "sounds_count": sounds_count,
+                "fonts_count": fonts_count,
+                "particles_count": particles_count,
+            }
         except Exception:
             pass
 
+        # 构建动态上下文
+        dynamic_context = build_dynamic_context(self.pack_path, mcmeta_data, file_stats, namespaces)
+
         # 当前时间
-        prompt += f"\n当前时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        dynamic_context += f"\n当前时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
         # 角色信息
         role_config = AGENT_ROLES.get(self.role, AGENT_ROLES[DEFAULT_ROLE])
-        prompt += f"\n当前模式: {role_config['description']}"
+        dynamic_context += f"\n当前模式: {role_config['description']}"
+
+        # 使用知识库模板构建完整提示词
+        prompt = AGENT_SYSTEM_PROMPT_TEMPLATE.format(
+            pack_path=pack_path,
+            dynamic_context=dynamic_context,
+        )
 
         log.info(f"[AgentLoop] 系统提示词构建完成, 长度={len(prompt)}字符")
         return prompt
