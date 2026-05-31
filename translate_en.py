@@ -11,7 +11,7 @@ translations = {
     "通过 Bloret PassPort 管理你的账户": "Manage your account via Bloret PassPort",
     "选择 Minecraft 版本": "Select Minecraft Version",
     "打开插件目录": "Open Plugin Directory",
-    "Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Any OS, Any usage.": "Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Any OS, Any usage.",
+    "Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Relax, it's Bloret Launcher.": "Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Relax, it's Bloret Launcher.",
     "管理已安装插件，查看信息或卸载": "Manage installed plugins, view info or uninstall",
     "选择安装版本": "Select Version to Install",
     "？": "?",

@@ -44,7 +44,7 @@ FluentPage {
                 }
 
                 Label {
-                    text: (Backend ? Backend.tr("Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Any OS, Any usage.") : "Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Any OS, Any usage.")
+                    text: (Backend ? Backend.tr("Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Relax, it's Bloret Launcher.") : "Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Relax, it's Bloret Launcher.")
                     color: Theme.currentTheme.colors.textSecondaryColor
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true

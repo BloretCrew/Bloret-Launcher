@@ -4,7 +4,7 @@
     Bloret Launcher
   </h1>
   <p>
-   Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Any OS, Any usage.
+   Be creative, be simple. Your Personal Innovative Open Source AI Minecraft Launcher. Relax, it's Bloret Launcher.
   </p>
 </div>
 
