@@ -6,11 +6,8 @@ import RinUI
 Item {
     id: gitPage
 
-    property var stagedFiles: []
-    property var unstagedFiles: []
+    property var changedFiles: []  // [{path, status, selected}]
     property var commitHistory: []
-    property string selectedFile: ""
-    property string diffText: ""
     property string viewMode: "changes"
 
     Connections {
@@ -25,22 +22,47 @@ Item {
 
     function refreshGitData() {
         if (!RPEditor) return
+        // 获取所有变更文件（合并 staged + unstaged）
+        var files = []
         try {
-            stagedFiles = JSON.parse(RPEditor.getStagedFiles())
-        } catch(e) { stagedFiles = [] }
-        try {
-            unstagedFiles = JSON.parse(RPEditor.getUnstagedFiles())
-        } catch(e) { unstagedFiles = [] }
+            var status = JSON.parse(RPEditor.getGitStatus())
+            for (var path in status) {
+                files.push({path: path, status: status[path], selected: true})
+            }
+        } catch(e) {}
+        changedFiles = files
+
         try {
             commitHistory = JSON.parse(RPEditor.getCommitLog(50))
         } catch(e) { commitHistory = [] }
     }
 
-    function loadDiff(filePath) {
-        if (!RPEditor) return
-        selectedFile = filePath
-        diffText = RPEditor.getDiff(filePath)
-        if (!diffText) diffText = "(无差异或文件为新文件)"
+    function toggleAll() {
+        var allSelected = true
+        for (var i = 0; i < changedFiles.length; i++) {
+            if (!changedFiles[i].selected) { allSelected = false; break }
+        }
+        var newArr = []
+        for (var j = 0; j < changedFiles.length; j++) {
+            var f = changedFiles[j]
+            newArr.push({path: f.path, status: f.status, selected: !allSelected})
+        }
+        changedFiles = newArr
+    }
+
+    function toggleFile(index) {
+        var f = changedFiles[index]
+        var newArr = changedFiles.slice()
+        newArr[index] = {path: f.path, status: f.status, selected: !f.selected}
+        changedFiles = newArr
+    }
+
+    function getSelectedPaths() {
+        var paths = []
+        for (var i = 0; i < changedFiles.length; i++) {
+            if (changedFiles[i].selected) paths.push(changedFiles[i].path)
+        }
+        return paths
     }
 
     Flickable {
@@ -55,6 +77,7 @@ Item {
             width: parent.width
             spacing: 16
 
+            // 顶部标题栏
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 12
@@ -69,34 +92,13 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 Button {
-                    text: "暂存全部"
-                    enabled: unstagedFiles.length > 0
-                    onClicked: {
-                        if (RPEditor) {
-                            RPEditor.stageAll()
-                            refreshGitData()
-                        }
-                    }
-                }
-
-                Button {
-                    text: "取消全部暂存"
-                    enabled: stagedFiles.length > 0
-                    onClicked: {
-                        if (RPEditor) {
-                            RPEditor.unstageAll()
-                            refreshGitData()
-                        }
-                    }
-                }
-
-                Button {
                     text: "刷新"
                     flat: true
                     onClicked: refreshGitData()
                 }
             }
 
+            // 视图切换
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 2
@@ -116,326 +118,197 @@ Item {
                 }
             }
 
+            // ===== 更改视图 =====
             ColumnLayout {
                 Layout.fillWidth: true
                 visible: viewMode === "changes"
                 spacing: 12
 
+                // 全选 + 提交按钮栏
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Math.max(stagedColumn.implicitHeight + 32, 80)
+                    Layout.preferredHeight: 50
                     radius: 8
                     color: Theme.currentTheme.colors.cardColor
                     border.color: Theme.currentTheme.colors.controlBorderColor
 
-                    ColumnLayout {
-                        id: stagedColumn
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 16
-                        spacing: 8
+                        anchors.leftMargin: 16; anchors.rightMargin: 16
+                        spacing: 12
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-
-                            Rectangle {
-                                width: 8
-                                height: 8
-                                radius: 4
-                                color: "#4CAF50"
+                        // 全选 Checkbox
+                        CheckBox {
+                            id: selectAllBox
+                            text: "全选 (" + changedFiles.length + " 个文件)"
+                            checked: {
+                                if (changedFiles.length === 0) return false
+                                for (var i = 0; i < changedFiles.length; i++) {
+                                    if (!changedFiles[i].selected) return false
+                                }
+                                return true
                             }
-
-                            Label {
-                                text: "已暂存 (" + stagedFiles.length + ")"
-                                font.pixelSize: 14
-                                font.weight: Font.DemiBold
-                                color: Theme.currentTheme.colors.textColor
-                            }
-
-                            Item { Layout.fillWidth: true }
+                            tristate: false
+                            font.pixelSize: 13
+                            onToggled: toggleAll()
                         }
 
-                        Repeater {
-                            model: stagedFiles
+                        Item { Layout.fillWidth: true }
 
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 8
-
-                                Rectangle {
-                                    width: 18
-                                    height: 18
-                                    radius: 3
-                                    color: {
-                                        var op = modelData.operation
-                                        if (op === "add") return "#4CAF50"
-                                        if (op === "modify") return "#FF9800"
-                                        if (op === "delete") return "#9E9E9E"
-                                        return "#2196F3"
-                                    }
-
-                                    Label {
-                                        anchors.centerIn: parent
-                                        text: {
-                                            var op = modelData.operation
-                                            if (op === "add") return "A"
-                                            if (op === "modify") return "M"
-                                            if (op === "delete") return "D"
-                                            return "?"
-                                        }
-                                        font.pixelSize: 10
-                                        font.weight: Font.Bold
-                                        color: "#FFFFFF"
-                                    }
-                                }
-
-                                Label {
-                                    text: modelData.path
-                                    font.pixelSize: 12
-                                    font.family: "monospace"
-                                    color: Theme.currentTheme.colors.textColor
-                                    elide: Text.ElideMiddle
-                                    Layout.fillWidth: true
-                                }
-
-                                Button {
-                                    text: "取消暂存"
-                                    flat: true
-                                    onClicked: {
-                                        if (RPEditor) {
-                                            RPEditor.stagePath(modelData.path, "unstage")
-                                            refreshGitData()
-                                        }
-                                    }
-                                }
+                        // AI 生成提交信息
+                        Button {
+                            icon.name: "ic_fluent_bot_20_regular"
+                            font.pixelSize: 14
+                            Layout.preferredWidth: 36; Layout.preferredHeight: 36
+                            enabled: getSelectedPaths().length > 0
+                            onClicked: {
+                                if (!Agent) return
+                                var filesJson = JSON.stringify(changedFiles.filter(function(f) { return f.selected }))
+                                commitMsgInput.text = "生成中..."
+                                var msg = Agent.generateCommitMessage(filesJson)
+                                commitMsgInput.text = msg
                             }
                         }
 
-                        Label {
-                            visible: stagedFiles.length === 0
-                            text: "没有已暂存的文件"
+                        // 提交信息
+                        TextField {
+                            id: commitMsgInput
+                            Layout.preferredWidth: 250
+                            placeholderText: "输入提交信息..."
                             font.pixelSize: 12
-                            color: Theme.currentTheme.colors.textSecondaryColor
-                            Layout.fillWidth: true
+                        }
+
+                        // 提交按钮
+                        Button {
+                            text: "提交 (" + getSelectedPaths().length + ")"
+                            highlighted: true
+                            enabled: getSelectedPaths().length > 0 && commitMsgInput.text.trim() !== ""
+                            onClicked: {
+                                if (!RPEditor) return
+                                // 先 stage 选中的文件
+                                var paths = getSelectedPaths()
+                                for (var i = 0; i < paths.length; i++) {
+                                    RPEditor.stageFile(paths[i])
+                                }
+                                // 提交
+                                RPEditor.commit(commitMsgInput.text.trim())
+                                commitMsgInput.text = ""
+                                refreshGitData()
+                            }
                         }
                     }
                 }
 
+                // 文件列表
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Math.max(unstagedColumn.implicitHeight + 32, 80)
+                    Layout.preferredHeight: Math.max(fileColumn.implicitHeight + 24, 120)
                     radius: 8
                     color: Theme.currentTheme.colors.cardColor
                     border.color: Theme.currentTheme.colors.controlBorderColor
 
                     ColumnLayout {
-                        id: unstagedColumn
+                        id: fileColumn
                         anchors.fill: parent
-                        anchors.margins: 16
-                        spacing: 8
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-
-                            Rectangle {
-                                width: 8
-                                height: 8
-                                radius: 4
-                                color: "#FF9800"
-                            }
-
-                            Label {
-                                text: "未暂存 (" + unstagedFiles.length + ")"
-                                font.pixelSize: 14
-                                font.weight: Font.DemiBold
-                                color: Theme.currentTheme.colors.textColor
-                            }
-
-                            Item { Layout.fillWidth: true }
-                        }
-
-                        Repeater {
-                            model: unstagedFiles
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 8
-
-                                Rectangle {
-                                    width: 18
-                                    height: 18
-                                    radius: 3
-                                    color: "#FF9800"
-
-                                    Label {
-                                        anchors.centerIn: parent
-                                        text: "?"
-                                        font.pixelSize: 10
-                                        font.weight: Font.Bold
-                                        color: "#FFFFFF"
-                                    }
-                                }
-
-                                Label {
-                                    text: modelData
-                                    font.pixelSize: 12
-                                    font.family: "monospace"
-                                    color: Theme.currentTheme.colors.textColor
-                                    elide: Text.ElideMiddle
-                                    Layout.fillWidth: true
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onDoubleClicked: loadDiff(modelData)
-                                    }
-                                }
-
-                                Button {
-                                    text: "暂存"
-                                    flat: true
-                                    onClicked: {
-                                        if (RPEditor) {
-                                            RPEditor.stageFile(modelData)
-                                            refreshGitData()
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        anchors.margins: 12
+                        spacing: 4
 
                         Label {
-                            visible: unstagedFiles.length === 0
-                            text: "没有未暂存的更改"
-                            font.pixelSize: 12
-                            color: Theme.currentTheme.colors.textSecondaryColor
-                            Layout.fillWidth: true
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: commitColumn.implicitHeight + 32
-                    radius: 8
-                    color: Theme.currentTheme.colors.cardColor
-                    border.color: Theme.currentTheme.colors.controlBorderColor
-
-                    ColumnLayout {
-                        id: commitColumn
-                        anchors.fill: parent
-                        anchors.margins: 16
-                        spacing: 8
-
-                        Label {
-                            text: "提交"
+                            text: "变更文件"
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
                             color: Theme.currentTheme.colors.textColor
+                            Layout.bottomMargin: 4
                         }
 
-                        TextField {
-                            id: commitInput
-                            Layout.fillWidth: true
-                            placeholderText: "输入提交信息..."
-                            enabled: stagedFiles.length > 0
+                        Repeater {
+                            model: changedFiles
 
-                            onAccepted: {
-                                if (text.trim() && RPEditor) {
-                                    RPEditor.commit(text.trim())
-                                    text = ""
-                                    refreshGitData()
-                                }
-                            }
-                        }
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 32
+                                radius: 4
+                                color: index % 2 === 0 ? "transparent" : (Theme.currentTheme.colors.controlAltSecondaryColor || "#F8F8F8")
 
-                        RowLayout {
-                            Layout.fillWidth: true
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 8; anchors.rightMargin: 8
+                                    spacing: 8
 
-                            Item { Layout.fillWidth: true }
+                                    CheckBox {
+                                        checked: modelData.selected
+                                        onToggled: toggleFile(index)
+                                        padding: 0
+                                    }
 
-                            Button {
-                                text: "提交"
-                                highlighted: true
-                                enabled: stagedFiles.length > 0 && commitInput.text.trim() !== ""
-                                onClicked: {
-                                    if (RPEditor) {
-                                        RPEditor.commit(commitInput.text.trim())
-                                        commitInput.text = ""
-                                        refreshGitData()
+                                    // 状态标记
+                                    Rectangle {
+                                        width: 18; height: 18; radius: 3
+                                        color: {
+                                            var s = modelData.status
+                                            if (s === "A") return "#4CAF50"
+                                            if (s === "M") return "#FF9800"
+                                            if (s === "D") return "#9E9E9E"
+                                            if (s === "U") return "#2196F3"
+                                            return "#757575"
+                                        }
+                                        Label {
+                                            anchors.centerIn: parent
+                                            text: modelData.status || "?"
+                                            font.pixelSize: 10; font.bold: true; color: "#FFFFFF"
+                                        }
+                                    }
+
+                                    Label {
+                                        text: modelData.path
+                                        font.pixelSize: 12
+                                        font.family: "monospace"
+                                        color: Theme.currentTheme.colors.textColor
+                                        elide: Text.ElideMiddle
+                                        Layout.fillWidth: true
                                     }
                                 }
                             }
                         }
+
+                        Label {
+                            visible: changedFiles.length === 0
+                            text: "没有变更的文件"
+                            font.pixelSize: 12
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            Layout.fillWidth: true
+                            Layout.topMargin: 16
+                            horizontalAlignment: Text.AlignHCenter
+                        }
                     }
                 }
 
-                Rectangle {
-                    visible: selectedFile !== ""
+                // 状态说明
+                RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Math.max(diffColumn.implicitHeight + 32, 120)
-                    radius: 8
-                    color: Theme.currentTheme.colors.cardColor
-                    border.color: Theme.currentTheme.colors.controlBorderColor
+                    spacing: 16
+                    Layout.topMargin: 4
 
-                    ColumnLayout {
-                        id: diffColumn
-                        anchors.fill: parent
-                        anchors.margins: 16
-                        spacing: 8
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-
-                            Label {
-                                text: "差异: " + selectedFile
-                                font.pixelSize: 14
-                                font.weight: Font.DemiBold
-                                color: Theme.currentTheme.colors.textColor
-                                Layout.fillWidth: true
-                            }
-
-                            Button {
-                                text: "关闭"
-                                flat: true
-                                onClicked: {
-                                    selectedFile = ""
-                                    diffText = ""
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 200
-                            radius: 4
-                            color: Theme.currentTheme.colors.controlAltSecondaryColor
-
-                            Flickable {
-                                anchors.fill: parent
-                                anchors.margins: 8
-                                clip: true
-                                contentHeight: diffArea.height
-
-                                TextArea {
-                                    id: diffArea
-                                    width: parent.width
-                                    readOnly: true
-                                    text: diffText
-                                    font.family: "monospace"
-                                    font.pixelSize: 11
-                                    color: Theme.currentTheme.colors.textColor
-                                    background: null
-                                    wrapMode: Text.NoWrap
-                                }
-                            }
-                        }
+                    Row { spacing: 4
+                        Rectangle { width: 10; height: 10; radius: 2; color: "#4CAF50" }
+                        Label { text: "新增"; font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
+                    }
+                    Row { spacing: 4
+                        Rectangle { width: 10; height: 10; radius: 2; color: "#FF9800" }
+                        Label { text: "修改"; font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
+                    }
+                    Row { spacing: 4
+                        Rectangle { width: 10; height: 10; radius: 2; color: "#9E9E9E" }
+                        Label { text: "删除"; font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
+                    }
+                    Row { spacing: 4
+                        Rectangle { width: 10; height: 10; radius: 2; color: "#2196F3" }
+                        Label { text: "未跟踪"; font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
                     }
                 }
             }
 
+            // ===== 提交历史视图 =====
             ColumnLayout {
                 Layout.fillWidth: true
                 visible: viewMode === "history"
@@ -461,16 +334,13 @@ Item {
                                 spacing: 8
 
                                 Rectangle {
-                                    width: 8
-                                    height: 8
-                                    radius: 4
+                                    width: 8; height: 8; radius: 4
                                     color: Theme.accentColor || "#0078D4"
                                 }
 
                                 Label {
                                     text: modelData.message
-                                    font.pixelSize: 13
-                                    font.weight: Font.DemiBold
+                                    font.pixelSize: 13; font.weight: Font.DemiBold
                                     color: Theme.currentTheme.colors.textColor
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
@@ -485,8 +355,7 @@ Item {
 
                             Label {
                                 text: modelData.id.substring(0, 12)
-                                font.family: "monospace"
-                                font.pixelSize: 10
+                                font.family: "monospace"; font.pixelSize: 10
                                 color: Theme.currentTheme.colors.textSecondaryColor
                             }
                         }

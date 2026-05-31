@@ -174,75 +174,57 @@ Item {
                         spacing: 12
 
                         Button {
-                            text: "暂存所有更改"
-                            enabled: RPEditor && RPEditor.isPackOpen()
+                            text: "导出为 ZIP"
+                            icon.name: "ic_fluent_arrow_download_20_regular"
+                            enabled: RPEditor && RPEditor.isPackOpen
                             onClicked: {
                                 if (RPEditor) {
-                                    var tree = RPEditor.getFileTree()
-                                    for (var i = 0; i < tree.length; i++) {
-                                        if (tree[i].gitStatus && tree[i].type !== "dir") {
-                                            RPEditor.stageFile(tree[i].path)
-                                        }
+                                    var zipPath = RPEditor.exportAsZip()
+                                    if (zipPath) {
+                                        exportResult.text = "已导出: " + zipPath
+                                        exportResult.visible = true
+                                        exportTimer.start()
                                     }
                                 }
                             }
                         }
 
                         Button {
-                            text: "提交更改"
-                            highlighted: true
-                            enabled: RPEditor && RPEditor.isPackOpen()
-                            onClicked: {
-                                commitDialog.open()
-                            }
+                            text: RPEditor ? RPEditor.getExplorerLabel() : "文件管理器"
+                            icon.name: "ic_fluent_folder_open_20_regular"
+                            enabled: RPEditor && RPEditor.isPackOpen
+                            onClicked: { if (RPEditor) RPEditor.showInExplorer() }
+                        }
+
+                        Button {
+                            text: "VS Code"
+                            icon.name: "ic_fluent_code_20_regular"
+                            enabled: RPEditor && RPEditor.isPackOpen
+                            onClicked: { if (RPEditor) RPEditor.openInVSCode() }
+                        }
+
+                        Button {
+                            text: "终端"
+                            icon.name: "ic_fluent_window_console_20_regular"
+                            enabled: RPEditor && RPEditor.isPackOpen
+                            onClicked: { if (RPEditor) RPEditor.openInTerminal() }
                         }
                     }
+
+                    Label {
+                        id: exportResult
+                        visible: false
+                        font.pixelSize: 12
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        Layout.fillWidth: true
+                    }
+
+                    Timer {
+                        id: exportTimer
+                        interval: 3000
+                        onTriggered: exportResult.visible = false
+                    }
                 }
-            }
-        }
-    }
-
-    Dialog {
-        id: commitDialog
-        title: "提交更改"
-        modal: true
-        width: 400
-        closePolicy: Popup.CloseOnEscape
-
-        ColumnLayout {
-            width: parent.width
-            spacing: 8
-
-            TextField {
-                id: commitMsgInput
-                Layout.fillWidth: true
-                placeholderText: "输入提交信息..."
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 8
-
-                Item { Layout.fillWidth: true }
-
-                Button {
-                    text: "取消"
-                    flat: true
-                    onClicked: commitDialog.reject()
-                }
-
-                Button {
-                    text: "提交"
-                    highlighted: true
-                    onClicked: commitDialog.accept()
-                }
-            }
-        }
-
-        onAccepted: {
-            if (commitMsgInput.text.trim() && RPEditor) {
-                RPEditor.commit(commitMsgInput.text.trim())
-                commitMsgInput.text = ""
             }
         }
     }

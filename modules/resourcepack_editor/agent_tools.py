@@ -12,6 +12,72 @@ import os
 import json
 import glob as glob_module
 from pathlib import Path
+from typing import Tuple
+
+
+# ============================================================
+# 工具分类与安全
+# ============================================================
+
+# 只读工具（不需要用户确认）
+READ_ONLY_TOOLS = {
+    "read_file", "list_files", "search_text",
+    "get_pack_info", "analyze_pack", "read_language",
+    "validate_json", "get_file_tree", "ask_user",
+}
+
+# 写入工具（需要用户确认）
+WRITE_TOOLS = {"write_file", "edit_file", "edit_language", "execute_command", "execute_command_background"}
+
+# Sub-Agent 工具（不在此分类中，由子 Agent 自行管理权限）
+SPAWN_AGENT_TOOL = "spawn_agent"
+
+# Sub-Agent 类型定义
+SUB_AGENT_TYPES = {
+    "explore": {
+        "system_prompt": (
+            "你是一个只读探索助手。你的任务是分析资源包的结构和内容，但不修改任何文件。\n"
+            "只使用读取类工具（read_file, list_files, search_text, get_pack_info, analyze_pack, "
+            "read_language, validate_json, get_file_tree）。\n"
+            "完成后给出清晰的分析报告。"
+        ),
+        "allowed_tools": READ_ONLY_TOOLS,
+    },
+    "plan": {
+        "system_prompt": (
+            "你是一个架构规划助手。你的任务是分析资源包并制定详细的修改计划。\n"
+            "只使用读取类工具来了解当前状态，然后输出一个结构化的修改计划。\n"
+            "计划应包含：目标、需要修改的文件、具体修改内容、注意事项。\n"
+            "不要执行任何修改操作。"
+        ),
+        "allowed_tools": READ_ONLY_TOOLS,
+    },
+    "general": {
+        "system_prompt": None,  # 使用默认系统提示
+        "allowed_tools": None,  # 全部工具（但排除 spawn_agent）
+    },
+}
+
+
+def _validate_path(pack_path: Path, relative_path: str) -> Tuple[bool, str]:
+    """验证路径是否在资源包目录内（防止路径遍历攻击）
+
+    Args:
+        pack_path: 资源包根目录
+        relative_path: 用户提供的相对路径
+
+    Returns:
+        (is_valid, error_message) - 如果有效 error_message 为空
+    """
+    try:
+        resolved = (pack_path / relative_path).resolve()
+        pack_resolved = pack_path.resolve()
+        # 检查解析后的路径是否以 pack_path 开头
+        if not str(resolved).startswith(str(pack_resolved)) and resolved != pack_resolved:
+            return False, f"错误: 路径 '{relative_path}' 超出了资源包目录范围"
+        return True, ""
+    except Exception as e:
+        return False, f"错误: 路径验证失败 - {str(e)}"
 
 
 # ============================================================
@@ -20,6 +86,9 @@ from pathlib import Path
 
 def _execute_read_file(pack_path: Path, path: str, **kwargs) -> str:
     """读取资源包中的文件内容"""
+    valid, err = _validate_path(pack_path, path)
+    if not valid:
+        return err
     full_path = pack_path / path
     if not full_path.exists():
         return f"错误: 文件不存在 - {path}"
@@ -40,6 +109,9 @@ def _execute_read_file(pack_path: Path, path: str, **kwargs) -> str:
 
 def _execute_write_file(pack_path: Path, path: str, content: str, **kwargs) -> str:
     """写入内容到文件"""
+    valid, err = _validate_path(pack_path, path)
+    if not valid:
+        return err
     full_path = pack_path / path
     try:
         full_path.parent.mkdir(parents=True, exist_ok=True)
@@ -51,6 +123,9 @@ def _execute_write_file(pack_path: Path, path: str, content: str, **kwargs) -> s
 
 def _execute_edit_file(pack_path: Path, path: str, old_text: str, new_text: str, **kwargs) -> str:
     """替换文件中的文本"""
+    valid, err = _validate_path(pack_path, path)
+    if not valid:
+        return err
     full_path = pack_path / path
     if not full_path.exists():
         return f"错误: 文件不存在 - {path}"
@@ -298,6 +373,9 @@ def _execute_edit_language(pack_path: Path, lang: str, changes: dict, **kwargs) 
 
 def _execute_validate_json(pack_path: Path, path: str, **kwargs) -> str:
     """验证 JSON 文件格式"""
+    valid, err = _validate_path(pack_path, path)
+    if not valid:
+        return err
     full_path = pack_path / path
     if not full_path.exists():
         return f"错误: 文件不存在 - {path}"
@@ -347,6 +425,42 @@ def _execute_get_file_tree(pack_path: Path, **kwargs) -> str:
 
     walk(pack_path)
     return f"文件树 ({len(tree_lines)} 项):\n" + "\n".join(tree_lines)
+
+
+def _execute_command(pack_path: Path, command: str, **kwargs) -> str:
+    """在资源包目录下前台执行终端命令（阻塞，等待完成）"""
+    import subprocess
+    try:
+        result = subprocess.run(
+            command, shell=True, cwd=str(pack_path),
+            capture_output=True, timeout=60
+        )
+        # 手动解码，忽略无法解码的字节
+        stdout = result.stdout.decode("utf-8", errors="replace") if result.stdout else ""
+        stderr = result.stderr.decode("utf-8", errors="replace") if result.stderr else ""
+        output = stdout
+        if stderr:
+            output += "\n[stderr] " + stderr
+        if result.returncode != 0:
+            output += f"\n[exit code: {result.returncode}]"
+        return output.strip() if output.strip() else f"命令执行成功 (exit code: {result.returncode})"
+    except subprocess.TimeoutExpired:
+        return "错误: 命令执行超时 (60秒)"
+    except Exception as e:
+        return f"错误: {str(e)}"
+
+
+def _execute_command_background(pack_path: Path, command: str, **kwargs) -> str:
+    """在资源包目录下后台执行终端命令（非阻塞，立即返回）"""
+    import subprocess
+    try:
+        proc = subprocess.Popen(
+            command, shell=True, cwd=str(pack_path),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        return f"命令已在后台启动 (PID: {proc.pid})"
+    except Exception as e:
+        return f"错误: {str(e)}"
 
 
 # ============================================================
@@ -549,6 +663,86 @@ TOOL_DEFINITIONS = [
             }
         }
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "ask_user",
+            "description": "向用户提问并等待回答。支持三种题型：单选(single_choice)、多选(multiple_choice)、文本输入(text)。当你需要用户确认操作、澄清需求或提供额外信息时使用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "要向用户提出的问题"
+                    },
+                    "question_type": {
+                        "type": "string",
+                        "description": "问题类型，只能是 single_choice、multiple_choice 或 text 之一。single_choice=单项选择，multiple_choice=多项选择，text=文本输入（默认）"
+                    },
+                    "options": {
+                        "type": "string",
+                        "description": "选项列表，仅 choice 类型需要。用 ||| 分隔各选项。例如：选项A|||选项B|||选项C"
+                    }
+                },
+                "required": ["question"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "execute_command",
+            "description": "在资源包目录下前台执行终端命令（阻塞等待完成）。用于编译、格式化、验证等操作。请谨慎使用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "要执行的命令，例如 'java -jar pack.jar' 或 'python validate.py'"
+                    }
+                },
+                "required": ["command"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "execute_command_background",
+            "description": "在资源包目录下后台执行终端命令（立即返回，不等待完成）。用于长时间运行的命令。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "要执行的命令"
+                    }
+                },
+                "required": ["command"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "spawn_agent",
+            "description": "生成一个子 Agent 来处理子任务。子 Agent 有独立的上下文，适合并行处理或需要专注的子任务。返回子 Agent 的最终文本结果。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "给子 Agent 的任务描述，要清晰具体"
+                    },
+                    "agent_type": {
+                        "type": "string",
+                        "description": "子 Agent 类型。explore=只读探索分析, plan=架构规划制定计划, general=通用任务可用所有工具。默认 general"
+                    }
+                },
+                "required": ["prompt"]
+            }
+        }
+    },
 ]
 
 
@@ -565,16 +759,21 @@ TOOL_EXECUTORS = {
     "edit_language": _execute_edit_language,
     "validate_json": _execute_validate_json,
     "get_file_tree": _execute_get_file_tree,
+    "ask_user": lambda pack_path, question="", question_type="text", options="", **kwargs: f"[问题已发送给用户: {question}]",
+    "execute_command": _execute_command,
+    "execute_command_background": _execute_command_background,
+    "spawn_agent": None,  # 由 agent_loop.py 注册实际执行器
 }
 
 
-def execute_tool(pack_path: Path, tool_name: str, arguments: dict) -> str:
+def execute_tool(pack_path: Path, tool_name: str, arguments: dict, **kwargs) -> str:
     """执行指定的工具
 
     Args:
         pack_path: 资源包根目录
         tool_name: 工具名称
         arguments: 工具参数
+        **kwargs: 额外参数（如 _api_url, _auth_header 等，传递给需要的执行器）
 
     Returns:
         工具执行结果字符串
@@ -583,7 +782,7 @@ def execute_tool(pack_path: Path, tool_name: str, arguments: dict) -> str:
     if executor is None:
         return f"错误: 未知工具 '{tool_name}'"
     try:
-        return executor(pack_path, **arguments)
+        return executor(pack_path, **arguments, **kwargs)
     except TypeError as e:
         return f"错误: 工具参数错误 - {str(e)}"
     except Exception as e:

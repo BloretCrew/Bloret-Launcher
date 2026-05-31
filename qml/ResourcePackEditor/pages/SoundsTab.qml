@@ -405,10 +405,10 @@ Item {
                                         radius: 6
                                         color: Theme.currentTheme.colors.cardColor
 
-                                        Label {
+                                        Icon {
                                             anchors.centerIn: parent
-                                            text: "♪"
-                                            font.pixelSize: 16
+                                            icon: "ic_fluent_music_note_20_regular"
+                                            size: 20
                                             color: Theme.accentColor || "#0078D4"
                                         }
                                     }
@@ -495,10 +495,10 @@ Item {
                         radius: 6
                         color: Theme.currentTheme.colors.cardColor
 
-                        Label {
+                        Icon {
                             anchors.centerIn: parent
-                            text: "♪"
-                            font.pixelSize: 18
+                            icon: "ic_fluent_music_note_20_regular"
+                            size: 22
                             color: Theme.accentColor || "#0078D4"
                         }
                     }

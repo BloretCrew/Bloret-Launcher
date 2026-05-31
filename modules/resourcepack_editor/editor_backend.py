@@ -1,5 +1,8 @@
 import os
+import sys
 import json
+import logging
+import subprocess
 import zipfile
 import tempfile
 import shutil
@@ -9,6 +12,8 @@ from PySide6.QtCore import QObject, Signal, Slot, Property
 
 from .git_handler import ResourcePackGit
 from .pack_analyzer import PackAnalyzer
+
+log = logging.getLogger(__name__)
 
 # 数据存储路径
 try:
@@ -148,6 +153,10 @@ class ResourcePackEditorBackend(QObject):
             self._git = None
             self._analyzer = None
             return False
+        # 创建 .BLRPE 项目配置目录
+        blrpe_dir = self._pack_path / ".BLRPE"
+        blrpe_dir.mkdir(exist_ok=True)
+
         self._record_recent_pack(self._pack_path)
         self._refresh()
         return True
@@ -376,11 +385,11 @@ class ResourcePackEditorBackend(QObject):
             return "[]"
         return json.dumps(self._git.get_unstaged_files(), ensure_ascii=False)
 
-    @Slot(str, result=str)
+    @Slot(int, result=str)
     def getCommitLog(self, maxCount):
         if self._git is None:
             return "[]"
-        return json.dumps(self._git.get_log(maxCount), ensure_ascii=False)
+        return json.dumps(self._git.get_log(int(maxCount)), ensure_ascii=False)
 
     @Slot(result=bool)
     def stageAll(self):
@@ -470,6 +479,114 @@ class ResourcePackEditorBackend(QObject):
         except Exception as e:
             self.errorOccurred.emit(f"重命名失败: {e}")
             return False
+
+    # ========== 快捷操作 ==========
+
+    @Slot(result=str)
+    def exportAsZip(self) -> str:
+        """导出资源包为 ZIP 压缩包，返回保存路径"""
+        if self._pack_path is None:
+            return ""
+        try:
+            zip_name = f"{self._pack_path.name}.zip"
+            zip_path = self._pack_path.parent / zip_name
+            with zipfile.ZipFile(str(zip_path), 'w', zipfile.ZIP_DEFLATED) as zf:
+                for file in self._pack_path.rglob("*"):
+                    if file.is_file():
+                        arcname = str(file.relative_to(self._pack_path))
+                        zf.write(str(file), arcname)
+            self.statusMessage.emit("exported", f"已导出: {zip_path}")
+            return str(zip_path)
+        except Exception as e:
+            self.errorOccurred.emit(f"导出失败: {e}")
+            return ""
+
+    @Slot()
+    def showInExplorer(self):
+        """在文件资源管理器/访达中显示"""
+        if self._pack_path is None:
+            return
+        path = str(self._pack_path)
+        try:
+            if sys.platform == "win32":
+                # explorer /select, 需要文件路径，对目录使用 explorer 直接打开
+                if self._pack_path.is_dir():
+                    subprocess.Popen(["explorer", path])
+                else:
+                    subprocess.Popen(["explorer", "/select,", path])
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", "-R", path])
+            else:
+                subprocess.Popen(["xdg-open", path])
+        except Exception as e:
+            self.errorOccurred.emit(f"打开失败: {e}")
+
+    @Slot()
+    def openInVSCode(self):
+        """在 Visual Studio Code 中打开"""
+        if self._pack_path is None:
+            log.warning("openInVSCode: _pack_path is None")
+            return
+        path = str(self._pack_path)
+        log.info(f"openInVSCode: 尝试打开 {path}")
+        try:
+            # 尝试多种方式启动 VS Code
+            for cmd in [["code", path], ["code.cmd", path], ["code-insiders", path]]:
+                try:
+                    log.info(f"openInVSCode: 尝试命令 {cmd[0]}")
+                    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    stdout, stderr = proc.communicate(timeout=5)
+                    if proc.returncode == 0:
+                        log.info(f"openInVSCode: 成功")
+                        return
+                    else:
+                        log.warning(f"openInVSCode: {cmd[0]} 返回 {proc.returncode}, stderr={stderr.decode('utf-8', errors='replace')}")
+                except FileNotFoundError:
+                    log.warning(f"openInVSCode: 命令 {cmd[0]} 未找到")
+                    continue
+                except subprocess.TimeoutExpired:
+                    # 超时说明进程已启动（VS Code 是 GUI 程序，不会立即退出）
+                    log.info(f"openInVSCode: {cmd[0]} 已启动（超时正常）")
+                    proc.kill()
+                    return
+                except Exception as e:
+                    log.warning(f"openInVSCode: {cmd[0]} 异常: {e}")
+                    continue
+            # 所有命令都失败，尝试用 os.startfile
+            log.info("openInVSCode: 尝试 os.startfile")
+            if sys.platform == "win32":
+                os.startfile(path)
+            else:
+                self.errorOccurred.emit("未找到 VS Code，请确认已安装并添加到 PATH")
+        except Exception as e:
+            log.error(f"openInVSCode 失败: {e}")
+            self.errorOccurred.emit(f"打开 VS Code 失败: {e}")
+
+    @Slot()
+    def openInTerminal(self):
+        """在终端中打开"""
+        if self._pack_path is None:
+            return
+        path = str(self._pack_path)
+        try:
+            if sys.platform == "win32":
+                subprocess.Popen(["cmd", "/c", "start", "cmd", "/k", f"cd /d {path}"])
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", "-a", "Terminal", path])
+            else:
+                subprocess.Popen(["xdg-terminal", "--working-directory", path])
+        except Exception as e:
+            self.errorOccurred.emit(f"打开终端失败: {e}")
+
+    @Slot(result=str)
+    def getExplorerLabel(self) -> str:
+        """获取系统对应的文件管理器名称"""
+        if sys.platform == "win32":
+            return "文件资源管理器"
+        elif sys.platform == "darwin":
+            return "访达"
+        else:
+            return "文件管理器"
 
     @Slot(result=list)
     def getBlockstates(self):

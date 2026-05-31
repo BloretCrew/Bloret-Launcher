@@ -1980,6 +1980,25 @@ class Backend(QObject):
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print(f"Minimize to tray on close updated to: {enabled}")
 
+    # ========== 资源包编辑器全局设置 ==========
+
+    @Slot(str, str, result=str)
+    def getRpeSetting(self, key, default=""):
+        """读取资源包编辑器全局设置"""
+        config_data = cfg.read()
+        return str(config_data.get("rpe", {}).get(key, default))
+
+    @Slot(str, str)
+    def setRpeSetting(self, key, value):
+        """写入资源包编辑器全局设置"""
+        config_data = cfg.read()
+        if "rpe" not in config_data:
+            config_data["rpe"] = {}
+        config_data["rpe"][key] = value
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        print(f"RPE setting {key} updated to: {value}")
+
     @Slot(result=bool)
     def getWebRemoterEnabled(self):
         config_data = cfg.read()

@@ -1,5 +1,8 @@
 import os
+import logging
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 try:
     from dulwich import porcelain
@@ -97,7 +100,10 @@ class ResourcePackGit:
             return []
         try:
             commits = []
-            for i, entry in enumerate(self._repo.get_walker(self._repo.head())):
+            head = self._repo.head()
+            if head is None:
+                return []
+            for i, entry in enumerate(self._repo.get_walker(head)):
                 if i >= max_count:
                     break
                 commit = entry.commit
@@ -105,10 +111,11 @@ class ResourcePackGit:
                     "id": commit.id.decode("ascii"),
                     "author": commit.author.decode("utf-8", errors="replace"),
                     "message": commit.message.decode("utf-8", errors="replace").strip(),
-                    "timestamp": commit.commit_time,
+                    "timestamp": int(commit.commit_time) if commit.commit_time else 0,
                 })
             return commits
-        except Exception:
+        except Exception as e:
+            log.warning(f"获取提交历史失败: {e}")
             return []
 
     def stage_all(self):

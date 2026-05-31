@@ -7,30 +7,25 @@ Item {
     id: agentPage
 
     // 消息模型
-    ListModel {
-        id: messageModel
-    }
+    ListModel { id: messageModel }
+    ListModel { id: providerModel }
+    ListModel { id: modelModel }
+    ListModel { id: roleModel }
+    ListModel { id: historyListModel }
 
-    // 提供商列表
-    ListModel {
-        id: providerModel
-    }
+    property var modelsDevProviders: []
+    property string selectedModelsDevId: ""
+    property bool historyPanelOpen: false
+    property string conversationTitle: ""
 
-    // 模型列表
-    ListModel {
-        id: modelModel
-    }
-
-    // 加载提供商和模型
     function loadProviders() {
         providerModel.clear()
-        modelModel.clear()
         if (!Agent) return
         try {
             var providers = JSON.parse(Agent.getProviders())
-            for (var i = 0; i < providers.length; i++) {
+            for (var i = 0; i < providers.length; i++)
                 providerModel.append(providers[i])
-            }
+            providerModel.append({key: "__add__", name: "＋ 添加供应商...", builtin: false, has_key: false, model_count: 0})
             loadModels()
         } catch(e) {}
     }
@@ -40,462 +35,701 @@ Item {
         if (!Agent) return
         try {
             var models = JSON.parse(Agent.getModels())
-            for (var i = 0; i < models.length; i++) {
+            for (var i = 0; i < models.length; i++)
                 modelModel.append(models[i])
+            if (modelModel.count > 0) modelCombo.currentIndex = 0
+        } catch(e) {}
+    }
+
+    function loadRoles() {
+        roleModel.clear()
+        if (!Agent) return
+        try {
+            var roles = JSON.parse(Agent.getAgentRoles())
+            for (var i = 0; i < roles.length; i++)
+                roleModel.append(roles[i])
+        } catch(e) {}
+    }
+
+    function loadHistoryList() {
+        historyListModel.clear()
+        if (!Agent) return
+        try {
+            var sessions = JSON.parse(Agent.getSessionList())
+            for (var i = 0; i < sessions.length; i++) {
+                var d = new Date(sessions[i].timestamp * 1000)
+                var dateStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                var title = sessions[i].title || ""
+                historyListModel.append({
+                    filename: sessions[i].filename,
+                    displayText: title.length > 0 ? title : dateStr,
+                    subText: title.length > 0 ? dateStr + " · " + sessions[i].message_count + " 条" : sessions[i].message_count + " 条"
+                })
+            }
+        } catch(e) {}
+    }
+
+    function rebuildMessageModelFromHistory() {
+        messageModel.clear()
+        if (!Agent) return
+        try {
+            var msgs = JSON.parse(Agent.getHistoryMessages())
+            for (var i = 0; i < msgs.length; i++) {
+                messageModel.append({
+                    role: msgs[i].role,
+                    content: msgs[i].content,
+                    toolName: msgs[i].toolName || "",
+                    toolArgs: msgs[i].toolArgs || "",
+                    toolResult: msgs[i].toolResult || "",
+                    streaming: false,
+                    expanded: false
+                })
             }
         } catch(e) {}
     }
 
     Component.onCompleted: {
         loadProviders()
+        loadRoles()
+        if (Agent) Agent.loadLatestSession()
     }
 
-    ColumnLayout {
+    // ============================================================
+    // 主布局：左侧历史栏 + 右侧聊天区
+    // ============================================================
+    RowLayout {
         anchors.fill: parent
         spacing: 0
 
-        // ========== 顶部栏 ==========
+        // ========== 左侧历史栏 ==========
         Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 48
-            color: "transparent"
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
-                spacing: 12
-
-                Label {
-                    text: "🤖"
-                    font.pixelSize: 20
-                }
-
-                Label {
-                    text: "AI 助手"
-                    font.pixelSize: 16
-                    font.weight: Font.DemiBold
-                    color: Theme.currentTheme.colors.textColor
-                }
-
-                Label {
-                    text: Agent && Agent.busy ? "思考中..." : "就绪"
-                    font.pixelSize: 12
-                    color: Agent && Agent.busy ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.textSecondaryColor
-                }
-
-                Item { Layout.fillWidth: true }
-
-                Button {
-                    text: "清除对话"
-                    flat: true
-                    enabled: Agent && !Agent.busy
-                    onClicked: {
-                        messageModel.clear()
-                        if (Agent) Agent.clearHistory()
-                    }
-                }
-            }
-
-            Rectangle {
-                anchors.bottom: parent.bottom
-                width: parent.width
-                height: 1
-                color: Theme.currentTheme.colors.controlBorderColor
-            }
-        }
-
-        // ========== 消息列表 ==========
-        ListView {
-            id: messageListView
-            Layout.fillWidth: true
+            id: historyPanel
             Layout.fillHeight: true
+            Layout.preferredWidth: historyPanelOpen ? 220 : 0
             clip: true
-            spacing: 12
-            model: messageModel
+            color: Theme.currentTheme.colors.cardColor || "#FAFAFA"
+            border.color: Theme.currentTheme.colors.controlBorderColor || "#E0E0E0"
+            border.width: historyPanelOpen ? 1 : 0
 
-            onCountChanged: {
-                Qt.callLater(function() {
-                    messageListView.positionViewAtEnd()
-                })
-            }
-
-            // 空状态
-            Item {
-                anchors.centerIn: parent
-                width: 300
-                height: emptyColumn.height
-                visible: messageModel.count === 0
-
-                ColumnLayout {
-                    id: emptyColumn
-                    width: parent.width
-                    spacing: 12
-
-                    Label {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: "🤖"
-                        font.pixelSize: 48
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: "AI 助手"
-                        font.pixelSize: 18
-                        font.weight: Font.DemiBold
-                        color: Theme.currentTheme.colors.textColor
-                    }
-
-                    Label {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.maximumWidth: 280
-                        text: "用自然语言描述你想做的修改，AI 会帮你操作资源包。\n\n试试：\n• 帮我看看这个资源包有什么文件\n• 读取 pack.mcmeta\n• 把描述改成 '我的资源包'"
-                        horizontalAlignment: Text.AlignHCenter
-                        font.pixelSize: 12
-                        lineHeight: 1.5
-                        color: Theme.currentTheme.colors.textSecondaryColor
-                        wrapMode: Text.Wrap
-                    }
-                }
-            }
-
-            delegate: Item {
-                width: messageListView.width
-                height: {
-                    if (role === "user") return userBubbleColumn.height + 8
-                    return aiColumn.height + 8
-                }
-
-                // 用户消息（右对齐）
-                Column {
-                    id: userBubbleColumn
-                    visible: role === "user"
-                    anchors.right: parent.right
-                    anchors.rightMargin: 16
-                    width: Math.min(Math.max(userText.contentWidth + 32, 60), parent.width * 0.7)
-                    spacing: 0
-
-                    Rectangle {
-                        width: parent.width
-                        height: userText.implicitHeight + 24
-                        radius: 12
-                        color: Theme.accentColor || "#0078D4"
-
-                        TextEdit {
-                            id: userText
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            text: content
-                            color: "white"
-                            font.pixelSize: 13
-                            wrapMode: TextEdit.Wrap
-                            readOnly: true
-                            selectByMouse: true
-                            textFormat: TextEdit.PlainText
-                        }
-                    }
-                }
-
-                // AI 消息（左对齐）
-                ColumnLayout {
-                    id: aiColumn
-                    visible: role === "assistant"
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    width: Math.min(parent.width * 0.8, 600)
-                    spacing: 6
-
-                    RowLayout {
-                        spacing: 8
-                        Layout.fillWidth: true
-
-                        Rectangle {
-                            width: 28
-                            height: 28
-                            radius: 14
-                            color: Theme.currentTheme.colors.controlAltSecondaryColor || "#E0E0E0"
-                            Layout.alignment: Qt.AlignTop
-
-                            Label {
-                                anchors.centerIn: parent
-                                text: "🤖"
-                                font.pixelSize: 14
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            radius: 12
-                            color: Theme.currentTheme.colors.cardColor || "#FFFFFF"
-                            border.color: Theme.currentTheme.colors.controlBorderColor || "#E0E0E0"
-                            border.width: 1
-                            implicitHeight: aiTextContent.implicitHeight + 24
-
-                            TextEdit {
-                                id: aiTextContent
-                                anchors.fill: parent
-                                anchors.margins: 12
-                                text: content
-                                color: Theme.currentTheme.colors.textColor || "#000000"
-                                font.pixelSize: 13
-                                wrapMode: TextEdit.Wrap
-                                readOnly: true
-                                selectByMouse: true
-                                textFormat: TextEdit.MarkdownText
-                                onLinkActivated: function(link) {
-                                    Qt.openUrlExternally(link)
-                                }
-                            }
-                        }
-                    }
-
-                    // 工具调用列表
-                    Repeater {
-                        id: toolRepeater
-                        model: {
-                            try {
-                                return JSON.parse(toolCalls || "[]")
-                            } catch(e) {
-                                return []
-                            }
-                        }
-
-                        delegate: Rectangle {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: 36
-                            radius: 8
-                            color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
-                            border.color: Theme.currentTheme.colors.controlBorderColor || "#E0E0E0"
-                            border.width: 1
-                            implicitHeight: toolCol.implicitHeight + 16
-                            property var toolData: model.modelData !== undefined ? model.modelData : modelData
-
-                            ColumnLayout {
-                                id: toolCol
-                                anchors.fill: parent
-                                anchors.margins: 8
-                                spacing: 4
-
-                                RowLayout {
-                                    spacing: 6
-
-                                    Label {
-                                        text: "🔧"
-                                        font.pixelSize: 12
-                                    }
-
-                                    Label {
-                                        text: toolData.name || ""
-                                        font.pixelSize: 12
-                                        font.weight: Font.DemiBold
-                                        font.family: "Consolas, monospace"
-                                        color: Theme.currentTheme.colors.textColor || "#000000"
-                                    }
-                                }
-
-                                Label {
-                                    text: {
-                                        try {
-                                            var args = JSON.parse(toolData.arguments || "{}")
-                                            var parts = []
-                                            for (var key in args) {
-                                                var val = String(args[key])
-                                                if (val.length > 60) val = val.substring(0, 60) + "..."
-                                                parts.push(key + ": " + val)
-                                            }
-                                            return parts.join(", ")
-                                        } catch(e) {
-                                            return toolData.arguments || ""
-                                        }
-                                    }
-                                    font.pixelSize: 11
-                                    color: Theme.currentTheme.colors.textSecondaryColor || "#808080"
-                                    wrapMode: Text.Wrap
-                                    Layout.fillWidth: true
-                                    font.family: "Consolas, monospace"
-                                }
-
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    height: 1
-                                    color: Theme.currentTheme.colors.controlBorderColor || "#E0E0E0"
-                                    visible: toolData.result !== undefined && toolData.result !== ""
-                                }
-
-                                Label {
-                                    text: {
-                                        if (toolData.result === undefined || toolData.result === "") return ""
-                                        var r = toolData.result || ""
-                                        if (r.length > 200) r = r.substring(0, 200) + "..."
-                                        return "✅ " + r
-                                    }
-                                    font.pixelSize: 11
-                                    color: Theme.currentTheme.colors.textSecondaryColor || "#808080"
-                                    wrapMode: Text.Wrap
-                                    Layout.fillWidth: true
-                                    visible: toolData.result !== undefined && toolData.result !== ""
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // ========== 正在执行的工具 ==========
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: (Agent && Agent.busy && activeToolName.text !== "") ? 36 : 0
-            color: "transparent"
-            clip: true
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 16
-                spacing: 8
-
-                BusyIndicator {
-                    Layout.preferredWidth: 16
-                    Layout.preferredHeight: 16
-                    running: true
-                }
-
-                Label {
-                    id: activeToolName
-                    text: ""
-                    font.pixelSize: 12
-                    font.family: "Consolas, monospace"
-                    color: Theme.currentTheme.colors.textSecondaryColor || "#808080"
-                }
-            }
-        }
-
-        // ========== 输入栏 ==========
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: inputRow.implicitHeight + 20
-            color: Theme.currentTheme.colors.cardColor || "#FFFFFF"
-
-            Rectangle {
-                anchors.top: parent.top
-                width: parent.width
-                height: 1
-                color: Theme.currentTheme.colors.controlBorderColor || "#E0E0E0"
-            }
+            Behavior on Layout.preferredWidth { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
 
             ColumnLayout {
-                id: inputRow
                 anchors.fill: parent
-                anchors.margins: 8
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
-                spacing: 6
+                spacing: 0
+                visible: historyPanelOpen
 
-                RowLayout {
+                // 标题栏
+                Rectangle {
                     Layout.fillWidth: true
-                    spacing: 8
+                    Layout.preferredHeight: 44
+                    color: "transparent"
 
-                    // 提供商选择
-                    ComboBox {
-                        id: providerCombo
-                        Layout.preferredWidth: 130
-                        model: providerModel
-                        textRole: "name"
-                        currentIndex: 0
-                        font.pixelSize: 11
-                        enabled: Agent && !Agent.busy
+                    RowLayout {
+                        anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 8
+                        spacing: 8
 
-                        onCurrentIndexChanged: {
-                            if (providerModel.count > 0 && Agent) {
-                                var key = providerModel.get(currentIndex).key
-                                Agent.setProvider(key)
-                                loadModels()
+                        Text {
+                            text: "历史对话"
+                            font.pixelSize: 13
+                            font.bold: true
+                            color: Theme.currentTheme.colors.textColor
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Button {
+                            text: "＋"
+                            flat: true
+                            implicitWidth: 28; implicitHeight: 28
+                            font.pixelSize: 14
+                            onClicked: {
+                                messageModel.clear()
+                                if (Agent) Agent.clearHistory()
                             }
                         }
                     }
 
-                    // 模型选择
-                    ComboBox {
-                        id: modelCombo
-                        Layout.fillWidth: true
-                        model: modelModel
-                        textRole: "name"
-                        currentIndex: 0
-                        font.pixelSize: 11
-                        enabled: Agent && !Agent.busy
-
-                        onCurrentIndexChanged: {
-                            if (modelModel.count > 0 && Agent) {
-                                Agent.setModel(modelModel.get(currentIndex).id)
-                            }
-                        }
-                    }
+                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.currentTheme.colors.controlBorderColor }
                 }
 
-                RowLayout {
+                // 历史列表
+                ListView {
+                    id: historyListView
                     Layout.fillWidth: true
-                    spacing: 8
+                    Layout.fillHeight: true
+                    clip: true
+                    model: historyListModel
 
-                    TextArea {
-                        id: inputField
-                        Layout.fillWidth: true
-                        Layout.minimumHeight: 36
-                        Layout.maximumHeight: 120
-                        placeholderText: "输入消息... (Enter 发送, Shift+Enter 换行)"
-                        wrapMode: TextArea.Wrap
-                        font.pixelSize: 13
-                        color: Theme.currentTheme.colors.textColor || "#000000"
-                        enabled: Agent && !Agent.busy
+                    delegate: ItemDelegate {
+                        width: historyListView.width
+                        height: 52
 
                         background: Rectangle {
-                            radius: 8
-                            color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
-                            border.color: inputField.activeFocus
-                                ? (Theme.accentColor || "#0078D4")
-                                : (Theme.currentTheme.colors.controlBorderColor || "#E0E0E0")
-                            border.width: 1
+                            color: hovered ? (Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0") : "transparent"
                         }
 
-                        Keys.onPressed: function(event) {
-                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                if (event.modifiers & Qt.ShiftModifier) {
-                                    inputField.insert(inputField.cursorPosition, "\n")
-                                } else {
-                                    sendButton.clicked()
-                                    event.accepted = true
-                                }
+                        contentItem: ColumnLayout {
+                            spacing: 2
+                            anchors.leftMargin: 12; anchors.rightMargin: 8
+
+                            Text {
+                                text: model.displayText
+                                font.pixelSize: 12
+                                font.bold: model.displayText !== model.subText
+                                color: Theme.currentTheme.colors.textColor
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
                             }
-                        }
-                    }
 
-                    Button {
-                        id: sendButton
-                        text: Agent && Agent.busy ? "⏹" : "➤"
-                        Layout.preferredWidth: 40
-                        Layout.preferredHeight: 36
-                        enabled: {
-                            if (!Agent) return false
-                            if (Agent.busy) return true
-                            return inputField.text.trim().length > 0
+                            Text {
+                                text: model.subText
+                                font.pixelSize: 10
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
                         }
 
                         onClicked: {
-                            if (Agent.busy) {
-                                Agent.cancelAgent()
-                                return
+                            Agent.loadSession(model.filename)
+                        }
+                    }
+
+                    // 空状态
+                    Text {
+                        anchors.centerIn: parent
+                        text: "暂无历史记录"
+                        font.pixelSize: 11
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        visible: historyListModel.count === 0
+                    }
+                }
+
+                // 底部按钮
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 40
+                    color: "transparent"
+
+                    Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Theme.currentTheme.colors.controlBorderColor }
+
+                    Button {
+                        anchors.centerIn: parent
+                        text: "刷新列表"
+                        flat: true
+                        font.pixelSize: 11
+                        onClicked: loadHistoryList()
+                    }
+                }
+            }
+        }
+
+        // ========== 右侧聊天区 ==========
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 0
+
+            // ===== 顶部栏 =====
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 48
+                color: "transparent"
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
+
+                    // 历史按钮
+                    Button {
+                        id: historyToggleBtn
+                        icon.name: "ic_fluent_line_horizontal_3_20_regular"
+                        flat: true
+                        implicitWidth: 32; implicitHeight: 32
+                        font.pixelSize: 16
+                        onClicked: {
+                            historyPanelOpen = !historyPanelOpen
+                            if (historyPanelOpen) loadHistoryList()
+                        }
+                    }
+
+                    Rectangle {
+                        width: 24; height: 24; radius: 12; clip: true; color: "transparent"
+                        Image { anchors.fill: parent; source: Qt.resolvedUrl("../../../icon/Bloriko.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
+                    }
+
+                    Text {
+                        text: "Bloriko"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: Theme.currentTheme.colors.textColor
+                    }
+
+                    Text {
+                        text: conversationTitle ? "— " + conversationTitle : ""
+                        font.pixelSize: 12
+                        font.italic: true
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        visible: conversationTitle.length > 0
+                    }
+
+                    Text {
+                        text: Agent && Agent.busy ? "思考中..." : "就绪"
+                        font.pixelSize: 11
+                        color: Agent && Agent.busy ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.textSecondaryColor
+                    }
+
+                    ComboBox {
+                        id: roleCombo
+                        Layout.preferredWidth: 80
+                        model: roleModel
+                        textRole: "name"
+                        font.pixelSize: 10
+                        enabled: Agent && !Agent.busy
+                        onActivated: function(index) {
+                            if (roleModel.count > 0) Agent.setAgentRole(roleModel.get(index).key)
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    Button {
+                        text: "新对话"
+                        flat: true
+                        font.pixelSize: 11
+                        enabled: Agent && !Agent.busy
+                        onClicked: { messageModel.clear(); if (Agent) Agent.clearHistory() }
+                    }
+                }
+
+                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.currentTheme.colors.controlBorderColor }
+            }
+
+            // ===== 消息列表 =====
+            ListView {
+                id: msgView
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                spacing: 2
+                model: messageModel
+
+                onCountChanged: Qt.callLater(function() { msgView.positionViewAtEnd() })
+
+                // 空状态
+                Item {
+                    anchors.centerIn: parent
+                    width: 280; height: emptyCol.implicitHeight
+                    visible: messageModel.count === 0
+
+                    ColumnLayout {
+                        id: emptyCol
+                        width: parent.width; spacing: 10
+
+                        Rectangle {
+                            Layout.alignment: Qt.AlignHCenter
+                            width: 56; height: 56; radius: 28; clip: true; color: "transparent"
+                            Image { anchors.fill: parent; source: Qt.resolvedUrl("../../../icon/Bloriko.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
+                        }
+
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: "Bloriko"
+                            font.pixelSize: 18; font.bold: true
+                            color: Theme.currentTheme.colors.textColor
+                        }
+
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.maximumWidth: 260
+                            text: "用自然语言描述你想做的修改\nAI 会帮你操作资源包\n\n试试：\n• 帮我看看这个资源包\n• 读取 pack.mcmeta\n• 把描述改成 '我的资源包'"
+                            horizontalAlignment: Text.AlignHCenter
+                            font.pixelSize: 11
+                            lineHeight: 1.4
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
+
+                // ===== 内联委托（无 Loader/Component）=====
+                delegate: Item {
+                    width: msgView.width
+                    height: {
+                        var h = 0
+                        if (role === "user") h = userCol.height + 8
+                        else if (role === "assistant") h = aiCol.height + 8
+                        else if (role === "tool_call") h = tcCol.height + (toolResult && toolResult.length > 0 && expanded ? trResultCol.height + 4 : 0) + 4
+                        else if (role === "error") h = errCol.height + 6
+                        else if (role === "system") h = sysCol.height + 4
+                        if (role === "tool_call") console.log("[AgentTab] tool_call height: tcCol=" + tcCol.height + ", item=" + h)
+                        return h
+                    }
+
+                    // --- 用户消息 ---
+                    Column {
+                        id: userCol
+                        visible: role === "user"
+                        anchors.right: parent.right; anchors.rightMargin: 16
+                        anchors.top: parent.top; anchors.topMargin: 4
+                        width: Math.min(Math.max(userTxt.contentWidth + 24, 50), parent.width * 0.65)
+                        spacing: 0
+
+                        Rectangle {
+                            width: parent.width; height: userTxt.contentHeight + 16
+                            radius: 8
+                            color: Theme.accentColor || "#0078D4"
+
+                            TextEdit {
+                                id: userTxt
+                                anchors.fill: parent; anchors.margins: 8
+                                text: content; color: "white"
+                                font.pixelSize: 13
+                                wrapMode: TextEdit.Wrap
+                                readOnly: true; selectByMouse: true
                             }
-                            var text = inputField.text.trim()
-                            if (text.length === 0) return
+                        }
+                    }
 
-                            messageModel.append({
-                                role: "user",
-                                content: text,
-                                toolCalls: "[]",
-                                streaming: false
-                            })
+                    // --- AI 文本 ---
+                    RowLayout {
+                        id: aiCol
+                        visible: role === "assistant"
+                        anchors.left: parent.left; anchors.leftMargin: 16
+                        anchors.right: parent.right; anchors.rightMargin: 16
+                        anchors.top: parent.top; anchors.topMargin: 4
+                        spacing: 8
 
-                            Agent.sendMessage(text)
-                            inputField.text = ""
+                        Rectangle {
+                            width: 22; height: 22; radius: 11; clip: true; color: "transparent"
+                            Layout.alignment: Qt.AlignTop
+                            Image { anchors.fill: parent; source: Qt.resolvedUrl("../../../icon/Bloriko.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: content || "..."
+                            font.pixelSize: 13
+                            color: Theme.currentTheme.colors.textColor
+                            wrapMode: Text.Wrap
+                            textFormat: Text.MarkdownText
+                            onLinkActivated: function(link) { Qt.openUrlExternally(link) }
+                        }
+                    }
+
+                    // --- 工具调用（含可折叠结果） ---
+                    Column {
+                        id: tcCol
+                        visible: role === "tool_call"
+                        Component.onCompleted: console.log("[AgentTab] tcCol 创建: role=" + role + ", toolName=" + toolName + ", height=" + height)
+                        anchors.left: parent.left; anchors.leftMargin: 44
+                        anchors.right: parent.right; anchors.rightMargin: 16
+                        anchors.top: parent.top; anchors.topMargin: 2
+                        width: parent.width - 60
+                        spacing: 4
+
+                        // 工具调用摘要（始终显示）
+                        RowLayout {
+                            width: parent.width
+                            Layout.preferredHeight: 20
+                            spacing: 6
+
+                            // 点击切换展开/折叠
+                            MouseArea {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 20
+                                cursorShape: toolResult && toolResult.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: {
+                                    if (toolResult && toolResult.length > 0) {
+                                        messageModel.setProperty(index, "expanded", !expanded)
+                                    }
+                                }
+
+                                RowLayout {
+                                    width: parent.width
+                                    spacing: 6
+
+                                    Icon {
+                                        icon: "ic_fluent_lightbulb_20_regular"
+                                        size: 14
+                                        color: Theme.currentTheme.colors.textSecondaryColor
+                                        Layout.alignment: Qt.AlignTop
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: {
+                                            var n = toolName || ""
+                                            var a = ""
+                                            try {
+                                                var obj = JSON.parse(toolArgs || "{}")
+                                                // 生成人类可读摘要
+                                                if (n === "read_file") a = obj.path || ""
+                                                else if (n === "write_file") a = obj.path || ""
+                                                else if (n === "edit_file") a = obj.path || ""
+                                                else if (n === "list_files") a = obj.pattern || "*"
+                                                else if (n === "search_text") a = obj.query || ""
+                                                else if (n === "get_pack_info") a = ""
+                                                else if (n === "analyze_pack") a = ""
+                                                else if (n === "read_language") a = obj.lang || ""
+                                                else if (n === "edit_language") a = obj.lang || ""
+                                                else if (n === "validate_json") a = obj.path || ""
+                                                else if (n === "get_file_tree") a = ""
+                                                else if (n === "ask_user") a = obj.question || ""
+                                                else if (n === "execute_command") a = obj.command || ""
+                                                else if (n === "execute_command_background") a = obj.command || ""
+                                                else if (n === "spawn_agent") a = (obj.agent_type || "general") + ": " + (obj.prompt || "").substring(0, 40)
+                                                else {
+                                                    // fallback: 显示参数摘要
+                                                    var parts = []
+                                                    for (var k in obj) {
+                                                        var v = String(obj[k])
+                                                        if (v.length > 40) v = v.substring(0, 40) + "…"
+                                                        parts.push(v)
+                                                    }
+                                                    a = parts.join(", ")
+                                                }
+                                                // 截断过长内容
+                                                if (a.length > 80) a = a.substring(0, 80) + "…"
+                                            } catch(e) { a = toolArgs || "" }
+
+                                            // 工具名中文映射
+                                            var nameMap = {
+                                                "read_file": "读取",
+                                                "write_file": "写入",
+                                                "edit_file": "编辑",
+                                                "list_files": "列出文件",
+                                                "search_text": "搜索",
+                                                "get_pack_info": "获取资源包信息",
+                                                "analyze_pack": "分析资源包",
+                                                "read_language": "读取语言文件",
+                                                "edit_language": "编辑语言文件",
+                                                "validate_json": "验证 JSON",
+                                                "get_file_tree": "获取文件树",
+                                                "ask_user": "向用户提问",
+                                                "execute_command": "执行命令",
+                                                "execute_command_background": "后台执行",
+                                                "spawn_agent": "生成子 Agent"
+                                            }
+                                            var displayName = nameMap[n] || n
+                                            return a ? displayName + " " + a : displayName
+                                        }
+                                        font.pixelSize: 12
+                                        color: Theme.currentTheme.colors.textColor
+                                        opacity: 0.7
+                                        wrapMode: Text.Wrap
+                                    }
+
+                                    Text {
+                                        text: toolResult && toolResult.length > 0 ? (expanded ? "▼" : "▶") : ""
+                                        font.pixelSize: 11
+                                        color: Theme.currentTheme.colors.textColor
+                                        opacity: 0.5
+                                        Layout.alignment: Qt.AlignTop
+                                    }
+                                }
+                            }
+                        }
+
+                        // 工具结果（可折叠）
+                        RowLayout {
+                            id: trResultCol
+                            visible: toolResult && toolResult.length > 0 && expanded
+                            width: parent.width
+                            spacing: 6
+
+                            Text {
+                                text: "└"
+                                font.pixelSize: 11
+                                font.family: "Consolas, monospace"
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                Layout.alignment: Qt.AlignTop
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Math.min(trResultTxt.contentHeight + 12, 160)
+                                radius: 4
+                                color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F5F5F5"
+                                border.color: Theme.currentTheme.colors.controlBorderColor || "#E8E8E8"
+                                border.width: 1
+
+                                Flickable {
+                                    anchors.fill: parent; anchors.margins: 6
+                                    contentHeight: trResultTxt.contentHeight
+                                    clip: true
+                                    interactive: contentHeight > height
+
+                                    TextEdit {
+                                        id: trResultTxt
+                                        width: parent.width
+                                        text: {
+                                            var r = toolResult || ""
+                                            if (r.length > 500) r = r.substring(0, 500) + "\n... (已截断)"
+                                            return r
+                                        }
+                                        font.pixelSize: 11
+                                        font.family: "Consolas, monospace"
+                                        color: Theme.currentTheme.colors.textSecondaryColor
+                                        wrapMode: TextEdit.Wrap
+                                        readOnly: true; selectByMouse: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // --- 错误消息 ---
+                    RowLayout {
+                        id: errCol
+                        visible: role === "error"
+                        anchors.left: parent.left; anchors.leftMargin: 44
+                        anchors.right: parent.right; anchors.rightMargin: 16
+                        anchors.top: parent.top; anchors.topMargin: 3
+                        spacing: 6
+
+                        Icon { icon: "ic_fluent_warning_20_regular"; size: 14; color: "#E8A33D"; Layout.alignment: Qt.AlignTop }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: content
+                            font.pixelSize: 12
+                            color: "#E8A33D"
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
+                    // --- 系统消息 ---
+                    RowLayout {
+                        id: sysCol
+                        visible: role === "system"
+                        anchors.left: parent.left; anchors.leftMargin: 44
+                        anchors.right: parent.right; anchors.rightMargin: 16
+                        anchors.top: parent.top; anchors.topMargin: 2
+                        spacing: 6
+
+                        Text { text: "ℹ"; font.pixelSize: 10; color: Theme.currentTheme.colors.textSecondaryColor; Layout.alignment: Qt.AlignTop }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: content
+                            font.pixelSize: 11
+                            font.italic: true
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
+            }
+
+            // ===== 输入栏 =====
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: (Agent && Agent.busy ? progressBar.height + 4 : 0) + inputRow.implicitHeight + 16
+                color: Theme.currentTheme.colors.cardColor || "#FFFFFF"
+                Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Theme.currentTheme.colors.controlBorderColor }
+
+                // 生成中的进度条
+                ProgressBar {
+                    id: progressBar
+                    anchors.top: parent.top; anchors.topMargin: 1
+                    width: parent.width
+                    indeterminate: Agent && Agent.busy
+                    visible: Agent && Agent.busy
+                }
+
+                ColumnLayout {
+                    id: inputRow
+                    anchors.fill: parent; anchors.margins: 8; anchors.leftMargin: 12; anchors.rightMargin: 12
+                    spacing: 6
+
+                    RowLayout {
+                        Layout.fillWidth: true; spacing: 8
+
+                        ComboBox {
+                            id: providerCombo
+                            Layout.preferredWidth: 130
+                            model: providerModel; textRole: "name"
+                            font.pixelSize: 10
+                            enabled: Agent && !Agent.busy
+                            onActivated: function(index) {
+                                var item = providerModel.get(index)
+                                if (item.key === "__add__") {
+                                    addProviderDialog.open()
+                                    Qt.callLater(function() {
+                                        for (var i = 0; i < providerModel.count; i++) {
+                                            if (providerModel.get(i).key === Agent.getCurrentProvider()) { providerCombo.currentIndex = i; break }
+                                        }
+                                    })
+                                    return
+                                }
+                                Agent.setProvider(item.key); loadModels()
+                            }
+                        }
+
+                        ComboBox {
+                            id: modelCombo
+                            Layout.fillWidth: true
+                            model: modelModel; textRole: "name"
+                            font.pixelSize: 10
+                            enabled: Agent && !Agent.busy && modelModel.count > 0
+                            onActivated: function(index) {
+                                if (modelModel.count > 0) Agent.setModel(modelModel.get(index).id)
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true; spacing: 8
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.max(inputField.implicitHeight + 12, 36)
+                            radius: 8
+                            color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
+                            border.color: inputField.activeFocus ? (Theme.accentColor || "#0078D4") : (Theme.currentTheme.colors.controlBorderColor || "#E0E0E0")
+                            border.width: 1
+
+                            TextArea {
+                                id: inputField
+                                anchors.fill: parent; anchors.margins: 6
+                                placeholderText: "输入消息... (Enter 发送, Shift+Enter 换行)"
+                                wrapMode: TextArea.Wrap
+                                font.pixelSize: 13
+                                color: Theme.currentTheme.colors.textColor
+                                enabled: Agent && !Agent.busy
+                                background: Item {}
+
+                                Keys.onPressed: function(event) {
+                                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                        if (event.modifiers & Qt.ShiftModifier) {
+                                            inputField.insert(inputField.cursorPosition, "\n")
+                                        } else {
+                                            sendBtn.clicked(); event.accepted = true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Button {
+                            id: sendBtn
+                            icon.name: Agent && Agent.busy ? "ic_fluent_stop_20_regular" : "ic_fluent_send_20_regular"
+                            Layout.preferredWidth: 36; Layout.preferredHeight: 36
+                            highlighted: true
+                            enabled: {
+                                if (!Agent) return false
+                                if (Agent.busy) return true
+                                return inputField.text.trim().length > 0
+                            }
+                            onClicked: {
+                                if (Agent.busy) { Agent.cancelAgent(); return }
+                                var text = inputField.text.trim()
+                                if (text.length === 0) return
+                                messageModel.append({role: "user", content: text, toolName: "", toolArgs: "", toolResult: "", streaming: false, expanded: false})
+                                Agent.sendMessage(text)
+                                inputField.text = ""
+                            }
                         }
                     }
                 }
@@ -503,65 +737,529 @@ Item {
         }
     }
 
-    // ========== Agent 信号 ==========
+    // ============================================================
+    // 对话框
+    // ============================================================
+
+    // 添加供应商
+    Dialog {
+        id: addProviderDialog
+        title: "添加 AI 供应商"
+        modal: true; width: 480
+        closePolicy: Popup.CloseOnEscape
+        anchors.centerIn: parent
+        property int step: 1
+
+        ListModel { id: modelsDevModel }
+        ListModel { id: filteredModel }
+        property string apiStep2Id: ""
+
+        onOpened: {
+            step = 1; apiKeyField.text = ""; providerSearchField.text = ""; apiStep2Id = ""
+            loadLabel.visible = true; modelsDevModel.clear(); filteredModel.clear()
+            Qt.callLater(function() {
+                try {
+                    var json = Agent.fetchModelsDev()
+                    modelsDevProviders = JSON.parse(json)
+                    for (var i = 0; i < modelsDevProviders.length; i++) modelsDevModel.append(modelsDevProviders[i])
+                    filterProv()
+                } catch(e) {}
+                loadLabel.visible = false
+            })
+        }
+
+        function filterProv() {
+            filteredModel.clear()
+            var q = providerSearchField.text.toLowerCase()
+            for (var i = 0; i < modelsDevModel.count; i++) {
+                var item = modelsDevModel.get(i)
+                if (q === "" || item.name.toLowerCase().indexOf(q) >= 0 || item.id.toLowerCase().indexOf(q) >= 0)
+                    filteredModel.append(item)
+            }
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+
+            ColumnLayout {
+                visible: addProviderDialog.step === 1; spacing: 10
+
+                Text { text: "选择 AI 供应商："; font.pixelSize: 13; font.bold: true; color: Theme.currentTheme.colors.textColor }
+
+                TextField {
+                    id: providerSearchField
+                    Layout.fillWidth: true; placeholderText: "搜索..."; font.pixelSize: 12
+                    visible: !loadLabel.visible; clearEnabled: true
+                    onTextChanged: addProviderDialog.filterProv()
+                }
+
+                Text { id: loadLabel; text: "加载中..."; font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor; visible: false }
+
+                Frame {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(filteredModel.count * 40 + 8, 280)
+                    visible: filteredModel.count > 0
+                    background: Rectangle { radius: 6; color: Theme.currentTheme.colors.cardColor || "#FFF"; border.color: Theme.currentTheme.colors.controlBorderColor; border.width: 1 }
+
+                    contentItem: ListView {
+                        id: provLV; clip: true; model: filteredModel
+                        delegate: ItemDelegate {
+                            width: provLV.width; height: 36
+                            contentItem: Column {
+                                spacing: 0; anchors.leftMargin: 8
+                                Text { text: model.name; font.pixelSize: 12; font.bold: true; color: Theme.currentTheme.colors.textColor }
+                                Text { text: model.model_count + " 模型 · " + model.id; font.pixelSize: 10; color: Theme.currentTheme.colors.textSecondaryColor }
+                            }
+                            onClicked: { addProviderDialog.apiStep2Id = model.id; addProviderDialog.step = 2; apiKeyField.forceActiveFocus() }
+                        }
+                    }
+                }
+            }
+
+            ColumnLayout {
+                visible: addProviderDialog.step === 2; spacing: 10
+                Text { text: "供应商: " + addProviderDialog.apiStep2Id; font.pixelSize: 13; font.bold: true; color: Theme.currentTheme.colors.textColor }
+                Text { text: "请输入 API 密钥："; font.pixelSize: 12; color: Theme.currentTheme.colors.textSecondaryColor }
+                TextField { id: apiKeyField; Layout.fillWidth: true; placeholderText: "sk-..."; echoMode: TextInput.Password; clearEnabled: true; Keys.onReturnPressed: confirmBtn.clicked() }
+                Text { text: "密钥保存在本地，仅用于请求 AI 服务。"; font.pixelSize: 10; color: Theme.currentTheme.colors.textSecondaryColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Button { text: addProviderDialog.step === 1 ? "取消" : "返回"; flat: true; onClicked: { if (addProviderDialog.step === 1) addProviderDialog.close(); else addProviderDialog.step = 1 } }
+                Item { Layout.fillWidth: true }
+                Button {
+                    id: confirmBtn; text: "添加"; highlighted: true
+                    visible: addProviderDialog.step === 2; enabled: apiKeyField.text.trim().length > 0
+                    onClicked: {
+                        if (Agent.addProvider(addProviderDialog.apiStep2Id, apiKeyField.text.trim())) {
+                            addProviderDialog.close(); loadProviders()
+                            for (var i = 0; i < providerModel.count; i++) {
+                                if (providerModel.get(i).key === addProviderDialog.apiStep2Id) {
+                                    providerCombo.currentIndex = i; Agent.setProvider(addProviderDialog.apiStep2Id); loadModels(); break
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 权限对话框
+    Dialog {
+        id: permDlg
+        title: "权限请求"; modal: true; width: 400; closePolicy: Popup.NoAutoClose; anchors.centerIn: parent
+        property string pName: ""; property string pDesc: ""; property string pReason: ""
+
+        contentItem: ColumnLayout {
+            spacing: 10
+            Text { text: "AI 想要执行写入操作："; font.pixelSize: 13; font.bold: true; color: Theme.currentTheme.colors.textColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            Rectangle {
+                Layout.fillWidth: true; Layout.preferredHeight: permTxt.implicitHeight + 12; radius: 6
+                color: Theme.currentTheme.colors.controlAltSecondaryColor || "#FFF3CD"
+                border.color: Theme.currentTheme.colors.controlBorderColor; border.width: 1
+                Text { id: permTxt; anchors.fill: parent; anchors.margins: 6; text: permDlg.pName + "\n" + permDlg.pDesc; font.pixelSize: 12; font.family: "Consolas, monospace"; color: Theme.currentTheme.colors.textColor; wrapMode: Text.Wrap }
+            }
+            // AI 理由
+            ColumnLayout {
+                visible: permDlg.pReason.length > 0
+                spacing: 4
+                Text { text: "AI 的理由："; font.pixelSize: 11; font.bold: true; color: Theme.currentTheme.colors.textSecondaryColor }
+                Rectangle {
+                    Layout.fillWidth: true; Layout.preferredHeight: Math.min(reasonTxt.implicitHeight + 12, 120); radius: 6
+                    color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
+                    border.color: Theme.currentTheme.colors.controlBorderColor; border.width: 1
+                    Flickable {
+                        anchors.fill: parent; anchors.margins: 6
+                        contentHeight: reasonTxt.contentHeight
+                        clip: true; interactive: contentHeight > height
+                        Text { id: reasonTxt; width: parent.width; text: permDlg.pReason; font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor; wrapMode: Text.Wrap }
+                    }
+                }
+            }
+            RowLayout { Layout.fillWidth: true; spacing: 8
+                Button { text: "拒绝"; flat: true; Layout.fillWidth: true; onClicked: { permDlg.close(); if (Agent) Agent.denyPermission() } }
+                Button { text: "允许"; highlighted: true; Layout.fillWidth: true; onClicked: { permDlg.close(); if (Agent) Agent.approvePermission() } }
+            }
+        }
+    }
+
+    // AI 提问对话框
+    Dialog {
+        id: askDlg
+        title: "AI 提问"; modal: true; width: 400; closePolicy: Popup.NoAutoClose; anchors.centerIn: parent
+        property string qText: ""
+        property string qType: "text"
+        property var qOptions: []
+        property var selectedOptions: ({})
+        property bool showCustomInput: false
+
+        function collectAnswer() {
+            if (qType === "single_choice") {
+                if (showCustomInput) {
+                    var ca = askCustomField.text.trim()
+                    return ca.length > 0 ? ca : "用户未回答"
+                }
+                for (var key in selectedOptions) {
+                    if (selectedOptions[key]) return key
+                }
+                return "用户未选择"
+            } else if (qType === "multiple_choice") {
+                if (showCustomInput) {
+                    var ca2 = askCustomField2.text.trim()
+                    return ca2.length > 0 ? ca2 : "用户未回答"
+                }
+                var selected = []
+                for (var k in selectedOptions) {
+                    if (selectedOptions[k]) selected.push(k)
+                }
+                return selected.length > 0 ? selected.join(", ") : "用户未选择"
+            } else {
+                var a = askAnsField.text.trim()
+                return a.length > 0 ? a : "用户未回答"
+            }
+        }
+
+        function selectCustomInput() {
+            // 清除所有选项选择
+            for (var k in selectedOptions)
+                selectedOptions[k] = false
+            showCustomInput = true
+            var tmp = selectedOptions
+            selectedOptions = {}
+            selectedOptions = tmp
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 10
+
+            // 问题文本
+            Text { text: askDlg.qText; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
+
+            // 单项选择
+            ColumnLayout {
+                visible: askDlg.qType === "single_choice"
+                Layout.fillWidth: true
+                spacing: 4
+                Repeater {
+                    model: askDlg.qOptions
+                    delegate: Rectangle {
+                        Component.onCompleted: console.log("[AgentTab] single_choice delegate: " + modelData)
+                        Layout.fillWidth: true
+                        height: 36; radius: 6
+                        color: !!askDlg.selectedOptions[modelData] ? (Theme.accentColor || "#0078D4") + "15" : "transparent"
+                        border.color: !!askDlg.selectedOptions[modelData] ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.controlBorderColor
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10
+                            spacing: 8
+                            Rectangle {
+                                width: 16; height: 16; radius: 8
+                                border.color: !!askDlg.selectedOptions[modelData] ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.textSecondaryColor
+                                border.width: 2
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 8; height: 8; radius: 4
+                                    color: Theme.accentColor || "#0078D4"
+                                    visible: !!askDlg.selectedOptions[modelData]
+                                }
+                            }
+                            Text {
+                                text: modelData; font.pixelSize: 13
+                                color: Theme.currentTheme.colors.textColor
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                askDlg.showCustomInput = false
+                                for (var k in askDlg.selectedOptions)
+                                    askDlg.selectedOptions[k] = false
+                                askDlg.selectedOptions[modelData] = true
+                                var tmp = askDlg.selectedOptions
+                                askDlg.selectedOptions = {}
+                                askDlg.selectedOptions = tmp
+                            }
+                        }
+                    }
+                }
+                // "我想给出我的答案" 选项
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 36; radius: 6
+                    color: askDlg.showCustomInput ? (Theme.accentColor || "#0078D4") + "15" : "transparent"
+                    border.color: askDlg.showCustomInput ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.controlBorderColor
+                    border.width: 1
+
+                    RowLayout {
+                        anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10
+                        spacing: 8
+                        Rectangle {
+                            width: 16; height: 16; radius: 8
+                            border.color: askDlg.showCustomInput ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.textSecondaryColor
+                            border.width: 2
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 8; height: 8; radius: 4
+                                color: Theme.accentColor || "#0078D4"
+                                visible: askDlg.showCustomInput
+                            }
+                        }
+                        Text {
+                            text: "✏ 我想给出我的答案"
+                            font.pixelSize: 13
+                            font.italic: true
+                            color: Theme.currentTheme.colors.textColor
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: askDlg.selectCustomInput()
+                    }
+                }
+                // 自定义输入框
+                Rectangle {
+                    visible: askDlg.showCustomInput
+                    Layout.fillWidth: true; Layout.preferredHeight: 56; radius: 6
+                    color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
+                    border.color: askCustomField.activeFocus ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.controlBorderColor; border.width: 1
+                    TextArea { id: askCustomField; anchors.fill: parent; anchors.margins: 6; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: TextArea.Wrap; placeholderText: "输入你的回答..."; background: Item {} }
+                }
+            }
+
+            // 多项选择
+            ColumnLayout {
+                visible: askDlg.qType === "multiple_choice"
+                Layout.fillWidth: true
+                spacing: 4
+                Repeater {
+                    model: askDlg.qOptions
+                    delegate: Rectangle {
+                        Component.onCompleted: console.log("[AgentTab] multiple_choice delegate: " + modelData)
+                        Layout.fillWidth: true
+                        height: 36; radius: 6
+                        color: !!askDlg.selectedOptions[modelData] ? (Theme.accentColor || "#0078D4") + "15" : "transparent"
+                        border.color: !!askDlg.selectedOptions[modelData] ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.controlBorderColor
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10
+                            spacing: 8
+                            Rectangle {
+                                width: 16; height: 16; radius: 3
+                                border.color: !!askDlg.selectedOptions[modelData] ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.textSecondaryColor
+                                border.width: 2
+                                color: "transparent"
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 8; height: 8; radius: 1
+                                    color: Theme.accentColor || "#0078D4"
+                                    visible: !!askDlg.selectedOptions[modelData]
+                                }
+                            }
+                            Text {
+                                text: modelData; font.pixelSize: 13
+                                color: Theme.currentTheme.colors.textColor
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                askDlg.showCustomInput = false
+                                askDlg.selectedOptions[modelData] = !askDlg.selectedOptions[modelData]
+                                var tmp = askDlg.selectedOptions
+                                askDlg.selectedOptions = {}
+                                askDlg.selectedOptions = tmp
+                            }
+                        }
+                    }
+                }
+                // "我想给出我的答案" 选项
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 36; radius: 6
+                    color: askDlg.showCustomInput ? (Theme.accentColor || "#0078D4") + "15" : "transparent"
+                    border.color: askDlg.showCustomInput ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.controlBorderColor
+                    border.width: 1
+
+                    RowLayout {
+                        anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10
+                        spacing: 8
+                        Rectangle {
+                            width: 16; height: 16; radius: 3
+                            border.color: askDlg.showCustomInput ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.textSecondaryColor
+                            border.width: 2
+                            color: "transparent"
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 8; height: 8; radius: 1
+                                color: Theme.accentColor || "#0078D4"
+                                visible: askDlg.showCustomInput
+                            }
+                        }
+                        Text {
+                            text: "✏ 我想给出我的答案"
+                            font.pixelSize: 13
+                            font.italic: true
+                            color: Theme.currentTheme.colors.textColor
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: askDlg.selectCustomInput()
+                    }
+                }
+                // 自定义输入框
+                Rectangle {
+                    visible: askDlg.showCustomInput
+                    Layout.fillWidth: true; Layout.preferredHeight: 56; radius: 6
+                    color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
+                    border.color: askCustomField2.activeFocus ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.controlBorderColor; border.width: 1
+                    TextArea { id: askCustomField2; anchors.fill: parent; anchors.margins: 6; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: TextArea.Wrap; placeholderText: "输入你的回答..."; background: Item {} }
+                }
+            }
+
+            // 文本输入
+            Rectangle {
+                visible: askDlg.qType === "text"
+                Layout.fillWidth: true; Layout.preferredHeight: 72; radius: 6
+                color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
+                border.color: askAnsField.activeFocus ? (Theme.accentColor || "#0078D4") : (Theme.currentTheme.colors.controlBorderColor); border.width: 1
+                TextEdit { id: askAnsField; anchors.fill: parent; anchors.margins: 6; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: TextEdit.Wrap; focus: true }
+            }
+
+            // 按钮行
+            RowLayout { Layout.fillWidth: true; spacing: 8
+                Button { text: "取消"; flat: true; Layout.fillWidth: true; onClicked: { askDlg.close(); if (Agent) Agent.answerQuestion("用户取消") } }
+                Button {
+                    text: askDlg.qType === "text" ? "发送" : "确认"; highlighted: true; Layout.fillWidth: true
+                    onClicked: {
+                        var answer = askDlg.collectAnswer()
+                        askDlg.close()
+                        if (Agent) Agent.answerQuestion(answer)
+                    }
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // Agent 信号
+    // ============================================================
     Connections {
-        target: Agent
-        enabled: Agent !== null
+        target: Agent; enabled: Agent !== null
 
         function onTextUpdated(text) {
             var lastIdx = messageModel.count - 1
             if (lastIdx >= 0 && messageModel.get(lastIdx).role === "assistant" && messageModel.get(lastIdx).streaming) {
-                messageModel.set(lastIdx, {
-                    role: "assistant",
-                    content: text,
-                    toolCalls: messageModel.get(lastIdx).toolCalls,
-                    streaming: true
-                })
+                messageModel.set(lastIdx, {role: "assistant", content: text, toolName: "", toolArgs: "", toolResult: "", streaming: true})
             } else {
-                messageModel.append({
-                    role: "assistant",
-                    content: text,
-                    toolCalls: "[]",
-                    streaming: true
-                })
+                messageModel.append({role: "assistant", content: text, toolName: "", toolArgs: "", toolResult: "", streaming: true, expanded: false})
             }
         }
 
         function onToolCallStarted(toolName, argsJson) {
-            activeToolName.text = "调用工具: " + toolName
+            console.log("[AgentTab] onToolCallStarted: " + toolName)
+            // 找到最后一个 tool_call 之后的位置（连续的 tool_calls 应该在一起）
+            var insertIdx = messageModel.count
+            for (var i = messageModel.count - 1; i >= 0; i--) {
+                var item = messageModel.get(i)
+                if (item.role === "tool_call") {
+                    insertIdx = i + 1
+                    break
+                }
+                if (item.role === "assistant") {
+                    // 在 assistant 之后插入（tool calls 紧跟在 text 之后）
+                    insertIdx = i + 1
+                    break
+                }
+            }
+            messageModel.insert(insertIdx, {role: "tool_call", content: "", toolName: toolName, toolArgs: argsJson, toolResult: "", streaming: false, expanded: false})
         }
 
         function onToolCallFinished(toolName, argsJson, result) {
-            activeToolName.text = ""
-        }
-
-        function onErrorOccurred(msg) {
-            messageModel.append({
-                role: "assistant",
-                content: "⚠ " + msg,
-                toolCalls: "[]",
-                streaming: false
-            })
-        }
-
-        function onMessageAdded(role, content, toolCallsJson) {
+            // 更新最后一条 tool_call 的结果，而非新增条目
             for (var i = messageModel.count - 1; i >= 0; i--) {
-                if (messageModel.get(i).role === role && messageModel.get(i).streaming) {
-                    messageModel.set(i, {
-                        role: role,
-                        content: content,
-                        toolCalls: toolCallsJson,
-                        streaming: false
-                    })
+                var item = messageModel.get(i)
+                if (item.role === "tool_call" && item.toolName === toolName && item.toolResult === "") {
+                    messageModel.set(i, {toolResult: result})
                     return
                 }
             }
-            messageModel.append({
-                role: role,
-                content: content,
-                toolCalls: toolCallsJson,
-                streaming: false
-            })
+            // 兜底：如果没有找到匹配的 tool_call，追加一条
+            messageModel.append({role: "tool_call", content: "", toolName: toolName, toolArgs: argsJson, toolResult: result, streaming: false, expanded: false})
+        }
+
+        function onErrorOccurred(msg) {
+            messageModel.append({role: "error", content: msg, toolName: "", toolArgs: "", toolResult: "", streaming: false, expanded: false})
+        }
+
+        function onMessageAdded(role, content, toolCallsJson) {
+            // 找到流式 assistant 消息并终结
+            for (var i = messageModel.count - 1; i >= 0; i--) {
+                if (messageModel.get(i).role === "assistant" && messageModel.get(i).streaming) {
+                    messageModel.set(i, {role: "assistant", content: content, streaming: false})
+                    return
+                }
+            }
+            // 没有流式消息（历史恢复场景），直接追加
+            messageModel.append({role: role, content: content, toolName: "", toolArgs: "", toolResult: "", streaming: false, expanded: false})
+        }
+
+        function onProvidersChanged() { loadProviders() }
+
+        function onPermissionRequested(toolName, argsJson, description, reasoning) {
+            permDlg.pName = toolName
+            permDlg.pDesc = description
+            permDlg.pReason = reasoning || ""
+            permDlg.open()
+        }
+
+        function onQuestionAsked(question, questionType, optionsJson) {
+            console.log("[AgentTab] onQuestionAsked: type=" + questionType + ", optionsJson=" + optionsJson)
+            askDlg.qText = question
+            askDlg.qType = questionType || "text"
+            askDlg.showCustomInput = false
+            // 解析 JSON 字符串为数组
+            try {
+                askDlg.qOptions = JSON.parse(optionsJson || "[]")
+            } catch(e) {
+                console.log("[AgentTab] options JSON 解析失败: " + e)
+                askDlg.qOptions = []
+            }
+            console.log("[AgentTab] askDlg.qType=" + askDlg.qType + ", askDlg.qOptions.length=" + askDlg.qOptions.length)
+            // 在打开前初始化选择状态
+            askDlg.selectedOptions = {}
+            if (askDlg.qType === "single_choice" || askDlg.qType === "multiple_choice") {
+                for (var i = 0; i < askDlg.qOptions.length; i++)
+                    askDlg.selectedOptions[askDlg.qOptions[i]] = false
+            }
+            console.log("[AgentTab] selectedOptions=" + JSON.stringify(askDlg.selectedOptions))
+            console.log("[AgentTab] 打开对话框: qType=" + askDlg.qType + ", qOptions.length=" + askDlg.qOptions.length + ", options=" + JSON.stringify(askDlg.qOptions))
+            askDlg.open()
+        }
+
+        function onSessionLoaded() {
+            rebuildMessageModelFromHistory()
+            conversationTitle = Agent ? (Agent.title || "") : ""
+        }
+
+        function onTitleChanged(title) {
+            conversationTitle = title
+        }
+
+        function onStatusMessage(msg) {
+            messageModel.append({role: "system", content: msg, toolName: "", toolArgs: "", toolResult: "", streaming: false, expanded: false})
         }
     }
 }

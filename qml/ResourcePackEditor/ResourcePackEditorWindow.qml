@@ -8,7 +8,7 @@ import "pages"
 FluentWindowBase {
     id: editorWindow
     visible: false
-    title: "Bloret 资源包编辑器"
+    title: "Bloret Launcher 资源包编辑器"
     width: 1200
     height: 800
     minimumWidth: 900
@@ -48,7 +48,7 @@ FluentWindowBase {
             spacing: 2
 
             Repeater {
-                model: ["概览", "pack.mcmeta", "pack.png", "语言", "贴图", "方块状态", "模型", "声音", "字体", "文本", "粒子", "特殊文件", "OptiFine", "文件", "Git", "Agent"]
+                model: ["概览", "Bloriko", "Git", "pack.mcmeta", "pack.png", "语言", "贴图", "方块状态", "模型", "声音", "字体", "文本", "粒子", "特殊文件", "OptiFine", "文件", "设置"]
 
                 Button {
                     text: modelData
@@ -84,6 +84,8 @@ FluentWindowBase {
                     currentIndex: currentTabIndex
 
                     OverviewTab {}
+                    AgentTab {}
+                    GitTab {}
                     McmetaTab {}
                     PackIconTab {}
                     LanguageTab {}
@@ -97,8 +99,7 @@ FluentWindowBase {
                     SpecialFilesTab {}
                     OptifineTab {}
                     FileBrowserTab {}
-                    GitTab {}
-                    AgentTab {}
+                    SettingsTab {}
                 }
 
                 Rectangle {
@@ -170,6 +171,7 @@ FluentWindowBase {
                 // 同步资源包路径到 AI Agent
                 if (Agent) {
                     Agent.setPackPath(info.path)
+                    Agent.setRPEditor(RPEditor)
                 }
             }
 
@@ -183,7 +185,7 @@ FluentWindowBase {
             }
 
             function onErrorOccurred(msg) {
-                statusBarText.text = "⚠ " + msg
+                statusBarText.text = msg
                 statusBarText.color = "#F44336"
                 errorTimer.start()
             }
@@ -236,9 +238,10 @@ FluentWindowBase {
                         anchors.leftMargin: 12
                         spacing: 12
 
-                        Label {
-                            text: "📦"
-                            font.pixelSize: 20
+                        Icon {
+                            icon: "ic_fluent_folder_zip_20_regular"
+                            size: 24
+                            color: Theme.currentTheme.colors.textColor
                         }
 
                         ColumnLayout {
@@ -277,9 +280,10 @@ FluentWindowBase {
                         anchors.leftMargin: 12
                         spacing: 12
 
-                        Label {
-                            text: "📁"
-                            font.pixelSize: 20
+                        Icon {
+                            icon: "ic_fluent_folder_20_regular"
+                            size: 24
+                            color: Theme.currentTheme.colors.textColor
                         }
 
                         ColumnLayout {
@@ -318,9 +322,10 @@ FluentWindowBase {
                         anchors.leftMargin: 12
                         spacing: 12
 
-                        Label {
-                            text: "🕐"
-                            font.pixelSize: 20
+                        Icon {
+                            icon: "ic_fluent_clock_20_regular"
+                            size: 24
+                            color: Theme.currentTheme.colors.textColor
                         }
 
                         ColumnLayout {
@@ -520,9 +525,10 @@ FluentWindowBase {
                                 anchors.rightMargin: 8
                                 spacing: 10
 
-                                Label {
-                                    text: "📁"
-                                    font.pixelSize: 16
+                                Icon {
+                                    icon: "ic_fluent_folder_20_regular"
+                                    size: 20
+                                    color: Theme.currentTheme.colors.textColor
                                 }
 
                                 ColumnLayout {

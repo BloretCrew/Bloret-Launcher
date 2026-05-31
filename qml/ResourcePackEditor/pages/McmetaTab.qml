@@ -438,7 +438,7 @@ Flickable {
                                 }
                             }
                             Button {
-                                text: "✕"
+                                icon.name: "ic_fluent_dismiss_20_regular"
                                 flat: true
                                 implicitWidth: 28
                                 implicitHeight: 28
@@ -540,7 +540,7 @@ Flickable {
                                 }
                             }
                             Button {
-                                text: "✕"
+                                icon.name: "ic_fluent_dismiss_20_regular"
                                 flat: true
                                 implicitWidth: 28
                                 implicitHeight: 28
@@ -598,7 +598,7 @@ Flickable {
                                 }
                             }
                             Button {
-                                text: "✕"
+                                icon.name: "ic_fluent_dismiss_20_regular"
                                 flat: true
                                 implicitWidth: 28
                                 implicitHeight: 28
@@ -713,7 +713,7 @@ Flickable {
                                 }
                             }
                             Button {
-                                text: "✕"
+                                icon.name: "ic_fluent_dismiss_20_regular"
                                 flat: true
                                 implicitWidth: 28
                                 implicitHeight: 28
