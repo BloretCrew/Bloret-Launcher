@@ -70,6 +70,45 @@ jobs:
         pip install pillow pyinstaller
       shell: bash
 
+    - name: 下载平台专属 EasyTier
+      run: |
+        EASYTIER_VERSION="v2.6.4"
+        ARCH=$(uname -m)
+        case "${{ runner.os }}" in
+          Windows)
+            EASYTIER_ZIP="easytier-windows-x86_64-${EASYTIER_VERSION}.zip"
+            ;;
+          Linux)
+            if [ "$ARCH" = "x86_64" ]; then
+              EASYTIER_ZIP="easytier-linux-x86_64-${EASYTIER_VERSION}.zip"
+            elif [ "$ARCH" = "aarch64" ]; then
+              EASYTIER_ZIP="easytier-linux-aarch64-${EASYTIER_VERSION}.zip"
+            fi
+            ;;
+          macOS)
+            if [ "$ARCH" = "x86_64" ]; then
+              EASYTIER_ZIP="easytier-macos-x86_64-${EASYTIER_VERSION}.zip"
+            elif [ "$ARCH" = "arm64" ]; then
+              EASYTIER_ZIP="easytier-macos-aarch64-${EASYTIER_VERSION}.zip"
+            fi
+            ;;
+        esac
+
+        if [ -n "$EASYTIER_ZIP" ]; then
+          rm -rf easytier
+          mkdir -p easytier
+          curl -L -o "$EASYTIER_ZIP" "https://github.com/EasyTier/EasyTier/releases/download/${EASYTIER_VERSION}/${EASYTIER_ZIP}"
+          unzip -o "$EASYTIER_ZIP" -d easytier-tmp
+          find easytier-tmp -name "easytier-core*" -exec cp {} easytier/ \;
+          find easytier-tmp -name "easytier-cli*" -exec cp {} easytier/ \;
+          chmod +x easytier/easytier-core* easytier/easytier-cli* 2>/dev/null || true
+          rm -rf easytier-tmp "$EASYTIER_ZIP"
+          echo "EasyTier for ${{ runner.os }} ($ARCH) ready"
+        else
+          echo "No EasyTier binary available for ${{ runner.os }} ($ARCH), skipping"
+        fi
+      shell: bash
+
     - name: 使用 PyInstaller 打包 (Windows)
       if: runner.os == 'Windows'
       run: |
