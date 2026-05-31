@@ -778,7 +778,7 @@ FluentWindow {
             }
         }
 
-        function onJavaInstalled(javaPath) {
+        function onJavaInstallationComplete(javaPath) {
             oobeWindow.isInstallingJava = false
             if (javaPath && javaPath !== "") {
                 oobeWindow.javaInstalled = true

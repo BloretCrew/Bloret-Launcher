@@ -889,7 +889,7 @@ Rectangle {
             }
         }
 
-        function onJavaInstalled(javaPath) {
+        function onJavaInstallationComplete(javaPath) {
             oobeOverlay.isInstallingJava = false
             if (javaPath && javaPath !== "") {
                 oobeOverlay.javaInstalled = true
