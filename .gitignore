@@ -1,21 +1,41 @@
-.minecraft/
-run.ps1
-modules/__pycache__/
-build/
+```gitignore
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Dependencies
+.venv/
+venv/
+node_modules/
+
+# Build artifacts
 dist/
-logs/
-/cache
-/minescript
-/config
-run.bat
-/logs
-.DS_Store
-/temp/Modules
-/temp
-/Lib
-/Scripts
-/RinUI
-/.qwen
-/.vs
-/claude-code-source-code-main
-/opencode-dev
+build/
+target/
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# MyPy
+.mypy_cache/
+
+# PyTest
+.pytest_cache/
+```
