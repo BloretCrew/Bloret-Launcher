@@ -137,6 +137,23 @@ FluentPage {
                             }
 
                             MenuItem {
+                                id: exportMrpackItem
+                                text: Backend ? Backend.tr("导出为 Modrinth 整合包") : "导出为 Modrinth 整合包"
+                                icon.name: "ic_fluent_arrow_export_20_regular"
+                                visible: itemData.type === "minecraft"
+                                onTriggered: {
+                                    if (Backend) {
+                                        let success = Backend.exportToMrpack(itemData.name)
+                                        if (success) {
+                                            console.log("Modrinth 整合包导出成功")
+                                        } else {
+                                            console.log("Modrinth 整合包导出失败或取消")
+                                        }
+                                    }
+                                }
+                            }
+
+                            MenuItem {
                                 id: openFolderItem
                                 text: Backend ? Backend.tr("打开文件位置") : "打开文件位置"
                                 icon.name: "ic_fluent_folder_20_regular"
