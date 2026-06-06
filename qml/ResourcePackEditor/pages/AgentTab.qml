@@ -255,11 +255,11 @@ Item {
 
                     Rectangle {
                         width: 24; height: 24; radius: 12; clip: true; color: "transparent"
-                        Image { anchors.fill: parent; source: Qt.resolvedUrl("../../../icon/Bloriko.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
+                        Image { anchors.fill: parent; source: Qt.resolvedUrl("../../../icon/BLRPE.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
                     }
 
                     Text {
-                        text: "Bloriko"
+                        text: "BLRPE Copilot"
                         font.pixelSize: 14
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
@@ -329,12 +329,12 @@ Item {
                         Rectangle {
                             Layout.alignment: Qt.AlignHCenter
                             width: 56; height: 56; radius: 28; clip: true; color: "transparent"
-                            Image { anchors.fill: parent; source: Qt.resolvedUrl("../../../icon/Bloriko.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
+                            Image { anchors.fill: parent; source: Qt.resolvedUrl("../../../icon/BLRPE.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
                         }
 
                         Text {
                             Layout.alignment: Qt.AlignHCenter
-                            text: "Bloriko"
+                            text: "BLRPE Copilot"
                             font.pixelSize: 18; font.bold: true
                             color: Theme.currentTheme.colors.textColor
                         }
@@ -403,7 +403,7 @@ Item {
                         Rectangle {
                             width: 22; height: 22; radius: 11; clip: true; color: "transparent"
                             Layout.alignment: Qt.AlignTop
-                            Image { anchors.fill: parent; source: Qt.resolvedUrl("../../../icon/Bloriko.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
+                            Image { anchors.fill: parent; source: Qt.resolvedUrl("../../../icon/BLRPE.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
                         }
 
                         Text {

@@ -76,7 +76,7 @@ FluentPage {
                 spacing: 15
 
                 Image {
-                    source: "../../icon/180px-Xmas_chest.png"
+                    source: "../../icon/BLRPE.png"
                     sourceSize { width: 40; height: 40 }
                 }
 

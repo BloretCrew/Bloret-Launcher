@@ -972,7 +972,10 @@ class Backend(QObject):
             minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
             version_path = os.path.join(minecraft_dir, "versions", versionName)
             if os.path.exists(version_path):
-                os.startfile(version_path)
+                if sys.platform == 'win32':
+                    os.startfile(version_path)
+                else:
+                    subprocess.Popen(['xdg-open', version_path])
             else:
                 print(f"Version folder not found: {version_path}")
         except Exception as e:
@@ -988,8 +991,11 @@ class Backend(QObject):
             
             if not os.path.exists(target_path):
                 os.makedirs(target_path, exist_ok=True)
-            
-            os.startfile(target_path)
+
+            if sys.platform == 'win32':
+                os.startfile(target_path)
+            else:
+                subprocess.Popen(['xdg-open', target_path])
         except Exception as e:
             print(f"Error opening sub folder: {e}")
 

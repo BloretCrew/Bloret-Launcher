@@ -13,10 +13,12 @@ Versions.py
 '''
 import logging
 import os
+import sys
 import json
 import platform
 import requests
 import shutil
+import subprocess
 import concurrent.futures
 import modules.globals as BLglobals
 import threading
@@ -2536,7 +2538,10 @@ class BaseInfoPage(QWidget):
                 return
 
         try:
-            os.startfile(target_path)
+            if sys.platform == 'win32':
+                os.startfile(target_path)
+            else:
+                subprocess.Popen(['xdg-open', target_path])
         except Exception as e:
             InfoBar.error(
                 title=i18nText('打开失败'),

@@ -48,7 +48,7 @@ FluentWindowBase {
             spacing: 2
 
             Repeater {
-                model: ["概览", "Bloriko", "Git", "pack.mcmeta", "pack.png", "语言", "贴图", "方块状态", "模型", "声音", "字体", "文本", "粒子", "特殊文件", "OptiFine", "文件", "设置"]
+                model: ["概览", "BLRPE Copilot", "Git", "pack.mcmeta", "pack.png", "语言", "贴图", "方块状态", "模型", "声音", "字体", "文本", "粒子", "特殊文件", "OptiFine", "文件", "设置"]
 
                 Button {
                     text: modelData
