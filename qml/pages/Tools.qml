@@ -76,7 +76,7 @@ FluentPage {
                 spacing: 15
 
                 Image {
-                    source: "../../icon/BLRPE.png"
+                    source: Qt.resolvedUrl("../../icon/BLRPE.png")
                     sourceSize { width: 40; height: 40 }
                 }
 
@@ -132,7 +132,7 @@ FluentPage {
                     spacing: 15
 
                     Image {
-                        source: "../../icon/imageres 017.png"
+                        source: Qt.resolvedUrl("../../icon/imageres 017.png")
                         sourceSize { width: 40; height: 40 }
                     }
 

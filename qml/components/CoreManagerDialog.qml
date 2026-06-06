@@ -601,6 +601,24 @@ Dialog {
                         spacing: 10
                         Layout.fillWidth: true
                         Label {
+                            text: Backend ? Backend.tr("导出整合包") : "导出整合包"
+                            font.weight: Font.DemiBold
+                            color: Theme.currentTheme.colors.textColor
+                        }
+                        Button {
+                            text: Backend ? Backend.tr("导出为 Modrinth 整合包") : "导出为 Modrinth 整合包"
+                            icon.name: "ic_fluent_arrow_export_20_regular"
+                            Layout.fillWidth: true
+                            onClicked: {
+                                if (Backend) Backend.exportToMrpack(versionName)
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        spacing: 10
+                        Layout.fillWidth: true
+                        Label {
                             text: Backend ? Backend.tr("危险区域") : "危险区域"
                             font.weight: Font.DemiBold
                             color: "#cf1010"
@@ -633,11 +651,11 @@ Dialog {
         width: 350
         
         ColumnLayout {
-            width: parent.width
+            Layout.fillWidth: true
             spacing: 15
-            
+
             ColumnLayout {
-                width: parent.width
+                Layout.fillWidth: true
                 spacing: 10
                 
                 Label {

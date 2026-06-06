@@ -209,14 +209,13 @@ FluentWindowBase {
             modal: true
             width: 440
             closePolicy: Popup.CloseOnEscape
-            anchors.centerIn: parent
 
             onRejected: {
                 editorWindow.close()
             }
 
             ColumnLayout {
-                width: parent.width
+                Layout.fillWidth: true
                 spacing: 16
 
                 Label {
@@ -401,7 +400,6 @@ FluentWindowBase {
             modal: true
             width: 480
             closePolicy: Popup.CloseOnEscape
-            anchors.centerIn: parent
 
             property string zipPath: pendingZipPath
 
@@ -410,7 +408,7 @@ FluentWindowBase {
             }
 
             ColumnLayout {
-                width: parent.width
+                Layout.fillWidth: true
                 spacing: 12
 
                 Label {
@@ -472,7 +470,6 @@ FluentWindowBase {
             modal: true
             width: 520
             closePolicy: Popup.CloseOnEscape
-            anchors.centerIn: parent
 
             property var recentList: []
 
@@ -486,7 +483,7 @@ FluentWindowBase {
             }
 
             ColumnLayout {
-                width: parent.width
+                Layout.fillWidth: true
                 spacing: 12
 
                 Label {
@@ -615,7 +612,7 @@ FluentWindowBase {
             closePolicy: Popup.CloseOnEscape
 
             ColumnLayout {
-                width: parent.width
+                Layout.fillWidth: true
                 spacing: 12
 
                 Label {

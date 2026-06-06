@@ -747,7 +747,6 @@ Item {
         title: "添加 AI 供应商"
         modal: true; width: 480
         closePolicy: Popup.CloseOnEscape
-        anchors.centerIn: parent
         property int step: 1
 
         ListModel { id: modelsDevModel }
@@ -849,7 +848,7 @@ Item {
     // 权限对话框
     Dialog {
         id: permDlg
-        title: "权限请求"; modal: true; width: 400; closePolicy: Popup.NoAutoClose; anchors.centerIn: parent
+        title: "权限请求"; modal: true; width: 400; closePolicy: Popup.NoAutoClose
         property string pName: ""; property string pDesc: ""; property string pReason: ""
 
         contentItem: ColumnLayout {
@@ -888,7 +887,7 @@ Item {
     // AI 提问对话框
     Dialog {
         id: askDlg
-        title: "AI 提问"; modal: true; width: 400; closePolicy: Popup.NoAutoClose; anchors.centerIn: parent
+        title: "AI 提问"; modal: true; width: 400; closePolicy: Popup.NoAutoClose
         property string qText: ""
         property string qType: "text"
         property var qOptions: []

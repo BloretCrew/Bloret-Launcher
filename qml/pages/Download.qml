@@ -134,7 +134,7 @@ FluentPage {
             spacing: 15
 
             Image {
-                source: "../../icon/Grass_Block.png"
+                source: Qt.resolvedUrl("../../icon/Grass_Block.png")
                 sourceSize { width: 40; height: 40 }
             }
 
@@ -200,7 +200,7 @@ FluentPage {
             spacing: 15
 
             Image {
-                source: "../../icon/fabric.png"
+                source: Qt.resolvedUrl("../../icon/fabric.png")
                 sourceSize { width: 40; height: 40 }
             }
 
@@ -268,7 +268,7 @@ FluentPage {
             spacing: 15
 
             Image {
-                source: "../../icon/Command_Block.gif"
+                source: Qt.resolvedUrl("../../icon/Command_Block.gif")
                 sourceSize { width: 40; height: 40 }
             }
 
@@ -332,7 +332,7 @@ FluentPage {
             spacing: 15
 
             Image {
-                source: "../../icon/Command_Block.gif"
+                source: Qt.resolvedUrl("../../icon/Command_Block.gif")
                 sourceSize { width: 40; height: 40 }
             }
 
@@ -396,7 +396,7 @@ FluentPage {
             spacing: 15
 
             Image {
-                source: "../../icon/java.png"
+                source: Qt.resolvedUrl("../../icon/java.png")
                 sourceSize { width: 40; height: 40 }
             }
 
@@ -447,7 +447,7 @@ FluentPage {
             spacing: 15
 
             Image {
-                source: "../../icon/exeapps.png"
+                source: Qt.resolvedUrl("../../icon/exeapps.png")
                 sourceSize { width: 40; height: 40 }
             }
 
@@ -468,6 +468,59 @@ FluentPage {
                 text: (Backend ? Backend.tr("添加自定义项目") : "添加自定义项目")
                 onClicked: {
                     if (Backend) Backend.addCustomApp()
+                }
+            }
+        }
+    }
+
+    // --- Modrinth Modpack Import Card ---
+    Frame {
+        Layout.fillWidth: true
+        padding: 15
+        background: Rectangle {
+            color: Theme.currentTheme.colors.cardColor
+            radius: 8
+            border.color: Theme.currentTheme.colors.controlBorderColor
+        }
+
+        RowLayout {
+            width: parent.width
+            spacing: 15
+
+            Image {
+                id: modrinthIcon
+                source: Qt.resolvedUrl("../../icon/modrinth.png")
+                sourceSize { width: 40; height: 40 }
+                cache: false
+                fillMode: Image.PreserveAspectFit
+                Component.onCompleted: {
+                    console.log("[ModrinthIcon] source:", modrinthIcon.source)
+                    console.log("[ModrinthIcon] status:", modrinthIcon.status)
+                }
+                onStatusChanged: {
+                    console.log("[ModrinthIcon] status ->", modrinthIcon.status, "source:", modrinthIcon.source)
+                    if (modrinthIcon.status === Image.Error) console.log("[ModrinthIcon] ERROR loading image")
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Label {
+                    font.weight: Font.DemiBold
+                    text: (Backend ? Backend.tr("Modrinth 整合包") : "Modrinth 整合包")
+                    color: Theme.currentTheme.colors.textColor
+                }
+                Label {
+                    text: (Backend ? Backend.tr("导入 .mrpack 格式的 Modrinth 整合包") : "导入 .mrpack 格式的 Modrinth 整合包")
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                }
+            }
+
+            Button {
+                text: (Backend ? Backend.tr("导入整合包") : "导入整合包")
+                highlighted: true
+                onClicked: {
+                    if (Backend) Backend.importMrpack()
                 }
             }
         }

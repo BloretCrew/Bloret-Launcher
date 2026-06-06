@@ -94,7 +94,7 @@ FluentPage {
                     spacing: 15
                     
                     Image {
-                        source: "../../icon/Bloriko.jpg"
+                        source: Qt.resolvedUrl("../../icon/Bloriko.jpg")
                         sourceSize { width: 35; height: 35 }
                     }
                     
@@ -347,16 +347,10 @@ FluentPage {
         property string text: ""
         property var slugs: []
         width: Math.min(parent.width * 0.9, 650)
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
         modal: true
 
         ColumnLayout {
-            anchors.fill: parent
-            anchors.topMargin: 56
-            anchors.leftMargin: 20
-            anchors.rightMargin: 20
-            anchors.bottomMargin: 20
+            Layout.fillWidth: true
             spacing: 15
 
             ScrollView {
@@ -425,19 +419,13 @@ FluentPage {
         id: versionSelectDialog
         title: (Backend ? Backend.tr("选择 Minecraft 版本") : "选择 Minecraft 版本")
         width: 400
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
         modal: true
         closePolicy: Popup.NoAutoClose
 
         property bool loading: false
 
         ColumnLayout {
-            anchors.fill: parent
-            anchors.topMargin: 56
-            anchors.leftMargin: 15
-            anchors.rightMargin: 15
-            anchors.bottomMargin: 15
+            Layout.fillWidth: true
             spacing: 20
 
             Label {
@@ -521,20 +509,14 @@ FluentPage {
         title: (Backend ? Backend.tr("选择安装版本") : "选择安装版本")
         standardButtons: Dialog.Ok | Dialog.Cancel
         width: 350
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
         modal: true
-        
+
         property string modId: ""
 
         ColumnLayout {
-            anchors.fill: parent
-            anchors.topMargin: 56
-            anchors.leftMargin: 15
-            anchors.rightMargin: 15
-            anchors.bottomMargin: 15
+            Layout.fillWidth: true
             spacing: 15
-            
+
             Label {
                 text: (Backend ? Backend.tr("请选择要安装此 Mod 的 Fabric 版本:") : "请选择要安装此 Mod 的 Fabric 版本:")
                 wrapMode: Text.Wrap
@@ -561,8 +543,6 @@ FluentPage {
         title: (Backend ? Backend.tr("选择保存位置") : "选择保存位置")
         standardButtons: Dialog.Ok | Dialog.Cancel
         width: 400
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
         modal: true
 
         property string modId: ""
@@ -570,11 +550,7 @@ FluentPage {
         property string selectedFolder: ""
 
         ColumnLayout {
-            anchors.fill: parent
-            anchors.topMargin: 56
-            anchors.leftMargin: 15
-            anchors.rightMargin: 15
-            anchors.bottomMargin: 15
+            Layout.fillWidth: true
             spacing: 12
 
             Label {

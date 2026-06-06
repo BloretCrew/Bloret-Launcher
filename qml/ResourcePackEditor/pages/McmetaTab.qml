@@ -866,7 +866,6 @@ Flickable {
         Dialog {
             id: saveDialog
             title: "Save pack.mcmeta"
-            anchors.centerIn: parent
             modal: true
             width: 400
             height: 180

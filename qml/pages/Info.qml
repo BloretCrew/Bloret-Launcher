@@ -22,7 +22,7 @@ FluentPage {
             spacing: 20
 
             Image {
-                source: "../../icon/home.png"
+                source: Qt.resolvedUrl("../../icon/home.png")
                 sourceSize { width: 100; height: 100 }
             }
 
@@ -96,7 +96,7 @@ FluentPage {
                 radius: 4
                 Image {
                     anchors.centerIn: parent
-                    source: "../../icon/qq.png"
+                    source: Qt.resolvedUrl("../../icon/qq.png")
                     sourceSize { width: 40; height: 40 }
                 }
             }
@@ -136,7 +136,7 @@ FluentPage {
             spacing: 15
             
             Image {
-                source: "../../icon/github.png"
+                source: Qt.resolvedUrl("../../icon/github.png")
                 sourceSize { width: 50; height: 50 }
             }
 

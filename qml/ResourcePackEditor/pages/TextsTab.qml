@@ -230,7 +230,7 @@ Item {
         closePolicy: Popup.CloseOnEscape
 
         ColumnLayout {
-            width: parent.width
+            Layout.fillWidth: true
             spacing: 8
 
             Label {

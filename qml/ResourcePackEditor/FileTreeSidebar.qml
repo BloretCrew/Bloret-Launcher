@@ -234,7 +234,7 @@ Rectangle {
         property string _parentPath: ""
 
         ColumnLayout {
-            width: parent.width
+            Layout.fillWidth: true
             spacing: 8
 
             Label {
@@ -284,7 +284,7 @@ Rectangle {
         property string _oldName: ""
 
         ColumnLayout {
-            width: parent.width
+            Layout.fillWidth: true
             spacing: 8
 
             Label {

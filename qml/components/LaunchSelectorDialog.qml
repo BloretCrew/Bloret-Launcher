@@ -22,8 +22,8 @@ Dialog {
     signal deleteItem(string name)
     
     ColumnLayout {
-        width: parent.width
-        height: parent.height
+        Layout.fillWidth: true
+        Layout.fillHeight: true
         spacing: 10
         
         Label {

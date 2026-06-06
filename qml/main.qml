@@ -228,8 +228,8 @@ FluentWindow {
         standardButtons: Dialog.NoButton
 
         ColumnLayout {
+            Layout.fillWidth: true
             spacing: 16
-            width: parent.width
 
             Text {
                 text: downloadErrorDialog.errorMessage

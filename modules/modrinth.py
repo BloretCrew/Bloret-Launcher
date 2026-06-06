@@ -137,7 +137,7 @@ def Get_Mod_File_Download_Url(slug, loaders=None, game_versions=None):
 
 def add_mrpack(parent_widget: QWidget = None):
     log(i18nText("添加 Modrinth Modpack"), logging.INFO)
-    
+
     # 弹出文件选择对话框
     file_path, _ = QFileDialog.getOpenFileName(
         parent_widget,
@@ -145,7 +145,7 @@ def add_mrpack(parent_widget: QWidget = None):
         "",
         "Modrinth Modpack Files (*.mrpack)"
     )
-    
+
     # 如果用户选择了文件
     if file_path:
         # 创建信息栏

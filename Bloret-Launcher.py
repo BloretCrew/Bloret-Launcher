@@ -1005,54 +1005,54 @@ class Backend(QObject):
             
             # 弹出对话框让用户确认名称和版本
             pack_name, ok1 = QInputDialog.getText(
-                self.parent if hasattr(self, 'parent') else None,
+                None,
                 "导出 Modrinth 整合包",
-                f"请输入整合包名称:",
+                "请输入整合包名称:",
                 text=info['name']
             )
-            
+
             if not ok1 or not pack_name:
                 return False
-            
+
             pack_version, ok2 = QInputDialog.getText(
-                self.parent if hasattr(self, 'parent') else None,
+                None,
                 "导出 Modrinth 整合包",
-                f"请输入整合包版本号:",
+                "请输入整合包版本号:",
                 text="1.0.0"
             )
-            
+
             if not ok2 or not pack_version:
                 return False
-            
+
             # 选择保存位置
             default_name = f"{pack_name}-{pack_version}.mrpack"
             output_path, _ = QFileDialog.getSaveFileName(
-                self.parent if hasattr(self, 'parent') else None,
+                None,
                 "保存 Modrinth 整合包",
                 default_name,
                 "Modrinth Modpack Files (*.mrpack)"
             )
-            
+
             if not output_path:
                 return False
-            
+
             # 确保扩展名正确
             if not output_path.endswith('.mrpack'):
                 output_path += '.mrpack'
-            
+
             # 执行导出
             summary = f"从 {versionName} 导出的整合包"
             success = export_to_mrpack(instance_path, output_path, pack_name, pack_version, summary)
-            
+
             if success:
                 QMessageBox.information(
-                    self.parent if hasattr(self, 'parent') else None,
+                    None,
                     "导出成功",
                     f"整合包已成功导出到:\n{output_path}"
                 )
             else:
                 QMessageBox.critical(
-                    self.parent if hasattr(self, 'parent') else None,
+                    None,
                     "导出失败",
                     "导出整合包时发生错误，请查看日志。"
                 )
@@ -1877,6 +1877,18 @@ class Backend(QObject):
             # 可以在这里发出信号或刷新 UI（如果需要）
         except Exception as e:
             print(f"添加自定义项失败: {e}")
+
+    @Slot()
+    def importMrpack(self):
+        """导入 Modrinth .mrpack 整合包"""
+        try:
+            from modules.modrinth import add_mrpack
+            print("Requested import Modrinth mrpack")
+            add_mrpack(None)
+        except Exception as e:
+            print(f"导入 Modrinth 整合包失败: {e}")
+            import traceback
+            traceback.print_exc()
 
     @Slot(result=str)
     def getBloretVersion(self):

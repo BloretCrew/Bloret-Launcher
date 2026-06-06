@@ -168,7 +168,7 @@ FluentPage {
             spacing: 10
             
             Image {
-                source: "../../icon/Bloriko.jpg"
+                source: Qt.resolvedUrl("../../icon/Bloriko.jpg")
                 sourceSize { width: 35; height: 35 }
                 fillMode: Image.PreserveAspectCrop
                 layer.enabled: true
@@ -256,7 +256,7 @@ FluentPage {
                     spacing: 15
                     
                     Image {
-                        source: "../../icon/bloret.png"
+                        source: Qt.resolvedUrl("../../icon/bloret.png")
                         sourceSize { width: 50; height: 50 }
                         fillMode: Image.PreserveAspectFit
                     }
@@ -287,7 +287,7 @@ FluentPage {
                         RowLayout {
                             Layout.fillWidth: true
                             Image {
-                                source: "../../icon/Grass_Block.png"
+                                source: Qt.resolvedUrl("../../icon/Grass_Block.png")
                                 sourceSize { width: 16; height: 16 }
                             }
                             Label {
