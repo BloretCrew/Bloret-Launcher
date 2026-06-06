@@ -186,6 +186,10 @@ FluentWindow {
             coreManagerDialog.openWithVersion(versionName)
         }
 
+        function onMrpackExportRequested(versionName) {
+            exportMrpackDialog.openForVersion(versionName)
+        }
+
         function onMinecraftCrashDetected(title, message, stackTrace) {
             errorAnalysisDialog.showError(title, message, stackTrace)
         }
@@ -289,6 +293,10 @@ FluentWindow {
 
     CoreManagerDialog {
         id: coreManagerDialog
+    }
+
+    ExportMrpackDialog {
+        id: exportMrpackDialog
     }
 
     // OOBE 覆盖层

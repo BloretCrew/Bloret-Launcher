@@ -140,6 +140,7 @@ class Backend(QObject):
     downloadCompleted = Signal(str)  # message — 安装完成时通知 UI
     downloadPaused = Signal(bool)
     coreManagerRequested = Signal(str, dict)
+    mrpackExportRequested = Signal(str)
     activityInfoChanged = Signal(dict)
     downloadNotify = Signal(str, str, bool)
     launchDialogRequested = Signal(str)
@@ -981,89 +982,46 @@ class Backend(QObject):
         except Exception as e:
             print(f"Error opening version folder: {e}")
 
-    @Slot(str, result=bool)
-    def exportToMrpack(self, versionName):
-        """导出指定版本为 .mrpack 文件"""
+    @Slot(str, result='QVariantMap')
+    def getMrpackInstanceInfo(self, versionName):
+        """获取实例信息用于导出对话框"""
         try:
-            from modules.mrpack_export import export_to_mrpack, get_instance_info
-            from PySide6.QtWidgets import QFileDialog, QInputDialog, QMessageBox
-            from PySide6.QtCore import QStandardPaths
-            
+            from modules.mrpack_export import get_instance_info
             config_data = cfg.read()
             minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
             instance_path = os.path.join(minecraft_dir, "versions", versionName)
-            
             if not os.path.exists(instance_path):
-                print(f"实例路径不存在：{instance_path}")
-                return False
-            
-            # 获取实例信息
+                return {}
             info = get_instance_info(instance_path)
-            if not info:
-                print("无法获取实例信息")
-                return False
-            
-            # 弹出对话框让用户确认名称和版本
-            pack_name, ok1 = QInputDialog.getText(
-                None,
-                "导出 Modrinth 整合包",
-                "请输入整合包名称:",
-                text=info['name']
-            )
+            return info if info else {}
+        except Exception as e:
+            print(f"获取实例信息失败：{e}")
+            return {}
 
-            if not ok1 or not pack_name:
-                return False
-
-            pack_version, ok2 = QInputDialog.getText(
-                None,
-                "导出 Modrinth 整合包",
-                "请输入整合包版本号:",
-                text="1.0.0"
-            )
-
-            if not ok2 or not pack_version:
-                return False
-
-            # 选择保存位置
-            default_name = f"{pack_name}-{pack_version}.mrpack"
-            output_path, _ = QFileDialog.getSaveFileName(
-                None,
-                "保存 Modrinth 整合包",
-                default_name,
-                "Modrinth Modpack Files (*.mrpack)"
-            )
-
-            if not output_path:
-                return False
-
-            # 确保扩展名正确
-            if not output_path.endswith('.mrpack'):
-                output_path += '.mrpack'
-
-            # 执行导出
+    @Slot(str, str, str, str, result=bool)
+    def doExportMrpack(self, versionName, packName, packVersion, outputPath):
+        """执行 Modrinth 整合包导出"""
+        try:
+            from modules.mrpack_export import export_to_mrpack
+            config_data = cfg.read()
+            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+            instance_path = os.path.join(minecraft_dir, "versions", versionName)
+            if not outputPath.endswith('.mrpack'):
+                outputPath += '.mrpack'
             summary = f"从 {versionName} 导出的整合包"
-            success = export_to_mrpack(instance_path, output_path, pack_name, pack_version, summary)
-
-            if success:
-                QMessageBox.information(
-                    None,
-                    "导出成功",
-                    f"整合包已成功导出到:\n{output_path}"
-                )
-            else:
-                QMessageBox.critical(
-                    None,
-                    "导出失败",
-                    "导出整合包时发生错误，请查看日志。"
-                )
-            
-            return success
-            
+            return export_to_mrpack(instance_path, outputPath, packName, packVersion, summary)
         except Exception as e:
             print(f"导出整合包失败：{e}")
             import traceback
             traceback.print_exc()
             return False
+
+    @Slot(str, str, str, result=str)
+    def selectSaveFile(self, caption, defaultName, fileFilter):
+        """显示保存文件对话框，返回选择的路径"""
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getSaveFileName(None, caption, defaultName, fileFilter)
+        return path or ""
 
     @Slot(str, str)
     def openSubFolder(self, versionName, subPath):
@@ -1136,6 +1094,10 @@ class Backend(QObject):
             self.coreManagerRequested.emit(versionName, core_data)
         except Exception as e:
             print(f"Error showing core manager: {e}")
+
+    @Slot(str)
+    def showMrpackExport(self, versionName):
+        self.mrpackExportRequested.emit(versionName)
 
     @Slot(str, result="QVariant")
     def getCoreData(self, versionName):

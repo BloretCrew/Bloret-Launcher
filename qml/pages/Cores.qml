@@ -142,14 +142,7 @@ FluentPage {
                                 icon.name: "ic_fluent_arrow_export_20_regular"
                                 visible: itemData.type === "minecraft"
                                 onTriggered: {
-                                    if (Backend) {
-                                        let success = Backend.exportToMrpack(itemData.name)
-                                        if (success) {
-                                            console.log("Modrinth 整合包导出成功")
-                                        } else {
-                                            console.log("Modrinth 整合包导出失败或取消")
-                                        }
-                                    }
+                                    if (Backend) Backend.showMrpackExport(itemData.name)
                                 }
                             }
 

@@ -610,7 +610,7 @@ Dialog {
                             icon.name: "ic_fluent_arrow_export_20_regular"
                             Layout.fillWidth: true
                             onClicked: {
-                                if (Backend) Backend.exportToMrpack(versionName)
+                                if (Backend) Backend.showMrpackExport(versionName)
                             }
                         }
                     }
