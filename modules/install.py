@@ -9,6 +9,7 @@ except ImportError:
 from pathlib import Path
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
+from modules.versions import dl_source_launcher_or_meta_get, dl_source_library_get, dl_source_assets_get
 
 thread_local_data = threading.local()
 
@@ -240,69 +241,6 @@ def bloret_git_clone_download(version, minecraft_dir, backend=None):
             except Exception:
                 pass
 
-
-def dl_source_launcher_or_meta_get(original_url):
-    """
-    根据PCL启动器的DlSourceLauncherOrMetaGet方法实现
-    返回下载URL的镜像源列表
-    """
-    if not original_url:
-        raise Exception("无对应的 json 下载地址")
-    
-    # 官方源
-    official_urls = [original_url]
-    
-    # 镜像源
-    mirror_urls = [original_url
-        .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com")
-        .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com")
-        .replace("https://launcher.mojang.com", "https://bmclapi2.bangbang93.com")
-        .replace("https://launchermeta.mojang.com", "https://bmclapi2.bangbang93.com")
-    ]
-    
-    # 根据是否优先使用官方源决定URL顺序
-    # 这里我们默认使用镜像源优先，与PCL的逻辑保持一致
-    return mirror_urls + official_urls
-
-def dl_source_library_get(original_url):
-    """
-    根据PCL启动器的DlSourceLibraryGet方法实现
-    返回库文件URL的镜像源列表
-    """
-    candidate_urls = []
-    
-    parsed_url = urlparse(original_url)
-    host = (parsed_url.hostname or "").lower()
-    path = parsed_url.path or ""
-
-    # 镜像源
-    mirror_urls = []
-    if host == "libraries.minecraft.net":
-        mirror_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/maven/"))
-        mirror_urls.append(original_url.replace("https://libraries.minecraft.net/", "https://bmclapi2.bangbang93.com/libraries/"))
-    elif host == "maven.fabricmc.net":
-        mirror_urls.append(original_url.replace("https://maven.fabricmc.net/", "https://bmclapi2.bangbang93.com/maven/"))
-    elif host == "maven.minecraftforge.net":
-        mirror_urls.append(original_url.replace("https://maven.minecraftforge.net/", "https://bmclapi2.bangbang93.com/maven/"))
-    elif host == "maven.neoforged.net" and path.startswith("/releases/"):
-        mirror_urls.append(original_url.replace("https://maven.neoforged.net/releases/", "https://bmclapi2.bangbang93.com/maven/"))
-    
-    # 添加 BMCLAPI 镜像源
-    mirror_urls.append(original_url
-        .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/maven")
-        .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/maven")
-        .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/maven"))
-    mirror_urls.append(original_url
-        .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
-        .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/libraries")
-        .replace("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/libraries"))
-
-    # 优先添加镜像源
-    candidate_urls.extend(mirror_urls)
-    # 最后添加官方源
-    candidate_urls.append(original_url)
-    
-    return candidate_urls
 
 def _request_json_from_urls(urls, timeout=30):
     for url in urls:
@@ -599,27 +537,6 @@ def _install_forge_like_loader(loader_type, minecraft_version, minecraft_dir, ve
     os.makedirs(os.path.join(target_dir, "resourcepacks"), exist_ok=True)
     return target_id
 
-def dl_source_assets_get(original_url):
-    """
-    根据PCL启动器的DlSourceAssetsGet方法实现
-    返回资源文件URL的镜像源列表
-    """
-    original_url = original_url.replace("http://resources.download.minecraft.net", "https://resources.download.minecraft.net")
-    
-    # 官方源
-    official_urls = [original_url]
-    
-    # 镜像源
-    mirror_urls = [original_url
-        .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/assets")
-        .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/assets")
-        .replace("https://resources.download.minecraft.net", "https://bmclapi2.bangbang93.com/assets")
-    ]
-    
-    # 根据是否优先使用官方源决定URL顺序
-    # 这里我们默认使用镜像源优先，与PCL的逻辑保持一致
-    return mirror_urls + official_urls
-
 # 初始化全局变量
 set_list = []
 minecraft_list = []
@@ -853,8 +770,9 @@ class LibraryDownloader:
             if "downloads" in lib and "artifact" in lib["downloads"]:
                 artifact = lib["downloads"]["artifact"]
                 original_url = artifact["url"]
-                
-                candidate_urls = dl_source_library_get(original_url)
+
+                # 补全文件直接使用官方源，不经过镜像转换
+                candidate_urls = [original_url]
 
                 downloaded = False
                 for url_to_try in candidate_urls:
@@ -867,7 +785,7 @@ class LibraryDownloader:
                             log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
                             # 使用 session 复用连接
                             session = get_session()
-                            response = session.get(url_to_try, proxies=None, timeout=30)
+                            response = session.get(url_to_try, proxies=BLglobals.get_proxies(), timeout=30)
                             if response.status_code == 200:
                                 with open(lib_path, 'wb') as f:
                                     f.write(response.content)
@@ -883,7 +801,7 @@ class LibraryDownloader:
                                 http_url = url_to_try.replace("https://", "http://")
                                 log(f"尝试使用HTTP协议: {http_url}")
                                 session = get_session()
-                                response = session.get(http_url, proxies=None, timeout=30)
+                                response = session.get(http_url, proxies=BLglobals.get_proxies(), timeout=30)
                                 if response.status_code == 200:
                                     with open(lib_path, 'wb') as f:
                                         f.write(response.content)
@@ -912,7 +830,8 @@ class LibraryDownloader:
                     group_id, artifact_id, version = parts[0:3]
                     
                     original_url = f"https://maven.fabricmc.net/{group_id.replace('.', '/')}/{artifact_id}/{version}/{artifact_id}-{version}.jar" # Fabric Maven
-                    candidate_urls = dl_source_library_get(original_url)
+                    # 补全文件直接使用官方源
+                    candidate_urls = [original_url]
 
                     downloaded = False
                     for url_to_try in candidate_urls:
@@ -921,7 +840,7 @@ class LibraryDownloader:
                                 log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
                                 # 使用 session 复用连接
                                 session = get_session()
-                                response = session.get(url_to_try, proxies=None, timeout=30)
+                                response = session.get(url_to_try, proxies=BLglobals.get_proxies(), timeout=30)
                                 if response.status_code == 200:
                                     with open(lib_path, 'wb') as f:
                                         f.write(response.content)
@@ -955,7 +874,7 @@ class LibraryDownloader:
     
     def download_libraries(self):
         log(f"使用 {self.max_workers} 个线程下载库文件")
-        
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="LibraryDownloader") as executor:
             futures = [executor.submit(self.download_single_library, lib_item) for lib_item in self.missing_libraries]
             concurrent.futures.wait(futures)
@@ -1154,7 +1073,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
             for url in manifest_urls:
                 try:
                     log(f"正在获取版本清单: {url}")
-                    response = requests.get(url, proxies=None, timeout=30)
+                    response = requests.get(url, proxies=BLglobals.get_proxies(), timeout=30)
                     if response.status_code == 200:
                         manifest_data = response.json()
                         break
@@ -1166,7 +1085,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                     try:
                         http_url = url.replace("https://", "http://")
                         log(f"尝试使用HTTP协议: {http_url}")
-                        response = requests.get(http_url, proxies=None, timeout=30)
+                        response = requests.get(http_url, proxies=BLglobals.get_proxies(), timeout=30)
                         if response.status_code == 200:
                             manifest_data = response.json()
                             break

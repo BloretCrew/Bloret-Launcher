@@ -76,6 +76,10 @@ FluentPage {
         _moveSensitivityDesc = Backend ? Backend.tr("控制移动摇杆的响应速度") : "控制移动摇杆的响应速度";
         _viewSensitivityTitle = Backend ? Backend.tr("视角摇杆灵敏度") : "视角摇杆灵敏度";
         _viewSensitivityDesc = Backend ? Backend.tr("控制视角旋转的速度") : "控制视角旋转的速度";
+        _networkSection = Backend ? Backend.tr("网络") : "网络";
+        _proxyTitle = Backend ? Backend.tr("网络代理") : "网络代理";
+        _proxyDesc = Backend ? Backend.tr("设置 HTTP/HTTPS/SOCKS5 代理地址，如 http://127.0.0.1:7890，留空表示不使用代理") : "设置 HTTP/HTTPS/SOCKS5 代理地址，如 http://127.0.0.1:7890，留空表示不使用代理";
+        _proxyPlaceholder = Backend ? Backend.tr("不使用代理") : "不使用代理";
     }
 
     property string _versionTitle: Backend ? Backend.tr("当前版本") : "当前版本"
@@ -123,6 +127,10 @@ FluentPage {
     property string _moveSensitivityDesc: Backend ? Backend.tr("控制移动摇杆的响应速度") : "控制移动摇杆的响应速度"
     property string _viewSensitivityTitle: Backend ? Backend.tr("视角摇杆灵敏度") : "视角摇杆灵敏度"
     property string _viewSensitivityDesc: Backend ? Backend.tr("控制视角旋转的速度") : "控制视角旋转的速度"
+    property string _networkSection: Backend ? Backend.tr("网络") : "网络"
+    property string _proxyTitle: Backend ? Backend.tr("网络代理") : "网络代理"
+    property string _proxyDesc: Backend ? Backend.tr("设置 HTTP/HTTPS/SOCKS5 代理地址，如 http://127.0.0.1:7890，留空表示不使用代理") : "设置 HTTP/HTTPS/SOCKS5 代理地址，如 http://127.0.0.1:7890，留空表示不使用代理"
+    property string _proxyPlaceholder: Backend ? Backend.tr("不使用代理") : "不使用代理"
 
     function refreshData() {
         refreshTranslations();
@@ -257,13 +265,13 @@ FluentPage {
                 textRole: "text"
                 valueRole: "value"
                 currentIndex: {
-                    if (!Backend) return 0;
+                    if (!Backend) return 1;
                     var src = Backend.getDownloadSource();
                     for (var i = 0; i < sourceCombo.model.length; i++) {
                         if (sourceCombo.model[i].value === src)
                             return i;
                     }
-                    return 0;
+                    return 1;
                 }
                 onCurrentValueChanged: {
                     if (Backend)
@@ -537,6 +545,36 @@ FluentPage {
                 onClicked: {
                     if (Backend)
                         Backend.clearLogs();
+                }
+            }
+        }
+    }
+
+    Label {
+        font.pixelSize: 20
+        font.weight: Font.DemiBold
+        text: _networkSection
+        Layout.topMargin: 10
+        color: Theme.currentTheme.colors.textColor
+    }
+
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 4
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: _proxyTitle
+            description: _proxyDesc
+            icon.name: "ic_fluent_shield_20_regular"
+            TextField {
+                id: proxyField
+                placeholderText: _proxyPlaceholder
+                Layout.preferredWidth: 250
+                text: Backend ? Backend.getProxy() : ""
+                onEditingFinished: {
+                    if (Backend)
+                        Backend.setProxy(text);
                 }
             }
         }

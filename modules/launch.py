@@ -509,7 +509,7 @@ def Get_Run_Script(mc_version, skip_completion=False):
                 log(f"跳过补全的库文件: {lib_path}", logging.WARNING)
         else:
             log(f"发现 {len(missing_libraries)} 个缺失的库文件，正在尝试下载...")
-            
+
             # 从 config.json 读取 MaxThread
             max_workers = config_data.get("MaxThread", 64)
             

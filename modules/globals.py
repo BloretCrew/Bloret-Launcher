@@ -40,5 +40,15 @@ launch_status = {  # 启动状态存储
     "finished": False
 }
 
-download_source = "bmclapi"  # "bmclapi" | "gitcode" | "official"  下载源
+download_source = "gitcode"  # "bmclapi" | "gitcode" | "official"  下载源
 current_minecraft_version = None  # 当前安装中的 Minecraft 版本，供 gitcode 源使用
+proxy = ""  # 网络代理地址，如 "http://127.0.0.1:7890"，为空则不使用代理
+
+def get_proxies():
+    """根据 proxy 设置返回 requests 库可用的 proxies 字典"""
+    if not proxy:
+        return None
+    p = proxy.strip()
+    if not p.startswith(("http://", "https://", "socks5://", "socks5h://", "socks4://")):
+        p = "http://" + p
+    return {"http": p, "https": p}

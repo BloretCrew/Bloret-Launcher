@@ -2082,7 +2082,7 @@ class Backend(QObject):
     @Slot(result=str)
     def getDownloadSource(self):
         config_data = cfg.read()
-        return config_data.get('download_source', 'bmclapi')
+        return config_data.get('download_source', 'gitcode')
 
     @Slot(str)
     def setDownloadSource(self, source):
@@ -2307,6 +2307,22 @@ class Backend(QObject):
                 json.dump(config_data, f, ensure_ascii=False, indent=4)
         except Exception as e:
             print(f"setGamepadLayoutData failed: {e}")
+
+    # ========== 网络代理 ==========
+
+    @Slot(result=str)
+    def getProxy(self):
+        config_data = cfg.read()
+        return config_data.get('proxy', '')
+
+    @Slot(str)
+    def setProxy(self, proxy_addr):
+        config_data = cfg.read()
+        config_data['proxy'] = proxy_addr
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        BLglobals.proxy = proxy_addr
+        print(f"Proxy updated to: {proxy_addr or '(none)'}")
 
     @Slot(str)
     def queryUUID(self, name):

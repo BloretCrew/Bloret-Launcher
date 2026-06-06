@@ -99,13 +99,14 @@ def dl_source_launcher_or_meta_get(original_url):
     """
     根据PCL启动器的DlSourceLauncherOrMetaGet方法实现
     返回下载URL的镜像源列表
-    根据 download_source 选择 BMCLAPI / GitCode / 官方。
+    根据 download_source 选择 BMCLAPI / 官方。
+    gitcode 源的 HTTP 回退走 BMCLAPI（git clone 在上层处理）。
     """
     if not original_url:
         raise Exception("无对应的 json 下载地址")
-    if BLglobals.download_source != "bmclapi":
+    if BLglobals.download_source == "official":
         return [original_url]
-    
+
     official_urls = [original_url]
     mirror_urls = [original_url
         .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com")
@@ -118,23 +119,12 @@ def dl_source_launcher_or_meta_get(original_url):
 def dl_source_library_get(original_url):
     """
     返回库文件URL的镜像源列表。
-    根据 download_source 选择 BMCLAPI/maven / GitCode/libraries / 官方。
+    根据 download_source 选择 BMCLAPI/maven / GitCode(回退BMCLAPI) / 官方。
+    注：GitCode 的 git clone 补全在 LibraryDownloader 中处理，HTTP 回退走 BMCLAPI。
     """
     if BLglobals.download_source == "official":
         return [original_url]
-    if BLglobals.download_source == "gitcode":
-        base = _gitcode_base_url()
-        if base:
-            mirror = original_url
-            for src in ["https://libraries.minecraft.net", "https://piston-data.mojang.com",
-                         "https://piston-meta.mojang.com", "https://launcher.mojang.com",
-                         "https://launchermeta.mojang.com"]:
-                if src in mirror:
-                    mirror = mirror.replace(src, f"{base}/libraries")
-                    break
-            if mirror != original_url:
-                return [mirror, original_url]
-        return [original_url]
+    # gitcode 和 bmclapi 都使用 BMCLAPI 镜像（git clone 在上层处理）
     mirror = original_url
     for src in ["https://piston-data.mojang.com", "https://piston-meta.mojang.com",
                  "https://libraries.minecraft.net", "https://launcher.mojang.com",
@@ -150,22 +140,11 @@ def dl_source_assets_get(original_url):
     """
     根据PCL启动器的DlSourceAssetsGet方法实现
     返回资源文件URL的镜像源列表
-    根据 download_source 选择 BMCLAPI/assets / GitCode/assets / 官方。
+    根据 download_source 选择 BMCLAPI/assets / 官方。
+    gitcode 源的 HTTP 回退走 BMCLAPI（git clone 在上层处理）。
     """
     original_url = original_url.replace("http://resources.download.minecraft.net", "https://resources.download.minecraft.net")
     if BLglobals.download_source == "official":
-        return [original_url]
-    if BLglobals.download_source == "gitcode":
-        base = _gitcode_base_url()
-        if base:
-            mirror = original_url
-            for src in ["https://resources.download.minecraft.net", "https://piston-data.mojang.com",
-                         "https://piston-meta.mojang.com"]:
-                if src in mirror:
-                    mirror = mirror.replace(src, f"{base}/assets")
-                    break
-            if mirror != original_url:
-                return [mirror, original_url]
         return [original_url]
     official_urls = [original_url]
     mirror_urls = [original_url
@@ -648,7 +627,7 @@ class LibraryDownloader:
                     for attempt in range(3): # 尝试3次
                         try:
                             log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
-                            response = requests.get(url_to_try, proxies=None, timeout=30)
+                            response = requests.get(url_to_try, proxies=BLglobals.get_proxies(), timeout=30)
                             if response.status_code == 200:
                                 with open(lib_path, 'wb') as f:
                                     f.write(response.content)
@@ -691,7 +670,7 @@ class LibraryDownloader:
                                 log(f"正在下载库文件 (尝试 {attempt + 1}/3): {url_to_try} -> {lib_path}")
                                 # 使用 session 复用连接
                                 session = get_session()
-                                response = session.get(url_to_try, proxies=None, timeout=30)
+                                response = session.get(url_to_try, proxies=BLglobals.get_proxies(), timeout=30)
                                 if response.status_code == 200:
                                     with open(lib_path, 'wb') as f:
                                         f.write(response.content)
@@ -998,7 +977,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                 # 记录当前尝试的URL日志
                 log(f"正在获取版本清单: {url}")
                 # 发送HTTP GET请求获取版本清单，不使用代理，超时时间30秒
-                response = requests.get(url, proxies=None, timeout=30)
+                response = requests.get(url, proxies=BLglobals.get_proxies(), timeout=30)
                 # 检查HTTP响应状态码
                 if response.status_code == 200:
                     # 状态码200表示成功，解析JSON数据
@@ -1017,7 +996,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
                     http_url = url.replace("https://", "http://")
                     log(f"尝试使用HTTP协议: {http_url}")
                     # 重新发送HTTP GET请求
-                    response = requests.get(http_url, proxies=None, timeout=30)
+                    response = requests.get(http_url, proxies=BLglobals.get_proxies(), timeout=30)
                     if response.status_code == 200:
                         # HTTP请求成功，解析JSON数据
                         manifest_data = response.json()
@@ -1077,10 +1056,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
         # 使用PCL风格的镜像源处理，获取多个可用的镜像URL
         # dl_source_launcher_or_meta_get函数会将官方URL转换为多个镜像源URL
         version_info_urls = dl_source_launcher_or_meta_get(original_url)
-        # GitCode 源使用版本名构造的 URL
-        if BLglobals.download_source == "gitcode":
-            gc_url = f"{_gitcode_base_url()}/versions/{version}/{version}.json"
-            version_info_urls.insert(0, gc_url)
 
         # 记录正在获取版本详细信息的日志
         log(f"正在获取版本详细信息: {version_info_urls}")
@@ -1184,10 +1159,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, download_di
             
             # 使用PCL风格的镜像源处理，获取多个可用的镜像URL
             client_urls = dl_source_launcher_or_meta_get(client_url)
-            # GitCode 源使用版本名构造的 URL
-            if BLglobals.download_source == "gitcode":
-                gc_url = f"{_gitcode_base_url()}/versions/{version}/{version}.jar"
-                client_urls.insert(0, gc_url)
 
             # 构建客户端JAR文件的本地保存路径
             client_jar_path = os.path.join(version_dir, f"{version}.jar")
