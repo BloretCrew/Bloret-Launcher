@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 from modules.plugin import addPlugin, list_installed_plugins, uninstall_plugin
-from modules.win11toast import toast
+from modules.notification import send_notification
 import modules.globals as BLglobals
 from modules.log import log
 import modules.config as cfg
@@ -1036,7 +1036,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             html_content = self.generate_success_page()
                             self.wfile.write(html_content.encode('utf-8'))
                             
-                            toast(f'您已以 {user_data["username"]} 登录', f'登录后可使用 Bloret PassPort 服务，例如同步 Minecraft 登录信息到云端等功能')
+                            send_notification(f'您已以 {user_data["username"]} 登录', f'登录后可使用 Bloret PassPort 服务，例如同步 Minecraft 登录信息到云端等功能', category="account")
                         else:
                             raise ValueError("Invalid user data format")
 
@@ -1143,7 +1143,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     self.send_header('Location', 'https://passport.bloret.net/')
                     self.end_headers()
                     
-                    toast('已从 Bloret PassPort 同步账户', f'已成功同步 {len(accounts)} 个账户到本地。')
+                    send_notification('已从 Bloret PassPort 同步账户', f'已成功同步 {len(accounts)} 个账户到本地。', category="account")
                 else:
                     message = api_result.get('message', '未知错误')
                     raise Exception(f"服务器返回错误: {message}")
@@ -1423,16 +1423,18 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 self.send_header('Location', target)
                 self.end_headers()
                 return
-            
+
             # 根据结果发送成功或失败页面
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
-            
+
             if result:
                 html_content = self.generate_install_success_page(plugin_name or 'Unknown Plugin')
+                send_notification("插件安装成功", f"{plugin_name or 'Unknown Plugin'} 已安装", category="install")
             else:
                 html_content = self.generate_error_page("插件安装失败")
+                send_notification("插件安装失败", f"{plugin_name or 'Unknown Plugin'} 安装失败", category="install")
             self.wfile.write(html_content.encode('utf-8'))
         except Exception as e:
             logger.error(f"Error during plugin installation: {e}")
@@ -1440,9 +1442,10 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self.send_response(500)
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
-            
+
             html_content = self.generate_error_page(f"Error during plugin installation: {str(e)}")
             self.wfile.write(html_content.encode('utf-8'))
+            send_notification("插件安装失败", str(e), category="install")
 
     def generate_success_page(self, username=None):
         """生成授权成功页面 - Microsoft Fluent2 Design"""

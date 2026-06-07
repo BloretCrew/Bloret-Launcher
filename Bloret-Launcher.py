@@ -435,6 +435,11 @@ class Backend(QObject):
                                 f"进程异常退出 (返回码: {p.returncode})\n请查看上面的日志输出",
                                 f"进程异常退出，返回码: {p.returncode}"
                             )
+                            try:
+                                from modules.notification import send_notification
+                                send_notification(f"Minecraft {ver} 崩溃", f"进程异常退出，返回码: {p.returncode}", category="launch_error")
+                            except Exception:
+                                pass
                     except Exception as e:
                         print(f"[错误] 监控进程输出时发生异常: {e}")
 
@@ -451,6 +456,11 @@ class Backend(QObject):
                     window_found_event.set()
                     emit_progress(100, "已检测到 Minecraft 窗口，启动完成", "")
                     finish_launch(close_dialog=True)
+                    try:
+                        from modules.notification import send_notification
+                        send_notification("Minecraft 已就绪", f"Minecraft {version} 启动完成", category="launch_ready")
+                    except Exception:
+                        pass
 
                 # 传入 proc.pid 以便监控进程退出并自动隐藏工具条
                 monitor_minecraft_window(version, callback=on_window_found, mc_pid=proc.pid)
@@ -460,6 +470,11 @@ class Backend(QObject):
                         return
                     emit_progress(100, "等待 Minecraft 窗口超时", "未检测到窗口，你可以继续后台等待或关闭此对话框后重试")
                     finish_launch(close_dialog=False)
+                    try:
+                        from modules.notification import send_notification
+                        send_notification("启动超时", f"Minecraft {version} 窗口等待超时，请手动检查", category="launch_error")
+                    except Exception:
+                        pass
 
                 threading.Thread(target=monitor_timeout_guard, daemon=True).start()
             except Exception as e:
@@ -474,6 +489,11 @@ class Backend(QObject):
                     str(e),
                     tb_str
                 )
+                try:
+                    from modules.notification import send_notification
+                    send_notification("启动失败", str(e), category="launch_error")
+                except Exception:
+                    pass
 
         threading.Thread(target=run_launch, daemon=True).start()
 
@@ -544,32 +564,27 @@ class Backend(QObject):
     _recent_runs_path = os.path.join(BLglobals.datapath, 'recent_runs.json')
 
     def _notify_if_not_foreground(self, timestamp, message):
-        """当 Minecraft 窗口不在前台时发送 Windows Toast 通知"""
+        """当 Minecraft 窗口不在前台时发送系统通知"""
         try:
-            import ctypes
-            # 获取当前前台窗口标题
-            hwnd = ctypes.windll.user32.GetForegroundWindow()
-            if hwnd:
-                length = ctypes.windll.user32.GetWindowTextLengthW(hwnd) + 1
-                buf = ctypes.create_unicode_buffer(length)
-                ctypes.windll.user32.GetWindowTextW(hwnd, buf, length)
-                title = buf.value
-                # 如果前台窗口标题包含 Minecraft，则不通知
-                if "minecraft" in title.lower() or "Minecraft" in title:
-                    return
+            if sys.platform == "win32":
+                import ctypes
+                # 获取当前前台窗口标题
+                hwnd = ctypes.windll.user32.GetForegroundWindow()
+                if hwnd:
+                    length = ctypes.windll.user32.GetWindowTextLengthW(hwnd) + 1
+                    buf = ctypes.create_unicode_buffer(length)
+                    ctypes.windll.user32.GetWindowTextW(hwnd, buf, length)
+                    title = buf.value
+                    # 如果前台窗口标题包含 Minecraft，则不通知
+                    if "minecraft" in title.lower() or "Minecraft" in title:
+                        return
 
-            def send_toast():
-                try:
-                    from win11toast import toast
-                    toast(
-                        title='Minecraft 聊天消息',
-                        body=f'{timestamp} {message}',
-                        icon=None,
-                    )
-                except Exception:
-                    pass
-
-            threading.Thread(target=send_toast, daemon=True).start()
+            from modules.notification import send_notification
+            threading.Thread(
+                target=lambda t, b: send_notification(t, b, category="chat_message"),
+                args=('Minecraft 聊天消息', f'{timestamp} {message}'),
+                daemon=True,
+            ).start()
         except Exception:
             pass
 
@@ -1765,13 +1780,17 @@ class Backend(QObject):
     def notifyDownloadComplete(self, message="Minecraft 安装完成"):
         self.downloadCompleted.emit(message)
         try:
-            from modules.win11toast import notify
-            notify(progress={
-                'title': 'Bloret Launcher',
-                'status': message,
-                'value': '100',
-                'valueStringOverride': '100%'
-            })
+            if sys.platform == "win32":
+                from modules.win11toast import notify
+                notify(progress={
+                    'title': 'Bloret Launcher',
+                    'status': message,
+                    'value': '100',
+                    'valueStringOverride': '100%'
+                })
+            else:
+                from modules.notification import send_notification
+                send_notification("Bloret Launcher", message, category="download")
         except Exception as e:
             print(f"发送安装完成通知失败: {e}")
 
@@ -2005,6 +2024,11 @@ class Backend(QObject):
                 if latest_ver and IsNeedUpdate(current_ver, latest_ver):
                     print(f"Update available: {latest_ver}")
                     self.updateAvailable.emit(current_ver, latest_ver, update_text)
+                    try:
+                        from modules.notification import send_notification
+                        send_notification("发现新版本", f"Bloret Launcher {latest_ver} 已发布，点击查看详情", category="update")
+                    except Exception:
+                        pass
                 else:
                     print("Already up to date")
             except Exception as e:
@@ -2055,6 +2079,11 @@ class Backend(QObject):
             except Exception as e:
                 print(f"Update failed: {e}")
                 self.updateFailed.emit(str(e))
+                try:
+                    from modules.notification import send_notification
+                    send_notification("更新失败", str(e), category="update")
+                except Exception:
+                    pass
 
     @Slot(result=list)
     def getSystemJavas(self):
@@ -2222,6 +2251,50 @@ class Backend(QObject):
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print(f"RPE setting {key} updated to: {value}")
+
+    @Slot(str, result=bool)
+    def getNotificationSetting(self, key):
+        """读取通知偏好设置"""
+        config_data = cfg.read()
+        return config_data.get("notifications", {}).get(key, True)
+
+    @Slot(str, bool)
+    def setNotificationSetting(self, key, value):
+        """写入通知偏好设置"""
+        from modules.notification import invalidate_config_cache
+        config_data = cfg.read()
+        if "notifications" not in config_data:
+            config_data["notifications"] = {}
+        config_data["notifications"][key] = value
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        invalidate_config_cache()
+        print(f"Notification setting {key} updated to: {value}")
+
+    @Slot(result=str)
+    def getBarkUrl(self):
+        """读取 Bark 推送 URL"""
+        config_data = cfg.read()
+        return config_data.get("notifications", {}).get("bark_url", "")
+
+    @Slot(str)
+    def setBarkUrl(self, url):
+        """写入 Bark 推送 URL"""
+        from modules.notification import invalidate_config_cache
+        config_data = cfg.read()
+        if "notifications" not in config_data:
+            config_data["notifications"] = {}
+        config_data["notifications"]["bark_url"] = url.strip()
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        invalidate_config_cache()
+        print(f"Bark URL updated to: {url.strip()}")
+
+    @Slot(result=str)
+    def testBark(self):
+        """测试 Bark 推送"""
+        from modules.notification import test_bark
+        return test_bark()
 
     @Slot(result=bool)
     def getWebRemoterEnabled(self):
@@ -2596,17 +2669,37 @@ class Backend(QObject):
                             f.write(response.content)
                         print(f"Successfully downloaded mod to: {file_path}")
                         self.downloadNotify.emit(self.tr("下载成功"), f"{self.tr('已下载')} {filename} -> {mods_dir}", True)
+                        try:
+                            from modules.notification import send_notification
+                            send_notification(self.tr("下载成功"), f"{filename} -> {mods_dir}", category="download")
+                        except Exception:
+                            pass
                     else:
                         print(f"Failed to download: HTTP {response.status_code}")
                         self.downloadNotify.emit(self.tr("下载失败"), f"HTTP {response.status_code}", False)
+                        try:
+                            from modules.notification import send_notification
+                            send_notification(self.tr("下载失败"), f"HTTP {response.status_code}", category="download")
+                        except Exception:
+                            pass
                 else:
                     print(f"Could not find download URL for {mod_id}")
                     self.downloadNotify.emit(self.tr("下载失败"), f"{self.tr('未找到')} {mod_id} {self.tr('的下载链接')}", False)
+                    try:
+                        from modules.notification import send_notification
+                        send_notification(self.tr("下载失败"), f"{self.tr('未找到')} {mod_id} {self.tr('的下载链接')}", category="download")
+                    except Exception:
+                        pass
             except Exception as e:
                 print(f"Error downloading mod: {e}")
                 import traceback
                 traceback.print_exc()
                 self.downloadNotify.emit(self.tr("下载失败"), str(e), False)
+                try:
+                    from modules.notification import send_notification
+                    send_notification(self.tr("下载失败"), str(e), category="download")
+                except Exception:
+                    pass
         
         threading.Thread(target=run_download, daemon=True).start()
 
@@ -2634,15 +2727,35 @@ class Backend(QObject):
                             f.write(response.content)
                         print(f"Successfully downloaded to: {file_path}")
                         self.downloadNotify.emit(self.tr("下载成功"), f"{self.tr('已下载')} {filename} -> {target_folder}", True)
+                        try:
+                            from modules.notification import send_notification
+                            send_notification(self.tr("下载成功"), f"{filename} -> {target_folder}", category="download")
+                        except Exception:
+                            pass
                     else:
                         print(f"Failed to download: HTTP {response.status_code}")
                         self.downloadNotify.emit(self.tr("下载失败"), f"HTTP {response.status_code}", False)
+                        try:
+                            from modules.notification import send_notification
+                            send_notification(self.tr("下载失败"), f"HTTP {response.status_code}", category="download")
+                        except Exception:
+                            pass
                 else:
                     print(f"Could not find download URL for {mod_id}")
                     self.downloadNotify.emit(self.tr("下载失败"), f"{self.tr('未找到')} {mod_id} {self.tr('的下载链接')}", False)
+                    try:
+                        from modules.notification import send_notification
+                        send_notification(self.tr("下载失败"), f"{self.tr('未找到')} {mod_id} {self.tr('的下载链接')}", category="download")
+                    except Exception:
+                        pass
             except Exception as e:
                 print(f"Error downloading: {e}")
                 self.downloadNotify.emit(self.tr("下载失败"), str(e), False)
+                try:
+                    from modules.notification import send_notification
+                    send_notification(self.tr("下载失败"), str(e), category="download")
+                except Exception:
+                    pass
 
         threading.Thread(target=run_download, daemon=True).start()
 

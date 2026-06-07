@@ -3,7 +3,10 @@ import os
 import requests
 import subprocess
 import time
-from modules.win11toast import toast, update_progress, notify
+from modules.win11toast import update_progress, notify
+from modules.notification import send_notification as _send_notification
+def send_notification(title, body):
+    _send_notification(title, body, category="install")
 from threading import Thread
 from modules.log import log
 from modules.i18n import i18nText
@@ -67,7 +70,7 @@ def _install_java_thread(Java_Version):
         version_data = java_versions.get(version_key)
         if not version_data:
             log(f"错误: 未找到 Java {Java_Version} 的下载信息。")
-            toast(i18nText('错误'), f'未找到 Java {Java_Version} 的下载信息。')
+            send_notification(i18nText('错误'), f'未找到 Java {Java_Version} 的下载信息。')
             return
         log(f"已找到 Java {Java_Version} 的下载信息。")
 
@@ -75,7 +78,7 @@ def _install_java_thread(Java_Version):
         download_url = version_data.get("Windows", {}).get("x64")
         if not download_url:
             log(f"错误: 未找到 Java {Java_Version} 的 Windows x64 下载地址。")
-            toast(i18nText('错误'), f'未找到 Java {Java_Version} 的 Windows x64 下载地址。')
+            send_notification(i18nText('错误'), f'未找到 Java {Java_Version} 的 Windows x64 下载地址。')
             return
         log(f"已获取 Java {Java_Version} 的下载地址: {download_url}")
 
@@ -178,7 +181,7 @@ def _install_java_thread(Java_Version):
                     'status': f'Java {Java_Version} 安装成功'
                 })
                 # time.sleep(1)  # 等待通知显示
-                toast(i18nText('安装成功'), f'Java {Java_Version} 安装成功。')
+                send_notification(i18nText('安装成功'), f'Java {Java_Version} 安装成功。')
             else:
                 log(f"错误: Java {Java_Version} MSI 安装失败，返回码: {process.returncode}")
                 update_progress({
@@ -187,7 +190,7 @@ def _install_java_thread(Java_Version):
                     'status': f'Java {Java_Version} 安装失败，错误码: {process.returncode}'
                 })
                 # time.sleep(1)  # 等待通知显示
-                toast(i18nText('安装失败'), f'Java {Java_Version} 安装失败，错误码: {process.returncode}。')
+                send_notification(i18nText('安装失败'), f'Java {Java_Version} 安装失败，错误码: {process.returncode}。')
             
         elif download_path.endswith('.zip') or download_path.endswith('.tar.gz'):
             log(f"检测到压缩包: {download_path}")
@@ -211,7 +214,7 @@ def _install_java_thread(Java_Version):
                     'status': f'Java {Java_Version} 解压完成'
                 })
                 time.sleep(1)  # 等待通知显示
-                toast(i18nText('安装成功'), f'Java {Java_Version} 安装成功。')
+                send_notification(i18nText('安装成功'), f'Java {Java_Version} 安装成功。')
             except Exception as e:
                 log(f"错误: Java {Java_Version} 压缩包解压失败: {e}")
                 update_progress({
@@ -220,7 +223,7 @@ def _install_java_thread(Java_Version):
                     'status': f'Java {Java_Version} 解压失败'
                 })
                 time.sleep(1)  # 等待通知显示
-                toast(i18nText('安装失败'), f'Java {Java_Version} 解压失败。')
+                send_notification(i18nText('安装失败'), f'Java {Java_Version} 解压失败。')
         else:
             log(f"错误: 不支持的 Java 安装包格式: {file_name}")
             update_progress({
@@ -229,7 +232,7 @@ def _install_java_thread(Java_Version):
                 'status': f'不支持的格式: {file_name}'
             })
             time.sleep(1)  # 等待通知显示
-            toast(i18nText('错误'), f'不支持的 Java 安装包格式: {file_name}')
+            send_notification(i18nText('错误'), f'不支持的 Java 安装包格式: {file_name}')
             return
 
         # 更新配置文件中的Java路径
@@ -274,23 +277,23 @@ def _install_java_thread(Java_Version):
         try:
             os.remove(download_path)
             log(f"已删除下载的安装文件: {download_path}")
-            toast(i18nText('清理完成'), i18nText('安装文件已删除。'), duration='short')
+            send_notification(i18nText('清理完成'), i18nText('安装文件已删除。'))
         except Exception as e:
             log(f"清理提醒: 无法删除安装文件 {download_path}: {e}")
-            toast(i18nText('清理提醒'), f'无法删除安装文件: {e}', duration='short')
+            send_notification(i18nText('清理提醒'), f'无法删除安装文件: {e}')
 
     except requests.exceptions.RequestException as e:
         log(f"错误: 下载 Java {Java_Version} 失败: {e}")
-        toast(i18nText('下载失败'), f'下载 Java {Java_Version} 失败: {e}')
+        send_notification(i18nText('下载失败'), f'下载 Java {Java_Version} 失败: {e}')
     except json.JSONDecodeError as e:
         log(f"错误: config.json 解析失败: {e}")
-        toast(i18nText('错误'), f'配置文件读取失败: {e}')
+        send_notification(i18nText('错误'), f'配置文件读取失败: {e}')
     except FileNotFoundError as e:
         log(f"错误: 文件未找到: {e}")
-        toast(i18nText('错误'), f'文件操作失败: {e}')
+        send_notification(i18nText('错误'), f'文件操作失败: {e}')
     except subprocess.CalledProcessError as e:
         log(f"错误: Java {Java_Version} 安装失败: {e}")
-        toast(i18nText('安装失败'), f'Java {Java_Version} 安装失败: {e}')
+        send_notification(i18nText('安装失败'), f'Java {Java_Version} 安装失败: {e}')
     except Exception as e:
         log(f"发生未知错误: {e}")
-        toast(i18nText('错误'), f'发生未知错误: {e}')
+        send_notification(i18nText('错误'), f'发生未知错误: {e}')

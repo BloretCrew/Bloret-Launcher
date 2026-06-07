@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QDialog, QApplication, QProgressBar
 # Removed uic for PySide6 compatibility
 from PySide6.QtCore import QThread, Signal as pyqtSignal, QTimer
 from modules.win11toast import notify, update_progress
+from modules.notification import send_notification
 import logging,os,requests,zipfile,time
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -376,13 +377,14 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
     thread.error_signal.connect(
         lambda e: (
             log(f"下载失败: {e}", logging.ERROR),
-            Dialog(i18nText("下载失败"), f"下载过程中发生错误: {e}").exec()
+            Dialog(i18nText("下载失败"), f"下载过程中发生错误: {e}").exec(),
+            send_notification(i18nText("下载失败"), f"版本 {version} 下载出错: {e}", category="download")
         )
     )
 
     def download_finished():
         log(f"下载完成: 版本 {version}")
-        # QTimer.singleShot(0, lambda: send_system_notification("下载完成", f"版本 {version} 已成功下载"))
+        send_notification(i18nText("下载完成"), f"版本 {version} 已成功下载", category="download")
 
         # 断开信号
         thread.progress_signal.disconnect()

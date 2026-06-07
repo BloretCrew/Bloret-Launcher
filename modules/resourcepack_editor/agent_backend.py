@@ -17,10 +17,71 @@ import logging
 import threading
 import requests
 from PySide6.QtCore import QObject, Signal, Slot, Property
+from PySide6.QtGui import QGuiApplication
 
 from .agent_loop import AgentLoop, run_agent_async, AGENT_ROLES
 
 log = logging.getLogger(__name__)
+
+
+def _send_os_notification(title: str, body: str):
+    """发送操作系统级通知（仅在窗口未聚焦时）"""
+    try:
+        app = QGuiApplication.instance()
+        if app and app.activeWindow() is not None:
+            return  # 窗口已聚焦，InfoBar 已足够
+    except Exception:
+        pass
+
+    from modules.notification import send_notification
+    send_notification(title, body, category="copilot")
+
+
+# 工具名称 → 中文描述映射
+_TOOL_CN = {
+    "read_file": "读取文件",
+    "write_file": "写入文件",
+    "edit_file": "编辑文件",
+    "list_files": "列出文件",
+    "search_text": "搜索文本",
+    "get_pack_info": "获取资源包信息",
+    "analyze_pack": "分析资源包",
+    "read_language": "读取语言文件",
+    "edit_language": "编辑语言文件",
+    "validate_json": "验证 JSON",
+    "get_file_tree": "获取文件树",
+    "ask_user": "向用户提问",
+    "execute_command": "执行命令",
+    "execute_command_background": "后台执行命令",
+    "spawn_agent": "启动子 Agent",
+    "get_mc_reference": "查询 MC 参考",
+    "validate_mcmeta_advanced": "验证 pack.mcmeta",
+    "create_resource_template": "创建资源模板",
+}
+
+
+def _summarize_agent_result(text: str, tool_calls: list) -> str:
+    """生成 Agent 完成后的摘要"""
+    parts = []
+
+    if tool_calls:
+        names = [tc.get("name", "") for tc in tool_calls]
+        unique = []
+        seen = set()
+        for n in names:
+            if n and n not in seen:
+                seen.add(n)
+                unique.append(_TOOL_CN.get(n, n))
+        if unique:
+            parts.append("使用了 " + "、".join(unique))
+
+    if text:
+        snippet = text.strip().split("\n")[0][:80]
+        if snippet:
+            parts.append(snippet)
+
+    return "；".join(parts) if parts else "已完成对话"
+
 
 # 持久化路径
 try:
@@ -208,6 +269,10 @@ class AgentBackend(QObject):
         """权限请求回调（在 Agent 工作线程中调用）"""
         reasoning = self._current_text if self._current_text else ""
         log.info(f"[Agent] 权限请求: {tool_name}, reasoning='{reasoning[:50]}...'")
+
+        # 发送系统通知
+        tool_cn = _TOOL_CN.get(tool_name, tool_name)
+        _send_os_notification("Copilot 需要授权", f"请求{tool_cn}: {description or tool_cn}")
 
         # 发送信号到 QML
         self.permissionRequested.emit(tool_name, "", description, reasoning)
@@ -787,6 +852,12 @@ class AgentBackend(QObject):
     def _on_error(self, error: str):
         log.error(f"[Agent] 错误: {error}")
         print(f"[Agent DEBUG] 错误: {error}")
+        body = error
+        if self._current_tool_calls:
+            last = self._current_tool_calls[-1]
+            tool_cn = _TOOL_CN.get(last.get("name", ""), last.get("name", ""))
+            body = f"在{tool_cn}时出错: {error}"
+        _send_os_notification("Copilot 出错", body)
         self.errorOccurred.emit(error)
 
     # ========== 自动提交 ==========
@@ -857,6 +928,7 @@ class AgentBackend(QObject):
     def _on_done(self):
         log.info(f"[Agent] 完成回调触发, 文本长度={len(self._current_text)}, 工具调用数={len(self._current_tool_calls)}")
         print(f"[Agent DEBUG] 完成回调触发, 文本长度={len(self._current_text)}, 工具调用数={len(self._current_tool_calls)}")
+        _send_os_notification("Copilot 完成", _summarize_agent_result(self._current_text, self._current_tool_calls))
         if self._current_text:
             self._history.append({"role": "assistant", "content": self._current_text})
             # 保存工具调用到历史记录

@@ -1,4 +1,3 @@
-from modules.win11toast import toast
 import logging, os, subprocess, tempfile
 import sys
 
@@ -97,7 +96,8 @@ def is_dark_theme():
 
 def send_system_notification(title, message):
     try:
-        toast(title, message, duration="short", icon={'src': 'bloret.ico','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
+        from modules.notification import send_notification
+        send_notification(title, message)
     except Exception as e:
         handle_exception(e)
         log(f"发送系统通知失败: {e}", logging.ERROR)

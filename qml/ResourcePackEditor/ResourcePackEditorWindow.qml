@@ -40,6 +40,70 @@ FluentWindowBase {
         anchors.fill: parent
         spacing: 0
 
+        // ========== Copilot Agent 系统通知 ==========
+        InfoBar {
+            id: agentInfoBar
+            Layout.fillWidth: true
+            visible: false
+            timeout: 4000
+        }
+
+        property var _toolCnMap: ({
+            "read_file": "读取文件", "write_file": "写入文件", "edit_file": "编辑文件",
+            "list_files": "列出文件", "search_text": "搜索文本", "get_pack_info": "获取资源包信息",
+            "analyze_pack": "分析资源包", "read_language": "读取语言文件", "edit_language": "编辑语言文件",
+            "validate_json": "验证 JSON", "get_file_tree": "获取文件树", "ask_user": "向用户提问",
+            "execute_command": "执行命令", "execute_command_background": "后台执行命令",
+            "spawn_agent": "启动子 Agent", "get_mc_reference": "查询 MC 参考",
+            "validate_mcmeta_advanced": "验证 pack.mcmeta", "create_resource_template": "创建资源模板"
+        })
+
+        function _summarizeAgent(content, toolCallsJson) {
+            var parts = []
+            try {
+                var calls = JSON.parse(toolCallsJson || "[]")
+                if (calls.length > 0) {
+                    var seen = {}, unique = []
+                    for (var i = 0; i < calls.length; i++) {
+                        var n = calls[i].name || ""
+                        if (n && !seen[n]) { seen[n] = true; unique.push(_toolCnMap[n] || n) }
+                    }
+                    if (unique.length > 0) parts.push("使用了 " + unique.join("、"))
+                }
+            } catch(e) {}
+            if (content) {
+                var snippet = content.trim().split("\n")[0].substring(0, 80)
+                if (snippet) parts.push(snippet)
+            }
+            return parts.length > 0 ? parts.join("；") : "已完成对话"
+        }
+
+        Connections {
+            target: Agent; enabled: Agent !== null
+
+            function onMessageAdded(role, content, toolCallsJson) {
+                agentInfoBar.severity = Severity.Success
+                agentInfoBar.title = "Copilot 完成"
+                agentInfoBar.text = _summarizeAgent(content, toolCallsJson)
+                agentInfoBar.visible = true
+            }
+
+            function onPermissionRequested(toolName, argsJson, description, reasoning) {
+                var cn = _toolCnMap[toolName] || toolName
+                agentInfoBar.severity = Severity.Warning
+                agentInfoBar.title = "Copilot 需要授权"
+                agentInfoBar.text = "请求" + cn + (description ? ": " + description : "")
+                agentInfoBar.visible = true
+            }
+
+            function onErrorOccurred(msg) {
+                agentInfoBar.severity = Severity.Error
+                agentInfoBar.title = "Copilot 出错"
+                agentInfoBar.text = msg
+                agentInfoBar.visible = true
+            }
+        }
+
         RowLayout {
             Layout.fillWidth: true
             Layout.leftMargin: 16

@@ -2027,6 +2027,11 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         handle_exception(exc_type, exc_value, exc_traceback)
         log(f"安装 Minecraft 版本 {version} 时发生错误: {str(e)}", logging.ERROR)
         close_dialog_ui()
+        try:
+            from modules.notification import send_notification
+            send_notification(i18nText("安装失败"), f"Minecraft {version}: {str(e)}", category="install")
+        except Exception:
+            pass
         return False
     finally:
         _current_download_state['downloader'] = None

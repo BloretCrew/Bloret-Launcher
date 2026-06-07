@@ -63,7 +63,7 @@ import modules.mwtool
 from modules.config import read
 from modules.safe import handle_exception
 from modules.log import log
-from modules.win11toast import toast, notify, update_progress
+from modules.win11toast import notify, update_progress
 from modules.systems import (
     get_system_theme_color, is_dark_theme, 
     restart, setup_startup_with_self_starting
@@ -1664,8 +1664,8 @@ class MainWindow(FluentWindow):
 
         def send_system_notification(self, title, message):
             try:
-                if sys.platform == "win32":
-                    toast(title, message, duration="short", icon={'src': 'bloret.ico','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
+                from modules.notification import send_notification
+                send_notification(title, message)
             except Exception as e:
                 handle_exception(e)
                 log(f"发送系统通知失败: {e}", logging.ERROR)
@@ -1920,12 +1920,8 @@ class MainWindow(FluentWindow):
         )
     def send_system_notification(self, title, message):
         try:
-            if sys.platform == "win32":
-                toast(title, message, duration="short", icon={'src': 'bloret.ico','placement': 'appLogoOverride'})  # 使用 win11toast 的 toast 方法
-            elif sys.platform == "darwin":
-                subprocess.run(["osascript", "-e", f'display notification "{message}" with title "{title}"'])
-            else:
-                subprocess.run(["notify-send", title, message])
+            from modules.notification import send_notification
+            send_notification(title, message)
         except Exception as e:
             handle_exception(e)
             log(f"发送系统通知失败: {e}", logging.ERROR)
