@@ -59,10 +59,16 @@ class RinUIWindow:
             raise ValueError(msg)
         self.qml_path = Path(qml_path)
 
-        if self.qml_path.exists():
-            self.engine.addImportPath(RINUI_PATH)
-        else:
+        # 检查 RinUI 模块路径是否存在
+        if not RINUI_PATH.exists():
             msg = f"Cannot find RinUI module: {RINUI_PATH}"
+            raise FileNotFoundError(msg)
+        
+        self.engine.addImportPath(RINUI_PATH)
+        
+        # 检查 QML 文件是否存在
+        if not self.qml_path.exists():
+            msg = f"Cannot find QML file: {self.qml_path}"
             raise FileNotFoundError(msg)
 
         # 主题管理器

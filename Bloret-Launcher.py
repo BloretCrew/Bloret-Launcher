@@ -8,7 +8,24 @@ import faulthandler
 from pathlib import Path
 
 # Add the local directory to handle imports like 'import RinUI' correctly
-SCRIPT_DIR = Path(__file__).parent.absolute()
+# Handle both normal Python execution and Nuitka/PyInstaller bundling
+def _get_script_dir():
+    """获取脚本/应用程序目录，兼容不同的打包方式"""
+    # PyInstaller with --onefile
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        return Path(sys._MEIPASS)
+    
+    # Nuitka compiled (when frozen)
+    if getattr(sys, 'frozen', False):
+        # 对于Nuitka, sys.argv[0]是exe路径
+        return Path(sys.argv[0]).parent.absolute()
+    
+    # Normal Python or Nuitka development mode
+    # Use __file__ for source code execution
+    return Path(__file__).resolve().parent
+
+SCRIPT_DIR = _get_script_dir()
+    
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
@@ -4259,6 +4276,20 @@ class LauncherV2(RinUIWindow):
             print(f"启动时 .BL.json 检查失败: {e}")
         
         qml_file = SCRIPT_DIR / "qml" / "main.qml"
+        
+        # 调试信息
+        print(f"[DEBUG] SCRIPT_DIR: {SCRIPT_DIR}")
+        print(f"[DEBUG] QML file path: {qml_file}")
+        print(f"[DEBUG] QML file exists: {qml_file.exists()}")
+        print(f"[DEBUG] sys.frozen: {getattr(sys, 'frozen', False)}")
+        
+        # 检查qml目录
+        qml_dir = SCRIPT_DIR / "qml"
+        if qml_dir.exists():
+            print(f"[DEBUG] QML directory contents: {list(qml_dir.iterdir())}")
+        else:
+            print(f"[DEBUG] QML directory not found at {qml_dir}")
+        
         self.load(str(qml_file))
         
         icon_path = get_app_icon_path()

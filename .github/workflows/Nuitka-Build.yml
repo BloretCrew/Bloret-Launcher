@@ -98,7 +98,30 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         $EASYTIER_ARG = if (Test-Path "easytier") { "--include-data-dir=easytier=easytier" } else { "" }
-        python -m nuitka --standalone --onefile --windows-console-mode=disable --enable-plugin=tk-inter --enable-plugin=pyside6 --include-qt-plugins=sensible,styles --windows-icon-from-ico=bloret.ico --output-file=Bloret-Launcher.exe --assume-yes-for-downloads --windows-company-name="Bloret" --windows-product-name="Bloret Launcher" --windows-file-version=1.0.0 --windows-product-version=1.0.0 --include-data-dir=qml=qml --include-data-dir=RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules Bloret-Launcher.py
+        python -m nuitka `
+          --standalone --onefile `
+          --windows-console-mode=disable `
+          --windows-icon-from-ico=bloret.ico `
+          --output-file=Bloret-Launcher.exe `
+          --windows-company-name="Bloret" `
+          --windows-product-name="Bloret Launcher" `
+          --windows-file-version=1.0.0 `
+          --windows-product-version=1.0.0 `
+          --assume-yes-for-downloads `
+          --enable-plugin=tk-inter `
+          --enable-plugin=pyside6 `
+          --include-qt-plugins=sensible,styles `
+          --include-data-dir=qml=qml `
+          --include-data-dir=RinUI=RinUI `
+          --include-data-dir=icon=icon `
+          --include-data-dir=lang=lang `
+          --include-data-files=bloret.ico=bloret.ico `
+          --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png `
+          --include-data-files=config.json=config.json `
+          --include-data-files=LICENSE=LICENSE `
+          $EASYTIER_ARG `
+          --include-data-dir=modules=modules `
+          Bloret-Launcher.py
       shell: pwsh
 
     - name: 使用 Nuitka 打包 (Linux)

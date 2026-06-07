@@ -61,19 +61,26 @@ class ThemeListener(QThread):
     """
 
     themeChanged = Signal(str)
+    _stop_flag = False
 
     def run(self):
+        self._stop_flag = False
         last_theme = darkdetect.theme()
-        while True:
-            current_theme = darkdetect.theme()
-            if current_theme != last_theme:
-                last_theme = current_theme
-                self.themeChanged.emit(current_theme)
-                print(f"Theme changed: {current_theme}")
+        while not self._stop_flag:
+            try:
+                current_theme = darkdetect.theme()
+                if current_theme != last_theme:
+                    last_theme = current_theme
+                    self.themeChanged.emit(current_theme)
+                    print(f"Theme changed: {current_theme}")
+            except Exception as e:
+                print(f"Error in ThemeListener: {e}")
             time.sleep(1)
 
     def stop(self):
-        self.terminate()
+        """安全地停止线程"""
+        self._stop_flag = True
+        self.wait()  # 等待线程自然退出
 
 
 class ThemeManager(QObject):

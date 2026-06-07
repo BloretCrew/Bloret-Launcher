@@ -30,9 +30,13 @@ def is_windows():
 
 
 def resource_path(relative_path):
-    """兼容 PyInstaller 打包和开发环境的路径"""
+    """兼容 PyInstaller 打包、Nuitka 打包和开发环境的路径"""
     if hasattr(sys, "_MEIPASS"):
+        # PyInstaller onefile mode
         return Path(sys._MEIPASS) / relative_path
+    elif hasattr(sys, "__nuitka_binary_dir"):
+        # Nuitka compiled mode
+        return Path(sys.__nuitka_binary_dir) / relative_path
     return Path(relative_path).resolve()
 
 
