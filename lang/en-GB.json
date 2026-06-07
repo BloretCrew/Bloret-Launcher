@@ -896,7 +896,7 @@
         "选中的启动项已不存在": "The selected launcher entry no longer exists",
         "选择": "Select",
         "选择 Java 可执行文件 (java.exe)": "Select Java executable (java.exe)",
-        "选择下载来源：BMCLAPI（优先镜像，失败回退官方）、Bloret (以非常规方式快速下载，只支持部分版本) 或 Mojang 官方直连": "Select download source: BMCLAPI (prefers mirror, falls back to official), Bloret (fast unconventional download, only supports some versions), or Mojang official direct",
+        "选择下载来源：Bloret (以非常规方式快速下载，只支持部分版本)、Mojang 官方直连 或 BMCLAPI（优先镜像，失败回退官方）": "Select download source: Bloret (fast unconventional download, only supports some versions), Mojang official direct, or BMCLAPI (prefers mirror, falls back to official)",
         "选择保存位置": "Select Save Location",
         "选择其他图标": "Select Other Icon",
         "选择启动项目": "Select Launcher Item",

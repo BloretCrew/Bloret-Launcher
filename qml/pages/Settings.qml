@@ -115,7 +115,7 @@ FluentPage {
     property string _mcToolbarTitle: Backend ? Backend.tr("Minecraft 小工具栏") : "Minecraft 小工具栏"
     property string _mcToolbarDesc: Backend ? Backend.tr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏") : "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"
     property string _sourceTitle: Backend ? Backend.tr("下载源") : "下载源"
-    property string _sourceDesc: Backend ? Backend.tr("选择下载来源：BMCLAPI（优先镜像，失败回退官方）、Bloret (以非常规方式快速下载，只支持部分版本) 或 Mojang 官方直连") : "选择下载来源：BMCLAPI（优先镜像，失败回退官方）、Bloret (以非常规方式快速下载，只支持部分版本) 或 Mojang 官方直连"
+    property string _sourceDesc: Backend ? Backend.tr("选择下载来源：Bloret (以非常规方式快速下载，只支持部分版本)、Mojang 官方直连 或 BMCLAPI（优先镜像，失败回退官方）") : "选择下载来源：Bloret (以非常规方式快速下载，只支持部分版本)、Mojang 官方直连 或 BMCLAPI（优先镜像，失败回退官方）"
     property string _homeSection: Backend ? Backend.tr("首页") : "首页"
     property string _showAccountTitle: Backend ? Backend.tr("显示账户信息") : "显示账户信息"
     property string _showAccountDesc: Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息"
@@ -308,20 +308,20 @@ FluentPage {
                 width: 220
                 height: 32
                 model: [
-                    { text: qsTr("BMCLAPI"), value: "bmclapi" },
                     { text: qsTr("Bloret"), value: "gitcode" },
-                    { text: qsTr("Mojang"), value: "official" }
+                    { text: qsTr("Mojang"), value: "official" },
+                    { text: qsTr("BMCLAPI"), value: "bmclapi" }
                 ]
                 textRole: "text"
                 valueRole: "value"
                 currentIndex: {
-                    if (!Backend) return 1;
+                    if (!Backend) return 0;
                     var src = Backend.getDownloadSource();
                     for (var i = 0; i < sourceCombo.model.length; i++) {
                         if (sourceCombo.model[i].value === src)
                             return i;
                     }
-                    return 1;
+                    return 0;
                 }
                 onCurrentValueChanged: {
                     if (Backend)
