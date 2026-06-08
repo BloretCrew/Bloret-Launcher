@@ -583,18 +583,8 @@ class Backend(QObject):
     def _notify_if_not_foreground(self, timestamp, message):
         """当 Minecraft 窗口不在前台时发送系统通知"""
         try:
-            if sys.platform == "win32":
-                import ctypes
-                # 获取当前前台窗口标题
-                hwnd = ctypes.windll.user32.GetForegroundWindow()
-                if hwnd:
-                    length = ctypes.windll.user32.GetWindowTextLengthW(hwnd) + 1
-                    buf = ctypes.create_unicode_buffer(length)
-                    ctypes.windll.user32.GetWindowTextW(hwnd, buf, length)
-                    title = buf.value
-                    # 如果前台窗口标题包含 Minecraft，则不通知
-                    if "minecraft" in title.lower() or "Minecraft" in title:
-                        return
+            if self._is_minecraft_foreground():
+                return
 
             from modules.notification import send_notification
             threading.Thread(
@@ -745,11 +735,29 @@ class Backend(QObject):
                 return 'minecraft' in result.stdout.lower()
             else:
                 import subprocess
-                result = subprocess.run(
-                    ['xdotool', 'getactivewindow', 'getwindowname'],
-                    capture_output=True, text=True, timeout=3
-                )
-                return 'minecraft' in result.stdout.lower()
+                # 尝试 xdotool (X11)
+                try:
+                    result = subprocess.run(
+                        ['xdotool', 'getactivewindow', 'getwindowname'],
+                        capture_output=True, text=True, timeout=3
+                    )
+                    if result.returncode == 0 and result.stdout.strip():
+                        return 'minecraft' in result.stdout.lower()
+                except FileNotFoundError:
+                    pass
+                # 回退: wmctrl 列出窗口，检查是否有可见的 Minecraft 窗口
+                try:
+                    result = subprocess.run(
+                        ['wmctrl', '-l'],
+                        capture_output=True, text=True, timeout=3
+                    )
+                    if result.returncode == 0:
+                        for line in result.stdout.strip().splitlines():
+                            if 'minecraft' in line.lower():
+                                return True
+                except FileNotFoundError:
+                    pass
+                return False
         except Exception:
             pass
         return False
@@ -2975,7 +2983,7 @@ class Backend(QObject):
 
     @Slot()
     def manageAccountOnWebsite(self):
-        QDesktopServices.openUrl(QUrl("https://passport.bloret.net/"))
+        QDesktopServices.openUrl(QUrl("https://passport.bloret.net/minecraft"))
 
     @Slot()
     def syncAccountFromPassPort(self):

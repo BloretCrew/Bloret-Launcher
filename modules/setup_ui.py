@@ -1194,7 +1194,7 @@ def setup_passport_ui(self, widget, homeInterface):
     # 1. 基础按钮功能绑定
     manage_web_btn = widget.findChild(QPushButton, "ManageMinecraftAccountOnBloretPassPortWebsite")
     if manage_web_btn:
-        manage_web_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://passport.bloret.net/")))
+        manage_web_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://passport.bloret.net/minecraft")))
 
     sync_cloud_btn = widget.findChild(QPushButton, "go_Minecraft_Account_To_Bloret_PassPort_Cloud_from")
     if sync_cloud_btn:
