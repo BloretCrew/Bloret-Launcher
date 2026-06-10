@@ -166,7 +166,7 @@ jobs:
         
         # 使用 --name 参数确保应用名称中间有空格
         pyinstaller --onefile --windowed --name="Bloret Launcher" $ICON_CMD \
-          --add-data "bloret.ico:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
+          --add-data "bloret.ico:." --add-data "Bloret.png:." --add-data "Bloret-Fluent.png:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "icon:icon" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
           --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
 
         # 生成 DMG 文件
