@@ -42,11 +42,28 @@ def resource_path(relative_path):
 
 rinui_core_path = Path(__file__).resolve().parent  # RinUI/core 目录
 
+
+def _get_data_root():
+    """
+    获取数据文件根目录（即 RinUI、qml 等数据目录所在的父目录）。
+    兼容 PyInstaller、Nuitka 和开发环境。
+
+    注意：不能使用 resource_path(absolute_path)，因为 Python 的 Path 在拼接时
+    会忽略前一个路径，导致编译模式下路径解析错误。
+    """
+    if hasattr(sys, "_MEIPASS"):
+        # PyInstaller onefile 模式
+        return Path(sys._MEIPASS)
+    if hasattr(sys, "__nuitka_binary_dir"):
+        # Nuitka 编译模式（standalone/onefile）
+        return Path(sys.__nuitka_binary_dir)
+    # 开发环境：从 RinUI/core/ 向上两级到项目根目录
+    return rinui_core_path.parent.parent
+
+
 BASE_DIR = Path.cwd().resolve()
 PATH = BASE_DIR / "RinUI" / "config"
-RINUI_PATH = resource_path(
-    rinui_core_path.parent.parent
-)  # 使用 resource_path 处理路径，等同 ../../
+RINUI_PATH = _get_data_root()
 
 DEFAULT_CONFIG = {
     "theme": {

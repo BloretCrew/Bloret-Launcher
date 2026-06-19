@@ -62,6 +62,7 @@ _FAULT_LOG_STREAM = _enable_fault_logging()
 
 import RinUI
 from RinUI import RinUIWindow
+from RinUI.core.config import RINUI_PATH
 
 import random
 import threading
@@ -4290,6 +4291,9 @@ class LauncherV2(RinUIWindow):
         print(f"[DEBUG] QML file path: {qml_file}")
         print(f"[DEBUG] QML file exists: {qml_file.exists()}")
         print(f"[DEBUG] sys.frozen: {getattr(sys, 'frozen', False)}")
+        print(f"[DEBUG] sys.__nuitka_binary_dir: {getattr(sys, '__nuitka_binary_dir', 'NOT SET')}")
+        print(f"[DEBUG] RINUI_PATH: {RINUI_PATH}")
+        print(f"[DEBUG] RINUI_PATH exists: {RINUI_PATH.exists()}")
         
         # 检查qml目录
         qml_dir = SCRIPT_DIR / "qml"

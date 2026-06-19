@@ -80,9 +80,14 @@ config = load_config()
 
 
 def resource_path(relative_path):
-    """Resolve bundled resources in PyInstaller onefile builds."""
-    base_path = getattr(sys, "_MEIPASS", os.getcwd())
-    return os.path.join(base_path, relative_path)
+    """兼容 PyInstaller 打包、Nuitka 打包和开发环境的路径"""
+    if hasattr(sys, "_MEIPASS"):
+        # PyInstaller onefile mode
+        return os.path.join(sys._MEIPASS, relative_path)
+    if hasattr(sys, "__nuitka_binary_dir"):
+        # Nuitka compiled mode
+        return os.path.join(sys.__nuitka_binary_dir, relative_path)
+    return os.path.join(os.getcwd(), relative_path)
 
 def scan_java_paths():
     """扫描系统中的 Java 安装路径"""

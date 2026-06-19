@@ -3,126 +3,87 @@
 ## 问题描述
 **错误日志**：
 ```
-Error loading QML file: C:\Users\0570\AppData\Local\Temp\onefile_8868_922944_FRrhetA8He4\qml\main.qml
+RuntimeError: Error loading QML file: C:\Users\...\Temp\onefile_xxx\qml\main.qml
 ```
 
 ## 根本原因分析
 
-### 1. 路径处理不完整
+### 核心 Bug：`resource_path()` 被传入绝对路径
 **文件**: `RinUI/core/config.py`
 
-问题：`resource_path()` 函数只处理了 PyInstaller 的情况，未处理 Nuitka：
+`resource_path()` 设计用于**相对路径**，但 `RINUI_PATH` 计算时传入了绝对路径：
 ```python
-def resource_path(relative_path):
-    if hasattr(sys, "_MEIPASS"):  # ✅ PyInstaller 支持
-        return Path(sys._MEIPASS) / relative_path
-    # ❌ 缺少 Nuitka 支持
-    return Path(relative_path).resolve()
+rinui_core_path = Path(__file__).resolve().parent  # 绝对路径！
+RINUI_PATH = resource_path(rinui_core_path.parent.parent)  # 传入绝对路径
 ```
 
-当 Nuitka 以 `--onefile` 模式打包时，会设置 `sys.__nuitka_binary_dir` 属性，但代码未识别这个属性，导致路径解析错误。
+Python 的 `Path(base) / absolute_path` 会**忽略 base**，直接返回 absolute_path。
+在 Nuitka 编译模式下，`resource_path()` 内部的 `Path(sys.__nuitka_binary_dir) / absolute_path`
+不会拼接 `sys.__nuitka_binary_dir`，而是直接返回编译时的源码路径（CI runner 的路径），
+该路径在用户机器上不存在。
 
-### 2. 路径检查逻辑混乱
+### 次要问题：QML 引擎错误被静默吞掉
 **文件**: `RinUI/core/launcher.py`
 
-问题：`load()` 方法的逻辑有矛盾：
+`engine.load()` 的异常被捕获并 print，但 QML 引擎的内部警告/错误通过 Qt 消息系统
+输出，不会变成 Python 异常。当 `rootObjects()` 为空时，无法知道具体失败原因。
+
+## 已应用的修复（2026-06-19）
+
+### 修复 1：新增 `_get_data_root()` 函数
 ```python
-if self.qml_path.exists():          # 检查 QML 文件
-    self.engine.addImportPath(RINUI_PATH)
-else:
-    msg = f"Cannot find RinUI module: {RINUI_PATH}"  # 错误！
-    raise FileNotFoundError(msg)    # 错误消息不匹配
-```
-
-应该分别检查 RINUI_PATH 和 QML 文件的存在性。
-
-## 已应用的修复
-
-### 修复 1：添加 Nuitka 路径支持
-```python
-def resource_path(relative_path):
-    """兼容 PyInstaller 打包、Nuitka 打包和开发环境的路径"""
+def _get_data_root():
+    """获取数据文件根目录，兼容 PyInstaller、Nuitka 和开发环境"""
     if hasattr(sys, "_MEIPASS"):
-        # PyInstaller onefile mode
-        return Path(sys._MEIPASS) / relative_path
-    elif hasattr(sys, "__nuitka_binary_dir"):
-        # Nuitka compiled mode
-        return Path(sys.__nuitka_binary_dir) / relative_path
-    return Path(relative_path).resolve()
+        return Path(sys._MEIPASS)
+    if hasattr(sys, "__nuitka_binary_dir"):
+        return Path(sys.__nuitka_binary_dir)
+    return rinui_core_path.parent.parent
+
+RINUI_PATH = _get_data_root()
 ```
 
-### 修复 2：修正路径检查逻辑
+### 修复 2：添加 QML 引擎错误捕获
 ```python
-def load(self, qml_path: Union[str, Path] = None) -> None:
-    # ... 初始化代码 ...
-    
-    # 检查 RinUI 模块路径是否存在
-    if not RINUI_PATH.exists():
-        msg = f"Cannot find RinUI module: {RINUI_PATH}"
-        raise FileNotFoundError(msg)
-    
-    self.engine.addImportPath(RINUI_PATH)
-    
-    # 检查 QML 文件是否存在
-    if not self.qml_path.exists():
-        msg = f"Cannot find QML file: {self.qml_path}"
-        raise FileNotFoundError(msg)
-    
-    # ... 加载和初始化 ...
+from PySide6.QtCore import qInstallMessageHandler, QtMsgType
+
+_qml_messages = []
+
+def _qml_message_handler(msg_type, context, message):
+    if msg_type in (QtMsgType.QtWarningMsg, QtMsgType.QtCriticalMsg, QtMsgType.QtFatalMsg):
+        _qml_messages.append(f"[QML {type_name}] {message}")
 ```
 
-## 相关的 Nuitka 打包命令
+在 `load()` 中安装消息处理器，加载后输出收集到的 QML 消息。
 
-从 `.github/workflows/Nuitka-Build.yml` 的 Windows 部分：
-```powershell
-python -m nuitka --standalone --onefile \
-  --include-data-dir=qml=qml \
-  --include-data-dir=RinUI=RinUI \
-  --include-data-dir=icon=icon \
-  --include-data-dir=lang=lang \
-  --include-data-dir=modules=modules \
-  ...
+### 修复 3：增强错误诊断信息
+```python
+if not self.engine.rootObjects():
+    diag = f"Error loading QML file: {self.qml_path}"
+    diag += f"\n  RINUI_PATH: {RINUI_PATH} (exists: {RINUI_PATH.exists()})"
+    diag += f"\n  QML file exists: {self.qml_path.exists()}"
+    if _qml_messages:
+        diag += "\n  QML engine errors:\n    " + "\n    ".join(_qml_messages)
+    raise RuntimeError(diag)
 ```
 
-这些包含数据目录的命令应该确保资源被正确打包。
+### 修复 4：修复 `modules/setup_ui.py` 的 `resource_path()`
+添加了 `sys.__nuitka_binary_dir` 支持。
 
-## 调试建议
+## 调试输出
+`Bloret-Launcher.py` 现在会输出以下调试信息：
+```
+[DEBUG] SCRIPT_DIR: <temp_extraction_dir>
+[DEBUG] sys.__nuitka_binary_dir: <temp_extraction_dir>
+[DEBUG] RINUI_PATH: <temp_extraction_dir>
+[DEBUG] RINUI_PATH exists: True
+```
 
-如果问题继续出现，请检查：
-
-1. **验证 Nuitka 版本**：
-   ```bash
-   python -m pip list | grep nuitka
-   ```
-
-2. **添加调试输出**（临时）：
-   ```python
-   # 在 Bloret-Launcher.py 中
-   print(f"SCRIPT_DIR: {SCRIPT_DIR}")
-   print(f"sys.__nuitka_binary_dir: {getattr(sys, '__nuitka_binary_dir', 'NOT SET')}")
-   print(f"QML path: {SCRIPT_DIR / 'qml' / 'main.qml'}")
-   print(f"QML exists: {(SCRIPT_DIR / 'qml' / 'main.qml').exists()}")
-   ```
-
-3. **检查打包输出**：
-   确认 `dist/Bloret-Launcher.exe` 创建后，在 temp 目录中检查是否包含 `qml/` 目录。
-
-4. **Nuitka 特定选项**：
-   如果问题仍然存在，可考虑添加：
-   ```bash
-   --follow-imports  # 跟踪所有导入
-   --no-prefer-source-code  # 使用编译后的 .pyc
-   ```
-
-## 下一步
-
-1. **重新打包**：使用修复后的代码重新运行 Nuitka 打包
-2. **测试**：运行生成的 `Bloret-Launcher.exe`
-3. **验证**：确保 QML UI 正常加载和显示
+## 修改文件清单
+- `RinUI/core/config.py` — 新增 `_get_data_root()`，修复 `RINUI_PATH`
+- `RinUI/core/launcher.py` — QML 消息捕获 + 增强错误诊断
+- `Bloret-Launcher.py` — 增强调试输出
+- `modules/setup_ui.py` — `resource_path()` 添加 Nuitka 支持
 
 ---
-
-修复时间：2026-06-08
-修改文件：
-- `RinUI/core/config.py`
-- `RinUI/core/launcher.py`
+修复时间：2026-06-19

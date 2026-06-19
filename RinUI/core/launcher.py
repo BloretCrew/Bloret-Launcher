@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from typing import Union
 
-from PySide6.QtCore import QCoreApplication, QObject, QUrl
+from PySide6.QtCore import QCoreApplication, QObject, QUrl, QtMsgType
 from PySide6.QtGui import QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
@@ -10,6 +10,24 @@ from PySide6.QtWidgets import QApplication
 
 from .config import RINUI_PATH, BackdropEffect, Theme, is_windows
 from .theme import ThemeManager
+
+# 收集 QML 引擎警告/错误信息，用于诊断 QML 加载失败的原因
+_qml_messages: list[str] = []
+
+
+def _qml_message_handler(msg_type, context, message):
+    """Qt 消息处理函数，捕获 QML 引擎的警告和错误"""
+    type_names = {
+        QtMsgType.QtDebugMsg: "DEBUG",
+        QtMsgType.QtWarningMsg: "WARNING",
+        QtMsgType.QtCriticalMsg: "CRITICAL",
+        QtMsgType.QtFatalMsg: "FATAL",
+        QtMsgType.QtInfoMsg: "INFO",
+    }
+    type_name = type_names.get(msg_type, "UNKNOWN")
+    # 只收集警告及以上级别的消息
+    if msg_type in (QtMsgType.QtWarningMsg, QtMsgType.QtCriticalMsg, QtMsgType.QtFatalMsg):
+        _qml_messages.append(f"[QML {type_name}] {message}")
 
 
 class RinUIWindow:
@@ -63,9 +81,9 @@ class RinUIWindow:
         if not RINUI_PATH.exists():
             msg = f"Cannot find RinUI module: {RINUI_PATH}"
             raise FileNotFoundError(msg)
-        
-        self.engine.addImportPath(RINUI_PATH)
-        
+
+        self.engine.addImportPath(str(RINUI_PATH))
+
         # 检查 QML 文件是否存在
         if not self.qml_path.exists():
             msg = f"Cannot find QML file: {self.qml_path}"
@@ -73,14 +91,31 @@ class RinUIWindow:
 
         # 主题管理器
         self.engine.rootContext().setContextProperty("ThemeManager", self.theme_manager)
+
+        # 安装 Qt 消息处理器以捕获 QML 引擎的警告和错误
+        from PySide6.QtCore import qInstallMessageHandler
+        _qml_messages.clear()
+        old_handler = qInstallMessageHandler(_qml_message_handler)
+
         try:
             self.engine.load(self.qml_path)
         except Exception as e:
             print(f"Cannot Load QML file: {e}")
 
+        # 恢复原始消息处理器并输出收集到的 QML 消息
+        qInstallMessageHandler(old_handler)
+        if _qml_messages:
+            print(f"QML engine messages ({len(_qml_messages)}):")
+            for msg in _qml_messages:
+                print(f"  {msg}")
+
         if not self.engine.rootObjects():
-            msg = f"Error loading QML file: {self.qml_path}"
-            raise RuntimeError(msg)
+            diag = f"Error loading QML file: {self.qml_path}"
+            diag += f"\n  RINUI_PATH: {RINUI_PATH} (exists: {RINUI_PATH.exists()})"
+            diag += f"\n  QML file exists: {self.qml_path.exists()}"
+            if _qml_messages:
+                diag += "\n  QML engine errors:\n    " + "\n    ".join(_qml_messages)
+            raise RuntimeError(diag)
 
         # 窗口设置
         self.root_window = self.engine.rootObjects()[0]
