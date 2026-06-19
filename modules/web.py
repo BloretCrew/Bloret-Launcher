@@ -16,6 +16,7 @@ import modules.globals as BLglobals
 from modules.log import log
 import modules.config as cfg
 from modules.process_utils import hidden_process_kwargs
+from modules.paths import app_path
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -1303,7 +1304,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         elif self.path == '/index.css':
             # 提供CSS文件
             try:
-                css_path = os.path.join(os.path.dirname(__file__), 'web', 'index.css')
+                css_path = app_path("modules", "web", "index.css")
                 with open(css_path, 'r', encoding='utf-8') as f:
                     css_content = f.read()
                 
@@ -1320,7 +1321,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         elif self.path == '/fluent.css':
             # 提供Fluent Design CSS文件
             try:
-                css_path = os.path.join(os.path.dirname(__file__), 'web', 'fluent.css')
+                css_path = app_path("modules", "web", "fluent.css")
                 with open(css_path, 'r', encoding='utf-8') as f:
                     css_content = f.read()
                 
@@ -1337,7 +1338,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         elif self.path == '/plugin-confirm.css':
             # 提供插件确认页面CSS文件
             try:
-                css_path = os.path.join(os.path.dirname(__file__), 'web', 'plugin-confirm.css')
+                css_path = app_path("modules", "web", "plugin-confirm.css")
                 with open(css_path, 'r', encoding='utf-8') as f:
                     css_content = f.read()
                 
@@ -1354,7 +1355,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         elif self.path == '/installing.css':
             # 提供安装中页面CSS文件
             try:
-                css_path = os.path.join(os.path.dirname(__file__), 'web', 'installing.css')
+                css_path = app_path("modules", "web", "installing.css")
                 with open(css_path, 'r', encoding='utf-8') as f:
                     css_content = f.read()
                 
@@ -1371,7 +1372,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         elif self.path == '/install-success.css':
             # 提供安装成功页面CSS文件
             try:
-                css_path = os.path.join(os.path.dirname(__file__), 'web', 'install-success.css')
+                css_path = app_path("modules", "web", "install-success.css")
                 with open(css_path, 'r', encoding='utf-8') as f:
                     css_content = f.read()
                 
@@ -1388,7 +1389,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         elif self.path == '/error.css':
             # 提供错误页面CSS文件
             try:
-                css_path = os.path.join(os.path.dirname(__file__), 'web', 'error.css')
+                css_path = app_path("modules", "web", "error.css")
                 with open(css_path, 'r', encoding='utf-8') as f:
                     css_content = f.read()
                 
@@ -1671,7 +1672,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
     def _serve_file(self, relative_path, content_type):
         try:
-            file_path = os.path.join(os.path.dirname(__file__), relative_path)
+            # web/ 资源目录位于 modules/web/，统一用 app_path 解析打包路径
+            file_path = app_path("modules", "web", relative_path)
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             self.send_response(200)
@@ -1700,7 +1702,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(b'<html><body><h1>Web Remoter is disabled</h1><p>Enable it in Bloret Launcher settings.</p></body></html>')
             return
         try:
-            html_path = os.path.join(os.path.dirname(__file__), 'web', 'remoter.html')
+            html_path = app_path("modules", "web", "remoter.html")
             with open(html_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             self.send_response(200)
@@ -1722,7 +1724,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(b'<html><body><h1>Web Remoter is disabled</h1></body></html>')
             return
         try:
-            html_path = os.path.join(os.path.dirname(__file__), 'web', 'gamepad.html')
+            html_path = app_path("modules", "web", "gamepad.html")
             with open(html_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             self.send_response(200)
@@ -1744,7 +1746,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(b'<html><body><h1>Web Remoter is disabled</h1></body></html>')
             return
         try:
-            html_path = os.path.join(os.path.dirname(__file__), 'web', 'chat-manager.html')
+            html_path = app_path("modules", "web", "chat-manager.html")
             with open(html_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             self.send_response(200)

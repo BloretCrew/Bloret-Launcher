@@ -14,6 +14,7 @@ import time
 
 from modules.i18n import i18nText
 from modules.log import log
+from modules.paths import get_app_dir
 
 
 PUBLIC_PEERS = [
@@ -77,11 +78,13 @@ def _ensure_executable(path):
 
 
 def _candidate_binary_dirs():
-    cwd = os.getcwd()
+    # 打包后 easytier/ 位于资源根目录（Nuitka onefile 下为临时解压目录），
+    # 不能用 os.getcwd()（那是启动目录，不是解压目录）。
+    app_dir = str(get_app_dir())
     return [
-        os.path.join(cwd, "EasyTier"),
-        os.path.join(cwd, "easytier"),
-        os.path.join(cwd, "BL4CW2", "net.bloret.launcher", "launcher", "easytier"),
+        os.path.join(app_dir, "EasyTier"),
+        os.path.join(app_dir, "easytier"),
+        os.path.join(app_dir, "BL4CW2", "net.bloret.launcher", "launcher", "easytier"),
     ]
 
 

@@ -16,6 +16,7 @@ else:
     win32con = None
     win32api = None
 from PySide6.QtWidgets import QLabel, QPushButton as StandardPushButton
+from modules.paths import app_path, get_app_dir
 
 # 尝试导入兼容控件（替代 QFluentWidgets）
 try:
@@ -148,7 +149,7 @@ class ScreenCaptureWidget(QWidget):
                 icon_label = BodyLabel(self.CardWidget)
                 icon_label.setMaximumSize(25, 25)
                 try:
-                    icon_pixmap = QPixmap(os.path.join(os.path.dirname(__file__), '..', 'icon', 'home.png'))
+                    icon_pixmap = QPixmap(app_path("icon", "home.png"))
                     if not icon_pixmap.isNull():
                         icon_label.setPixmap(icon_pixmap.scaled(25, 25, Qt.KeepAspectRatio, Qt.SmoothTransformation))
                 except:
@@ -200,7 +201,7 @@ class ScreenCaptureWidget(QWidget):
     def _build_rinui_tip_widget(self):
         """优先使用 RinUI QML 组件构建截图提示卡片（效果参考 CW2 Widget）"""
         try:
-            project_root = Path(__file__).resolve().parent.parent
+            project_root = get_app_dir()
             qml_file = project_root / "qml" / "components" / "ScreenCutTipWidget.qml"
             if not qml_file.exists():
                 return False

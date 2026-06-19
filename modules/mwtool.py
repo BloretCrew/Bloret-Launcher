@@ -18,6 +18,7 @@ from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QPainterPath, QColor
 # from PySide6.QtUiTools import QUiLoader # Removed uic for PySide6 compatibility
 from modules.compat_widgets import CardWidget as SimpleCardWidget, BodyLabel, StrongBodyLabel
 from .ShortCut import ScreenShortCut
+from modules.paths import app_path
 import logging
 # 导入原始的 log 函数并重命名
 from .log import log as _log_func
@@ -30,7 +31,7 @@ except ImportError:
         # 降级方案：读取配置文件判断
         try:
             import json
-            config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
+            config_path = app_path("config.json")
             if os.path.exists(config_path):
                 with open(config_path, 'r', encoding='utf-8') as f:
                     config = json.load(f)
@@ -421,13 +422,16 @@ class MinecraftWindowTool(QWidget):
     def init_ui(self):
         """初始化UI：优先从 UI 文件加载，失败时回退到备用 UI"""
         # 尝试多个可能的路径查找 mwtool.ui
+        # app_path 已兼容 PyInstaller / Nuitka（onefile 用 sys.__nuitka_binary_dir），
+        # 作为最高优先级候选
         possible_paths = [
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui', 'mwtool.ui'), # 源码结构
+            app_path("ui", "mwtool.ui"),  # 打包/开发环境统一路径
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui', 'mwtool.ui'), # 源码结构（开发兜底）
             os.path.join(os.getcwd(), 'ui', 'mwtool.ui'), # 运行目录下的 ui
             os.path.join(sys.prefix, 'ui', 'mwtool.ui'), # 打包后的根目录 (部分情况)
         ]
-        
-        # Nuitka/PyInstaller 兼容
+
+        # PyInstaller 兼容（app_path 已处理，这里保留以兼容旧逻辑）
         if hasattr(sys, '_MEIPASS'):
             possible_paths.insert(0, os.path.join(sys._MEIPASS, 'ui', 'mwtool.ui'))
 
@@ -464,6 +468,7 @@ class MinecraftWindowTool(QWidget):
                 icon_label = self.findChild(BodyLabel, "BodyLabel")
                 if icon_label:
                     icon_paths = [
+                        app_path("Bloret.png"),
                         os.path.join(os.getcwd(), "Bloret.png"),
                         os.path.join(os.path.dirname(os.path.dirname(__file__)), "Bloret.png"),
                     ]
@@ -509,6 +514,7 @@ class MinecraftWindowTool(QWidget):
         self.icon_label = QLabel()
         # 修复硬编码路径，使用相对路径
         icon_paths = [
+            app_path("Bloret.png"),
             os.path.join(os.getcwd(), "Bloret.png"),
             os.path.join(os.path.dirname(os.path.dirname(__file__)), "Bloret.png"),
         ]

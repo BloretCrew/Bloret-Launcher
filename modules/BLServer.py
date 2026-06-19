@@ -72,7 +72,13 @@ def IsNeedUpdate(NowVersion, LatestVersion):
 def handle_first_run(self):
     def _inner(self):
         if self.config.get('first-run', True):
-            parent_dir = os.path.dirname(os.getcwd())
+            # updating/updata.ps1 是更新流程留在 exe 父目录的残留，用 exe
+            # 实际所在目录的父目录定位，而非 os.getcwd() 的父目录。
+            if getattr(sys, 'frozen', False) or hasattr(sys, '__nuitka_binary_dir'):
+                exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+            else:
+                exe_dir = os.getcwd()
+            parent_dir = os.path.dirname(exe_dir)
             updating_folder = os.path.join(parent_dir, "updating")
             updata_ps1_file = os.path.join(parent_dir, "updata.ps1")
             if os.path.exists(updating_folder):
@@ -85,15 +91,26 @@ def handle_first_run(self):
         if sys.platform != "win32":
             log("非 Windows 平台暂不支持创建桌面快捷方式")
             return
-        
+
+        # exe 实际所在目录：Nuitka/PyInstaller 打包后用 sys.argv[0] 的父目录，
+        # 而非 os.getcwd()（那可能是任意启动目录）。
+        if getattr(sys, 'frozen', False) or hasattr(sys, '__nuitka_binary_dir'):
+            exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+        else:
+            exe_dir = os.getcwd()
+
         desktop = os.path.join(os.path.expanduser('~'), 'Desktop')
         shortcut_path = os.path.join(desktop, 'Bloret Launcher.lnk')
-        target = os.path.join(os.getcwd(), 'Bloret-Launcher.exe')
-        icon = os.path.join(os.getcwd(), 'bloret.ico')
+        target = os.path.join(exe_dir, 'Bloret-Launcher.exe')
+        # 图标优先用 exe 同目录（持久），其次用打包资源目录（临时解压，可能失效）
+        icon = os.path.join(exe_dir, 'bloret.ico')
+        if not os.path.exists(icon):
+            from modules.paths import app_path
+            icon = app_path('bloret.ico')
         shell = Dispatch('WScript.Shell')
         shortcut = shell.CreateShortCut(shortcut_path)
         shortcut.TargetPath = target
-        shortcut.WorkingDirectory = os.getcwd()
+        shortcut.WorkingDirectory = exe_dir
         shortcut.IconLocation = icon
         shortcut.save()
     t = threading.Thread(target=_inner, args=(self,), daemon=True)

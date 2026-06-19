@@ -3,11 +3,12 @@ import os
 from modules.log import log
 from PySide6.QtWidgets import QLabel, QPushButton, QCheckBox, QRadioButton, QComboBox, QTextEdit, QLineEdit, QSpinBox
 import modules.globals as BLglobals
+from modules.paths import app_path
 
 
 def _lang_file_path(language):
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    return os.path.join(base_dir, "lang", f"{language}.json")
+    # 使用统一的资源路径解析，兼容 PyInstaller / Nuitka 打包
+    return app_path("lang", f"{language}.json")
 
 def load_language(language=None):
     # 如果没有指定语言，则读取配置文件获取语言设置

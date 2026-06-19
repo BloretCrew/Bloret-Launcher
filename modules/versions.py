@@ -60,6 +60,7 @@ from modules.safe import handle_exception
 from modules.log import log
 from modules.customize import find_Customize
 from modules.i18n import i18nText
+from modules.paths import app_path
 import modules.globals as BLglobals
 import modules.config as cfg
 
@@ -77,9 +78,8 @@ def load_ui_file(ui_file_path):
         loader = QUiLoader()
         # 如果是相对路径，需要转换为绝对路径
         if not os.path.isabs(ui_file_path):
-            script_dir = Path(__file__).parent.parent.absolute()
-            ui_file_path = os.path.join(script_dir, ui_file_path)
-        
+            ui_file_path = app_path(ui_file_path)
+
         if not os.path.exists(ui_file_path):
             log(f"UI 文件不存在: {ui_file_path}", logging.WARNING)
             return None

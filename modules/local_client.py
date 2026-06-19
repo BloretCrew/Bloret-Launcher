@@ -7,6 +7,7 @@ import logging
 from modules.i18n import i18nText
 import modules.globals as BLglobals
 from modules.process_utils import hidden_process_kwargs
+from modules.paths import app_path
 
 def OnlineClient(port):
     """
@@ -36,14 +37,25 @@ def OnlineClient(port):
         log(f"连接地址: {BLglobals.server_ip[:-1]}:{remote_port}")
         
         # 2. 读取 frpc.toml 文件
-        frpc_config_path = os.path.join(os.getcwd(), "frpc.toml")
+        # frpc.toml 需要可写，优先用 app 目录下的模板；若 app 目录只读
+        # （Nuitka onefile 解压目录可能只读），则复制到可写的 datapath 再修改。
+        frpc_config_path = app_path("frpc.toml")
         if not os.path.exists(frpc_config_path):
             log(i18nText("frpc.toml 文件不存在"), level=logging.ERROR)
             return i18nText("配置文件不存在")
-            
+
+        # 复制到可写目录（datapath），避免修改打包目录内只读文件
+        writable_config = os.path.join(BLglobals.datapath, "frpc.toml")
+        try:
+            import shutil
+            shutil.copy2(frpc_config_path, writable_config)
+            frpc_config_path = writable_config
+        except Exception as e:
+            log(f"复制 frpc.toml 到可写目录失败，将尝试原位修改: {e}", level=logging.WARNING)
+
         with open(frpc_config_path, 'r', encoding='utf-8') as f:
             frpc_config = toml.load(f)
-        
+
         # 3. 编辑 frpc.toml 的 [proxies] 字段
         # 修改 name 为 str(port)
         frpc_config['proxies'][0]['name'] = str(port)
@@ -51,24 +63,24 @@ def OnlineClient(port):
         frpc_config['proxies'][0]['localPort'] = port
         # 修改 remotePort 为获取到的 port
         frpc_config['proxies'][0]['remotePort'] = remote_port
-        
+
         # 4. 保存修改后的配置
         with open(frpc_config_path, 'w', encoding='utf-8') as f:
             toml.dump(frpc_config, f)
-            
+
         log(f"已更新 frpc.toml 配置: name={port}, localPort={port}, remotePort={remote_port}")
-        
+
         # 5. 运行 frpc -c frpc.toml
-        frpc_path = os.path.join(os.getcwd(), "frpc.exe")
+        frpc_path = app_path("frpc.exe")
         if not os.path.exists(frpc_path):
             log(i18nText("frpc.exe 文件不存在"), level=logging.ERROR)
             return i18nText("frpc程序不存在")
-            
+
         log(i18nText("正在启动 frpc 客户端..."))
-        
-        # 启动 frpc 进程
+
+        # 启动 frpc 进程（配置用可写目录的副本）
         process = subprocess.Popen(
-            [frpc_path, "-c", "frpc.toml"],
+            [frpc_path, "-c", frpc_config_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,

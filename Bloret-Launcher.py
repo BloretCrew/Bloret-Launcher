@@ -10,16 +10,27 @@ from pathlib import Path
 # Add the local directory to handle imports like 'import RinUI' correctly
 # Handle both normal Python execution and Nuitka/PyInstaller bundling
 def _get_script_dir():
-    """获取脚本/应用程序目录，兼容不同的打包方式"""
+    """获取脚本/应用程序目录，兼容不同的打包方式。
+
+    Nuitka onefile 关键事实：
+    - Nuitka 不设置 sys.frozen（只有 PyInstaller 设置）。
+    - Nuitka 设置 sys.__nuitka_binary_dir，指向临时解压目录（数据文件所在）。
+    - 主脚本 __file__ 在 onefile 下解析到临时解压目录，可用但语义不如
+      sys.__nuitka_binary_dir 明确。
+    """
+    # Nuitka 编译模式（standalone / onefile）
+    nuitka_binary_dir = getattr(sys, "__nuitka_binary_dir", None)
+    if nuitka_binary_dir:
+        return Path(nuitka_binary_dir)
+
     # PyInstaller with --onefile
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         return Path(sys._MEIPASS)
-    
-    # Nuitka compiled (when frozen)
+
+    # PyInstaller 其它模式（frozen 但无 _MEIPASS）：用 exe 所在目录
     if getattr(sys, 'frozen', False):
-        # 对于Nuitka, sys.argv[0]是exe路径
-        return Path(sys.argv[0]).parent.absolute()
-    
+        return Path(sys.argv[0]).resolve().parent
+
     # Normal Python or Nuitka development mode
     # Use __file__ for source code execution
     return Path(__file__).resolve().parent

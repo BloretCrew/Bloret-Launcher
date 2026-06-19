@@ -3,87 +3,82 @@
 ## 问题描述
 **错误日志**：
 ```
-RuntimeError: Error loading QML file: C:\Users\...\Temp\onefile_xxx\qml\main.qml
+RuntimeError: Error loading QML file: ...\onefile_xxx\qml\main.qml
+  QML engine errors:
+    module "QtQuick.Layouts" is not installed
+    module "QtQuick.Controls" is not installed
 ```
 
-## 根本原因分析
+## 根本原因
 
-### 核心 Bug：`resource_path()` 被传入绝对路径
-**文件**: `RinUI/core/config.py`
+### 原因 1（已修复）：缺少 QML 插件打包
+Nuitka 的 PySide6 插件只有在 `--include-qt-plugins` 含 `qml` 时才打包 Qt QML 模块。
+**修复**：`.github/workflows/Nuitka-Build.yml` 三个平台均添加 `qml`。
 
-`resource_path()` 设计用于**相对路径**，但 `RINUI_PATH` 计算时传入了绝对路径：
-```python
-rinui_core_path = Path(__file__).resolve().parent  # 绝对路径！
-RINUI_PATH = resource_path(rinui_core_path.parent.parent)  # 传入绝对路径
-```
+### 原因 2（已修复）：`RINUI_PATH` 绝对路径拼接 Bug
+`resource_path()` 被传入绝对路径，Python 的 `Path(base)/绝对路径` 会忽略 base。
+**修复**：`RinUI/core/config.py` 新增 `_get_data_root()` 用 `sys.__nuitka_binary_dir`。
 
-Python 的 `Path(base) / absolute_path` 会**忽略 base**，直接返回 absolute_path。
-在 Nuitka 编译模式下，`resource_path()` 内部的 `Path(sys.__nuitka_binary_dir) / absolute_path`
-不会拼接 `sys.__nuitka_binary_dir`，而是直接返回编译时的源码路径（CI runner 的路径），
-该路径在用户机器上不存在。
+### 原因 3（已修复）：QML 引擎错误被静默吞掉
+**修复**：`RinUI/core/launcher.py` 添加 `qInstallMessageHandler` 捕获 QML 警告/错误。
 
-### 次要问题：QML 引擎错误被静默吞掉
-**文件**: `RinUI/core/launcher.py`
+### 原因 4（已修复）：`os.getcwd()` / `__file__` 定位打包资源
+Nuitka onefile 下 `os.getcwd()` 是启动目录（非解压目录），被导入模块的 `__file__`
+解析不可靠。多个模块用这两种方式定位 lang/、icon/、easytier/、web/ 等资源，打包后失效。
+**修复**：新增 `modules/paths.py` 统一路径解析（优先 `sys.__nuitka_binary_dir`），
+替换各模块的 `os.getcwd()` / `os.path.dirname(__file__)` 资源定位。
 
-`engine.load()` 的异常被捕获并 print，但 QML 引擎的内部警告/错误通过 Qt 消息系统
-输出，不会变成 Python 异常。当 `rootObjects()` 为空时，无法知道具体失败原因。
+### 原因 5（已修复）：`_get_script_dir()` 依赖 `sys.frozen`
+Nuitka 不设置 `sys.frozen`（只有 PyInstaller 设置），原逻辑靠 `__file__` 兜底巧合工作。
+**修复**：`Bloret-Launcher.py` 显式检测 `sys.__nuitka_binary_dir`。
 
-## 已应用的修复（2026-06-19）
-
-### 修复 1：新增 `_get_data_root()` 函数
-```python
-def _get_data_root():
-    """获取数据文件根目录，兼容 PyInstaller、Nuitka 和开发环境"""
-    if hasattr(sys, "_MEIPASS"):
-        return Path(sys._MEIPASS)
-    if hasattr(sys, "__nuitka_binary_dir"):
-        return Path(sys.__nuitka_binary_dir)
-    return rinui_core_path.parent.parent
-
-RINUI_PATH = _get_data_root()
-```
-
-### 修复 2：添加 QML 引擎错误捕获
-```python
-from PySide6.QtCore import qInstallMessageHandler, QtMsgType
-
-_qml_messages = []
-
-def _qml_message_handler(msg_type, context, message):
-    if msg_type in (QtMsgType.QtWarningMsg, QtMsgType.QtCriticalMsg, QtMsgType.QtFatalMsg):
-        _qml_messages.append(f"[QML {type_name}] {message}")
-```
-
-在 `load()` 中安装消息处理器，加载后输出收集到的 QML 消息。
-
-### 修复 3：增强错误诊断信息
-```python
-if not self.engine.rootObjects():
-    diag = f"Error loading QML file: {self.qml_path}"
-    diag += f"\n  RINUI_PATH: {RINUI_PATH} (exists: {RINUI_PATH.exists()})"
-    diag += f"\n  QML file exists: {self.qml_path.exists()}"
-    if _qml_messages:
-        diag += "\n  QML engine errors:\n    " + "\n    ".join(_qml_messages)
-    raise RuntimeError(diag)
-```
-
-### 修复 4：修复 `modules/setup_ui.py` 的 `resource_path()`
-添加了 `sys.__nuitka_binary_dir` 支持。
-
-## 调试输出
-`Bloret-Launcher.py` 现在会输出以下调试信息：
-```
-[DEBUG] SCRIPT_DIR: <temp_extraction_dir>
-[DEBUG] sys.__nuitka_binary_dir: <temp_extraction_dir>
-[DEBUG] RINUI_PATH: <temp_extraction_dir>
-[DEBUG] RINUI_PATH exists: True
-```
+## 新增文件
+- `modules/paths.py` — 统一资源路径解析（`get_app_dir()` / `app_path()`）
+  - Nuitka: `sys.__nuitka_binary_dir`
+  - PyInstaller: `sys._MEIPASS`
+  - 开发环境: `__file__` 向上一级
 
 ## 修改文件清单
-- `RinUI/core/config.py` — 新增 `_get_data_root()`，修复 `RINUI_PATH`
-- `RinUI/core/launcher.py` — QML 消息捕获 + 增强错误诊断
-- `Bloret-Launcher.py` — 增强调试输出
-- `modules/setup_ui.py` — `resource_path()` 添加 Nuitka 支持
+
+### 路径解析修复（问题 2）
+| 文件 | 修改 |
+|------|------|
+| `modules/paths.py` | **新增**：统一路径工具 |
+| `modules/i18n.py` | `lang/*.json` 用 `app_path` |
+| `modules/web.py` | CSS/HTML（9处）用 `app_path` |
+| `modules/easytier.py` | easytier 二进制定位用 `get_app_dir`（修复联机功能） |
+| `modules/ShortCut.py` | `icon/home.png`、QML 用 `app_path`/`get_app_dir` |
+| `modules/install.py` | UI、servers.dat、图标用 `app_path` |
+| `modules/versions.py` | UI 用 `app_path` |
+| `modules/mwtool.py` | mwtool.ui、config.json、Bloret.png 用 `app_path` |
+| `modules/local_client.py` | frpc 定位用 `app_path`，配置复制到可写目录 |
+| `modules/BLServer.py` | 快捷方式用 exe 实际目录（`sys.argv[0]`） |
+| `modules/update.py` | 通知图标用 `app_path` |
+| `modules/setup_ui.py` | `resource_path` 委托 `app_path`；修复 `ui/icon/`→`icon/`（既有 bug） |
+| `modules/BLDownload.py` | `.minecraft`、图标用 `app_path` |
+
+### 主入口修复（问题 1）
+| 文件 | 修改 |
+|------|------|
+| `Bloret-Launcher.py` | `_get_script_dir()` 显式检测 `sys.__nuitka_binary_dir` |
+
+### QML 修复（已在前一轮完成）
+| 文件 | 修改 |
+|------|------|
+| `.github/workflows/Nuitka-Build.yml` | `--include-qt-plugins` 加 `qml`（三平台） |
+| `RinUI/core/config.py` | `_get_data_root()` |
+| `RinUI/core/launcher.py` | QML 消息捕获 + 诊断信息 |
+
+## 问题 3：frpc 自动下载（已检查）
+- `modules/local_client.py` 只读取本地已有的 `frpc.toml`/`frpc.exe`，**无自动下载逻辑**。
+- workflow 的 EasyTier 自动下载逻辑正常：资产命名匹配 v2.6.4，有 zip 验证 + gh/curl 回退。
+- frpc 文件未打包且无下载代码 → 在线客户端功能在打包后仍会提示"frpc程序不存在"。
+  这属于功能缺失（非 Nuitka 打包问题），已将路径改为 `app_path` 以便将来补充 frpc 后即可工作。
+
+## 既有 bug（顺手修复）
+- `modules/setup_ui.py` 引用 `ui/icon/*.png`，但图标实际在 `icon/`（无 `ui/icon` 目录），
+  导致版本列表图标一直加载失败。已改为 `icon/`。
+- `modules/install.py` 的 `vanilla_icon_path`/`fabric_icon_path` 同样引用 `ui/icon/`，已修复。
 
 ---
 修复时间：2026-06-19

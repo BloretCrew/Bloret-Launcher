@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from modules.safe import handle_exception
 from modules.log import log
 from modules.i18n import i18nText
+from modules.paths import app_path
 import modules.globals as BLglobals
 
 def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft, LM_Download_Way_version, parent):
@@ -21,7 +22,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
             self.setWindowTitle("Bloret Launcher")
 
             # 检查 .minecraft 文件夹是否存在
-            minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
+            minecraft_dir = app_path(".minecraft")
             if not os.path.exists(minecraft_dir):
                 log(i18nText(".minecraft 文件夹不存在"))
                 # Skipping uic.loadUi for now as we are migrating to QML
@@ -115,9 +116,9 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                     'status': i18nText('正在下载... ↓'),
                     'value': '0',
                     'valueStringOverride': '0%',
-                    'icon': os.path.join(os.getcwd(), 'bloret.ico')
+                    'icon': app_path('bloret.ico')
                 })
-                
+
                 log(f"LM_download_way_choose:{LM_download_way_choose}")
                 version_download_url = LM_Download_Way_version.get(LM_download_way_choose)
                 log(f"下载链接:{version_download_url}")
@@ -313,7 +314,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                         'status': i18nText('正在下载... ↓'),
                         'value': '0',
                         'valueStringOverride': '0%',
-                        'icon': os.path.join(os.getcwd(), 'bloret.ico')  # 确保路径有效
+                        'icon': app_path('bloret.ico')  # 确保路径有效
                     })
         
                     # 打开文件并写入下载内容
@@ -365,7 +366,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
     download_dialog = BLDownloadDialog(version, parent)
 
     # 创建下载线程
-    minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
+    minecraft_dir = app_path(".minecraft")
     thread = VersionDownloadThread(version, minecraft_dir)
     thread.finished.connect(lambda t=thread: self.threads.remove(t) if t in self.threads else None)
     self.threads.append(thread)

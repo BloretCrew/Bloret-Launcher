@@ -121,7 +121,7 @@ jobs:
           --assume-yes-for-downloads `
           --enable-plugin=tk-inter `
           --enable-plugin=pyside6 `
-          --include-qt-plugins=sensible,styles `
+          --include-qt-plugins=sensible,styles,qml `
           --include-data-dir=qml=qml `
           --include-data-dir=RinUI=RinUI `
           --include-data-dir=icon=icon `
@@ -140,7 +140,7 @@ jobs:
       run: |
         EASYTIER_ARG=""
         if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
-        python -m nuitka --standalone --onefile --enable-plugin=pyside6 --include-qt-plugins=sensible --include-data-dir=qml=qml --include-data-dir=RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang --include-data-files=Bloret.png=Bloret.png --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
+        python -m nuitka --standalone --onefile --enable-plugin=pyside6 --include-qt-plugins=sensible,qml --include-data-dir=qml=qml --include-data-dir=RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang --include-data-files=Bloret.png=Bloret.png --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
       shell: bash
 
     - name: 修复 OpenSSL 依赖 (macOS)
@@ -262,7 +262,7 @@ jobs:
         if [ -d "easytier" ] && [ "$(ls -A easytier)" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
         # OpenSSL 依赖通过上面的环境变量配置处理
-        python -m nuitka --standalone --macos-create-app-bundle --macos-app-name="Bloret Launcher" $ICON_CMD --enable-plugin=pyside6 --include-qt-plugins=sensible,styles --include-data-dir=qml=qml --include-data-dir=RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no Bloret-Launcher.py
+        python -m nuitka --standalone --macos-create-app-bundle --macos-app-name="Bloret Launcher" $ICON_CMD --enable-plugin=pyside6 --include-qt-plugins=sensible,styles,qml --include-data-dir=qml=qml --include-data-dir=RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no Bloret-Launcher.py
 
         # 生成 DMG 文件
         brew install create-dmg

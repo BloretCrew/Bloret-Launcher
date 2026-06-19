@@ -7,6 +7,7 @@ from modules.safe import handle_exception
 from modules.i18n import i18nText
 import modules.globals as BLglobals
 from modules.process_utils import hidden_process_kwargs
+from modules.paths import app_path
 
 def update_to_latest_version(self):
     try:
@@ -19,9 +20,9 @@ def update_to_latest_version(self):
             'status': '正在获取最新版本信息...',
             'value': '0',
             'valueStringOverride': '0%',
-            'icon': os.path.join(os.getcwd(), 'bloret.ico')
+            'icon': app_path('bloret.ico')
         })
-        
+
         # 1. 向API获取信息
         update_progress({
             'value': 10 / 100,
@@ -47,9 +48,9 @@ def update_to_latest_version(self):
             'status': res["newVersionDescription"],
             'value': '0',
             'valueStringOverride': '0%',
-            'icon': os.path.join(os.getcwd(), 'bloret.ico')
+            'icon': app_path('bloret.ico')
         })
-        
+
         # 更新进度
         update_progress({
             'value': 20 / 100,

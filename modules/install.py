@@ -56,6 +56,7 @@ from modules.safe import handle_exception
 from modules.log import log
 from modules.customize import find_Customize
 from modules.i18n import i18nText
+from modules.paths import app_path
 import modules.globals as BLglobals
 import modules.config as cfg
 
@@ -73,9 +74,8 @@ def load_ui_file(ui_file_path):
     try:
         loader = QUiLoader()
         if not os.path.isabs(ui_file_path):
-            script_dir = Path(__file__).parent.parent.absolute()
-            ui_file_path = os.path.join(script_dir, ui_file_path)
-        
+            ui_file_path = app_path(ui_file_path)
+
         if not os.path.exists(ui_file_path):
             log(f"UI 文件不存在: {ui_file_path}", logging.WARNING)
             return None
@@ -1891,8 +1891,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                 # 复制 servers.dat 文件到 Fabric 版本目录
                 try:
                     # 检查是否存在 servers.dat 文件（程序目录下）
-                    program_dir = os.path.dirname(os.path.dirname(__file__))  # 获取程序根目录
-                    servers_dat_source = os.path.join(program_dir, "servers.dat")  # 程序目录下的 servers.dat 文件
+                    servers_dat_source = app_path("servers.dat")  # 程序目录下的 servers.dat 文件
                     if os.path.exists(servers_dat_source):
                         # Fabric版本目录
                         servers_dat_target = os.path.join(fabric_version_dir, "servers.dat")
@@ -1954,13 +1953,11 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         
         # 更新 .BL.json 文件，记录已安装的版本
         try:
-            # 获取程序运行目录
-            current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            # 原版图标路径
-            vanilla_icon_path = os.path.join(current_dir, "ui", "icon", "Grass_Block.png")
+            # 原版图标路径（图标位于资源根目录的 icon/ 下）
+            vanilla_icon_path = app_path("icon", "Grass_Block.png")
             # Fabric 图标路径
-            fabric_icon_path = os.path.join(current_dir, "ui", "icon", "fabric.png")
-            
+            fabric_icon_path = app_path("icon", "fabric.png")
+
             # 确保路径存在，如果不存在则设为None
             if not os.path.exists(vanilla_icon_path):
                 log(f"原版图标未找到: {vanilla_icon_path}", logging.WARNING)
@@ -1994,8 +1991,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         # 复制 servers.dat 文件到安装目录
         try:
             # 检查是否存在 servers.dat 文件（程序目录下）
-            program_dir = os.path.dirname(os.path.dirname(__file__))  # 获取程序根目录
-            servers_dat_source = os.path.join(program_dir, "servers.dat")  # 程序目录下的 servers.dat 文件
+            servers_dat_source = app_path("servers.dat")  # 程序目录下的 servers.dat 文件
             if os.path.exists(servers_dat_source):
                 # 确定目标版本目录
                 if fabric_version_id_final:
