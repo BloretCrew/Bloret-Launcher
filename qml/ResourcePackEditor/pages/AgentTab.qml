@@ -13,8 +13,6 @@ Item {
     ListModel { id: roleModel }
     ListModel { id: historyListModel }
 
-    property var modelsDevProviders: []
-    property string selectedModelsDevId: ""
     property bool historyPanelOpen: false
     property string conversationTitle: ""
 
@@ -25,7 +23,6 @@ Item {
             var providers = JSON.parse(Agent.getProviders())
             for (var i = 0; i < providers.length; i++)
                 providerModel.append(providers[i])
-            providerModel.append({key: "__add__", name: "＋ 添加供应商...", builtin: false, has_key: false, model_count: 0})
             loadModels()
         } catch(e) {}
     }
@@ -654,15 +651,6 @@ Item {
                             enabled: Agent && !Agent.busy
                             onActivated: function(index) {
                                 var item = providerModel.get(index)
-                                if (item.key === "__add__") {
-                                    addProviderDialog.open()
-                                    Qt.callLater(function() {
-                                        for (var i = 0; i < providerModel.count; i++) {
-                                            if (providerModel.get(i).key === Agent.getCurrentProvider()) { providerCombo.currentIndex = i; break }
-                                        }
-                                    })
-                                    return
-                                }
                                 Agent.setProvider(item.key); loadModels()
                             }
                         }
@@ -740,110 +728,6 @@ Item {
     // ============================================================
     // 对话框
     // ============================================================
-
-    // 添加供应商
-    Dialog {
-        id: addProviderDialog
-        title: "添加 AI 供应商"
-        modal: true; width: 480
-        closePolicy: Popup.CloseOnEscape
-        property int step: 1
-
-        ListModel { id: modelsDevModel }
-        ListModel { id: filteredModel }
-        property string apiStep2Id: ""
-
-        onOpened: {
-            step = 1; apiKeyField.text = ""; providerSearchField.text = ""; apiStep2Id = ""
-            loadLabel.visible = true; modelsDevModel.clear(); filteredModel.clear()
-            Qt.callLater(function() {
-                try {
-                    var json = Agent.fetchModelsDev()
-                    modelsDevProviders = JSON.parse(json)
-                    for (var i = 0; i < modelsDevProviders.length; i++) modelsDevModel.append(modelsDevProviders[i])
-                    filterProv()
-                } catch(e) {}
-                loadLabel.visible = false
-            })
-        }
-
-        function filterProv() {
-            filteredModel.clear()
-            var q = providerSearchField.text.toLowerCase()
-            for (var i = 0; i < modelsDevModel.count; i++) {
-                var item = modelsDevModel.get(i)
-                if (q === "" || item.name.toLowerCase().indexOf(q) >= 0 || item.id.toLowerCase().indexOf(q) >= 0)
-                    filteredModel.append(item)
-            }
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 12
-
-            ColumnLayout {
-                visible: addProviderDialog.step === 1; spacing: 10
-
-                Text { text: "选择 AI 供应商："; font.pixelSize: 13; font.bold: true; color: Theme.currentTheme.colors.textColor }
-
-                TextField {
-                    id: providerSearchField
-                    Layout.fillWidth: true; placeholderText: "搜索..."; font.pixelSize: 12
-                    visible: !loadLabel.visible; clearEnabled: true
-                    onTextChanged: addProviderDialog.filterProv()
-                }
-
-                Text { id: loadLabel; text: "加载中..."; font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor; visible: false }
-
-                Frame {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Math.min(filteredModel.count * 40 + 8, 280)
-                    visible: filteredModel.count > 0
-                    background: Rectangle { radius: 6; color: Theme.currentTheme.colors.cardColor || "#FFF"; border.color: Theme.currentTheme.colors.controlBorderColor; border.width: 1 }
-
-                    contentItem: ListView {
-                        id: provLV; clip: true; model: filteredModel
-                        delegate: ItemDelegate {
-                            width: provLV.width; height: 36
-                            contentItem: Column {
-                                spacing: 0; anchors.leftMargin: 8
-                                Text { text: model.name; font.pixelSize: 12; font.bold: true; color: Theme.currentTheme.colors.textColor }
-                                Text { text: model.model_count + " 模型 · " + model.id; font.pixelSize: 10; color: Theme.currentTheme.colors.textSecondaryColor }
-                            }
-                            onClicked: { addProviderDialog.apiStep2Id = model.id; addProviderDialog.step = 2; apiKeyField.forceActiveFocus() }
-                        }
-                    }
-                }
-            }
-
-            ColumnLayout {
-                visible: addProviderDialog.step === 2; spacing: 10
-                Text { text: "供应商: " + addProviderDialog.apiStep2Id; font.pixelSize: 13; font.bold: true; color: Theme.currentTheme.colors.textColor }
-                Text { text: "请输入 API 密钥："; font.pixelSize: 12; color: Theme.currentTheme.colors.textSecondaryColor }
-                TextField { id: apiKeyField; Layout.fillWidth: true; placeholderText: "sk-..."; echoMode: TextInput.Password; clearEnabled: true; Keys.onReturnPressed: confirmBtn.clicked() }
-                Text { text: "密钥保存在本地，仅用于请求 AI 服务。"; font.pixelSize: 10; color: Theme.currentTheme.colors.textSecondaryColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Button { text: addProviderDialog.step === 1 ? "取消" : "返回"; flat: true; onClicked: { if (addProviderDialog.step === 1) addProviderDialog.close(); else addProviderDialog.step = 1 } }
-                Item { Layout.fillWidth: true }
-                Button {
-                    id: confirmBtn; text: "添加"; highlighted: true
-                    visible: addProviderDialog.step === 2; enabled: apiKeyField.text.trim().length > 0
-                    onClicked: {
-                        if (Agent.addProvider(addProviderDialog.apiStep2Id, apiKeyField.text.trim())) {
-                            addProviderDialog.close(); loadProviders()
-                            for (var i = 0; i < providerModel.count; i++) {
-                                if (providerModel.get(i).key === addProviderDialog.apiStep2Id) {
-                                    providerCombo.currentIndex = i; Agent.setProvider(addProviderDialog.apiStep2Id); loadModels(); break
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     // 权限对话框
     Dialog {

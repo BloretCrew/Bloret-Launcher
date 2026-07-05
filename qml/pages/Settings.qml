@@ -29,6 +29,14 @@ FluentPage {
         }
     }
 
+    Connections {
+        target: Agent
+        enabled: Agent !== null
+        function onProvidersChanged() {
+            loadSettingsProviders()
+        }
+    }
+
     function refreshTranslations() {
         _title = Backend ? Backend.tr("设置") : "设置";
         _versionTitle = Backend ? Backend.tr("当前版本") : "当前版本";
@@ -104,6 +112,23 @@ FluentPage {
         _proxyTitle = Backend ? Backend.tr("网络代理") : "网络代理";
         _proxyDesc = Backend ? Backend.tr("设置 HTTP/HTTPS/SOCKS5 代理地址，如 http://127.0.0.1:7890，留空表示不使用代理") : "设置 HTTP/HTTPS/SOCKS5 代理地址，如 http://127.0.0.1:7890，留空表示不使用代理";
         _proxyPlaceholder = Backend ? Backend.tr("不使用代理") : "不使用代理";
+        _aiProvidersSection = Backend ? Backend.tr("AI 供应商") : "AI 供应商";
+        _aiProvidersTitle = Backend ? Backend.tr("AI 供应商管理") : "AI 供应商管理";
+        _aiProvidersDesc = Backend ? Backend.tr("管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用") : "管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用";
+        _addProviderBtn = Backend ? Backend.tr("添加供应商") : "添加供应商";
+        _addProviderDialogTitle = Backend ? Backend.tr("添加 AI 供应商") : "添加 AI 供应商";
+        _selectProviderLabel = Backend ? Backend.tr("选择 AI 供应商：") : "选择 AI 供应商：";
+        _searchPlaceholder = Backend ? Backend.tr("搜索...") : "搜索...";
+        _loadingText = Backend ? Backend.tr("加载中...") : "加载中...";
+        _apiKeyLabel = Backend ? Backend.tr("请输入 API 密钥：") : "请输入 API 密钥：";
+        _apiKeyPlaceholder = Backend ? Backend.tr("sk-...") : "sk-...";
+        _apiKeyNotice = Backend ? Backend.tr("密钥保存在本地，仅用于请求 AI 服务。") : "密钥保存在本地，仅用于请求 AI 服务。";
+        _addBtn = Backend ? Backend.tr("添加") : "添加";
+        _cancelBtn = Backend ? Backend.tr("取消") : "取消";
+        _backBtn = Backend ? Backend.tr("返回") : "返回";
+        _builtinLabel = Backend ? Backend.tr("内置") : "内置";
+        _customLabel = Backend ? Backend.tr("自定义") : "自定义";
+        _removeProviderTooltip = Backend ? Backend.tr("删除此供应商") : "删除此供应商";
     }
 
     property string _versionTitle: Backend ? Backend.tr("当前版本") : "当前版本"
@@ -179,9 +204,39 @@ FluentPage {
     property string _proxyTitle: Backend ? Backend.tr("网络代理") : "网络代理"
     property string _proxyDesc: Backend ? Backend.tr("设置 HTTP/HTTPS/SOCKS5 代理地址，如 http://127.0.0.1:7890，留空表示不使用代理") : "设置 HTTP/HTTPS/SOCKS5 代理地址，如 http://127.0.0.1:7890，留空表示不使用代理"
     property string _proxyPlaceholder: Backend ? Backend.tr("不使用代理") : "不使用代理"
+    property string _aiProvidersSection: Backend ? Backend.tr("AI 供应商") : "AI 供应商"
+    property string _aiProvidersTitle: Backend ? Backend.tr("AI 供应商管理") : "AI 供应商管理"
+    property string _aiProvidersDesc: Backend ? Backend.tr("管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用") : "管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用"
+    property string _addProviderBtn: Backend ? Backend.tr("添加供应商") : "添加供应商"
+    property string _addProviderDialogTitle: Backend ? Backend.tr("添加 AI 供应商") : "添加 AI 供应商"
+    property string _selectProviderLabel: Backend ? Backend.tr("选择 AI 供应商：") : "选择 AI 供应商："
+    property string _searchPlaceholder: Backend ? Backend.tr("搜索...") : "搜索..."
+    property string _loadingText: Backend ? Backend.tr("加载中...") : "加载中..."
+    property string _apiKeyLabel: Backend ? Backend.tr("请输入 API 密钥：") : "请输入 API 密钥："
+    property string _apiKeyPlaceholder: Backend ? Backend.tr("sk-...") : "sk-..."
+    property string _apiKeyNotice: Backend ? Backend.tr("密钥保存在本地，仅用于请求 AI 服务。") : "密钥保存在本地，仅用于请求 AI 服务。"
+    property string _addBtn: Backend ? Backend.tr("添加") : "添加"
+    property string _cancelBtn: Backend ? Backend.tr("取消") : "取消"
+    property string _backBtn: Backend ? Backend.tr("返回") : "返回"
+    property string _builtinLabel: Backend ? Backend.tr("内置") : "内置"
+    property string _customLabel: Backend ? Backend.tr("自定义") : "自定义"
+    property string _removeProviderTooltip: Backend ? Backend.tr("删除此供应商") : "删除此供应商"
+
+    ListModel { id: settingsProviderModel }
+
+    function loadSettingsProviders() {
+        settingsProviderModel.clear()
+        if (!Agent) return
+        try {
+            var providers = JSON.parse(Agent.getProviders())
+            for (var i = 0; i < providers.length; i++)
+                settingsProviderModel.append(providers[i])
+        } catch(e) {}
+    }
 
     function refreshData() {
         refreshTranslations();
+        loadSettingsProviders();
         if (Backend) {
             currentMcDir = Backend.getMinecraftDir();
             javaPaths = Backend.getSystemJavas();
@@ -835,6 +890,253 @@ FluentPage {
                 onEditingFinished: {
                     if (Backend)
                         Backend.setProxy(text);
+                }
+            }
+        }
+    }
+
+    Label {
+        font.pixelSize: 20
+        font.weight: Font.DemiBold
+        text: _aiProvidersSection
+        Layout.topMargin: 10
+        color: Theme.currentTheme.colors.textColor
+    }
+
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 4
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: _aiProvidersTitle
+            description: _aiProvidersDesc
+            icon.name: "ic_fluent_bot_20_regular"
+            Button {
+                text: _addProviderBtn
+                highlighted: true
+                onClicked: settingsAddProviderDialog.open()
+            }
+        }
+
+        Repeater {
+            model: settingsProviderModel
+            delegate: SettingCard {
+                Layout.fillWidth: true
+                title: model.name
+                description: model.builtin ? _builtinLabel + " · " + model.model_count + " 模型" : _customLabel + " · " + model.model_count + " 模型"
+                icon.name: "ic_fluent_person_20_regular"
+                RowLayout {
+                    spacing: 8
+                    Label {
+                        text: model.has_key ? "✓" : ""
+                        color: Theme.accentColor || "#0078D4"
+                        font.pixelSize: 14
+                        Layout.alignment: Qt.AlignVCenter
+                        visible: !model.builtin
+                    }
+                    Button {
+                        flat: true
+                        text: "✕"
+                        visible: !model.builtin
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        onClicked: {
+                            if (Agent) {
+                                Agent.removeProvider(model.key)
+                                loadSettingsProviders()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 空状态提示
+        Label {
+            visible: settingsProviderModel.count === 0
+            text: "暂无已添加的供应商"
+            font.pixelSize: 12
+            color: Theme.currentTheme.colors.textSecondaryColor
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 8
+            Layout.bottomMargin: 8
+        }
+    }
+
+    // 添加供应商对话框
+    Dialog {
+        id: settingsAddProviderDialog
+        title: _addProviderDialogTitle
+        modal: true
+        width: 520
+        closePolicy: Popup.CloseOnEscape
+        property int step: 1
+
+        ListModel { id: settingsModelsDevModel }
+        ListModel { id: settingsFilteredModel }
+        property string apiStep2Id: ""
+
+        onOpened: {
+            step = 1; settingsApiKeyField.text = ""; settingsProviderSearchField.text = ""; apiStep2Id = ""
+            settingsLoadLabel.visible = true; settingsModelsDevModel.clear(); settingsFilteredModel.clear()
+            Qt.callLater(function() {
+                try {
+                    if (!Agent) return
+                    var json = Agent.fetchModelsDev()
+                    var providers = JSON.parse(json)
+                    for (var i = 0; i < providers.length; i++) settingsModelsDevModel.append(providers[i])
+                    filterProv()
+                } catch(e) {}
+                settingsLoadLabel.visible = false
+            })
+        }
+
+        function filterProv() {
+            settingsFilteredModel.clear()
+            var q = settingsProviderSearchField.text.toLowerCase()
+            for (var i = 0; i < settingsModelsDevModel.count; i++) {
+                var item = settingsModelsDevModel.get(i)
+                if (q === "" || item.name.toLowerCase().indexOf(q) >= 0 || item.id.toLowerCase().indexOf(q) >= 0)
+                    settingsFilteredModel.append(item)
+            }
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+
+            ColumnLayout {
+                visible: settingsAddProviderDialog.step === 1
+                spacing: 10
+
+                Text {
+                    text: _selectProviderLabel
+                    font.pixelSize: 13
+                    font.bold: true
+                    color: Theme.currentTheme.colors.textColor
+                }
+
+                TextField {
+                    id: settingsProviderSearchField
+                    Layout.fillWidth: true
+                    placeholderText: _searchPlaceholder
+                    font.pixelSize: 12
+                    visible: !settingsLoadLabel.visible
+                    clearEnabled: true
+                    onTextChanged: settingsAddProviderDialog.filterProv()
+                }
+
+                Text {
+                    id: settingsLoadLabel
+                    text: _loadingText
+                    font.pixelSize: 11
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    visible: false
+                }
+
+                Frame {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(settingsFilteredModel.count * 40 + 8, 280)
+                    visible: settingsFilteredModel.count > 0
+                    background: Rectangle {
+                        radius: 6
+                        color: Theme.currentTheme.colors.cardColor || "#FFF"
+                        border.color: Theme.currentTheme.colors.controlBorderColor
+                        border.width: 1
+                    }
+
+                    contentItem: ListView {
+                        id: settingsProvLV
+                        clip: true
+                        model: settingsFilteredModel
+                        delegate: ItemDelegate {
+                            width: settingsProvLV.width
+                            height: 36
+                            contentItem: Column {
+                                spacing: 0
+                                anchors.leftMargin: 8
+                                Text {
+                                    text: model.name
+                                    font.pixelSize: 12
+                                    font.bold: true
+                                    color: Theme.currentTheme.colors.textColor
+                                }
+                                Text {
+                                    text: model.model_count + " 模型 · " + model.id
+                                    font.pixelSize: 10
+                                    color: Theme.currentTheme.colors.textSecondaryColor
+                                }
+                            }
+                            onClicked: {
+                                settingsAddProviderDialog.apiStep2Id = model.id
+                                settingsAddProviderDialog.step = 2
+                                settingsApiKeyField.forceActiveFocus()
+                            }
+                        }
+                    }
+                }
+            }
+
+            ColumnLayout {
+                visible: settingsAddProviderDialog.step === 2
+                spacing: 10
+
+                Text {
+                    text: "供应商: " + settingsAddProviderDialog.apiStep2Id
+                    font.pixelSize: 13
+                    font.bold: true
+                    color: Theme.currentTheme.colors.textColor
+                }
+
+                Text {
+                    text: _apiKeyLabel
+                    font.pixelSize: 12
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                }
+
+                TextField {
+                    id: settingsApiKeyField
+                    Layout.fillWidth: true
+                    placeholderText: _apiKeyPlaceholder
+                    echoMode: TextInput.Password
+                    clearEnabled: true
+                    Keys.onReturnPressed: settingsConfirmBtn.clicked()
+                }
+
+                Text {
+                    text: _apiKeyNotice
+                    font.pixelSize: 10
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: settingsAddProviderDialog.step === 1 ? _cancelBtn : _backBtn
+                    flat: true
+                    onClicked: {
+                        if (settingsAddProviderDialog.step === 1)
+                            settingsAddProviderDialog.close()
+                        else
+                            settingsAddProviderDialog.step = 1
+                    }
+                }
+                Item { Layout.fillWidth: true }
+                Button {
+                    id: settingsConfirmBtn
+                    text: _addBtn
+                    highlighted: true
+                    visible: settingsAddProviderDialog.step === 2
+                    enabled: settingsApiKeyField.text.trim().length > 0
+                    onClicked: {
+                        if (Agent && Agent.addProvider(settingsAddProviderDialog.apiStep2Id, settingsApiKeyField.text.trim())) {
+                            settingsAddProviderDialog.close()
+                            loadSettingsProviders()
+                        }
+                    }
                 }
             }
         }
