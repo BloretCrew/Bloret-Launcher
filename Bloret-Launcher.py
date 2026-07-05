@@ -212,6 +212,9 @@ class Backend(QObject):
     playTimeTick = Signal()  # emitted every second while game is running
     statisticsUpdated = Signal()  # emitted when play statistics are updated
 
+    # Global AI settings signal
+    globalAIProviderChanged = Signal(str, str)  # provider_key, model_id
+
     # Resource Pack Editor signal
     resourcePackEditorRequested = Signal()
 
@@ -241,6 +244,46 @@ class Backend(QObject):
         self._live_easytier_publish_thread = None
         self._live_easytier_publish_running = False
         self._live_space_list_cache = []
+
+    # ========== 全局 AI 供应商/模型设置 ==========
+
+    @Slot(result=str)
+    def getGlobalAIProvider(self):
+        """获取全局 AI 供应商"""
+        config_data = cfg.read()
+        return config_data.get("ai_provider", "opencode_zen")
+
+    @Slot(str)
+    def setGlobalAIProvider(self, provider_key):
+        """设置全局 AI 供应商"""
+        try:
+            config_data = cfg.read()
+            config_data["ai_provider"] = provider_key
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            model = config_data.get("ai_model", "deepseek-v4-flash-free")
+            self.globalAIProviderChanged.emit(provider_key, model)
+        except Exception as e:
+            print(f"Error saving global AI provider: {e}")
+
+    @Slot(result=str)
+    def getGlobalAIModel(self):
+        """获取全局 AI 模型"""
+        config_data = cfg.read()
+        return config_data.get("ai_model", "deepseek-v4-flash-free")
+
+    @Slot(str)
+    def setGlobalAIModel(self, model_id):
+        """设置全局 AI 模型"""
+        try:
+            config_data = cfg.read()
+            config_data["ai_model"] = model_id
+            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            provider = config_data.get("ai_provider", "opencode_zen")
+            self.globalAIProviderChanged.emit(provider, model_id)
+        except Exception as e:
+            print(f"Error saving global AI model: {e}")
 
     def setBackendParent(self, parent):
         self.parent = parent
@@ -4282,6 +4325,8 @@ class LauncherV2(RinUIWindow):
             from modules.resourcepack_editor.agent_backend import AgentBackend
             self.agent_backend = AgentBackend()
             self.engine.rootContext().setContextProperty("Agent", self.agent_backend)
+            # 连接全局 AI 设置变化信号
+            self.backend.globalAIProviderChanged.connect(self.agent_backend.onGlobalAIProviderChanged)
         except Exception as e:
             print(f"Failed to load AI Agent backend: {e}")
 
@@ -4290,6 +4335,8 @@ class LauncherV2(RinUIWindow):
             from modules.bloriko_agent import BlorikoBackend
             self.bloriko_backend = BlorikoBackend()
             self.engine.rootContext().setContextProperty("Bloriko", self.bloriko_backend)
+            # 连接全局 AI 设置变化信号
+            self.backend.globalAIProviderChanged.connect(self.bloriko_backend.onGlobalAIProviderChanged)
         except Exception as e:
             print(f"Failed to load Bloriko Agent backend: {e}")
         

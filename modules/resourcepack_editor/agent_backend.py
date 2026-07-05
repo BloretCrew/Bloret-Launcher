@@ -212,8 +212,8 @@ class AgentBackend(QObject):
         self._history = []
         self._current_text = ""
         self._current_tool_calls = []
-        self._current_provider = "opencode_zen"
-        self._current_model = "deepseek-v4-flash-free"
+        # 从全局 config.json 读取供应商和模型设置
+        self._current_provider, self._current_model = self._load_global_ai_settings()
 
         # 加载自定义供应商
         self._custom_providers = _load_custom_providers()
@@ -234,6 +234,38 @@ class AgentBackend(QObject):
 
         # RPE 编辑器后端引用（用于 git 操作）
         self._rpe_backend = None
+
+    # ========== 全局设置 ==========
+
+    @staticmethod
+    def _load_global_ai_settings():
+        """从 config.json 读取全局 AI 供应商和模型设置"""
+        try:
+            import modules.config as cfg
+            config_data = cfg.read()
+            provider = config_data.get("ai_provider", "opencode_zen")
+            model = config_data.get("ai_model", "deepseek-v4-flash-free")
+            return provider, model
+        except Exception as e:
+            log.warning(f"[Agent] 读取全局 AI 设置失败: {e}")
+            return "opencode_zen", "deepseek-v4-flash-free"
+
+    def _sync_global_settings(self):
+        """同步全局 AI 设置（每次交互时检查）"""
+        provider, model = self._load_global_ai_settings()
+        if provider != self._current_provider or model != self._current_model:
+            self._current_provider = provider
+            self._current_model = model
+            log.info(f"[Agent] 同步全局 AI 设置: provider={provider}, model={model}")
+
+    @Slot(str, str)
+    def onGlobalAIProviderChanged(self, provider_key, model_id):
+        """响应全局 AI 供应商/模型变化"""
+        if self._current_provider != provider_key or self._current_model != model_id:
+            self._current_provider = provider_key
+            self._current_model = model_id
+            self.providersChanged.emit()
+            log.info(f"[Agent] 全局 AI 设置已更新: provider={provider_key}, model={model_id}")
 
     # ========== 属性 ==========
 

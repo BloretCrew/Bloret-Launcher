@@ -223,14 +223,53 @@ FluentPage {
     property string _removeProviderTooltip: Backend ? Backend.tr("删除此供应商") : "删除此供应商"
 
     ListModel { id: settingsProviderModel }
+    ListModel { id: settingsGlobalProviderModel }
+    ListModel { id: settingsGlobalModelModel }
 
     function loadSettingsProviders() {
         settingsProviderModel.clear()
+        settingsGlobalProviderModel.clear()
+        settingsGlobalModelModel.clear()
         if (!Agent) return
         try {
             var providers = JSON.parse(Agent.getProviders())
-            for (var i = 0; i < providers.length; i++)
+            for (var i = 0; i < providers.length; i++) {
                 settingsProviderModel.append(providers[i])
+                settingsGlobalProviderModel.append(providers[i])
+            }
+            // 加载全局 AI 供应商/模型选择
+            if (Backend) {
+                var globalProvider = Backend.getGlobalAIProvider()
+                var globalModel = Backend.getGlobalAIModel()
+                // 设置供应商下拉框选中项
+                for (var j = 0; j < settingsGlobalProviderModel.count; j++) {
+                    if (settingsGlobalProviderModel.get(j).key === globalProvider) {
+                        settingsGlobalProviderCombo.currentIndex = j
+                        loadGlobalModels(globalProvider, globalModel)
+                        break
+                    }
+                }
+            }
+        } catch(e) {}
+    }
+
+    function loadGlobalModels(providerKey, selectedModel) {
+        settingsGlobalModelModel.clear()
+        if (!Agent) return
+        try {
+            var models = JSON.parse(Agent.getModelsFor(providerKey))
+            for (var i = 0; i < models.length; i++)
+                settingsGlobalModelModel.append(models[i])
+            if (selectedModel) {
+                for (var j = 0; j < settingsGlobalModelModel.count; j++) {
+                    if (settingsGlobalModelModel.get(j).id === selectedModel) {
+                        settingsGlobalModelCombo.currentIndex = j
+                        break
+                    }
+                }
+            }
+            if (settingsGlobalModelCombo.currentIndex < 0 && settingsGlobalModelModel.count > 0)
+                settingsGlobalModelCombo.currentIndex = 0
         } catch(e) {}
     }
 
@@ -906,6 +945,39 @@ FluentPage {
     ColumnLayout {
         Layout.fillWidth: true
         spacing: 4
+
+        SettingCard {
+            Layout.fillWidth: true
+            title: Backend ? Backend.tr("默认 AI 供应商") : "默认 AI 供应商"
+            description: Backend ? Backend.tr("选择所有 AI 功能使用的供应商和模型") : "选择所有 AI 功能使用的供应商和模型"
+            icon.name: "ic_fluent_bot_settings_20_regular"
+            RowLayout {
+                spacing: 8
+                ComboBox {
+                    id: settingsGlobalProviderCombo
+                    Layout.preferredWidth: 140
+                    model: settingsGlobalProviderModel
+                    textRole: "name"
+                    font.pixelSize: 10
+                    onActivated: function(index) {
+                        var item = settingsGlobalProviderModel.get(index)
+                        if (Backend) Backend.setGlobalAIProvider(item.key)
+                        loadGlobalModels(item.key, "")
+                    }
+                }
+                ComboBox {
+                    id: settingsGlobalModelCombo
+                    Layout.preferredWidth: 200
+                    model: settingsGlobalModelModel
+                    textRole: "name"
+                    font.pixelSize: 10
+                    onActivated: function(index) {
+                        if (settingsGlobalModelModel.count > 0 && Backend)
+                            Backend.setGlobalAIModel(settingsGlobalModelModel.get(index).id)
+                    }
+                }
+            }
+        }
 
         SettingCard {
             Layout.fillWidth: true

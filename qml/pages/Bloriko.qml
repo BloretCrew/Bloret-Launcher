@@ -661,29 +661,49 @@ Item {
                     anchors.fill: parent; anchors.margins: 8; anchors.leftMargin: 12; anchors.rightMargin: 12
                     spacing: 6
 
+                    // 全局 AI 供应商/模型显示（跟随设置页面的全局配置）
                     RowLayout {
                         Layout.fillWidth: true; spacing: 8
 
-                        ComboBox {
-                            id: providerCombo
-                            Layout.preferredWidth: 130
-                            model: providerModel; textRole: "name"
-                            font.pixelSize: 10
-                            enabled: Bloriko && !Bloriko.busy
-                            onActivated: function(index) {
-                                var item = providerModel.get(index)
-                                Bloriko.setProvider(item.key); loadModels()
+                        Text {
+                            text: {
+                                // 显示当前全局供应商和模型
+                                var providerName = ""
+                                var modelName = ""
+                                for (var i = 0; i < providerModel.count; i++) {
+                                    if (providerModel.get(i).key === Bloriko.getCurrentProvider()) {
+                                        providerName = providerModel.get(i).name; break
+                                    }
+                                }
+                                for (var j = 0; j < modelModel.count; j++) {
+                                    if (modelModel.get(j).id === Bloriko.getCurrentModel()) {
+                                        modelName = modelModel.get(j).name; break
+                                    }
+                                }
+                                return providerName + " · " + modelName
                             }
+                            font.pixelSize: 10
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
                         }
 
-                        ComboBox {
-                            id: modelCombo
-                            Layout.fillWidth: true
-                            model: modelModel; textRole: "name"
-                            font.pixelSize: 10
-                            enabled: Bloriko && !Bloriko.busy && modelModel.count > 0
-                            onActivated: function(index) {
-                                if (modelModel.count > 0) Bloriko.setModel(modelModel.get(index).id)
+                        Text {
+                            text: "⚙"
+                            font.pixelSize: 12
+                            color: Theme.currentTheme.colors.textSecondaryColor
+
+                            MouseArea {
+                                anchors.fill: parent; anchors.margins: -4
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    // 导航到设置页面
+                                    for (var i = 0; i < window.navItems.length; i++) {
+                                        if (window.navItems[i].title === "设置" || window.navItems[i].title === Backend.tr("设置")) {
+                                            window.currentPage = window.navItems[i].page; break
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

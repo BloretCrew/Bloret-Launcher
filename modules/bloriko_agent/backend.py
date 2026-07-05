@@ -213,8 +213,10 @@ class BlorikoBackend(QObject):
         self._history = []
         self._current_text = ""
         self._current_tool_calls = []
-        self._current_provider = "opencode_zen"
-        self._current_model = "deepseek-v4-flash-free"
+
+        # 从全局 config.json 读取供应商和模型设置
+        self._current_provider, self._current_model = self._load_global_ai_settings()
+        log.info(f"[Bloriko] 全局 AI 设置: provider={self._current_provider}, model={self._current_model}")
 
         # 工作目录
         self._working_dir = os.path.join(_datapath, 'bloriko-agent', 'workspace')
@@ -244,6 +246,29 @@ class BlorikoBackend(QObject):
 
         # 情感状态
         self._current_emotion = "neutral"
+
+    # ========== 全局设置 ==========
+
+    @staticmethod
+    def _load_global_ai_settings():
+        """从 config.json 读取全局 AI 供应商和模型设置"""
+        try:
+            import modules.config as cfg
+            config_data = cfg.read()
+            provider = config_data.get("ai_provider", "opencode_zen")
+            model = config_data.get("ai_model", "deepseek-v4-flash-free")
+            return provider, model
+        except Exception as e:
+            log.warning(f"[Bloriko] 读取全局 AI 设置失败: {e}")
+            return "opencode_zen", "deepseek-v4-flash-free"
+
+    def _sync_global_settings(self):
+        """同步全局 AI 设置（每次交互时检查）"""
+        provider, model = self._load_global_ai_settings()
+        if provider != self._current_provider or model != self._current_model:
+            self._current_provider = provider
+            self._current_model = model
+            log.info(f"[Bloriko] 同步全局 AI 设置: provider={provider}, model={model}")
 
     # ========== 属性 ==========
 
@@ -376,6 +401,8 @@ class BlorikoBackend(QObject):
 
     @Slot(result=str)
     def getModels(self):
+        # 每次获取模型时同步全局设置
+        self._sync_global_settings()
         return self._getModelsByKey(self._current_provider)
 
     @Slot(str, result=str)
@@ -685,6 +712,17 @@ class BlorikoBackend(QObject):
     def getUserContent(self):
         """获取 USER.md 的当前内容（用于 UI 显示）"""
         return self._memory_store.get_all_entries("user")
+
+    # ========== 全局设置同步 ==========
+
+    @Slot(str, str)
+    def onGlobalAIProviderChanged(self, provider_key, model_id):
+        """响应全局 AI 供应商/模型变化（由 Backend.globalAIProviderChanged 信号触发）"""
+        if self._current_provider != provider_key or self._current_model != model_id:
+            self._current_provider = provider_key
+            self._current_model = model_id
+            self.providersChanged.emit()
+            log.info(f"[Bloriko] 全局 AI 设置已更新: provider={provider_key}, model={model_id}")
 
     # ========== 内部回调 ==========
 
