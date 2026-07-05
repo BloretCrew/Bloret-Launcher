@@ -32,6 +32,12 @@ FluentWindow {
             position: Position.Top
         },
         {
+            title: (Backend ? Backend.tr("络可") : "络可"),
+            page: Qt.resolvedUrl("pages/Bloriko.qml"),
+            icon: "ic_fluent_bot_20_regular",
+            position: Position.Top
+        },
+        {
             title: (Backend ? Backend.tr("通行证") : "通行证"),
             page: Qt.resolvedUrl("pages/PassPort.qml"),
             icon: "ic_fluent_person_20_regular",

@@ -4284,6 +4284,14 @@ class LauncherV2(RinUIWindow):
             self.engine.rootContext().setContextProperty("Agent", self.agent_backend)
         except Exception as e:
             print(f"Failed to load AI Agent backend: {e}")
+
+        # Inject Bloriko Agent Backend
+        try:
+            from modules.bloriko_agent import BlorikoBackend
+            self.bloriko_backend = BlorikoBackend()
+            self.engine.rootContext().setContextProperty("Bloriko", self.bloriko_backend)
+        except Exception as e:
+            print(f"Failed to load Bloriko Agent backend: {e}")
         
         # 启动时检查并修复 .BL.json
         try:
