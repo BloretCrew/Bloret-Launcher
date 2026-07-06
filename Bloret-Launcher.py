@@ -47,16 +47,6 @@ from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices, QPixmap, QPa
 
 QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
-# Linux: pip 安装的 PySide6 自带 Qt6 库，与系统 fcitx5 插件的系统 Qt6 冲突，
-# 导致输入法插件加载后立刻卸载，中文无法输入。
-# 修复: 从 sys.path 中移除 user site-packages，强制使用系统 PySide6 (python-pyside6)。
-if sys.platform == "linux":
-    _user_site = Path.home() / ".local" / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
-    if _user_site.exists() and (_user_site / "PySide6").exists():
-        _user_site_str = str(_user_site)
-        sys.path = [p for p in sys.path if p != _user_site_str]
-        print(f"[IM] 已移除 pip PySide6 ({_user_site})，使用系统 PySide6 以兼容 fcitx5 输入法")
-
 app = QApplication(sys.argv)
 
 
