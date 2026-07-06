@@ -15,6 +15,15 @@ from modules.paths import app_path
 import modules.globals as BLglobals
 
 def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft, LM_Download_Way_version, parent):
+    def _emit_progress(progress_signal, progress_key, downloaded_size, total_size, message_prefix="下载进度"):
+        if total_size > 0:
+            progress = int(downloaded_size / total_size * 100)
+            progress_signal.emit(progress_key, progress, f"{message_prefix}: {progress}%")
+            update_progress({'value': progress / 100, 'valueStringOverride': f'{progress}%'})
+        else:
+            downloaded_kb = downloaded_size // 1024
+            progress_signal.emit(progress_key, 0, f"{message_prefix}: 已下载 {downloaded_kb} KB")
+
     class BLDownloadDialog(QDialog):
         def __init__(self, version, parent=None):
             super().__init__(parent)
@@ -80,7 +89,8 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                 log(f"开始下载版本 {self.version}，目标目录: {BLglobals.minecraft_dir}")
 
                 # 检查 .minecraft 文件夹是否存在
-                minecraft_dir = os.path.join(os.getcwd(), ".minecraft")
+                minecraft_dir = BLglobals.minecraft_dir
+                log(f"使用下载线程 Minecraft 目录: {minecraft_dir}")
                 if not os.path.exists(minecraft_dir):
                     log(i18nText(".minecraft 文件夹不存在，开始下载 Minecraft 核心"))
                     success = self.BL_download_minecraft()
@@ -128,15 +138,17 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                 log(f"成功获取文件: {file_name}，开始下载")
 
                 total_size = int(response.headers.get('content-length', 0))
+                if total_size <= 0:
+                    log(f"文件 {file_name} 未返回 content-length，下载进度将显示已下载大小", logging.WARNING)
                 downloaded_size = 0
 
                 with open(file_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
+                        if not chunk:
+                            continue
                         f.write(chunk)
                         downloaded_size += len(chunk)
-                        progress = int(downloaded_size / total_size * 100)
-                        self.progress_signal.emit("version", progress, f"下载进度: {progress}%")
-                        update_progress({'value': progress / 100, 'valueStringOverride': f'{progress}%'})
+                        _emit_progress(self.progress_signal, "version", downloaded_size, total_size)
 
                 log(f"文件 {file_name} 下载完成，开始解压缩")
 
@@ -224,6 +236,8 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                         response.raise_for_status()
             
                         total_size = int(response.headers.get('content-length', 0))
+                        if total_size <= 0:
+                            log(f"文件 {file_name} 未返回 content-length，下载进度将显示已下载大小", logging.WARNING)
                         downloaded_size = 0
                         log(f"下载链接:{url}")
             
@@ -232,8 +246,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                                 if chunk:
                                     f.write(chunk)
                                     downloaded_size += len(chunk)
-                                    progress = int(downloaded_size / total_size * 100)
-                                    self.progress_signal.emit(progress_key, progress, f"下载进度: {progress}%")
+                                    _emit_progress(self.progress_signal, progress_key, downloaded_size, total_size)
                                     # log(f"文件{file_name},下载进度: {progress}%")
             
                         log(f"文件 {file_name} 下载完成")
@@ -305,6 +318,8 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
         
                     # 获取文件总大小（字节）
                     total_size = int(response.headers.get('content-length', 0))
+                    if total_size <= 0:
+                        log(f"文件 {file_name} 未返回 content-length，下载进度将显示已下载大小", logging.WARNING)
                     # 初始化已下载大小为 0
                     downloaded_size = 0
         
@@ -324,12 +339,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
                             if chunk:  # 确保 chunk 不为空
                                 f.write(chunk)  # 写入文件
                                 downloaded_size += len(chunk)  # 更新已下载大小
-                                # 计算下载进度百分比
-                                progress = int(downloaded_size / total_size * 100)
-                                # 发送进度信号，更新 UI
-                                self.progress_signal.emit(progress_key, progress, f"下载进度: {progress}%")
-                                # 更新通知的进度条
-                                update_progress({'value': progress / 100, 'valueStringOverride': f'{progress}%'})
+                                _emit_progress(self.progress_signal, progress_key, downloaded_size, total_size)
         
                     # 记录日志，显示文件下载完成
                     log(f"文件 {file_name} 下载完成")
@@ -367,6 +377,7 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
 
     # 创建下载线程
     minecraft_dir = app_path(".minecraft")
+    log(f"BL_download 创建下载线程，Minecraft 目录: {minecraft_dir}")
     thread = VersionDownloadThread(version, minecraft_dir)
     thread.finished.connect(lambda t=thread: self.threads.remove(t) if t in self.threads else None)
     self.threads.append(thread)
@@ -417,4 +428,3 @@ def BL_download(self, version, LM_download_way_choose, LM_Download_Way_minecraft
     download_dialog.exec()
 
     return 0
-

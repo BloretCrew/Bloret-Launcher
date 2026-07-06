@@ -1,8 +1,19 @@
 import json
 import os
 from modules.log import log
-from PySide6.QtWidgets import QLabel, QPushButton, QCheckBox, QRadioButton, QComboBox, QTextEdit, QLineEdit, QSpinBox
+from PySide6.QtWidgets import (
+    QLabel,
+    QPushButton,
+    QCheckBox,
+    QRadioButton,
+    QComboBox,
+    QTextEdit,
+    QPlainTextEdit,
+    QLineEdit,
+    QSpinBox,
+)
 import modules.globals as BLglobals
+from modules.compat_widgets import SearchLineEdit, SwitchButton
 from modules.paths import app_path
 
 
@@ -153,14 +164,14 @@ def i18n_label_widget_label(widget, widget_name):
         elif control_type == "PlainTextEdit":
             # 处理 QPlainTextEdit 控件
             for plain_text_edit_name, placeholder in controls.items():
-                plain_text_edit = widget.findChild(QTextEdit, plain_text_edit_name)
+                plain_text_edit = widget.findChild(QPlainTextEdit, plain_text_edit_name)
                 if plain_text_edit and isinstance(placeholder, str):
                     plain_text_edit.setPlaceholderText(i18n(f"{widget_path}.{control_type}.{plain_text_edit_name}"))
                     
         elif control_type == "TextEdit":
             # 处理 TextEdit 控件
             for text_edit_name, placeholder in controls.items():
-                text_edit = widget.findChild(TextEdit, text_edit_name)
+                text_edit = widget.findChild(QTextEdit, text_edit_name)
                 if text_edit and isinstance(placeholder, str):
                     text_edit.setPlaceholderText(i18n(f"{widget_path}.{control_type}.{text_edit_name}"))
                     

@@ -3,15 +3,12 @@ import json
 import sys
 import modules.globals as BLglobals
 from modules.log import log
+from modules.paths import app_path
 
-# 辅助函数：获取源配置文件的路径（兼容 PyInstaller 打包环境）
+# 辅助函数：获取源配置文件的路径（兼容开发环境、PyInstaller、Nuitka）
 def get_source_config_path():
-    if hasattr(sys, '_MEIPASS'):
-        # PyInstaller 打包后的临时目录
-        return os.path.join(sys._MEIPASS, 'config.json')
-    else:
-        # 开发环境当前目录
-        return os.path.abspath("config.json")
+    # 统一使用应用资源根目录，避免从快捷方式/其它 cwd 启动时找不到默认配置。
+    return app_path('config.json')
 
 # 获取默认配置文件的真实路径
 source_config_path = get_source_config_path()
@@ -93,6 +90,26 @@ BLglobals.config_path = config_path
 log("配置文件路径: " + config_path)
 
 
+def _summarize_config_for_log(config):
+    """输出配置摘要，避免把账号令牌、密码和 session 写入日志。"""
+    if not isinstance(config, dict):
+        return config
+
+    sensitive_markers = ("password", "token", "session", "sig", "passport")
+    summary = {}
+    for key, value in config.items():
+        key_lower = str(key).lower()
+        if any(marker in key_lower for marker in sensitive_markers):
+            summary[key] = "***"
+        elif isinstance(value, dict):
+            summary[key] = f"<dict:{len(value)} keys>"
+        elif isinstance(value, list):
+            summary[key] = f"<list:{len(value)} items>"
+        else:
+            summary[key] = value
+    return summary
+
+
 def read():
     if not os.path.exists(BLglobals.config_path):
         log(f"读取时发现配置文件不存在: {BLglobals.config_path}，返回空配置")
@@ -107,7 +124,7 @@ def read():
 try:
     log(f"正在读取最终配置文件: {BLglobals.config_path}")
     config_data = read()
-    log(f"成功读取配置文件内容: {config_data}")
+    log(f"成功读取配置文件内容摘要: {_summarize_config_for_log(config_data)}")
 
     BLglobals.minecraft_dir = config_data.get('minecraft_dir', '')
     log(f"Minecraft目录已设置为: '{BLglobals.minecraft_dir}'")
