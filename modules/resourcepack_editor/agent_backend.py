@@ -212,6 +212,7 @@ class AgentBackend(QObject):
         self._history = []
         self._current_text = ""
         self._current_tool_calls = []
+        self._had_error = False
         # 从全局 config.json 读取供应商和模型设置
         self._current_provider, self._current_model = self._load_global_ai_settings()
 
@@ -643,6 +644,7 @@ class AgentBackend(QObject):
         # 注意：不在这里 emit messageAdded，因为 QML sendBtn 已经 append 了用户消息
         self._current_text = ""
         self._current_tool_calls = []
+        self._had_error = False
         self._busy = True
         self.busyChanged.emit()
 
@@ -891,6 +893,7 @@ class AgentBackend(QObject):
 
     def _on_error(self, error: str):
         log.error(f"[Agent] 错误: {error}")
+        self._had_error = True
         print(f"[Agent DEBUG] 错误: {error}")
         body = error
         if self._current_tool_calls:
@@ -968,7 +971,8 @@ class AgentBackend(QObject):
     def _on_done(self):
         log.info(f"[Agent] 完成回调触发, 文本长度={len(self._current_text)}, 工具调用数={len(self._current_tool_calls)}")
         print(f"[Agent DEBUG] 完成回调触发, 文本长度={len(self._current_text)}, 工具调用数={len(self._current_tool_calls)}")
-        _send_os_notification("Copilot 完成", _summarize_agent_result(self._current_text, self._current_tool_calls))
+        if not self._had_error:
+            _send_os_notification("Copilot 完成", _summarize_agent_result(self._current_text, self._current_tool_calls))
         if self._current_text:
             self._history.append({"role": "assistant", "content": self._current_text})
             # 保存工具调用到历史记录

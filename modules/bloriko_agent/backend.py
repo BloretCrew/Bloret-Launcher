@@ -213,6 +213,7 @@ class BlorikoBackend(QObject):
         self._history = []
         self._current_text = ""
         self._current_tool_calls = []
+        self._had_error = False
 
         # 从全局 config.json 读取供应商和模型设置
         self._current_provider, self._current_model = self._load_global_ai_settings()
@@ -499,6 +500,7 @@ class BlorikoBackend(QObject):
         self._history.append({"role": "user", "content": text})
         self._current_text = ""
         self._current_tool_calls = []
+        self._had_error = False
         self._busy = True
         self.busyChanged.emit()
 
@@ -753,6 +755,7 @@ class BlorikoBackend(QObject):
 
     def _on_error(self, error: str):
         log.error(f"[Bloriko] 错误: {error}")
+        self._had_error = True
         body = error
         if self._current_tool_calls:
             last = self._current_tool_calls[-1]
@@ -763,7 +766,8 @@ class BlorikoBackend(QObject):
 
     def _on_done(self):
         log.info(f"[Bloriko] 完成回调触发, 文本长度={len(self._current_text)}, 工具调用数={len(self._current_tool_calls)}")
-        _send_os_notification("络可完成了", _summarize_agent_result(self._current_text, self._current_tool_calls))
+        if not self._had_error:
+            _send_os_notification("络可完成了", _summarize_agent_result(self._current_text, self._current_tool_calls))
         if self._current_text:
             self._history.append({"role": "assistant", "content": self._current_text})
             for tc in self._current_tool_calls:

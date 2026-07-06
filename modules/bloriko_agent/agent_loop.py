@@ -171,6 +171,8 @@ class BlorikoAgentLoop:
         self._current_text = ""
         self._cached_system_prompt = None
         self._current_emotion = "neutral"
+        self._last_llm_error = ""
+        self._last_llm_retryable = True
 
     def cancel(self):
         self._cancelled = True
@@ -579,17 +581,20 @@ class BlorikoAgentLoop:
     # ================================================================
 
     def _call_llm_streaming_with_retry(self, messages: list) -> Optional[dict]:
-        last_error = None
-
         for attempt in range(MAX_RETRIES + 1):
             if self._cancelled:
                 return None
 
             log.info(f"[AgentLoop] LLM 调用尝试 {attempt + 1}/{MAX_RETRIES + 1}")
+            self._last_llm_error = ""
+            self._last_llm_retryable = True
             result = self._call_llm_streaming(messages)
 
             if result is not None:
                 return result
+
+            if not self._last_llm_retryable:
+                break
 
             if attempt >= MAX_RETRIES:
                 break
@@ -599,6 +604,8 @@ class BlorikoAgentLoop:
             if self._cancelable_sleep(delay):
                 return None
 
+        if self.on_error and self._last_llm_error:
+            self.on_error(self._last_llm_error)
         return None
 
     def _call_llm_streaming(self, messages: list) -> Optional[dict]:
@@ -633,22 +640,23 @@ class BlorikoAgentLoop:
                     error_detail = e.response.text[:500]
                 except Exception:
                     pass
-            log.error(f"[AgentLoop] HTTP 错误: status={status_code}, body={error_detail}", exc_info=True)
+            log_fn = log.warning if self._should_retry(status_code) else log.error
+            log_fn(f"[AgentLoop] HTTP 错误: status={status_code}, body={error_detail}", exc_info=True)
             if status_code == 401:
-                if self.on_error:
-                    self.on_error("认证失败，请检查登录状态或选择其他模型")
+                self._last_llm_error = "认证失败，请检查登录状态或选择其他模型"
+                self._last_llm_retryable = False
             elif self._should_retry(status_code):
-                if self.on_error:
-                    self.on_error(f"请求失败 (HTTP {status_code})，将重试...")
+                self._last_llm_error = f"请求失败 (HTTP {status_code})"
+                self._last_llm_retryable = True
                 return None
             else:
-                if self.on_error:
-                    self.on_error(f"请求失败 (HTTP {status_code}): {error_detail[:200]}")
+                self._last_llm_error = f"请求失败 (HTTP {status_code}): {error_detail[:200]}"
+                self._last_llm_retryable = False
             return None
         except requests.exceptions.RequestException as e:
-            log.error(f"[AgentLoop] 网络请求异常: {e}", exc_info=True)
-            if self.on_error:
-                self.on_error(f"网络请求失败: {str(e)}")
+            log.warning(f"[AgentLoop] 网络请求异常: {e}", exc_info=True)
+            self._last_llm_error = f"网络请求失败: {str(e)}"
+            self._last_llm_retryable = True
             return None
 
         # 解析 SSE 流
@@ -743,9 +751,9 @@ class BlorikoAgentLoop:
                         pass
 
         except Exception as e:
-            log.error(f"SSE 解析异常: {e}", exc_info=True)
-            if self.on_error:
-                self.on_error(f"流式响应解析失败: {str(e)}")
+            log.warning(f"SSE 解析异常: {e}", exc_info=True)
+            self._last_llm_error = f"流式响应解析失败: {str(e)}"
+            self._last_llm_retryable = True
             return None
 
         tool_calls = []
@@ -827,8 +835,22 @@ def generate_title(api_url: str, auth_header: str, user_message: str, model: str
         "stream": False,
     }
 
-    resp = requests.post(api_url, json=payload, headers=headers, timeout=30)
-    resp.raise_for_status()
-    title = resp.json()["choices"][0]["message"]["content"].strip()
+    last_error = None
+    for attempt in range(2):
+        try:
+            resp = requests.post(api_url, json=payload, headers=headers, timeout=30)
+            resp.raise_for_status()
+            title = resp.json()["choices"][0]["message"]["content"].strip()
+            break
+        except requests.exceptions.RequestException as e:
+            last_error = e
+            if attempt == 0:
+                log.warning(f"[Title] 标题生成请求失败，将重试: {e}")
+                time.sleep(1)
+                continue
+            raise
+    else:
+        raise last_error or RuntimeError("标题生成失败")
+
     log.info(f"[Title] 生成标题: '{title}'")
     return title

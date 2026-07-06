@@ -186,6 +186,8 @@ class AgentLoop:
         self._tools = None  # 工具过滤列表（None=使用默认）
         self._system_prompt_override = None  # 系统提示词覆盖（None=使用默认）
         self._current_text = ""  # 累积的文本内容
+        self._last_llm_error = ""
+        self._last_llm_retryable = True
 
     def cancel(self):
         self._cancelled = True
@@ -724,6 +726,8 @@ class AgentLoop:
                 return None
 
             log.info(f"[AgentLoop] LLM 调用尝试 {attempt + 1}/{MAX_RETRIES + 1}")
+            self._last_llm_error = ""
+            self._last_llm_retryable = True
             result = self._call_llm_streaming(messages)
 
             if result is not None:
@@ -731,6 +735,10 @@ class AgentLoop:
                 return result
 
             log.warning(f"[AgentLoop] LLM 调用返回 None (尝试 {attempt + 1})")
+
+            if not self._last_llm_retryable:
+                log.error("[AgentLoop] 遇到不可重试错误，停止重试")
+                break
 
             # 如果是最后一次尝试，直接返回
             if attempt >= MAX_RETRIES:
@@ -743,6 +751,8 @@ class AgentLoop:
             if self._cancelable_sleep(delay):
                 return None
 
+        if self.on_error and self._last_llm_error:
+            self.on_error(self._last_llm_error)
         return None
 
     def _should_retry_error(self, error_msg: str) -> bool:
@@ -793,24 +803,25 @@ class AgentLoop:
                     error_detail = e.response.text[:500]
                 except Exception:
                     pass
-            log.error(f"[AgentLoop] HTTP 错误: status={status_code}, body={error_detail}", exc_info=True)
+            log_fn = log.warning if self._should_retry(status_code) else log.error
+            log_fn(f"[AgentLoop] HTTP 错误: status={status_code}, body={error_detail}", exc_info=True)
             print(f"[AgentLoop DEBUG] HTTP 错误: status={status_code}, body={error_detail}")
             if status_code == 401:
-                if self.on_error:
-                    self.on_error("认证失败，请检查登录状态或选择其他模型")
+                self._last_llm_error = "认证失败，请检查登录状态或选择其他模型"
+                self._last_llm_retryable = False
             elif self._should_retry(status_code):
-                if self.on_error:
-                    self.on_error(f"请求失败 (HTTP {status_code})，将重试...")
+                self._last_llm_error = f"请求失败 (HTTP {status_code})"
+                self._last_llm_retryable = True
                 return None
             else:
-                if self.on_error:
-                    self.on_error(f"请求失败 (HTTP {status_code}): {error_detail[:200]}")
+                self._last_llm_error = f"请求失败 (HTTP {status_code}): {error_detail[:200]}"
+                self._last_llm_retryable = False
             return None
         except requests.exceptions.RequestException as e:
-            log.error(f"[AgentLoop] 网络请求异常: {e}", exc_info=True)
+            log.warning(f"[AgentLoop] 网络请求异常: {e}", exc_info=True)
             print(f"[AgentLoop DEBUG] 网络请求异常: {e}")
-            if self.on_error:
-                self.on_error(f"网络请求失败: {str(e)}")
+            self._last_llm_error = f"网络请求失败: {str(e)}"
+            self._last_llm_retryable = True
             return None
 
         # 解析 SSE 流
@@ -908,9 +919,9 @@ class AgentLoop:
                         pass
 
         except Exception as e:
-            log.error(f"SSE 解析异常: {e}", exc_info=True)
-            if self.on_error:
-                self.on_error(f"流式响应解析失败: {str(e)}")
+            log.warning(f"SSE 解析异常: {e}", exc_info=True)
+            self._last_llm_error = f"流式响应解析失败: {str(e)}"
+            self._last_llm_retryable = True
             return None
 
         # 组装结果
@@ -990,9 +1001,23 @@ def generate_title(api_url: str, auth_header: str, user_message: str, model: str
         "stream": False,
     }
 
-    resp = requests.post(api_url, json=payload, headers=headers, timeout=30)
-    log.info(f"[Title] HTTP 状态: {resp.status_code}")
-    resp.raise_for_status()
-    title = resp.json()["choices"][0]["message"]["content"].strip()
+    last_error = None
+    for attempt in range(2):
+        try:
+            resp = requests.post(api_url, json=payload, headers=headers, timeout=30)
+            log.info(f"[Title] HTTP 状态: {resp.status_code}")
+            resp.raise_for_status()
+            title = resp.json()["choices"][0]["message"]["content"].strip()
+            break
+        except requests.exceptions.RequestException as e:
+            last_error = e
+            if attempt == 0:
+                log.warning(f"[Title] 标题生成请求失败，将重试: {e}")
+                time.sleep(1)
+                continue
+            raise
+    else:
+        raise last_error or RuntimeError("标题生成失败")
+
     log.info(f"[Title] 生成标题: '{title}'")
     return title
