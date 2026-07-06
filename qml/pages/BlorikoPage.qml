@@ -82,17 +82,26 @@ Item {
             var roles = JSON.parse(Bloriko.getAgentRoles())
             for (var i = 0; i < roles.length; i++)
                 roleModel.append(roles[i])
-            // 选中当前角色，避免 ComboBox 显示为空
-            var currentRole = Bloriko.agentRole()
-            for (var j = 0; j < roleModel.count; j++) {
-                if (roleModel.get(j).key === currentRole) {
-                    roleCombo.currentIndex = j
-                    return
-                }
-            }
-            if (roleCombo.currentIndex < 0 && roleModel.count > 0)
-                roleCombo.currentIndex = 0
+            syncRoleCombo()
         } catch(e) { console.error("[Bloriko] loadRoles error:", e) }
+    }
+
+    function syncRoleCombo() {
+        if (!Bloriko || roleModel.count === 0) {
+            roleCombo.currentIndex = -1
+            return
+        }
+
+        var currentRole = Bloriko.agentRole
+        for (var j = 0; j < roleModel.count; j++) {
+            if (roleModel.get(j).key === currentRole) {
+                roleCombo.currentIndex = j
+                return
+            }
+        }
+
+        roleCombo.currentIndex = 0
+        Bloriko.setAgentRole(roleModel.get(0).key)
     }
 
     function loadHistoryList() {
@@ -363,9 +372,10 @@ Item {
                         model: roleModel
                         textRole: "name"
                         font.pixelSize: 10
-                        enabled: Bloriko && !Bloriko.busy
+                        enabled: Bloriko && !Bloriko.busy && roleModel.count > 0
                         onActivated: function(index) {
-                            if (roleModel.count > 0) Bloriko.setAgentRole(roleModel.get(index).key)
+                            if (index >= 0 && index < roleModel.count)
+                                Bloriko.setAgentRole(roleModel.get(index).key)
                         }
                     }
 
@@ -1168,6 +1178,11 @@ Item {
             rebuildMessageModelFromHistory()
             conversationTitle = Bloriko ? (Bloriko.title || "") : ""
             currentEmotion = Bloriko ? (Bloriko.emotion || "neutral") : "neutral"
+            syncRoleCombo()
+        }
+
+        function onRoleChanged() {
+            syncRoleCombo()
         }
 
         function onTitleChanged(title) {

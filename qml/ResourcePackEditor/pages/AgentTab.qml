@@ -66,17 +66,26 @@ Item {
             var roles = JSON.parse(Agent.getAgentRoles())
             for (var i = 0; i < roles.length; i++)
                 roleModel.append(roles[i])
-            // 选中当前角色，避免 ComboBox 显示为空
-            var currentRole = Agent.agentRole()
-            for (var j = 0; j < roleModel.count; j++) {
-                if (roleModel.get(j).key === currentRole) {
-                    roleCombo.currentIndex = j
-                    return
-                }
-            }
-            if (roleCombo.currentIndex < 0 && roleModel.count > 0)
-                roleCombo.currentIndex = 0
+            syncRoleCombo()
         } catch(e) {}
+    }
+
+    function syncRoleCombo() {
+        if (!Agent || roleModel.count === 0) {
+            roleCombo.currentIndex = -1
+            return
+        }
+
+        var currentRole = Agent.agentRole
+        for (var j = 0; j < roleModel.count; j++) {
+            if (roleModel.get(j).key === currentRole) {
+                roleCombo.currentIndex = j
+                return
+            }
+        }
+
+        roleCombo.currentIndex = 0
+        Agent.setAgentRole(roleModel.get(0).key)
     }
 
     function loadHistoryList() {
@@ -313,9 +322,10 @@ Item {
                         model: roleModel
                         textRole: "name"
                         font.pixelSize: 10
-                        enabled: Agent && !Agent.busy
+                        enabled: Agent && !Agent.busy && roleModel.count > 0
                         onActivated: function(index) {
-                            if (roleModel.count > 0) Agent.setAgentRole(roleModel.get(index).key)
+                            if (index >= 0 && index < roleModel.count)
+                                Agent.setAgentRole(roleModel.get(index).key)
                         }
                     }
 
@@ -1166,6 +1176,11 @@ Item {
         function onSessionLoaded() {
             rebuildMessageModelFromHistory()
             conversationTitle = Agent ? (Agent.title || "") : ""
+            syncRoleCombo()
+        }
+
+        function onRoleChanged() {
+            syncRoleCombo()
         }
 
         function onTitleChanged(title) {

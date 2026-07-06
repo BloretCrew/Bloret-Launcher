@@ -239,7 +239,7 @@ class BlorikoBackend(QObject):
         self._question_answer = ""
 
         # Agent 角色
-        self._agent_role = "accept_edits"
+        self._agent_role = "auto"
 
         # 对话标题
         self._title = ""
@@ -637,12 +637,16 @@ class BlorikoBackend(QObject):
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
+            previous_role = self._agent_role
             self._history = data.get("history", [])
             self._current_provider = data.get("provider", self._current_provider)
             self._current_model = data.get("model", self._current_model)
-            self._agent_role = data.get("role", self._agent_role)
+            loaded_role = data.get("role", self._agent_role)
+            self._agent_role = loaded_role if loaded_role in AGENT_ROLES else next(iter(AGENT_ROLES), self._agent_role)
             self._title = data.get("title", "")
             self._current_emotion = data.get("emotion", "neutral")
+            if self._agent_role != previous_role:
+                self.roleChanged.emit()
             self.titleChanged.emit(self._title)
             self.emotionChanged.emit(self._current_emotion)
 
@@ -661,12 +665,16 @@ class BlorikoBackend(QObject):
             try:
                 with open(latest_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
+                previous_role = self._agent_role
                 self._history = data.get("history", [])
                 self._current_provider = data.get("provider", self._current_provider)
                 self._current_model = data.get("model", self._current_model)
-                self._agent_role = data.get("role", self._agent_role)
+                loaded_role = data.get("role", self._agent_role)
+                self._agent_role = loaded_role if loaded_role in AGENT_ROLES else next(iter(AGENT_ROLES), self._agent_role)
                 self._title = data.get("title", "")
                 self._current_emotion = data.get("emotion", "neutral")
+                if self._agent_role != previous_role:
+                    self.roleChanged.emit()
                 self.titleChanged.emit(self._title)
                 self.emotionChanged.emit(self._current_emotion)
                 self.sessionLoaded.emit()
