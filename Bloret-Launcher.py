@@ -4338,7 +4338,8 @@ class LauncherV2(RinUIWindow):
             # 连接全局 AI 设置变化信号
             self.backend.globalAIProviderChanged.connect(self.bloriko_backend.onGlobalAIProviderChanged)
         except Exception as e:
-            print(f"Failed to load Bloriko Agent backend: {e}")
+            import traceback
+            traceback.print_exc()
         
         # 启动时检查并修复 .BL.json
         try:

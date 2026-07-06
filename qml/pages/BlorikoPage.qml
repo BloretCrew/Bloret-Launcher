@@ -50,7 +50,7 @@ Item {
                 }
             }
             loadModels()
-        } catch(e) {}
+        } catch(e) { console.error("[Bloriko] loadProviders error:", e) }
     }
 
     function loadModels() {
@@ -72,7 +72,7 @@ Item {
             }
             if (modelCombo.currentIndex < 0 && modelModel.count > 0)
                 modelCombo.currentIndex = 0
-        } catch(e) {}
+        } catch(e) { console.error("[Bloriko] loadModels error:", e) }
     }
 
     function loadRoles() {
@@ -82,7 +82,7 @@ Item {
             var roles = JSON.parse(Bloriko.getAgentRoles())
             for (var i = 0; i < roles.length; i++)
                 roleModel.append(roles[i])
-        } catch(e) {}
+        } catch(e) { console.error("[Bloriko] loadRoles error:", e) }
     }
 
     function loadHistoryList() {
@@ -123,9 +123,25 @@ Item {
     }
 
     Component.onCompleted: {
+        console.log("[Bloriko] onCompleted, Bloriko:", Bloriko)
         loadProviders()
         loadRoles()
         if (Bloriko) Bloriko.loadLatestSession()
+        // 延迟重试：防止上下文属性延迟加载导致数据为空
+        retryTimer.start()
+    }
+
+    Timer {
+        id: retryTimer
+        interval: 500
+        repeat: false
+        onTriggered: {
+            if (providerModel.count === 0) {
+                console.log("[Bloriko] Retrying data load (Bloriko:", Bloriko, ")")
+                loadProviders()
+                loadRoles()
+            }
+        }
     }
 
     // ============================================================
