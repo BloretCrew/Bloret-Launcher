@@ -23,6 +23,16 @@ Item {
             var providers = JSON.parse(Agent.getProviders())
             for (var i = 0; i < providers.length; i++)
                 providerModel.append(providers[i])
+            // 根据全局设置选中当前供应商
+            if (Backend) {
+                var globalProvider = Backend.getGlobalAIProvider()
+                for (var j = 0; j < providerModel.count; j++) {
+                    if (providerModel.get(j).key === globalProvider) {
+                        providerCombo.currentIndex = j
+                        break
+                    }
+                }
+            }
             loadModels()
         } catch(e) {}
     }
@@ -34,7 +44,18 @@ Item {
             var models = JSON.parse(Agent.getModels())
             for (var i = 0; i < models.length; i++)
                 modelModel.append(models[i])
-            if (modelModel.count > 0) modelCombo.currentIndex = 0
+            // 根据全局设置选中当前模型
+            if (Backend) {
+                var globalModel = Backend.getGlobalAIModel()
+                for (var j = 0; j < modelModel.count; j++) {
+                    if (modelModel.get(j).id === globalModel) {
+                        modelCombo.currentIndex = j
+                        return
+                    }
+                }
+            }
+            if (modelCombo.currentIndex < 0 && modelModel.count > 0)
+                modelCombo.currentIndex = 0
         } catch(e) {}
     }
 
@@ -45,6 +66,16 @@ Item {
             var roles = JSON.parse(Agent.getAgentRoles())
             for (var i = 0; i < roles.length; i++)
                 roleModel.append(roles[i])
+            // 选中当前角色，避免 ComboBox 显示为空
+            var currentRole = Agent.agentRole()
+            for (var j = 0; j < roleModel.count; j++) {
+                if (roleModel.get(j).key === currentRole) {
+                    roleCombo.currentIndex = j
+                    return
+                }
+            }
+            if (roleCombo.currentIndex < 0 && roleModel.count > 0)
+                roleCombo.currentIndex = 0
         } catch(e) {}
     }
 
