@@ -47,22 +47,15 @@ from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices, QPixmap, QPa
 
 QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
-# Linux 下检查 PySide6 是否有 fcitx5 输入法插件，缺失则自动链接系统插件
-if sys.platform == "linux" and os.environ.get("QT_IM_MODULE", "fcitx") == "fcitx":
-    _pyside6_im_dir = Path(sys.prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages" / "PySide6" / "Qt" / "plugins" / "platforminputcontexts"
-    _fcitx5_plugin = _pyside6_im_dir / "libfcitx5platforminputcontextplugin.so"
-    if not _fcitx5_plugin.exists():
-        _system_plugin = Path("/usr/lib/qt6/plugins/platforminputcontexts/libfcitx5platforminputcontextplugin.so")
-        if _system_plugin.exists():
-            try:
-                _fcitx5_plugin.symlink_to(_system_plugin)
-                print(f"[IM] 已自动链接 fcitx5 输入法插件: {_system_plugin}")
-            except OSError as e:
-                print(f"[IM] 警告: 无法链接 fcitx5 插件 ({e})，中文输入可能不可用")
-        else:
-            print(f"[IM] 警告: 系统未找到 fcitx5 Qt6 插件，请安装 fcitx5-qt")
-    else:
-        print(f"[IM] fcitx5 输入法插件已就绪")
+# Linux: pip 安装的 PySide6 自带 Qt6 库，与系统 fcitx5 插件的系统 Qt6 冲突，
+# 导致输入法插件加载后立刻卸载，中文无法输入。
+# 修复: 从 sys.path 中移除 user site-packages，强制使用系统 PySide6 (python-pyside6)。
+if sys.platform == "linux":
+    _user_site = Path.home() / ".local" / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
+    if _user_site.exists() and (_user_site / "PySide6").exists():
+        _user_site_str = str(_user_site)
+        sys.path = [p for p in sys.path if p != _user_site_str]
+        print(f"[IM] 已移除 pip PySide6 ({_user_site})，使用系统 PySide6 以兼容 fcitx5 输入法")
 
 app = QApplication(sys.argv)
 
