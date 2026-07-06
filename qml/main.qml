@@ -34,7 +34,8 @@ FluentWindow {
         {
             title: (Backend ? Backend.tr("络可") : "络可"),
             page: Qt.resolvedUrl("pages/BlorikoPage.qml"),
-            icon: "ic_fluent_bot_20_regular",
+            source: Qt.resolvedUrl("../icon/Bloriko.jpg"),
+            icon: "",
             position: Position.Top
         },
         {
