@@ -98,6 +98,7 @@ FluentPage {
         _notifUpdate = Backend ? Backend.tr("应用更新") : "应用更新";
         _notifChatMessage = Backend ? Backend.tr("Minecraft 聊天消息") : "Minecraft 聊天消息";
         _notifCopilot = Backend ? Backend.tr("Copilot Agent") : "Copilot Agent";
+        _notifBloriko = Backend ? Backend.tr("络可 Agent") : "络可 Agent";
         _notifAccount = Backend ? Backend.tr("账户登录 / 同步") : "账户登录 / 同步";
         _notifConfigBtn = Backend ? Backend.tr("配置通知...") : "配置通知...";
         _notifCloseBtn = Backend ? Backend.tr("关闭") : "关闭";
@@ -190,6 +191,7 @@ FluentPage {
     property string _notifUpdate: Backend ? Backend.tr("应用更新") : "应用更新"
     property string _notifChatMessage: Backend ? Backend.tr("Minecraft 聊天消息") : "Minecraft 聊天消息"
     property string _notifCopilot: Backend ? Backend.tr("Copilot Agent") : "Copilot Agent"
+    property string _notifBloriko: Backend ? Backend.tr("络可 Agent") : "络可 Agent"
     property string _notifAccount: Backend ? Backend.tr("账户登录 / 同步") : "账户登录 / 同步"
     property string _notifConfigBtn: Backend ? Backend.tr("配置通知...") : "配置通知..."
     property string _notifCloseBtn: Backend ? Backend.tr("关闭") : "关闭"
@@ -687,6 +689,7 @@ FluentPage {
         { key: "update", title: _notifUpdate, icon: "ic_fluent_arrow_sync_20_regular" },
         { key: "chat_message", title: _notifChatMessage, icon: "ic_fluent_chat_20_regular" },
         { key: "copilot", title: _notifCopilot, icon: "ic_fluent_bot_20_regular" },
+        { key: "bloriko", title: _notifBloriko, icon: "ic_fluent_bot_20_regular" },
         { key: "account", title: _notifAccount, icon: "ic_fluent_person_20_regular" }
     ]
 

@@ -1,13 +1,15 @@
 """
 络可 Agent 系统提示词构建
 
-三段式架构：
-- 稳定层：络可角色提示词（嵌入为常量）
-- 上下文层：工作目录、当前时间、情感指导
-- 波动层：记忆快照、用户画像快照、当前情感状态
+三段式架构（参考 Hermes Agent）：
+- 稳定层：络可角色提示词、能力描述、行为指引（嵌入为常量，跨 turn 不变）
+- 上下文层：工作目录、当前时间、情感指导、环境信息
+- 波动层：记忆快照、用户画像快照
 """
 
 import logging
+import os
+import platform
 from datetime import datetime
 from typing import Optional
 
@@ -80,6 +82,31 @@ AGENT_CAPABILITY_PROMPT = """## 络可的超能力
 在使用工具完成任务时，保持络可的说话风格和性格。
 用络可的方式解释你在做什么，比如「让络可帮哥哥看看这个文件呀~」"""
 
+# 任务完成指引
+TASK_COMPLETION_GUIDANCE = """## 任务完成
+
+用工具实际完成用户的要求，不要只描述计划就停下。
+如果工具失败了，如实告诉用户，不要编造看起来合理的结果。
+每次回复要么包含正在执行的工具调用，要么给用户一个最终结果。"""
+
+# 记忆写入指引
+MEMORY_GUIDANCE = """## 记忆使用
+
+络可会通过记忆工具记住重要的事情。写记忆时用陈述事实的方式：
+- ✅ 「用户喜欢简洁的回复」
+- ✅ 「项目使用 PySide6 做 GUI」
+- ❌ 「以后要简洁回复」（这是对络可的指令，不是事实）
+- ❌ 「去运行 pytest -n 4」（流程性的东西不要存记忆）
+
+优先记住用户偏好和纠正过的错误，不要记住任务进度或临时状态。
+如果某条知识以后用得上，也可以保存。"""
+
+# 并行工具调用指引
+PARALLEL_TOOL_CALL_GUIDANCE = """## 提高效率
+
+需要读取多个不相关的文件或信息时，把它们放在同一次回复里一起调用。
+只有真正有依赖关系的操作才需要等上一步的结果。"""
+
 # 情感系统指导
 EMOTION_GUIDANCE = """## 情感系统
 
@@ -97,6 +124,16 @@ EMOTION_GUIDANCE = """## 情感系统
 如果情感没有变化，就不需要调用 set_emotion。"""
 
 
+def build_environment_hints() -> str:
+    """构建环境提示信息"""
+    hints = []
+    system = platform.system()
+    release = platform.release()
+    hints.append(f"- 操作系统: {system} {release}")
+    hints.append(f"- 用户目录: {os.path.expanduser('~')}")
+    return "\n".join(hints)
+
+
 def build_system_prompt(memory_store, working_dir: str, current_emotion: str = "neutral") -> str:
     """构建完整的系统提示词
 
@@ -110,14 +147,18 @@ def build_system_prompt(memory_store, working_dir: str, current_emotion: str = "
     """
     sections = []
 
-    # === 稳定层：角色和能力 ===
+    # === 稳定层：角色、能力、行为指引 ===
     sections.append(BLORIKO_CHARACTER_PROMPT)
     sections.append(AGENT_CAPABILITY_PROMPT)
     sections.append(EMOTION_GUIDANCE)
+    sections.append(TASK_COMPLETION_GUIDANCE)
+    sections.append(MEMORY_GUIDANCE)
+    sections.append(PARALLEL_TOOL_CALL_GUIDANCE)
+    sections.append(build_environment_hints())
 
-    # === 上下文层：环境信息 ===
+    # === 上下文层：环境信息（时间只精确到日期，保护缓存稳定性） ===
     env_info = f"""## 环境信息
-- 当前时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+- 当前日期: {datetime.now().strftime('%Y-%m-%d')}
 - 工作目录: {working_dir}
 - 当前情感: {current_emotion}"""
     sections.append(env_info)

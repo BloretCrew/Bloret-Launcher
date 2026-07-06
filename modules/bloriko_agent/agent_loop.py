@@ -169,6 +169,8 @@ class BlorikoAgentLoop:
         self._tools = None
         self._system_prompt_override = None
         self._current_text = ""
+        self._cached_system_prompt = None
+        self._current_emotion = "neutral"
 
     def cancel(self):
         self._cancelled = True
@@ -194,10 +196,23 @@ class BlorikoAgentLoop:
     def _build_system_prompt(self) -> str:
         if self._system_prompt_override:
             return self._system_prompt_override
-        return build_system_prompt(
+        if self._cached_system_prompt:
+            return self._cached_system_prompt
+        prompt = build_system_prompt(
             memory_store=self.memory_store,
             working_dir=str(self.working_dir),
+            current_emotion=self._current_emotion,
         )
+        self._cached_system_prompt = prompt
+        return prompt
+
+    def invalidate_system_prompt(self):
+        """失效系统提示缓存（记忆写入后调用，使新记忆在下次 LLM 调用时生效）"""
+        self._cached_system_prompt = None
+
+    def get_cached_system_prompt(self) -> Optional[str]:
+        """获取已缓存的系统提示（供外部保存跨会话复用）"""
+        return self._cached_system_prompt
 
     # ================================================================
     # 上下文压缩
@@ -453,6 +468,10 @@ class BlorikoAgentLoop:
                 if self._cancelled:
                     return
                 self._execute_single_tool(tc, messages)
+                # 记忆写入后失效系统提示缓存，使新记忆在下次 LLM 调用时生效
+                if tc.get("function", {}).get("name") == "memory":
+                    self.invalidate_system_prompt()
+                    log.info("[AgentLoop] 记忆已更新，系统提示缓存已失效")
 
         if self.on_text_chunk:
             self.on_text_chunk("\n\n⚠ 已达到最大操作次数限制，请尝试简化你的请求。")
@@ -474,6 +493,10 @@ class BlorikoAgentLoop:
             self.on_tool_call_start(tc_name, tc_args_json)
 
         result_str = self._execute_tool_with_permission(tc_name, tc_args, tc_args_json)
+
+        # 记录情感变化，供系统提示词使用
+        if tc_name == "set_emotion" and tc_args.get("emotion"):
+            self._current_emotion = tc_args["emotion"]
 
         max_result_len = 50000
         if len(result_str) > max_result_len:

@@ -64,6 +64,11 @@ class MemoryStore:
         log.info(f"[Memory] 加载完成: MEMORY.md={len(self._memory_entries)}条, "
                  f"USER.md={len(self._user_entries)}条")
 
+    def refresh_snapshots(self):
+        """重新从内存条目列表渲染快照（写入后调用，使记忆立即生效）"""
+        self._memory_snapshot = self._render_block("memory", self._memory_entries)
+        self._user_snapshot = self._render_block("user", self._user_entries)
+
     # ========== 快照访问（用于系统提示词注入） ==========
 
     def get_memory_snapshot(self) -> Optional[str]:
@@ -97,6 +102,7 @@ class MemoryStore:
 
         entries.append(new_entry)
         self._write_entries(path, entries)
+        self.refresh_snapshots()
 
         log.info(f"[Memory] 已添加到 {target}: '{new_entry[:50]}...'")
         return {
@@ -148,6 +154,7 @@ class MemoryStore:
 
         entries[idx] = new_entry
         self._write_entries(path, entries)
+        self.refresh_snapshots()
 
         log.info(f"[Memory] 已替换 {target} 条目: '{old_entry[:30]}' -> '{new_entry[:30]}'")
         return {
@@ -184,6 +191,7 @@ class MemoryStore:
         idx, removed_entry = matches[0]
         entries.pop(idx)
         self._write_entries(path, entries)
+        self.refresh_snapshots()
 
         log.info(f"[Memory] 已从 {target} 删除: '{removed_entry[:50]}'")
         return {
