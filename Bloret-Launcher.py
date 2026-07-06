@@ -45,6 +45,11 @@ from PySide6.QtWidgets import QApplication, QFileDialog, QSystemTrayIcon
 from PySide6.QtCore import QLocale, Qt, QTranslator, QObject, Slot, Signal, Property, QUrl
 from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices, QPixmap, QPainter, QCursor
 
+# Linux: 强制使用 XCB（X11）平台 + fcitx 输入法，解决 Wayland 下无法输入中文的问题
+if sys.platform == "linux":
+    os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+    os.environ.setdefault("QT_IM_MODULE", "fcitx")
+
 QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 app = QApplication(sys.argv)
 
