@@ -146,6 +146,8 @@ def _build_bloret_passport_auth() -> str:
         # 优先使用自注册 API Key
         api_key = config_data.get('Bloret_PassPort_AI_API_Key', '')
         if api_key:
+            masked = api_key[:8] + "..." + api_key[-4:] if len(api_key) > 12 else "***"
+            log.info(f"[BloretPassPort] 使用 API Key 认证: {masked}")
             return f"Bearer {api_key}"
 
         # 回退：已登录用户使用 OAuth 三段式 Key
@@ -716,7 +718,13 @@ class BlorikoBackend(QObject):
             previous_role = self._agent_role
             self._history = data.get("history", [])
             self._current_provider = data.get("provider", self._current_provider)
-            self._current_model = data.get("model", self._current_model)
+            loaded_model = data.get("model", self._current_model)
+            available = [m["id"] for m in json.loads(self._getModelsByKey(self._current_provider))]
+            if available and loaded_model not in available:
+                log.info(f"[Bloriko] 会话模型 {loaded_model} 不在当前供应商中，回退到 {available[0]}")
+                self._current_model = available[0]
+            else:
+                self._current_model = loaded_model
             loaded_role = data.get("role", self._agent_role)
             self._agent_role = loaded_role if loaded_role in AGENT_ROLES else next(iter(AGENT_ROLES), self._agent_role)
             self._title = data.get("title", "")
@@ -727,7 +735,7 @@ class BlorikoBackend(QObject):
             self.emotionChanged.emit(self._current_emotion)
 
             self.sessionLoaded.emit()
-            log.info(f"[Bloriko] 已加载会话: {filename} ({len(self._history)} 条消息)")
+            log.info(f"[Bloriko] 已加载会话: {filename} ({len(self._history)} 条消息), 模型={self._current_model}")
             return True
         except Exception as e:
             self.errorOccurred.emit(f"加载会话失败: {str(e)}")
@@ -744,7 +752,14 @@ class BlorikoBackend(QObject):
                 previous_role = self._agent_role
                 self._history = data.get("history", [])
                 self._current_provider = data.get("provider", self._current_provider)
-                self._current_model = data.get("model", self._current_model)
+                loaded_model = data.get("model", self._current_model)
+                # 校验模型是否属于当前供应商，不属于则回退到第一个可用模型
+                available = [m["id"] for m in json.loads(self._getModelsByKey(self._current_provider))]
+                if available and loaded_model not in available:
+                    log.info(f"[Bloriko] 会话模型 {loaded_model} 不在当前供应商中，回退到 {available[0]}")
+                    self._current_model = available[0]
+                else:
+                    self._current_model = loaded_model
                 loaded_role = data.get("role", self._agent_role)
                 self._agent_role = loaded_role if loaded_role in AGENT_ROLES else next(iter(AGENT_ROLES), self._agent_role)
                 self._title = data.get("title", "")
@@ -754,7 +769,7 @@ class BlorikoBackend(QObject):
                 self.titleChanged.emit(self._title)
                 self.emotionChanged.emit(self._current_emotion)
                 self.sessionLoaded.emit()
-                log.info(f"[Bloriko] 已加载最近会话 ({len(self._history)} 条消息)")
+                log.info(f"[Bloriko] 已加载最近会话 ({len(self._history)} 条消息), 模型={self._current_model}")
             except Exception as e:
                 log.warning(f"[Bloriko] 加载最近会话失败: {e}")
 
