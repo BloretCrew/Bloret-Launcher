@@ -3,6 +3,7 @@
 
 支持：
 - OpenCode Zen（内置，免费，无需密钥）
+- Bloret PassPort（内置，从 config.json 读取凭据）
 - 从 models.dev 动态添加供应商（用户输入密钥）
 - 权限系统（写入操作确认）
 - AskUserQuestion（AI 主动提问）
@@ -101,7 +102,17 @@ BUILTIN_PROVIDERS = {
             {"id": "minimax-m2.5-free", "name": "MiniMax M2.5 (Free)", "tool_call": True},
             {"id": "nemotron-3-super-free", "name": "Nemotron 3 Super (Free)", "tool_call": True},
         ],
-    }
+    },
+    "bloret_passport": {
+        "id": "bloret_passport",
+        "name": "Bloret PassPort",
+        "api": "https://passport.bloret.net/v1/chat/completions",
+        "needs_auth": True,
+        "builtin": True,
+        "models": [
+            {"id": "default", "name": "Claude Fable 5", "tool_call": True},
+        ],
+    },
 }
 
 # 情感状态 → 中文显示映射
@@ -114,6 +125,39 @@ EMOTION_DISPLAY = {
     "excited": "兴奋",
     "curious": "好奇",
 }
+
+
+def _build_bloret_passport_auth() -> str:
+    """构建 Bloret PassPort 认证头，优先使用自注册 API Key。
+
+    1. 优先读取 config.json 中的 Bloret_PassPort_AI_API_Key（sk- 前缀）
+    2. 回退到 OAuth 三段式：Bearer {AppID};{AppSecret};{UserToken}
+    返回空字符串表示无法认证。
+    """
+    try:
+        import modules.globals as BLglobals
+        config_data = {}
+
+        # 直接读取 config.json 避免循环导入
+        if hasattr(BLglobals, 'config_path') and os.path.exists(BLglobals.config_path):
+            with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+
+        # 优先使用自注册 API Key
+        api_key = config_data.get('Bloret_PassPort_AI_API_Key', '')
+        if api_key:
+            return f"Bearer {api_key}"
+
+        # 回退：已登录用户使用 OAuth 三段式 Key
+        if config_data.get('Bloret_PassPort_Login'):
+            user_token = config_data.get('Bloret_PassPort_PassWord', '')
+            if user_token:
+                return f"Bearer BloretLauncher;s4d56f4a68sd46g54asd46f54a5dsf654asdf546;{user_token}"
+
+        return ""
+    except Exception as e:
+        log.error(f"构建 Bloret PassPort 认证头失败: {e}")
+        return ""
 
 
 def _load_custom_providers() -> dict:
@@ -384,11 +428,15 @@ class BlorikoBackend(QObject):
     def getProviders(self):
         result = []
         for key, info in BUILTIN_PROVIDERS.items():
+            if info.get("needs_auth"):
+                has_key = bool(_build_bloret_passport_auth()) if key == "bloret_passport" else True
+            else:
+                has_key = True
             result.append({
                 "key": key,
                 "name": info["name"],
                 "builtin": True,
-                "has_key": True,
+                "has_key": has_key,
                 "model_count": len(info.get("models", [])),
             })
         for key, info in self._custom_providers.items():
@@ -456,6 +504,8 @@ class BlorikoBackend(QObject):
             api_key = provider.get("api_key", "")
             if api_key:
                 auth_header = f"Bearer {api_key}"
+            elif self._current_provider == "bloret_passport":
+                auth_header = _build_bloret_passport_auth()
         return api_url, auth_header
 
     # ========== 对话 ==========
@@ -487,9 +537,19 @@ class BlorikoBackend(QObject):
         if provider.get("needs_auth", False):
             api_key = provider.get("api_key", "")
             if not api_key:
-                self.errorOccurred.emit(f"供应商 {provider.get('name', '')} 需要 API 密钥")
-                return
-            auth_header = f"Bearer {api_key}"
+                # 内置 Bloret PassPort：从 config.json 自动构建 OAuth 三段式 Token
+                if self._current_provider == "bloret_passport":
+                    auth_header = _build_bloret_passport_auth()
+                    if not auth_header:
+                        log.error("[Bloriko] Bloret PassPort API Key 未配置")
+                        self.errorOccurred.emit("请先在 Bloret PassPort 的 /ai 页面创建 API Key，并在设置中配置")
+                        return
+                    log.info("[Bloriko] 使用 Bloret PassPort API Key 认证")
+                else:
+                    self.errorOccurred.emit(f"供应商 {provider.get('name', '')} 需要 API 密钥")
+                    return
+            else:
+                auth_header = f"Bearer {api_key}"
         else:
             log.info("[Bloriko] 无需认证（内置供应商）")
 
