@@ -729,7 +729,7 @@ class BlorikoAgentLoop:
             log_fn = log.warning if self._should_retry(status_code) else log.error
             log_fn(f"[AgentLoop] HTTP 错误: status={status_code}, body={error_detail}", exc_info=True)
             if status_code == 401:
-                self._last_llm_error = "认证失败，请检查登录状态或选择其他模型"
+                self._last_llm_error = "认证失败：API Key 无效或已过期，请在 Bloret PassPort /ai 页面重新创建 API Key"
                 self._last_llm_retryable = False
             elif self._should_retry(status_code):
                 self._last_llm_error = f"请求失败 (HTTP {status_code})"

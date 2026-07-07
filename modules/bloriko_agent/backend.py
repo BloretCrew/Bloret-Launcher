@@ -143,17 +143,19 @@ def _build_bloret_passport_auth() -> str:
             with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
 
-        # 优先使用自注册 API Key
+        # 优先使用自注册 API Key (sk- 前缀专用 AI Key)
         api_key = config_data.get('Bloret_PassPort_AI_API_Key', '')
         if api_key:
             masked = api_key[:8] + "..." + api_key[-4:] if len(api_key) > 12 else "***"
-            log.info(f"[BloretPassPort] 使用 API Key 认证: {masked}")
+            log.info(f"[BloretPassPort] 使用专用 AI API Key 认证: {masked}")
             return f"Bearer {api_key}"
 
-        # 回退：已登录用户使用 OAuth 三段式 Key
+        # 回退：已登录用户使用 OAuth 三段式 Key（密码哈希）
+        # 注意：AI API 端点可能不接受此格式，如遇 401 需引导用户创建专用 API Key
         if config_data.get('Bloret_PassPort_Login'):
             user_token = config_data.get('Bloret_PassPort_PassWord', '')
             if user_token:
+                log.info("[BloretPassPort] 使用 OAuth 三段式认证（密码哈希回退），AI API 可能需要专用 API Key")
                 return f"Bearer BloretLauncher;s4d56f4a68sd46g54asd46f54a5dsf654asdf546;{user_token}"
 
         return ""
@@ -543,10 +545,10 @@ class BlorikoBackend(QObject):
                 if self._current_provider == "bloret_passport":
                     auth_header = _build_bloret_passport_auth()
                     if not auth_header:
-                        log.error("[Bloriko] Bloret PassPort API Key 未配置")
-                        self.errorOccurred.emit("请先在 Bloret PassPort 的 /ai 页面创建 API Key，并在设置中配置")
+                        log.error("[Bloriko] Bloret PassPort 认证信息未配置：未找到 API Key 且用户未登录")
+                        self.errorOccurred.emit("请先在 Bloret PassPort 的 /ai 页面创建 API Key，并在设置中配置；或确认已登录 Bloret PassPort")
                         return
-                    log.info("[Bloriko] 使用 Bloret PassPort API Key 认证")
+                    log.info("[Bloriko] 使用 Bloret PassPort 认证")
                 else:
                     self.errorOccurred.emit(f"供应商 {provider.get('name', '')} 需要 API 密钥")
                     return
