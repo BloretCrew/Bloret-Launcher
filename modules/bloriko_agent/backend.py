@@ -23,6 +23,7 @@ from PySide6.QtGui import QGuiApplication
 
 from .agent_loop import BlorikoAgentLoop, run_agent_async, AGENT_ROLES
 from .memory import MemoryStore
+from .background_review import spawn_background_review_thread
 
 log = logging.getLogger(__name__)
 
@@ -444,6 +445,19 @@ class BlorikoBackend(QObject):
     def getCurrentModel(self):
         return self._current_model
 
+    def _get_current_api_config(self):
+        """获取当前供应商的 API URL 和认证头"""
+        provider = BUILTIN_PROVIDERS.get(self._current_provider) or self._custom_providers.get(self._current_provider)
+        if not provider:
+            return "", ""
+        api_url = provider.get("api", "")
+        auth_header = ""
+        if provider.get("needs_auth", False):
+            api_key = provider.get("api_key", "")
+            if api_key:
+                auth_header = f"Bearer {api_key}"
+        return api_url, auth_header
+
     # ========== 对话 ==========
 
     @Slot(str)
@@ -783,4 +797,17 @@ class BlorikoBackend(QObject):
         self._agent = None
         log.info("[Bloriko] 保存会话...")
         self._save_session()
+
+        # 后台记忆审查
+        if self._history and not self._had_error:
+            api_url, auth_header = self._get_current_api_config()
+            if api_url:
+                spawn_background_review_thread(
+                    api_url=api_url,
+                    auth_header=auth_header,
+                    model=self._current_model,
+                    memory_store=self._memory_store,
+                    messages_snapshot=list(self._history),
+                )
+
         log.info("[Bloriko] 全部完成")

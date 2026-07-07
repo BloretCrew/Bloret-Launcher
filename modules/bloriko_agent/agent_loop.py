@@ -173,6 +173,7 @@ class BlorikoAgentLoop:
         self._current_emotion = "neutral"
         self._last_llm_error = ""
         self._last_llm_retryable = True
+        self._has_extracted_memory = False
 
     def cancel(self):
         self._cancelled = True
@@ -260,6 +261,84 @@ class BlorikoAgentLoop:
                 result.append(msg)
 
         return result
+
+    def _extract_memory_before_compress(self, messages: list) -> None:
+        """压缩前从即将丢弃的消息中提取有价值的记忆。
+
+        只在每个会话中执行一次，用轻量 LLM 调用提取事实。
+        失败不影响压缩流程。
+        """
+        self._has_extracted_memory = True
+
+        if not self.memory_store:
+            return
+
+        # 收集非系统提示词的消息文本（系统提示词不会被压缩丢弃）
+        discadable = []
+        for msg in messages[1:]:  # 跳过 system prompt
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            if content and role in ("user", "assistant"):
+                discadable.append(f"[{role}]: {content[:500]}")
+
+        if not discadable:
+            return
+
+        # 只取前 3000 字符，避免请求过大
+        context_text = "\n".join(discadable)[-3000:]
+
+        extraction_prompt = (
+            "从以下对话片段中提取值得长期记住的事实。\n"
+            "只提取持久事实（用户偏好、个人信息、项目约定），不提取临时状态。\n"
+            "每条事实一行，用陈述句。如果没有值得记住的内容，返回空列表。\n\n"
+            f"{context_text}\n\n"
+            "请以 JSON 数组格式返回，例如：[\"用户喜欢简洁的回复\", \"项目使用 PySide6\"]"
+        )
+
+        try:
+            headers = {"Content-Type": "application/json"}
+            if self.auth_header:
+                headers["Authorization"] = self.auth_header
+
+            payload = {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": "你是记忆提取助手，从对话中提取持久事实。只返回 JSON 数组。"},
+                    {"role": "user", "content": extraction_prompt},
+                ],
+                "max_tokens": 256,
+                "stream": False,
+            }
+
+            response = requests.post(
+                self.api_url,
+                json=payload,
+                headers=headers,
+                timeout=15,
+            )
+            response.raise_for_status()
+
+            data = response.json()
+            text = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+
+            # 解析 JSON 数组
+            if text.startswith("["):
+                facts = json.loads(text)
+            elif "```" in text:
+                import re
+                match = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', text, re.DOTALL)
+                facts = json.loads(match.group(1)) if match else []
+            else:
+                facts = []
+
+            for fact in facts:
+                if isinstance(fact, str) and fact.strip():
+                    result = self.memory_store.add("memory", fact.strip())
+                    if result.get("success"):
+                        log.info(f"[AgentLoop] 压缩前提取记忆: '{fact.strip()[:50]}'")
+
+        except Exception as e:
+            log.warning(f"[AgentLoop] 压缩前记忆提取失败（不影响压缩）: {e}")
 
     # ================================================================
     # Doom Loop 检测
@@ -427,6 +506,8 @@ class BlorikoAgentLoop:
             estimated_tokens = self._estimate_tokens(messages)
             if estimated_tokens > self.token_limit:
                 log.info(f"[AgentLoop] 上下文过大 ({estimated_tokens} tokens)，执行压缩")
+                if not self._has_extracted_memory:
+                    self._extract_memory_before_compress(messages)
                 messages = self._compact_messages(messages)
 
             log.info(f"[AgentLoop] 迭代 {iteration + 1}/{MAX_ITERATIONS}, 消息数={len(messages)}, 估算tokens={estimated_tokens}")
@@ -470,10 +551,15 @@ class BlorikoAgentLoop:
                 if self._cancelled:
                     return
                 self._execute_single_tool(tc, messages)
-                # 记忆写入后失效系统提示缓存，使新记忆在下次 LLM 调用时生效
+                # 记忆写入后检查是否需要重建快照并失效系统提示缓存
                 if tc.get("function", {}).get("name") == "memory":
-                    self.invalidate_system_prompt()
-                    log.info("[AgentLoop] 记忆已更新，系统提示缓存已失效")
+                    self.memory_store.increment_write_count()
+                    if self.memory_store.should_invalidate_snapshot():
+                        self.memory_store.rebuild_snapshots_from_live()
+                        self.invalidate_system_prompt()
+                        log.info("[AgentLoop] 记忆写入已达阈值，快照重建，系统提示缓存失效")
+                    else:
+                        log.info(f"[AgentLoop] 记忆已更新（快照保持冻结，第{self.memory_store._write_count}次写入）")
 
         if self.on_text_chunk:
             self.on_text_chunk("\n\n⚠ 已达到最大操作次数限制，请尝试简化你的请求。")
