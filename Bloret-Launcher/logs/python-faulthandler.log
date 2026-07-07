@@ -147,3 +147,20 @@ Current thread 0x00007ff85424a100 (most recent call first):
 ===== Bloret Launcher fault handler enabled =====
 
 ===== Bloret Launcher fault handler enabled =====
+Fatal Python error: Segmentation fault
+
+Thread 0x00007000035cb000 (most recent call first):
+  File "/Users/mac/work/Bloret-Launcher/RinUI/core/theme.py", line 78 in run
+
+Thread 0x000070000333c000 (most recent call first):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/selectors.py", line 416 in select
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 232 in serve_forever
+  File "/Users/mac/work/Bloret-Launcher/modules/web.py", line 1777 in start_server
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.py", line 910 in run
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.py", line 973 in _bootstrap_inner
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.py", line 930 in _bootstrap
+
+Current thread 0x00007ff85424a100 (most recent call first):
+  File "/Users/mac/work/Bloret-Launcher/Bloret-Launcher.py", line 4573 in <module>
+
+===== Bloret Launcher fault handler enabled =====
