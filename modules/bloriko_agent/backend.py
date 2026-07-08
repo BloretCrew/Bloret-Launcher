@@ -128,11 +128,12 @@ EMOTION_DISPLAY = {
 
 
 def _build_bloret_passport_auth() -> str:
-    """构建 Bloret PassPort 认证头，优先使用自注册 API Key。
+    """构建 Bloret PassPort 认证头。
 
-    1. 优先读取 config.json 中的 Bloret_PassPort_AI_API_Key（sk- 前缀）
-    2. 回退到 OAuth 三段式：Bearer {AppID};{AppSecret};{UserToken}
-    返回空字符串表示无法认证。
+    认证优先级（见 docs/BloretPassPort-AIAPI.md）：
+    1. 优先：已登录用户的 OAuth 三段式 Key（Bearer {AppID};{AppSecret};{UserToken}）
+    2. 回退：自注册专用 AI API Key（sk- 前缀，存于 Bloret_PassPort_AI_API_Key）
+    返回空字符串表示无法认证（未登录且无专用Key）。
     """
     try:
         import modules.globals as BLglobals
@@ -143,21 +144,28 @@ def _build_bloret_passport_auth() -> str:
             with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
 
-        # 优先使用自注册 API Key (sk- 前缀专用 AI Key)
+        # 优先：已登录用户使用 OAuth 三段式 Key（文档方式二）
+        if config_data.get('Bloret_PassPort_Login'):
+            user_token = config_data.get('Bloret_PassPort_PassWord', '')
+            if user_token:
+                masked = user_token[:8] + "..." + user_token[-4:]
+                auth = f"Bearer BloretLauncher;s4d56f4a68sd46g54asd46f54a5dsf654asdf546;{user_token}"
+                # 完整脱敏打印 Auth 头，方便核对三段式格式是否正确
+                head = auth[:40]
+                tail = auth[-12:]
+                log.info(f"[BloretPassPort] 构建认证头: 长度={len(auth)}, 格式=Bearer{{AppID}};{{AppSecret}};{{UserToken}}")
+                log.info(f"[BloretPassPort] AppID=BloretLauncher, AppSecret=s4d56f4a...546, UserToken={masked}")
+                log.info(f"[BloretPassPort] 完整Auth头(脱敏): {head}...{tail}")
+                return auth
+
+        # 回退：自注册专用 AI API Key（文档方式一，sk- 前缀）
         api_key = config_data.get('Bloret_PassPort_AI_API_Key', '')
         if api_key:
             masked = api_key[:8] + "..." + api_key[-4:] if len(api_key) > 12 else "***"
             log.info(f"[BloretPassPort] 使用专用 AI API Key 认证: {masked}")
             return f"Bearer {api_key}"
 
-        # 回退：已登录用户使用 OAuth 三段式 Key（密码哈希）
-        # 注意：AI API 端点可能不接受此格式，如遇 401 需引导用户创建专用 API Key
-        if config_data.get('Bloret_PassPort_Login'):
-            user_token = config_data.get('Bloret_PassPort_PassWord', '')
-            if user_token:
-                log.info("[BloretPassPort] 使用 OAuth 三段式认证（密码哈希回退），AI API 可能需要专用 API Key")
-                return f"Bearer BloretLauncher;s4d56f4a68sd46g54asd46f54a5dsf654asdf546;{user_token}"
-
+        log.warning("[BloretPassPort] 未登录且未配置 AI API Key，无法认证")
         return ""
     except Exception as e:
         log.error(f"构建 Bloret PassPort 认证头失败: {e}")

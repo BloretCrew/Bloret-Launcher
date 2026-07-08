@@ -707,7 +707,9 @@ class BlorikoAgentLoop:
             "stream": True,
         }
 
+        auth_preview = self.auth_header[:45] + "..." + self.auth_header[-10:] if self.auth_header and len(self.auth_header) > 60 else self.auth_header
         log.info(f"[AgentLoop] LLM 请求: url='{self.api_url}', model='{self.model}', messages={len(messages)}条")
+        log.info(f"[AgentLoop] Authorization 头(脱敏): {auth_preview}")
         try:
             response = requests.post(
                 self.api_url,
@@ -787,7 +789,7 @@ class BlorikoAgentLoop:
                             self._current_text = accumulated_text
                             self.on_text_chunk(accumulated_text)
 
-                    delta_tool_calls = delta.get("tool_calls", [])
+                    delta_tool_calls = delta.get("tool_calls", []) or []
                     for dtc in delta_tool_calls:
                         idx = dtc.get("index", 0)
                         if idx not in tool_calls_map:
