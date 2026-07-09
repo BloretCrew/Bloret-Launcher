@@ -27,10 +27,13 @@ FluentWindow {
         }
         console.log("[Main] 跳转络可页处理消息:", text.substring(0, 80))
         pendingBlorikoMessage = text
-        if (navItems && navItems.length > 1) {
-            currentPage = navItems[1].page
+        // currentPage 只更新导航高亮，真正切页需 navigationView.push / safePush
+        if (navItems && navItems.length > 1 && navigationView) {
+            var blorikoPage = navItems[1].page
+            console.log("[Main] safePush 络可页:", blorikoPage)
+            navigationView.push(blorikoPage)
         } else {
-            console.error("[Main] 无法找到络可导航项")
+            console.error("[Main] 无法找到络可导航项或 navigationView")
         }
     }
 
