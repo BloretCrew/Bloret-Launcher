@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
+import QtQuick.Window 2.15
 import RinUI
 
 Item {
@@ -141,6 +142,44 @@ Item {
         } catch(e) {}
     }
 
+    // 消费首页跳转带来的待发送消息，并交给 Agent 处理
+    function processPendingHomeMessage() {
+        var win = Window.window
+        if (!win) {
+            console.log("[Bloriko] processPendingHomeMessage: 无主窗口")
+            return
+        }
+        var text = (win.pendingBlorikoMessage || "").trim()
+        if (text.length === 0)
+            return
+
+        console.log("[Bloriko] 收到首页待处理消息:", text.substring(0, 80))
+        win.pendingBlorikoMessage = ""
+
+        if (!Bloriko) {
+            console.error("[Bloriko] processPendingHomeMessage: Bloriko 后端不可用")
+            return
+        }
+        if (Bloriko.busy) {
+            console.warn("[Bloriko] Agent 正忙，延迟重试首页消息")
+            win.pendingBlorikoMessage = text
+            pendingMessageRetryTimer.restart()
+            return
+        }
+
+        messageModel.append({
+            role: "user",
+            content: text,
+            toolName: "",
+            toolArgs: "",
+            toolResult: "",
+            streaming: false,
+            expanded: false
+        })
+        console.log("[Bloriko] 自动发送首页消息到 Agent")
+        Bloriko.sendMessage(text)
+    }
+
     Component.onCompleted: {
         console.log("[Bloriko] onCompleted, Bloriko:", Bloriko)
         loadProviders()
@@ -148,6 +187,35 @@ Item {
         if (Bloriko) Bloriko.loadLatestSession()
         // 延迟重试：防止上下文属性延迟加载导致数据为空
         retryTimer.start()
+        // 页面首次加载后处理首页跳转消息（在会话加载之后）
+        Qt.callLater(processPendingHomeMessage)
+    }
+
+    // 从首页导航进入时再尝试一次，避免首次挂载时 Window 尚未就绪
+    onVisibleChanged: {
+        if (visible) {
+            console.log("[Bloriko] 页面可见，检查首页待处理消息")
+            Qt.callLater(processPendingHomeMessage)
+        }
+    }
+
+    // 监听主窗口 pendingBlorikoMessage（页面已缓存时仍可收到）
+    Connections {
+        target: Window.window
+        enabled: Window.window !== null
+        function onPendingBlorikoMessageChanged() {
+            if (Window.window && (Window.window.pendingBlorikoMessage || "").trim().length > 0) {
+                console.log("[Bloriko] pendingBlorikoMessage 变更，准备处理")
+                Qt.callLater(processPendingHomeMessage)
+            }
+        }
+    }
+
+    Timer {
+        id: pendingMessageRetryTimer
+        interval: 400
+        repeat: false
+        onTriggered: processPendingHomeMessage()
     }
 
     Timer {

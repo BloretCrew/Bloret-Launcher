@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
+import QtQuick.Window 2.15
 import Qt5Compat.GraphicalEffects
 import RinUI
 import "../components"
@@ -37,10 +38,6 @@ FluentPage {
         target: Backend
         function onServerInfoChanged(data) {
             serverInfo = data
-        }
-        function onBlorikoResponseReceived(response) {
-            blorikoThinking.visible = false
-            askBlorikoAnswer.text = response
         }
         function onActivityInfoChanged(data) {
             if (data && Object.keys(data).length > 0) {
@@ -189,22 +186,24 @@ FluentPage {
                 onAccepted: sendBtn.clicked()
             }
 
-            CheckBox {
-                id: deepThinkCheck
-                text: (Backend ? Backend.tr("深度思考") : "深度思考")
-            }
-
             Button {
                 id: sendBtn
                 icon.name: "ic_fluent_send_20_regular"
                 text: (Backend ? Backend.tr("发送") : "发送")
                 highlighted: true
                 onClicked: {
-                    if (aiInput.text.trim() !== "") {
-                        blorikoThinking.visible = true
-                        askBlorikoAnswer.text = (Backend ? Backend.tr("让络可好好想想...") : "让络可好好想想...")
-                        Backend.askBloriko(aiInput.text, deepThinkCheck.checked)
+                    var text = aiInput.text.trim()
+                    if (text === "")
+                        return
+                    console.log("[Home] 发送到络可页处理:", text.substring(0, 80))
+                    // 跳转到络可页面并由络可 Agent 处理
+                    var win = Window.window
+                    if (win && typeof win.navigateToBlorikoWithMessage === "function") {
+                        win.navigateToBlorikoWithMessage(text)
+                    } else {
+                        console.error("[Home] 无法获取主窗口或 navigateToBlorikoWithMessage")
                     }
+                    aiInput.text = ""
                 }
             }
         }
@@ -213,22 +212,6 @@ FluentPage {
             text: (Backend ? Backend.tr("络可依靠 AI。络可也可能犯错，请核实重要信息。") : "络可依靠 AI。络可也可能犯错，请核实重要信息。")
             color: Theme.currentTheme.colors.textTertialyColor
             font.pixelSize: 12
-        }
-
-        ProgressBar {
-            id: blorikoThinking
-            Layout.fillWidth: true
-            indeterminate: true
-            visible: false
-        }
-
-        Label {
-            id: askBlorikoAnswer
-            Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            text: ""
-            textFormat: Text.MarkdownText
-            color: Theme.currentTheme.colors.textColor
         }
 
         Label {

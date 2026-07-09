@@ -16,6 +16,24 @@ FluentWindow {
     // 用于保持 OOBE 窗口引用的属性
     property var oobeWindowRef: null
 
+    // 首页发送给络可的待处理消息（跳转到络可页后消费）
+    property string pendingBlorikoMessage: ""
+
+    function navigateToBlorikoWithMessage(message) {
+        var text = (message || "").trim()
+        if (text.length === 0) {
+            console.log("[Main] navigateToBlorikoWithMessage: 空消息，忽略")
+            return
+        }
+        console.log("[Main] 跳转络可页处理消息:", text.substring(0, 80))
+        pendingBlorikoMessage = text
+        if (navItems && navItems.length > 1) {
+            currentPage = navItems[1].page
+        } else {
+            console.error("[Main] 无法找到络可导航项")
+        }
+    }
+
     onClosing: function(closeEvent) {
         if (Backend && Backend.handleWindowCloseRequest()) {
             closeEvent.accepted = false
