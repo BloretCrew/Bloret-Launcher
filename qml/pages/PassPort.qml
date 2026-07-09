@@ -10,6 +10,7 @@ FluentPage {
 
     property var accountList: []
     property string passportUser: ""
+    property bool passportLoggedIn: false
 
     Component.onCompleted: {
         // 延迟更新确保 Backend 完全初始化
@@ -21,6 +22,7 @@ FluentPage {
     function updatePassportData() {
         if (Backend) {
             try {
+                passportLoggedIn = Backend.getBloretPassPortLoginStatus()
                 passportUser = Backend.getBloretPassPortUserName()
                 accountList = Backend.getMinecraftAccounts()
             } catch(e) {
@@ -39,6 +41,7 @@ FluentPage {
                     } else {
                         accountList = Backend.getMinecraftAccounts()
                     }
+                    passportLoggedIn = Backend.getBloretPassPortLoginStatus()
                     passportUser = Backend.getBloretPassPortUserName()
                 } catch(e) {
                     console.log("Error in onMinecraftAccountsChanged:", e)
@@ -143,13 +146,13 @@ FluentPage {
 
                 Button {
                     text: (Backend ? Backend.tr("登录") : "登录")
-                    visible: passportUser === "未登录"
+                    visible: !passportLoggedIn
                     onClicked: { if (Backend) Backend.loginBloretPassPort() }
                 }
 
                 Button {
                     text: (Backend ? Backend.tr("退出登录") : "退出登录")
-                    visible: passportUser !== "未登录"
+                    visible: passportLoggedIn
                     onClicked: { if (Backend) Backend.logoutBloretPassPort() }
                 }
             }

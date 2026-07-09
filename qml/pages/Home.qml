@@ -291,13 +291,13 @@ FluentPage {
                                 sourceSize { width: 16; height: 16 }
                             }
                             Label {
-                                text: "Bloret 百络谷 | 筑岁同欢 ✨"
+                                text: Backend ? Backend.tr("Bloret 百络谷 | 筑岁同欢 ✨") : "Bloret 百络谷 | 筑岁同欢 ✨"
                                 font.weight: Font.DemiBold
                                 color: Theme.accentColor ? Theme.accentColor : Theme.currentTheme.colors.textColor
                             }
                         }
                         Label {
-                            text: "「盛夏！新启？百络谷！」"
+                            text: Backend ? Backend.tr("「盛夏！新启？百络谷！」") : "「盛夏！新启？百络谷！」"
                             Layout.alignment: Qt.AlignRight
                             color: Theme.currentTheme.colors.textColor
                         }
@@ -313,7 +313,7 @@ FluentPage {
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    text: serverInfo.BestTime || "嗨嗨~络可来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~"
+                    text: serverInfo.BestTime || (Backend ? Backend.tr("嗨嗨~络可来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~") : "嗨嗨~络可来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~")
                     textFormat: Text.MarkdownText
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }

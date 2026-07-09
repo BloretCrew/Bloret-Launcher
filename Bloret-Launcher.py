@@ -2877,7 +2877,7 @@ class Backend(QObject):
         config_data = cfg.read()
         if config_data.get('Bloret_PassPort_Login'):
             return config_data.get('Bloret_PassPort_UserName', 'Unknown')
-        return "未登录"
+        return i18nText("未登录")
 
     @Slot(result=bool)
     def getBloretPassPortLoginStatus(self):

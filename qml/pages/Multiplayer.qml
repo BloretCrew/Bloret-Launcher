@@ -60,7 +60,7 @@ FluentPage {
     }
 
     Label {
-        text: "使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。\n<b>IPV6 是您的运营商提供的一项免费服务，不额外收费。</b> 已拥有的用户点击刷新直接显示。\nIPV6 联机可能并不稳定。"
+        text: Backend ? Backend.tr("使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。\n<b>IPV6 是您的运营商提供的一项免费服务，不额外收费。</b> 已拥有的用户点击刷新直接显示。\nIPV6 联机可能并不稳定。") : "使用 IPV6 进行联机，可无需打开 Bloret Launcher 就能与其他人联机游玩。\n<b>IPV6 是您的运营商提供的一项免费服务，不额外收费。</b> 已拥有的用户点击刷新直接显示。\nIPV6 联机可能并不稳定。"
         color: Theme.currentTheme.colors.textSecondaryColor
         textFormat: Text.RichText
         wrapMode: Text.Wrap
