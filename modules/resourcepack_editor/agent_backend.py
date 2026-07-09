@@ -17,6 +17,7 @@ import time
 import logging
 import threading
 import requests
+from modules.i18n import i18nText
 from PySide6.QtCore import QObject, Signal, Slot, Property
 from PySide6.QtGui import QGuiApplication
 
@@ -81,7 +82,7 @@ def _summarize_agent_result(text: str, tool_calls: list) -> str:
         if snippet:
             parts.append(snippet)
 
-    return "；".join(parts) if parts else "已完成对话"
+    return "；".join(parts) if parts else i18nText("已完成对话")
 
 
 # 持久化路径
@@ -404,8 +405,7 @@ class AgentBackend(QObject):
             return self._question_answer
         else:
             log.warning("[Agent] 用户回答超时")
-            return "用户未回答"
-
+            return i18nText("用户未回答")
     # ========== 角色管理 ==========
 
     @Slot(str)
@@ -527,12 +527,12 @@ class AgentBackend(QObject):
             resp.raise_for_status()
             all_providers = resp.json()
         except Exception as e:
-            self.errorOccurred.emit(f"获取供应商信息失败: {str(e)}")
+            self.errorOccurred.emit(i18nText("获取供应商信息失败: {v0}").replace("{v0}", str(e)))
             return False
 
         pdata = all_providers.get(provider_id)
         if not pdata:
-            self.errorOccurred.emit(f"未找到供应商: {provider_id}")
+            self.errorOccurred.emit(i18nText("未找到供应商: {v0}").replace("{v0}", str(provider_id)))
             return False
 
         api_base = pdata.get("api", "")
@@ -556,7 +556,11 @@ class AgentBackend(QObject):
                 })
 
         if not models:
-            self.errorOccurred.emit(f"供应商 {pdata.get('name', provider_id)} 没有支持工具调用的模型")
+            self.errorOccurred.emit(
+                i18nText("供应商 {v0} 没有支持工具调用的模型").replace(
+                    "{v0}", str(pdata.get("name", provider_id))
+                )
+            )
             return False
 
         # 保存
@@ -579,7 +583,7 @@ class AgentBackend(QObject):
     def removeProvider(self, provider_key):
         """删除自定义供应商"""
         if provider_key in BUILTIN_PROVIDERS:
-            self.errorOccurred.emit("不能删除内置供应商")
+            self.errorOccurred.emit(i18nText("不能删除内置供应商"))
             return False
         if provider_key in self._custom_providers:
             del self._custom_providers[provider_key]
@@ -647,14 +651,14 @@ class AgentBackend(QObject):
             return
         if not self._pack_path:
             log.error("[Agent] sendMessage 被拒绝: 未设置资源包路径")
-            self.errorOccurred.emit("请先打开一个资源包")
+            self.errorOccurred.emit(i18nText("请先打开一个资源包"))
             return
 
         # 获取 API 配置
         provider = BUILTIN_PROVIDERS.get(self._current_provider) or self._custom_providers.get(self._current_provider)
         if not provider:
             log.error(f"[Agent] 未找到供应商: {self._current_provider}")
-            self.errorOccurred.emit("未选择供应商")
+            self.errorOccurred.emit(i18nText("未选择供应商"))
             return
 
         api_url = provider.get("api", "")
@@ -664,7 +668,7 @@ class AgentBackend(QObject):
 
         if not api_url or not model:
             log.error(f"[Agent] 供应商配置不完整: api_url='{api_url}', model='{model}'")
-            self.errorOccurred.emit("供应商配置不完整")
+            self.errorOccurred.emit(i18nText("供应商配置不完整"))
             return
 
         # 认证
@@ -677,12 +681,16 @@ class AgentBackend(QObject):
                     auth_header = _build_bloret_passport_auth()
                     if not auth_header:
                         log.error("[Agent] Bloret PassPort API Key 未配置")
-                        self.errorOccurred.emit("请先在 Bloret PassPort 的 /ai 页面创建 API Key，并在设置中配置")
+                        self.errorOccurred.emit(i18nText("请先在 Bloret PassPort 的 /ai 页面创建 API Key，并在设置中配置"))
                         return
                     log.info("[Agent] 使用 Bloret PassPort API Key 认证")
                 else:
                     log.error(f"[Agent] 供应商 {provider.get('name', '')} 需要 API 密钥但未提供")
-                    self.errorOccurred.emit(f"供应商 {provider.get('name', '')} 需要 API 密钥")
+                    self.errorOccurred.emit(
+                        i18nText("供应商 {v0} 需要 API 密钥").replace(
+                            "{v0}", str(provider.get("name", ""))
+                        )
+                    )
                     return
             else:
                 auth_header = f"Bearer {api_key}"
@@ -860,7 +868,7 @@ class AgentBackend(QObject):
 
         filepath = os.path.join(session_dir, filename)
         if not os.path.exists(filepath):
-            self.errorOccurred.emit(f"会话文件不存在: {filename}")
+            self.errorOccurred.emit(i18nText("会话文件不存在: {v0}").replace("{v0}", str(filename)))
             return False
 
         try:
@@ -889,7 +897,7 @@ class AgentBackend(QObject):
             log.info(f"已加载会话: {filename} ({len(self._history)} 条消息), 模型={self._current_model}")
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"加载会话失败: {str(e)}")
+            self.errorOccurred.emit(i18nText("加载会话失败: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot()
@@ -1018,8 +1026,7 @@ class AgentBackend(QObject):
         """使用 LLM 生成 commit message"""
         provider = BUILTIN_PROVIDERS.get(self._current_provider) or self._custom_providers.get(self._current_provider)
         if not provider:
-            return f"更新 {len(files)} 个文件"
-
+            return i18nText("更新 {v0} 个文件").replace("{v0}", str(len(files)))
         api_url = provider.get("api", "")
         model = self._current_model
         auth_header = ""
@@ -1037,8 +1044,7 @@ class AgentBackend(QObject):
             from .agent_loop import generate_title
             return generate_title(api_url, auth_header, prompt, model)
         except Exception:
-            return f"更新 {len(files)} 个文件"
-
+            return i18nText("更新 {v0} 个文件").replace("{v0}", str(len(files)))
     @Slot(str, result=str)
     def generateCommitMessage(self, filesJson: str) -> str:
         """供 QML 调用的公开接口：根据文件列表生成提交信息"""

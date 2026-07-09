@@ -70,7 +70,7 @@ Item {
             spacing: 8
 
             Label {
-                text: "文本文件"
+                text: (Backend ? Backend.tr("文本文件") : "文本文件")
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 color: Theme.currentTheme.colors.textColor
@@ -171,7 +171,7 @@ Item {
 
                     Label {
                         id: pathLabel
-                        text: "选择一个文本文件"
+                        text: (Backend ? Backend.tr("选择一个文本文件") : "选择一个文本文件")
                         font.pixelSize: 11
                         font.family: "monospace"
                         color: Theme.currentTheme.colors.textSecondaryColor
@@ -189,7 +189,7 @@ Item {
                     }
 
                     Button {
-                        text: "保存"
+                        text: (Backend ? Backend.tr("保存") : "保存")
                         highlighted: true
                         enabled: _modified && _currentPath !== ""
                         onClicked: saveCurrent()
@@ -224,7 +224,7 @@ Item {
 
     Dialog {
         id: saveConfirmDialog
-        title: "保存更改"
+        title: (Backend ? Backend.tr("保存更改") : "保存更改")
         modal: true
         width: 360
         closePolicy: Popup.CloseOnEscape
@@ -234,7 +234,7 @@ Item {
             spacing: 8
 
             Label {
-                text: "当前文件有未保存的更改。是否保存？"
+                text: (Backend ? Backend.tr("当前文件有未保存的更改。是否保存？") : "当前文件有未保存的更改。是否保存？")
                 wrapMode: Text.Wrap
                 color: Theme.currentTheme.colors.textColor
                 Layout.fillWidth: true
@@ -245,17 +245,17 @@ Item {
                 Layout.topMargin: 8
                 Item { Layout.fillWidth: true }
                 Button {
-                    text: "取消"
+                    text: (Backend ? Backend.tr("取消") : "取消")
                     flat: true
                     onClicked: saveConfirmDialog.reject()
                 }
                 Button {
-                    text: "不保存"
+                    text: (Backend ? Backend.tr("不保存") : "不保存")
                     flat: true
                     onClicked: saveConfirmDialog.discard()
                 }
                 Button {
-                    text: "保存"
+                    text: (Backend ? Backend.tr("保存") : "保存")
                     highlighted: true
                     onClicked: saveConfirmDialog.accept()
                 }

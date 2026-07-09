@@ -8,6 +8,7 @@ import tempfile
 import shutil
 from pathlib import Path
 from datetime import datetime
+from modules.i18n import i18nText
 from PySide6.QtCore import QObject, Signal, Slot, Property
 
 from .git_handler import ResourcePackGit
@@ -91,10 +92,10 @@ class ResourcePackEditorBackend(QObject):
         """将压缩包解压到同目录下的同名文件夹，返回解压后的路径"""
         zip_path = Path(zipPath)
         if not zip_path.exists():
-            self.errorOccurred.emit(f"压缩包不存在: {zipPath}")
+            self.errorOccurred.emit(i18nText("压缩包不存在: {v0}").replace("{v0}", str(zipPath)))
             return ""
         if zip_path.suffix.lower() != ".zip":
-            self.errorOccurred.emit("请选择 .zip 格式的压缩包")
+            self.errorOccurred.emit(i18nText("请选择 .zip 格式的压缩包"))
             return ""
         extract_dir = zip_path.parent / zip_path.stem
         try:
@@ -102,7 +103,7 @@ class ResourcePackEditorBackend(QObject):
                 zf.extractall(str(extract_dir))
             return str(extract_dir)
         except Exception as e:
-            self.errorOccurred.emit(f"解压失败: {e}")
+            self.errorOccurred.emit(i18nText("解压失败: {v0}").replace("{v0}", str(e)))
             return ""
 
     # ========== 基本属性 ==========
@@ -118,7 +119,7 @@ class ResourcePackEditorBackend(QObject):
     def open_pack(self, path):
         path = Path(path)
         if not path.exists():
-            self.errorOccurred.emit(f"路径不存在: {path}")
+            self.errorOccurred.emit(i18nText("路径不存在: {v0}").replace("{v0}", str(path)))
             return False
 
         if path.suffix.lower() == ".zip":
@@ -128,12 +129,12 @@ class ResourcePackEditorBackend(QObject):
                     zf.extractall(str(extract_dir))
                 self._pack_path = extract_dir
             except Exception as e:
-                self.errorOccurred.emit(f"解压失败: {e}")
+                self.errorOccurred.emit(i18nText("解压失败: {v0}").replace("{v0}", str(e)))
                 return False
         elif path.is_dir():
             self._pack_path = path
         else:
-            self.errorOccurred.emit("请选择 zip 文件或文件夹")
+            self.errorOccurred.emit(i18nText("请选择 zip 文件或文件夹"))
             return False
 
         if not (self._pack_path / "pack.mcmeta").exists():
@@ -148,7 +149,7 @@ class ResourcePackEditorBackend(QObject):
             self._git = None
         self._analyzer = PackAnalyzer(self._pack_path)
         if not self._analyzer.is_valid_pack():
-            self.errorOccurred.emit("该目录不是有效的资源包（缺少 pack.mcmeta）")
+            self.errorOccurred.emit(i18nText("该目录不是有效的资源包（缺少 pack.mcmeta）"))
             self._pack_path = None
             self._git = None
             self._analyzer = None
@@ -188,7 +189,7 @@ class ResourcePackEditorBackend(QObject):
                 encoding="utf-8"
             )
         except Exception as e:
-            self.errorOccurred.emit(f"创建资源包结构失败: {e}")
+            self.errorOccurred.emit(i18nText("创建资源包结构失败: {v0}").replace("{v0}", str(e)))
             return False
         return self.open_pack(str(path))
 
@@ -210,7 +211,7 @@ class ResourcePackEditorBackend(QObject):
             }
         )
         self.fileTreeChanged.emit(file_tree)
-        self.statusMessage.emit("ready", f"已加载资源包: {self._pack_path.name}")
+        self.statusMessage.emit("ready", i18nText("已加载资源包: {v0}").replace("{v0}", str(self._pack_path.name)))
 
     @Slot(result=list)
     def getFileTree(self):
@@ -247,10 +248,10 @@ class ResourcePackEditorBackend(QObject):
         try:
             full_path.parent.mkdir(parents=True, exist_ok=True)
             full_path.write_text(content, encoding="utf-8")
-            self.statusMessage.emit("saved", f"已保存: {filePath}")
+            self.statusMessage.emit("saved", i18nText("已保存: {v0}").replace("{v0}", str(filePath)))
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"保存失败: {e}")
+            self.errorOccurred.emit(i18nText("保存失败: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(result=str)
@@ -267,11 +268,11 @@ class ResourcePackEditorBackend(QObject):
             data = json.loads(jsonStr)
             ok = self._analyzer.save_mcmeta(data)
             if ok:
-                self.statusMessage.emit("saved", "pack.mcmeta 已保存")
+                self.statusMessage.emit("saved", i18nText("pack.mcmeta 已保存"))
                 self._refresh()
             return ok
         except json.JSONDecodeError as e:
-            self.errorOccurred.emit(f"JSON 格式错误: {e}")
+            self.errorOccurred.emit(i18nText("JSON 格式错误: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(result=list)
@@ -295,10 +296,10 @@ class ResourcePackEditorBackend(QObject):
             data = json.loads(jsonStr)
             ok = self._analyzer.save_language_file(langPath, data)
             if ok:
-                self.statusMessage.emit("saved", f"语言文件已保存: {langPath}")
+                self.statusMessage.emit("saved", i18nText("语言文件已保存: {v0}").replace("{v0}", str(langPath)))
             return ok
         except json.JSONDecodeError as e:
-            self.errorOccurred.emit(f"JSON 格式错误: {e}")
+            self.errorOccurred.emit(i18nText("JSON 格式错误: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(result=list)
@@ -322,11 +323,11 @@ class ResourcePackEditorBackend(QObject):
             return False
         try:
             self._git.stage_file(filePath)
-            self.statusMessage.emit("staged", f"已暂存: {filePath}")
+            self.statusMessage.emit("staged", i18nText("已暂存: {v0}").replace("{v0}", str(filePath)))
             self._refresh()
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"暂存失败: {e}")
+            self.errorOccurred.emit(i18nText("暂存失败: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(str, result=bool)
@@ -335,11 +336,11 @@ class ResourcePackEditorBackend(QObject):
             return False
         try:
             self._git.unstage_file(filePath)
-            self.statusMessage.emit("unstage", f"已取消暂存: {filePath}")
+            self.statusMessage.emit("unstage", i18nText("已取消暂存: {v0}").replace("{v0}", str(filePath)))
             self._refresh()
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"取消暂存失败: {e}")
+            self.errorOccurred.emit(i18nText("取消暂存失败: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(str, result=bool)
@@ -348,11 +349,11 @@ class ResourcePackEditorBackend(QObject):
             return False
         try:
             self._git.commit(message)
-            self.statusMessage.emit("committed", f"已提交: {message}")
+            self.statusMessage.emit("committed", i18nText("已提交: {v0}").replace("{v0}", str(message)))
             self._refresh()
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"提交失败: {e}")
+            self.errorOccurred.emit(i18nText("提交失败: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(result=int)
@@ -397,11 +398,11 @@ class ResourcePackEditorBackend(QObject):
             return False
         try:
             self._git.stage_all()
-            self.statusMessage.emit("staged", "已暂存所有更改")
+            self.statusMessage.emit("staged", i18nText("已暂存所有更改"))
             self._refresh()
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"暂存失败: {e}")
+            self.errorOccurred.emit(i18nText("暂存失败: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(result=bool)
@@ -410,11 +411,11 @@ class ResourcePackEditorBackend(QObject):
             return False
         try:
             self._git.unstage_all()
-            self.statusMessage.emit("unstage", "已取消所有暂存")
+            self.statusMessage.emit("unstage", i18nText("已取消所有暂存"))
             self._refresh()
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"取消暂存失败: {e}")
+            self.errorOccurred.emit(i18nText("取消暂存失败: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(str, str, result=bool)
@@ -429,7 +430,7 @@ class ResourcePackEditorBackend(QObject):
             self._refresh()
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"操作失败: {e}")
+            self.errorOccurred.emit(i18nText("操作失败: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(str, result=bool)
@@ -442,11 +443,11 @@ class ResourcePackEditorBackend(QObject):
                 full_path.unlink()
             elif full_path.is_dir():
                 shutil.rmtree(str(full_path))
-            self.statusMessage.emit("deleted", f"已删除: {filePath}")
+            self.statusMessage.emit("deleted", i18nText("已删除: {v0}").replace("{v0}", str(filePath)))
             self._refresh()
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"删除失败: {e}")
+            self.errorOccurred.emit(i18nText("删除失败: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(str, str, result=bool)
@@ -458,11 +459,11 @@ class ResourcePackEditorBackend(QObject):
             full_dir.mkdir(parents=True, exist_ok=True)
             full_path = full_dir / fileName
             full_path.touch()
-            self.statusMessage.emit("created", f"已创建: {fileName}")
+            self.statusMessage.emit("created", i18nText("已创建: {v0}").replace("{v0}", str(fileName)))
             self._refresh()
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"创建失败: {e}")
+            self.errorOccurred.emit(i18nText("创建失败: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(str, str, result=bool)
@@ -473,11 +474,11 @@ class ResourcePackEditorBackend(QObject):
             old_full = self._pack_path / oldPath
             new_full = old_full.parent / newName
             old_full.rename(new_full)
-            self.statusMessage.emit("renamed", f"已重命名: {oldPath} → {newName}")
+            self.statusMessage.emit("renamed", i18nText("已重命名: {v0} → {v1}").replace("{v0}", str(oldPath)).replace("{v1}", str(newName)))
             self._refresh()
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"重命名失败: {e}")
+            self.errorOccurred.emit(i18nText("重命名失败: {v0}").replace("{v0}", str(e)))
             return False
 
     # ========== 快捷操作 ==========
@@ -495,10 +496,10 @@ class ResourcePackEditorBackend(QObject):
                     if file.is_file():
                         arcname = str(file.relative_to(self._pack_path))
                         zf.write(str(file), arcname)
-            self.statusMessage.emit("exported", f"已导出: {zip_path}")
+            self.statusMessage.emit("exported", i18nText("已导出: {v0}").replace("{v0}", str(zip_path)))
             return str(zip_path)
         except Exception as e:
-            self.errorOccurred.emit(f"导出失败: {e}")
+            self.errorOccurred.emit(i18nText("导出失败: {v0}").replace("{v0}", str(e)))
             return ""
 
     @Slot()
@@ -519,7 +520,7 @@ class ResourcePackEditorBackend(QObject):
             else:
                 subprocess.Popen(["xdg-open", path])
         except Exception as e:
-            self.errorOccurred.emit(f"打开失败: {e}")
+            self.errorOccurred.emit(i18nText("打开失败: {v0}").replace("{v0}", str(e)))
 
     @Slot()
     def openInVSCode(self):
@@ -557,10 +558,10 @@ class ResourcePackEditorBackend(QObject):
             if sys.platform == "win32":
                 os.startfile(path)
             else:
-                self.errorOccurred.emit("未找到 VS Code，请确认已安装并添加到 PATH")
+                self.errorOccurred.emit(i18nText("未找到 VS Code，请确认已安装并添加到 PATH"))
         except Exception as e:
             log.error(f"openInVSCode 失败: {e}")
-            self.errorOccurred.emit(f"打开 VS Code 失败: {e}")
+            self.errorOccurred.emit(i18nText("打开 VS Code 失败: {v0}").replace("{v0}", str(e)))
 
     @Slot()
     def openInTerminal(self):
@@ -576,18 +577,17 @@ class ResourcePackEditorBackend(QObject):
             else:
                 subprocess.Popen(["xdg-terminal", "--working-directory", path])
         except Exception as e:
-            self.errorOccurred.emit(f"打开终端失败: {e}")
+            self.errorOccurred.emit(i18nText("打开终端失败: {v0}").replace("{v0}", str(e)))
 
     @Slot(result=str)
     def getExplorerLabel(self) -> str:
         """获取系统对应的文件管理器名称"""
         if sys.platform == "win32":
-            return "文件资源管理器"
+            return i18nText("文件资源管理器")
         elif sys.platform == "darwin":
-            return "访达"
+            return i18nText("访达")
         else:
-            return "文件管理器"
-
+            return i18nText("文件管理器")
     @Slot(result=list)
     def getBlockstates(self):
         if self._analyzer is None:
@@ -683,10 +683,10 @@ class ResourcePackEditorBackend(QObject):
         try:
             full.parent.mkdir(parents=True, exist_ok=True)
             full.write_text(content, encoding="utf-8")
-            self.statusMessage.emit("saved", f"已保存: {relPath}")
+            self.statusMessage.emit("saved", i18nText("已保存: {v0}").replace("{v0}", str(relPath)))
             return True
         except Exception as e:
-            self.errorOccurred.emit(f"保存失败: {e}")
+            self.errorOccurred.emit(i18nText("保存失败: {v0}").replace("{v0}", str(e)))
             return False
 
     @Slot(result=str)
@@ -707,13 +707,12 @@ class ResourcePackEditorBackend(QObject):
             from .agent_tools import _execute_get_mc_reference
             return _execute_get_mc_reference(self._pack_path or Path("."), topic=topic)
         except Exception as e:
-            return f"查询失败: {str(e)}"
-
+            return i18nText("查询失败: {v0}").replace("{v0}", str(str(e)))
     @Slot(str, str, result=str)
     def createResourceTemplate(self, templateType, optionsJson="{}"):
         """创建资源包模板文件"""
         if self._pack_path is None:
-            return "错误: 未打开资源包"
+            return i18nText("错误: 未打开资源包")
         try:
             options = json.loads(optionsJson) if optionsJson else {}
             from .agent_tools import _execute_create_resource_template
@@ -721,4 +720,4 @@ class ResourcePackEditorBackend(QObject):
             self._refresh_file_tree()
             return result
         except Exception as e:
-            return f"错误: {str(e)}"
+            return i18nText("错误: {v0}").replace("{v0}", str(str(e)))

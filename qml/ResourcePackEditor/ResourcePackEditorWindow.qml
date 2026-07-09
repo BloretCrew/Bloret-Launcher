@@ -8,7 +8,7 @@ import "pages"
 FluentWindowBase {
     id: editorWindow
     visible: false
-    title: "Bloret Launcher 资源包编辑器"
+    title: (Backend ? Backend.tr("Bloret Launcher 资源包编辑器") : "Bloret Launcher 资源包编辑器")
     width: 1200
     height: 800
     minimumWidth: 900
@@ -49,13 +49,13 @@ FluentWindowBase {
         }
 
         property var _toolCnMap: ({
-            "read_file": "读取文件", "write_file": "写入文件", "edit_file": "编辑文件",
-            "list_files": "列出文件", "search_text": "搜索文本", "get_pack_info": "获取资源包信息",
-            "analyze_pack": "分析资源包", "read_language": "读取语言文件", "edit_language": "编辑语言文件",
-            "validate_json": "验证 JSON", "get_file_tree": "获取文件树", "ask_user": "向用户提问",
-            "execute_command": "执行命令", "execute_command_background": "后台执行命令",
-            "spawn_agent": "启动子 Agent", "get_mc_reference": "查询 MC 参考",
-            "validate_mcmeta_advanced": "验证 pack.mcmeta", "create_resource_template": "创建资源模板"
+            "read_file": (Backend ? Backend.tr("读取文件") : "读取文件"), "write_file": (Backend ? Backend.tr("写入文件") : "写入文件"), "edit_file": (Backend ? Backend.tr("编辑文件") : "编辑文件"),
+            "list_files": (Backend ? Backend.tr("列出文件") : "列出文件"), "search_text": (Backend ? Backend.tr("搜索文本") : "搜索文本"), "get_pack_info": (Backend ? Backend.tr("获取资源包信息") : "获取资源包信息"),
+            "analyze_pack": (Backend ? Backend.tr("分析资源包") : "分析资源包"), "read_language": (Backend ? Backend.tr("读取语言文件") : "读取语言文件"), "edit_language": (Backend ? Backend.tr("编辑语言文件") : "编辑语言文件"),
+            "validate_json": (Backend ? Backend.tr("验证 JSON") : "验证 JSON"), "get_file_tree": (Backend ? Backend.tr("获取文件树") : "获取文件树"), "ask_user": (Backend ? Backend.tr("向用户提问") : "向用户提问"),
+            "execute_command": (Backend ? Backend.tr("执行命令") : "执行命令"), "execute_command_background": (Backend ? Backend.tr("后台执行命令") : "后台执行命令"),
+            "spawn_agent": (Backend ? Backend.tr("启动子 Agent") : "启动子 Agent"), "get_mc_reference": (Backend ? Backend.tr("查询 MC 参考") : "查询 MC 参考"),
+            "validate_mcmeta_advanced": (Backend ? Backend.tr("验证 pack.mcmeta") : "验证 pack.mcmeta"), "create_resource_template": (Backend ? Backend.tr("创建资源模板") : "创建资源模板")
         })
 
         function _summarizeAgent(content, toolCallsJson) {
@@ -68,14 +68,15 @@ FluentWindowBase {
                         var n = calls[i].name || ""
                         if (n && !seen[n]) { seen[n] = true; unique.push(_toolCnMap[n] || n) }
                     }
-                    if (unique.length > 0) parts.push("使用了 " + unique.join("、"))
+                    if (unique.length > 0)
+                        parts.push((Backend ? Backend.tr("使用了 ") : "使用了 ") + unique.join("、"))
                 }
             } catch(e) {}
             if (content) {
                 var snippet = content.trim().split("\n")[0].substring(0, 80)
                 if (snippet) parts.push(snippet)
             }
-            return parts.length > 0 ? parts.join("；") : "已完成对话"
+            return parts.length > 0 ? parts.join("；") : (Backend ? Backend.tr("已完成对话") : "已完成对话")
         }
 
         Connections {
@@ -83,7 +84,7 @@ FluentWindowBase {
 
             function onMessageAdded(role, content, toolCallsJson) {
                 agentInfoBar.severity = Severity.Success
-                agentInfoBar.title = "Copilot 完成"
+                agentInfoBar.title = Backend ? Backend.tr("Copilot 完成") : "Copilot 完成"
                 agentInfoBar.text = _summarizeAgent(content, toolCallsJson)
                 agentInfoBar.visible = true
             }
@@ -91,14 +92,14 @@ FluentWindowBase {
             function onPermissionRequested(toolName, argsJson, description, reasoning) {
                 var cn = _toolCnMap[toolName] || toolName
                 agentInfoBar.severity = Severity.Warning
-                agentInfoBar.title = "Copilot 需要授权"
-                agentInfoBar.text = "请求" + cn + (description ? ": " + description : "")
+                agentInfoBar.title = Backend ? Backend.tr("Copilot 需要授权") : "Copilot 需要授权"
+                agentInfoBar.text = (Backend ? Backend.tr("请求") : "请求") + cn + (description ? ": " + description : "")
                 agentInfoBar.visible = true
             }
 
             function onErrorOccurred(msg) {
                 agentInfoBar.severity = Severity.Error
-                agentInfoBar.title = "Copilot 出错"
+                agentInfoBar.title = Backend ? Backend.tr("Copilot 出错") : "Copilot 出错"
                 agentInfoBar.text = msg
                 agentInfoBar.visible = true
             }
@@ -112,7 +113,7 @@ FluentWindowBase {
             spacing: 2
 
             Repeater {
-                model: ["概览", "BLRPE Copilot", "Git", "pack.mcmeta", "pack.png", "语言", "贴图", "方块状态", "模型", "声音", "字体", "文本", "粒子", "特殊文件", "OptiFine", "文件", "设置"]
+                model: [(Backend ? Backend.tr("概览") : "概览"), (Backend ? Backend.tr("BLRPE Copilot") : "BLRPE Copilot"), (Backend ? Backend.tr("Git") : "Git"), (Backend ? Backend.tr("pack.mcmeta") : "pack.mcmeta"), "pack.png", (Backend ? Backend.tr("语言") : "语言"), (Backend ? Backend.tr("贴图") : "贴图"), (Backend ? Backend.tr("方块状态") : "方块状态"), (Backend ? Backend.tr("模型") : "模型"), (Backend ? Backend.tr("声音") : "声音"), (Backend ? Backend.tr("字体") : "字体"), (Backend ? Backend.tr("文本") : "文本"), (Backend ? Backend.tr("粒子") : "粒子"), (Backend ? Backend.tr("特殊文件") : "特殊文件"), (Backend ? Backend.tr("OptiFine") : "OptiFine"), (Backend ? Backend.tr("文件") : "文件"), (Backend ? Backend.tr("设置") : "设置")]
 
                 Button {
                     text: modelData
@@ -187,7 +188,7 @@ FluentWindowBase {
                                 anchors.left: parent.left
                                 anchors.leftMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: "文件列表"
+                                text: (Backend ? Backend.tr("文件列表") : "文件列表")
                                 font.pixelSize: 13
                                 font.weight: Font.DemiBold
                                 color: Theme.currentTheme.colors.textColor
@@ -231,7 +232,9 @@ FluentWindowBase {
             function onPackLoaded(info) {
                 var data = JSON.parse(info.stats)
                 fileTreeModel = RPEditor.getFileTree()
-                statsLabel.text = "文件: " + data.files + " | 贴图: " + data.textures + " | 语言: " + data.languages
+                statsLabel.text = (Backend ? Backend.tr("文件: ") : "文件: ") + data.files
+                    + " | " + (Backend ? Backend.tr("贴图: ") : "贴图: ") + data.textures
+                    + " | " + (Backend ? Backend.tr("语言: ") : "语言: ") + data.languages
                 // 同步资源包路径到 AI Agent
                 if (Agent) {
                     Agent.setPackPath(info.path)
@@ -269,7 +272,7 @@ FluentWindowBase {
         // ========== 欢迎对话框：选择打开方式 ==========
         Dialog {
             id: welcomeDialog
-            title: "打开资源包"
+            title: (Backend ? Backend.tr("打开资源包") : "打开资源包")
             modal: true
             width: 440
             closePolicy: Popup.CloseOnEscape
@@ -283,7 +286,7 @@ FluentWindowBase {
                 spacing: 16
 
                 Label {
-                    text: "请选择要打开的资源包类型："
+                    text: (Backend ? Backend.tr("请选择要打开的资源包类型：") : "请选择要打开的资源包类型：")
                     font.pixelSize: 14
                     color: Theme.currentTheme.colors.textColor
                     wrapMode: Text.Wrap
@@ -312,14 +315,14 @@ FluentWindowBase {
                             spacing: 2
 
                             Label {
-                                text: "打开压缩包"
+                                text: (Backend ? Backend.tr("打开压缩包") : "打开压缩包")
                                 font.pixelSize: 13
                                 font.weight: Font.DemiBold
                                 color: Theme.currentTheme.colors.textColor
                             }
 
                             Label {
-                                text: "选择 .zip 格式的资源包压缩文件"
+                                text: (Backend ? Backend.tr("选择 .zip 格式的资源包压缩文件") : "选择 .zip 格式的资源包压缩文件")
                                 font.pixelSize: 11
                                 color: Theme.currentTheme.colors.textSecondaryColor
                             }
@@ -354,14 +357,14 @@ FluentWindowBase {
                             spacing: 2
 
                             Label {
-                                text: "打开文件夹"
+                                text: (Backend ? Backend.tr("打开文件夹") : "打开文件夹")
                                 font.pixelSize: 13
                                 font.weight: Font.DemiBold
                                 color: Theme.currentTheme.colors.textColor
                             }
 
                             Label {
-                                text: "选择已解压的资源包文件夹"
+                                text: (Backend ? Backend.tr("选择已解压的资源包文件夹") : "选择已解压的资源包文件夹")
                                 font.pixelSize: 11
                                 color: Theme.currentTheme.colors.textSecondaryColor
                             }
@@ -396,14 +399,14 @@ FluentWindowBase {
                             spacing: 2
 
                             Label {
-                                text: "打开最近使用的"
+                                text: (Backend ? Backend.tr("打开最近使用的") : "打开最近使用的")
                                 font.pixelSize: 13
                                 font.weight: Font.DemiBold
                                 color: Theme.currentTheme.colors.textColor
                             }
 
                             Label {
-                                text: "从最近打开过的资源包中选择"
+                                text: (Backend ? Backend.tr("从最近打开过的资源包中选择") : "从最近打开过的资源包中选择")
                                 font.pixelSize: 11
                                 color: Theme.currentTheme.colors.textSecondaryColor
                             }
@@ -424,7 +427,7 @@ FluentWindowBase {
                     Item { Layout.fillWidth: true }
 
                     Button {
-                        text: "取消"
+                        text: (Backend ? Backend.tr("取消") : "取消")
                         flat: true
                         onClicked: welcomeDialog.reject()
                     }
@@ -435,8 +438,8 @@ FluentWindowBase {
         // ========== 压缩包文件选择对话框 ==========
         FileDialog {
             id: zipFileDialog
-            title: "选择资源包压缩文件"
-            nameFilters: ["ZIP 压缩包 (*.zip)"]
+            title: (Backend ? Backend.tr("选择资源包压缩文件") : "选择资源包压缩文件")
+            nameFilters: [Backend ? Backend.tr("ZIP 压缩包 (*.zip)") : "ZIP 压缩包 (*.zip)"]
             onAccepted: {
                 if (zipFileDialog.file) {
                     var pathStr = zipFileDialog.file.toString()
@@ -460,7 +463,7 @@ FluentWindowBase {
         // ========== 解压确认对话框 ==========
         Dialog {
             id: extractConfirmDialog
-            title: "解压压缩包"
+            title: (Backend ? Backend.tr("解压压缩包") : "解压压缩包")
             modal: true
             width: 480
             closePolicy: Popup.CloseOnEscape
@@ -476,14 +479,14 @@ FluentWindowBase {
                 spacing: 12
 
                 Label {
-                    text: "需要解压压缩包"
+                    text: (Backend ? Backend.tr("需要解压压缩包") : "需要解压压缩包")
                     font.pixelSize: 14
                     font.weight: Font.DemiBold
                     color: Theme.currentTheme.colors.textColor
                 }
 
                 Label {
-                    text: "资源包编辑器无法直接在压缩包中进行编辑，需要将压缩包解压到同目录下的文件夹中才能正常工作。\n\n即将解压到：\n" + extractConfirmDialog.zipPath.replace(/\.zip$/, "") + "/"
+                    text: (Backend ? Backend.tr("资源包编辑器无法直接在压缩包中进行编辑，需要将压缩包解压到同目录下的文件夹中才能正常工作。\n\n即将解压到：\n") : "资源包编辑器无法直接在压缩包中进行编辑，需要将压缩包解压到同目录下的文件夹中才能正常工作。\n\n即将解压到：\n") + extractConfirmDialog.zipPath.replace(/\.zip$/, "") + "/"
                     font.pixelSize: 12
                     lineHeight: 1.5
                     wrapMode: Text.Wrap
@@ -492,7 +495,7 @@ FluentWindowBase {
                 }
 
                 Label {
-                    text: "是否允许解压并打开？"
+                    text: (Backend ? Backend.tr("是否允许解压并打开？") : "是否允许解压并打开？")
                     font.pixelSize: 12
                     font.weight: Font.DemiBold
                     color: Theme.currentTheme.colors.textColor
@@ -505,13 +508,13 @@ FluentWindowBase {
                     Item { Layout.fillWidth: true }
 
                     Button {
-                        text: "拒绝并退出"
+                        text: (Backend ? Backend.tr("拒绝并退出") : "拒绝并退出")
                         flat: true
                         onClicked: extractConfirmDialog.reject()
                     }
 
                     Button {
-                        text: "允许并打开"
+                        text: (Backend ? Backend.tr("允许并打开") : "允许并打开")
                         onClicked: extractConfirmDialog.accept()
                     }
                 }
@@ -530,7 +533,7 @@ FluentWindowBase {
         // ========== 最近打开的资源包对话框 ==========
         Dialog {
             id: recentPacksDialog
-            title: "最近打开的资源包"
+            title: (Backend ? Backend.tr("最近打开的资源包") : "最近打开的资源包")
             modal: true
             width: 520
             closePolicy: Popup.CloseOnEscape
@@ -552,8 +555,8 @@ FluentWindowBase {
 
                 Label {
                     text: recentPacksDialog.recentList.length > 0
-                        ? "请选择要打开的资源包："
-                        : "暂无最近打开的资源包记录。"
+                        ? (Backend ? Backend.tr("请选择要打开的资源包：") : "请选择要打开的资源包：")
+                        : (Backend ? Backend.tr("暂无最近打开的资源包记录。") : "暂无最近打开的资源包记录。")
                     font.pixelSize: 13
                     color: Theme.currentTheme.colors.textColor
                     wrapMode: Text.Wrap
@@ -636,7 +639,7 @@ FluentWindowBase {
                     Item { Layout.fillWidth: true }
 
                     Button {
-                        text: "返回"
+                        text: (Backend ? Backend.tr("返回") : "返回")
                         flat: true
                         onClicked: recentPacksDialog.reject()
                     }
@@ -647,7 +650,7 @@ FluentWindowBase {
         // ========== 文件夹选择对话框 ==========
         FolderDialog {
             id: folderDialog
-            title: "选择资源包文件夹"
+            title: (Backend ? Backend.tr("选择资源包文件夹") : "选择资源包文件夹")
             onAccepted: {
                 if (folderDialog.folder) {
                     var pathStr = folderDialog.folder.toString()
@@ -670,7 +673,7 @@ FluentWindowBase {
 
         Dialog {
             id: createStructureDialog
-            title: "创建资源包"
+            title: (Backend ? Backend.tr("创建资源包") : "创建资源包")
             modal: true
             width: 480
             closePolicy: Popup.CloseOnEscape
@@ -680,14 +683,14 @@ FluentWindowBase {
                 spacing: 12
 
                 Label {
-                    text: "该目录不是有效的 Minecraft 资源包。"
+                    text: (Backend ? Backend.tr("该目录不是有效的 Minecraft 资源包。") : "该目录不是有效的 Minecraft 资源包。")
                     font.pixelSize: 14
                     font.weight: Font.DemiBold
                     color: Theme.currentTheme.colors.textColor
                 }
 
                 Label {
-                    text: "是否自动创建基础资源包结构？\n\n将生成：\n  • pack.mcmeta（资源包元数据）\n  • assets/minecraft/（标准命名空间）\n  • assets/minecraft/lang/en_us.json（语言文件）\n  • assets/minecraft/textures/（贴图目录）\n  • assets/minecraft/models/（模型目录）"
+                    text: (Backend ? Backend.tr("是否自动创建基础资源包结构？\n\n将生成：\n  • pack.mcmeta（资源包元数据）\n  • assets/minecraft/（标准命名空间）\n  • assets/minecraft/lang/en_us.json（语言文件）\n  • assets/minecraft/textures/（贴图目录）\n  • assets/minecraft/models/（模型目录）") : "是否自动创建基础资源包结构？\n\n将生成：\n  • pack.mcmeta（资源包元数据）\n  • assets/minecraft/（标准命名空间）\n  • assets/minecraft/lang/en_us.json（语言文件）\n  • assets/minecraft/textures/（贴图目录）\n  • assets/minecraft/models/（模型目录）")
                     font.pixelSize: 12
                     lineHeight: 1.5
                     wrapMode: Text.Wrap
@@ -701,13 +704,13 @@ FluentWindowBase {
                     Item { Layout.fillWidth: true }
 
                     Button {
-                        text: "取消"
+                        text: (Backend ? Backend.tr("取消") : "取消")
                         flat: true
                         onClicked: createStructureDialog.reject()
                     }
 
                     Button {
-                        text: "创建"
+                        text: (Backend ? Backend.tr("创建") : "创建")
                         onClicked: createStructureDialog.accept()
                     }
                 }

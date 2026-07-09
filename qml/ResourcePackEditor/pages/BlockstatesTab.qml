@@ -24,7 +24,7 @@ Item {
         if (!RPEditor) return
         _blockstates = RPEditor.getBlockstates()
         blockstateList.model = _blockstates
-        countLabel.text = "共 " + _blockstates.length + " 个方块状态文件"
+        countLabel.text = (Backend ? Backend.tr("共 ") : "共 ") + _blockstates.length + (Backend ? Backend.tr(" 个方块状态文件") : " 个方块状态文件")
 
         if (_blockstates.length > 0) {
             blockstateList.currentIndex = 0
@@ -71,7 +71,7 @@ Item {
                 Layout.fillWidth: true
 
                 Label {
-                    text: "方块状态编辑器"
+                    text: (Backend ? Backend.tr("方块状态编辑器") : "方块状态编辑器")
                     font.pixelSize: 22
                     font.weight: Font.DemiBold
                     color: Theme.currentTheme.colors.textColor
@@ -81,14 +81,14 @@ Item {
 
                 Label {
                     id: countLabel
-                    text: "加载中..."
+                    text: (Backend ? Backend.tr("加载中...") : "加载中...")
                     color: Theme.currentTheme.colors.textSecondaryColor
                     font.pixelSize: 12
                 }
             }
 
             Label {
-                text: "编辑资源包中的方块状态 JSON 文件，定义方块的视觉状态映射。"
+                text: (Backend ? Backend.tr("编辑资源包中的方块状态 JSON 文件，定义方块的视觉状态映射。") : "编辑资源包中的方块状态 JSON 文件，定义方块的视觉状态映射。")
                 wrapMode: Text.Wrap
                 color: Theme.currentTheme.colors.textSecondaryColor
                 Layout.fillWidth: true
@@ -99,7 +99,7 @@ Item {
                 spacing: 8
 
                 Label {
-                    text: "路径："
+                    text: (Backend ? Backend.tr("路径：") : "路径：")
                     font.pixelSize: 12
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
@@ -117,7 +117,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 Button {
-                    text: "保存"
+                    text: (Backend ? Backend.tr("保存") : "保存")
                     highlighted: true
                     enabled: _currentPath && _modified && RPEditor && RPEditor.isPackOpen()
                     onClicked: {
@@ -130,7 +130,7 @@ Item {
                 }
 
                 Button {
-                    text: "重置"
+                    text: (Backend ? Backend.tr("重置") : "重置")
                     enabled: _modified
                     onClicked: {
                         editorArea.text = _originalContent
@@ -222,7 +222,7 @@ Item {
                             color: Theme.currentTheme.colors.textColor
                             background: null
                             wrapMode: Text.NoWrap
-                            placeholderText: "选择一个方块状态文件以编辑..."
+                            placeholderText: (Backend ? Backend.tr("选择一个方块状态文件以编辑...") : "选择一个方块状态文件以编辑...")
                             selectByMouse: true
                             onTextChanged: {
                                 _modified = (editorArea.text !== _originalContent)
@@ -234,7 +234,7 @@ Item {
 
             Dialog {
                 id: saveConfirmDialog
-                title: "保存更改"
+                title: (Backend ? Backend.tr("保存更改") : "保存更改")
                 modal: true
                 width: 400
                 closePolicy: Popup.CloseOnEscape
@@ -244,7 +244,7 @@ Item {
                     spacing: 12
 
                     Label {
-                        text: "当前文件有未保存的更改。是否保存？"
+                        text: (Backend ? Backend.tr("当前文件有未保存的更改。是否保存？") : "当前文件有未保存的更改。是否保存？")
                         font.pixelSize: 13
                         wrapMode: Text.Wrap
                         color: Theme.currentTheme.colors.textColor
@@ -266,18 +266,18 @@ Item {
                         Item { Layout.fillWidth: true }
 
                         Button {
-                            text: "取消"
+                            text: (Backend ? Backend.tr("取消") : "取消")
                             flat: true
                             onClicked: saveConfirmDialog.reject()
                         }
 
                         Button {
-                            text: "不保存"
+                            text: (Backend ? Backend.tr("不保存") : "不保存")
                             onClicked: saveConfirmDialog.reject()
                         }
 
                         Button {
-                            text: "保存"
+                            text: (Backend ? Backend.tr("保存") : "保存")
                             highlighted: true
                             onClicked: saveConfirmDialog.accept()
                         }

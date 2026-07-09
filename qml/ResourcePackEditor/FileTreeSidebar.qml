@@ -170,7 +170,7 @@ Rectangle {
         title: _contextItem ? _contextItem.name : ""
 
         MenuItem {
-            text: "暂存"
+            text: (Backend ? Backend.tr("暂存") : "暂存")
             enabled: contextMenu._contextItem && contextMenu._contextItem.gitStatus !== "" && contextMenu._contextItem.gitStatus !== "A"
             onTriggered: {
                 if (RPEditor && contextMenu._contextItem) {
@@ -180,7 +180,7 @@ Rectangle {
         }
 
         MenuItem {
-            text: "取消暂存"
+            text: (Backend ? Backend.tr("取消暂存") : "取消暂存")
             enabled: contextMenu._contextItem && contextMenu._contextItem.gitStatus === "A"
             onTriggered: {
                 if (RPEditor && contextMenu._contextItem) {
@@ -192,7 +192,7 @@ Rectangle {
         MenuSeparator {}
 
         MenuItem {
-            text: "创建文件"
+            text: (Backend ? Backend.tr("创建文件") : "创建文件")
             onTriggered: {
                 createFileDialog._parentPath = contextMenu._contextItem ? (contextMenu._contextItem.type === "dir" ? contextMenu._contextItem.path : "") : ""
                 createFileDialog.open()
@@ -200,7 +200,7 @@ Rectangle {
         }
 
         MenuItem {
-            text: "重命名"
+            text: (Backend ? Backend.tr("重命名") : "重命名")
             enabled: contextMenu._contextItem && contextMenu._contextItem.type === "file"
             onTriggered: {
                 if (contextMenu._contextItem) {
@@ -215,7 +215,7 @@ Rectangle {
         MenuSeparator {}
 
         MenuItem {
-            text: "删除"
+            text: (Backend ? Backend.tr("删除") : "删除")
             enabled: contextMenu._contextItem
             onTriggered: {
                 if (RPEditor && contextMenu._contextItem) {
@@ -227,7 +227,7 @@ Rectangle {
 
     Dialog {
         id: createFileDialog
-        title: "创建文件"
+        title: (Backend ? Backend.tr("创建文件") : "创建文件")
         modal: true
         width: 360
         closePolicy: Popup.CloseOnEscape
@@ -238,7 +238,7 @@ Rectangle {
             spacing: 8
 
             Label {
-                text: "文件名"
+                text: (Backend ? Backend.tr("文件名") : "文件名")
                 font.pixelSize: 12
                 color: Theme.currentTheme.colors.textSecondaryColor
             }
@@ -246,7 +246,7 @@ Rectangle {
             TextField {
                 id: createFileNameInput
                 Layout.fillWidth: true
-                placeholderText: "例如: pack.mcmeta"
+                placeholderText: (Backend ? Backend.tr("例如: pack.mcmeta") : "例如: pack.mcmeta")
             }
 
             RowLayout {
@@ -254,12 +254,12 @@ Rectangle {
                 Layout.topMargin: 8
                 Item { Layout.fillWidth: true }
                 Button {
-                    text: "取消"
+                    text: (Backend ? Backend.tr("取消") : "取消")
                     flat: true
                     onClicked: createFileDialog.reject()
                 }
                 Button {
-                    text: "创建"
+                    text: (Backend ? Backend.tr("创建") : "创建")
                     highlighted: true
                     onClicked: createFileDialog.accept()
                 }
@@ -276,7 +276,7 @@ Rectangle {
 
     Dialog {
         id: renameDialog
-        title: "重命名"
+        title: (Backend ? Backend.tr("重命名") : "重命名")
         modal: true
         width: 360
         closePolicy: Popup.CloseOnEscape
@@ -288,7 +288,7 @@ Rectangle {
             spacing: 8
 
             Label {
-                text: "新名称"
+                text: (Backend ? Backend.tr("新名称") : "新名称")
                 font.pixelSize: 12
                 color: Theme.currentTheme.colors.textSecondaryColor
             }
@@ -303,12 +303,12 @@ Rectangle {
                 Layout.topMargin: 8
                 Item { Layout.fillWidth: true }
                 Button {
-                    text: "取消"
+                    text: (Backend ? Backend.tr("取消") : "取消")
                     flat: true
                     onClicked: renameDialog.reject()
                 }
                 Button {
-                    text: "重命名"
+                    text: (Backend ? Backend.tr("重命名") : "重命名")
                     highlighted: true
                     onClicked: renameDialog.accept()
                 }

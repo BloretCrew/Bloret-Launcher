@@ -36,14 +36,14 @@ Item {
         if (!RPEditor) return
         _soundsJsonFiles = RPEditor.getSoundsJson()
         jsonFileList.model = _soundsJsonFiles
-        jsonCountLabel.text = "共 " + _soundsJsonFiles.length + " 个文件"
+        jsonCountLabel.text = (Backend ? Backend.tr("共 ") : "共 ") + _soundsJsonFiles.length + (Backend ? Backend.tr(" 个文件") : " 个文件")
     }
 
     function refreshSoundFiles() {
         if (!RPEditor) return
         _soundFiles = RPEditor.getSoundFiles()
         soundGrid.model = _soundFiles
-        soundCountLabel.text = "共 " + _soundFiles.length + " 个音频"
+        soundCountLabel.text = (Backend ? Backend.tr("共 ") : "共 ") + _soundFiles.length + (Backend ? Backend.tr(" 个音频") : " 个音频")
     }
 
     function selectSoundsJson(index) {
@@ -85,7 +85,7 @@ Item {
             spacing: 12
 
             Label {
-                text: "音频管理"
+                text: (Backend ? Backend.tr("音频管理") : "音频管理")
                 font.pixelSize: 22
                 font.weight: Font.DemiBold
                 color: Theme.currentTheme.colors.textColor
@@ -106,7 +106,7 @@ Item {
                     Label {
                         id: segBtn1
                         anchors.centerIn: parent
-                        text: "sounds.json 编辑器"
+                        text: (Backend ? Backend.tr("sounds.json 编辑器") : "sounds.json 编辑器")
                         font.pixelSize: 12
                         color: _currentTab === 0 ? Theme.currentTheme.colors.textColor : Theme.currentTheme.colors.textSecondaryColor
                     }
@@ -128,7 +128,7 @@ Item {
                     Label {
                         id: segBtn2
                         anchors.centerIn: parent
-                        text: "音频文件"
+                        text: (Backend ? Backend.tr("音频文件") : "音频文件")
                         font.pixelSize: 12
                         color: _currentTab === 1 ? Theme.currentTheme.colors.textColor : Theme.currentTheme.colors.textSecondaryColor
                     }
@@ -164,7 +164,7 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         Label {
-                            text: "sounds.json 文件"
+                            text: (Backend ? Backend.tr("sounds.json 文件") : "sounds.json 文件")
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
                             color: Theme.currentTheme.colors.textColor
@@ -172,7 +172,7 @@ Item {
                         Item { Layout.fillWidth: true }
                         Label {
                             id: jsonCountLabel
-                            text: "共 0 个文件"
+                            text: (Backend ? Backend.tr("共 0 个文件") : "共 0 个文件")
                             font.pixelSize: 11
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
@@ -250,7 +250,7 @@ Item {
 
                             Label {
                                 id: jsonEditorTitle
-                                text: "选择一个 sounds.json 文件"
+                                text: (Backend ? Backend.tr("选择一个 sounds.json 文件") : "选择一个 sounds.json 文件")
                                 font.pixelSize: 12
                                 font.weight: Font.DemiBold
                                 font.family: "monospace"
@@ -261,20 +261,20 @@ Item {
 
                             Label {
                                 visible: _jsonModified
-                                text: "● 已修改"
+                                text: (Backend ? Backend.tr("● 已修改") : "● 已修改")
                                 font.pixelSize: 11
                                 color: "#FF9800"
                             }
 
                             Button {
-                                text: "保存"
+                                text: (Backend ? Backend.tr("保存") : "保存")
                                 highlighted: true
                                 enabled: _selectedJsonPath && _jsonModified && RPEditor
                                 onClicked: saveSoundsJson()
                             }
 
                             Button {
-                                text: "重置"
+                                text: (Backend ? Backend.tr("重置") : "重置")
                                 enabled: _selectedJsonPath && _jsonModified
                                 onClicked: {
                                     jsonEditor.text = _originalJsonContent
@@ -297,7 +297,7 @@ Item {
                                 color: Theme.currentTheme.colors.textColor
                                 background: null
                                 wrapMode: Text.NoWrap
-                                placeholderText: "选择左侧文件以编辑 JSON..."
+                                placeholderText: (Backend ? Backend.tr("选择左侧文件以编辑 JSON...") : "选择左侧文件以编辑 JSON...")
                                 onTextChanged: {
                                     _jsonModified = (text !== _originalJsonContent)
                                 }
@@ -332,7 +332,7 @@ Item {
                         spacing: 8
 
                         Label {
-                            text: "音频文件"
+                            text: (Backend ? Backend.tr("音频文件") : "音频文件")
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
                             color: Theme.currentTheme.colors.textColor
@@ -343,13 +343,13 @@ Item {
                         TextField {
                             id: soundSearchInput
                             Layout.preferredWidth: 200
-                            placeholderText: "搜索音频..."
+                            placeholderText: (Backend ? Backend.tr("搜索音频...") : "搜索音频...")
                             onTextChanged: {
                                 if (!_soundFiles) return
                                 var query = text.toLowerCase().trim()
                                 if (!query) {
                                     soundGrid.model = _soundFiles
-                                    soundCountLabel.text = "共 " + _soundFiles.length + " 个音频"
+                                    soundCountLabel.text = (Backend ? Backend.tr("共 ") : "共 ") + _soundFiles.length + (Backend ? Backend.tr(" 个音频") : " 个音频")
                                     return
                                 }
                                 var filtered = []
@@ -362,13 +362,13 @@ Item {
                                     }
                                 }
                                 soundGrid.model = filtered
-                                soundCountLabel.text = "共 " + filtered.length + " 个音频"
+                                soundCountLabel.text = (Backend ? Backend.tr("共 ") : "共 ") + filtered.length + (Backend ? Backend.tr(" 个音频") : " 个音频")
                             }
                         }
 
                         Label {
                             id: soundCountLabel
-                            text: "共 0 个音频"
+                            text: (Backend ? Backend.tr("共 0 个音频") : "共 0 个音频")
                             font.pixelSize: 11
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
@@ -469,7 +469,7 @@ Item {
 
     Dialog {
         id: soundDetailDialog
-        title: "音频文件详情"
+        title: (Backend ? Backend.tr("音频文件详情") : "音频文件详情")
         modal: true
         width: 420
         closePolicy: Popup.CloseOnEscape
@@ -517,7 +517,7 @@ Item {
                 spacing: 4
 
                 Label {
-                    text: "命名空间"
+                    text: (Backend ? Backend.tr("命名空间") : "命名空间")
                     font.pixelSize: 11
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
@@ -533,7 +533,7 @@ Item {
                 spacing: 4
 
                 Label {
-                    text: "文件路径"
+                    text: (Backend ? Backend.tr("文件路径") : "文件路径")
                     font.pixelSize: 11
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
@@ -552,7 +552,7 @@ Item {
                 spacing: 4
 
                 Label {
-                    text: "文件大小"
+                    text: (Backend ? Backend.tr("文件大小") : "文件大小")
                     font.pixelSize: 11
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
@@ -568,7 +568,7 @@ Item {
                 Layout.topMargin: 8
                 Item { Layout.fillWidth: true }
                 Button {
-                    text: "关闭"
+                    text: (Backend ? Backend.tr("关闭") : "关闭")
                     onClicked: soundDetailDialog.close()
                 }
             }

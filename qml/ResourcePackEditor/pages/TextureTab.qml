@@ -19,7 +19,7 @@ Item {
         if (!RPEditor) return
         _textures = RPEditor.getTextures()
         gridView.model = _textures
-        countLabel.text = "共 " + _textures.length + " 张贴图"
+        countLabel.text = (Backend ? Backend.tr("共 ") : "共 ") + _textures.length + (Backend ? Backend.tr(" 张贴图") : " 张贴图")
     }
 
     ColumnLayout {
@@ -30,7 +30,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Label {
-                text: "贴图预览"
+                text: (Backend ? Backend.tr("贴图预览") : "贴图预览")
                 font.pixelSize: 22
                 font.weight: Font.DemiBold
                 color: Theme.currentTheme.colors.textColor
@@ -38,7 +38,7 @@ Item {
             Item { Layout.fillWidth: true }
             Label {
                 id: countLabel
-                text: "加载中..."
+                text: (Backend ? Backend.tr("加载中...") : "加载中...")
                 color: Theme.currentTheme.colors.textSecondaryColor
                 font.pixelSize: 12
             }
@@ -120,7 +120,7 @@ Item {
 
     Dialog {
         id: previewDialog
-        title: "贴图预览"
+        title: (Backend ? Backend.tr("贴图预览") : "贴图预览")
         modal: true
         width: 400
         height: 450
@@ -158,7 +158,7 @@ Item {
                 Layout.fillWidth: true
                 Item { Layout.fillWidth: true }
                 Button {
-                    text: "关闭"
+                    text: (Backend ? Backend.tr("关闭") : "关闭")
                     onClicked: previewDialog.close()
                 }
             }

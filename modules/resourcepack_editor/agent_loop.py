@@ -1,3 +1,4 @@
+from modules.i18n import i18nText
 """
 资源包 AI Agent 核心循环
 
@@ -438,7 +439,7 @@ class AgentLoop:
                 approved = self.on_permission_request(tc_name, desc)
                 if not approved:
                     log.info(f"[AgentLoop] 用户拒绝了 {tc_name}")
-                    return "操作被用户拒绝。请告知用户该操作已被取消。"
+                    return i18nText("操作被用户拒绝。请告知用户该操作已被取消。")
 
         # 执行工具
         log.info(f"[AgentLoop] 调用 execute_tool({tc_name})")

@@ -49,7 +49,7 @@ Item {
             spacing: 16
 
             Label {
-                text: "资源包概览"
+                text: (Backend ? Backend.tr("资源包概览") : "资源包概览")
                 font.pixelSize: 22
                 font.weight: Font.DemiBold
                 color: Theme.currentTheme.colors.textColor
@@ -69,7 +69,7 @@ Item {
                     spacing: 12
 
                     Label {
-                        text: "包信息"
+                        text: (Backend ? Backend.tr("包信息") : "包信息")
                         font.pixelSize: 16
                         font.weight: Font.DemiBold
                         color: Theme.currentTheme.colors.textColor
@@ -80,12 +80,12 @@ Item {
                         Label { text: "pack_format:"; color: Theme.currentTheme.colors.textSecondaryColor }
                         Label { id: formatField; text: "-"; color: Theme.currentTheme.colors.textColor }
                         Item { Layout.fillWidth: true }
-                        Label { text: "提交数:"; color: Theme.currentTheme.colors.textSecondaryColor }
+                        Label { text: (Backend ? Backend.tr("提交数:") : "提交数:"); color: Theme.currentTheme.colors.textSecondaryColor }
                         Label { id: commitCount; text: "0"; color: Theme.currentTheme.colors.textColor }
                     }
 
                     Label {
-                        text: "描述"
+                        text: (Backend ? Backend.tr("描述") : "描述")
                         font.pixelSize: 13
                         color: Theme.currentTheme.colors.textSecondaryColor
                     }
@@ -114,7 +114,7 @@ Item {
                     spacing: 12
 
                     Label {
-                        text: "文件统计"
+                        text: (Backend ? Backend.tr("文件统计") : "文件统计")
                         font.pixelSize: 16
                         font.weight: Font.DemiBold
                         color: Theme.currentTheme.colors.textColor
@@ -129,22 +129,22 @@ Item {
                         ColumnLayout {
                             Layout.fillWidth: true
                             Label { id: fileCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; Layout.alignment: Qt.AlignHCenter; color: Theme.accentColor || "#0078D4" }
-                            Label { text: "总文件"; Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+                            Label { text: (Backend ? Backend.tr("总文件") : "总文件"); Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
                             Label { id: textureCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; Layout.alignment: Qt.AlignHCenter; color: "#FF9800" }
-                            Label { text: "贴图"; Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+                            Label { text: (Backend ? Backend.tr("贴图") : "贴图"); Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
                             Label { id: langCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; Layout.alignment: Qt.AlignHCenter; color: "#4CAF50" }
-                            Label { text: "语言文件"; Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+                            Label { text: (Backend ? Backend.tr("语言文件") : "语言文件"); Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
                             Label { id: modelCountLabel; text: "0"; font.pixelSize: 24; font.weight: Font.Bold; Layout.alignment: Qt.AlignHCenter; color: "#2196F3" }
-                            Label { text: "模型"; Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+                            Label { text: (Backend ? Backend.tr("模型") : "模型"); Layout.alignment: Qt.AlignHCenter; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
                         }
                     }
                 }
@@ -164,7 +164,7 @@ Item {
                     spacing: 12
 
                     Label {
-                        text: "快速操作"
+                        text: (Backend ? Backend.tr("快速操作") : "快速操作")
                         font.pixelSize: 16
                         font.weight: Font.DemiBold
                         color: Theme.currentTheme.colors.textColor
@@ -174,14 +174,14 @@ Item {
                         spacing: 12
 
                         Button {
-                            text: "导出为 ZIP"
+                            text: (Backend ? Backend.tr("导出为 ZIP") : "导出为 ZIP")
                             icon.name: "ic_fluent_arrow_download_20_regular"
                             enabled: RPEditor && RPEditor.isPackOpen
                             onClicked: {
                                 if (RPEditor) {
                                     var zipPath = RPEditor.exportAsZip()
                                     if (zipPath) {
-                                        exportResult.text = "已导出: " + zipPath
+                                        exportResult.text = (Backend ? Backend.tr("已导出: ") : "已导出: ") + zipPath
                                         exportResult.visible = true
                                         exportTimer.start()
                                     }
@@ -190,7 +190,7 @@ Item {
                         }
 
                         Button {
-                            text: RPEditor ? RPEditor.getExplorerLabel() : "文件管理器"
+                            text: RPEditor ? RPEditor.getExplorerLabel() : (Backend ? Backend.tr("文件管理器") : "文件管理器")
                             icon.name: "ic_fluent_folder_open_20_regular"
                             enabled: RPEditor && RPEditor.isPackOpen
                             onClicked: { if (RPEditor) RPEditor.showInExplorer() }
@@ -204,7 +204,7 @@ Item {
                         }
 
                         Button {
-                            text: "终端"
+                            text: (Backend ? Backend.tr("终端") : "终端")
                             icon.name: "ic_fluent_window_console_20_regular"
                             enabled: RPEditor && RPEditor.isPackOpen
                             onClicked: { if (RPEditor) RPEditor.openInTerminal() }

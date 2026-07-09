@@ -51,8 +51,8 @@ Flickable {
     }
 
     function kindBadgeText(kind) {
-        if (kind === "block") return "方块"
-        if (kind === "item") return "物品"
+        if (kind === "block") return Backend ? Backend.tr("方块") : "方块"
+        if (kind === "item") return Backend ? Backend.tr("物品") : "物品"
         return kind
     }
 
@@ -91,7 +91,7 @@ Flickable {
                         Text {
                             id: filterLabel
                             anchors.centerIn: parent
-                            text: model.label
+                            text: Backend ? Backend.tr(model.label) : model.label
                             font.pixelSize: 13
                             color: currentFilter === model.filter ? Theme.currentTheme.colors.textColor : Theme.currentTheme.colors.textSecondaryColor
                         }
@@ -110,7 +110,7 @@ Flickable {
                 Item { Layout.fillWidth: true }
 
                 Text {
-                    text: filteredModels.length + " 个模型"
+                    text: filteredModels.length + (Backend ? Backend.tr(" 个模型") : " 个模型")
                     font.pixelSize: 12
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
@@ -240,7 +240,7 @@ Flickable {
                             spacing: 12
 
                             Text {
-                                text: selectedPath !== "" ? selectedPath : "未选择模型"
+                                text: selectedPath !== "" ? selectedPath : (Backend ? Backend.tr("未选择模型") : "未选择模型")
                                 font.pixelSize: 12
                                 color: Theme.currentTheme.colors.textSecondaryColor
                                 Layout.fillWidth: true
@@ -258,7 +258,7 @@ Flickable {
                                 Text {
                                     id: saveBtn
                                     anchors.centerIn: parent
-                                    text: "保存"
+                                    text: (Backend ? Backend.tr("保存") : "保存")
                                     font.pixelSize: 13
                                     color: selectedPath !== "" ? "#FFFFFF" : Theme.currentTheme.colors.textSecondaryColor
                                 }

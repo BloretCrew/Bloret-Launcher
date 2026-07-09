@@ -246,7 +246,7 @@ Flickable {
                     Layout.fillWidth: true
                     spacing: 8
                     Text {
-                        text: "Basic Info"
+                        text: (Backend ? Backend.tr("Basic Info") : "Basic Info")
                         font.pixelSize: 16
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
@@ -307,7 +307,7 @@ Flickable {
                         spacing: 8
                         CheckBox {
                             id: supportedFormatMode
-                            text: "Use supported_formats (range)"
+                            text: (Backend ? Backend.tr("Use supported_formats (range)") : "Use supported_formats (range)")
                             checked: false
                             contentItem: Text {
                                 text: supportedFormatMode.text
@@ -372,7 +372,7 @@ Flickable {
                     Layout.fillWidth: true
                     spacing: 8
                     Text {
-                        text: "Language Registration"
+                        text: (Backend ? Backend.tr("Language Registration") : "Language Registration")
                         font.pixelSize: 16
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
@@ -448,11 +448,11 @@ Flickable {
                     }
 
                     Button {
-                        text: "+ Add Language"
+                        text: (Backend ? Backend.tr("+ Add Language") : "+ Add Language")
                         flat: true
                         Layout.alignment: Qt.AlignLeft
                         contentItem: Text {
-                            text: "+ Add Language"
+                            text: (Backend ? Backend.tr("+ Add Language") : "+ Add Language")
                             color: Theme.currentTheme.colors.textColor
                             font.pixelSize: 13
                             horizontalAlignment: Text.AlignHCenter
@@ -483,7 +483,7 @@ Flickable {
                     Layout.fillWidth: true
                     spacing: 8
                     Text {
-                        text: "Filter"
+                        text: (Backend ? Backend.tr("Filter") : "Filter")
                         font.pixelSize: 16
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
@@ -643,7 +643,7 @@ Flickable {
                     Layout.fillWidth: true
                     spacing: 8
                     Text {
-                        text: "Overlays"
+                        text: (Backend ? Backend.tr("Overlays") : "Overlays")
                         font.pixelSize: 16
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
@@ -758,7 +758,7 @@ Flickable {
                     Layout.fillWidth: true
                     spacing: 8
                     Text {
-                        text: "Copyright"
+                        text: (Backend ? Backend.tr("Copyright") : "Copyright")
                         font.pixelSize: 16
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
@@ -815,7 +815,7 @@ Flickable {
                     Layout.fillWidth: true
                     spacing: 8
                     Text {
-                        text: "JSON Preview"
+                        text: (Backend ? Backend.tr("JSON Preview") : "JSON Preview")
                         font.pixelSize: 16
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
@@ -856,7 +856,7 @@ Flickable {
         Button {
             id: saveBtn
             Layout.alignment: Qt.AlignRight
-            text: "Save pack.mcmeta"
+            text: (Backend ? Backend.tr("Save pack.mcmeta") : "Save pack.mcmeta")
             highlighted: true
             onClicked: {
                 saveDialog.open()
@@ -865,7 +865,7 @@ Flickable {
 
         Dialog {
             id: saveDialog
-            title: "Save pack.mcmeta"
+            title: (Backend ? Backend.tr("Save pack.mcmeta") : "Save pack.mcmeta")
             modal: true
             width: 400
             height: 180
@@ -890,13 +890,13 @@ Flickable {
                     Item { Layout.fillWidth: true }
 
                     Button {
-                        text: "取消"
+                        text: (Backend ? Backend.tr("取消") : "取消")
                         flat: true
                         onClicked: saveDialog.close()
                     }
 
                     Button {
-                        text: "保存"
+                        text: (Backend ? Backend.tr("保存") : "保存")
                         highlighted: true
                         onClicked: {
                             saveAll()

@@ -82,7 +82,7 @@ Item {
             spacing: 8
 
             Label {
-                text: "语言文件"
+                text: (Backend ? Backend.tr("语言文件") : "语言文件")
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 color: Theme.currentTheme.colors.textColor
@@ -127,7 +127,7 @@ Item {
 
             Label {
                 id: langTitle
-                text: "选择语言文件"
+                text: (Backend ? Backend.tr("选择语言文件") : "选择语言文件")
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 color: Theme.currentTheme.colors.textColor
@@ -136,7 +136,7 @@ Item {
             TextField {
                 id: searchInput
                 Layout.fillWidth: true
-                placeholderText: "搜索翻译键或值..."
+                placeholderText: (Backend ? Backend.tr("搜索翻译键或值...") : "搜索翻译键或值...")
                 onTextChanged: doSearch()
             }
 
@@ -189,7 +189,7 @@ Item {
                                 }
 
                                 Button {
-                                    text: "编辑"
+                                    text: (Backend ? Backend.tr("编辑") : "编辑")
                                     flat: true
                                     onClicked: {
                                         editKeyInput.text = modelData.key
@@ -207,7 +207,7 @@ Item {
 
     Dialog {
         id: editDialog
-        title: "编辑翻译键"
+        title: (Backend ? Backend.tr("编辑翻译键") : "编辑翻译键")
         modal: true
         width: 500
         closePolicy: Popup.CloseOnEscape
@@ -216,10 +216,10 @@ Item {
             Layout.fillWidth: true
             spacing: 8
 
-            Label { text: "键"; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+            Label { text: (Backend ? Backend.tr("键") : "键"); color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
             TextField { id: editKeyInput; Layout.fillWidth: true }
 
-            Label { text: "值"; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+            Label { text: (Backend ? Backend.tr("值") : "值"); color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
             TextArea { id: editValueInput; Layout.fillWidth: true; Layout.preferredHeight: 60; wrapMode: Text.Wrap }
 
             RowLayout {
@@ -227,12 +227,12 @@ Item {
                 Layout.topMargin: 8
                 Item { Layout.fillWidth: true }
                 Button {
-                    text: "取消"
+                    text: (Backend ? Backend.tr("取消") : "取消")
                     flat: true
                     onClicked: editDialog.reject()
                 }
                 Button {
-                    text: "保存"
+                    text: (Backend ? Backend.tr("保存") : "保存")
                     highlighted: true
                     onClicked: editDialog.accept()
                 }

@@ -65,14 +65,14 @@ Item {
             spacing: 16
 
             Label {
-                text: "资源包图标"
+                text: (Backend ? Backend.tr("资源包图标") : "资源包图标")
                 font.pixelSize: 22
                 font.weight: Font.DemiBold
                 color: Theme.currentTheme.colors.textColor
             }
 
             Label {
-                text: "pack.png 是资源包在 Minecraft 中显示的图标，建议尺寸为 256x256。"
+                text: (Backend ? Backend.tr("pack.png 是资源包在 Minecraft 中显示的图标，建议尺寸为 256x256。") : "pack.png 是资源包在 Minecraft 中显示的图标，建议尺寸为 256x256。")
                 wrapMode: Text.Wrap
                 color: Theme.currentTheme.colors.textSecondaryColor
                 Layout.fillWidth: true
@@ -96,7 +96,7 @@ Item {
                         spacing: 8
 
                         Label {
-                            text: "图标预览"
+                            text: (Backend ? Backend.tr("图标预览") : "图标预览")
                             font.pixelSize: 16
                             font.weight: Font.DemiBold
                             color: Theme.currentTheme.colors.textColor
@@ -105,7 +105,7 @@ Item {
                         Item { Layout.fillWidth: true }
 
                         Button {
-                            text: "刷新"
+                            text: (Backend ? Backend.tr("刷新") : "刷新")
                             flat: true
                             onClicked: refreshIcon()
                         }
@@ -127,7 +127,7 @@ Item {
                             Label {
                                 Layout.alignment: Qt.AlignHCenter
                                 visible: !_iconExists
-                                text: "未设置资源包图标"
+                                text: (Backend ? Backend.tr("未设置资源包图标") : "未设置资源包图标")
                                 font.pixelSize: 16
                                 font.weight: Font.DemiBold
                                 color: Theme.currentTheme.colors.textSecondaryColor
@@ -136,7 +136,7 @@ Item {
                             Label {
                                 Layout.alignment: Qt.AlignHCenter
                                 visible: !_iconExists
-                                text: "请在资源包根目录放置 pack.png 文件"
+                                text: (Backend ? Backend.tr("请在资源包根目录放置 pack.png 文件") : "请在资源包根目录放置 pack.png 文件")
                                 font.pixelSize: 12
                                 color: Theme.currentTheme.colors.textSecondaryColor
                                 opacity: 0.7
@@ -179,7 +179,7 @@ Item {
                     spacing: 12
 
                     Label {
-                        text: "文件信息"
+                        text: (Backend ? Backend.tr("文件信息") : "文件信息")
                         font.pixelSize: 16
                         font.weight: Font.DemiBold
                         color: Theme.currentTheme.colors.textColor
@@ -194,7 +194,7 @@ Item {
                             spacing: 4
 
                             Label {
-                                text: "文件路径"
+                                text: (Backend ? Backend.tr("文件路径") : "文件路径")
                                 font.pixelSize: 12
                                 color: Theme.currentTheme.colors.textSecondaryColor
                             }
@@ -218,7 +218,7 @@ Item {
                             spacing: 4
 
                             Label {
-                                text: "图像尺寸"
+                                text: (Backend ? Backend.tr("图像尺寸") : "图像尺寸")
                                 font.pixelSize: 12
                                 color: Theme.currentTheme.colors.textSecondaryColor
                             }
@@ -235,7 +235,7 @@ Item {
                             spacing: 4
 
                             Label {
-                                text: "文件大小"
+                                text: (Backend ? Backend.tr("文件大小") : "文件大小")
                                 font.pixelSize: 12
                                 color: Theme.currentTheme.colors.textSecondaryColor
                             }

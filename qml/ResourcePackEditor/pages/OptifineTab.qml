@@ -34,7 +34,7 @@ Item {
         _selectedFileName = name
         var isPng = path.endsWith(".png")
         if (isPng) {
-            fileContentArea.text = "二进制文件"
+            fileContentArea.text = Backend ? Backend.tr("二进制文件") : "二进制文件"
         } else {
             fileContentArea.text = RPEditor.getFileContent(path)
         }
@@ -54,7 +54,7 @@ Item {
             spacing: 16
 
             Label {
-                text: "OptiFine 资源"
+                text: (Backend ? Backend.tr("OptiFine 资源") : "OptiFine 资源")
                 font.pixelSize: 22
                 font.weight: Font.DemiBold
                 color: Theme.currentTheme.colors.textColor
@@ -95,7 +95,7 @@ Item {
 
                     Label {
                         Layout.fillWidth: true
-                        text: "当前资源包没有 OptiFine 资源文件"
+                        text: (Backend ? Backend.tr("当前资源包没有 OptiFine 资源文件") : "当前资源包没有 OptiFine 资源文件")
                         font.pixelSize: 14
                         font.weight: Font.DemiBold
                         color: Theme.currentTheme.colors.textColor
@@ -104,7 +104,7 @@ Item {
 
                     Label {
                         Layout.fillWidth: true
-                        text: "CEM (.jem/.jpm) 用于自定义实体模型和动画\nCIT (.properties) 用于自定义纹理条件配置"
+                        text: (Backend ? Backend.tr("CEM (.jem/.jpm) 用于自定义实体模型和动画\nCIT (.properties) 用于自定义纹理条件配置") : "CEM (.jem/.jpm) 用于自定义实体模型和动画\nCIT (.properties) 用于自定义纹理条件配置")
                         font.pixelSize: 12
                         lineHeight: 1.6
                         color: Theme.currentTheme.colors.textSecondaryColor
@@ -308,7 +308,7 @@ Item {
                 Layout.topMargin: 8
                 Item { Layout.fillWidth: true }
                 Button {
-                    text: "关闭"
+                    text: (Backend ? Backend.tr("关闭") : "关闭")
                     onClicked: fileViewDialog.close()
                 }
             }

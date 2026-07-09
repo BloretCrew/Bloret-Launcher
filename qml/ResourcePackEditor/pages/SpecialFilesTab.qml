@@ -11,15 +11,15 @@ Item {
     property string _currentName: ""
 
     property var _fileDescriptions: ({
-        "regional_compliancies.json": "按地区控制定时弹窗与提示",
-        "gpu_warnlist.json": "GPU/渲染器警告列表",
-        "deprecated.json": "标记本版本中弃用或重命名的翻译键"
+        "regional_compliancies.json": (Backend ? Backend.tr("按地区控制定时弹窗与提示") : "按地区控制定时弹窗与提示"),
+        "gpu_warnlist.json": (Backend ? Backend.tr("GPU/渲染器警告列表") : "GPU/渲染器警告列表"),
+        "deprecated.json": (Backend ? Backend.tr("标记本版本中弃用或重命名的翻译键") : "标记本版本中弃用或重命名的翻译键")
     })
 
     property var _fileExplanations: ({
-        "regional_compliancies.json": "该文件允许你按地区/语言配置定时弹窗提示和合规性提醒。适用于需要在不同地区展示不同法律或通知信息的资源包。",
-        "gpu_warnlist.json": "该文件定义了 GPU 或渲染器的兼容性警告列表。当玩家使用被标记的硬件时，游戏会显示相应的警告信息。",
-        "deprecated.json": "该文件记录了当前版本中已被弃用或重命名的翻译键，方便维护者追踪需要更新的内容。"
+        "regional_compliancies.json": (Backend ? Backend.tr("该文件允许你按地区/语言配置定时弹窗提示和合规性提醒。适用于需要在不同地区展示不同法律或通知信息的资源包。") : "该文件允许你按地区/语言配置定时弹窗提示和合规性提醒。适用于需要在不同地区展示不同法律或通知信息的资源包。"),
+        "gpu_warnlist.json": (Backend ? Backend.tr("该文件定义了 GPU 或渲染器的兼容性警告列表。当玩家使用被标记的硬件时，游戏会显示相应的警告信息。") : "该文件定义了 GPU 或渲染器的兼容性警告列表。当玩家使用被标记的硬件时，游戏会显示相应的警告信息。"),
+        "deprecated.json": (Backend ? Backend.tr("该文件记录了当前版本中已被弃用或重命名的翻译键，方便维护者追踪需要更新的内容。") : "该文件记录了当前版本中已被弃用或重命名的翻译键，方便维护者追踪需要更新的内容。")
     })
 
     Connections {
@@ -92,14 +92,14 @@ Item {
             spacing: 16
 
             Label {
-                text: "特殊配置文件"
+                text: (Backend ? Backend.tr("特殊配置文件") : "特殊配置文件")
                 font.pixelSize: 22
                 font.weight: Font.DemiBold
                 color: Theme.currentTheme.colors.textColor
             }
 
             Label {
-                text: "管理资源包中的特殊配置文件，如地区合规设置、GPU 警告列表、弃用翻译键等。"
+                text: (Backend ? Backend.tr("管理资源包中的特殊配置文件，如地区合规设置、GPU 警告列表、弃用翻译键等。") : "管理资源包中的特殊配置文件，如地区合规设置、GPU 警告列表、弃用翻译键等。")
                 wrapMode: Text.Wrap
                 color: Theme.currentTheme.colors.textSecondaryColor
                 Layout.fillWidth: true
@@ -124,14 +124,14 @@ Item {
                         spacing: 8
 
                         Label {
-                            text: "文件列表"
+                            text: (Backend ? Backend.tr("文件列表") : "文件列表")
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
                             color: Theme.currentTheme.colors.textColor
                         }
 
                         Label {
-                            text: "共 " + _files.length + " 个文件"
+                            text: (Backend ? Backend.tr("共 ") : "共 ") + _files.length + " 个文件"
                             font.pixelSize: 11
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
@@ -208,7 +208,7 @@ Item {
                             spacing: 8
 
                             Label {
-                                text: "当前资源包没有特殊配置文件"
+                                text: (Backend ? Backend.tr("当前资源包没有特殊配置文件") : "当前资源包没有特殊配置文件")
                                 font.pixelSize: 14
                                 font.weight: Font.Medium
                                 color: Theme.currentTheme.colors.textSecondaryColor
@@ -216,7 +216,7 @@ Item {
                             }
 
                             Label {
-                                text: "特殊配置文件包括 regional_compliancies.json、gpu_warnlist.json 等"
+                                text: (Backend ? Backend.tr("特殊配置文件包括 regional_compliancies.json、gpu_warnlist.json 等") : "特殊配置文件包括 regional_compliancies.json、gpu_warnlist.json 等")
                                 font.pixelSize: 12
                                 color: Theme.currentTheme.colors.textSecondaryColor
                                 Layout.alignment: Qt.AlignHCenter
@@ -247,7 +247,7 @@ Item {
                                     spacing: 2
 
                                     Label {
-                                        text: _currentName || "选择一个文件"
+                                        text: _currentName || (Backend ? Backend.tr("选择一个文件") : "选择一个文件")
                                         font.pixelSize: 16
                                         font.weight: Font.DemiBold
                                         color: Theme.currentTheme.colors.textColor
@@ -257,7 +257,7 @@ Item {
                                         spacing: 6
 
                                         Label {
-                                            text: "路径:"
+                                            text: (Backend ? Backend.tr("路径:") : "路径:")
                                             font.pixelSize: 11
                                             color: Theme.currentTheme.colors.textSecondaryColor
                                         }
@@ -275,7 +275,7 @@ Item {
                                 }
 
                                 Button {
-                                    text: "保存"
+                                    text: (Backend ? Backend.tr("保存") : "保存")
                                     highlighted: true
                                     enabled: _currentPath !== ""
                                     onClicked: saveCurrentFile()
@@ -367,7 +367,7 @@ Item {
         Label {
             id: saveToastLabel
             anchors.centerIn: parent
-            text: "已保存"
+            text: (Backend ? Backend.tr("已保存") : "已保存")
             font.pixelSize: 12
             color: "#FFFFFF"
         }

@@ -83,7 +83,7 @@ Item {
                 spacing: 12
 
                 Label {
-                    text: "Git 管理"
+                    text: (Backend ? Backend.tr("Git 管理") : "Git 管理")
                     font.pixelSize: 22
                     font.weight: Font.DemiBold
                     color: Theme.currentTheme.colors.textColor
@@ -92,7 +92,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 Button {
-                    text: "刷新"
+                    text: (Backend ? Backend.tr("刷新") : "刷新")
                     flat: true
                     onClicked: refreshGitData()
                 }
@@ -104,14 +104,14 @@ Item {
                 spacing: 2
 
                 Button {
-                    text: "更改"
+                    text: (Backend ? Backend.tr("更改") : "更改")
                     flat: true
                     highlighted: viewMode === "changes"
                     onClicked: viewMode = "changes"
                 }
 
                 Button {
-                    text: "提交历史"
+                    text: (Backend ? Backend.tr("提交历史") : "提交历史")
                     flat: true
                     highlighted: viewMode === "history"
                     onClicked: viewMode = "history"
@@ -140,7 +140,7 @@ Item {
                         // 全选 Checkbox
                         CheckBox {
                             id: selectAllBox
-                            text: "全选 (" + changedFiles.length + " 个文件)"
+                            text: (Backend ? Backend.tr("全选 (") : "全选 (") + changedFiles.length + " 个文件)"
                             checked: {
                                 if (changedFiles.length === 0) return false
                                 for (var i = 0; i < changedFiles.length; i++) {
@@ -164,7 +164,7 @@ Item {
                             onClicked: {
                                 if (!Agent) return
                                 var filesJson = JSON.stringify(changedFiles.filter(function(f) { return f.selected }))
-                                commitMsgInput.text = "生成中..."
+                                commitMsgInput.text = Backend ? Backend.tr("生成中...") : "生成中..."
                                 var msg = Agent.generateCommitMessage(filesJson)
                                 commitMsgInput.text = msg
                             }
@@ -174,13 +174,13 @@ Item {
                         TextField {
                             id: commitMsgInput
                             Layout.preferredWidth: 250
-                            placeholderText: "输入提交信息..."
+                            placeholderText: (Backend ? Backend.tr("输入提交信息...") : "输入提交信息...")
                             font.pixelSize: 12
                         }
 
                         // 提交按钮
                         Button {
-                            text: "提交 (" + getSelectedPaths().length + ")"
+                            text: (Backend ? Backend.tr("提交 (") : "提交 (") + getSelectedPaths().length + ")"
                             highlighted: true
                             enabled: getSelectedPaths().length > 0 && commitMsgInput.text.trim() !== ""
                             onClicked: {
@@ -214,7 +214,7 @@ Item {
                         spacing: 4
 
                         Label {
-                            text: "变更文件"
+                            text: (Backend ? Backend.tr("变更文件") : "变更文件")
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
                             color: Theme.currentTheme.colors.textColor
@@ -273,7 +273,7 @@ Item {
 
                         Label {
                             visible: changedFiles.length === 0
-                            text: "没有变更的文件"
+                            text: (Backend ? Backend.tr("没有变更的文件") : "没有变更的文件")
                             font.pixelSize: 12
                             color: Theme.currentTheme.colors.textSecondaryColor
                             Layout.fillWidth: true
@@ -291,19 +291,19 @@ Item {
 
                     Row { spacing: 4
                         Rectangle { width: 10; height: 10; radius: 2; color: "#4CAF50" }
-                        Label { text: "新增"; font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
+                        Label { text: (Backend ? Backend.tr("新增") : "新增"); font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
                     }
                     Row { spacing: 4
                         Rectangle { width: 10; height: 10; radius: 2; color: "#FF9800" }
-                        Label { text: "修改"; font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
+                        Label { text: (Backend ? Backend.tr("修改") : "修改"); font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
                     }
                     Row { spacing: 4
                         Rectangle { width: 10; height: 10; radius: 2; color: "#9E9E9E" }
-                        Label { text: "删除"; font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
+                        Label { text: (Backend ? Backend.tr("删除") : "删除"); font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
                     }
                     Row { spacing: 4
                         Rectangle { width: 10; height: 10; radius: 2; color: "#2196F3" }
-                        Label { text: "未跟踪"; font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
+                        Label { text: (Backend ? Backend.tr("未跟踪") : "未跟踪"); font.pixelSize: 11; color: Theme.currentTheme.colors.textSecondaryColor }
                     }
                 }
             }
@@ -364,7 +364,7 @@ Item {
 
                 Label {
                     visible: commitHistory.length === 0
-                    text: "没有提交历史"
+                    text: (Backend ? Backend.tr("没有提交历史") : "没有提交历史")
                     font.pixelSize: 14
                     color: Theme.currentTheme.colors.textSecondaryColor
                     Layout.fillWidth: true

@@ -35,7 +35,7 @@ Item {
             spacing: 8
 
             Label {
-                text: "文件浏览器"
+                text: (Backend ? Backend.tr("文件浏览器") : "文件浏览器")
                 font.pixelSize: 22
                 font.weight: Font.DemiBold
                 color: Theme.currentTheme.colors.textColor
@@ -49,12 +49,12 @@ Item {
                     id: pathField
                     Layout.fillWidth: true
                     readOnly: true
-                    placeholderText: "选择文件以查看内容..."
+                    placeholderText: (Backend ? Backend.tr("选择文件以查看内容...") : "选择文件以查看内容...")
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
 
                 Button {
-                    text: "暂存"
+                    text: (Backend ? Backend.tr("暂存") : "暂存")
                     enabled: _selectedFilePath && RPEditor && RPEditor.isPackOpen()
                     onClicked: {
                         if (RPEditor) RPEditor.stageFile(_selectedFilePath)
@@ -62,7 +62,7 @@ Item {
                 }
 
                 Button {
-                    text: "提交"
+                    text: (Backend ? Backend.tr("提交") : "提交")
                     highlighted: true
                     enabled: _selectedFilePath && RPEditor && RPEditor.isPackOpen()
                     onClicked: commitDialog.open()
@@ -170,7 +170,7 @@ Item {
                             color: Theme.currentTheme.colors.textColor
                             background: null
                             wrapMode: Text.NoWrap
-                            placeholderText: "选择一个文件以编辑..."
+                            placeholderText: (Backend ? Backend.tr("选择一个文件以编辑...") : "选择一个文件以编辑...")
                             onTextChanged: {
                                 _modified = editorArea.text !== ""
                             }
@@ -186,7 +186,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 Button {
-                    text: "保存文件"
+                    text: (Backend ? Backend.tr("保存文件") : "保存文件")
                     highlighted: true
                     enabled: _selectedFilePath && _modified && RPEditor && RPEditor.isPackOpen()
                     onClicked: {
@@ -202,7 +202,7 @@ Item {
 
     Dialog {
         id: commitDialog
-        title: "提交更改"
+        title: (Backend ? Backend.tr("提交更改") : "提交更改")
         modal: true
         width: 400
         closePolicy: Popup.CloseOnEscape
@@ -214,7 +214,7 @@ Item {
             TextField {
                 id: commitMsgInput2
                 Layout.fillWidth: true
-                placeholderText: "输入提交信息..."
+                placeholderText: (Backend ? Backend.tr("输入提交信息...") : "输入提交信息...")
             }
 
             RowLayout {
@@ -224,13 +224,13 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 Button {
-                    text: "取消"
+                    text: (Backend ? Backend.tr("取消") : "取消")
                     flat: true
                     onClicked: commitDialog.reject()
                 }
 
                 Button {
-                    text: "提交"
+                    text: (Backend ? Backend.tr("提交") : "提交")
                     highlighted: true
                     onClicked: commitDialog.accept()
                 }

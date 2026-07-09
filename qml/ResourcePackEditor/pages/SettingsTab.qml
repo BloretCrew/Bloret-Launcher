@@ -39,7 +39,7 @@ Item {
             Label {
                 font.pixelSize: 20
                 font.weight: Font.DemiBold
-                text: "全局设置"
+                text: (Backend ? Backend.tr("全局设置") : "全局设置")
                 color: Theme.currentTheme.colors.textColor
             }
 
@@ -67,12 +67,12 @@ Item {
                             Label {
                                 font.pixelSize: 14
                                 font.weight: Font.DemiBold
-                                text: "Agent 自动批准写入"
+                                text: (Backend ? Backend.tr("Agent 自动批准写入") : "Agent 自动批准写入")
                                 color: Theme.currentTheme.colors.textColor
                             }
                             Label {
                                 font.pixelSize: 12
-                                text: "开启后，Agent 的写入操作（写入文件、编辑文件等）将自动批准，无需手动确认"
+                                text: (Backend ? Backend.tr("开启后，Agent 的写入操作（写入文件、编辑文件等）将自动批准，无需手动确认") : "开启后，Agent 的写入操作（写入文件、编辑文件等）将自动批准，无需手动确认")
                                 color: Theme.currentTheme.colors.textSecondaryColor
                                 wrapMode: Text.Wrap
                             }
@@ -101,12 +101,12 @@ Item {
                             Label {
                                 font.pixelSize: 14
                                 font.weight: Font.DemiBold
-                                text: "工具调用默认展开"
+                                text: (Backend ? Backend.tr("工具调用默认展开") : "工具调用默认展开")
                                 color: Theme.currentTheme.colors.textColor
                             }
                             Label {
                                 font.pixelSize: 12
-                                text: "开启后，Agent 的工具调用结果将默认展开显示；关闭则默认折叠"
+                                text: (Backend ? Backend.tr("开启后，Agent 的工具调用结果将默认展开显示；关闭则默认折叠") : "开启后，Agent 的工具调用结果将默认展开显示；关闭则默认折叠")
                                 color: Theme.currentTheme.colors.textSecondaryColor
                                 wrapMode: Text.Wrap
                             }
@@ -134,12 +134,12 @@ Item {
                             Label {
                                 font.pixelSize: 14
                                 font.weight: Font.DemiBold
-                                text: "显示思考过程"
+                                text: (Backend ? Backend.tr("显示思考过程") : "显示思考过程")
                                 color: Theme.currentTheme.colors.textColor
                             }
                             Label {
                                 font.pixelSize: 12
-                                text: "开启后，将显示 Agent 的思考过程（需要模型支持）"
+                                text: (Backend ? Backend.tr("开启后，将显示 Agent 的思考过程（需要模型支持）") : "开启后，将显示 Agent 的思考过程（需要模型支持）")
                                 color: Theme.currentTheme.colors.textSecondaryColor
                                 wrapMode: Text.Wrap
                             }
@@ -160,7 +160,7 @@ Item {
             Label {
                 font.pixelSize: 20
                 font.weight: Font.DemiBold
-                text: "项目设置"
+                text: (Backend ? Backend.tr("项目设置") : "项目设置")
                 Layout.topMargin: 10
                 color: Theme.currentTheme.colors.textColor
             }
@@ -186,12 +186,12 @@ Item {
                         Label {
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
-                            text: "项目备注"
+                            text: (Backend ? Backend.tr("项目备注") : "项目备注")
                             color: Theme.currentTheme.colors.textColor
                         }
                         Label {
                             font.pixelSize: 12
-                            text: "记录与此资源包相关的备注信息，存储在 .BLRPE/config.json 中"
+                            text: (Backend ? Backend.tr("记录与此资源包相关的备注信息，存储在 .BLRPE/config.json 中") : "记录与此资源包相关的备注信息，存储在 .BLRPE/config.json 中")
                             color: Theme.currentTheme.colors.textSecondaryColor
                             wrapMode: Text.Wrap
                         }

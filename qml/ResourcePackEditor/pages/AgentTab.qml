@@ -100,7 +100,9 @@ Item {
                 historyListModel.append({
                     filename: sessions[i].filename,
                     displayText: title.length > 0 ? title : dateStr,
-                    subText: title.length > 0 ? dateStr + " · " + sessions[i].message_count + " 条" : sessions[i].message_count + " 条"
+                    subText: title.length > 0
+                        ? dateStr + " · " + sessions[i].message_count + (Backend ? Backend.tr(" 条") : " 条")
+                        : sessions[i].message_count + (Backend ? Backend.tr(" 条") : " 条")
                 })
             }
         } catch(e) {}
@@ -166,7 +168,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "历史对话"
+                            text: (Backend ? Backend.tr("历史对话") : "历史对话")
                             font.pixelSize: 13
                             font.bold: true
                             color: Theme.currentTheme.colors.textColor
@@ -233,7 +235,7 @@ Item {
                     // 空状态
                     Text {
                         anchors.centerIn: parent
-                        text: "暂无历史记录"
+                        text: (Backend ? Backend.tr("暂无历史记录") : "暂无历史记录")
                         font.pixelSize: 11
                         color: Theme.currentTheme.colors.textSecondaryColor
                         visible: historyListModel.count === 0
@@ -250,7 +252,7 @@ Item {
 
                     Button {
                         anchors.centerIn: parent
-                        text: "刷新列表"
+                        text: (Backend ? Backend.tr("刷新列表") : "刷新列表")
                         flat: true
                         font.pixelSize: 11
                         onClicked: loadHistoryList()
@@ -296,7 +298,7 @@ Item {
                     }
 
                     Text {
-                        text: "BLRPE Copilot"
+                        text: (Backend ? Backend.tr("BLRPE Copilot") : "BLRPE Copilot")
                         font.pixelSize: 14
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
@@ -311,7 +313,9 @@ Item {
                     }
 
                     Text {
-                        text: Agent && Agent.busy ? "思考中..." : "就绪"
+                        text: Agent && Agent.busy
+                            ? (Backend ? Backend.tr("思考中...") : "思考中...")
+                            : (Backend ? Backend.tr("就绪") : "就绪")
                         font.pixelSize: 11
                         color: Agent && Agent.busy ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.textSecondaryColor
                     }
@@ -332,7 +336,7 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     Button {
-                        text: "新对话"
+                        text: (Backend ? Backend.tr("新对话") : "新对话")
                         flat: true
                         font.pixelSize: 11
                         enabled: Agent && !Agent.busy
@@ -372,7 +376,7 @@ Item {
 
                         Text {
                             Layout.alignment: Qt.AlignHCenter
-                            text: "BLRPE Copilot"
+                            text: (Backend ? Backend.tr("BLRPE Copilot") : "BLRPE Copilot")
                             font.pixelSize: 18; font.bold: true
                             color: Theme.currentTheme.colors.textColor
                         }
@@ -380,7 +384,7 @@ Item {
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.maximumWidth: 260
-                            text: "用自然语言描述你想做的修改\nAI 会帮你操作资源包\n\n试试：\n• 帮我看看这个资源包\n• 读取 pack.mcmeta\n• 把描述改成 '我的资源包'"
+                            text: (Backend ? Backend.tr("用自然语言描述你想做的修改\nAI 会帮你操作资源包\n\n试试：\n• 帮我看看这个资源包\n• 读取 pack.mcmeta\n• 把描述改成 '我的资源包'") : "用自然语言描述你想做的修改\nAI 会帮你操作资源包\n\n试试：\n• 帮我看看这个资源包\n• 读取 pack.mcmeta\n• 把描述改成 '我的资源包'")
                             horizontalAlignment: Text.AlignHCenter
                             font.pixelSize: 11
                             lineHeight: 1.4
@@ -533,21 +537,21 @@ Item {
 
                                             // 工具名中文映射
                                             var nameMap = {
-                                                "read_file": "读取",
-                                                "write_file": "写入",
-                                                "edit_file": "编辑",
-                                                "list_files": "列出文件",
-                                                "search_text": "搜索",
-                                                "get_pack_info": "获取资源包信息",
-                                                "analyze_pack": "分析资源包",
-                                                "read_language": "读取语言文件",
-                                                "edit_language": "编辑语言文件",
-                                                "validate_json": "验证 JSON",
-                                                "get_file_tree": "获取文件树",
-                                                "ask_user": "向用户提问",
-                                                "execute_command": "执行命令",
-                                                "execute_command_background": "后台执行",
-                                                "spawn_agent": "生成子 Agent"
+                                                "read_file": (Backend ? Backend.tr("读取") : "读取"),
+                                                "write_file": (Backend ? Backend.tr("写入") : "写入"),
+                                                "edit_file": (Backend ? Backend.tr("编辑") : "编辑"),
+                                                "list_files": (Backend ? Backend.tr("列出文件") : "列出文件"),
+                                                "search_text": (Backend ? Backend.tr("搜索") : "搜索"),
+                                                "get_pack_info": (Backend ? Backend.tr("获取资源包信息") : "获取资源包信息"),
+                                                "analyze_pack": (Backend ? Backend.tr("分析资源包") : "分析资源包"),
+                                                "read_language": (Backend ? Backend.tr("读取语言文件") : "读取语言文件"),
+                                                "edit_language": (Backend ? Backend.tr("编辑语言文件") : "编辑语言文件"),
+                                                "validate_json": (Backend ? Backend.tr("验证 JSON") : "验证 JSON"),
+                                                "get_file_tree": (Backend ? Backend.tr("获取文件树") : "获取文件树"),
+                                                "ask_user": (Backend ? Backend.tr("向用户提问") : "向用户提问"),
+                                                "execute_command": (Backend ? Backend.tr("执行命令") : "执行命令"),
+                                                "execute_command_background": (Backend ? Backend.tr("后台执行") : "后台执行"),
+                                                "spawn_agent": (Backend ? Backend.tr("生成子 Agent") : "生成子 Agent")
                                             }
                                             var displayName = nameMap[n] || n
                                             return a ? displayName + " " + a : displayName
@@ -603,7 +607,7 @@ Item {
                                         width: parent.width
                                         text: {
                                             var r = toolResult || ""
-                                            if (r.length > 500) r = r.substring(0, 500) + "\n... (已截断)"
+                                            if (r.length > 500) r = r.substring(0, 500) + "\n" + (Backend ? Backend.tr("... (已截断)") : "... (已截断)")
                                             return r
                                         }
                                         font.pixelSize: 11
@@ -722,7 +726,7 @@ Item {
                             TextArea {
                                 id: inputField
                                 anchors.fill: parent; anchors.margins: 6
-                                placeholderText: "输入消息... (Enter 发送, Shift+Enter 换行)"
+                                placeholderText: (Backend ? Backend.tr("输入消息... (Enter 发送, Shift+Enter 换行)") : "输入消息... (Enter 发送, Shift+Enter 换行)")
                                 wrapMode: TextArea.Wrap
                                 font.pixelSize: 13
                                 color: Theme.currentTheme.colors.textColor
@@ -773,12 +777,12 @@ Item {
     // 权限对话框
     Dialog {
         id: permDlg
-        title: "权限请求"; modal: true; width: 400; closePolicy: Popup.NoAutoClose
+        title: (Backend ? Backend.tr("权限请求") : "权限请求"); modal: true; width: 400; closePolicy: Popup.NoAutoClose
         property string pName: ""; property string pDesc: ""; property string pReason: ""
 
         contentItem: ColumnLayout {
             spacing: 10
-            Text { text: "AI 想要执行写入操作："; font.pixelSize: 13; font.bold: true; color: Theme.currentTheme.colors.textColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            Text { text: (Backend ? Backend.tr("AI 想要执行写入操作：") : "AI 想要执行写入操作："); font.pixelSize: 13; font.bold: true; color: Theme.currentTheme.colors.textColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
             Rectangle {
                 Layout.fillWidth: true; Layout.preferredHeight: permTxt.implicitHeight + 12; radius: 6
                 color: Theme.currentTheme.colors.controlAltSecondaryColor || "#FFF3CD"
@@ -789,7 +793,7 @@ Item {
             ColumnLayout {
                 visible: permDlg.pReason.length > 0
                 spacing: 4
-                Text { text: "AI 的理由："; font.pixelSize: 11; font.bold: true; color: Theme.currentTheme.colors.textSecondaryColor }
+                Text { text: (Backend ? Backend.tr("AI 的理由：") : "AI 的理由："); font.pixelSize: 11; font.bold: true; color: Theme.currentTheme.colors.textSecondaryColor }
                 Rectangle {
                     Layout.fillWidth: true; Layout.preferredHeight: Math.min(reasonTxt.implicitHeight + 12, 120); radius: 6
                     color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
@@ -803,8 +807,8 @@ Item {
                 }
             }
             RowLayout { Layout.fillWidth: true; spacing: 8
-                Button { text: "拒绝"; flat: true; Layout.fillWidth: true; onClicked: { permDlg.close(); if (Agent) Agent.denyPermission() } }
-                Button { text: "允许"; highlighted: true; Layout.fillWidth: true; onClicked: { permDlg.close(); if (Agent) Agent.approvePermission() } }
+                Button { text: (Backend ? Backend.tr("拒绝") : "拒绝"); flat: true; Layout.fillWidth: true; onClicked: { permDlg.close(); if (Agent) Agent.denyPermission() } }
+                Button { text: (Backend ? Backend.tr("允许") : "允许"); highlighted: true; Layout.fillWidth: true; onClicked: { permDlg.close(); if (Agent) Agent.approvePermission() } }
             }
         }
     }
@@ -812,7 +816,7 @@ Item {
     // AI 提问对话框
     Dialog {
         id: askDlg
-        title: "AI 提问"; modal: true; width: 400; closePolicy: Popup.NoAutoClose
+        title: (Backend ? Backend.tr("AI 提问") : "AI 提问"); modal: true; width: 400; closePolicy: Popup.NoAutoClose
         property string qText: ""
         property string qType: "text"
         property var qOptions: []
@@ -823,25 +827,25 @@ Item {
             if (qType === "single_choice") {
                 if (showCustomInput) {
                     var ca = askCustomField.text.trim()
-                    return ca.length > 0 ? ca : "用户未回答"
+                    return ca.length > 0 ? ca : (Backend ? Backend.tr("用户未回答") : "用户未回答")
                 }
                 for (var key in selectedOptions) {
                     if (selectedOptions[key]) return key
                 }
-                return "用户未选择"
+                return Backend ? Backend.tr("用户未选择") : "用户未选择"
             } else if (qType === "multiple_choice") {
                 if (showCustomInput) {
                     var ca2 = askCustomField2.text.trim()
-                    return ca2.length > 0 ? ca2 : "用户未回答"
+                    return ca2.length > 0 ? ca2 : (Backend ? Backend.tr("用户未回答") : "用户未回答")
                 }
                 var selected = []
                 for (var k in selectedOptions) {
                     if (selectedOptions[k]) selected.push(k)
                 }
-                return selected.length > 0 ? selected.join(", ") : "用户未选择"
+                return selected.length > 0 ? selected.join(", ") : (Backend ? Backend.tr("用户未选择") : "用户未选择")
             } else {
                 var a = askAnsField.text.trim()
-                return a.length > 0 ? a : "用户未回答"
+                return a.length > 0 ? a : (Backend ? Backend.tr("用户未回答") : "用户未回答")
             }
         }
 
@@ -934,7 +938,7 @@ Item {
                             }
                         }
                         Text {
-                            text: "✏ 我想给出我的答案"
+                            text: (Backend ? Backend.tr("✏ 我想给出我的答案") : "✏ 我想给出我的答案")
                             font.pixelSize: 13
                             font.italic: true
                             color: Theme.currentTheme.colors.textColor
@@ -953,7 +957,7 @@ Item {
                     Layout.fillWidth: true; Layout.preferredHeight: 56; radius: 6
                     color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
                     border.color: askCustomField.activeFocus ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.controlBorderColor; border.width: 1
-                    TextArea { id: askCustomField; anchors.fill: parent; anchors.margins: 6; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: TextArea.Wrap; placeholderText: "输入你的回答..."; background: Item {} }
+                    TextArea { id: askCustomField; anchors.fill: parent; anchors.margins: 6; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: TextArea.Wrap; placeholderText: (Backend ? Backend.tr("输入你的回答...") : "输入你的回答..."); background: Item {} }
                 }
             }
 
@@ -1030,7 +1034,7 @@ Item {
                             }
                         }
                         Text {
-                            text: "✏ 我想给出我的答案"
+                            text: (Backend ? Backend.tr("✏ 我想给出我的答案") : "✏ 我想给出我的答案")
                             font.pixelSize: 13
                             font.italic: true
                             color: Theme.currentTheme.colors.textColor
@@ -1049,7 +1053,7 @@ Item {
                     Layout.fillWidth: true; Layout.preferredHeight: 56; radius: 6
                     color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
                     border.color: askCustomField2.activeFocus ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.controlBorderColor; border.width: 1
-                    TextArea { id: askCustomField2; anchors.fill: parent; anchors.margins: 6; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: TextArea.Wrap; placeholderText: "输入你的回答..."; background: Item {} }
+                    TextArea { id: askCustomField2; anchors.fill: parent; anchors.margins: 6; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: TextArea.Wrap; placeholderText: (Backend ? Backend.tr("输入你的回答...") : "输入你的回答..."); background: Item {} }
                 }
             }
 
@@ -1064,9 +1068,9 @@ Item {
 
             // 按钮行
             RowLayout { Layout.fillWidth: true; spacing: 8
-                Button { text: "取消"; flat: true; Layout.fillWidth: true; onClicked: { askDlg.close(); if (Agent) Agent.answerQuestion("用户取消") } }
+                Button { text: (Backend ? Backend.tr("取消") : "取消"); flat: true; Layout.fillWidth: true; onClicked: { askDlg.close(); if (Agent) Agent.answerQuestion("用户取消") } }
                 Button {
-                    text: askDlg.qType === "text" ? "发送" : "确认"; highlighted: true; Layout.fillWidth: true
+                    text: askDlg.qType === "text" ? (Backend ? Backend.tr("发送") : "发送") : (Backend ? Backend.tr("确认") : "确认"); highlighted: true; Layout.fillWidth: true
                     onClicked: {
                         var answer = askDlg.collectAnswer()
                         askDlg.close()

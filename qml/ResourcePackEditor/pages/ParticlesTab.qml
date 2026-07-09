@@ -21,7 +21,7 @@ Item {
         if (!RPEditor) return
         _particles = RPEditor.getParticles()
         particleList.model = _particles
-        countLabel.text = "共 " + _particles.length + " 个粒子定义"
+        countLabel.text = (Backend ? Backend.tr("共 ") : "共 ") + _particles.length + (Backend ? Backend.tr(" 个粒子定义") : " 个粒子定义")
 
         if (_particles.length > 0) {
             particleList.currentIndex = 0
@@ -61,7 +61,7 @@ Item {
                 Layout.fillWidth: true
 
                 Label {
-                    text: "粒子定义编辑器"
+                    text: (Backend ? Backend.tr("粒子定义编辑器") : "粒子定义编辑器")
                     font.pixelSize: 22
                     font.weight: Font.DemiBold
                     color: Theme.currentTheme.colors.textColor
@@ -71,7 +71,7 @@ Item {
 
                 Label {
                     id: countLabel
-                    text: "加载中..."
+                    text: (Backend ? Backend.tr("加载中...") : "加载中...")
                     color: Theme.currentTheme.colors.textSecondaryColor
                     font.pixelSize: 12
                 }
@@ -85,12 +85,12 @@ Item {
                     id: pathField
                     Layout.fillWidth: true
                     readOnly: true
-                    placeholderText: "选择粒子文件以编辑..."
+                    placeholderText: (Backend ? Backend.tr("选择粒子文件以编辑...") : "选择粒子文件以编辑...")
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
 
                 Button {
-                    text: "保存"
+                    text: (Backend ? Backend.tr("保存") : "保存")
                     highlighted: true
                     enabled: _selectedPath !== "" && _modified && RPEditor && RPEditor.isPackOpen()
                     onClicked: {
@@ -192,7 +192,7 @@ Item {
                                 color: Theme.currentTheme.colors.textColor
                                 background: null
                                 wrapMode: Text.NoWrap
-                                placeholderText: "选择一个粒子文件以编辑..."
+                                placeholderText: (Backend ? Backend.tr("选择一个粒子文件以编辑...") : "选择一个粒子文件以编辑...")
                                 selectByMouse: true
 
                                 onTextChanged: {
