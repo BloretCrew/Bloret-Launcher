@@ -57,5 +57,7 @@
         "bark_chat_message": true,
         "bark_copilot": true,
         "bark_account": true
-    }
+    },
+    "ai_provider": "bloret_passport",
+    "ai_model": "default"
 }

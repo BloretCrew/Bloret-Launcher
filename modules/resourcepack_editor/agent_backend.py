@@ -93,8 +93,18 @@ except ImportError:
 _PROVIDERS_FILE = os.path.join(_datapath, 'ai_providers.json')
 _MODELS_DEV_API = "https://models.dev/api.json"
 
-# 内置供应商：OpenCode Zen（免费，无需密钥）
+# 内置供应商：默认 Bloret PassPort；OpenCode Zen 为免费备用
 BUILTIN_PROVIDERS = {
+    "bloret_passport": {
+        "id": "bloret_passport",
+        "name": "Bloret PassPort",
+        "api": "https://passport.bloret.net/v1/chat/completions",
+        "needs_auth": True,
+        "builtin": True,
+        "models": [
+            {"id": "default", "name": "Claude Fable 5", "tool_call": True},
+        ],
+    },
     "opencode_zen": {
         "id": "opencode_zen",
         "name": "OpenCode Zen",
@@ -107,16 +117,6 @@ BUILTIN_PROVIDERS = {
             {"id": "qwen3.6-plus-free", "name": "Qwen 3.6 Plus (Free)", "tool_call": True},
             {"id": "minimax-m2.5-free", "name": "MiniMax M2.5 (Free)", "tool_call": True},
             {"id": "nemotron-3-super-free", "name": "Nemotron 3 Super (Free)", "tool_call": True},
-        ],
-    },
-    "bloret_passport": {
-        "id": "bloret_passport",
-        "name": "Bloret PassPort",
-        "api": "https://passport.bloret.net/v1/chat/completions",
-        "needs_auth": True,
-        "builtin": True,
-        "models": [
-            {"id": "default", "name": "Claude Fable 5", "tool_call": True},
         ],
     },
 }
@@ -299,12 +299,12 @@ class AgentBackend(QObject):
         try:
             import modules.config as cfg
             config_data = cfg.read()
-            provider = config_data.get("ai_provider", "opencode_zen")
-            model = config_data.get("ai_model", "deepseek-v4-flash-free")
+            provider = config_data.get("ai_provider", "bloret_passport")
+            model = config_data.get("ai_model", "default")
             return provider, model
         except Exception as e:
             log.warning(f"[Agent] 读取全局 AI 设置失败: {e}")
-            return "opencode_zen", "deepseek-v4-flash-free"
+            return "bloret_passport", "default"
 
     def _sync_global_settings(self):
         """同步全局 AI 设置（每次交互时检查）"""

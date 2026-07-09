@@ -252,7 +252,7 @@ class Backend(QObject):
     def getGlobalAIProvider(self):
         """获取全局 AI 供应商"""
         config_data = cfg.read()
-        return config_data.get("ai_provider", "opencode_zen")
+        return config_data.get("ai_provider", "bloret_passport")
 
     @Slot(str)
     def setGlobalAIProvider(self, provider_key):
@@ -262,8 +262,9 @@ class Backend(QObject):
             config_data["ai_provider"] = provider_key
             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                 json.dump(config_data, f, indent=4, ensure_ascii=False)
-            model = config_data.get("ai_model", "deepseek-v4-flash-free")
+            model = config_data.get("ai_model", "default")
             self.globalAIProviderChanged.emit(provider_key, model)
+            print(f"[AI] 全局供应商已设置为: {provider_key}, 当前模型: {model}")
         except Exception as e:
             print(f"Error saving global AI provider: {e}")
 
@@ -271,7 +272,7 @@ class Backend(QObject):
     def getGlobalAIModel(self):
         """获取全局 AI 模型"""
         config_data = cfg.read()
-        return config_data.get("ai_model", "deepseek-v4-flash-free")
+        return config_data.get("ai_model", "default")
 
     @Slot(str)
     def setGlobalAIModel(self, model_id):
@@ -281,8 +282,9 @@ class Backend(QObject):
             config_data["ai_model"] = model_id
             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                 json.dump(config_data, f, indent=4, ensure_ascii=False)
-            provider = config_data.get("ai_provider", "opencode_zen")
+            provider = config_data.get("ai_provider", "bloret_passport")
             self.globalAIProviderChanged.emit(provider, model_id)
+            print(f"[AI] 全局模型已设置为: {model_id}, 当前供应商: {provider}")
         except Exception as e:
             print(f"Error saving global AI model: {e}")
 
