@@ -44,7 +44,7 @@ FluentPage {
         function onErrorOccurred(msg) {
             console.log("[Settings] Agent error:", msg)
             providerInfoBar.severity = Severity.Error
-            providerInfoBar.title = Backend ? Backend.tr("供应商错误") : "供应商错误"
+            providerInfoBar.title = _providerErrorTitle
             providerInfoBar.text = msg
             providerInfoBar.visible = true
         }
@@ -63,7 +63,7 @@ FluentPage {
             }
         }
         providerInfoBar.severity = Severity.Success
-        providerInfoBar.title = Backend ? Backend.tr("已设为默认") : "已设为默认"
+        providerInfoBar.title = _setAsDefaultTitle
         providerInfoBar.text = key
         providerInfoBar.visible = true
     }
@@ -75,8 +75,8 @@ FluentPage {
             var detail = JSON.parse(Agent.getProviderDetail(key))
             if (detail.error) {
                 providerInfoBar.severity = Severity.Error
-                providerInfoBar.title = Backend ? Backend.tr("供应商错误") : "供应商错误"
-                providerInfoBar.text = Backend ? Backend.tr("未找到供应商") : "未找到供应商"
+                providerInfoBar.title = _providerErrorTitle
+                providerInfoBar.text = _providerNotFound
                 providerInfoBar.visible = true
                 return
             }
@@ -85,8 +85,8 @@ FluentPage {
             settingsEditUrlField.text = detail.api || ""
             settingsEditKeyField.text = ""
             settingsEditKeyField.placeholderText = detail.has_key
-                ? (Backend ? Backend.tr("留空则不修改密钥") : "留空则不修改密钥")
-                : (Backend ? Backend.tr("sk-...") : "sk-...")
+                ? _keepKeyPlaceholder
+                : _apiKeyPlaceholder
             var lines = []
             var models = detail.models || []
             for (var i = 0; i < models.length; i++)
@@ -251,6 +251,33 @@ FluentPage {
         _customLabel = Backend ? Backend.tr("自定义") : "自定义"
         _removeProviderTooltip = Backend ? Backend.tr("删除此供应商") : "删除此供应商"
         _chooseCategoryHint = Backend ? Backend.tr("选择一个类别以管理相关设置") : "选择一个类别以管理相关设置"
+        _defaultAIProviderTitle = Backend ? Backend.tr("默认 AI 供应商") : "默认 AI 供应商"
+        _defaultAIProviderDesc = Backend ? Backend.tr("选择所有 AI 功能使用的供应商和模型") : "选择所有 AI 功能使用的供应商和模型"
+        _providerErrorTitle = Backend ? Backend.tr("供应商错误") : "供应商错误"
+        _setAsDefaultTitle = Backend ? Backend.tr("已设为默认") : "已设为默认"
+        _providerNotFound = Backend ? Backend.tr("未找到供应商") : "未找到供应商"
+        _keepKeyPlaceholder = Backend ? Backend.tr("留空则不修改密钥") : "留空则不修改密钥"
+        _agentNotReady = Backend ? Backend.tr("AI 后端未就绪，无法管理供应商") : "AI 后端未就绪，无法管理供应商"
+        _setDefaultBtn = Backend ? Backend.tr("默认") : "默认"
+        _editBtn = Backend ? Backend.tr("编辑") : "编辑"
+        _deleteBtn = Backend ? Backend.tr("删除") : "删除"
+        _deletedTitle = Backend ? Backend.tr("已删除") : "已删除"
+        _addFromCatalog = Backend ? Backend.tr("从目录添加") : "从目录添加"
+        _addManually = Backend ? Backend.tr("手动添加") : "手动添加"
+        _manualProviderTitle = Backend ? Backend.tr("手动添加 OpenAI 兼容供应商") : "手动添加 OpenAI 兼容供应商"
+        _providerIdLabel = Backend ? Backend.tr("供应商 ID（唯一标识）") : "供应商 ID（唯一标识）"
+        _displayNameLabel = Backend ? Backend.tr("显示名称") : "显示名称"
+        _apiBaseUrlLabel = Backend ? Backend.tr("API Base URL") : "API Base URL"
+        _modelsListLabel = Backend ? Backend.tr("模型列表（每行一个模型 ID）") : "模型列表（每行一个模型 ID）"
+        _addSuccessTitle = Backend ? Backend.tr("添加成功") : "添加成功"
+        _editProviderTitle = Backend ? Backend.tr("编辑供应商") : "编辑供应商"
+        _providerIdPrefix = Backend ? Backend.tr("供应商 ID: ") : "供应商 ID: "
+        _providerColonPrefix = Backend ? Backend.tr("供应商: ") : "供应商: "
+        _saveBtn = Backend ? Backend.tr("保存") : "保存"
+        _savedTitle = Backend ? Backend.tr("已保存") : "已保存"
+        _modelsSuffix = Backend ? Backend.tr(" 模型") : " 模型"
+        _modelsDotSuffix = Backend ? Backend.tr(" 模型 · ") : " 模型 · "
+        _noProvidersYet = Backend ? Backend.tr("暂无已添加的供应商") : "暂无已添加的供应商"
         updatePageTitle()
     }
 
@@ -356,6 +383,33 @@ FluentPage {
     property string _customLabel: Backend ? Backend.tr("自定义") : "自定义"
     property string _removeProviderTooltip: Backend ? Backend.tr("删除此供应商") : "删除此供应商"
     property string _chooseCategoryHint: Backend ? Backend.tr("选择一个类别以管理相关设置") : "选择一个类别以管理相关设置"
+    property string _defaultAIProviderTitle: Backend ? Backend.tr("默认 AI 供应商") : "默认 AI 供应商"
+    property string _defaultAIProviderDesc: Backend ? Backend.tr("选择所有 AI 功能使用的供应商和模型") : "选择所有 AI 功能使用的供应商和模型"
+    property string _providerErrorTitle: Backend ? Backend.tr("供应商错误") : "供应商错误"
+    property string _setAsDefaultTitle: Backend ? Backend.tr("已设为默认") : "已设为默认"
+    property string _providerNotFound: Backend ? Backend.tr("未找到供应商") : "未找到供应商"
+    property string _keepKeyPlaceholder: Backend ? Backend.tr("留空则不修改密钥") : "留空则不修改密钥"
+    property string _agentNotReady: Backend ? Backend.tr("AI 后端未就绪，无法管理供应商") : "AI 后端未就绪，无法管理供应商"
+    property string _setDefaultBtn: Backend ? Backend.tr("默认") : "默认"
+    property string _editBtn: Backend ? Backend.tr("编辑") : "编辑"
+    property string _deleteBtn: Backend ? Backend.tr("删除") : "删除"
+    property string _deletedTitle: Backend ? Backend.tr("已删除") : "已删除"
+    property string _addFromCatalog: Backend ? Backend.tr("从目录添加") : "从目录添加"
+    property string _addManually: Backend ? Backend.tr("手动添加") : "手动添加"
+    property string _manualProviderTitle: Backend ? Backend.tr("手动添加 OpenAI 兼容供应商") : "手动添加 OpenAI 兼容供应商"
+    property string _providerIdLabel: Backend ? Backend.tr("供应商 ID（唯一标识）") : "供应商 ID（唯一标识）"
+    property string _displayNameLabel: Backend ? Backend.tr("显示名称") : "显示名称"
+    property string _apiBaseUrlLabel: Backend ? Backend.tr("API Base URL") : "API Base URL"
+    property string _modelsListLabel: Backend ? Backend.tr("模型列表（每行一个模型 ID）") : "模型列表（每行一个模型 ID）"
+    property string _addSuccessTitle: Backend ? Backend.tr("添加成功") : "添加成功"
+    property string _editProviderTitle: Backend ? Backend.tr("编辑供应商") : "编辑供应商"
+    property string _providerIdPrefix: Backend ? Backend.tr("供应商 ID: ") : "供应商 ID: "
+    property string _providerColonPrefix: Backend ? Backend.tr("供应商: ") : "供应商: "
+    property string _saveBtn: Backend ? Backend.tr("保存") : "保存"
+    property string _savedTitle: Backend ? Backend.tr("已保存") : "已保存"
+    property string _modelsSuffix: Backend ? Backend.tr(" 模型") : " 模型"
+    property string _modelsDotSuffix: Backend ? Backend.tr(" 模型 · ") : " 模型 · "
+    property string _noProvidersYet: Backend ? Backend.tr("暂无已添加的供应商") : "暂无已添加的供应商"
 
     // Category cards model for hub
     property var categoryCards: [
@@ -1059,8 +1113,8 @@ FluentPage {
 
             SettingCard {
                 Layout.fillWidth: true
-                title: Backend ? Backend.tr("默认 AI 供应商") : "默认 AI 供应商"
-                description: Backend ? Backend.tr("选择所有 AI 功能使用的供应商和模型") : "选择所有 AI 功能使用的供应商和模型"
+                title: _defaultAIProviderTitle
+                description: _defaultAIProviderDesc
                 icon.name: "ic_fluent_bot_settings_20_regular"
                 RowLayout {
                     spacing: 8
@@ -1108,7 +1162,7 @@ FluentPage {
 
             Label {
                 visible: Agent === null
-                text: Backend ? Backend.tr("AI 后端未就绪，无法管理供应商") : "AI 后端未就绪，无法管理供应商"
+                text: _agentNotReady
                 font.pixelSize: 12
                 color: Theme.currentTheme.colors.textSecondaryColor
                 Layout.fillWidth: true
@@ -1120,27 +1174,27 @@ FluentPage {
                     Layout.fillWidth: true
                     title: model.name
                     description: (model.builtin ? _builtinLabel : _customLabel)
-                        + " · " + model.model_count + (Backend ? Backend.tr(" 模型") : " 模型")
+                        + " · " + model.model_count + _modelsSuffix
                         + (model.builtin ? "" : (model.has_key ? " · ✓" : ""))
                     icon.name: model.builtin ? "ic_fluent_bot_20_regular" : "ic_fluent_person_20_regular"
                     RowLayout {
                         spacing: 4
                         Button {
                             flat: true
-                            text: Backend ? Backend.tr("默认") : "默认"
+                            text: _setDefaultBtn
                             font.pixelSize: 11
                             onClicked: settingsPage.setDefaultProvider(model.key)
                         }
                         Button {
                             flat: true
-                            text: Backend ? Backend.tr("编辑") : "编辑"
+                            text: _editBtn
                             font.pixelSize: 11
                             visible: !model.builtin
                             onClicked: settingsPage.openEditProvider(model.key)
                         }
                         Button {
                             flat: true
-                            text: Backend ? Backend.tr("删除") : "删除"
+                            text: _deleteBtn
                             font.pixelSize: 11
                             visible: !model.builtin
                             onClicked: {
@@ -1149,7 +1203,7 @@ FluentPage {
                                     if (Agent.removeProvider(model.key)) {
                                         loadSettingsProviders()
                                         providerInfoBar.severity = Severity.Success
-                                        providerInfoBar.title = Backend ? Backend.tr("已删除") : "已删除"
+                                        providerInfoBar.title = _deletedTitle
                                         providerInfoBar.text = model.name
                                         providerInfoBar.visible = true
                                     }
@@ -1162,7 +1216,7 @@ FluentPage {
 
             Label {
                 visible: settingsProviderModel.count === 0
-                text: Backend ? Backend.tr("暂无已添加的供应商") : "暂无已添加的供应商"
+                text: _noProvidersYet
                 font.pixelSize: 12
                 color: Theme.currentTheme.colors.textSecondaryColor
                 Layout.alignment: Qt.AlignHCenter
@@ -1388,7 +1442,7 @@ FluentPage {
                 Layout.fillWidth: true
                 spacing: 8
                 Button {
-                    text: Backend ? Backend.tr("从目录添加") : "从目录添加"
+                    text: _addFromCatalog
                     highlighted: settingsAddProviderDialog.mode === "catalog"
                     flat: settingsAddProviderDialog.mode !== "catalog"
                     onClicked: {
@@ -1399,7 +1453,7 @@ FluentPage {
                     }
                 }
                 Button {
-                    text: Backend ? Backend.tr("手动添加") : "手动添加"
+                    text: _addManually
                     highlighted: settingsAddProviderDialog.mode === "manual"
                     flat: settingsAddProviderDialog.mode !== "manual"
                     onClicked: {
@@ -1468,7 +1522,7 @@ FluentPage {
                                     color: Theme.currentTheme.colors.textColor
                                 }
                                 Text {
-                                    text: model.model_count + (Backend ? Backend.tr(" 模型 · ") : " 模型 · ") + model.id
+                                    text: model.model_count + _modelsDotSuffix + model.id
                                     font.pixelSize: 10
                                     color: Theme.currentTheme.colors.textSecondaryColor
                                 }
@@ -1490,7 +1544,7 @@ FluentPage {
                 Layout.fillWidth: true
 
                 Text {
-                    text: (Backend ? Backend.tr("供应商: ") : "供应商: ") + settingsAddProviderDialog.apiStep2Id
+                    text: _providerColonPrefix + settingsAddProviderDialog.apiStep2Id
                     font.pixelSize: 13
                     font.bold: true
                     color: Theme.currentTheme.colors.textColor
@@ -1527,14 +1581,14 @@ FluentPage {
                 Layout.fillWidth: true
 
                 Text {
-                    text: Backend ? Backend.tr("手动添加 OpenAI 兼容供应商") : "手动添加 OpenAI 兼容供应商"
+                    text: _manualProviderTitle
                     font.pixelSize: 13
                     font.bold: true
                     color: Theme.currentTheme.colors.textColor
                 }
 
                 Text {
-                    text: Backend ? Backend.tr("供应商 ID（唯一标识）") : "供应商 ID（唯一标识）"
+                    text: _providerIdLabel
                     font.pixelSize: 12
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
@@ -1546,7 +1600,7 @@ FluentPage {
                 }
 
                 Text {
-                    text: Backend ? Backend.tr("显示名称") : "显示名称"
+                    text: _displayNameLabel
                     font.pixelSize: 12
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
@@ -1558,7 +1612,7 @@ FluentPage {
                 }
 
                 Text {
-                    text: Backend ? Backend.tr("API Base URL") : "API Base URL"
+                    text: _apiBaseUrlLabel
                     font.pixelSize: 12
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
@@ -1583,7 +1637,7 @@ FluentPage {
                 }
 
                 Text {
-                    text: Backend ? Backend.tr("模型列表（每行一个模型 ID）") : "模型列表（每行一个模型 ID）"
+                    text: _modelsListLabel
                     font.pixelSize: 12
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }
@@ -1633,7 +1687,7 @@ FluentPage {
                             settingsAddProviderDialog.close()
                             loadSettingsProviders()
                             providerInfoBar.severity = Severity.Success
-                            providerInfoBar.title = Backend ? Backend.tr("添加成功") : "添加成功"
+                            providerInfoBar.title = _addSuccessTitle
                             providerInfoBar.text = settingsAddProviderDialog.apiStep2Id
                             providerInfoBar.visible = true
                         }
@@ -1659,7 +1713,7 @@ FluentPage {
                             settingsAddProviderDialog.close()
                             loadSettingsProviders()
                             providerInfoBar.severity = Severity.Success
-                            providerInfoBar.title = Backend ? Backend.tr("添加成功") : "添加成功"
+                            providerInfoBar.title = _addSuccessTitle
                             providerInfoBar.text = name
                             providerInfoBar.visible = true
                         }
@@ -1671,7 +1725,7 @@ FluentPage {
 
     Dialog {
         id: settingsEditProviderDialog
-        title: Backend ? Backend.tr("编辑供应商") : "编辑供应商"
+        title: _editProviderTitle
         modal: true
         width: 520
         closePolicy: Popup.CloseOnEscape
@@ -1681,14 +1735,14 @@ FluentPage {
             spacing: 8
 
             Text {
-                text: (Backend ? Backend.tr("供应商 ID: ") : "供应商 ID: ") + settingsEditProviderDialog.editKey
+                text: _providerIdPrefix + settingsEditProviderDialog.editKey
                 font.pixelSize: 13
                 font.bold: true
                 color: Theme.currentTheme.colors.textColor
             }
 
             Text {
-                text: Backend ? Backend.tr("显示名称") : "显示名称"
+                text: _displayNameLabel
                 font.pixelSize: 12
                 color: Theme.currentTheme.colors.textSecondaryColor
             }
@@ -1699,7 +1753,7 @@ FluentPage {
             }
 
             Text {
-                text: Backend ? Backend.tr("API Base URL") : "API Base URL"
+                text: _apiBaseUrlLabel
                 font.pixelSize: 12
                 color: Theme.currentTheme.colors.textSecondaryColor
             }
@@ -1722,7 +1776,7 @@ FluentPage {
             }
 
             Text {
-                text: Backend ? Backend.tr("模型列表（每行一个模型 ID）") : "模型列表（每行一个模型 ID）"
+                text: _modelsListLabel
                 font.pixelSize: 12
                 color: Theme.currentTheme.colors.textSecondaryColor
             }
@@ -1742,7 +1796,7 @@ FluentPage {
                 }
                 Item { Layout.fillWidth: true }
                 Button {
-                    text: Backend ? Backend.tr("保存") : "保存"
+                    text: _saveBtn
                     highlighted: true
                     enabled: settingsEditUrlField.text.trim().length > 0
                              && settingsEditModelsArea.text.trim().length > 0
@@ -1759,7 +1813,7 @@ FluentPage {
                             settingsEditProviderDialog.close()
                             loadSettingsProviders()
                             providerInfoBar.severity = Severity.Success
-                            providerInfoBar.title = Backend ? Backend.tr("已保存") : "已保存"
+                            providerInfoBar.title = _savedTitle
                             providerInfoBar.text = settingsEditProviderDialog.editKey
                             providerInfoBar.visible = true
                         }

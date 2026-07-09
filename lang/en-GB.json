@@ -984,7 +984,7 @@
     "选择 AI 供应商：": "Select AI provider:",
     "选择下载来源：BMCLAPI（优先镜像，失败回退官方）、Bloret (以非常规方式快速下载，只支持部分版本) 或 Mojang 官方直连": "Choose download source: BMCLAPI (mirror first, fallback to official), Bloret (fast unconventional download, limited versions), or Mojang official",
     "选择保存文件夹": "Choose save folder",
-    "选择所有 AI 功能使用的供应商和模型": "Choose the provider and model used by all AI features",
+    "选择所有 AI 功能使用的供应商和模型": "Provider and model used by all AI features",
     "选择要接收哪些类别的系统通知": "Choose which system notification categories to receive",
     "通知": "Notifications",
     "通知偏好设置": "Notification preferences",
