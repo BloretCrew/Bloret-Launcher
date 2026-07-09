@@ -33,10 +33,12 @@ makedepends=(
 )
 
 # ===== 可选依赖 =====
-# Minecraft 运行所需的 Java
+# Minecraft 运行所需的 Java；Linux 中文输入法需要 fcitx5-qt
 optdepends=(
     'java-runtime: 运行 Minecraft 所需的 Java 环境'
     'easytier: 局域网联机功能所需的 EasyTier 网络工具'
+    'fcitx5-qt: Qt6/Qt5 fcitx5 输入法前端（Linux 下中文输入/切换必需）'
+    'fcitx5: fcitx5 输入法框架'
 )
 
 # ===== 源码 =====

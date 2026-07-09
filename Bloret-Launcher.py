@@ -40,6 +40,14 @@ SCRIPT_DIR = _get_script_dir()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+# Linux 输入法：必须在 import PySide6 / 创建 QApplication 之前完成
+# （pip/venv 私有 Qt 与系统 fcitx5 插件不兼容，会导致无法切换中文输入法）
+if sys.platform.startswith("linux"):
+    from modules.linux_im import setup_linux_input_method, log_runtime_im_status
+    setup_linux_input_method()
+else:
+    log_runtime_im_status = None  # type: ignore
+
 # Create the QApplication early so it can be used in shims and module imports
 from PySide6.QtWidgets import QApplication, QFileDialog, QSystemTrayIcon
 from PySide6.QtCore import QLocale, Qt, QTranslator, QObject, Slot, Signal, Property, QUrl
@@ -48,6 +56,9 @@ from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices, QPixmap, QPa
 QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
 app = QApplication(sys.argv)
+
+if log_runtime_im_status is not None:
+    log_runtime_im_status()
 
 
 def _enable_fault_logging():
@@ -440,6 +451,21 @@ class Backend(QObject):
                 emit_progress(95, "正在执行启动命令...", "")
                 print(f"Launching with args: {launch_args}")
 
+                # Linux：为 Minecraft/GLFW 继承并补齐输入法环境，保证游戏内可切换中文输入
+                _launch_env = None
+                if sys.platform.startswith("linux"):
+                    try:
+                        from modules.linux_im import ensure_game_im_env
+                        _launch_env = ensure_game_im_env()
+                        print(
+                            f"[IM] 游戏进程输入法环境: "
+                            f"QT_IM_MODULE={_launch_env.get('QT_IM_MODULE')}, "
+                            f"GLFW_IM_MODULE={_launch_env.get('GLFW_IM_MODULE')}, "
+                            f"XMODIFIERS={_launch_env.get('XMODIFIERS')}"
+                        )
+                    except Exception as _im_err:
+                        print(f"[IM] 游戏输入法环境准备失败（继续启动）: {_im_err}")
+
                 # 使用 PIPE 捕获输出，同时实时打印到控制台并解析聊天消息
                 proc = subprocess.Popen(
                     launch_args, cwd=game_dir,
@@ -448,6 +474,7 @@ class Backend(QObject):
                     encoding='utf-8',
                     errors='replace',
                     bufsize=1,  # 行缓冲
+                    env=_launch_env,
                     **hidden_process_kwargs(),
                 )
 

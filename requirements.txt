@@ -1,3 +1,5 @@
+# Linux 建议优先使用系统包 python-pyside6（与 fcitx5-qt 共用系统 Qt），
+# 勿用 pip 安装 PySide6：其私有 Qt 无法加载 fcitx5 插件，会导致无法切换中文输入法。
 PySide6
 RinUI
 requests
