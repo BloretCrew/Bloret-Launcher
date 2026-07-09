@@ -1017,7 +1017,7 @@ class AgentBackend(QObject):
 
             git.stage_all()
             git.commit(commit_msg)
-            self.statusMessage.emit(f"已自动提交: {commit_msg}")
+            self.statusMessage.emit(i18nText("已自动提交: {v0}").replace("{v0}", str(commit_msg)))
             log.info(f"自动提交完成: {commit_msg}")
         except Exception as e:
             log.warning(f"自动提交失败: {e}")

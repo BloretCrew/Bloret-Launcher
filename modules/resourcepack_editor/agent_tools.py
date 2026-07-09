@@ -14,6 +14,8 @@ import glob as glob_module
 from pathlib import Path
 from typing import Tuple
 
+from modules.i18n import i18nText
+
 from .knowledge_base import (
     PACK_FORMAT_TABLE, FILE_FORMAT_SPECS, COMMON_ERRORS,
     TEXTURE_GUIDELINES, MODEL_GUIDELINES, SOUND_GUIDELINES,
@@ -116,9 +118,9 @@ def _execute_read_file(pack_path: Path, path: str, **kwargs) -> str:
         return err
     full_path = pack_path / path
     if not full_path.exists():
-        return f"错误: 文件不存在 - {path}"
+        return i18nText("错误: 文件不存在 - {v0}").replace("{v0}", str(path))
     if full_path.is_dir():
-        return f"错误: {path} 是一个目录，不是文件"
+        return i18nText("错误: {v0} 是一个目录，不是文件").replace("{v0}", str(path))
     try:
         content = full_path.read_text(encoding="utf-8")
         return content
@@ -127,11 +129,9 @@ def _execute_read_file(pack_path: Path, path: str, **kwargs) -> str:
             content = full_path.read_text(encoding="utf-8-sig")
             return content
         except Exception:
-            return f"错误: 无法读取文件 {path}（可能是二进制文件）"
+            return i18nText("错误: 无法读取文件 {v0}（可能是二进制文件）").replace("{v0}", str(path))
     except Exception as e:
-        return f"错误: 读取文件失败 - {str(e)}"
-
-
+        return i18nText("错误: 读取文件失败 - {v0}").replace("{v0}", str(e))
 def _execute_write_file(pack_path: Path, path: str, content: str, **kwargs) -> str:
     """写入内容到文件"""
     valid, err = _validate_path(pack_path, path)
@@ -141,11 +141,9 @@ def _execute_write_file(pack_path: Path, path: str, content: str, **kwargs) -> s
     try:
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(content, encoding="utf-8")
-        return f"成功写入文件: {path} ({len(content)} 字符)"
+        return i18nText("成功写入文件: {v0} ({v1} 字符)").replace("{v0}", str(path)).replace("{v1}", str(len(content)))
     except Exception as e:
-        return f"错误: 写入文件失败 - {str(e)}"
-
-
+        return i18nText("错误: 写入文件失败 - {v0}").replace("{v0}", str(e))
 def _execute_edit_file(pack_path: Path, path: str, old_text: str, new_text: str, **kwargs) -> str:
     """替换文件中的文本"""
     valid, err = _validate_path(pack_path, path)
@@ -153,19 +151,17 @@ def _execute_edit_file(pack_path: Path, path: str, old_text: str, new_text: str,
         return err
     full_path = pack_path / path
     if not full_path.exists():
-        return f"错误: 文件不存在 - {path}"
+        return i18nText("错误: 文件不存在 - {v0}").replace("{v0}", str(path))
     try:
         content = full_path.read_text(encoding="utf-8")
         if old_text not in content:
-            return f"错误: 在 {path} 中未找到要替换的文本"
+            return i18nText("错误: 在 {v0} 中未找到要替换的文本").replace("{v0}", str(path))
         count = content.count(old_text)
         new_content = content.replace(old_text, new_text, 1)
         full_path.write_text(new_content, encoding="utf-8")
-        return f"成功编辑文件: {path} (替换了 1/{count} 处匹配)"
+        return i18nText("成功编辑文件: {v0} (替换了 1/{v1} 处匹配)").replace("{v0}", str(path)).replace("{v1}", str(count))
     except Exception as e:
-        return f"错误: 编辑文件失败 - {str(e)}"
-
-
+        return i18nText("错误: 编辑文件失败 - {v0}").replace("{v0}", str(e))
 def _execute_list_files(pack_path: Path, pattern: str = "**/*", **kwargs) -> str:
     """列出匹配模式的文件"""
     try:
@@ -178,7 +174,7 @@ def _execute_list_files(pack_path: Path, pattern: str = "**/*", **kwargs) -> str
             if os.path.isfile(m):
                 rel_paths.append(rel)
         if not rel_paths:
-            return f"未找到匹配 '{pattern}' 的文件"
+            return i18nText("未找到匹配 '{v0}' 的文件").replace("{v0}", str(pattern))
         # 限制输出数量
         if len(rel_paths) > 200:
             result = f"找到 {len(rel_paths)} 个文件（显示前 200 个）:\n"
@@ -187,9 +183,7 @@ def _execute_list_files(pack_path: Path, pattern: str = "**/*", **kwargs) -> str
             result = f"找到 {len(rel_paths)} 个文件:\n" + "\n".join(rel_paths)
         return result
     except Exception as e:
-        return f"错误: 列出文件失败 - {str(e)}"
-
-
+        return i18nText("错误: 列出文件失败 - {v0}").replace("{v0}", str(e))
 def _execute_search_text(pack_path: Path, query: str, glob_pattern: str = "**/*", **kwargs) -> str:
     """在文件中搜索文本"""
     try:
@@ -213,12 +207,10 @@ def _execute_search_text(pack_path: Path, query: str, glob_pattern: str = "**/*"
             if len(results) >= 100:
                 break
         if not results:
-            return f"未找到包含 '{query}' 的内容"
+            return i18nText("未找到包含 '{v0}' 的内容").replace("{v0}", str(query))
         return f"找到 {len(results)} 处匹配:\n" + "\n".join(results)
     except Exception as e:
-        return f"错误: 搜索失败 - {str(e)}"
-
-
+        return i18nText("错误: 搜索失败 - {v0}").replace("{v0}", str(e))
 def _execute_get_pack_info(pack_path: Path, **kwargs) -> str:
     """获取资源包基本信息"""
     info = {
@@ -338,16 +330,14 @@ def _execute_read_language(pack_path: Path, lang: str = "zh_cn", **kwargs) -> st
                 break
 
     if lang_path is None:
-        return f"错误: 未找到语言文件 {lang}.json"
+        return i18nText("错误: 未找到语言文件 {v0}.json").replace("{v0}", str(lang))
     try:
         data = json.loads(lang_path.read_text(encoding="utf-8"))
         return json.dumps(data, ensure_ascii=False, indent=2)
     except json.JSONDecodeError as e:
-        return f"错误: 语言文件 JSON 格式错误 - {str(e)}"
+        return i18nText("错误: 语言文件 JSON 格式错误 - {v0}").replace("{v0}", str(e))
     except Exception as e:
-        return f"错误: 读取语言文件失败 - {str(e)}"
-
-
+        return i18nText("错误: 读取语言文件失败 - {v0}").replace("{v0}", str(e))
 def _execute_edit_language(pack_path: Path, lang: str, changes: dict, **kwargs) -> str:
     """编辑语言文件：添加/修改/删除条目"""
     # 查找语言文件
@@ -360,13 +350,11 @@ def _execute_edit_language(pack_path: Path, lang: str, changes: dict, **kwargs) 
                 break
 
     if lang_path is None:
-        return f"错误: 未找到语言文件 {lang}.json"
-
+        return i18nText("错误: 未找到语言文件 {v0}.json").replace("{v0}", str(lang))
     try:
         data = json.loads(lang_path.read_text(encoding="utf-8"))
     except Exception as e:
-        return f"错误: 读取语言文件失败 - {str(e)}"
-
+        return i18nText("错误: 读取语言文件失败 - {v0}").replace("{v0}", str(e))
     added = 0
     modified = 0
     deleted = 0
@@ -391,11 +379,9 @@ def _execute_edit_language(pack_path: Path, lang: str, changes: dict, **kwargs) 
             json.dumps(data, ensure_ascii=False, indent=2),
             encoding="utf-8"
         )
-        return f"成功编辑 {lang}.json: 添加 {added}, 修改 {modified}, 删除 {deleted}"
+        return i18nText("成功编辑 {v0}.json: 添加 {v1}, 修改 {v2}, 删除 {v3}").replace("{v0}", str(lang)).replace("{v1}", str(added)).replace("{v2}", str(modified)).replace("{v3}", str(deleted))
     except Exception as e:
-        return f"错误: 保存语言文件失败 - {str(e)}"
-
-
+        return i18nText("错误: 保存语言文件失败 - {v0}").replace("{v0}", str(e))
 def _execute_validate_json(pack_path: Path, path: str, **kwargs) -> str:
     """验证 JSON 文件格式"""
     valid, err = _validate_path(pack_path, path)
@@ -403,17 +389,22 @@ def _execute_validate_json(pack_path: Path, path: str, **kwargs) -> str:
         return err
     full_path = pack_path / path
     if not full_path.exists():
-        return f"错误: 文件不存在 - {path}"
+        return i18nText("错误: 文件不存在 - {v0}").replace("{v0}", str(path))
     try:
         content = full_path.read_text(encoding="utf-8")
         json.loads(content)
-        return f"JSON 格式正确: {path}"
+        return i18nText("JSON 格式正确: {v0}").replace("{v0}", str(path))
     except json.JSONDecodeError as e:
-        return f"JSON 格式错误: {path}\n行 {e.lineno}, 列 {e.colno}: {e.msg}"
+        return (
+            i18nText("JSON 格式错误: {v0}").replace("{v0}", str(path))
+            + "\n"
+            + i18nText("行 {v0}, 列 {v1}: {v2}")
+            .replace("{v0}", str(e.lineno))
+            .replace("{v1}", str(e.colno))
+            .replace("{v2}", str(e.msg))
+        )
     except Exception as e:
-        return f"错误: 验证失败 - {str(e)}"
-
-
+        return i18nText("错误: 验证失败 - {v0}").replace("{v0}", str(e))
 def _execute_get_file_tree(pack_path: Path, **kwargs) -> str:
     """获取文件树结构"""
     tree_lines = []
@@ -470,11 +461,9 @@ def _execute_command(pack_path: Path, command: str, **kwargs) -> str:
             output += f"\n[exit code: {result.returncode}]"
         return output.strip() if output.strip() else f"命令执行成功 (exit code: {result.returncode})"
     except subprocess.TimeoutExpired:
-        return "错误: 命令执行超时 (60秒)"
+        return i18nText("错误: 命令执行超时 (60秒)")
     except Exception as e:
-        return f"错误: {str(e)}"
-
-
+        return i18nText("错误: {v0}").replace("{v0}", str(e))
 def _execute_command_background(pack_path: Path, command: str, **kwargs) -> str:
     """在资源包目录下后台执行终端命令（非阻塞，立即返回）"""
     import subprocess
@@ -483,11 +472,9 @@ def _execute_command_background(pack_path: Path, command: str, **kwargs) -> str:
             command, shell=True, cwd=str(pack_path),
             stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        return f"命令已在后台启动 (PID: {proc.pid})"
+        return i18nText("命令已在后台启动 (PID: {v0})").replace("{v0}", str(proc.pid))
     except Exception as e:
-        return f"错误: {str(e)}"
-
-
+        return i18nText("错误: {v0}").replace("{v0}", str(e))
 # ============================================================
 # 新增工具：资源包专业知识
 # ============================================================
@@ -519,16 +506,13 @@ def _execute_get_mc_reference(pack_path: Path, topic: str = "", **kwargs) -> str
 
     if not topic:
         available = ", ".join(topic_map.keys())
-        return f"请指定查询主题。可用主题: {available}"
-
+        return i18nText("请指定查询主题。可用主题: {v0}").replace("{v0}", str(available))
     if topic in topic_map:
         title, content = topic_map[topic]
         return f"# {title}\n\n{content}"
 
     available = ", ".join(topic_map.keys())
-    return f"未知主题 '{topic}'。可用主题: {available}"
-
-
+    return i18nText("未知主题 '{v0}'。可用主题: {v1}").replace("{v0}", str(topic)).replace("{v1}", str(available))
 def _execute_validate_mcmeta_advanced(pack_path: Path, **kwargs) -> str:
     """对 pack.mcmeta 进行深度验证"""
     mcmeta_path = pack_path / "pack.mcmeta"
@@ -544,7 +528,7 @@ def _execute_validate_mcmeta_advanced(pack_path: Path, **kwargs) -> str:
         content = mcmeta_path.read_text(encoding="utf-8")
         data = json.loads(content)
     except json.JSONDecodeError as e:
-        return json.dumps({"valid": False, "errors": [f"JSON 格式错误: 行 {e.lineno}, 列 {e.colno}: {e.msg}"],
+        return json.dumps({"valid": False, "errors": [i18nText("行 {v0}, 列 {v1}: {v2}").replace("{v0}", str(e.lineno)).replace("{v1}", str(e.colno)).replace("{v2}", str(e.msg))],
                            "warnings": [], "suggestions": []}, ensure_ascii=False, indent=2)
     except Exception as e:
         return json.dumps({"valid": False, "errors": [f"读取文件失败: {str(e)}"],
@@ -652,8 +636,7 @@ def _execute_create_resource_template(pack_path: Path, template_type: str = "", 
 
     if not template_type:
         available = "mcmeta, directory_structure, language, model_block, model_item, blockstate_variants, blockstate_multipart, sounds, font"
-        return f"请指定模板类型。可用类型: {available}"
-
+        return i18nText("请指定模板类型。可用类型: {v0}").replace("{v0}", str(available))
     templates = {
         "mcmeta": _template_mcmeta,
         "directory_structure": _template_directory_structure,
@@ -668,14 +651,11 @@ def _execute_create_resource_template(pack_path: Path, template_type: str = "", 
 
     if template_type not in templates:
         available = ", ".join(templates.keys())
-        return f"未知模板类型 '{template_type}'。可用类型: {available}"
-
+        return i18nText("未知模板类型 '{v0}'。可用类型: {v1}").replace("{v0}", str(template_type)).replace("{v1}", str(available))
     try:
         return templates[template_type](pack_path, options)
     except Exception as e:
-        return f"错误: 创建模板失败 - {str(e)}"
-
-
+        return i18nText("错误: 创建模板失败 - {v0}").replace("{v0}", str(e))
 def _template_mcmeta(pack_path: Path, options: dict) -> str:
     """创建 pack.mcmeta 模板"""
     pack_format = options.get("pack_format", 34)
@@ -698,13 +678,10 @@ def _template_mcmeta(pack_path: Path, options: dict) -> str:
 
     mcmeta_path = pack_path / "pack.mcmeta"
     if mcmeta_path.exists():
-        return "错误: pack.mcmeta 已存在，不会覆盖。请先删除现有文件或直接编辑。"
-
+        return i18nText("错误: pack.mcmeta 已存在，不会覆盖。请先删除现有文件或直接编辑。")
     mcmeta_path.write_text(json.dumps(mcmeta, ensure_ascii=False, indent=2), encoding="utf-8")
     version_name = PACK_FORMAT_TABLE.get(pack_format, "未知版本")
-    return f"已创建 pack.mcmeta (pack_format={pack_format}, 对应 Minecraft {version_name})"
-
-
+    return i18nText("已创建 pack.mcmeta (pack_format={v0}, 对应 Minecraft {v1})").replace("{v0}", str(pack_format)).replace("{v1}", str(version_name))
 def _template_directory_structure(pack_path: Path, options: dict) -> str:
     """创建基础目录结构"""
     namespace = options.get("namespace", "minecraft")
@@ -732,8 +709,7 @@ def _template_directory_structure(pack_path: Path, options: dict) -> str:
             created.append(d)
 
     if not created:
-        return f"目录结构已存在（命名空间: {namespace}），无需创建。"
-
+        return i18nText("目录结构已存在（命名空间: {v0}），无需创建。").replace("{v0}", str(namespace))
     return f"已创建 {len(created)} 个目录（命名空间: {namespace}）:\n" + "\n".join(created)
 
 
@@ -747,17 +723,14 @@ def _template_language(pack_path: Path, options: dict) -> str:
     lang_path = lang_dir / f"{lang_code}.json"
 
     if lang_path.exists():
-        return f"错误: {lang_path.relative_to(pack_path)} 已存在，不会覆盖。"
-
+        return i18nText("错误: {v0} 已存在，不会覆盖。").replace("{v0}", str(lang_path.relative_to(pack_path)))
     template = {
         f"block.{namespace}.example_block": "示例方块",
         f"item.{namespace}.example_item": "示例物品",
         f"item.{namespace}.example_item.desc": "§7这是一个示例物品描述",
     }
     lang_path.write_text(json.dumps(template, ensure_ascii=False, indent=2), encoding="utf-8")
-    return f"已创建语言文件: assets/{namespace}/lang/{lang_code}.json (含 3 个示例翻译键)"
-
-
+    return i18nText("已创建语言文件: assets/{v0}/lang/{v1}.json (含 3 个示例翻译键)").replace("{v0}", str(namespace)).replace("{v1}", str(lang_code))
 def _template_model_block(pack_path: Path, options: dict) -> str:
     """创建方块模型模板"""
     namespace = options.get("namespace", "minecraft")
@@ -770,8 +743,7 @@ def _template_model_block(pack_path: Path, options: dict) -> str:
     model_path = model_dir / f"{block_name}.json"
 
     if model_path.exists():
-        return f"错误: {model_path.relative_to(pack_path)} 已存在，不会覆盖。"
-
+        return i18nText("错误: {v0} 已存在，不会覆盖。").replace("{v0}", str(model_path.relative_to(pack_path)))
     model = {
         "parent": parent,
         "textures": {
@@ -779,9 +751,7 @@ def _template_model_block(pack_path: Path, options: dict) -> str:
         }
     }
     model_path.write_text(json.dumps(model, ensure_ascii=False, indent=2), encoding="utf-8")
-    return f"已创建方块模型: assets/{namespace}/models/block/{block_name}.json (parent={parent})"
-
-
+    return i18nText("已创建方块模型: assets/{v0}/models/block/{v1}.json (parent={v2})").replace("{v0}", str(namespace)).replace("{v1}", str(block_name)).replace("{v2}", str(parent))
 def _template_model_item(pack_path: Path, options: dict) -> str:
     """创建物品模型模板"""
     namespace = options.get("namespace", "minecraft")
@@ -794,8 +764,7 @@ def _template_model_item(pack_path: Path, options: dict) -> str:
     model_path = model_dir / f"{item_name}.json"
 
     if model_path.exists():
-        return f"错误: {model_path.relative_to(pack_path)} 已存在，不会覆盖。"
-
+        return i18nText("错误: {v0} 已存在，不会覆盖。").replace("{v0}", str(model_path.relative_to(pack_path)))
     model = {
         "parent": parent,
         "textures": {
@@ -803,9 +772,7 @@ def _template_model_item(pack_path: Path, options: dict) -> str:
         }
     }
     model_path.write_text(json.dumps(model, ensure_ascii=False, indent=2), encoding="utf-8")
-    return f"已创建物品模型: assets/{namespace}/models/item/{item_name}.json (parent={parent})"
-
-
+    return i18nText("已创建物品模型: assets/{v0}/models/item/{v1}.json (parent={v2})").replace("{v0}", str(namespace)).replace("{v1}", str(item_name)).replace("{v2}", str(parent))
 def _template_blockstate_variants(pack_path: Path, options: dict) -> str:
     """创建方块状态 variants 模板"""
     namespace = options.get("namespace", "minecraft")
@@ -817,17 +784,14 @@ def _template_blockstate_variants(pack_path: Path, options: dict) -> str:
     bs_path = bs_dir / f"{block_name}.json"
 
     if bs_path.exists():
-        return f"错误: {bs_path.relative_to(pack_path)} 已存在，不会覆盖。"
-
+        return i18nText("错误: {v0} 已存在，不会覆盖。").replace("{v0}", str(bs_path.relative_to(pack_path)))
     bs = {
         "variants": {
             "": {"model": model_ref}
         }
     }
     bs_path.write_text(json.dumps(bs, ensure_ascii=False, indent=2), encoding="utf-8")
-    return f"已创建方块状态: assets/{namespace}/blockstates/{block_name}.json (variants 模式)"
-
-
+    return i18nText("已创建方块状态: assets/{v0}/blockstates/{v1}.json (variants 模式)").replace("{v0}", str(namespace)).replace("{v1}", str(block_name))
 def _template_blockstate_multipart(pack_path: Path, options: dict) -> str:
     """创建方块状态 multipart 模板"""
     namespace = options.get("namespace", "minecraft")
@@ -839,8 +803,7 @@ def _template_blockstate_multipart(pack_path: Path, options: dict) -> str:
     bs_path = bs_dir / f"{block_name}.json"
 
     if bs_path.exists():
-        return f"错误: {bs_path.relative_to(pack_path)} 已存在，不会覆盖。"
-
+        return i18nText("错误: {v0} 已存在，不会覆盖。").replace("{v0}", str(bs_path.relative_to(pack_path)))
     bs = {
         "multipart": [
             {"apply": {"model": model_ref}},
@@ -855,9 +818,7 @@ def _template_blockstate_multipart(pack_path: Path, options: dict) -> str:
         ]
     }
     bs_path.write_text(json.dumps(bs, ensure_ascii=False, indent=2), encoding="utf-8")
-    return f"已创建方块状态: assets/{namespace}/blockstates/{block_name}.json (multipart 模式)"
-
-
+    return i18nText("已创建方块状态: assets/{v0}/blockstates/{v1}.json (multipart 模式)").replace("{v0}", str(namespace)).replace("{v1}", str(block_name))
 def _template_sounds(pack_path: Path, options: dict) -> str:
     """创建 sounds.json 模板"""
     namespace = options.get("namespace", "minecraft")
@@ -866,8 +827,7 @@ def _template_sounds(pack_path: Path, options: dict) -> str:
 
     sounds_path = pack_path / "assets" / namespace / "sounds.json"
     if sounds_path.exists():
-        return f"错误: assets/{namespace}/sounds.json 已存在，不会覆盖。"
-
+        return i18nText("错误: assets/{v0}/sounds.json 已存在，不会覆盖。").replace("{v0}", str(namespace))
     sounds = {
         event_name: {
             "subtitle": f"subtitles.{event_name}",
@@ -886,9 +846,7 @@ def _template_sounds(pack_path: Path, options: dict) -> str:
     sounds_dir = pack_path / "assets" / namespace / "sounds"
     sounds_dir.mkdir(parents=True, exist_ok=True)
 
-    return f"已创建 sounds.json 和 sounds/ 目录 (事件: {event_name})"
-
-
+    return i18nText("已创建 sounds.json 和 sounds/ 目录 (事件: {v0})").replace("{v0}", str(event_name))
 def _template_font(pack_path: Path, options: dict) -> str:
     """创建字体定义模板"""
     namespace = options.get("namespace", "minecraft")
@@ -899,8 +857,7 @@ def _template_font(pack_path: Path, options: dict) -> str:
     font_path = font_dir / f"{font_name}.json"
 
     if font_path.exists():
-        return f"错误: {font_path.relative_to(pack_path)} 已存在，不会覆盖。"
-
+        return i18nText("错误: {v0} 已存在，不会覆盖。").replace("{v0}", str(font_path.relative_to(pack_path)))
     font = {
         "providers": [
             {
@@ -913,9 +870,7 @@ def _template_font(pack_path: Path, options: dict) -> str:
         ]
     }
     font_path.write_text(json.dumps(font, ensure_ascii=False, indent=2), encoding="utf-8")
-    return f"已创建字体定义: assets/{namespace}/font/{font_name}.json"
-
-
+    return i18nText("已创建字体定义: assets/{v0}/font/{v1}.json").replace("{v0}", str(namespace)).replace("{v1}", str(font_name))
 # ============================================================
 # 工具定义（OpenAI function calling 格式）
 # ============================================================
@@ -1288,10 +1243,10 @@ def execute_tool(pack_path: Path, tool_name: str, arguments: dict, **kwargs) -> 
     """
     executor = TOOL_EXECUTORS.get(tool_name)
     if executor is None:
-        return f"错误: 未知工具 '{tool_name}'"
+        return i18nText("错误: 未知工具 '{v0}'").replace("{v0}", str(tool_name))
     try:
         return executor(pack_path, **arguments, **kwargs)
     except TypeError as e:
-        return f"错误: 工具参数错误 - {str(e)}"
+        return i18nText("错误: 工具参数错误 - {v0}").replace("{v0}", str(e))
     except Exception as e:
-        return f"错误: 工具执行失败 - {str(e)}"
+        return i18nText("错误: 工具执行失败 - {v0}").replace("{v0}", str(e))

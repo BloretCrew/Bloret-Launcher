@@ -1,4 +1,3 @@
-from modules.i18n import i18nText
 """
 资源包 AI Agent 核心循环
 
@@ -22,6 +21,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Callable, Optional, List, Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from modules.i18n import i18nText
 
 from .agent_tools import (
     TOOL_DEFINITIONS, TOOL_EXECUTORS, execute_tool,
@@ -120,7 +121,7 @@ def run_sub_agent(
         result_text = sub_agent._current_text or ""
     except Exception as e:
         log.error(f"[SubAgent] 子 Agent 异常: {e}", exc_info=True)
-        result_text = f"子 Agent 执行出错: {str(e)}"
+        result_text = i18nText("子 Agent 执行出错: {v0}").replace("{v0}", str(e))
 
     log.info(f"[SubAgent] 子 Agent 完成, 结果长度={len(result_text)}")
     print(f"[SubAgent DEBUG] 完成, 结果长度={len(result_text)}")
@@ -203,7 +204,7 @@ class AgentLoop:
             print(f"[AgentLoop DEBUG] 循环异常: {e}")
             traceback.print_exc()
             if self.on_error:
-                self.on_error(f"Agent 执行出错: {str(e)}")
+                self.on_error(i18nText("Agent 执行出错: {v0}").replace("{v0}", str(e)))
         finally:
             log.info("[AgentLoop] run 结束，触发 on_done")
             print("[AgentLoop DEBUG] run 结束")
@@ -808,20 +809,22 @@ class AgentLoop:
             log_fn(f"[AgentLoop] HTTP 错误: status={status_code}, body={error_detail}", exc_info=True)
             print(f"[AgentLoop DEBUG] HTTP 错误: status={status_code}, body={error_detail}")
             if status_code == 401:
-                self._last_llm_error = "认证失败，请检查登录状态或选择其他模型"
+                self._last_llm_error = i18nText("认证失败，请检查登录状态或选择其他模型")
                 self._last_llm_retryable = False
             elif self._should_retry(status_code):
-                self._last_llm_error = f"请求失败 (HTTP {status_code})"
+                self._last_llm_error = i18nText("请求失败 (HTTP {v0})").replace("{v0}", str(status_code))
                 self._last_llm_retryable = True
                 return None
             else:
-                self._last_llm_error = f"请求失败 (HTTP {status_code}): {error_detail[:200]}"
+                self._last_llm_error = i18nText("请求失败 (HTTP {v0}): {v1}").replace(
+                    "{v0}", str(status_code)
+                ).replace("{v1}", error_detail[:200])
                 self._last_llm_retryable = False
             return None
         except requests.exceptions.RequestException as e:
             log.warning(f"[AgentLoop] 网络请求异常: {e}", exc_info=True)
             print(f"[AgentLoop DEBUG] 网络请求异常: {e}")
-            self._last_llm_error = f"网络请求失败: {str(e)}"
+            self._last_llm_error = i18nText("网络请求失败: {v0}").replace("{v0}", str(e))
             self._last_llm_retryable = True
             return None
 
@@ -921,7 +924,7 @@ class AgentLoop:
 
         except Exception as e:
             log.warning(f"SSE 解析异常: {e}", exc_info=True)
-            self._last_llm_error = f"流式响应解析失败: {str(e)}"
+            self._last_llm_error = i18nText("流式响应解析失败: {v0}").replace("{v0}", str(e))
             self._last_llm_retryable = True
             return None
 
@@ -1018,7 +1021,7 @@ def generate_title(api_url: str, auth_header: str, user_message: str, model: str
                 continue
             raise
     else:
-        raise last_error or RuntimeError("标题生成失败")
+        raise last_error or RuntimeError(i18nText("标题生成失败"))
 
     log.info(f"[Title] 生成标题: '{title}'")
     return title
