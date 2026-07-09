@@ -1447,6 +1447,27 @@
     "Bloret Launcher 遵循 <a href='https://www.minecraft.net/zh-hans/eula'>Mojang Eula (Minecraft 最终用户许可协议)</a> ，Bloret Launcher 的 微软登录 功能已获 Mojang 批准，Bloret Launcher 本身未包含 Minecraft 二进制文件和其他资源文件。Bloret Launcher 是无广告免费开源软件。我们鼓励各位玩家购买 <a href='https://www.minecraft.net/zh-hans/choose-your-game'>Minecraft 正版账户</a> 进行游玩。<br><br>": "Bloret Launcher follows the <a href='https://www.minecraft.net/en-us/eula'>Mojang EULA</a>. Microsoft sign-in is approved by Mojang. Bloret Launcher does not ship Minecraft binaries or assets. It is free and ad-free open source. Please buy a <a href='https://www.minecraft.net/en-us/store/minecraft-java-bedrock-edition-pc'>legitimate Minecraft account</a> to play.<br><br>",
     "「盛夏！新启？百络谷！」": "「Midsummer! New start? Bloret Valley!」",
     "要提交问题，请前往: <a href='https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose'>https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose</a><br><br>": "Report issues: <a href='https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose'>https://github.com/BloretCrew/Bloret-Launcher/issues/new/choose</a><br><br>",
-    "Bloret Launcher Website: <a href='https://launcher.bloret.net/'>https://launcher.bloret.net/</a><br>": "Bloret Launcher Website: <a href='https://launcher.bloret.net/'>https://launcher.bloret.net/</a><br>"
+    "Bloret Launcher Website: <a href='https://launcher.bloret.net/'>https://launcher.bloret.net/</a><br>": "Bloret Launcher Website: <a href='https://launcher.bloret.net/'>https://launcher.bloret.net/</a><br>",
+    "供应商错误": "Provider error",
+    "已设为默认": "Set as default",
+    "未找到供应商": "Provider not found",
+    "留空则不修改密钥": "Leave blank to keep current key",
+    "AI 后端未就绪，无法管理供应商": "AI backend is not ready; cannot manage providers",
+    "从目录添加": "Add from catalog",
+    "手动添加": "Add manually",
+    "手动添加 OpenAI 兼容供应商": "Add OpenAI-compatible provider manually",
+    "供应商 ID（唯一标识）": "Provider ID (unique)",
+    "显示名称": "Display name",
+    "API Base URL": "API Base URL",
+    "模型列表（每行一个模型 ID）": "Models (one model ID per line)",
+    "编辑供应商": "Edit provider",
+    "供应商 ID: ": "Provider ID: ",
+    "供应商 ID 无效，请使用字母、数字、下划线或连字符": "Invalid provider ID. Use letters, numbers, underscores or hyphens.",
+    "不能覆盖内置供应商: {v0}": "Cannot overwrite built-in provider: {v0}",
+    "供应商已存在: {v0}": "Provider already exists: {v0}",
+    "请填写 API Base URL": "Please enter API Base URL",
+    "请填写 API 密钥": "Please enter API key",
+    "请至少添加一个模型（每行一个模型 ID）": "Add at least one model (one model ID per line)",
+    "不能修改内置供应商": "Cannot modify built-in providers"
   }
 }

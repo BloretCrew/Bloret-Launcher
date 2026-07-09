@@ -41,7 +41,74 @@ FluentPage {
             console.log("[Settings] Agent providers changed, reloading")
             loadSettingsProviders()
         }
+        function onErrorOccurred(msg) {
+            console.log("[Settings] Agent error:", msg)
+            providerInfoBar.severity = Severity.Error
+            providerInfoBar.title = Backend ? Backend.tr("供应商错误") : "供应商错误"
+            providerInfoBar.text = msg
+            providerInfoBar.visible = true
+        }
     }
+
+    function setDefaultProvider(key) {
+        console.log("[Settings] set default provider:", key)
+        if (Backend)
+            Backend.setGlobalAIProvider(key)
+        loadGlobalModels(key, "")
+        // sync combo index
+        for (var j = 0; j < settingsGlobalProviderModel.count; j++) {
+            if (settingsGlobalProviderModel.get(j).key === key) {
+                settingsGlobalProviderCombo.currentIndex = j
+                break
+            }
+        }
+        providerInfoBar.severity = Severity.Success
+        providerInfoBar.title = Backend ? Backend.tr("已设为默认") : "已设为默认"
+        providerInfoBar.text = key
+        providerInfoBar.visible = true
+    }
+
+    function openEditProvider(key) {
+        console.log("[Settings] open edit provider:", key)
+        if (!Agent) return
+        try {
+            var detail = JSON.parse(Agent.getProviderDetail(key))
+            if (detail.error) {
+                providerInfoBar.severity = Severity.Error
+                providerInfoBar.title = Backend ? Backend.tr("供应商错误") : "供应商错误"
+                providerInfoBar.text = Backend ? Backend.tr("未找到供应商") : "未找到供应商"
+                providerInfoBar.visible = true
+                return
+            }
+            settingsEditProviderDialog.editKey = detail.key || key
+            settingsEditNameField.text = detail.name || ""
+            settingsEditUrlField.text = detail.api || ""
+            settingsEditKeyField.text = ""
+            settingsEditKeyField.placeholderText = detail.has_key
+                ? (Backend ? Backend.tr("留空则不修改密钥") : "留空则不修改密钥")
+                : (Backend ? Backend.tr("sk-...") : "sk-...")
+            var lines = []
+            var models = detail.models || []
+            for (var i = 0; i < models.length; i++)
+                lines.push(models[i].id || models[i].name || "")
+            settingsEditModelsArea.text = lines.join("\n")
+            settingsEditProviderDialog.open()
+        } catch (e) {
+            console.log("[Settings] openEditProvider error:", e)
+        }
+    }
+
+    function modelsTextToJson(text) {
+        var lines = (text || "").split("\n")
+        var arr = []
+        for (var i = 0; i < lines.length; i++) {
+            var mid = lines[i].trim()
+            if (mid.length > 0 && mid.charAt(0) !== "#")
+                arr.push({ id: mid, name: mid })
+        }
+        return JSON.stringify(arr)
+    }
+
 
     function openCategory(id) {
         console.log("[Settings] open category:", id)
@@ -983,6 +1050,13 @@ FluentPage {
             spacing: 4
             visible: currentCategory === "ai"
 
+            InfoBar {
+                id: providerInfoBar
+                Layout.fillWidth: true
+                visible: false
+                timeout: 5000
+            }
+
             SettingCard {
                 Layout.fillWidth: true
                 title: Backend ? Backend.tr("默认 AI 供应商") : "默认 AI 供应商"
@@ -1024,8 +1098,20 @@ FluentPage {
                 Button {
                     text: _addProviderBtn
                     highlighted: true
-                    onClicked: settingsAddProviderDialog.open()
+                    enabled: Agent !== null
+                    onClicked: {
+                        console.log("[Settings] open add provider dialog")
+                        settingsAddProviderDialog.open()
+                    }
                 }
+            }
+
+            Label {
+                visible: Agent === null
+                text: Backend ? Backend.tr("AI 后端未就绪，无法管理供应商") : "AI 后端未就绪，无法管理供应商"
+                font.pixelSize: 12
+                color: Theme.currentTheme.colors.textSecondaryColor
+                Layout.fillWidth: true
             }
 
             Repeater {
@@ -1033,28 +1119,40 @@ FluentPage {
                 delegate: SettingCard {
                     Layout.fillWidth: true
                     title: model.name
-                    description: model.builtin ? _builtinLabel + " · " + model.model_count + (Backend ? Backend.tr(" 模型") : " 模型") : _customLabel + " · " + model.model_count + (Backend ? Backend.tr(" 模型") : " 模型")
-                    icon.name: "ic_fluent_person_20_regular"
+                    description: (model.builtin ? _builtinLabel : _customLabel)
+                        + " · " + model.model_count + (Backend ? Backend.tr(" 模型") : " 模型")
+                        + (model.builtin ? "" : (model.has_key ? " · ✓" : ""))
+                    icon.name: model.builtin ? "ic_fluent_bot_20_regular" : "ic_fluent_person_20_regular"
                     RowLayout {
-                        spacing: 8
-                        Label {
-                            text: model.has_key ? "✓" : ""
-                            color: Theme.accentColor || "#0078D4"
-                            font.pixelSize: 14
-                            Layout.alignment: Qt.AlignVCenter
-                            visible: !model.builtin
+                        spacing: 4
+                        Button {
+                            flat: true
+                            text: Backend ? Backend.tr("默认") : "默认"
+                            font.pixelSize: 11
+                            onClicked: settingsPage.setDefaultProvider(model.key)
                         }
                         Button {
                             flat: true
-                            text: "✕"
+                            text: Backend ? Backend.tr("编辑") : "编辑"
+                            font.pixelSize: 11
                             visible: !model.builtin
-                            Layout.preferredWidth: 28
-                            Layout.preferredHeight: 28
+                            onClicked: settingsPage.openEditProvider(model.key)
+                        }
+                        Button {
+                            flat: true
+                            text: Backend ? Backend.tr("删除") : "删除"
+                            font.pixelSize: 11
+                            visible: !model.builtin
                             onClicked: {
                                 if (Agent) {
                                     console.log("[Settings] remove provider:", model.key)
-                                    Agent.removeProvider(model.key)
-                                    loadSettingsProviders()
+                                    if (Agent.removeProvider(model.key)) {
+                                        loadSettingsProviders()
+                                        providerInfoBar.severity = Severity.Success
+                                        providerInfoBar.title = Backend ? Backend.tr("已删除") : "已删除"
+                                        providerInfoBar.text = model.name
+                                        providerInfoBar.visible = true
+                                    }
                                 }
                             }
                         }
@@ -1227,6 +1325,8 @@ FluentPage {
         modal: true
         width: 520
         closePolicy: Popup.CloseOnEscape
+        // mode: "catalog" | "manual"
+        property string mode: "catalog"
         property int step: 1
 
         ListModel { id: settingsModelsDevModel }
@@ -1234,19 +1334,31 @@ FluentPage {
         property string apiStep2Id: ""
 
         onOpened: {
-            console.log("[Settings] add provider dialog opened")
+            console.log("[Settings] add provider dialog opened, mode=", mode)
             step = 1
+            mode = "catalog"
             settingsApiKeyField.text = ""
             settingsProviderSearchField.text = ""
             apiStep2Id = ""
+            settingsManualIdField.text = ""
+            settingsManualNameField.text = ""
+            settingsManualUrlField.text = "https://api.openai.com/v1"
+            settingsManualKeyField.text = ""
+            settingsManualModelsArea.text = ""
             settingsLoadLabel.visible = true
             settingsModelsDevModel.clear()
             settingsFilteredModel.clear()
+            loadCatalogProviders()
+        }
+
+        function loadCatalogProviders() {
+            settingsLoadLabel.visible = true
             Qt.callLater(function() {
                 try {
                     if (!Agent) return
                     var json = Agent.fetchModelsDev()
                     var providers = JSON.parse(json)
+                    settingsModelsDevModel.clear()
                     for (var i = 0; i < providers.length; i++)
                         settingsModelsDevModel.append(providers[i])
                     filterProv()
@@ -1271,9 +1383,37 @@ FluentPage {
         contentItem: ColumnLayout {
             spacing: 12
 
+            // Mode switch
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Button {
+                    text: Backend ? Backend.tr("从目录添加") : "从目录添加"
+                    highlighted: settingsAddProviderDialog.mode === "catalog"
+                    flat: settingsAddProviderDialog.mode !== "catalog"
+                    onClicked: {
+                        settingsAddProviderDialog.mode = "catalog"
+                        settingsAddProviderDialog.step = 1
+                        if (settingsModelsDevModel.count === 0)
+                            settingsAddProviderDialog.loadCatalogProviders()
+                    }
+                }
+                Button {
+                    text: Backend ? Backend.tr("手动添加") : "手动添加"
+                    highlighted: settingsAddProviderDialog.mode === "manual"
+                    flat: settingsAddProviderDialog.mode !== "manual"
+                    onClicked: {
+                        settingsAddProviderDialog.mode = "manual"
+                        settingsAddProviderDialog.step = 1
+                    }
+                }
+            }
+
+            // ===== Catalog: step 1 =====
             ColumnLayout {
-                visible: settingsAddProviderDialog.step === 1
+                visible: settingsAddProviderDialog.mode === "catalog" && settingsAddProviderDialog.step === 1
                 spacing: 10
+                Layout.fillWidth: true
 
                 Text {
                     text: _selectProviderLabel
@@ -1302,7 +1442,7 @@ FluentPage {
 
                 Frame {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Math.min(settingsFilteredModel.count * 40 + 8, 280)
+                    Layout.preferredHeight: Math.min(Math.max(settingsFilteredModel.count, 1) * 40 + 8, 280)
                     visible: settingsFilteredModel.count > 0
                     background: Rectangle {
                         radius: 6
@@ -1343,9 +1483,11 @@ FluentPage {
                 }
             }
 
+            // ===== Catalog: step 2 =====
             ColumnLayout {
-                visible: settingsAddProviderDialog.step === 2
+                visible: settingsAddProviderDialog.mode === "catalog" && settingsAddProviderDialog.step === 2
                 spacing: 10
+                Layout.fillWidth: true
 
                 Text {
                     text: (Backend ? Backend.tr("供应商: ") : "供应商: ") + settingsAddProviderDialog.apiStep2Id
@@ -1378,16 +1520,104 @@ FluentPage {
                 }
             }
 
+            // ===== Manual form =====
+            ColumnLayout {
+                visible: settingsAddProviderDialog.mode === "manual"
+                spacing: 8
+                Layout.fillWidth: true
+
+                Text {
+                    text: Backend ? Backend.tr("手动添加 OpenAI 兼容供应商") : "手动添加 OpenAI 兼容供应商"
+                    font.pixelSize: 13
+                    font.bold: true
+                    color: Theme.currentTheme.colors.textColor
+                }
+
+                Text {
+                    text: Backend ? Backend.tr("供应商 ID（唯一标识）") : "供应商 ID（唯一标识）"
+                    font.pixelSize: 12
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                }
+                TextField {
+                    id: settingsManualIdField
+                    Layout.fillWidth: true
+                    placeholderText: "my-openai"
+                    clearEnabled: true
+                }
+
+                Text {
+                    text: Backend ? Backend.tr("显示名称") : "显示名称"
+                    font.pixelSize: 12
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                }
+                TextField {
+                    id: settingsManualNameField
+                    Layout.fillWidth: true
+                    placeholderText: "My OpenAI"
+                    clearEnabled: true
+                }
+
+                Text {
+                    text: Backend ? Backend.tr("API Base URL") : "API Base URL"
+                    font.pixelSize: 12
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                }
+                TextField {
+                    id: settingsManualUrlField
+                    Layout.fillWidth: true
+                    placeholderText: "https://api.openai.com/v1"
+                    clearEnabled: true
+                }
+
+                Text {
+                    text: _apiKeyLabel
+                    font.pixelSize: 12
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                }
+                TextField {
+                    id: settingsManualKeyField
+                    Layout.fillWidth: true
+                    placeholderText: _apiKeyPlaceholder
+                    echoMode: TextInput.Password
+                    clearEnabled: true
+                }
+
+                Text {
+                    text: Backend ? Backend.tr("模型列表（每行一个模型 ID）") : "模型列表（每行一个模型 ID）"
+                    font.pixelSize: 12
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                }
+                TextArea {
+                    id: settingsManualModelsArea
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 100
+                    placeholderText: "gpt-4o-mini\ngpt-4o"
+                    wrapMode: TextEdit.NoWrap
+                }
+
+                Text {
+                    text: _apiKeyNotice
+                    font.pixelSize: 10
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+            }
+
             RowLayout {
                 Layout.fillWidth: true
                 Button {
-                    text: settingsAddProviderDialog.step === 1 ? _cancelBtn : _backBtn
+                    text: {
+                        if (settingsAddProviderDialog.mode === "catalog" && settingsAddProviderDialog.step === 2)
+                            return _backBtn
+                        return _cancelBtn
+                    }
                     flat: true
                     onClicked: {
-                        if (settingsAddProviderDialog.step === 1)
-                            settingsAddProviderDialog.close()
-                        else
+                        if (settingsAddProviderDialog.mode === "catalog" && settingsAddProviderDialog.step === 2)
                             settingsAddProviderDialog.step = 1
+                        else
+                            settingsAddProviderDialog.close()
                     }
                 }
                 Item { Layout.fillWidth: true }
@@ -1395,13 +1625,143 @@ FluentPage {
                     id: settingsConfirmBtn
                     text: _addBtn
                     highlighted: true
-                    visible: settingsAddProviderDialog.step === 2
+                    visible: settingsAddProviderDialog.mode === "catalog" && settingsAddProviderDialog.step === 2
                     enabled: settingsApiKeyField.text.trim().length > 0
                     onClicked: {
                         if (Agent && Agent.addProvider(settingsAddProviderDialog.apiStep2Id, settingsApiKeyField.text.trim())) {
-                            console.log("[Settings] provider added:", settingsAddProviderDialog.apiStep2Id)
+                            console.log("[Settings] catalog provider added:", settingsAddProviderDialog.apiStep2Id)
                             settingsAddProviderDialog.close()
                             loadSettingsProviders()
+                            providerInfoBar.severity = Severity.Success
+                            providerInfoBar.title = Backend ? Backend.tr("添加成功") : "添加成功"
+                            providerInfoBar.text = settingsAddProviderDialog.apiStep2Id
+                            providerInfoBar.visible = true
+                        }
+                    }
+                }
+                Button {
+                    text: _addBtn
+                    highlighted: true
+                    visible: settingsAddProviderDialog.mode === "manual"
+                    enabled: settingsManualIdField.text.trim().length > 0
+                             && settingsManualUrlField.text.trim().length > 0
+                             && settingsManualKeyField.text.trim().length > 0
+                             && settingsManualModelsArea.text.trim().length > 0
+                    onClicked: {
+                        if (!Agent) return
+                        var key = settingsManualIdField.text.trim()
+                        var name = settingsManualNameField.text.trim() || key
+                        var url = settingsManualUrlField.text.trim()
+                        var apiKey = settingsManualKeyField.text.trim()
+                        var modelsJson = settingsPage.modelsTextToJson(settingsManualModelsArea.text)
+                        console.log("[Settings] addCustomProvider", key, url)
+                        if (Agent.addCustomProvider(key, name, url, apiKey, modelsJson)) {
+                            settingsAddProviderDialog.close()
+                            loadSettingsProviders()
+                            providerInfoBar.severity = Severity.Success
+                            providerInfoBar.title = Backend ? Backend.tr("添加成功") : "添加成功"
+                            providerInfoBar.text = name
+                            providerInfoBar.visible = true
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: settingsEditProviderDialog
+        title: Backend ? Backend.tr("编辑供应商") : "编辑供应商"
+        modal: true
+        width: 520
+        closePolicy: Popup.CloseOnEscape
+        property string editKey: ""
+
+        contentItem: ColumnLayout {
+            spacing: 8
+
+            Text {
+                text: (Backend ? Backend.tr("供应商 ID: ") : "供应商 ID: ") + settingsEditProviderDialog.editKey
+                font.pixelSize: 13
+                font.bold: true
+                color: Theme.currentTheme.colors.textColor
+            }
+
+            Text {
+                text: Backend ? Backend.tr("显示名称") : "显示名称"
+                font.pixelSize: 12
+                color: Theme.currentTheme.colors.textSecondaryColor
+            }
+            TextField {
+                id: settingsEditNameField
+                Layout.fillWidth: true
+                clearEnabled: true
+            }
+
+            Text {
+                text: Backend ? Backend.tr("API Base URL") : "API Base URL"
+                font.pixelSize: 12
+                color: Theme.currentTheme.colors.textSecondaryColor
+            }
+            TextField {
+                id: settingsEditUrlField
+                Layout.fillWidth: true
+                clearEnabled: true
+            }
+
+            Text {
+                text: _apiKeyLabel
+                font.pixelSize: 12
+                color: Theme.currentTheme.colors.textSecondaryColor
+            }
+            TextField {
+                id: settingsEditKeyField
+                Layout.fillWidth: true
+                echoMode: TextInput.Password
+                clearEnabled: true
+            }
+
+            Text {
+                text: Backend ? Backend.tr("模型列表（每行一个模型 ID）") : "模型列表（每行一个模型 ID）"
+                font.pixelSize: 12
+                color: Theme.currentTheme.colors.textSecondaryColor
+            }
+            TextArea {
+                id: settingsEditModelsArea
+                Layout.fillWidth: true
+                Layout.preferredHeight: 100
+                wrapMode: TextEdit.NoWrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: _cancelBtn
+                    flat: true
+                    onClicked: settingsEditProviderDialog.close()
+                }
+                Item { Layout.fillWidth: true }
+                Button {
+                    text: Backend ? Backend.tr("保存") : "保存"
+                    highlighted: true
+                    enabled: settingsEditUrlField.text.trim().length > 0
+                             && settingsEditModelsArea.text.trim().length > 0
+                    onClicked: {
+                        if (!Agent) return
+                        var modelsJson = settingsPage.modelsTextToJson(settingsEditModelsArea.text)
+                        console.log("[Settings] updateProvider", settingsEditProviderDialog.editKey)
+                        if (Agent.updateProvider(
+                                settingsEditProviderDialog.editKey,
+                                settingsEditNameField.text.trim(),
+                                settingsEditUrlField.text.trim(),
+                                settingsEditKeyField.text.trim(),
+                                modelsJson)) {
+                            settingsEditProviderDialog.close()
+                            loadSettingsProviders()
+                            providerInfoBar.severity = Severity.Success
+                            providerInfoBar.title = Backend ? Backend.tr("已保存") : "已保存"
+                            providerInfoBar.text = settingsEditProviderDialog.editKey
+                            providerInfoBar.visible = true
                         }
                     }
                 }
@@ -1409,3 +1769,4 @@ FluentPage {
         }
     }
 }
+

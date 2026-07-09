@@ -438,6 +438,7 @@ class BlorikoBackend(QObject):
 
     @Slot(result=str)
     def getProviders(self):
+        self._custom_providers = _load_custom_providers()
         result = []
         for key, info in BUILTIN_PROVIDERS.items():
             if info.get("needs_auth"):

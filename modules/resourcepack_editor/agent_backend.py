@@ -188,6 +188,64 @@ def _save_custom_providers(providers: dict):
         log.warning(f"保存自定义供应商失败: {e}")
 
 
+def _normalize_provider_key(key: str) -> str:
+    """规范化供应商 key：小写，仅保留 [a-z0-9_-]"""
+    import re
+    key = (key or "").strip().lower()
+    key = re.sub(r"[^a-z0-9_-]+", "-", key)
+    key = re.sub(r"-+", "-", key).strip("-_")
+    return key
+
+
+def _normalize_api_url(api_url: str) -> str:
+    """补全 OpenAI 兼容 chat/completions 路径"""
+    api_url = (api_url or "").strip()
+    if not api_url:
+        return ""
+    if not api_url.endswith("/"):
+        api_url += "/"
+    if "chat/completions" not in api_url:
+        api_url += "chat/completions"
+    return api_url
+
+
+def _parse_models_json(models_json: str) -> list:
+    """解析 models_json 为 [{id, name, tool_call}, ...]"""
+    raw = (models_json or "").strip()
+    if not raw:
+        return []
+    models = []
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list):
+            for item in data:
+                if isinstance(item, str):
+                    mid = item.strip()
+                    if mid:
+                        models.append({"id": mid, "name": mid, "tool_call": True})
+                elif isinstance(item, dict):
+                    mid = str(item.get("id") or item.get("name") or "").strip()
+                    if not mid:
+                        continue
+                    name = str(item.get("name") or mid).strip()
+                    models.append({"id": mid, "name": name, "tool_call": True})
+    except json.JSONDecodeError:
+        # 每行一个 model id
+        for line in raw.splitlines():
+            mid = line.strip()
+            if mid and not mid.startswith("#"):
+                models.append({"id": mid, "name": mid, "tool_call": True})
+    # 去重保序
+    seen = set()
+    unique = []
+    for m in models:
+        if m["id"] in seen:
+            continue
+        seen.add(m["id"])
+        unique.append(m)
+    return unique
+
+
 def _fetch_providers_from_models_dev() -> list:
     """从 models.dev 获取供应商列表（仅返回支持 tool_call 的）"""
     try:
@@ -430,6 +488,8 @@ class AgentBackend(QObject):
     @Slot(result=str)
     def getProviders(self):
         """获取所有供应商列表（内置 + 自定义）"""
+        # 每次列表时从磁盘刷新，便于设置页与其它组件共享 ai_providers.json
+        self._custom_providers = _load_custom_providers()
         result = []
         # 内置
         for key, info in BUILTIN_PROVIDERS.items():
@@ -466,6 +526,7 @@ class AgentBackend(QObject):
         return self._getModelsByKey(provider_key)
 
     def _getModelsByKey(self, key):
+        self._custom_providers = _load_custom_providers()
         if key in BUILTIN_PROVIDERS:
             models = BUILTIN_PROVIDERS[key].get("models", [])
         elif key in self._custom_providers:
@@ -589,8 +650,125 @@ class AgentBackend(QObject):
             del self._custom_providers[provider_key]
             _save_custom_providers(self._custom_providers)
             self.providersChanged.emit()
+            log.info(f"已删除供应商: {provider_key}")
             return True
         return False
+
+    @Slot(str, str, str, str, str, result=bool)
+    def addCustomProvider(self, key, name, api_url, api_key, models_json):
+        """手动添加 OpenAI 兼容自定义供应商（不依赖 models.dev）"""
+        provider_key = _normalize_provider_key(key)
+        display_name = (name or "").strip() or provider_key
+        api_key = (api_key or "").strip()
+        log.info(f"[Agent] addCustomProvider key={provider_key!r} name={display_name!r}")
+
+        if not provider_key:
+            self.errorOccurred.emit(i18nText("供应商 ID 无效，请使用字母、数字、下划线或连字符"))
+            return False
+        if provider_key in BUILTIN_PROVIDERS:
+            self.errorOccurred.emit(i18nText("不能覆盖内置供应商: {v0}").replace("{v0}", provider_key))
+            return False
+        if provider_key in self._custom_providers:
+            self.errorOccurred.emit(i18nText("供应商已存在: {v0}").replace("{v0}", provider_key))
+            return False
+
+        normalized_url = _normalize_api_url(api_url)
+        if not normalized_url:
+            self.errorOccurred.emit(i18nText("请填写 API Base URL"))
+            return False
+        if not api_key:
+            self.errorOccurred.emit(i18nText("请填写 API 密钥"))
+            return False
+
+        models = _parse_models_json(models_json)
+        if not models:
+            self.errorOccurred.emit(i18nText("请至少添加一个模型（每行一个模型 ID）"))
+            return False
+
+        self._custom_providers[provider_key] = {
+            "id": provider_key,
+            "name": display_name,
+            "api": normalized_url,
+            "api_key": api_key,
+            "needs_auth": True,
+            "builtin": False,
+            "models": models,
+        }
+        _save_custom_providers(self._custom_providers)
+        self.providersChanged.emit()
+        log.info(f"已手动添加供应商: {provider_key} ({len(models)} 个模型)")
+        return True
+
+    @Slot(str, str, str, str, str, result=bool)
+    def updateProvider(self, key, name, api_url, api_key, models_json):
+        """更新已有自定义供应商。api_key 为空表示保留原密钥。"""
+        provider_key = _normalize_provider_key(key) if key else (key or "").strip()
+        # 编辑时 key 已存在，允许使用原始 key（避免过度规范化找不到）
+        if key and key in self._custom_providers:
+            provider_key = key
+        log.info(f"[Agent] updateProvider key={provider_key!r}")
+
+        if provider_key in BUILTIN_PROVIDERS:
+            self.errorOccurred.emit(i18nText("不能修改内置供应商"))
+            return False
+        if provider_key not in self._custom_providers:
+            self.errorOccurred.emit(i18nText("未找到供应商: {v0}").replace("{v0}", str(provider_key)))
+            return False
+
+        info = dict(self._custom_providers[provider_key])
+        display_name = (name or "").strip()
+        if display_name:
+            info["name"] = display_name
+
+        normalized_url = _normalize_api_url(api_url) if (api_url or "").strip() else info.get("api", "")
+        if not normalized_url:
+            self.errorOccurred.emit(i18nText("请填写 API Base URL"))
+            return False
+        info["api"] = normalized_url
+
+        new_key = (api_key or "").strip()
+        if new_key:
+            info["api_key"] = new_key
+
+        if (models_json or "").strip():
+            models = _parse_models_json(models_json)
+            if not models:
+                self.errorOccurred.emit(i18nText("请至少添加一个模型（每行一个模型 ID）"))
+                return False
+            info["models"] = models
+
+        self._custom_providers[provider_key] = info
+        _save_custom_providers(self._custom_providers)
+        self.providersChanged.emit()
+        log.info(f"已更新供应商: {provider_key}")
+        return True
+
+    @Slot(str, result=str)
+    def getProviderDetail(self, key):
+        """获取单个供应商详情（自定义含完整本地 api_key，便于编辑；内置不返回密钥）"""
+        if key in BUILTIN_PROVIDERS:
+            info = BUILTIN_PROVIDERS[key]
+            return json.dumps({
+                "key": key,
+                "name": info.get("name", key),
+                "builtin": True,
+                "api": info.get("api", ""),
+                "api_key": "",
+                "has_key": True,
+                "models": info.get("models", []),
+            }, ensure_ascii=False)
+        if key in self._custom_providers:
+            info = self._custom_providers[key]
+            return json.dumps({
+                "key": key,
+                "name": info.get("name", key),
+                "builtin": False,
+                "api": info.get("api", ""),
+                "api_key": info.get("api_key", ""),
+                "has_key": bool(info.get("api_key")),
+                "models": info.get("models", []),
+            }, ensure_ascii=False)
+        return json.dumps({"error": "not_found"}, ensure_ascii=False)
 
     # ========== 对话 ==========
 
