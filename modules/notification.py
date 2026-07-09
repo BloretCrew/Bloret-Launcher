@@ -113,22 +113,26 @@ def _send_bark(title: str, body: str, bark_url: str = None):
 
 def test_bark() -> str:
     """测试 Bark 推送，返回结果消息"""
+    from modules.i18n import i18nText
+
     cfg = _read_notifications_config()
     bark_url = cfg.get("bark_url", "")
     if not bark_url:
-        return "未配置 Bark URL"
+        return i18nText("未配置 Bark URL")
 
     bark_url = bark_url.rstrip("/")
     params = urllib.parse.urlencode({"icon": BARK_ICON})
-    url = f"{bark_url}/{urllib.parse.quote('Bark 测试')}/{urllib.parse.quote('来自 Bloret Launcher 的测试推送') }?{params}"
+    title = i18nText("Bark 测试")
+    body = i18nText("来自 Bloret Launcher 的测试推送")
+    url = f"{bark_url}/{urllib.parse.quote(title)}/{urllib.parse.quote(body)}?{params}"
     try:
         req = urllib.request.Request(url, method="GET")
         req.add_header("User-Agent", "Bloret-Launcher")
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = resp.read().decode("utf-8", errors="replace")
-        return "发送成功"
+        return i18nText("发送成功")
     except Exception as e:
-        return f"发送失败: {e}"
+        return i18nText("发送失败: {error}").replace("{error}", str(e))
 
 
 def send_notification(title: str, body: str, *, category: str = None, app_id: str = "Bloret Launcher"):

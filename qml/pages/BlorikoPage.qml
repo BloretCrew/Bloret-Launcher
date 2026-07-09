@@ -19,17 +19,17 @@ Item {
 
     // 情感状态 → emoji 映射
     property var emotionMap: ({
-        "neutral": "😌 平静",
-        "happy": "😊 开心",
-        "shy": "😳 害羞",
-        "angry": "😤 生气",
-        "sad": "😢 难过",
-        "excited": "🤩 兴奋",
-        "curious": "🤔 好奇"
+        "neutral": (Backend ? Backend.tr("😌 平静") : "😌 平静"),
+        "happy": (Backend ? Backend.tr("😊 开心") : "😊 开心"),
+        "shy": (Backend ? Backend.tr("😳 害羞") : "😳 害羞"),
+        "angry": (Backend ? Backend.tr("😤 生气") : "😤 生气"),
+        "sad": (Backend ? Backend.tr("😢 难过") : "😢 难过"),
+        "excited": (Backend ? Backend.tr("🤩 兴奋") : "🤩 兴奋"),
+        "curious": (Backend ? Backend.tr("🤔 好奇") : "🤔 好奇")
     })
 
     function getEmotionDisplay(emotion) {
-        return emotionMap[emotion] || "😌 平静"
+        return emotionMap[emotion] || (Backend ? Backend.tr("😌 平静") : "😌 平静")
     }
 
     function loadProviders() {
@@ -116,7 +116,7 @@ Item {
                 historyListModel.append({
                     filename: sessions[i].filename,
                     displayText: title.length > 0 ? title : dateStr,
-                    subText: title.length > 0 ? dateStr + " · " + sessions[i].message_count + " 条" : sessions[i].message_count + " 条"
+                    subText: title.length > 0 ? dateStr + " · " + sessions[i].message_count + (Backend ? Backend.tr(" 条") : " 条") : sessions[i].message_count + (Backend ? Backend.tr(" 条") : " 条")
                 })
             }
         } catch(e) {}
@@ -198,7 +198,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "历史对话"
+                            text: (Backend ? Backend.tr("历史对话") : "历史对话")
                             font.pixelSize: 13
                             font.bold: true
                             color: Theme.currentTheme.colors.textColor
@@ -265,7 +265,7 @@ Item {
                     // 空状态
                     Text {
                         anchors.centerIn: parent
-                        text: "暂无历史记录"
+                        text: (Backend ? Backend.tr("暂无历史记录") : "暂无历史记录")
                         font.pixelSize: 11
                         color: Theme.currentTheme.colors.textSecondaryColor
                         visible: historyListModel.count === 0
@@ -282,7 +282,7 @@ Item {
 
                     Button {
                         anchors.centerIn: parent
-                        text: "刷新列表"
+                        text: (Backend ? Backend.tr("刷新列表") : "刷新列表")
                         flat: true
                         font.pixelSize: 11
                         onClicked: loadHistoryList()
@@ -328,7 +328,7 @@ Item {
                     }
 
                     Text {
-                        text: "络可"
+                        text: (Backend ? Backend.tr("络可") : "络可")
                         font.pixelSize: 14
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
@@ -361,7 +361,7 @@ Item {
                     }
 
                     Text {
-                        text: Bloriko && Bloriko.busy ? "思考中..." : "就绪"
+                        text: Bloriko && Bloriko.busy ? (Backend ? Backend.tr("思考中...") : "思考中...") : (Backend ? Backend.tr("就绪") : "就绪")
                         font.pixelSize: 11
                         color: Bloriko && Bloriko.busy ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.textSecondaryColor
                     }
@@ -382,7 +382,7 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     Button {
-                        text: "新对话"
+                        text: (Backend ? Backend.tr("新对话") : "新对话")
                         flat: true
                         font.pixelSize: 11
                         enabled: Bloriko && !Bloriko.busy
@@ -422,7 +422,7 @@ Item {
 
                         Text {
                             Layout.alignment: Qt.AlignHCenter
-                            text: "络可"
+                            text: (Backend ? Backend.tr("络可") : "络可")
                             font.pixelSize: 20; font.bold: true
                             color: Theme.currentTheme.colors.textColor
                         }
@@ -430,7 +430,7 @@ Item {
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.maximumWidth: 260
-                            text: "哥哥好呀！络可在这里等你很久啦~(开心地挥挥小手)\n\n试试跟络可说：\n• 帮我创建一个文件\n• 搜索一下项目里的 TODO\n• 执行一个命令看看\n• 记住我的偏好是..."
+                            text: (Backend ? Backend.tr("哥哥好呀！络可在这里等你很久啦~(开心地挥挥小手)\n\n试试跟络可说：\n• 帮我创建一个文件\n• 搜索一下项目里的 TODO\n• 执行一个命令看看\n• 记住我的偏好是...") : "哥哥好呀！络可在这里等你很久啦~(开心地挥挥小手)\n\n试试跟络可说：\n• 帮我创建一个文件\n• 搜索一下项目里的 TODO\n• 执行一个命令看看\n• 记住我的偏好是...")
                             horizontalAlignment: Text.AlignHCenter
                             font.pixelSize: 11
                             lineHeight: 1.4
@@ -573,18 +573,18 @@ Item {
                                             } catch(e) { a = toolArgs || "" }
 
                                             var nameMap = {
-                                                "read_file": "读取",
-                                                "write_file": "写入",
-                                                "edit_file": "编辑",
-                                                "list_files": "列出文件",
-                                                "search_text": "搜索",
-                                                "get_directory_tree": "查看目录树",
-                                                "ask_user": "向用户提问",
-                                                "execute_command": "执行命令",
-                                                "execute_command_background": "后台执行",
-                                                "spawn_agent": "生成子 Agent",
-                                                "memory": "管理记忆",
-                                                "set_emotion": "更新情感"
+                                                "read_file": (Backend ? Backend.tr("读取") : "读取"),
+                                                "write_file": (Backend ? Backend.tr("写入") : "写入"),
+                                                "edit_file": (Backend ? Backend.tr("编辑") : "编辑"),
+                                                "list_files": (Backend ? Backend.tr("列出文件") : "列出文件"),
+                                                "search_text": (Backend ? Backend.tr("搜索") : "搜索"),
+                                                "get_directory_tree": (Backend ? Backend.tr("查看目录树") : "查看目录树"),
+                                                "ask_user": (Backend ? Backend.tr("向用户提问") : "向用户提问"),
+                                                "execute_command": (Backend ? Backend.tr("执行命令") : "执行命令"),
+                                                "execute_command_background": (Backend ? Backend.tr("后台执行") : "后台执行"),
+                                                "spawn_agent": (Backend ? Backend.tr("生成子 Agent") : "生成子 Agent"),
+                                                "memory": (Backend ? Backend.tr("管理记忆") : "管理记忆"),
+                                                "set_emotion": (Backend ? Backend.tr("更新情感") : "更新情感")
                                             }
                                             var displayName = nameMap[n] || n
                                             return a ? displayName + " " + a : displayName
@@ -640,7 +640,7 @@ Item {
                                         width: parent.width
                                         text: {
                                             var r = toolResult || ""
-                                            if (r.length > 500) r = r.substring(0, 500) + "\n... (已截断)"
+                                            if (r.length > 500) r = r.substring(0, 500) + (Backend ? Backend.tr("\n... (已截断)") : "\n... (已截断)")
                                             return r
                                         }
                                         font.pixelSize: 11
@@ -762,7 +762,7 @@ Item {
                             TextArea {
                                 id: inputField
                                 anchors.fill: parent; anchors.margins: 6
-                                placeholderText: "向络可说些什么... (Enter 发送, Shift+Enter 换行)"
+                                placeholderText: (Backend ? Backend.tr("向络可说些什么... (Enter 发送, Shift+Enter 换行)") : "向络可说些什么... (Enter 发送, Shift+Enter 换行)")
                                 wrapMode: TextArea.Wrap
                                 font.pixelSize: 13
                                 color: Theme.currentTheme.colors.textColor
@@ -813,12 +813,12 @@ Item {
     // 权限对话框
     Dialog {
         id: permDlg
-        title: "权限请求"; modal: true; width: 400; closePolicy: Popup.NoAutoClose
+        title: (Backend ? Backend.tr("权限请求") : "权限请求"); modal: true; width: 400; closePolicy: Popup.NoAutoClose
         property string pName: ""; property string pDesc: ""; property string pReason: ""
 
         contentItem: ColumnLayout {
             spacing: 10
-            Text { text: "络可想要执行写入操作："; font.pixelSize: 13; font.bold: true; color: Theme.currentTheme.colors.textColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            Text { text: (Backend ? Backend.tr("络可想要执行写入操作：") : "络可想要执行写入操作："); font.pixelSize: 13; font.bold: true; color: Theme.currentTheme.colors.textColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
             Rectangle {
                 Layout.fillWidth: true; Layout.preferredHeight: permTxt.implicitHeight + 12; radius: 6
                 color: Theme.currentTheme.colors.controlAltSecondaryColor || "#FFF3CD"
@@ -828,7 +828,7 @@ Item {
             ColumnLayout {
                 visible: permDlg.pReason.length > 0
                 spacing: 4
-                Text { text: "络可的理由："; font.pixelSize: 11; font.bold: true; color: Theme.currentTheme.colors.textSecondaryColor }
+                Text { text: (Backend ? Backend.tr("络可的理由：") : "络可的理由："); font.pixelSize: 11; font.bold: true; color: Theme.currentTheme.colors.textSecondaryColor }
                 Rectangle {
                     Layout.fillWidth: true; Layout.preferredHeight: Math.min(reasonTxt.implicitHeight + 12, 120); radius: 6
                     color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
@@ -842,8 +842,8 @@ Item {
                 }
             }
             RowLayout { Layout.fillWidth: true; spacing: 8
-                Button { text: "拒绝"; flat: true; Layout.fillWidth: true; onClicked: { permDlg.close(); if (Bloriko) Bloriko.denyPermission() } }
-                Button { text: "允许"; highlighted: true; Layout.fillWidth: true; onClicked: { permDlg.close(); if (Bloriko) Bloriko.approvePermission() } }
+                Button { text: (Backend ? Backend.tr("拒绝") : "拒绝"); flat: true; Layout.fillWidth: true; onClicked: { permDlg.close(); if (Bloriko) Bloriko.denyPermission() } }
+                Button { text: (Backend ? Backend.tr("允许") : "允许"); highlighted: true; Layout.fillWidth: true; onClicked: { permDlg.close(); if (Bloriko) Bloriko.approvePermission() } }
             }
         }
     }
@@ -851,7 +851,7 @@ Item {
     // AI 提问对话框
     Dialog {
         id: askDlg
-        title: "络可提问"; modal: true; width: 400; closePolicy: Popup.NoAutoClose
+        title: (Backend ? Backend.tr("络可提问") : "络可提问"); modal: true; width: 400; closePolicy: Popup.NoAutoClose
         property string qText: ""
         property string qType: "text"
         property var qOptions: []
@@ -862,25 +862,25 @@ Item {
             if (qType === "single_choice") {
                 if (showCustomInput) {
                     var ca = askCustomField.text.trim()
-                    return ca.length > 0 ? ca : "用户未回答"
+                    return ca.length > 0 ? ca : (Backend ? Backend.tr("用户未回答") : "用户未回答")
                 }
                 for (var key in selectedOptions) {
                     if (selectedOptions[key]) return key
                 }
-                return "用户未选择"
+                return (Backend ? Backend.tr("用户未选择") : "用户未选择")
             } else if (qType === "multiple_choice") {
                 if (showCustomInput) {
                     var ca2 = askCustomField2.text.trim()
-                    return ca2.length > 0 ? ca2 : "用户未回答"
+                    return ca2.length > 0 ? ca2 : (Backend ? Backend.tr("用户未回答") : "用户未回答")
                 }
                 var selected = []
                 for (var k in selectedOptions) {
                     if (selectedOptions[k]) selected.push(k)
                 }
-                return selected.length > 0 ? selected.join(", ") : "用户未选择"
+                return selected.length > 0 ? selected.join(", ") : (Backend ? Backend.tr("用户未选择") : "用户未选择")
             } else {
                 var a = askAnsField.text.trim()
-                return a.length > 0 ? a : "用户未回答"
+                return a.length > 0 ? a : (Backend ? Backend.tr("用户未回答") : "用户未回答")
             }
         }
 
@@ -966,7 +966,7 @@ Item {
                                 visible: askDlg.showCustomInput
                             }
                         }
-                        Text { text: "✏ 我想给出我的答案"; font.pixelSize: 13; font.italic: true; color: Theme.currentTheme.colors.textColor }
+                        Text { text: (Backend ? Backend.tr("✏ 我想给出我的答案") : "✏ 我想给出我的答案"); font.pixelSize: 13; font.italic: true; color: Theme.currentTheme.colors.textColor }
                     }
 
                     MouseArea {
@@ -980,7 +980,7 @@ Item {
                     Layout.fillWidth: true; Layout.preferredHeight: 56; radius: 6
                     color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
                     border.color: askCustomField.activeFocus ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.controlBorderColor; border.width: 1
-                    TextArea { id: askCustomField; anchors.fill: parent; anchors.margins: 6; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: TextArea.Wrap; placeholderText: "输入你的回答..."; background: Item {} }
+                    TextArea { id: askCustomField; anchors.fill: parent; anchors.margins: 6; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: TextArea.Wrap; placeholderText: (Backend ? Backend.tr("输入你的回答...") : "输入你的回答..."); background: Item {} }
                 }
             }
 
@@ -1051,7 +1051,7 @@ Item {
                                 visible: askDlg.showCustomInput
                             }
                         }
-                        Text { text: "✏ 我想给出我的答案"; font.pixelSize: 13; font.italic: true; color: Theme.currentTheme.colors.textColor }
+                        Text { text: (Backend ? Backend.tr("✏ 我想给出我的答案") : "✏ 我想给出我的答案"); font.pixelSize: 13; font.italic: true; color: Theme.currentTheme.colors.textColor }
                     }
 
                     MouseArea {
@@ -1065,7 +1065,7 @@ Item {
                     Layout.fillWidth: true; Layout.preferredHeight: 56; radius: 6
                     color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
                     border.color: askCustomField2.activeFocus ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.controlBorderColor; border.width: 1
-                    TextArea { id: askCustomField2; anchors.fill: parent; anchors.margins: 6; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: TextArea.Wrap; placeholderText: "输入你的回答..."; background: Item {} }
+                    TextArea { id: askCustomField2; anchors.fill: parent; anchors.margins: 6; font.pixelSize: 13; color: Theme.currentTheme.colors.textColor; wrapMode: TextArea.Wrap; placeholderText: (Backend ? Backend.tr("输入你的回答...") : "输入你的回答..."); background: Item {} }
                 }
             }
 
@@ -1079,9 +1079,9 @@ Item {
             }
 
             RowLayout { Layout.fillWidth: true; spacing: 8
-                Button { text: "取消"; flat: true; Layout.fillWidth: true; onClicked: { askDlg.close(); if (Bloriko) Bloriko.answerQuestion("用户取消") } }
+                Button { text: (Backend ? Backend.tr("取消") : "取消"); flat: true; Layout.fillWidth: true; onClicked: { askDlg.close(); if (Bloriko) Bloriko.answerQuestion((Backend ? Backend.tr("用户取消") : "用户取消")) } }
                 Button {
-                    text: askDlg.qType === "text" ? "发送" : "确认"; highlighted: true; Layout.fillWidth: true
+                    text: askDlg.qType === "text" ? (Backend ? Backend.tr("发送") : "发送") : (Backend ? Backend.tr("确认") : "确认"); highlighted: true; Layout.fillWidth: true
                     onClicked: {
                         var answer = askDlg.collectAnswer()
                         askDlg.close()

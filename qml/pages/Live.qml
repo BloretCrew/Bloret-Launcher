@@ -498,7 +498,7 @@ FluentPage {
                                     Label {
                                         id: lockIcon
                                         anchors.centerIn: parent
-                                        text: "锁"
+                                        text: t("锁")
                                         font.pixelSize: 11
                                     }
                                 }

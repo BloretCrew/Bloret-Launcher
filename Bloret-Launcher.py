@@ -390,7 +390,7 @@ class Backend(QObject):
         self._launch_session_id += 1
         self._current_launching_version = version  # 存储当前启动的版本
         launch_session_id = self._launch_session_id
-        self.launchDialogRequested.emit(f"正在启动 {version}")
+        self.launchDialogRequested.emit(i18nText("正在启动 {version}").replace("{version}", version))
 
         def is_current_session():
             return launch_session_id == self._launch_session_id
@@ -504,13 +504,17 @@ class Backend(QObject):
                         if p.returncode != 0 and not evt.is_set():
                             print(f"\n[错误] Minecraft {ver} 进程异常退出，返回码: {p.returncode}")
                             self.minecraftCrashDetected.emit(
-                                f"Minecraft {ver} 崩溃",
-                                f"进程异常退出 (返回码: {p.returncode})\n请查看上面的日志输出",
-                                f"进程异常退出，返回码: {p.returncode}"
+                                i18nText("Minecraft {ver} 崩溃").replace("{ver}", ver),
+                                i18nText("进程异常退出 (返回码: {code})\n请查看上面的日志输出").replace("{code}", str(p.returncode)),
+                                i18nText("进程异常退出，返回码: {code}").replace("{code}", str(p.returncode)),
                             )
                             try:
                                 from modules.notification import send_notification
-                                send_notification(f"Minecraft {ver} 崩溃", f"进程异常退出，返回码: {p.returncode}", category="launch_error")
+                                send_notification(
+                                    i18nText("Minecraft {ver} 崩溃").replace("{ver}", ver),
+                                    i18nText("进程异常退出，返回码: {code}").replace("{code}", str(p.returncode)),
+                                    category="launch_error",
+                                )
                             except Exception:
                                 pass
                     except Exception as e:
@@ -527,11 +531,15 @@ class Backend(QObject):
                     if window_found_event.is_set():
                         return
                     window_found_event.set()
-                    emit_progress(100, "已检测到 Minecraft 窗口，启动完成", "")
+                    emit_progress(100, i18nText("已检测到 Minecraft 窗口，启动完成"), "")
                     finish_launch(close_dialog=True)
                     try:
                         from modules.notification import send_notification
-                        send_notification("Minecraft 已就绪", f"Minecraft {version} 启动完成", category="launch_ready")
+                        send_notification(
+                            i18nText("Minecraft 已就绪"),
+                            i18nText("Minecraft {version} 启动完成").replace("{version}", version),
+                            category="launch_ready",
+                        )
                     except Exception:
                         pass
 
@@ -541,11 +549,19 @@ class Backend(QObject):
                 def monitor_timeout_guard():
                     if window_found_event.wait(310):
                         return
-                    emit_progress(100, "等待 Minecraft 窗口超时", "未检测到窗口，你可以继续后台等待或关闭此对话框后重试")
+                    emit_progress(
+                        100,
+                        i18nText("等待 Minecraft 窗口超时"),
+                        i18nText("未检测到窗口，你可以继续后台等待或关闭此对话框后重试"),
+                    )
                     finish_launch(close_dialog=False)
                     try:
                         from modules.notification import send_notification
-                        send_notification("启动超时", f"Minecraft {version} 窗口等待超时，请手动检查", category="launch_error")
+                        send_notification(
+                            i18nText("启动超时"),
+                            i18nText("Minecraft {version} 窗口等待超时，请手动检查").replace("{version}", version),
+                            category="launch_error",
+                        )
                     except Exception:
                         pass
 
@@ -555,16 +571,16 @@ class Backend(QObject):
                 import traceback
                 tb_str = traceback.format_exc()
                 traceback.print_exc()
-                emit_progress(100, f"启动失败: {e}", "")
+                emit_progress(100, i18nText("启动失败: {error}").replace("{error}", str(e)), "")
                 finish_launch(close_dialog=False)
                 self.minecraftCrashDetected.emit(
-                    f"启动失败",
+                    i18nText("启动失败"),
                     str(e),
                     tb_str
                 )
                 try:
                     from modules.notification import send_notification
-                    send_notification("启动失败", str(e), category="launch_error")
+                    send_notification(i18nText("启动失败"), str(e), category="launch_error")
                 except Exception:
                     pass
 
@@ -1679,7 +1695,7 @@ class Backend(QObject):
             try:
                 config_data = cfg.read()
                 if not config_data.get("Bloret_PassPort_Login", False):
-                    self.blorikoResponseReceived.emit("未登录: 请先登录 Bloret PassPort 以使用 AI 功能。")
+                    self.blorikoResponseReceived.emit(i18nText("未登录: 请先登录 Bloret PassPort 以使用 AI 功能。"))
                     return
                 
                 from modules.Bloriko import AskBloriko
@@ -1687,7 +1703,7 @@ class Backend(QObject):
                 self.blorikoResponseReceived.emit(response)
             except Exception as e:
                 print(f"Error in askBloriko: {e}")
-                self.blorikoResponseReceived.emit(f"错误: {str(e)}")
+                self.blorikoResponseReceived.emit(i18nText("错误: {error}").replace("{error}", str(e)))
         threading.Thread(target=run_ask, daemon=True).start()
 
     @Slot(str, bool)
@@ -1718,7 +1734,7 @@ class Backend(QObject):
             try:
                 config_data = cfg.read()
                 if not config_data.get("Bloret_PassPort_Login", False):
-                    self.blorikoModSuggestionReceived.emit("未登录: 请先登录 Bloret PassPort 以使用 AI 功能。", [])
+                    self.blorikoModSuggestionReceived.emit(i18nText("未登录: 请先登录 Bloret PassPort 以使用 AI 功能。"), [])
                     return
                 
                 from modules.Bloriko import AskBloriko
@@ -1747,7 +1763,7 @@ class Backend(QObject):
                 self.blorikoModSuggestionReceived.emit(clean_text, slugs)
             except Exception as e:
                 print(f"Error in askBlorikoForModsWithVersion: {e}")
-                self.blorikoModSuggestionReceived.emit(f"错误: {str(e)}", [])
+                self.blorikoModSuggestionReceived.emit(i18nText("错误: {error}").replace("{error}", str(e)), [])
         threading.Thread(target=run_ask, daemon=True).start()
 
     @Slot(result=list)
@@ -1814,7 +1830,7 @@ class Backend(QObject):
     def downloadVanilla(self, version, versionName):
         from modules.install import InstallMinecraftVersion
         print(f"Requested download Vanilla: {version} as {versionName}")
-        title = f"正在下载 Minecraft {version}"
+        title = i18nText("正在下载 Minecraft {version}").replace("{version}", version)
         self.downloadDialogRequested.emit(title)
         InstallMinecraftVersion(version, VersionName=versionName, backend=self)
 
@@ -1822,7 +1838,7 @@ class Backend(QObject):
     def downloadFabric(self, version, versionName):
         from modules.install import InstallMinecraftVersion
         print(f"Requested download Fabric: {version} as {versionName}")
-        title = f"正在下载 Minecraft {version} 和 Fabric Loader"
+        title = i18nText("正在下载 Minecraft {version} 和 Fabric Loader").replace("{version}", version)
         self.downloadDialogRequested.emit(title)
         InstallMinecraftVersion(version, Fabric_Loader=True, VersionName=versionName, backend=self)
 
@@ -1830,7 +1846,7 @@ class Backend(QObject):
     def downloadForge(self, version, versionName):
         from modules.install import InstallMinecraftVersion
         print(f"Requested download Forge: {version} as {versionName}")
-        title = f"正在下载 Minecraft {version} 和 Forge"
+        title = i18nText("正在下载 Minecraft {version} 和 Forge").replace("{version}", version)
         self.downloadDialogRequested.emit(title)
         InstallMinecraftVersion(version, VersionName=versionName, backend=self, Loader_Type="forge")
 
@@ -1838,7 +1854,7 @@ class Backend(QObject):
     def downloadNeoForge(self, version, versionName):
         from modules.install import InstallMinecraftVersion
         print(f"Requested download NeoForge: {version} as {versionName}")
-        title = f"正在下载 Minecraft {version} 和 NeoForge"
+        title = i18nText("正在下载 Minecraft {version} 和 NeoForge").replace("{version}", version)
         self.downloadDialogRequested.emit(title)
         InstallMinecraftVersion(version, VersionName=versionName, backend=self, Loader_Type="neoforge")
 
@@ -2107,7 +2123,11 @@ class Backend(QObject):
                     self.updateAvailable.emit(current_ver, latest_ver, update_text)
                     try:
                         from modules.notification import send_notification
-                        send_notification("发现新版本", f"Bloret Launcher {latest_ver} 已发布，点击查看详情", category="update")
+                        send_notification(
+                            i18nText("发现新版本"),
+                            i18nText("Bloret Launcher {version} 已发布，点击查看详情").replace("{version}", str(latest_ver)),
+                            category="update",
+                        )
                     except Exception:
                         pass
                 else:
@@ -2162,7 +2182,7 @@ class Backend(QObject):
                 self.updateFailed.emit(str(e))
                 try:
                     from modules.notification import send_notification
-                    send_notification("更新失败", str(e), category="update")
+                    send_notification(i18nText("更新失败"), str(e), category="update")
                 except Exception:
                     pass
 
@@ -2609,12 +2629,12 @@ class Backend(QObject):
         print("Requested start Easytier host")
         # For simplicity, using hardcoded/config-based name and secret
         def run_et():
-            self.easytierStatusChanged.emit("正在启动", "请稍候...")
+            self.easytierStatusChanged.emit(i18nText("正在启动"), i18nText("请稍候..."))
             res = StartEasytierServer("Bloret", "123456") # Example defaults
             if "." in res: # Looks like an IP
-                self.easytierStatusChanged.emit("已连接", f"您的虚拟 IP: {res}")
+                self.easytierStatusChanged.emit(i18nText("已连接"), i18nText("您的虚拟 IP: {ip}").replace("{ip}", res))
             else:
-                self.easytierStatusChanged.emit("错误", res)
+                self.easytierStatusChanged.emit(i18nText("错误"), res)
         threading.Thread(target=run_et, daemon=True).start()
 
     @Slot()
@@ -3052,7 +3072,7 @@ class Backend(QObject):
                     self.minecraftAccountsChanged.emit([])
                     self.syncStatusChanged.emit("success")
                 else:
-                    self.syncStatusChanged.emit("error: 同步失败，请检查是否已登录 Bloret PassPort")
+                    self.syncStatusChanged.emit("error: " + i18nText("同步失败，请检查是否已登录 Bloret PassPort"))
             except Exception as e:
                 print(f"Error syncing accounts: {e}")
                 self.syncStatusChanged.emit(f"error: {str(e)}")
@@ -3062,7 +3082,7 @@ class Backend(QObject):
     def getIpv6Address(self):
         from modules.setup_ui import get_ipv6_address
         addr = get_ipv6_address()
-        return addr if addr else "无法获取 IPv6 地址"
+        return addr if addr else i18nText("无法获取 IPv6 地址")
 
     @Slot(result=str)
     def checkIpv6Address(self):
@@ -3093,23 +3113,26 @@ class Backend(QObject):
         
         config_data = cfg.read()
         if not config_data.get("Bloret_PassPort_Login"):
-            self.easytierStatusChanged.emit("未登录", "请先在通行证页面登录")
+            self.easytierStatusChanged.emit(i18nText("未登录"), i18nText("请先在通行证页面登录"))
             return
 
         username = config_data.get("Bloret_PassPort_UserName", "")
         easytier_name = "BLClient" + username
         
         def run_et():
-            self.easytierStatusChanged.emit("正在启动", "请稍候...")
+            self.easytierStatusChanged.emit(i18nText("正在启动"), i18nText("请稍候..."))
             res = StartEasytierServer(easytier_name, password)
             if "." in res: # Success with IP (contains IP address)
-                self.easytierStatusChanged.emit("已连接", f"您的虚拟 IP: {res}\n共享端口: {port}")
-            elif res.startswith(i18nText("~")): # Success without IP (local direct mode)
+                self.easytierStatusChanged.emit(
+                    i18nText("已连接"),
+                    i18nText("您的虚拟 IP: {ip}\n共享端口: {port}").replace("{ip}", res).replace("{port}", str(port)),
+                )
+            elif res.startswith("~"): # Success without IP (local direct mode)
                 # 移除 ~ 前缀，显示友好提示
                 msg = res[1:]  # 移除 ~ 前缀
-                self.easytierStatusChanged.emit("已启动", msg)
+                self.easytierStatusChanged.emit(i18nText("已启动"), msg)
             else: # Error
-                self.easytierStatusChanged.emit("错误", res)
+                self.easytierStatusChanged.emit(i18nText("错误"), res)
         threading.Thread(target=run_et, daemon=True).start()
 
     @Slot(str, str)
@@ -3175,7 +3198,7 @@ class Backend(QObject):
                 if data is not None:
                     self.bbbsSummaryReceived.emit(data if isinstance(data, dict) else {"text": str(data)})
                 else:
-                    self.bbbsErrorOccurred.emit("无法获取每日摘要")
+                    self.bbbsErrorOccurred.emit(i18nText("无法获取每日摘要"))
             except Exception as e:
                 self.bbbsErrorOccurred.emit(str(e))
         threading.Thread(target=run, daemon=True).start()
@@ -3405,10 +3428,10 @@ class Backend(QObject):
                     if password:
                         result = verify_password(spaceId, password)
                         if not result or not result.get('success'):
-                            self.liveErrorOccurred.emit("密码验证失败")
+                            self.liveErrorOccurred.emit(i18nText("密码验证失败"))
                             return
                     else:
-                        self.liveErrorOccurred.emit("需要密码才能加入")
+                        self.liveErrorOccurred.emit(i18nText("需要密码才能加入"))
                         return
 
                 self._current_live_space_id = spaceId
@@ -3498,7 +3521,7 @@ class Backend(QObject):
                     "payload": payload
                 })
                 if result is None:
-                    self.liveErrorOccurred.emit("发送消息失败，请检查网络连接或服务器状态")
+                    self.liveErrorOccurred.emit(i18nText("发送消息失败，请检查网络连接或服务器状态"))
                 else:
                     # 在本地显示自己发送的消息(服务器不会广播给自己)
                     chat_history = list(self._current_live_space.get("chatHistory") or [])
@@ -3514,7 +3537,7 @@ class Backend(QObject):
                         "payload": payload
                     })
             except Exception as e:
-                self.liveErrorOccurred.emit(f"发送消息失败: {str(e)}")
+                self.liveErrorOccurred.emit(i18nText("发送消息失败: {error}").replace("{error}", str(e)))
         threading.Thread(target=run, daemon=True).start()
 
     @Slot(str)
@@ -3526,7 +3549,7 @@ class Backend(QObject):
                 if result and result.get('success'):
                     self.fetchLiveSpaceList()
                 else:
-                    self.liveErrorOccurred.emit("创建空间失败")
+                    self.liveErrorOccurred.emit(i18nText("创建空间失败"))
             except Exception as e:
                 self.liveErrorOccurred.emit(str(e))
         threading.Thread(target=run, daemon=True).start()
@@ -3538,13 +3561,13 @@ class Backend(QObject):
             from modules.easytier import start_live_session, try_start_live_game_port_watch
 
             if not self._current_live_space_id:
-                self.liveErrorOccurred.emit("请先加入 Live 空间")
+                self.liveErrorOccurred.emit(i18nText("请先加入 Live 空间"))
                 return
 
             try:
                 result = start_space_easytier(self._current_live_space_id)
                 if not result or not result.get("success"):
-                    self.liveErrorOccurred.emit((result or {}).get("error", "开启 EasyTier 失败"))
+                    self.liveErrorOccurred.emit((result or {}).get("error", i18nText("开启 EasyTier 失败")))
                     return
 
                 easytier_info = result.get("easytier", {})
@@ -3559,7 +3582,7 @@ class Backend(QObject):
                 if not local_result.get("success"):
                     if result.get("created"):
                         stop_space_easytier(self._current_live_space_id)
-                    self.liveErrorOccurred.emit(local_result.get("message", "本地 EasyTier 启动失败"))
+                    self.liveErrorOccurred.emit(local_result.get("message", i18nText("本地 EasyTier 启动失败")))
                     return
 
                 self._emit_live_easytier_state(easytier_info)
@@ -3579,7 +3602,7 @@ class Backend(QObject):
                 log(f"[EasyTier] startLiveEasyTier 异常: {e}", logging.ERROR)
                 import traceback
                 log(f"[EasyTier] 堆栈: {traceback.format_exc()}", logging.ERROR)
-                self.liveErrorOccurred.emit(f"开启 EasyTier 失败: {e}")
+                self.liveErrorOccurred.emit(i18nText("开启 EasyTier 失败: {error}").replace("{error}", str(e)))
 
         threading.Thread(target=run, daemon=True).start()
 
@@ -3590,21 +3613,21 @@ class Backend(QObject):
             from modules.easytier import start_live_session
 
             if not self._current_live_space_id:
-                self.liveErrorOccurred.emit("请先加入 Live 空间")
+                self.liveErrorOccurred.emit(i18nText("请先加入 Live 空间"))
                 return
 
             try:
                 result = get_space_easytier_info(self._current_live_space_id)
                 if not result or not result.get("success"):
-                    self.liveErrorOccurred.emit((result or {}).get("error", "获取 EasyTier 信息失败"))
+                    self.liveErrorOccurred.emit((result or {}).get("error", i18nText("获取 EasyTier 信息失败")))
                     return
 
                 easytier_info = result.get("easytier", {})
                 if not easytier_info.get("enabled"):
-                    self.liveErrorOccurred.emit("房主尚未开启 EasyTier 网络")
+                    self.liveErrorOccurred.emit(i18nText("房主尚未开启 EasyTier 网络"))
                     return
                 if not easytier_info.get("hostVirtualIp") or not easytier_info.get("gamePort"):
-                    self.liveErrorOccurred.emit("房主已开启网络，但尚未在游戏中开放局域网")
+                    self.liveErrorOccurred.emit(i18nText("房主已开启网络，但尚未在游戏中开放局域网"))
                     return
 
                 local_result = start_live_session(
@@ -3618,7 +3641,7 @@ class Backend(QObject):
                     target_game_port=easytier_info.get("gamePort"),
                 )
                 if not local_result.get("success"):
-                    self.liveErrorOccurred.emit(local_result.get("message", "连接 EasyTier 失败"))
+                    self.liveErrorOccurred.emit(local_result.get("message", i18nText("连接 EasyTier 失败")))
                     return
 
                 self._emit_live_easytier_state(easytier_info)
@@ -3628,7 +3651,7 @@ class Backend(QObject):
                 time.sleep(0.5)
                 self._emit_live_easytier_state()
             except Exception as e:
-                self.liveErrorOccurred.emit(f"连接 EasyTier 失败: {e}")
+                self.liveErrorOccurred.emit(i18nText("连接 EasyTier 失败: {error}").replace("{error}", str(e)))
 
         threading.Thread(target=run, daemon=True).start()
 
@@ -3647,7 +3670,7 @@ class Backend(QObject):
                 self._stop_live_easytier_publish_loop()
                 self._emit_live_easytier_state(self._current_live_easytier_state)
             except Exception as e:
-                self.liveErrorOccurred.emit(f"断开 EasyTier 失败: {e}")
+                self.liveErrorOccurred.emit(i18nText("断开 EasyTier 失败: {error}").replace("{error}", str(e)))
 
         threading.Thread(target=run, daemon=True).start()
 
@@ -3692,9 +3715,9 @@ class Backend(QObject):
                             except Exception as e:
                                 log(f"[EasyTier] 手动设置端口后发布异常: {e}", logging.WARNING)
                 else:
-                    self.liveErrorOccurred.emit(f"无效的端口号: {port}")
+                    self.liveErrorOccurred.emit(i18nText("无效的端口号: {port}").replace("{port}", str(port)))
             except Exception as e:
-                self.liveErrorOccurred.emit(f"设置端口失败: {e}")
+                self.liveErrorOccurred.emit(i18nText("设置端口失败: {error}").replace("{error}", str(e)))
         threading.Thread(target=run, daemon=True).start()
 
     @Slot(bool)
@@ -3768,7 +3791,7 @@ class Backend(QObject):
                 self._live_webrtc_manager.handle_signaling(event)
             self.liveSignalReceived.emit(event)
         elif event_type == "error":
-            self.liveErrorOccurred.emit(event.get("message", "未知错误"))
+            self.liveErrorOccurred.emit(event.get("message", i18nText("未知错误")))
 
     # ========== OOBE 相关方法 ==========
 

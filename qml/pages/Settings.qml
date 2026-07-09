@@ -663,8 +663,10 @@ FluentPage {
                     onClicked: {
                         if (Backend) {
                             var result = Backend.testBark()
-                            barkTestInfoBar.severity = result === "发送成功" ? Severity.Success : Severity.Error
-                            barkTestInfoBar.title = result === "发送成功" ? _barkTestSuccess : _barkTestFail
+                            // Compare against i18n-aware success text from Backend
+                            var successText = Backend.tr("发送成功")
+                            barkTestInfoBar.severity = result === successText || result === "发送成功" ? Severity.Success : Severity.Error
+                            barkTestInfoBar.title = (result === successText || result === "发送成功") ? _barkTestSuccess : _barkTestFail
                             barkTestInfoBar.text = result
                             barkTestInfoBar.visible = true
                         }
@@ -999,7 +1001,7 @@ FluentPage {
             delegate: SettingCard {
                 Layout.fillWidth: true
                 title: model.name
-                description: model.builtin ? _builtinLabel + " · " + model.model_count + " 模型" : _customLabel + " · " + model.model_count + " 模型"
+                description: model.builtin ? _builtinLabel + " · " + model.model_count + (Backend ? Backend.tr(" 模型") : " 模型") : _customLabel + " · " + model.model_count + (Backend ? Backend.tr(" 模型") : " 模型")
                 icon.name: "ic_fluent_person_20_regular"
                 RowLayout {
                     spacing: 8
@@ -1030,7 +1032,7 @@ FluentPage {
         // 空状态提示
         Label {
             visible: settingsProviderModel.count === 0
-            text: "暂无已添加的供应商"
+            text: Backend ? Backend.tr("暂无已添加的供应商") : "暂无已添加的供应商"
             font.pixelSize: 12
             color: Theme.currentTheme.colors.textSecondaryColor
             Layout.alignment: Qt.AlignHCenter
@@ -1137,7 +1139,7 @@ FluentPage {
                                     color: Theme.currentTheme.colors.textColor
                                 }
                                 Text {
-                                    text: model.model_count + " 模型 · " + model.id
+                                    text: model.model_count + (Backend ? Backend.tr(" 模型 · ") : " 模型 · ") + model.id
                                     font.pixelSize: 10
                                     color: Theme.currentTheme.colors.textSecondaryColor
                                 }
@@ -1157,7 +1159,7 @@ FluentPage {
                 spacing: 10
 
                 Text {
-                    text: "供应商: " + settingsAddProviderDialog.apiStep2Id
+                    text: (Backend ? Backend.tr("供应商: ") : "供应商: ") + settingsAddProviderDialog.apiStep2Id
                     font.pixelSize: 13
                     font.bold: true
                     color: Theme.currentTheme.colors.textColor
