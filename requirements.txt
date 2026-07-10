@@ -13,3 +13,5 @@ winsdk; sys_platform == 'win32'
 toml
 psutil
 dulwich
+# WeChat QR code generation (optional)
+qrcode[pil]

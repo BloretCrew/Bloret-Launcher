@@ -330,6 +330,39 @@ def save_sync_buf(sync_buf: str) -> None:
     path.write_text(json.dumps({"get_updates_buf": sync_buf}), encoding="utf-8")
 
 
+def _generate_qr_image(data: str) -> Optional[str]:
+    """
+    生成 QR 码 PNG 图片到临时文件，返回 file:// 路径（供 QML Image 加载）。
+
+    Args:
+        data: 要编码到二维码中的文本
+
+    Returns:
+        file:///path/to/qr.png 或 None（qrcode 库未安装时）
+    """
+    try:
+        import qrcode as qrcode_lib
+        from PIL import Image as PilImage
+        import tempfile
+
+        qr = qrcode_lib.QRCode(version=1, box_size=8, border=2)
+        qr.add_data(data)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False, prefix="bloriko_qr_")
+        img.save(tmp.name)
+        log.info("QR 图片已生成: %s", tmp.name)
+        return f"file://{tmp.name}"
+
+    except ImportError:
+        log.warning("qrcode / Pillow 库未安装，无法生成 QR 图片")
+        return None
+    except Exception as e:
+        log.error("生成 QR 图片失败: %s", e)
+        return None
+
+
 # ── QR 登录 ──────────────────────────────────────────────────────
 
 def qr_login_step(
@@ -369,8 +402,15 @@ def qr_login_step(
             on_status_update("error", "二维码响应异常")
         return None
 
-    if on_qr_url and qrcode_url:
-        on_qr_url(qrcode_url)
+    # 本地生成 QR 图片（QML Image 只能加载本地文件，无法直接加载扫码内容 URL）
+    qr_scan_data = qrcode_url if qrcode_url else qrcode_value
+    if on_qr_url:
+        local_qr_path = _generate_qr_image(qr_scan_data)
+        if local_qr_path:
+            on_qr_url(local_qr_path)
+        else:
+            # 回退：传递原始 URL 作为纯文本显示
+            on_qr_url("")
 
     if on_status_update:
         on_status_update("wait", "请使用微信扫描二维码")
@@ -427,8 +467,10 @@ def qr_login_step(
                 qrcode_url = str(qr_resp.get("qrcode_img_content") or "")
                 result["qrcode_url"] = qrcode_url
                 result["qrcode_value"] = qrcode_value
-                if on_qr_url and qrcode_url:
-                    on_qr_url(qrcode_url)
+                if on_qr_url:
+                    qr_scan_data = qrcode_url if qrcode_url else qrcode_value
+                    local_qr_path = _generate_qr_image(qr_scan_data)
+                    on_qr_url(local_qr_path or "")
                 if on_status_update:
                     on_status_update("expired", f"二维码已刷新 ({refresh_count}/3)")
             except Exception as e:

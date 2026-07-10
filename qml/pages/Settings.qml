@@ -443,6 +443,7 @@ FluentPage {
     property string _wechatAccountInfo: Backend ? Backend.tr("账号信息") : "账号信息"
     property string _wechatNotConfigured: Backend ? Backend.tr("尚未配置微信连接") : "尚未配置微信连接"
     property string _wechatOpenURL: Backend ? Backend.tr("或在浏览器中打开：") : "或在浏览器中打开："
+    property string _wechatInstallQrHint: Backend ? Backend.tr("二维码渲染需要安装 qrcode + Pillow 库，请运行 pip install qrcode[pil]") : "二维码渲染需要安装 qrcode + Pillow 库，请运行 pip install qrcode[pil]"
     property string _wechatStopBtn: Backend ? Backend.tr("断开") : "断开"
     property string _wechatRestartBtn: Backend ? Backend.tr("重启连接") : "重启连接"
     property string _wechatQRProgress: Backend ? Backend.tr("二维码状态") : "二维码状态"
@@ -1503,7 +1504,7 @@ FluentPage {
                         Layout.alignment: Qt.AlignHCenter
                     }
 
-                    // QR 图片显示
+                    // QR 图片显示（本地生成的 PNG）
                     Rectangle {
                         id: qrImageFrame
                         visible: wechatQRUrl !== ""
@@ -1514,31 +1515,29 @@ FluentPage {
                         radius: 8
 
                         Image {
+                            id: qrImage
                             anchors.fill: parent
+                            anchors.margins: 8
                             source: wechatQRUrl
                             fillMode: Image.PreserveAspectFit
+                            cache: false
+                            onStatusChanged: {
+                                if (status === Image.Error)
+                                    console.warn("[Settings] QR image load error:", source)
+                                else if (status === Image.Ready)
+                                    console.log("[Settings] QR image loaded OK")
+                            }
                         }
                     }
 
-                    // 二维码 URL 文本（备用）
+                    // 二维码不可用时的提示
                     Label {
-                        visible: wechatQRUrl !== ""
-                        text: _wechatOpenURL
-                        font.pixelSize: 10
+                        visible: wechatQRUrl === "" && wechatQRLoginArea.visible
+                        text: _wechatInstallQrHint
+                        font.pixelSize: 11
                         color: Theme.currentTheme.colors.textSecondaryColor
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-
-                    TextEdit {
-                        visible: wechatQRUrl !== ""
-                        text: wechatQRUrl
-                        font.pixelSize: 10
-                        color: Theme.currentTheme.colors.textSecondaryColor
-                        readOnly: true
-                        selectByMouse: true
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
-                        Layout.maximumWidth: 400
                         Layout.alignment: Qt.AlignHCenter
                     }
 
