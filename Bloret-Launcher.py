@@ -40,6 +40,13 @@ SCRIPT_DIR = _get_script_dir()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+# RinUI 现已通过 git 子模块引入：子模块根目录为 RinUI/，其中包含
+# RinUI/RinUI/ 为真正的 Python 包。将子模块根目录加入 sys.path，
+# 使得 import RinUI 能正确解析到嵌套的包路径。
+_RINUI_SUBMODULE = SCRIPT_DIR / "RinUI"
+if _RINUI_SUBMODULE.exists() and str(_RINUI_SUBMODULE) not in sys.path:
+    sys.path.insert(0, str(_RINUI_SUBMODULE))
+
 # Linux 输入法：必须在 import PySide6 / 创建 QApplication 之前完成
 # （pip/venv 私有 Qt 与系统 fcitx5 插件不兼容，会导致无法切换中文输入法）
 if sys.platform.startswith("linux"):

@@ -17,6 +17,8 @@ jobs:
     steps:
     - name: 检出代码
       uses: actions/checkout@v2
+      with:
+        submodules: true
 
     - name: 更新版本号
       run: |
@@ -52,6 +54,8 @@ jobs:
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
+      with:
+        submodules: true
 
     - name: 设置 Python
       uses: actions/setup-python@v2
@@ -254,6 +258,8 @@ jobs:
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
+      with:
+        submodules: true
 
     - name: 创建输出目录并清理
       run: |
@@ -293,6 +299,8 @@ jobs:
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v2
+      with:
+        submodules: true
 
     - name: 下载构建产物
       uses: actions/download-artifact@v4

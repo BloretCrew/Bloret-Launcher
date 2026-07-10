@@ -4,3 +4,6 @@
 [submodule "BL4CW2"]
 	path = BL4CW2
 	url = https://github.com/BloretCrew/Bloret-Launcher4Class-Widget2.git
+[submodule "RinUI"]
+	path = RinUI
+	url = https://github.com/Detritalw/Rin-UI

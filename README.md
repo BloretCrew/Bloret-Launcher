@@ -136,7 +136,7 @@
 
 ## 致谢以下存储库或项目
 
-- [RinUI](https://github.com/RinLit-233-shiroko/Rin-UI)
+- [RinUI](https://github.com/Detritalw/Rin-UI)
 
 **RinUI 是 Bloret Launcher 的核心组件库。**
 

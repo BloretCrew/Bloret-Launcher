@@ -27,10 +27,11 @@ jobs:
       PYTHON_VERSION: '3.10'
       OUTPUT_DIR: 'output'
     steps:
-    - name: 检出最新版本
+    - name: 检出最新版本（含子模块）
       uses: actions/checkout@v4
       with:
         ref: ${{ runner.os == 'Windows' && 'Windows' || github.ref }}
+        submodules: true
 
     - name: 设置 Python
       uses: actions/setup-python@v5

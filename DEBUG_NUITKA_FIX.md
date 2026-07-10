@@ -66,8 +66,8 @@ Nuitka 不设置 `sys.frozen`（只有 PyInstaller 设置），原逻辑靠 `__f
 | 文件 | 修改 |
 |------|------|
 | `.github/workflows/Nuitka-Build.yml` | `--include-qt-plugins` 加 `qml`（三平台） |
-| `RinUI/core/config.py` | `_get_data_root()` |
-| `RinUI/core/launcher.py` | QML 消息捕获 + 诊断信息 |
+| `RinUI/RinUI/core/config.py` | `_get_data_root()` |
+| `RinUI/RinUI/core/launcher.py` | QML 消息捕获 + 诊断信息 |
 
 ## 问题 3：frpc 自动下载（已检查）
 - `modules/local_client.py` 只读取本地已有的 `frpc.toml`/`frpc.exe`，**无自动下载逻辑**。

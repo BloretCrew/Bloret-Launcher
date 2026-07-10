@@ -53,12 +53,15 @@ sha256sums=('SKIP')  # 后续可用 updpkgsums 生成
 prepare() {
     cd "${srcdir}/Bloret-Launcher-${pkgver}"
 
-    # 初始化并更新 git 子模块 (BLAPI, BL4CW2)
+    # 初始化并更新 git 子模块 (BLAPI, BL4CW2, RinUI)
     git submodule update --init --recursive 2>/dev/null || true
 }
 
 build() {
     cd "${srcdir}/Bloret-Launcher-${pkgver}"
+
+    # 安装 RinUI 子模块，使 Nuitka 能正确解析 import RinUI
+    pip install ./RinUI --no-build-isolation --no-deps 2>/dev/null || true
 
     # 使用 Nuitka 编译为独立可执行文件
     # --standalone: 包含所有依赖
