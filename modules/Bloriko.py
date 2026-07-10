@@ -387,20 +387,64 @@ def AskBloriko(question, config=None, deepthink=False):
     return final_result
 
 
-def BuildModRecommendationQuestion(user_query, mc_version):
+# 启动器 language 配置码 → AI 回复语言说明
+_LANG_REPLY_INSTRUCTIONS = {
+    "zh-cn": "Simplified Chinese (简体中文)",
+    "zh-TW": "Traditional Chinese (繁體中文)",
+    "zh-wy": "Classical Chinese / 文言文",
+    "gt-ZH": "Humorous meme-style Simplified Chinese (梗体中文), keep it playful but still clear",
+    "en-GB": "British English",
+    "en": "English",
+}
+
+
+def _resolve_ui_language_code() -> str:
+    """读取用户设置的界面语言代码，默认 zh-cn。"""
+    try:
+        config = cfg.read()
+        code = config.get("language") or config.get("Language") or "zh-cn"
+        if not isinstance(code, str):
+            return "zh-cn"
+        return code.strip() or "zh-cn"
+    except Exception as e:
+        log(f"读取界面语言失败，回退 zh-cn: {e}", logging.WARNING)
+        return "zh-cn"
+
+
+def _language_reply_instruction(lang_code: str | None = None) -> str:
+    """根据语言代码生成「请用某语言回答」的指令。"""
+    code = lang_code or _resolve_ui_language_code()
+    label = _LANG_REPLY_INSTRUCTIONS.get(code)
+    if not label:
+        # 未知语言码：仍要求按该码对应语言回答，避免回落到英文
+        label = f"the language corresponding to locale code '{code}'"
+        log(f"未知 language 码 {code!r}，使用通用语言指令", logging.WARNING)
+    return (
+        f"LANGUAGE REQUIREMENT: Write the entire human-readable recommendation "
+        f"and explanations in {label}. "
+        f"Do NOT answer in English unless the UI language is English. "
+        f"Modrinth project slugs in the final JSON block must remain lowercase ASCII identifiers."
+    )
+
+
+def BuildModRecommendationQuestion(user_query, mc_version, language=None):
     """
     构建针对模组推荐的 AI 问题（强制返回 Modrinth slug JSON，供一键安装解析）。
 
     Args:
         user_query (str): 用户的需求描述
         mc_version (str): Minecraft 版本号
+        language (str|None): 界面语言码；默认从 config.json 读取
 
     Returns:
         str: 完整的推荐问题
     """
+    lang_code = language or _resolve_ui_language_code()
+    lang_rule = _language_reply_instruction(lang_code)
     prompt = (
         f"User is playing Minecraft version {mc_version} using the FABRIC loader.\n"
         f"User Request: {user_query}\n\n"
+        f"{lang_rule}\n\n"
         f"Please recommend 3-8 suitable Modrinth mods that are compatible with FABRIC "
         f"and Minecraft {mc_version}. Briefly explain why each was chosen. "
         f"Use real Modrinth project slugs (URL path ids), not display names.\n\n"
@@ -409,7 +453,8 @@ def BuildModRecommendationQuestion(user_query, mc_version):
         f"Format strictly like this:\n```json\n[\"sodium\", \"lithium\", \"iris\"]\n```"
     )
     log(
-        f"BuildModRecommendationQuestion: mc={mc_version}, query_len={len(user_query)}",
+        f"BuildModRecommendationQuestion: mc={mc_version}, lang={lang_code}, "
+        f"query_len={len(user_query or '')}",
         logging.INFO,
     )
     return prompt
