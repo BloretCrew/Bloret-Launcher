@@ -1,7 +1,3 @@
-# 0. 先获取 IP 地址
-import modules.IP
-
-
 import sys
 import os
 import faulthandler
@@ -36,7 +32,7 @@ def _get_script_dir():
     return Path(__file__).resolve().parent
 
 SCRIPT_DIR = _get_script_dir()
-    
+
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
@@ -48,12 +44,17 @@ if _RINUI_SUBMODULE.exists() and str(_RINUI_SUBMODULE) not in sys.path:
     sys.path.insert(0, str(_RINUI_SUBMODULE))
 
 # Linux 输入法：必须在 import PySide6 / 创建 QApplication 之前完成
-# （pip/venv 私有 Qt 与系统 fcitx5 插件不兼容，会导致无法切换中文输入法）
+# （且尽量早于其它本地模块，避免提前 import 到 pip 私有 Qt）
+# - pip/venv 私有 Qt 与系统 fcitx5 插件不兼容
+# - Wayland 下强制 xcb，修复无法切换中文输入法
 if sys.platform.startswith("linux"):
     from modules.linux_im import setup_linux_input_method, log_runtime_im_status
     setup_linux_input_method()
 else:
     log_runtime_im_status = None  # type: ignore
+
+# 获取服务器 IP（不依赖 Qt，放在输入法初始化之后即可）
+import modules.IP  # noqa: E402
 
 # Create the QApplication early so it can be used in shims and module imports
 from PySide6.QtWidgets import QApplication, QFileDialog, QSystemTrayIcon

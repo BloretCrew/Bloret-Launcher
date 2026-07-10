@@ -5,18 +5,22 @@ Linux 输入法（fcitx5 / ibus）兼容层。
 
 问题背景
 --------
-pip / venv 安装的 PySide6 会自带一份私有 Qt6 库与插件目录，其中不包含
-libfcitx5platforminputcontextplugin.so。系统 fcitx5-qt 插件链接的是系统 Qt6，
-与 pip 私有 Qt 二进制不兼容：插件即使被链接过去也会立刻卸载，表现为：
-  - 无法切换中/英输入法
-  - 无法输入中文
+1. pip / venv 安装的 PySide6 会自带私有 Qt6，其中不包含
+   libfcitx5platforminputcontextplugin.so。系统 fcitx5-qt 插件链接的是系统 Qt6，
+   与 pip 私有 Qt ABI 不兼容，表现为无法切换中/英、无法输入中文。
+   系统包 python-pyside6 使用系统 Qt6，与 fcitx5-qt 一致，可正常工作。
 
-系统包 python-pyside6 使用系统 Qt6，与 fcitx5-qt 一致，可正常工作。
+2. 在 Wayland 会话下，部分 Qt 应用走 wayland 平台插件时，fcitx5 切换快捷键
+   与候选窗不可靠。历史修复：在有 XWayland（DISPLAY 可用）时强制 QT_QPA_PLATFORM=xcb。
+
+3. 部分环境把 QT_IM_MODULE 设成 "fcitx5"，旧插件只认 "fcitx"；
+   新 fcitx5-qt 虽同时注册两者，仍统一归一为 "fcitx" 以最大兼容。
 
 本模块会：
-1. 根据运行中的输入法守护进程配置 QT_IM_MODULE / XMODIFIERS 等环境变量
-2. 若检测到 pip 风格的 PySide6，优先改用系统 python-pyside6
-3. 输出详细诊断日志，便于排查
+1. 检测输入法守护进程并配置 QT_IM_MODULE / XMODIFIERS / GTK_IM_MODULE 等
+2. Wayland 会话下优先切到 xcb（可用 BLORET_ALLOW_WAYLAND=1 取消）
+3. 若检测到 pip 风格 PySide6，优先改用系统 python-pyside6
+4. 输出诊断日志
 """
 
 from __future__ import annotations
@@ -54,25 +58,40 @@ def _process_running(name: str) -> bool:
     return False
 
 
+def _normalize_im_module(name: str) -> str:
+    """归一化输入法模块名。fcitx5 的 Qt 插件主键仍是 fcitx。"""
+    n = (name or "").strip().lower()
+    if n in ("fcitx5", "fcitx"):
+        return "fcitx"
+    if n in ("ibus", "ibus-x11"):
+        return "ibus"
+    return (name or "").strip()
+
+
 def _detect_im_module() -> str:
     """
     选择合适的 QT_IM_MODULE 值。
 
-    fcitx5 的 Qt 插件注册的 key 仍是 "fcitx"（不是 "fcitx5"）。
+    fcitx5 的 Qt 插件注册的 key 主要是 "fcitx"（也兼容 fcitx5）。
     """
-    current = (os.environ.get("QT_IM_MODULE") or "").strip()
-    # 已显式指定有效模块时尊重用户设置
+    current = _normalize_im_module(os.environ.get("QT_IM_MODULE", ""))
+    # 已显式指定有效模块时尊重用户设置（但 fcitx5 已归一）
     if current and current.lower() not in ("xim", "none", "compose", "qtvirtualkeyboard"):
-        return current
+        # 若用户写了奇怪值但 fcitx 在跑，仍优先 fcitx
+        if current not in ("fcitx", "ibus"):
+            pass
+        else:
+            return current
 
     xmodifiers = (os.environ.get("XMODIFIERS") or "").lower()
-    gtk_im = (os.environ.get("GTK_IM_MODULE") or "").lower()
+    gtk_im = _normalize_im_module(os.environ.get("GTK_IM_MODULE", "")).lower()
 
     if (
         _process_running("fcitx5")
         or _process_running("fcitx")
         or "fcitx" in xmodifiers
         or "fcitx" in gtk_im
+        or current == "fcitx"
     ):
         return "fcitx"
 
@@ -80,6 +99,7 @@ def _detect_im_module() -> str:
         _process_running("ibus-daemon")
         or "ibus" in xmodifiers
         or "ibus" in gtk_im
+        or current == "ibus"
     ):
         return "ibus"
 
@@ -87,28 +107,86 @@ def _detect_im_module() -> str:
     return current or "fcitx"
 
 
+def _is_wayland_session() -> bool:
+    session = (os.environ.get("XDG_SESSION_TYPE") or "").lower()
+    if session == "wayland":
+        return True
+    if os.environ.get("WAYLAND_DISPLAY"):
+        return True
+    platform = (os.environ.get("QT_QPA_PLATFORM") or "").lower()
+    return platform.startswith("wayland")
+
+
+def _prefer_xcb_for_im() -> None:
+    """
+    Wayland 会话下强制 Qt 走 XCB（XWayland），改善 fcitx 切换与候选窗。
+
+    取消方式：
+      export BLORET_ALLOW_WAYLAND=1
+    或显式设置非 wayland 的 QT_QPA_PLATFORM（如 already xcb）。
+    """
+    allow = (os.environ.get("BLORET_ALLOW_WAYLAND") or "").strip().lower()
+    if allow in ("1", "true", "yes", "on"):
+        _log("BLORET_ALLOW_WAYLAND 已启用，不强制 xcb")
+        return
+
+    current = (os.environ.get("QT_QPA_PLATFORM") or "").strip()
+    current_l = current.lower()
+
+    # 用户已明确指定非 wayland 平台时不改
+    if current_l and not current_l.startswith("wayland"):
+        _log(f"保留用户 QT_QPA_PLATFORM={current!r}")
+        return
+
+    if not _is_wayland_session() and not current_l.startswith("wayland"):
+        return
+
+    # 无 X11 DISPLAY 时强切 xcb 会直接起不来
+    if not os.environ.get("DISPLAY"):
+        _log(
+            "检测到 Wayland 会话但无 DISPLAY（可能没有 XWayland），"
+            "无法强制 xcb；中文输入法切换可能仍有问题"
+        )
+        return
+
+    os.environ["QT_QPA_PLATFORM"] = "xcb"
+    _log(
+        f"Wayland 会话下设置 QT_QPA_PLATFORM=xcb（原值={current!r}），"
+        f"以修复 fcitx 中文输入法切换；取消请设 BLORET_ALLOW_WAYLAND=1"
+    )
+
+
 def _configure_im_env() -> None:
     """配置输入法相关环境变量（创建 QApplication 前生效）。"""
     im = _detect_im_module()
     prev_qt = os.environ.get("QT_IM_MODULE")
+    prev_xmod = os.environ.get("XMODIFIERS")
+
+    # 主动写入（不用 setdefault）：纠正错误的 fcitx5/ibus 混用配置
     os.environ["QT_IM_MODULE"] = im
 
-    # X11 / XWayland 传统协议
     if im == "fcitx":
-        os.environ.setdefault("XMODIFIERS", "@im=fcitx")
-        os.environ.setdefault("GTK_IM_MODULE", "fcitx")
+        os.environ["XMODIFIERS"] = "@im=fcitx"
+        os.environ["GTK_IM_MODULE"] = "fcitx"
+        os.environ["SDL_IM_MODULE"] = "fcitx"
         # GLFW / LWJGL（Minecraft）只认 ibus 模块名；fcitx5 提供 ibus 前端协议
-        os.environ.setdefault("GLFW_IM_MODULE", "ibus")
+        os.environ["GLFW_IM_MODULE"] = "ibus"
     elif im == "ibus":
-        os.environ.setdefault("XMODIFIERS", "@im=ibus")
-        os.environ.setdefault("GTK_IM_MODULE", "ibus")
-        os.environ.setdefault("GLFW_IM_MODULE", "ibus")
+        os.environ["XMODIFIERS"] = "@im=ibus"
+        os.environ["GTK_IM_MODULE"] = "ibus"
+        os.environ["SDL_IM_MODULE"] = "ibus"
+        os.environ["GLFW_IM_MODULE"] = "ibus"
+
+    _prefer_xcb_for_im()
 
     _log(
         f"输入法环境: QT_IM_MODULE={im}"
         f" (原值={prev_qt!r})"
-        f", XMODIFIERS={os.environ.get('XMODIFIERS')!r}"
+        f", XMODIFIERS={os.environ.get('XMODIFIERS')!r} (原值={prev_xmod!r})"
+        f", GTK_IM_MODULE={os.environ.get('GTK_IM_MODULE')!r}"
+        f", SDL_IM_MODULE={os.environ.get('SDL_IM_MODULE')!r}"
         f", GLFW_IM_MODULE={os.environ.get('GLFW_IM_MODULE')!r}"
+        f", QT_QPA_PLATFORM={os.environ.get('QT_QPA_PLATFORM')!r}"
         f", session={os.environ.get('XDG_SESSION_TYPE')!r}"
         f", wayland={os.environ.get('WAYLAND_DISPLAY')!r}"
         f", display={os.environ.get('DISPLAY')!r}"
@@ -159,6 +237,14 @@ def _prefer_system_pyside6_for_fcitx() -> None:
 
     其它仅存在于 venv 的依赖仍可从后续 path 中解析。
     """
+    # 已 import 过则无法换实现，只能告警
+    if "PySide6" in sys.modules:
+        mod = sys.modules["PySide6"]
+        _log(
+            f"警告: PySide6 已在输入法初始化前被导入: {getattr(mod, '__file__', '?')}。"
+            f" 若为 pip 私有 Qt，中文输入法可能仍无法切换。"
+        )
+
     system_sites = _system_site_packages()
     system_with_pyside = [s for s in system_sites if (s / "PySide6").is_dir()]
 
@@ -180,7 +266,6 @@ def _prefer_system_pyside6_for_fcitx() -> None:
             _log(f"将使用 PySide6 候选路径: {s / 'PySide6'}")
             break
         else:
-            # 检查 path 上是否有任意 PySide6
             for raw in sys.path:
                 if raw and (Path(raw) / "PySide6").is_dir():
                     _log(f"检测到 PySide6: {Path(raw) / 'PySide6'}")
@@ -216,7 +301,6 @@ def _prefer_system_pyside6_for_fcitx() -> None:
     for site in reversed(system_with_pyside):
         site_str = str(site)
         while site_str in sys.path:
-            # 若已在 path 中，先移除再按目标位置插入
             old_idx = sys.path.index(site_str)
             sys.path.remove(site_str)
             if old_idx < insert_at:
@@ -253,6 +337,7 @@ def _log_im_diagnostics() -> None:
     )
     _log(
         f"fcitx5 进程={'是' if _process_running('fcitx5') else '否'}, "
+        f"ibus 进程={'是' if _process_running('ibus-daemon') else '否'}, "
         f"系统 fcitx5-qt 插件={'是' if fcitx_plugin.exists() else '否'} ({fcitx_plugin})"
     )
     which_fcitx = shutil.which("fcitx5") or shutil.which("fcitx")
@@ -269,16 +354,18 @@ def ensure_game_im_env(env: dict | None = None) -> dict:
     if not sys.platform.startswith("linux"):
         return out
 
-    im = (out.get("QT_IM_MODULE") or _detect_im_module()).strip() or "fcitx"
+    im = _normalize_im_module(out.get("QT_IM_MODULE") or _detect_im_module()) or "fcitx"
     out["QT_IM_MODULE"] = im
     if im == "fcitx":
-        out.setdefault("XMODIFIERS", "@im=fcitx")
-        out.setdefault("GTK_IM_MODULE", "fcitx")
-        out.setdefault("GLFW_IM_MODULE", "ibus")
+        out["XMODIFIERS"] = "@im=fcitx"
+        out["GTK_IM_MODULE"] = "fcitx"
+        out["SDL_IM_MODULE"] = "fcitx"
+        out["GLFW_IM_MODULE"] = "ibus"
     elif im == "ibus":
-        out.setdefault("XMODIFIERS", "@im=ibus")
-        out.setdefault("GTK_IM_MODULE", "ibus")
-        out.setdefault("GLFW_IM_MODULE", "ibus")
+        out["XMODIFIERS"] = "@im=ibus"
+        out["GTK_IM_MODULE"] = "ibus"
+        out["SDL_IM_MODULE"] = "ibus"
+        out["GLFW_IM_MODULE"] = "ibus"
     return out
 
 
@@ -308,6 +395,7 @@ def log_runtime_im_status() -> None:
     try:
         from PySide6.QtWidgets import QApplication
         from PySide6.QtCore import QLibraryInfo
+        from PySide6.QtGui import QGuiApplication
 
         app = QApplication.instance()
         if app is None:
@@ -317,16 +405,67 @@ def log_runtime_im_status() -> None:
         plugins = QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath)
         im_dir = Path(plugins) / "platforminputcontexts"
         plugins_list = sorted(p.name for p in im_dir.iterdir()) if im_dir.is_dir() else []
-        _log(f"Qt 平台: {app.platformName()}")
+        platform = app.platformName()
+        _log(f"Qt 平台: {platform}")
         _log(f"Qt 插件目录: {plugins}")
         _log(f"platforminputcontexts: {plugins_list}")
         has_fcitx = any("fcitx" in n for n in plugins_list)
-        if not has_fcitx and os.environ.get("QT_IM_MODULE") == "fcitx":
+        qt_im = os.environ.get("QT_IM_MODULE")
+        if not has_fcitx and qt_im in ("fcitx", "fcitx5"):
             _log(
                 "警告: QT_IM_MODULE=fcitx 但当前 Qt 插件目录无 fcitx 插件，"
-                "输入法切换可能失败。请使用系统 python-pyside6 或安装 fcitx5-qt。"
+                "输入法切换可能失败。请使用系统 python-pyside6 并安装 fcitx5-qt。"
             )
         else:
             _log(f"fcitx 插件可见: {has_fcitx}")
+
+        if platform == "wayland" and qt_im in ("fcitx", "fcitx5"):
+            _log(
+                "提示: 当前仍运行在 wayland 平台上；若无法切换中文输入法，"
+                "请确认未设置 BLORET_ALLOW_WAYLAND=1，并存在 XWayland（DISPLAY）。"
+            )
+
+        try:
+            im = QGuiApplication.inputMethod()
+            if im is not None:
+                _log(f"QInputMethod locale={im.locale().name()}, visible={im.isVisible()}")
+        except Exception as e:
+            _log(f"读取 QInputMethod 失败: {e}")
+
+        # 打印实际加载的 PySide6 路径
+        try:
+            import PySide6
+
+            _log(f"已加载 PySide6: {getattr(PySide6, '__file__', '?')}")
+        except Exception:
+            pass
     except Exception as e:
         _log(f"运行时诊断失败: {e}")
+
+
+def diagnose_im() -> str:
+    """返回可读的输入法诊断文本（调试/设置页可用）。"""
+    lines = [
+        f"platform={sys.platform}",
+        f"QT_IM_MODULE={os.environ.get('QT_IM_MODULE')!r}",
+        f"XMODIFIERS={os.environ.get('XMODIFIERS')!r}",
+        f"GTK_IM_MODULE={os.environ.get('GTK_IM_MODULE')!r}",
+        f"GLFW_IM_MODULE={os.environ.get('GLFW_IM_MODULE')!r}",
+        f"QT_QPA_PLATFORM={os.environ.get('QT_QPA_PLATFORM')!r}",
+        f"XDG_SESSION_TYPE={os.environ.get('XDG_SESSION_TYPE')!r}",
+        f"WAYLAND_DISPLAY={os.environ.get('WAYLAND_DISPLAY')!r}",
+        f"DISPLAY={os.environ.get('DISPLAY')!r}",
+        f"fcitx5_running={_process_running('fcitx5')}",
+        f"ibus_running={_process_running('ibus-daemon')}",
+    ]
+    plugin = Path(
+        "/usr/lib/qt6/plugins/platforminputcontexts/libfcitx5platforminputcontextplugin.so"
+    )
+    lines.append(f"system_fcitx_plugin={plugin.exists()} ({plugin})")
+    try:
+        import PySide6
+
+        lines.append(f"PySide6={getattr(PySide6, '__file__', '?')}")
+    except Exception as e:
+        lines.append(f"PySide6=import_error:{e}")
+    return "\n".join(lines)
