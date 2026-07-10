@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Controls.Basic as BasicControls
 import QtQuick.Layouts 2.15
 import RinUI
 
@@ -104,52 +105,190 @@ Dialog {
             "rawLen=", _ctxRawMessage.length,
             "contentLen=", _ctxContent.length
         )
-        // 无参 popup() 使用当前鼠标位置；position=-1 保留该坐标且不把高度从 0 动画展开
-        msgContextMenu.popup()
+        // 不用 Qt Menu：Linux/KDE 会加载 org.kde.desktop/Menu.qml 并因 hasCheckables 报错导致空菜单
+        // 使用 Basic.Popup 自定义菜单，相对消息行定位
+        var pos = delegateItem.mapToItem(chatDialogContent, mouse.x, mouse.y)
+        msgContextMenu.open()
+        // 打开后再量尺寸并夹紧，避免 height 仍为 0 时定位错误
+        Qt.callLater(function() {
+            var w = msgContextMenu.width || 190
+            var h = msgContextMenu.height || 120
+            msgContextMenu.x = Math.max(0, Math.min(pos.x, chatDialogContent.width - w - 8))
+            msgContextMenu.y = Math.max(0, Math.min(pos.y, chatDialogContent.height - h - 8))
+            console.log("[ChatDialog] 自定义右键菜单已打开 at", msgContextMenu.x, msgContextMenu.y, "size", w, h)
+        })
     }
 
     // 使用 Item 包裹以避免 Dialog 默认 contentItem 的布局冲突
     Item {
+        id: chatDialogContent
         anchors.fill: parent
 
-        // 共享右键菜单：放在 Dialog 内容树内、列表委托外，保证 MenuItem 进入 contentModel
-        Menu {
+        // 自定义右键菜单：强制 Basic.Popup，彻底避开 org.kde.desktop/Menu.qml 的 hasCheckables 错误
+        BasicControls.Popup {
             id: msgContextMenu
-            // 与 TextInputMenu 一致：-1 表示上下文菜单，保留 popup() 光标坐标，高度不从 0 动画
-            position: -1
+            modal: false
+            focus: true
+            padding: 6
+            width: 190
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+            parent: chatDialogContent
 
-            MenuItem {
-                text: Backend ? Backend.tr("复制消息") : "复制消息"
-                icon.name: "ic_fluent_copy_20_regular"
-                onTriggered: {
-                    console.log("[ChatDialog] 菜单: 复制消息")
-                    chatDialog.copyToClipboard(chatDialog._ctxRawMessage)
+            background: Rectangle {
+                radius: 8
+                color: (Theme.currentTheme && Theme.currentTheme.colors && Theme.currentTheme.colors.backgroundAcrylicColor)
+                    ? Theme.currentTheme.colors.backgroundAcrylicColor
+                    : ((Theme.currentTheme && Theme.currentTheme.colors && Theme.currentTheme.colors.cardColor)
+                        ? Theme.currentTheme.colors.cardColor
+                        : "#F9F9F9")
+                border.color: (Theme.currentTheme && Theme.currentTheme.colors && Theme.currentTheme.colors.controlBorderColor)
+                    ? Theme.currentTheme.colors.controlBorderColor
+                    : "#E0E0E0"
+                border.width: 1
+            }
+
+            contentItem: Column {
+                id: menuColumn
+                spacing: 2
+                width: msgContextMenu.availableWidth
+
+                Rectangle {
+                    width: parent.width
+                    height: 34
+                    radius: 6
+                    color: copyMsgMouse.containsMouse
+                        ? ((Theme.currentTheme && Theme.currentTheme.colors && Theme.currentTheme.colors.subtleSecondaryColor)
+                            ? Theme.currentTheme.colors.subtleSecondaryColor
+                            : Qt.rgba(0, 0, 0, 0.06))
+                        : "transparent"
+                    Row {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 12
+                        spacing: 10
+                        Text {
+                            text: "📋"
+                            font.pixelSize: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 18
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        Text {
+                            text: Backend ? Backend.tr("复制消息") : "复制消息"
+                            font.pixelSize: 13
+                            color: (Theme.currentTheme && Theme.currentTheme.colors)
+                                ? Theme.currentTheme.colors.textColor : "#000"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    MouseArea {
+                        id: copyMsgMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: {
+                            console.log("[ChatDialog] 菜单: 复制消息")
+                            chatDialog.copyToClipboard(chatDialog._ctxRawMessage)
+                            msgContextMenu.close()
+                        }
+                    }
                 }
-            }
 
-            MenuItem {
-                text: Backend ? Backend.tr("复制内容") : "复制内容"
-                icon.name: "ic_fluent_clipboard_bullet_list_20_regular"
-                visible: chatDialog._ctxUsername !== ""
-                height: visible ? implicitHeight : 0
-                onTriggered: {
-                    console.log("[ChatDialog] 菜单: 复制内容")
-                    chatDialog.copyToClipboard(chatDialog._ctxContent)
+                Rectangle {
+                    width: parent.width
+                    height: chatDialog._ctxUsername !== "" ? 34 : 0
+                    visible: chatDialog._ctxUsername !== ""
+                    radius: 6
+                    color: copyContentMouse.containsMouse
+                        ? ((Theme.currentTheme && Theme.currentTheme.colors && Theme.currentTheme.colors.subtleSecondaryColor)
+                            ? Theme.currentTheme.colors.subtleSecondaryColor
+                            : Qt.rgba(0, 0, 0, 0.06))
+                        : "transparent"
+                    Row {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 12
+                        spacing: 10
+                        visible: parent.visible
+                        Text {
+                            text: "📄"
+                            font.pixelSize: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 18
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        Text {
+                            text: Backend ? Backend.tr("复制内容") : "复制内容"
+                            font.pixelSize: 13
+                            color: (Theme.currentTheme && Theme.currentTheme.colors)
+                                ? Theme.currentTheme.colors.textColor : "#000"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    MouseArea {
+                        id: copyContentMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: parent.visible
+                        onClicked: {
+                            console.log("[ChatDialog] 菜单: 复制内容")
+                            chatDialog.copyToClipboard(chatDialog._ctxContent)
+                            msgContextMenu.close()
+                        }
+                    }
                 }
-            }
 
-            MenuSeparator {
-                visible: chatDialog._ctxUsername !== ""
-            }
+                Rectangle {
+                    width: parent.width - 16
+                    height: chatDialog._ctxUsername !== "" ? 1 : 0
+                    visible: chatDialog._ctxUsername !== ""
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: (Theme.currentTheme && Theme.currentTheme.colors && Theme.currentTheme.colors.controlBorderColor)
+                        ? Theme.currentTheme.colors.controlBorderColor
+                        : "#E0E0E0"
+                }
 
-            MenuItem {
-                text: Backend ? Backend.tr("复制用户名") : "复制用户名"
-                icon.name: "ic_fluent_person_20_regular"
-                visible: chatDialog._ctxUsername !== ""
-                height: visible ? implicitHeight : 0
-                onTriggered: {
-                    console.log("[ChatDialog] 菜单: 复制用户名")
-                    chatDialog.copyToClipboard(chatDialog._ctxUsername)
+                Rectangle {
+                    width: parent.width
+                    height: chatDialog._ctxUsername !== "" ? 34 : 0
+                    visible: chatDialog._ctxUsername !== ""
+                    radius: 6
+                    color: copyUserMouse.containsMouse
+                        ? ((Theme.currentTheme && Theme.currentTheme.colors && Theme.currentTheme.colors.subtleSecondaryColor)
+                            ? Theme.currentTheme.colors.subtleSecondaryColor
+                            : Qt.rgba(0, 0, 0, 0.06))
+                        : "transparent"
+                    Row {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 12
+                        spacing: 10
+                        visible: parent.visible
+                        Text {
+                            text: "👤"
+                            font.pixelSize: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 18
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        Text {
+                            text: Backend ? Backend.tr("复制用户名") : "复制用户名"
+                            font.pixelSize: 13
+                            color: (Theme.currentTheme && Theme.currentTheme.colors)
+                                ? Theme.currentTheme.colors.textColor : "#000"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    MouseArea {
+                        id: copyUserMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: parent.visible
+                        onClicked: {
+                            console.log("[ChatDialog] 菜单: 复制用户名")
+                            chatDialog.copyToClipboard(chatDialog._ctxUsername)
+                            msgContextMenu.close()
+                        }
+                    }
                 }
             }
         }
@@ -215,7 +354,9 @@ Dialog {
                             width: chatColumn.width
                             height: messageRow.implicitHeight + 12
                             color: msgMouseArea.containsMouse
-                                ? Theme.currentTheme.colors.subtleFillColorSecondary
+                                ? ((Theme.currentTheme && Theme.currentTheme.colors && Theme.currentTheme.colors.subtleSecondaryColor)
+                                    ? Theme.currentTheme.colors.subtleSecondaryColor
+                                    : Qt.rgba(0, 0, 0, 0.06))
                                 : (index % 2 === 0 ? "transparent" : Qt.rgba(0.5, 0.5, 0.5, 0.05))
                             radius: 4
 
