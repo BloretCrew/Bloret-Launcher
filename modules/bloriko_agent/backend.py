@@ -1182,7 +1182,8 @@ class BlorikoBackend(QObject):
                 )
 
                 if result and result.get("status") == "confirmed":
-                    # 登录成功后自动启动连接器
+                    # 登录成功后重新加载凭据再启动连接器
+                    connector.reload_config()
                     self._on_wechat_status_change(BlorikoWechatConnector.STATUS_CONNECTING)
                     connector.start()
                 else:

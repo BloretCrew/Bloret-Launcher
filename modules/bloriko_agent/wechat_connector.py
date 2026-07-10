@@ -655,6 +655,12 @@ class BlorikoWechatConnector:
         """检查是否已配置（有保存的凭据）"""
         return bool(self._token and self._account_id)
 
+    def reload_config(self) -> bool:
+        """从磁盘重新加载配置（QR 登录成功后调用）"""
+        with self._dedup_lock:
+            self._dedup_set.clear()
+        return self._load_saved_config()
+
     def get_account_info(self) -> Dict[str, str]:
         """获取当前账号信息"""
         return {
