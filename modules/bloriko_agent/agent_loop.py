@@ -148,6 +148,8 @@ class BlorikoAgentLoop:
         role: str = "default",
         token_limit: int = DEFAULT_TOKEN_LIMIT,
         memory_store=None,
+        tool_executors: Optional[dict] = None,
+        on_reasoning_chunk: Optional[Callable[[str], None]] = None,
     ):
         self.working_dir = Path(working_dir)
         self.api_url = api_url
@@ -160,6 +162,7 @@ class BlorikoAgentLoop:
         self.on_permission_request = on_permission_request
         self.on_ask_user = on_ask_user
         self.on_emotion_change = on_emotion_change
+        self.on_reasoning_chunk = on_reasoning_chunk
         self.model = model
         self.role = role
         self.token_limit = token_limit
@@ -168,7 +171,10 @@ class BlorikoAgentLoop:
         self._recent_tool_calls: List[str] = []
         self._tools = None
         self._system_prompt_override = None
+        # 可选：覆盖/扩展全局 TOOL_EXECUTORS（如 Mods 推荐专用工具）
+        self._tool_executors = tool_executors
         self._current_text = ""
+        self._current_reasoning = ""
         self._cached_system_prompt = None
         self._current_emotion = "neutral"
         self._last_llm_error = ""
@@ -420,9 +426,26 @@ class BlorikoAgentLoop:
         }
 
         log.info(f"[AgentLoop] 调用 execute_tool({tc_name})")
-        result = execute_tool(self.working_dir, tc_name, tc_args, **extra_kwargs)
+        result = self._dispatch_tool(tc_name, tc_args, extra_kwargs)
         log.info(f"[AgentLoop] 工具结果长度: {len(result)}")
         return result
+
+    def _dispatch_tool(self, tc_name: str, tc_args: dict, extra_kwargs: dict) -> str:
+        """优先使用实例级 tool_executors，否则走全局 execute_tool。"""
+        if self._tool_executors and tc_name in self._tool_executors:
+            try:
+                return self._tool_executors[tc_name](self.working_dir, **tc_args, **extra_kwargs)
+            except TypeError:
+                # 部分执行器不接受 extra kwargs
+                try:
+                    return self._tool_executors[tc_name](self.working_dir, **tc_args)
+                except Exception as e:
+                    log.error(f"[AgentLoop] 自定义工具 {tc_name} 失败: {e}", exc_info=True)
+                    return f"错误：工具执行失败 - {str(e)}"
+            except Exception as e:
+                log.error(f"[AgentLoop] 自定义工具 {tc_name} 失败: {e}", exc_info=True)
+                return f"错误：工具执行失败 - {str(e)}"
+        return execute_tool(self.working_dir, tc_name, tc_args, **extra_kwargs)
 
     @staticmethod
     def _describe_write_operation(tool_name: str, args: dict) -> str:
@@ -634,7 +657,7 @@ class BlorikoAgentLoop:
                 "_on_emotion_change": self.on_emotion_change,
                 "_on_ask_user": self.on_ask_user,
             }
-            result = execute_tool(self.working_dir, tc_name, tc_args, **extra_kwargs)
+            result = self._dispatch_tool(tc_name, tc_args, extra_kwargs)
             return tc, result
 
         with ThreadPoolExecutor(max_workers=min(4, len(tc_info))) as executor:
@@ -788,6 +811,18 @@ class BlorikoAgentLoop:
                         if self.on_text_chunk:
                             self._current_text = accumulated_text
                             self.on_text_chunk(accumulated_text)
+
+                    # 部分供应商流式 reasoning / thinking 字段
+                    reasoning_piece = (
+                        delta.get("reasoning_content")
+                        or delta.get("reasoning")
+                        or delta.get("thinking")
+                        or ""
+                    )
+                    if reasoning_piece:
+                        self._current_reasoning = (self._current_reasoning or "") + reasoning_piece
+                        if self.on_reasoning_chunk:
+                            self.on_reasoning_chunk(self._current_reasoning)
 
                     delta_tool_calls = delta.get("tool_calls", []) or []
                     for dtc in delta_tool_calls:

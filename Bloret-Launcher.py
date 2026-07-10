@@ -181,6 +181,9 @@ class Backend(QObject):
     queryResultReceived = Signal(dict)
     blorikoResponseReceived = Signal(str)
     blorikoModSuggestionReceived = Signal(str, list)  # clean_text, slug_list
+    blorikoModSuggestionStatus = Signal(str)  # 思考/工具过程
+    blorikoModSuggestionChunk = Signal(str)  # 流式正文（累积）
+    blorikoModSuggestionFailed = Signal(str)
     syncStatusChanged = Signal(str)
     languageChanged = Signal()
     downloadDialogRequested = Signal(str)
@@ -1751,39 +1754,120 @@ class Backend(QObject):
     @Slot(str, str)
     def askBlorikoForModsWithVersion(self, query, version):
         """
-        带 Minecraft 版本的模组推荐（走全局 AI 配置，解析 slug 供一键安装）。
+        带 Minecraft 版本的模组推荐：
+        Modrinth 工具搜索 + 流式正文 + 思考/工具过程展示。
         """
         print(f"Bloriko Mod suggestion request with version: '{query}' for MC {version}")
+        from modules.log import log as _log
+        import logging as _logging
 
-        def run_ask():
+        # 取消上一轮未完成的推荐
+        prev = getattr(self, "_mod_suggest_agent", None)
+        if prev is not None:
             try:
-                from modules.Bloriko import (
-                    AskBloriko,
-                    BuildModRecommendationQuestion,
-                    parse_mod_slugs_from_response,
-                )
-                from modules.log import log as _log
-                import logging as _logging
-
-                prompt = BuildModRecommendationQuestion(query, version)
-                _log(
-                    f"Backend.askBlorikoForModsWithVersion: version={version}, query_len={len(query or '')}",
-                    _logging.INFO,
-                )
-                response_text = AskBloriko(prompt, config=None, deepthink=False)
-                clean_text, slugs = parse_mod_slugs_from_response(response_text)
-                _log(
-                    f"Backend.askBlorikoForModsWithVersion 完成: slugs={len(slugs)}, text_len={len(clean_text or '')}",
-                    _logging.INFO,
-                )
-                self.blorikoModSuggestionReceived.emit(clean_text, slugs)
+                prev.cancel()
+                _log("[Backend] 已取消上一轮 Mod 推荐 Agent", _logging.INFO)
             except Exception as e:
-                print(f"Error in askBlorikoForModsWithVersion: {e}")
-                self.blorikoModSuggestionReceived.emit(
-                    i18nText("错误: {error}").replace("{error}", str(e)), []
-                )
+                _log(f"[Backend] 取消上一轮 Agent 失败: {e}", _logging.WARNING)
+            self._mod_suggest_agent = None
 
-        threading.Thread(target=run_ask, daemon=True).start()
+        self._mod_suggest_cancelled = False
+        self._mod_suggest_generation = getattr(self, "_mod_suggest_generation", 0) + 1
+        generation = self._mod_suggest_generation
+
+        try:
+            from modules.bloriko_mod_agent import run_mod_recommendation_agent
+
+            # 尽量把文件夹名解析为纯 MC 版本（与旧逻辑一致）
+            actual_version = version
+            try:
+                config_data = cfg.read()
+                mc_dir = config_data.get("minecraft_dir", BLglobals.minecraft_dir)
+                bl_json_path = os.path.join(mc_dir, "versions", ".BL.json")
+                if os.path.exists(bl_json_path):
+                    with open(bl_json_path, "r", encoding="utf-8") as f:
+                        bl_data = json.load(f)
+                    mappings = bl_data.get("versions", {})
+                    if version in mappings:
+                        actual_version = mappings[version].get("version", version) or version
+            except Exception as e:
+                _log(f"[Backend] 解析 Fabric 真实版本失败，使用原名: {e}", _logging.WARNING)
+
+            _log(
+                f"Backend.askBlorikoForModsWithVersion(agent): folder={version}, "
+                f"mc={actual_version}, query_len={len(query or '')}, gen={generation}",
+                _logging.INFO,
+            )
+            self.blorikoModSuggestionStatus.emit("络可正在连接 AI 并准备搜索 Modrinth…")
+
+            def on_status(msg):
+                if generation != getattr(self, "_mod_suggest_generation", 0):
+                    return
+                if getattr(self, "_mod_suggest_cancelled", False):
+                    return
+                self.blorikoModSuggestionStatus.emit(str(msg or ""))
+
+            def on_chunk(text):
+                if generation != getattr(self, "_mod_suggest_generation", 0):
+                    return
+                if getattr(self, "_mod_suggest_cancelled", False):
+                    return
+                self.blorikoModSuggestionChunk.emit(str(text or ""))
+
+            def on_error(msg):
+                if generation != getattr(self, "_mod_suggest_generation", 0):
+                    return
+                if getattr(self, "_mod_suggest_cancelled", False):
+                    return
+                self.blorikoModSuggestionFailed.emit(str(msg or ""))
+
+            def on_done(clean_text, slugs):
+                if generation != getattr(self, "_mod_suggest_generation", 0):
+                    _log("[Backend] 忽略过期 Mod 推荐结果", _logging.INFO)
+                    return
+                if getattr(self, "_mod_suggest_cancelled", False):
+                    _log("[Backend] 推荐已取消，不弹出结果", _logging.INFO)
+                    self._mod_suggest_agent = None
+                    return
+                self._mod_suggest_agent = None
+                _log(
+                    f"Backend.askBlorikoForModsWithVersion 完成: slugs={len(slugs or [])}, "
+                    f"text_len={len(clean_text or '')}",
+                    _logging.INFO,
+                )
+                self.blorikoModSuggestionReceived.emit(clean_text or "", list(slugs or []))
+
+            agent = run_mod_recommendation_agent(
+                query,
+                actual_version,
+                on_text_chunk=on_chunk,
+                on_status=on_status,
+                on_error=on_error,
+                on_done=on_done,
+            )
+            self._mod_suggest_agent = agent
+        except Exception as e:
+            print(f"Error in askBlorikoForModsWithVersion: {e}")
+            _log(f"askBlorikoForModsWithVersion 启动失败: {e}", _logging.ERROR)
+            self.blorikoModSuggestionFailed.emit(str(e))
+            self.blorikoModSuggestionReceived.emit(
+                i18nText("错误: {error}").replace("{error}", str(e)), []
+            )
+
+    @Slot()
+    def cancelBlorikoModSuggestion(self):
+        """取消进行中的络可 Mod 推荐。"""
+        self._mod_suggest_cancelled = True
+        self._mod_suggest_generation = getattr(self, "_mod_suggest_generation", 0) + 1
+        agent = getattr(self, "_mod_suggest_agent", None)
+        if agent is not None:
+            try:
+                agent.cancel()
+                print("[Backend] cancelBlorikoModSuggestion: cancelled")
+            except Exception as e:
+                print(f"[Backend] cancelBlorikoModSuggestion failed: {e}")
+            self._mod_suggest_agent = None
+        self.blorikoModSuggestionStatus.emit("已取消")
 
     @Slot(result=list)
     def getVanillaVersions(self):

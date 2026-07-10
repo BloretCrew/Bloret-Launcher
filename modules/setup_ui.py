@@ -3201,25 +3201,52 @@ class BlorikoAIModThread(QThread):
         self.deepthink = deepthink
 
     def run(self):
-        # 使用全局 AI 供应商配置的 AskBloriko + 统一 prompt / slug 解析
+        # 与 QML 路径共用迷你 Agent（Modrinth 工具）；本线程无流式 UI，同步等待结果
         try:
-            from modules.Bloriko import (
-                AskBloriko,
-                BuildModRecommendationQuestion,
-                parse_mod_slugs_from_response,
-            )
-            prompt = BuildModRecommendationQuestion(self.question, self.version)
+            import threading
+            from modules.bloriko_mod_agent import run_mod_recommendation_agent
+
             log(
-                f"BlorikoAIModThread: version={self.version}, query_len={len(self.question or '')}",
+                f"BlorikoAIModThread(agent): version={self.version}, "
+                f"query_len={len(self.question or '')}",
                 logging.INFO,
             )
-            response_text = AskBloriko(prompt, self.config_data, deepthink=False)
-            clean_text, slugs = parse_mod_slugs_from_response(response_text)
+            done_event = threading.Event()
+            box = {"text": "", "slugs": [], "error": None}
+
+            def on_done(clean_text, slugs):
+                box["text"] = clean_text or ""
+                box["slugs"] = list(slugs or [])
+                done_event.set()
+
+            def on_error(msg):
+                box["error"] = msg
+
+            agent = run_mod_recommendation_agent(
+                self.question,
+                self.version,
+                on_text_chunk=None,
+                on_status=lambda m: log(f"BlorikoAIModThread status: {m}", logging.INFO),
+                on_error=on_error,
+                on_done=on_done,
+            )
+            if agent is None:
+                self.finished.emit(False, box.get("error") or "Agent 启动失败", [])
+                return
+            if not done_event.wait(timeout=600):
+                try:
+                    agent.cancel()
+                except Exception:
+                    pass
+                self.finished.emit(False, "请求超时", [])
+                return
             log(
-                f"BlorikoAIModThread 完成: slugs={len(slugs)}, text_len={len(clean_text or '')}",
+                f"BlorikoAIModThread 完成: slugs={len(box['slugs'])}, "
+                f"text_len={len(box['text'])}",
                 logging.INFO,
             )
-            self.finished.emit(True, clean_text, slugs)
+            ok = not (box.get("error") and not box["slugs"] and not box["text"])
+            self.finished.emit(True if box["text"] or box["slugs"] else ok, box["text"] or (box.get("error") or ""), box["slugs"])
         except Exception as e:
             log(f"Bloriko AI 请求失败: {e}", logging.ERROR)
             self.finished.emit(False, str(e), [])

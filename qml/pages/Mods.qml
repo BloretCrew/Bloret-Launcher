@@ -12,6 +12,8 @@ FluentPage {
     property var fabricVersions: []
     property string selectedFabricVersion: ""
     property var blorikoSlugs: []
+    property string blorikoThinkingLog: ""
+    property string blorikoStreamText: ""
 
     // 导航 StackView 会保留历史页实例；仅当前活动页应处理 Backend 信号，
     // 否则多次进入 Mods 后会弹出多个相同的建议对话框。
@@ -29,6 +31,23 @@ FluentPage {
                     modsPage.StackView.view ? modsPage.StackView.status : "n/a")
     }
 
+    function resetBlorikoProgress() {
+        blorikoThinkingLog = ""
+        blorikoStreamText = ""
+        console.log("[Mods] resetBlorikoProgress")
+    }
+
+    function appendThinking(msg) {
+        if (!msg || msg.length === 0)
+            return
+        if (blorikoThinkingLog.length > 0)
+            blorikoThinkingLog += "\n"
+        blorikoThinkingLog += msg
+        // 限制长度，避免无限增长
+        if (blorikoThinkingLog.length > 12000)
+            blorikoThinkingLog = blorikoThinkingLog.substring(blorikoThinkingLog.length - 10000)
+    }
+
     function showBlorikoSuggestion(response, slugs) {
         console.log(
             "[Mods] showBlorikoSuggestion active=", isActivePage,
@@ -40,6 +59,7 @@ FluentPage {
             return
         }
         blorikoStatus = response || ""
+        versionSelectDialog.loading = false
         versionSelectDialog.close()
         blorikoDialog.text = response || ""
         blorikoDialog.slugs = slugs || []
@@ -57,6 +77,17 @@ FluentPage {
             console.log("Received Modrinth results:", results)
             modResults = results
             searchBusyIndicator.visible = false
+        }
+        function onBlorikoModSuggestionStatus(msg) {
+            console.log("[Mods] status:", (msg || "").substring(0, 120))
+            appendThinking(msg)
+        }
+        function onBlorikoModSuggestionChunk(text) {
+            blorikoStreamText = text || ""
+        }
+        function onBlorikoModSuggestionFailed(msg) {
+            console.warn("[Mods] suggestion failed:", msg)
+            appendThinking("❌ " + (msg || (Backend ? Backend.tr("失败") : "失败")))
         }
         // 仅处理模组推荐专用信号；勿再监听 blorikoResponseReceived，
         // 以免与其它入口共用 Backend 时误开弹窗。
@@ -443,8 +474,10 @@ FluentPage {
     // --- Version Selection Dialog ---
     Dialog {
         id: versionSelectDialog
-        title: (Backend ? Backend.tr("选择 Minecraft 版本") : "选择 Minecraft 版本")
-        width: 400
+        title: versionSelectDialog.loading
+            ? (Backend ? Backend.tr("络可正在挑选 Mod…") : "络可正在挑选 Mod…")
+            : (Backend ? Backend.tr("选择 Minecraft 版本") : "选择 Minecraft 版本")
+        width: versionSelectDialog.loading ? Math.min(modsPage.width * 0.92, 640) : 400
         modal: true
         closePolicy: Popup.NoAutoClose
 
@@ -452,7 +485,7 @@ FluentPage {
 
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 20
+            spacing: 16
 
             Label {
                 text: (Backend ? Backend.tr("请选择要推荐模组的 Minecraft 版本（仅支持 Fabric）：") : "请选择要推荐模组的 Minecraft 版本（仅支持 Fabric）：")
@@ -475,41 +508,92 @@ FluentPage {
                 }
             }
 
+            // --- 加载中：思考过程 + 流式正文 ---
             ColumnLayout {
                 Layout.fillWidth: true
                 visible: versionSelectDialog.loading
-                spacing: 15
-                
+                spacing: 12
+
                 ProgressBar {
                     Layout.fillWidth: true
                     indeterminate: true
                 }
-                
+
                 Label {
-                    text: (Backend ? Backend.tr("络可正在思考建议...") : "络可正在思考建议...")
-                    Layout.alignment: Qt.AlignHCenter
-                    color: Theme.currentTheme.colors.textColor
-                    font.pixelSize: 14
+                    text: (Backend ? Backend.tr("思考过程 / 工具调用") : "思考过程 / 工具调用")
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    font.pixelSize: 12
+                    font.weight: Font.DemiBold
+                }
+
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 140
+                    clip: true
+                    TextArea {
+                        text: modsPage.blorikoThinkingLog.length > 0
+                            ? modsPage.blorikoThinkingLog
+                            : (Backend ? Backend.tr("等待络可开始搜索…") : "等待络可开始搜索…")
+                        readOnly: true
+                        wrapMode: Text.Wrap
+                        selectByMouse: true
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        font.pixelSize: 12
+                        background: null
+                    }
+                }
+
+                Label {
+                    text: (Backend ? Backend.tr("推荐正文（流式）") : "推荐正文（流式）")
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    font.pixelSize: 12
+                    font.weight: Font.DemiBold
+                }
+
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 180
+                    clip: true
+                    TextArea {
+                        text: modsPage.blorikoStreamText.length > 0
+                            ? modsPage.blorikoStreamText
+                            : (Backend ? Backend.tr("络可还在搜索与整理中，正文会显示在这里…") : "络可还在搜索与整理中，正文会显示在这里…")
+                        readOnly: true
+                        wrapMode: Text.Wrap
+                        selectByMouse: true
+                        textFormat: Text.MarkdownText
+                        color: Theme.currentTheme.colors.textColor
+                        font.pixelSize: 13
+                        background: null
+                    }
                 }
             }
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 10
-                visible: !versionSelectDialog.loading
                 
                 Item { Layout.fillWidth: true }
                 
                 Button {
                     text: (Backend ? Backend.tr("取消") : "取消")
-                    onClicked: versionSelectDialog.close()
+                    onClicked: {
+                        console.log("[Mods] 取消推荐, loading=", versionSelectDialog.loading)
+                        if (versionSelectDialog.loading && Backend) {
+                            Backend.cancelBlorikoModSuggestion()
+                        }
+                        versionSelectDialog.loading = false
+                        versionSelectDialog.close()
+                    }
                 }
                 
                 Button {
                     text: (Backend ? Backend.tr("确定") : "确定")
                     highlighted: true
+                    visible: !versionSelectDialog.loading
                     onClicked: {
                         if (fabricVersionCombo.currentIndex >= 0 && fabricVersionCombo.currentText !== "") {
+                            modsPage.resetBlorikoProgress()
                             versionSelectDialog.loading = true
                             modsPage.selectedFabricVersion = fabricVersionCombo.currentText
                             if (Backend && askBlorikoInput.text.trim() !== "") {
@@ -518,6 +602,10 @@ FluentPage {
                                     modsPage.selectedFabricVersion,
                                     " query=",
                                     askBlorikoInput.text.substring(0, 80)
+                                )
+                                appendThinking(
+                                    (Backend ? Backend.tr("开始请求…") : "开始请求…")
+                                    + " " + modsPage.selectedFabricVersion
                                 )
                                 Backend.askBlorikoForModsWithVersion(
                                     askBlorikoInput.text.trim(),
@@ -531,6 +619,10 @@ FluentPage {
         }
 
         onClosed: {
+            if (loading && Backend) {
+                // 关闭对话框时若仍在加载，取消后台 Agent
+                Backend.cancelBlorikoModSuggestion()
+            }
             loading = false
         }
     }
