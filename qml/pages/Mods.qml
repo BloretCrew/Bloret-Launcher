@@ -13,31 +13,55 @@ FluentPage {
     property string selectedFabricVersion: ""
     property var blorikoSlugs: []
 
+    // 导航 StackView 会保留历史页实例；仅当前活动页应处理 Backend 信号，
+    // 否则多次进入 Mods 后会弹出多个相同的建议对话框。
+    readonly property bool isActivePage: {
+        if (modsPage.StackView.view)
+            return modsPage.StackView.status === StackView.Active
+        return modsPage.visible
+    }
+
     Component.onCompleted: {
         if (Backend) {
             fabricVersions = Backend.getFabricVersions()
         }
+        console.log("[Mods] page created, StackView.status=",
+                    modsPage.StackView.view ? modsPage.StackView.status : "n/a")
+    }
+
+    function showBlorikoSuggestion(response, slugs) {
+        console.log(
+            "[Mods] showBlorikoSuggestion active=", isActivePage,
+            " dialogOpen=", blorikoDialog.opened,
+            " slugs=", (slugs && slugs.length) || 0
+        )
+        if (!isActivePage) {
+            console.log("[Mods] 忽略建议信号：当前不是活动页")
+            return
+        }
+        blorikoStatus = response || ""
+        versionSelectDialog.close()
+        blorikoDialog.text = response || ""
+        blorikoDialog.slugs = slugs || []
+        // 已打开时只更新内容，避免同实例重复 open 叠窗
+        if (!blorikoDialog.opened)
+            blorikoDialog.open()
     }
 
     Connections {
         target: Backend
+        // 非活动页断开信号，避免历史页实例重复弹窗
+        enabled: modsPage.isActivePage
+
         function onModrinthResultsReceived(results) {
             console.log("Received Modrinth results:", results)
             modResults = results
             searchBusyIndicator.visible = false
         }
-        function onBlorikoResponseReceived(response) {
-            blorikoStatus = response
-            versionSelectDialog.close()
-            blorikoDialog.text = response
-            blorikoDialog.open()
-        }
+        // 仅处理模组推荐专用信号；勿再监听 blorikoResponseReceived，
+        // 以免与其它入口共用 Backend 时误开弹窗。
         function onBlorikoModSuggestionReceived(response, slugs) {
-            blorikoStatus = response
-            versionSelectDialog.close()
-            blorikoDialog.text = response
-            blorikoDialog.slugs = slugs
-            blorikoDialog.open()
+            showBlorikoSuggestion(response, slugs)
         }
         function onDownloadNotify(title, text, success) {
             downloadInfoBar.severity = success ? Severity.Success : Severity.Error
