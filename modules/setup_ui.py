@@ -3201,38 +3201,25 @@ class BlorikoAIModThread(QThread):
         self.deepthink = deepthink
 
     def run(self):
-        
-        # 构建 Prompt，强制 AI 返回 JSON 格式的 slug，并指定只推荐 Fabric 模组
-        prompt = (
-            f"User is playing Minecraft version {self.version} using the FABRIC loader. "
-            f"User Request: {self.question}. "
-            f"Please recommend some suitable Modrinth mods that are compatible with FABRIC. "
-            f"Describe why you chose them briefly. "
-            f"\n\nEXTREMELY IMPORTANT: At the very end of your response, you MUST provide a JSON block containing ONLY a list of the Modrinth slugs (project IDs) for these mods. "
-            f"Format strictly like this:\n```json\n[\"slug-1\", \"slug-2\", \"slug-3\"]\n```"
-        )
-        
+        # 使用全局 AI 供应商配置的 AskBloriko + 统一 prompt / slug 解析
         try:
-            # 调用 Bloriko.py 中的 AskBloriko
-            # 注意：AskBloriko 需要 config 字典
-            response_text = AskBloriko(prompt, self.config_data, deepthink=self.deepthink)
-            
-            # 解析 JSON
-            json_match = re.search(r'```json\s*(\[.*?\])\s*```', response_text, re.DOTALL)
-            slugs = []
-            clean_text = response_text
-            
-            if json_match:
-                json_str = json_match.group(1)
-                try:
-                    slugs = json.loads(json_str)
-                    # 从展示文本中移除 JSON 块，让界面更干净
-                    clean_text = response_text.replace(json_match.group(0), "").strip()
-                except json.JSONDecodeError:
-                    log("Bloriko AI 返回的 JSON 格式错误", logging.ERROR)
-            
+            from modules.Bloriko import (
+                AskBloriko,
+                BuildModRecommendationQuestion,
+                parse_mod_slugs_from_response,
+            )
+            prompt = BuildModRecommendationQuestion(self.question, self.version)
+            log(
+                f"BlorikoAIModThread: version={self.version}, query_len={len(self.question or '')}",
+                logging.INFO,
+            )
+            response_text = AskBloriko(prompt, self.config_data, deepthink=False)
+            clean_text, slugs = parse_mod_slugs_from_response(response_text)
+            log(
+                f"BlorikoAIModThread 完成: slugs={len(slugs)}, text_len={len(clean_text or '')}",
+                logging.INFO,
+            )
             self.finished.emit(True, clean_text, slugs)
-            
         except Exception as e:
             log(f"Bloriko AI 请求失败: {e}", logging.ERROR)
             self.finished.emit(False, str(e), [])

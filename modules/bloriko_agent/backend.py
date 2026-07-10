@@ -191,6 +191,114 @@ def _save_custom_providers(providers: dict):
         log.warning(f"保存自定义供应商失败: {e}")
 
 
+def _load_global_ai_settings_static():
+    """从 config.json 读取全局 AI 供应商和模型设置（模块级，供非 Backend 调用）。"""
+    try:
+        import modules.config as cfg
+        config_data = cfg.read()
+        provider = config_data.get("ai_provider", "bloret_passport")
+        model = config_data.get("ai_model", "default")
+        return provider, model
+    except Exception as e:
+        log.warning(f"[AI] 读取全局 AI 设置失败: {e}")
+        return "bloret_passport", "default"
+
+
+def resolve_global_ai_config() -> dict:
+    """解析当前全局 AI 供应商配置，供 Agent 与一次性 Chat Completions 共用。
+
+    Returns:
+        dict: {
+            "provider_key": str,
+            "model": str,
+            "api_url": str,
+            "auth_header": str,      # 可为空（免密钥供应商）
+            "provider_name": str,
+            "error": str | None,     # 无法使用时的人类可读原因
+        }
+    """
+    provider_key, model = _load_global_ai_settings_static()
+    custom_providers = _load_custom_providers()
+    provider = BUILTIN_PROVIDERS.get(provider_key) or custom_providers.get(provider_key)
+
+    if not provider:
+        log.error(f"[AI] 未找到供应商: {provider_key}")
+        return {
+            "provider_key": provider_key,
+            "model": model or "",
+            "api_url": "",
+            "auth_header": "",
+            "provider_name": provider_key,
+            "error": f"未找到 AI 供应商: {provider_key}，请在设置中重新选择",
+        }
+
+    provider_name = provider.get("name", provider_key)
+    api_url = provider.get("api", "")
+    models = provider.get("models", []) or []
+
+    # 模型为空或不在列表时回退到供应商第一个模型
+    if not model:
+        model = models[0].get("id", "") if models else ""
+    elif models and not any(m.get("id") == model for m in models):
+        fallback = models[0].get("id", model)
+        log.warning(f"[AI] 模型 '{model}' 不在供应商 {provider_key} 列表中，回退为 '{fallback}'")
+        model = fallback
+
+    if not api_url or not model:
+        log.error(f"[AI] 供应商配置不完整: provider={provider_key}, api_url='{api_url}', model='{model}'")
+        return {
+            "provider_key": provider_key,
+            "model": model or "",
+            "api_url": api_url or "",
+            "auth_header": "",
+            "provider_name": provider_name,
+            "error": "供应商配置不完整，请在设置中检查 AI 供应商与模型",
+        }
+
+    auth_header = ""
+    if provider.get("needs_auth", False):
+        api_key = provider.get("api_key", "")
+        if api_key:
+            auth_header = f"Bearer {api_key}"
+        elif provider_key == "bloret_passport":
+            auth_header = _build_bloret_passport_auth()
+            if not auth_header:
+                log.error("[AI] Bloret PassPort 认证信息未配置：未找到 API Key 且用户未登录")
+                return {
+                    "provider_key": provider_key,
+                    "model": model,
+                    "api_url": api_url,
+                    "auth_header": "",
+                    "provider_name": provider_name,
+                    "error": "请先登录 Bloret PassPort，或在 PassPort /ai 页面创建 API Key 并配置",
+                }
+        else:
+            log.error(f"[AI] 供应商 {provider_name} 需要 API 密钥但未配置")
+            return {
+                "provider_key": provider_key,
+                "model": model,
+                "api_url": api_url,
+                "auth_header": "",
+                "provider_name": provider_name,
+                "error": f"供应商 {provider_name} 需要 API 密钥，请在设置中配置",
+            }
+    else:
+        log.info(f"[AI] 供应商 {provider_name} 无需认证")
+
+    log.info(
+        f"[AI] 全局配置就绪: provider={provider_key} ({provider_name}), "
+        f"model={model}, api={api_url}, auth={'yes' if auth_header else 'no'}"
+    )
+    return {
+        "provider_key": provider_key,
+        "model": model,
+        "api_url": api_url,
+        "auth_header": auth_header,
+        "provider_name": provider_name,
+        "error": None,
+    }
+
+
 def _fetch_providers_from_models_dev() -> list:
     try:
         resp = requests.get(_MODELS_DEV_API, timeout=15)
@@ -310,15 +418,7 @@ class BlorikoBackend(QObject):
     @staticmethod
     def _load_global_ai_settings():
         """从 config.json 读取全局 AI 供应商和模型设置"""
-        try:
-            import modules.config as cfg
-            config_data = cfg.read()
-            provider = config_data.get("ai_provider", "bloret_passport")
-            model = config_data.get("ai_model", "default")
-            return provider, model
-        except Exception as e:
-            log.warning(f"[Bloriko] 读取全局 AI 设置失败: {e}")
-            return "bloret_passport", "default"
+        return _load_global_ai_settings_static()
 
     def _sync_global_settings(self):
         """同步全局 AI 设置（每次交互时检查）"""

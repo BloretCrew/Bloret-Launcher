@@ -1725,17 +1725,16 @@ class Backend(QObject):
             return False
 
     @Slot(str, bool)
-    def askBloriko(self, query, deep_think):
-        print(f"Bloriko request: '{query}', deep think: {deep_think}")
+    def askBloriko(self, query, deep_think=False):
+        """一次性 AI 问答（走全局 AI 供应商；deep_think 已废弃）。"""
+        print(f"Bloriko request: '{query}', deep_think(ignored)={deep_think}")
         def run_ask():
             try:
-                config_data = cfg.read()
-                if not config_data.get("Bloret_PassPort_Login", False):
-                    self.blorikoResponseReceived.emit(i18nText("未登录: 请先登录 Bloret PassPort 以使用 AI 功能。"))
-                    return
-                
                 from modules.Bloriko import AskBloriko
-                response = AskBloriko(query, config_data, deepthink=deep_think)
+                from modules.log import log as _log
+                import logging as _logging
+                _log(f"Backend.askBloriko 开始, query_len={len(query or '')}", _logging.INFO)
+                response = AskBloriko(query, config=None, deepthink=False)
                 self.blorikoResponseReceived.emit(response)
             except Exception as e:
                 print(f"Error in askBloriko: {e}")
@@ -1743,63 +1742,46 @@ class Backend(QObject):
         threading.Thread(target=run_ask, daemon=True).start()
 
     @Slot(str, bool)
-    def askBlorikoForMods(self, query, deep_think):
-        # We can reuse same signal or dedicated one, let's reuse
+    def askBlorikoForMods(self, query, deep_think=False):
         print(f"Bloriko Mod suggestion request: '{query}'")
-        self.askBloriko(query + ( " (请针对 Minecraft 模组给出建议)" if "模组" not in query and "mod" not in query.lower() else ""), deep_think)
-    
-    @Slot(str, str, bool)
-    def askBlorikoForModsWithVersion(self, query, version, deep_think):
+        suffix = " (请针对 Minecraft 模组给出建议)" if "模组" not in query and "mod" not in query.lower() else ""
+        self.askBloriko(query + suffix, False)
+
+    @Slot(str, str)
+    def askBlorikoForModsWithVersion(self, query, version):
         """
-        带 Minecraft 版本的模组推荐请求（提取 slug 用于一键安装）
+        带 Minecraft 版本的模组推荐（走全局 AI 配置，解析 slug 供一键安装）。
         """
-        import re as _re
-        import json as _json
         print(f"Bloriko Mod suggestion request with version: '{query}' for MC {version}")
-        
-        prompt = (
-            f"User is playing Minecraft version {version} using the FABRIC loader. "
-            f"User Request: {query}. "
-            f"Please recommend some suitable Modrinth mods that are compatible with FABRIC. "
-            f"Describe why you chose them briefly. "
-            f"\n\nEXTREMELY IMPORTANT: At the very end of your response, you MUST provide a JSON block containing ONLY a list of the Modrinth slugs (project IDs) for these mods. "
-            f"Format strictly like this:\n```json\n[\"slug-1\", \"slug-2\", \"slug-3\"]\n```"
-        )
-        
+
         def run_ask():
             try:
-                config_data = cfg.read()
-                if not config_data.get("Bloret_PassPort_Login", False):
-                    self.blorikoModSuggestionReceived.emit(i18nText("未登录: 请先登录 Bloret PassPort 以使用 AI 功能。"), [])
-                    return
-                
-                from modules.Bloriko import AskBloriko
-                response_text = AskBloriko(prompt, config_data, deepthink=deep_think)
-                
-                json_match = _re.search(r'```json\s*(\[.*?\])\s*```', response_text, _re.DOTALL)
-                slugs = []
-                clean_text = response_text
-                
-                if json_match:
-                    json_str = json_match.group(1)
-                    try:
-                        slugs = _json.loads(json_str)
-                        clean_text = response_text.replace(json_match.group(0), "").strip()
-                    except _json.JSONDecodeError:
-                        print("Bloriko AI 返回的 JSON 格式错误")
+                from modules.Bloriko import (
+                    AskBloriko,
+                    BuildModRecommendationQuestion,
+                    parse_mod_slugs_from_response,
+                )
+                from modules.log import log as _log
+                import logging as _logging
 
-                if not slugs:
-                    slug_fallback = _re.findall(r'modrinth\.com/mod/([a-zA-Z0-9_-]+)', response_text)
-                    if not slug_fallback:
-                        slug_fallback = _re.findall(r'`([a-zA-Z0-9_-]+)`', response_text)
-                    if slug_fallback:
-                        slugs = list(dict.fromkeys(slug_fallback))
-                        print(f"Fallback extracted slugs: {slugs}")
-                
+                prompt = BuildModRecommendationQuestion(query, version)
+                _log(
+                    f"Backend.askBlorikoForModsWithVersion: version={version}, query_len={len(query or '')}",
+                    _logging.INFO,
+                )
+                response_text = AskBloriko(prompt, config=None, deepthink=False)
+                clean_text, slugs = parse_mod_slugs_from_response(response_text)
+                _log(
+                    f"Backend.askBlorikoForModsWithVersion 完成: slugs={len(slugs)}, text_len={len(clean_text or '')}",
+                    _logging.INFO,
+                )
                 self.blorikoModSuggestionReceived.emit(clean_text, slugs)
             except Exception as e:
                 print(f"Error in askBlorikoForModsWithVersion: {e}")
-                self.blorikoModSuggestionReceived.emit(i18nText("错误: {error}").replace("{error}", str(e)), [])
+                self.blorikoModSuggestionReceived.emit(
+                    i18nText("错误: {error}").replace("{error}", str(e)), []
+                )
+
         threading.Thread(target=run_ask, daemon=True).start()
 
     @Slot(result=list)

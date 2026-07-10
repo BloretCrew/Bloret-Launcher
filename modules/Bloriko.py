@@ -15,7 +15,8 @@ timeout = 600 # second
 
 OAUTH_APP_ID = "BloretLauncher"
 OAUTH_APP_SECRET = "s4d56f4a68sd46g54asd46f54a5dsf654asdf546"
-AI_API_URL = f"{BLglobals.server_ip}:20000/v1/chat/completions"
+# 旧端点已废弃；实际请求走 resolve_global_ai_config()（Bloret PassPort / OpenCode Zen / 自定义供应商）
+AI_API_URL_LEGACY = f"{BLglobals.server_ip}:20000/v1/chat/completions"
 
 class BlorikoSignals(QObject):
     """Bloriko 信号类"""
@@ -50,8 +51,30 @@ class UIUpdater(QObject):
 
 
 def _build_auth_header(user_token):
-    """构建 OpenAI 兼容的 Bearer Token 认证头"""
+    """构建 OpenAI 兼容的 Bearer Token 认证头（旧路径兼容，优先使用 resolve_global_ai_config）"""
     return f"Bearer {OAUTH_APP_ID};{OAUTH_APP_SECRET};{user_token}"
+
+
+def _resolve_ai_endpoint():
+    """获取当前全局 AI 端点配置。
+
+    Returns:
+        tuple: (api_url, auth_header, model, error_message_or_None)
+    """
+    try:
+        from modules.bloriko_agent import resolve_global_ai_config
+        cfg_ai = resolve_global_ai_config()
+        if cfg_ai.get("error"):
+            return "", "", "", cfg_ai["error"]
+        return (
+            cfg_ai.get("api_url", ""),
+            cfg_ai.get("auth_header", ""),
+            cfg_ai.get("model", ""),
+            None,
+        )
+    except Exception as e:
+        log(f"解析全局 AI 配置失败: {e}", logging.ERROR)
+        return "", "", "", f"解析 AI 配置失败: {e}"
 
 
 def _parse_ai_response(result):
@@ -238,298 +261,242 @@ def _parse_stream_response_text(text, on_chunk=None):
     return result
 
 
-def AskBloriko(question, config, deepthink=False):
+def AskBloriko(question, config=None, deepthink=False):
     """
-    向Bloriko发送问题并获取回答（流式）
-    
+    向 Bloriko 发送问题并获取回答（流式）。
+
+    使用全局 AI 供应商配置（与络可 Agent 一致）：
+    Bloret PassPort / OpenCode Zen / 自定义供应商。
+
     Args:
         question (str): 用户的问题
-        config (dict): 配置信息
-        deepthink (bool): 保留参数，当前未使用
-        
+        config (dict): 保留参数，兼容旧调用；认证已由全局配置解析
+        deepthink (bool): 已废弃，忽略
+
     Returns:
-        str: AI的回复内容
+        str: AI 的回复内容
     """
-    log(f"开始处理AI请求，问题长度: {len(question)}字符", logging.INFO)
-    
-    user_token = config.get("Bloret_PassPort_PassWord", "")
-    
-    log(f"token状态: {'已设置' if user_token else '未设置'} (长度: {len(user_token) if user_token else 0})", logging.DEBUG)
-    
-    if not user_token:
-        log("用户token为空", logging.ERROR)
-        return "用户token为空"
-    
+    log(f"开始处理 AI 请求，问题长度: {len(question)} 字符, deepthink(忽略)={deepthink}", logging.INFO)
+
+    api_url, auth_header, model, config_error = _resolve_ai_endpoint()
+    if config_error:
+        log(f"AI 配置错误: {config_error}", logging.ERROR)
+        return config_error
+
+    log(
+        f"AskBloriko 使用全局 AI: model={model}, api={api_url}, auth={'yes' if auth_header else 'no'}",
+        logging.INFO,
+    )
+
     def make_request():
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": _build_auth_header(user_token)
-        }
-        
+        headers = {"Content-Type": "application/json"}
+        if auth_header:
+            headers["Authorization"] = auth_header
+
         payload = {
-            "model": "Bloriko",
+            "model": model,
             "messages": [
                 {"role": "user", "content": question}
             ],
-            "stream": True
+            "stream": True,
         }
-        
-        log(f"准备发送AI请求到: {AI_API_URL}", logging.INFO)
-        log(f"请求headers: Authorization=Bearer ****;{user_token[:8]}...", logging.DEBUG)
-        log(f"请求payload: {payload}", logging.DEBUG)
-        
+
+        log(f"准备发送 AI 请求到: {api_url}", logging.INFO)
+        if auth_header:
+            masked = auth_header[:24] + "..." if len(auth_header) > 24 else "***"
+            log(f"请求 Authorization(脱敏): {masked}", logging.DEBUG)
+        log(f"请求 payload model={model}, messages_count=1", logging.DEBUG)
+
         try:
-            log("开始发送POST请求(流式)...", logging.DEBUG)
-            response = requests.post(AI_API_URL, json=payload, headers=headers, timeout=timeout, stream=True)
+            log("开始发送 POST 请求(流式)...", logging.DEBUG)
+            response = requests.post(api_url, json=payload, headers=headers, timeout=timeout, stream=True)
             log(f"收到响应，状态码: {response.status_code}", logging.INFO)
-            
+
             response.raise_for_status()
-            
+
             content_type = response.headers.get("Content-Type", "")
-            log(f"响应Content-Type: {content_type}", logging.INFO)
-            if "application/json" in content_type:
+            log(f"响应 Content-Type: {content_type}", logging.INFO)
+            if "application/json" in content_type and "text/event-stream" not in content_type:
                 result = response.json()
-                log(f"JSON响应内容: {result}", logging.DEBUG)
+                log(f"JSON 响应内容: {result}", logging.DEBUG)
                 if "error" in result:
-                    error_msg = result["error"].get("message", "未知错误")
-                    error_type = result["error"].get("type", "unknown")
-                    log(f"AI响应返回错误: [{error_type}] {error_msg}", logging.ERROR)
+                    err = result["error"]
+                    if isinstance(err, dict):
+                        error_msg = err.get("message", "未知错误")
+                        error_type = err.get("type", "unknown")
+                    else:
+                        error_msg = str(err)
+                        error_type = "unknown"
+                    log(f"AI 响应返回错误: [{error_type}] {error_msg}", logging.ERROR)
                     if error_type == "authentication_error" or "认证" in error_msg or "认证失败" in error_msg:
-                        return "Bloret PassPort 认证失败，请重新登录"
+                        return "Bloret PassPort 认证失败，请重新登录或检查 AI 配置"
                     return f"请求失败: {error_msg}"
                 return _parse_ai_response(result)
-            
-            log("进入流式SSE解析...", logging.INFO)
-            
-            # 诊断：打印响应头和原始内容
+
+            log("进入流式 SSE 解析...", logging.INFO)
+
             log(f"响应头: {dict(response.headers)}", logging.DEBUG)
             raw_bytes = response.content
             log(f"响应原始字节数: {len(raw_bytes)}", logging.INFO)
             raw_text = raw_bytes.decode("utf-8", errors="replace")
             log(f"响应原始文本(前500字符): {repr(raw_text[:500])}", logging.INFO)
-            
-            # 如果有内容，直接解析
+
             if raw_text.strip():
                 return _parse_stream_response_text(raw_text, on_chunk=None)
-            
+
             return _parse_stream_response(response)
-                
+
         except requests.exceptions.HTTPError as e:
-            log(f"HTTP错误: {type(e).__name__}: {str(e)}", logging.ERROR)
-            log(f"HTTP状态码: {e.response.status_code if e.response else '未知'}", logging.ERROR)
-            log(f"HTTP响应内容: {e.response.text if e.response else '无响应内容'}", logging.ERROR)
+            log(f"HTTP 错误: {type(e).__name__}: {str(e)}", logging.ERROR)
+            log(f"HTTP 状态码: {e.response.status_code if e.response else '未知'}", logging.ERROR)
+            log(f"HTTP 响应内容: {e.response.text if e.response else '无响应内容'}", logging.ERROR)
             if e.response and e.response.status_code == 401:
-                return "Bloret PassPort 认证失败，请重新登录"
+                return "AI 认证失败，请重新登录 Bloret PassPort 或检查 API 密钥"
             return f"请求失败: {str(e)}"
         except requests.exceptions.RequestException as e:
             log(f"请求异常: {type(e).__name__}: {str(e)}", logging.ERROR)
             return f"请求失败: {str(e)}"
         except json.JSONDecodeError as e:
-            log(f"JSON解析失败: {str(e)}", logging.ERROR)
+            log(f"JSON 解析失败: {str(e)}", logging.ERROR)
             return "服务器响应不是有效的 JSON 格式"
         except Exception as e:
             log(f"处理响应时发生未知错误: {type(e).__name__}: {str(e)}", logging.ERROR)
             return f"未知错误: {str(e)}"
-    
-    # 在新线程中执行请求
+
     result = [None]
-    
+
     def run_in_thread():
         try:
-            log("在新线程中开始执行AI请求", logging.DEBUG)
+            log("在新线程中开始执行 AI 请求", logging.DEBUG)
             result[0] = make_request()
-            log(f"线程执行完成，结果长度: {len(result[0]) if result[0] else 0}字符", logging.DEBUG)
+            log(f"线程执行完成，结果长度: {len(result[0]) if result[0] else 0} 字符", logging.DEBUG)
         except Exception as e:
             log(f"线程执行错误: {type(e).__name__}: {str(e)}", logging.ERROR)
             result[0] = f"线程执行错误: {str(e)}"
-    
+
     thread = threading.Thread(target=run_in_thread)
     thread.start()
     thread.join(timeout=timeout)
-    
+
     if thread.is_alive():
-        log(f"AI请求超时({timeout}秒)，线程仍在运行", logging.ERROR)
+        log(f"AI 请求超时({timeout}秒)，线程仍在运行", logging.ERROR)
         return "请求超时，请稍后重试"
-    
+
     final_result = result[0]
-    log(f"AI请求处理完成，最终返回内容长度: {len(final_result) if final_result else 0}字符", logging.INFO)
+    log(f"AI 请求处理完成，最终返回内容长度: {len(final_result) if final_result else 0} 字符", logging.INFO)
     return final_result
 
 
 def BuildModRecommendationQuestion(user_query, mc_version):
     """
-    构建针对模组推荐的 AI 问题
-    
+    构建针对模组推荐的 AI 问题（强制返回 Modrinth slug JSON，供一键安装解析）。
+
     Args:
         user_query (str): 用户的需求描述
         mc_version (str): Minecraft 版本号
-        
+
     Returns:
         str: 完整的推荐问题
     """
-    prompt = f"""我需要为 Minecraft {mc_version} 推荐一些模组。
-
-用户的需求是：{user_query}
-
-请根据以下要求给出推荐：
-1. 所有推荐的模组必须支持 Minecraft {mc_version} 和 Fabric 加载器
-2. 提供模组的 Modrinth 项目名称（英文名，用于搜索）
-3. 简短说明每个模组的功能
-4. 按照重要性或依赖关系排序推荐
-
-格式示例：
-- **模组名称** (Modrinth ID: xxx)：功能说明
-
-请确保推荐的模组在 Modrinth 上都能找到，并且支持指定的版本和加载器。"""
+    prompt = (
+        f"User is playing Minecraft version {mc_version} using the FABRIC loader.\n"
+        f"User Request: {user_query}\n\n"
+        f"Please recommend 3-8 suitable Modrinth mods that are compatible with FABRIC "
+        f"and Minecraft {mc_version}. Briefly explain why each was chosen. "
+        f"Use real Modrinth project slugs (URL path ids), not display names.\n\n"
+        f"EXTREMELY IMPORTANT: At the very end of your response, you MUST provide a JSON block "
+        f"containing ONLY a list of the Modrinth slugs (project IDs) for these mods.\n"
+        f"Format strictly like this:\n```json\n[\"sodium\", \"lithium\", \"iris\"]\n```"
+    )
+    log(
+        f"BuildModRecommendationQuestion: mc={mc_version}, query_len={len(user_query)}",
+        logging.INFO,
+    )
     return prompt
+
+
+def parse_mod_slugs_from_response(response_text):
+    """从 AI 回复中解析 Modrinth slug 列表，并返回去掉 JSON 块后的展示文本。
+
+    Returns:
+        tuple: (clean_text, slugs:list)
+    """
+    import re as _re
+
+    if not response_text:
+        return "", []
+
+    slugs = []
+    clean_text = response_text
+
+    json_match = _re.search(r'```json\s*(\[.*?\])\s*```', response_text, _re.DOTALL)
+    if json_match:
+        json_str = json_match.group(1)
+        try:
+            parsed = json.loads(json_str)
+            if isinstance(parsed, list):
+                slugs = [str(s).strip() for s in parsed if str(s).strip()]
+                clean_text = response_text.replace(json_match.group(0), "").strip()
+                log(f"从 JSON 块解析到 {len(slugs)} 个 slug: {slugs}", logging.INFO)
+        except json.JSONDecodeError:
+            log("Bloriko AI 返回的 JSON 格式错误", logging.ERROR)
+
+    if not slugs:
+        slug_fallback = _re.findall(r'modrinth\.com/(?:mod|project)/([a-zA-Z0-9_-]+)', response_text)
+        if not slug_fallback:
+            slug_fallback = _re.findall(r'`([a-zA-Z0-9_-]+)`', response_text)
+        if slug_fallback:
+            slugs = list(dict.fromkeys(slug_fallback))
+            log(f"Fallback 提取 slugs: {slugs}", logging.INFO)
+        else:
+            log("未能从 AI 回复中解析到任何 slug", logging.WARNING)
+
+    return clean_text, slugs
 
 
 def AskBlorikoAndSet(self, question, AskBloriko_Answer, BlorikoThinking, parent, deepthink=False):
     """
-    向Bloriko发送问题并获取回答（流式），直接设置到UI控件
-    
-    Args:
-        question (str): 用户的问题
-        AskBloriko_Answer: 用于显示答案的UI控件
-        parent: 父窗口对象
-        
-    Returns:
-        str: AI的回复内容
+    向 Bloriko 发送问题并获取回答，直接设置到 UI 控件。
+    底层复用 AskBloriko（全局 AI 供应商配置）。
+    deepthink 已废弃，忽略。
     """
     AskBloriko_Answer.setText("让络可好好想想...")
     BlorikoThinking.show()
-    log(f"开始AskBlorikoAndSet函数，问题长度: {len(question)}字符", logging.INFO)
-    
-    # 读取配置文件
-    try:
-        log("开始读取配置文件 config.json", logging.DEBUG)
-        config = cfg.read()
-        log("成功读取配置文件 config.json", logging.DEBUG)
-    except FileNotFoundError:
-        log("配置文件 config.json 未找到", logging.ERROR)
-        return ""
-    except json.JSONDecodeError as e:
-        log(f"配置文件 config.json 格式错误: {str(e)}", logging.ERROR)
-        return ""
+    log(f"开始 AskBlorikoAndSet，问题长度: {len(question)} 字符, deepthink(忽略)={deepthink}", logging.INFO)
 
-    def show_login_message():
-        log("显示登录提示消息框", logging.INFO)
-        msg = QMessageBox()
-        msg.setWindowTitle("Bloriko 还不知道您是谁")
-        msg.setText("Bloriko AI 需要您登录 Bloret PassPort 才能使用，您尚未登录 Bloret PassPort。\n请先登录，确认以转到通行证页面。")
-        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-        if msg.exec() == QMessageBox.Ok:
-            log("用户点击确认，应切换到通行证界面", logging.INFO)
+    # 预检全局 AI 配置，给出可读错误（含免密钥供应商）
+    api_url, auth_header, model, config_error = _resolve_ai_endpoint()
+    if config_error:
+        log(f"AskBlorikoAndSet AI 配置错误: {config_error}", logging.ERROR)
+        AskBloriko_Answer.setText(config_error)
+        BlorikoThinking.hide()
+        return config_error
 
-    if not config.get("Bloret_PassPort_Login", False):
-        log("用户未登录Bloret PassPort，显示登录提示", logging.WARNING)
-        QTimer.singleShot(0, show_login_message)
-        return "未登录"
-
-    user_token = config.get("Bloret_PassPort_PassWord", "")
-    
-    log(f"用户token: {'已设置' if user_token else '未设置'} (长度: {len(user_token) if user_token else 0})", logging.DEBUG)
-    
-    if not user_token:
-        log("用户token为空，无法使用 Bloriko 功能", logging.ERROR)
-        return "用户名为空"
-
-    # 初始化信号和UI更新器，并绑定到控件上防止被垃圾回收
     signals = BlorikoSignals()
     ui_updater = UIUpdater(AskBloriko_Answer, BlorikoThinking)
     signals.responseReceived.connect(ui_updater.update_ui)
-    
+
     # 临时存储引用，防止被回收
     AskBloriko_Answer._bloriko_signals = signals
     AskBloriko_Answer._bloriko_updater = ui_updater
 
     def make_request():
-        log(f"准备发送请求到 Bloriko AI 服务，URL: {AI_API_URL}", logging.INFO)
-        
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": _build_auth_header(user_token)
-        }
-        
-        payload = {
-            "model": "Bloriko",
-            "messages": [
-                {"role": "user", "content": question}
-            ],
-            "stream": True
-        }
-        log(f"请求体数据: {payload}", logging.DEBUG)
-        
-        result_content = ""
-        
+        log(
+            f"AskBlorikoAndSet 后台请求: model={model}, api={api_url}, auth={'yes' if auth_header else 'no'}",
+            logging.INFO,
+        )
         try:
-            log("正在发送 POST 请求到 Bloriko AI 服务(流式)", logging.INFO)
-            response = requests.post(AI_API_URL, json=payload, headers=headers, timeout=timeout, stream=True)
-            log(f"收到响应，状态码: {response.status_code}", logging.INFO)
-            
-            response.raise_for_status()
-            
-            content_type = response.headers.get("Content-Type", "")
-            log(f"响应Content-Type: {content_type}", logging.INFO)
-            if "application/json" in content_type:
-                result = response.json()
-                log(f"JSON响应内容: {result}", logging.DEBUG)
-                if "error" in result:
-                    error_msg = result["error"].get("message", "未知错误")
-                    error_type = result["error"].get("type", "unknown")
-                    log(f"AI响应返回错误: [{error_type}] {error_msg}", logging.ERROR)
-                    if error_type == "authentication_error" or "认证" in error_msg:
-                        result_content = "Bloret PassPort 认证失败，请重新登录"
-                    else:
-                        result_content = f"AI服务错误: {error_msg}"
-                else:
-                    result_content = _parse_ai_response(result)
-                    log(f"获取到AI回复内容，长度: {len(result_content)}字符", logging.INFO)
-            else:
-                def on_stream_chunk(partial_content):
-                    signals.responseReceived.emit(partial_content)
-                
-                log("进入流式SSE解析...", logging.INFO)
-                # 诊断：打印响应头和原始内容
-                log(f"响应头: {dict(response.headers)}", logging.DEBUG)
-                raw_bytes = response.content
-                log(f"响应原始字节数: {len(raw_bytes)}", logging.INFO)
-                raw_text = raw_bytes.decode("utf-8", errors="replace")
-                log(f"响应原始文本(前500字符): {repr(raw_text[:500])}", logging.INFO)
-                
-                if raw_text.strip():
-                    result_content = _parse_stream_response_text(raw_text, on_chunk=on_stream_chunk)
-                else:
-                    result_content = _parse_stream_response(response, on_chunk=on_stream_chunk)
-                log(f"流式响应完成，内容长度: {len(result_content)}字符", logging.INFO)
-                    
-        except requests.exceptions.HTTPError as e:
-            result_content = f"请求失败: {str(e)}"
-            log(f"HTTP错误: {type(e).__name__}: {str(e)}", logging.ERROR)
-            if e.response:
-                log(f"HTTP状态码: {e.response.status_code}", logging.ERROR)
-                log(f"HTTP响应内容: {e.response.text}", logging.ERROR)
-                if e.response.status_code == 401:
-                    result_content = "Bloret PassPort 认证失败，请重新登录"
-        except requests.exceptions.RequestException as e:
-            result_content = f"请求失败: {str(e)}"
-            log(f"请求 Bloriko AI 服务失败: {type(e).__name__}: {str(e)}", logging.ERROR)
-        except json.JSONDecodeError as e:
-            result_content = "服务器响应不是有效的 JSON 格式"
-            log(f"JSON解析失败: {str(e)}", logging.ERROR)
+            result_content = AskBloriko(question, config=None, deepthink=False)
         except Exception as e:
             result_content = f"未知错误: {str(e)}"
-            log(f"处理 Bloriko 响应时发生未知错误: {type(e).__name__}: {str(e)}", logging.ERROR)
-        
-        # 最终发送完整结果到主线程更新UI
-        log(f"发送信号通知UI更新，内容长度: {len(result_content)}", logging.DEBUG)
-        signals.responseReceived.emit(result_content)
+            log(f"AskBlorikoAndSet 异常: {e}", logging.ERROR)
+        log(f"发送信号通知 UI 更新，内容长度: {len(result_content) if result_content else 0}", logging.DEBUG)
+        signals.responseReceived.emit(result_content or "")
         return result_content
-    
-    # 在单独线程中执行网络请求
-    log("创建线程以异步执行请求", logging.INFO)
-    thread = threading.Thread(target=make_request)
-    thread.daemon = True  # 设置为守护线程
+
+    log("创建线程以异步执行 AskBlorikoAndSet 请求", logging.INFO)
+    thread = threading.Thread(target=make_request, daemon=True)
     thread.start()
     log(f"线程已启动，线程ID: {thread.ident}", logging.INFO)
     return "请求已在后台执行"
+

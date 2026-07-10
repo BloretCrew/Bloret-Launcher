@@ -120,18 +120,20 @@ FluentPage {
                         id: askBlorikoInput
                         Layout.fillWidth: true
                         placeholderText: (Backend ? Backend.tr("告诉 Bloriko 你的需求...") : "告诉 Bloriko 你的需求...")
-                    }
-
-                    CheckBox {
-                        id: deepThinkCheck
-                        text: (Backend ? Backend.tr("深度思考") : "深度思考")
+                        onAccepted: {
+                            if (askBlorikoInput.text.trim() !== "" && Backend) {
+                                console.log("[Mods] 回车发送络可 Mod 建议:", askBlorikoInput.text.substring(0, 80))
+                                versionSelectDialog.open()
+                            }
+                        }
                     }
 
                     Button {
                         text: (Backend ? Backend.tr("发送") : "发送")
                         highlighted: true
                         onClicked: {
-                            if (askBlorikoInput.text !== "" && Backend) {
+                            if (askBlorikoInput.text.trim() !== "" && Backend) {
+                                console.log("[Mods] 发送络可 Mod 建议:", askBlorikoInput.text.substring(0, 80))
                                 // 先打开版本选择对话框
                                 versionSelectDialog.open()
                             }
@@ -486,11 +488,16 @@ FluentPage {
                         if (fabricVersionCombo.currentIndex >= 0 && fabricVersionCombo.currentText !== "") {
                             versionSelectDialog.loading = true
                             modsPage.selectedFabricVersion = fabricVersionCombo.currentText
-                            if (Backend && askBlorikoInput.text !== "") {
-                                Backend.askBlorikoForModsWithVersion(
-                                    askBlorikoInput.text,
+                            if (Backend && askBlorikoInput.text.trim() !== "") {
+                                console.log(
+                                    "[Mods] 请求络可推荐: version=",
                                     modsPage.selectedFabricVersion,
-                                    deepThinkCheck.checked
+                                    " query=",
+                                    askBlorikoInput.text.substring(0, 80)
+                                )
+                                Backend.askBlorikoForModsWithVersion(
+                                    askBlorikoInput.text.trim(),
+                                    modsPage.selectedFabricVersion
                                 )
                             }
                         }
