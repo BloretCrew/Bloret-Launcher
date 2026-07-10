@@ -10,6 +10,7 @@
 - 会话持久化
 - 记忆系统（MEMORY.md / USER.md）
 - 情感系统
+- 微信连接器（通过 iLink Bot API）
 """
 
 import json
@@ -17,14 +18,26 @@ import os
 import time
 import logging
 import threading
-import requests
 from pathlib import Path
+from typing import Optional
+
+import requests
 from PySide6.QtCore import QObject, Signal, Slot, Property
 from PySide6.QtGui import QGuiApplication
 
 from .agent_loop import BlorikoAgentLoop, run_agent_async, AGENT_ROLES
 from .memory import MemoryStore
 from .background_review import spawn_background_review_thread
+from .wechat_connector import (
+    BlorikoWechatConnector,
+    qr_login_step,
+    load_config,
+    clear_config,
+    ILINK_BASE_URL,
+    EP_GET_BOT_QR,
+    ILINK_APP_ID,
+    ILINK_APP_CLIENT_VERSION,
+)
 
 log = logging.getLogger(__name__)
 
@@ -371,6 +384,13 @@ class BlorikoBackend(QObject):
     # 情感信号
     emotionChanged = Signal(str)
 
+    # ========== 微信连接器信号 ==========
+    wechatStatusChanged = Signal(str)       # connected / disconnected / connecting / error
+    wechatQRProgress = Signal(str, str)     # status, progress_text  (QR 登录进度)
+    wechatQRUrlChanged = Signal(str)        # 二维码图片 URL
+    wechatMessageReceived = Signal(str, str)  # sender_id, text (微信消息到达通知 UI)
+    wechatError = Signal(str)               # 错误消息
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._agent = None
@@ -412,6 +432,11 @@ class BlorikoBackend(QObject):
 
         # 情感状态
         self._current_emotion = "neutral"
+
+        # ========== 微信连接器 ==========
+        self._wechat_connector: Optional[BlorikoWechatConnector] = None
+        self._wechat_connector_lock = threading.Lock()
+        self._pending_wechat_reply: Optional[str] = None  # 待回复的微信 chat_id
 
     # ========== 全局设置 ==========
 
@@ -997,3 +1022,182 @@ class BlorikoBackend(QObject):
                 )
 
         log.info("[Bloriko] 全部完成")
+
+        # 如果消息来自微信，自动回复
+        if self._pending_wechat_reply and self._current_text and not self._had_error:
+            chat_id = self._pending_wechat_reply
+            self._pending_wechat_reply = None
+            self._send_wechat_reply(chat_id, self._current_text)
+
+    # ========== 微信连接器 ==========
+
+    def _create_wechat_connector(self) -> BlorikoWechatConnector:
+        """创建微信连接器实例（线程安全）"""
+        with self._wechat_connector_lock:
+            if self._wechat_connector is None:
+                self._wechat_connector = BlorikoWechatConnector(
+                    on_message=self._on_wechat_message,
+                    on_status_change=self._on_wechat_status_change,
+                    on_error=self._on_wechat_error,
+                )
+            return self._wechat_connector
+
+    def _get_wechat_connector(self) -> Optional[BlorikoWechatConnector]:
+        with self._wechat_connector_lock:
+            return self._wechat_connector
+
+    def _on_wechat_message(self, chat_id: str, sender_id: str, text: str) -> None:
+        """微信消息到达回调（在轮询线程中调用）"""
+        log.info("[WeChat] 收到消息 from=%s text='%s'", sender_id[:8], text[:50])
+
+        # 通知 UI
+        self.wechatMessageReceived.emit(sender_id, text)
+
+        # 送入 Agent 处理
+        self._pending_wechat_reply = chat_id
+        # 使用 QMetaObject.invokeMethod 确保在主线程调用 sendMessage
+        from PySide6.QtCore import QMetaObject, Qt, Q_ARG
+
+        QMetaObject.invokeMethod(
+            self,
+            "sendMessageFromWechat",
+            Qt.ConnectionType.QueuedConnection,
+            Q_ARG(str, text),
+        )
+
+    @Slot(str)
+    def sendMessageFromWechat(self, text: str):
+        """从微信收到的消息，调用 Agent 处理（必须在主线程调用）"""
+        self.sendMessage(text)
+
+    def _on_wechat_status_change(self, status: str) -> None:
+        """微信连接状态变化回调"""
+        log.info("[WeChat] 状态变化: %s", status)
+        self.wechatStatusChanged.emit(status)
+
+    def _on_wechat_error(self, error: str) -> None:
+        """微信错误回调"""
+        log.error("[WeChat] 错误: %s", error)
+        self.wechatError.emit(error)
+
+    def _send_wechat_reply(self, chat_id: str, text: str) -> None:
+        """发送 Agent 回复到微信（在 _on_done 中调用）"""
+        connector = self._get_wechat_connector()
+        if not connector or not connector.is_connected:
+            log.warning("[WeChat] 连接器未就绪，无法回复")
+            return
+
+        log.info("[WeChat] 回复消息到 chat_id=%s (长度=%d)", chat_id[:8], len(text))
+
+        # 先发文字，再发媒体（如果有）
+        sent = connector.send_message_chunks(chat_id, text)
+        if sent > 0:
+            log.info("[WeChat] 成功发送 %d 条消息", sent)
+        else:
+            log.warning("[WeChat] 消息发送失败")
+
+    # ── Qt 槽函数 ──
+
+    @Slot(result=str)
+    def getWechatStatus(self) -> str:
+        """获取微信连接状态"""
+        connector = self._get_wechat_connector()
+        if not connector:
+            return BlorikoWechatConnector.STATUS_DISCONNECTED
+        return connector.status
+
+    @Slot(result=bool)
+    def isWechatConfigured(self) -> bool:
+        """检查是否已配置微信凭据"""
+        return bool(load_config() is not None)
+
+    @Slot()
+    def startWechatConnector(self):
+        """启动微信连接器"""
+        connector = self._create_wechat_connector()
+        if connector.start():
+            log.info("[WeChat] 连接器启动成功")
+        else:
+            log.warning("[WeChat] 连接器启动失败")
+
+    @Slot()
+    def stopWechatConnector(self):
+        """停止微信连接器"""
+        connector = self._get_wechat_connector()
+        if connector:
+            connector.stop()
+
+    @Slot(result=str)
+    def getWechatAccountInfo(self) -> str:
+        """获取微信账号信息（JSON）"""
+        connector = self._get_wechat_connector()
+        if connector:
+            info = connector.get_account_info()
+        else:
+            saved = load_config()
+            if saved:
+                info = {
+                    "account_id": saved.get("account_id", ""),
+                    "user_id": saved.get("user_id", ""),
+                    "base_url": saved.get("base_url", ""),
+                    "connected": False,
+                }
+            else:
+                info = {"account_id": "", "user_id": "", "base_url": "", "connected": False}
+        return json.dumps(info, ensure_ascii=False)
+
+    @Slot()
+    def clearWechatConfig(self):
+        """清除微信配置并断开"""
+        connector = self._get_wechat_connector()
+        if connector:
+            connector.clear_config()
+        else:
+            clear_config()
+        self.wechatStatusChanged.emit(BlorikoWechatConnector.STATUS_DISCONNECTED)
+
+    @Slot()
+    def startWechatQRLogin(self):
+        """在后台线程中启动微信 QR 登录流程"""
+        connector = self._create_wechat_connector()
+
+        def _qr_login_thread():
+            """QR 登录线程"""
+            try:
+                self.wechatQRProgress.emit("connecting", "正在获取二维码...")
+
+                # QR URL 回调 → 发射信号给 UI
+                def on_qr_url(url: str):
+                    self.wechatQRUrlChanged.emit(url)
+
+                # 状态更新回调 → 发射信号给 UI
+                def on_status_update(status: str, progress: str):
+                    self.wechatQRProgress.emit(status, progress)
+
+                # 执行 QR 登录（内部完成获取二维码 + 轮询 + 保存凭据）
+                result = qr_login_step(
+                    timeout_seconds=480,
+                    on_qr_url=on_qr_url,
+                    on_status_update=on_status_update,
+                )
+
+                if result and result.get("status") == "confirmed":
+                    # 登录成功后自动启动连接器
+                    self._on_wechat_status_change(BlorikoWechatConnector.STATUS_CONNECTING)
+                    connector.start()
+                else:
+                    self._on_wechat_status_change(BlorikoWechatConnector.STATUS_DISCONNECTED)
+
+            except Exception as e:
+                log.error("QR 登录异常: %s", e)
+                self.wechatQRProgress.emit("error", f"登录异常: {e}")
+                self._on_wechat_status_change(BlorikoWechatConnector.STATUS_DISCONNECTED)
+
+        thread = threading.Thread(target=_qr_login_thread, daemon=True, name="wechat-qr-login")
+        thread.start()
+
+    @Slot()
+    def reconnectWechat(self):
+        """重新连接微信"""
+        self.stopWechatConnector()
+        self.startWechatConnector()

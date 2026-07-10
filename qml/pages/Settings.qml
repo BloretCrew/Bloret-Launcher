@@ -24,6 +24,12 @@ FluentPage {
     Component.onCompleted: {
         console.log("[Settings] page loaded, showing category hub")
         refreshData()
+        loadBlorikoProviders()
+        // 初始化微信状态
+        if (Bloriko) {
+            wechatStatus = Bloriko.getWechatStatus()
+            wechatConfigured = Bloriko.isWechatConfigured()
+        }
     }
 
     Connections {
@@ -47,6 +53,51 @@ FluentPage {
             providerInfoBar.title = _providerErrorTitle
             providerInfoBar.text = msg
             providerInfoBar.visible = true
+        }
+    }
+
+    // ── Bloriko Backend signals ──
+    Connections {
+        target: Bloriko
+        enabled: Bloriko !== null
+
+        function onWechatStatusChanged(status) {
+            console.log("[Settings] WeChat status:", status)
+            wechatStatus = status
+            wechatConfigured = Bloriko ? Bloriko.isWechatConfigured() : false
+        }
+
+        function onWechatQRProgress(qrStatus, progressText) {
+            console.log("[Settings] WeChat QR progress:", qrStatus, progressText)
+            wechatQRProgressLabel.text = progressText
+            if (qrStatus === "confirmed") {
+                wechatConfigured = true
+                // 登录成功后延迟关闭 QR 区域
+                var timer = Qt.createQmlObject("import QtQuick 2.15; Timer {}", settingsPage)
+                timer.interval = 2000
+                timer.triggered.connect(function() {
+                    wechatQRLoginArea.visible = false
+                    timer.destroy()
+                })
+                timer.start()
+            } else if (qrStatus === "expired" || qrStatus === "timeout" || qrStatus === "failed" || qrStatus === "error") {
+                // 显示错误信息，但保留 QR 区域让用户关闭
+            }
+        }
+
+        function onWechatQRUrlChanged(url) {
+            console.log("[Settings] WeChat QR URL updated")
+            wechatQRUrl = url
+        }
+
+        function onWechatError(msg) {
+            console.error("[Settings] WeChat error:", msg)
+            wechatStatus = "error"
+        }
+
+        function onProvidersChanged() {
+            console.log("[Settings] Bloriko providers changed, reloading")
+            loadBlorikoProviders()
         }
     }
 
@@ -144,6 +195,7 @@ FluentPage {
         case "log": return _logSection
         case "network": return _networkSection
         case "ai": return _aiProvidersSection
+        case "bloriko": return _blorikoSection
         default: return id
         }
     }
@@ -234,6 +286,8 @@ FluentPage {
         _proxyPlaceholder = Backend ? Backend.tr("不使用代理") : "不使用代理"
         _aiProvidersSection = Backend ? Backend.tr("AI 供应商") : "AI 供应商"
         _aiHubDesc = Backend ? Backend.tr("默认模型与自定义供应商") : "默认模型与自定义供应商"
+        _blorikoSection = Backend ? Backend.tr("络可 Agent") : "络可 Agent"
+        _blorikoHubDesc = Backend ? Backend.tr("AI 设置与微信连接器管理") : "AI 设置与微信连接器管理"
         _aiProvidersTitle = Backend ? Backend.tr("AI 供应商管理") : "AI 供应商管理"
         _aiProvidersDesc = Backend ? Backend.tr("管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用") : "管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用"
         _addProviderBtn = Backend ? Backend.tr("添加供应商") : "添加供应商"
@@ -366,6 +420,33 @@ FluentPage {
     property string _proxyPlaceholder: Backend ? Backend.tr("不使用代理") : "不使用代理"
     property string _aiProvidersSection: Backend ? Backend.tr("AI 供应商") : "AI 供应商"
     property string _aiHubDesc: Backend ? Backend.tr("默认模型与自定义供应商") : "默认模型与自定义供应商"
+
+    // ── Bloriko Agent / WeChat ──
+    property string _blorikoSection: Backend ? Backend.tr("络可 Agent") : "络可 Agent"
+    property string _blorikoHubDesc: Backend ? Backend.tr("AI 设置与微信连接器管理") : "AI 设置与微信连接器管理"
+    property string _wechatTitle: Backend ? Backend.tr("微信连接器") : "微信连接器"
+    property string _wechatDesc: Backend ? Backend.tr("将络可通过微信连接，扫码后可直接在微信中与络可对话") : "将络可通过微信连接，扫码后可直接在微信中与络可对话"
+    property string _wechatStatusPrefix: Backend ? Backend.tr("连接状态") : "连接状态"
+    property string _wechatConfigureBtn: Backend ? Backend.tr("配置微信") : "配置微信"
+    property string _wechatReconfigureBtn: Backend ? Backend.tr("重新配置") : "重新配置"
+    property string _wechatDisconnectBtn: Backend ? Backend.tr("断开连接") : "断开连接"
+    property string _wechatReconnectBtn: Backend ? Backend.tr("重新连接") : "重新连接"
+    property string _wechatConnecting: Backend ? Backend.tr("连接中...") : "连接中..."
+    property string _wechatConnected: Backend ? Backend.tr("已连接") : "已连接"
+    property string _wechatDisconnected: Backend ? Backend.tr("未连接") : "未连接"
+    property string _wechatErrorStatus: Backend ? Backend.tr("连接异常") : "连接异常"
+    property string _wechatScanQR: Backend ? Backend.tr("请使用微信扫描下方二维码") : "请使用微信扫描下方二维码"
+    property string _wechatQRWaiting: Backend ? Backend.tr("等待扫码...") : "等待扫码..."
+    property string _wechatQRScaned: Backend ? Backend.tr("已扫码，请在手机上确认") : "已扫码，请在手机上确认"
+    property string _wechatQRConfirmed: Backend ? Backend.tr("微信登录成功！") : "微信登录成功！"
+    property string _wechatQRTimeout: Backend ? Backend.tr("登录超时，请重试") : "登录超时，请重试"
+    property string _wechatAccountInfo: Backend ? Backend.tr("账号信息") : "账号信息"
+    property string _wechatNotConfigured: Backend ? Backend.tr("尚未配置微信连接") : "尚未配置微信连接"
+    property string _wechatOpenURL: Backend ? Backend.tr("或在浏览器中打开：") : "或在浏览器中打开："
+    property string _wechatStopBtn: Backend ? Backend.tr("断开") : "断开"
+    property string _wechatRestartBtn: Backend ? Backend.tr("重启连接") : "重启连接"
+    property string _wechatQRProgress: Backend ? Backend.tr("二维码状态") : "二维码状态"
+
     property string _aiProvidersTitle: Backend ? Backend.tr("AI 供应商管理") : "AI 供应商管理"
     property string _aiProvidersDesc: Backend ? Backend.tr("管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用") : "管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用"
     property string _addProviderBtn: Backend ? Backend.tr("添加供应商") : "添加供应商"
@@ -421,12 +502,20 @@ FluentPage {
         { id: "appearance", title: _appearanceSection, desc: _appearanceHubDesc, icon: "ic_fluent_color_20_regular" },
         { id: "log", title: _logSection, desc: _logHubDesc, icon: "ic_fluent_text_bullet_list_square_20_regular" },
         { id: "network", title: _networkSection, desc: _networkHubDesc, icon: "ic_fluent_globe_20_regular" },
-        { id: "ai", title: _aiProvidersSection, desc: _aiHubDesc, icon: "ic_fluent_bot_20_regular" }
+        { id: "ai", title: _aiProvidersSection, desc: _aiHubDesc, icon: "ic_fluent_bot_20_regular" },
+        { id: "bloriko", title: _blorikoSection, desc: _blorikoHubDesc, icon: "ic_fluent_chat_20_regular" }
     ]
 
     ListModel { id: settingsProviderModel }
     ListModel { id: settingsGlobalProviderModel }
     ListModel { id: settingsGlobalModelModel }
+    ListModel { id: blorikoProviderModel }
+    ListModel { id: blorikoModelModel }
+
+    // ── WeChat state ──
+    property string wechatStatus: "disconnected"
+    property bool wechatConfigured: false
+    property string wechatQRUrl: ""
 
     function loadSettingsProviders() {
         console.log("[Settings] loadSettingsProviders")
@@ -458,6 +547,48 @@ FluentPage {
         } catch (e) {
             console.log("[Settings] loadSettingsProviders error:", e)
         }
+    }
+
+    function loadBlorikoProviders() {
+        console.log("[Settings] loadBlorikoProviders")
+        blorikoProviderModel.clear()
+        blorikoModelModel.clear()
+        if (!Bloriko) return
+        try {
+            var providers = JSON.parse(Bloriko.getProviders())
+            for (var i = 0; i < providers.length; i++)
+                blorikoProviderModel.append(providers[i])
+
+            // 同步当前选中的供应商
+            var currentProvider = Bloriko.getCurrentProvider()
+            for (var j = 0; j < blorikoProviderModel.count; j++) {
+                if (blorikoProviderModel.get(j).key === currentProvider) {
+                    blorikoProviderCombo.currentIndex = j
+                    break
+                }
+            }
+            loadBlorikoModels()
+        } catch(e) { console.warn("[Settings] loadBlorikoProviders error:", e) }
+    }
+
+    function loadBlorikoModels() {
+        blorikoModelModel.clear()
+        if (!Bloriko) return
+        try {
+            var models = JSON.parse(Bloriko.getModels())
+            for (var i = 0; i < models.length; i++)
+                blorikoModelModel.append(models[i])
+
+            var currentModel = Bloriko.getCurrentModel()
+            for (var j = 0; j < blorikoModelModel.count; j++) {
+                if (blorikoModelModel.get(j).id === currentModel) {
+                    blorikoModelCombo.currentIndex = j
+                    return
+                }
+            }
+            if (blorikoModelCombo.currentIndex < 0 && blorikoModelModel.count > 0)
+                blorikoModelCombo.currentIndex = 0
+        } catch(e) { console.warn("[Settings] loadBlorikoModels error:", e) }
     }
 
     function loadGlobalModels(providerKey, selectedModel) {
@@ -1222,6 +1353,261 @@ FluentPage {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 8
                 Layout.bottomMargin: 8
+            }
+        }
+
+        // --- Bloriko Agent ---
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            visible: currentCategory === "bloriko"
+
+            // ── 供应商选择 ──
+            SettingCard {
+                Layout.fillWidth: true
+                title: _defaultAIProviderTitle
+                description: _defaultAIProviderDesc
+                icon.name: "ic_fluent_bot_settings_20_regular"
+                RowLayout {
+                    spacing: 8
+                    ComboBox {
+                        id: blorikoProviderCombo
+                        Layout.preferredWidth: 140
+                        model: blorikoProviderModel
+                        textRole: "name"
+                        font.pixelSize: 10
+                        onActivated: function(index) {
+                            var item = blorikoProviderModel.get(index)
+                            if (Bloriko) Bloriko.setProvider(item.key)
+                        }
+                    }
+                    ComboBox {
+                        id: blorikoModelCombo
+                        Layout.preferredWidth: 200
+                        model: blorikoModelModel
+                        textRole: "name"
+                        font.pixelSize: 10
+                        onActivated: function(index) {
+                            if (blorikoModelModel.count > 0 && Bloriko)
+                                Bloriko.setModel(blorikoModelModel.get(index).id)
+                        }
+                    }
+                }
+            }
+
+            // ── 分隔 ──
+            Label {
+                text: _wechatTitle
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+                color: Theme.currentTheme.colors.textColor
+                Layout.topMargin: 8
+            }
+
+            Label {
+                text: _wechatDesc
+                font.pixelSize: 12
+                color: Theme.currentTheme.colors.textSecondaryColor
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+
+            // ── 微信连接状态 ──
+            SettingCard {
+                Layout.fillWidth: true
+                title: _wechatStatusPrefix
+                icon.name: "ic_fluent_chat_20_regular"
+                RowLayout {
+                    spacing: 8
+
+                    // 状态指示灯
+                    Rectangle {
+                        id: wechatStatusDot
+                        width: 10
+                        height: 10
+                        radius: 5
+                        color: {
+                            if (wechatStatus === "connected") return "#4CAF50"
+                            if (wechatStatus === "connecting") return "#FFC107"
+                            if (wechatStatus === "error") return "#F44336"
+                            return "#9E9E9E"  // disconnected
+                        }
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    Label {
+                        id: wechatStatusLabel
+                        text: {
+                            if (wechatStatus === "connected") return _wechatConnected
+                            if (wechatStatus === "connecting") return _wechatConnecting
+                            if (wechatStatus === "error") return _wechatErrorStatus
+                            return _wechatDisconnected
+                        }
+                        font.pixelSize: 12
+                        color: Theme.currentTheme.colors.textColor
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    // 操作按钮
+                    Button {
+                        id: wechatConnectBtn
+                        text: wechatStatus === "connected" ? _wechatDisconnectBtn : _wechatReconnectBtn
+                        font.pixelSize: 11
+                        flat: true
+                        visible: wechatConfigured
+                        onClicked: {
+                            if (wechatStatus === "connected") {
+                                if (Bloriko) Bloriko.stopWechatConnector()
+                            } else {
+                                if (Bloriko) Bloriko.reconnectWechat()
+                            }
+                        }
+                    }
+
+                    Button {
+                        id: wechatConfigBtn
+                        text: wechatConfigured ? _wechatReconfigureBtn : _wechatConfigureBtn
+                        font.pixelSize: 11
+                        highlighted: true
+                        onClicked: {
+                            if (!Bloriko) return
+                            if (wechatConfigured) {
+                                // 重新配置：先清除再登录
+                                Bloriko.clearWechatConfig()
+                            }
+                            Bloriko.startWechatQRLogin()
+                            wechatQRLoginArea.visible = true
+                        }
+                    }
+                }
+            }
+
+            // ── QR 登录区域 ──
+            Frame {
+                id: wechatQRLoginArea
+                visible: false
+                Layout.fillWidth: true
+                padding: 16
+
+                ColumnLayout {
+                    width: parent.width
+                    spacing: 8
+
+                    Label {
+                        text: _wechatScanQR
+                        font.pixelSize: 13
+                        font.weight: Font.DemiBold
+                        color: Theme.currentTheme.colors.textColor
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    // QR 图片显示
+                    Rectangle {
+                        id: qrImageFrame
+                        visible: wechatQRUrl !== ""
+                        Layout.preferredWidth: 200
+                        Layout.preferredHeight: 200
+                        Layout.alignment: Qt.AlignHCenter
+                        color: "white"
+                        radius: 8
+
+                        Image {
+                            anchors.fill: parent
+                            source: wechatQRUrl
+                            fillMode: Image.PreserveAspectFit
+                        }
+                    }
+
+                    // 二维码 URL 文本（备用）
+                    Label {
+                        visible: wechatQRUrl !== ""
+                        text: _wechatOpenURL
+                        font.pixelSize: 10
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    TextEdit {
+                        visible: wechatQRUrl !== ""
+                        text: wechatQRUrl
+                        font.pixelSize: 10
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        readOnly: true
+                        selectByMouse: true
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: 400
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    // 登录进度
+                    Label {
+                        id: wechatQRProgressLabel
+                        text: _wechatQRWaiting
+                        font.pixelSize: 12
+                        color: Theme.currentTheme.colors.textColor
+                        Layout.alignment: Qt.AlignHCenter
+                        visible: wechatQRLoginArea.visible
+                    }
+
+                    // 取消/关闭按钮
+                    Button {
+                        text: _cancelBtn
+                        flat: true
+                        Layout.alignment: Qt.AlignHCenter
+                        onClicked: {
+                            wechatQRLoginArea.visible = false
+                        }
+                    }
+                }
+            }
+
+            // ── 账号信息 ──
+            Frame {
+                id: wechatAccountFrame
+                visible: wechatConfigured
+                Layout.fillWidth: true
+                padding: 12
+
+                ColumnLayout {
+                    width: parent.width
+                    spacing: 4
+
+                    Label {
+                        text: _wechatAccountInfo
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                        color: Theme.currentTheme.colors.textColor
+                    }
+
+                    Label {
+                        id: wechatAccountLabel
+                        text: {
+                            if (!Bloriko) return ""
+                            try {
+                                var info = JSON.parse(Bloriko.getWechatAccountInfo())
+                                var parts = []
+                                if (info.account_id) parts.push("ID: " + info.account_id.slice(0, 8) + "...")
+                                if (info.connected) parts.push(_wechatConnected)
+                                return parts.join(" · ")
+                            } catch(e) { return "" }
+                        }
+                        font.pixelSize: 11
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                    }
+                }
+            }
+
+            // ── 未配置提示 ──
+            Label {
+                visible: !wechatConfigured && !wechatQRLoginArea.visible
+                text: _wechatNotConfigured
+                font.pixelSize: 12
+                color: Theme.currentTheme.colors.textSecondaryColor
+                Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: 8
             }
         }
 
