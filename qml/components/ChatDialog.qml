@@ -78,14 +78,81 @@ Dialog {
     }
 
     function copyToClipboard(text) {
-        clipHelper.text = text
+        console.log("[ChatDialog] copyToClipboard, length=", (text || "").length)
+        clipHelper.text = text || ""
         clipHelper.selectAll()
         clipHelper.copy()
+    }
+
+    // 右键菜单上下文（菜单提到 Dialog 级，避免嵌在 Repeater 委托内导致 contentModel 为空）
+    property string _ctxRawMessage: ""
+    property string _ctxContent: ""
+    property string _ctxUsername: ""
+
+    function openMessageMenu(delegateItem, mouse) {
+        if (!delegateItem) {
+            console.warn("[ChatDialog] openMessageMenu: delegateItem is null")
+            return
+        }
+        // modelData 仅在委托作用域内有效；委托上缓存 rawMessage
+        _ctxRawMessage = delegateItem.rawMessage || ""
+        _ctxUsername = delegateItem.msgUsername || ""
+        _ctxContent = delegateItem.msgContent || ""
+        console.log(
+            "[ChatDialog] 打开消息右键菜单:",
+            "username=", _ctxUsername,
+            "rawLen=", _ctxRawMessage.length,
+            "contentLen=", _ctxContent.length
+        )
+        // 无参 popup() 使用当前鼠标位置；position=-1 保留该坐标且不把高度从 0 动画展开
+        msgContextMenu.popup()
     }
 
     // 使用 Item 包裹以避免 Dialog 默认 contentItem 的布局冲突
     Item {
         anchors.fill: parent
+
+        // 共享右键菜单：放在 Dialog 内容树内、列表委托外，保证 MenuItem 进入 contentModel
+        Menu {
+            id: msgContextMenu
+            // 与 TextInputMenu 一致：-1 表示上下文菜单，保留 popup() 光标坐标，高度不从 0 动画
+            position: -1
+
+            MenuItem {
+                text: Backend ? Backend.tr("复制消息") : "复制消息"
+                icon.name: "ic_fluent_copy_20_regular"
+                onTriggered: {
+                    console.log("[ChatDialog] 菜单: 复制消息")
+                    chatDialog.copyToClipboard(chatDialog._ctxRawMessage)
+                }
+            }
+
+            MenuItem {
+                text: Backend ? Backend.tr("复制内容") : "复制内容"
+                icon.name: "ic_fluent_clipboard_bullet_list_20_regular"
+                visible: chatDialog._ctxUsername !== ""
+                height: visible ? implicitHeight : 0
+                onTriggered: {
+                    console.log("[ChatDialog] 菜单: 复制内容")
+                    chatDialog.copyToClipboard(chatDialog._ctxContent)
+                }
+            }
+
+            MenuSeparator {
+                visible: chatDialog._ctxUsername !== ""
+            }
+
+            MenuItem {
+                text: Backend ? Backend.tr("复制用户名") : "复制用户名"
+                icon.name: "ic_fluent_person_20_regular"
+                visible: chatDialog._ctxUsername !== ""
+                height: visible ? implicitHeight : 0
+                onTriggered: {
+                    console.log("[ChatDialog] 菜单: 复制用户名")
+                    chatDialog.copyToClipboard(chatDialog._ctxUsername)
+                }
+            }
+        }
 
         ColumnLayout {
             anchors.fill: parent
@@ -152,6 +219,7 @@ Dialog {
                                 : (index % 2 === 0 ? "transparent" : Qt.rgba(0.5, 0.5, 0.5, 0.05))
                             radius: 4
 
+                            property string rawMessage: modelData.message || ""
                             property string msgUsername: chatDialog.parseUsername(modelData.message)
                             property string msgContent: chatDialog.parseContent(modelData.message)
 
@@ -160,10 +228,13 @@ Dialog {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                // 确保右键由本层处理，不与 Flickable 拖拽冲突
+                                preventStealing: true
 
                                 onClicked: function(mouse) {
                                     if (mouse.button === Qt.RightButton) {
-                                        msgContextMenu.popup()
+                                        console.log("[ChatDialog] 右键消息 index=", index, "username=", msgDelegate.msgUsername)
+                                        chatDialog.openMessageMenu(msgDelegate, mouse)
                                     }
                                 }
                             }
@@ -254,39 +325,6 @@ Dialog {
                                         wrapMode: Text.WrapAnywhere
                                         Layout.fillWidth: true
                                     }
-                                }
-                            }
-
-                            // 右键菜单
-                            Menu {
-                                id: msgContextMenu
-
-                                MenuItem {
-                                    text: Backend ? Backend.tr("复制消息") : "复制消息"
-                                    icon.name: "ic_fluent_copy_20_regular"
-                                    onTriggered: {
-                                        chatDialog.copyToClipboard(modelData.message)
-                                    }
-                                }
-
-                                MenuItem {
-                                    text: Backend ? Backend.tr("复制内容") : "复制内容"
-                                    icon.name: "ic_fluent_clipboard_text_20_regular"
-                                    onTriggered: {
-                                        chatDialog.copyToClipboard(msgDelegate.msgContent)
-                                    }
-                                    visible: msgDelegate.msgUsername !== ""
-                                }
-
-                                MenuSeparator {}
-
-                                MenuItem {
-                                    text: Backend ? Backend.tr("复制用户名") : "复制用户名"
-                                    icon.name: "ic_fluent_person_20_regular"
-                                    onTriggered: {
-                                        chatDialog.copyToClipboard(msgDelegate.msgUsername)
-                                    }
-                                    visible: msgDelegate.msgUsername !== ""
                                 }
                             }
                         }
