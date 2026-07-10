@@ -458,12 +458,28 @@ FluentPage {
                     onClicked: {
                         if (blorikoDialog.slugs.length > 0 && Backend) {
                             var ver = modsPage.selectedFabricVersion
-                            if (ver && ver !== "") {
-                                for (var i = 0; i < blorikoDialog.slugs.length; i++) {
-                                    Backend.downloadMod(blorikoDialog.slugs[i], ver)
-                                }
+                            if (!ver || ver === "") {
+                                console.warn("[Mods] 一键安装失败：未选择 Fabric 版本")
+                                downloadInfoBar.severity = Severity.Error
+                                downloadInfoBar.title = Backend.tr("安装失败")
+                                downloadInfoBar.text = Backend.tr("未选择目标 Fabric 版本")
+                                downloadInfoBar.visible = true
+                                downloadInfoBarTimer.start()
+                                return
                             }
+                            // 先拷贝列表，再关弹窗（避免 close 后属性被清）
+                            var slugList = []
+                            for (var i = 0; i < blorikoDialog.slugs.length; i++)
+                                slugList.push(blorikoDialog.slugs[i])
+                            console.log(
+                                "[Mods] 一键安装全部: n=",
+                                slugList.length,
+                                " version=",
+                                ver
+                            )
+                            // 关闭推荐弹窗，改用全局 DownloadDialog 展示安装进度
                             blorikoDialog.close()
+                            Backend.installModsBatch(slugList, ver)
                         }
                     }
                 }

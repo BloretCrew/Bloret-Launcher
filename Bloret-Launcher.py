@@ -2812,100 +2812,284 @@ class Backend(QObject):
                 self.modrinthResultsReceived.emit([])
         threading.Thread(target=run_search, daemon=True).start()
 
+    def _resolve_game_version_for_folder(self, version_name, mc_dir=None):
+        """从版本文件夹名 / .BL.json 解析纯 MC 版本号。"""
+        import re
+        if mc_dir is None:
+            config_data = cfg.read()
+            mc_dir = config_data.get("minecraft_dir", BLglobals.minecraft_dir)
+        game_version = None
+        bl_json_path = os.path.join(mc_dir, "versions", ".BL.json")
+        if os.path.exists(bl_json_path):
+            try:
+                with open(bl_json_path, "r", encoding="utf-8") as f:
+                    bl_data = json.load(f)
+                if version_name in bl_data.get("versions", {}):
+                    game_version = bl_data["versions"][version_name].get("version")
+            except Exception as e:
+                print(f"[ModInstall] 读取 .BL.json 失败: {e}")
+        if not game_version:
+            match = re.match(r"^(\d+\.\d+(\.\d+)?)", version_name or "")
+            if match:
+                game_version = match.group(1)
+        return game_version
+
+    def _download_one_mod(self, mod_id, version_name, progress_cb=None):
+        """
+        同步下载单个模组到 versions/{version_name}/mods。
+
+        progress_cb(frac 0-1, status_str) 可选。
+        Returns:
+            tuple: (ok: bool, message: str)
+        """
+        from modules.modrinth import Get_Mod_File_Download_Url
+        from modules.log import log as _log
+        import logging as _logging
+
+        try:
+            config_data = cfg.read()
+            mc_dir = config_data.get("minecraft_dir", BLglobals.minecraft_dir)
+            game_version = self._resolve_game_version_for_folder(version_name, mc_dir)
+            _log(
+                f"[ModInstall] 下载 {mod_id} -> {version_name} (mc={game_version})",
+                _logging.INFO,
+            )
+            if progress_cb:
+                progress_cb(0.05, f"解析下载地址: {mod_id}")
+
+            url = Get_Mod_File_Download_Url(
+                mod_id,
+                loaders=["fabric"],
+                game_versions=[game_version] if game_version else None,
+            )
+            if not url:
+                url = Get_Mod_File_Download_Url(
+                    mod_id,
+                    loaders=None,
+                    game_versions=[game_version] if game_version else None,
+                )
+            if not url:
+                msg = f"未找到 {mod_id} 的下载链接"
+                _log(f"[ModInstall] {msg}", _logging.WARNING)
+                return False, msg
+
+            filename = url.split("/")[-1].split("?")[0]
+            if not filename or "." not in filename:
+                filename = f"{mod_id}.jar"
+            if filename.endswith(".mrpack"):
+                return False, f"{mod_id}: 得到 mrpack 而非 jar，已跳过"
+
+            mods_dir = os.path.join(mc_dir, "versions", version_name, "mods")
+            os.makedirs(mods_dir, exist_ok=True)
+            file_path = os.path.join(mods_dir, filename)
+
+            if progress_cb:
+                progress_cb(0.1, f"下载中: {filename}")
+
+            with requests.get(url, timeout=120, stream=True) as response:
+                if response.status_code != 200:
+                    msg = f"{mod_id}: HTTP {response.status_code}"
+                    _log(f"[ModInstall] {msg}", _logging.ERROR)
+                    return False, msg
+                total = int(response.headers.get("Content-Length") or 0)
+                downloaded = 0
+                chunk_size = 64 * 1024
+                with open(file_path, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=chunk_size):
+                        if not chunk:
+                            continue
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if progress_cb and total > 0:
+                            frac = 0.1 + 0.9 * min(1.0, downloaded / total)
+                            mb_d = downloaded / (1024 * 1024)
+                            mb_t = total / (1024 * 1024)
+                            progress_cb(frac, f"下载中: {filename} ({mb_d:.1f}/{mb_t:.1f} MB)")
+                        elif progress_cb and downloaded % (512 * 1024) < chunk_size:
+                            progress_cb(0.5, f"下载中: {filename} ({downloaded // 1024} KB)")
+
+            _log(f"[ModInstall] 成功: {file_path}", _logging.INFO)
+            return True, f"{filename} -> {mods_dir}"
+        except Exception as e:
+            _log(f"[ModInstall] 异常 {mod_id}: {e}", _logging.ERROR)
+            import traceback
+            traceback.print_exc()
+            return False, str(e)
+
     @Slot(str, str)
     def downloadMod(self, mod_id, version_name):
         """
-        下载并安装模组
-        
-        Args:
-            mod_id (str): 模组 ID 或 slug
-            version_name (str): 目标版本名称
+        下载并安装模组（带全局 DownloadDialog 进度）。
         """
-        from modules.modrinth import Get_Mod_File_Download_Url
         print(f"Requested download mod: {mod_id} to {version_name}")
-        
+
+        if getattr(self, "_mod_install_busy", False):
+            self.downloadNotify.emit(
+                self.tr("请稍候"),
+                self.tr("已有模组安装任务进行中"),
+                False,
+            )
+            return
+
         def run_download():
+            self._mod_install_busy = True
             try:
-                config_data = cfg.read()
-                mc_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
-                
-                # 获取游戏版本
-                game_version = None
-                bl_json_path = os.path.join(mc_dir, "versions", ".BL.json")
-                if os.path.exists(bl_json_path):
-                    with open(bl_json_path, "r", encoding="utf-8") as f:
-                        bl_data = json.load(f)
-                        if version_name in bl_data.get("versions", {}):
-                            ver_info = bl_data["versions"][version_name]
-                            game_version = ver_info.get("version")
-                
-                if not game_version:
-                    # 简单的 fallback，假设版本名以版本号开头
-                    import re
-                    match = re.match(r"^(\d+\.\d+(\.\d+)?)", version_name)
-                    if match:
-                        game_version = match.group(1)
-                
-                print(f"Detected game version: {game_version}")
+                title = f"{self.tr('正在下载模组')}: {mod_id}"
+                self.downloadDialogRequested.emit(title)
+                # DownloadDialog ProgressBar 为 0–100
+                self.downloadProgressUpdated.emit(0.0, self.tr("准备下载..."), "", "", "")
 
-                # 获取下载 URL（先按 fabric 查，查不到则不限 loader）
-                url = Get_Mod_File_Download_Url(mod_id, loaders=["fabric"], game_versions=[game_version] if game_version else None)
-                if not url:
-                    url = Get_Mod_File_Download_Url(mod_id, loaders=None, game_versions=[game_version] if game_version else None)
-                if url:
-                    filename = url.split('/')[-1]
-                    if not filename or '.' not in filename:
-                        filename = f"{mod_id}.jar"
+                def progress_cb(frac, status):
+                    pct = float(max(0.0, min(1.0, frac))) * 100.0
+                    self.downloadProgressUpdated.emit(pct, status or "", "", "", "")
 
-                    if filename.endswith(".mrpack"):
-                        print(f"获取到 mrpack 而非 jar，跳过: {filename}")
-                        return
-
-                    print(f"Found download URL: {url}")
-                    mods_dir = os.path.join(mc_dir, "versions", version_name, "mods")
-                    os.makedirs(mods_dir, exist_ok=True)
-                    file_path = os.path.join(mods_dir, filename)
-                    
-                    print(f"Downloading mod to: {file_path}")
-                    response = requests.get(url, timeout=30)
-                    if response.status_code == 200:
-                        with open(file_path, 'wb') as f:
-                            f.write(response.content)
-                        print(f"Successfully downloaded mod to: {file_path}")
-                        self.downloadNotify.emit(self.tr("下载成功"), f"{self.tr('已下载')} {filename} -> {mods_dir}", True)
-                        try:
-                            from modules.notification import send_notification
-                            send_notification(self.tr("下载成功"), f"{filename} -> {mods_dir}", category="download")
-                        except Exception:
-                            pass
-                    else:
-                        print(f"Failed to download: HTTP {response.status_code}")
-                        self.downloadNotify.emit(self.tr("下载失败"), f"HTTP {response.status_code}", False)
-                        try:
-                            from modules.notification import send_notification
-                            send_notification(self.tr("下载失败"), f"HTTP {response.status_code}", category="download")
-                        except Exception:
-                            pass
-                else:
-                    print(f"Could not find download URL for {mod_id}")
-                    self.downloadNotify.emit(self.tr("下载失败"), f"{self.tr('未找到')} {mod_id} {self.tr('的下载链接')}", False)
+                ok, message = self._download_one_mod(mod_id, version_name, progress_cb=progress_cb)
+                if ok:
+                    self.downloadCompleted.emit(f"{self.tr('下载成功')}: {message}")
+                    self.downloadNotify.emit(self.tr("下载成功"), message, True)
                     try:
                         from modules.notification import send_notification
-                        send_notification(self.tr("下载失败"), f"{self.tr('未找到')} {mod_id} {self.tr('的下载链接')}", category="download")
+                        send_notification(self.tr("下载成功"), message, category="download")
                     except Exception:
                         pass
-            except Exception as e:
-                print(f"Error downloading mod: {e}")
-                import traceback
-                traceback.print_exc()
-                self.downloadNotify.emit(self.tr("下载失败"), str(e), False)
+                else:
+                    self.downloadCompleted.emit(f"{self.tr('下载失败')}: {message}")
+                    self.downloadNotify.emit(self.tr("下载失败"), message, False)
+                    try:
+                        from modules.notification import send_notification
+                        send_notification(self.tr("下载失败"), message, category="download")
+                    except Exception:
+                        pass
+            finally:
+                self._mod_install_busy = False
+
+        threading.Thread(target=run_download, daemon=True).start()
+
+    @Slot("QVariantList", str)
+    def installModsBatch(self, slugs, version_name):
+        """
+        顺序安装多个模组，使用全局 DownloadDialog 展示总进度。
+        供络可「一键安装全部」使用。
+        """
+        print(f"installModsBatch: {len(slugs or [])} mods -> {version_name}")
+        from modules.log import log as _log
+        import logging as _logging
+
+        if not version_name:
+            self.downloadNotify.emit(
+                self.tr("安装失败"),
+                self.tr("未选择目标 Fabric 版本"),
+                False,
+            )
+            return
+
+        # 规范化 slug 列表（QML 可能传入 list 或 QVariantList）
+        cleaned = []
+        seen = set()
+        raw = slugs
+        try:
+            raw = list(slugs) if slugs is not None else []
+        except Exception:
+            raw = []
+        for s in raw:
+            slug = str(s).strip() if s is not None else ""
+            if not slug or slug in seen:
+                continue
+            seen.add(slug)
+            cleaned.append(slug)
+
+        if not cleaned:
+            self.downloadNotify.emit(self.tr("安装失败"), self.tr("没有可安装的模组"), False)
+            return
+
+        if getattr(self, "_mod_install_busy", False):
+            self.downloadNotify.emit(
+                self.tr("请稍候"),
+                self.tr("已有模组安装任务进行中"),
+                False,
+            )
+            return
+
+        def run_batch():
+            self._mod_install_busy = True
+            total = len(cleaned)
+            ok_list = []
+            fail_list = []
+            try:
+                title = self.tr("安装推荐 Mods") + f" ({total})"
+                _log(f"[ModInstall] batch 开始: n={total}, version={version_name}", _logging.INFO)
+                self.downloadDialogRequested.emit(title)
+                self.downloadProgressUpdated.emit(
+                    0.0,
+                    self.tr("准备安装...") + f" 0/{total}",
+                    "",
+                    "",
+                    "",
+                )
+
+                for i, slug in enumerate(cleaned):
+                    # 总进度 0–100
+                    base_pct = (i / total) * 100.0
+                    span_pct = (1.0 / total) * 100.0
+                    status_prefix = self.tr("正在安装") + f" {i + 1}/{total}: {slug}"
+                    _log(f"[ModInstall] batch [{i+1}/{total}] {slug}", _logging.INFO)
+                    self.downloadProgressUpdated.emit(base_pct, status_prefix, "", "", "")
+
+                    def progress_cb(frac, status, _base=base_pct, _span=span_pct, _prefix=status_prefix):
+                        overall = _base + _span * float(max(0.0, min(1.0, frac)))
+                        self.downloadProgressUpdated.emit(
+                            overall,
+                            f"{_prefix} — {status}" if status else _prefix,
+                            "",
+                            "",
+                            "",
+                        )
+
+                    ok, message = self._download_one_mod(
+                        slug, version_name, progress_cb=progress_cb
+                    )
+                    if ok:
+                        ok_list.append(slug)
+                        _log(f"[ModInstall] batch OK {slug}: {message}", _logging.INFO)
+                    else:
+                        fail_list.append(f"{slug} ({message})")
+                        _log(f"[ModInstall] batch FAIL {slug}: {message}", _logging.WARNING)
+
+                summary_parts = [
+                    self.tr("成功") + f" {len(ok_list)}/{total}",
+                ]
+                if fail_list:
+                    summary_parts.append(
+                        self.tr("失败") + ": " + ", ".join(fail_list[:5])
+                        + ("…" if len(fail_list) > 5 else "")
+                    )
+                summary = "；".join(summary_parts)
+                _log(f"[ModInstall] batch 结束: {summary}", _logging.INFO)
+                self.downloadCompleted.emit(summary)
+                self.downloadNotify.emit(
+                    self.tr("模组安装完成") if not fail_list else self.tr("模组安装结束（有失败）"),
+                    summary,
+                    len(fail_list) == 0,
+                )
                 try:
                     from modules.notification import send_notification
-                    send_notification(self.tr("下载失败"), str(e), category="download")
+                    send_notification(
+                        self.tr("模组安装完成") if not fail_list else self.tr("模组安装结束（有失败）"),
+                        summary,
+                        category="download",
+                    )
                 except Exception:
                     pass
-        
-        threading.Thread(target=run_download, daemon=True).start()
+            except Exception as e:
+                _log(f"[ModInstall] batch 异常: {e}", _logging.ERROR)
+                import traceback
+                traceback.print_exc()
+                self.downloadCompleted.emit(self.tr("安装失败") + f": {e}")
+                self.downloadNotify.emit(self.tr("安装失败"), str(e), False)
+            finally:
+                self._mod_install_busy = False
+
+        threading.Thread(target=run_batch, daemon=True).start()
 
     @Slot(str, str, str)
     def downloadToFile(self, mod_id, game_version, target_folder):
