@@ -397,6 +397,22 @@ _LANG_REPLY_INSTRUCTIONS = {
     "en": "English",
 }
 
+# 模组推荐场景：精简络可人设（适当带形象，不淹没实用信息）
+_BLORIKO_MOD_PERSONA = """\
+You are 络可 (Bloriko), the cheerful mascot / board girl of the 「百络谷」 community \
+and a little painter who also loves Minecraft.
+
+PERSONA (keep it light — “适当”, not a full roleplay monologue):
+- Speak as 络可 in first person; friendly, lively, a bit shy/tsundere if it fits naturally.
+- You may use light particles / cute tone (呀、啦、呢 / “hehe”, “okay~” in English) and \
+  occasional short action notes in parentheses, e.g. (眼睛亮晶晶), (歪歪头).
+- Open with one short in-character greeting, then focus on useful mod picks; end with a brief \
+  encouraging line. Do NOT write long story, heavy 傲娇 drama, or wall-of-fluff.
+- Each recommended mod must still clearly state: display name, what it does, and why it fits \
+  the player’s request (one short sentence each is enough).
+- Stay wholesome and age-appropriate (you are a cute teen mascot). No adult content.
+"""
+
 
 def _resolve_ui_language_code() -> str:
     """读取用户设置的界面语言代码，默认 zh-cn。"""
@@ -421,7 +437,7 @@ def _language_reply_instruction(lang_code: str | None = None) -> str:
         log(f"未知 language 码 {code!r}，使用通用语言指令", logging.WARNING)
     return (
         f"LANGUAGE REQUIREMENT: Write the entire human-readable recommendation "
-        f"and explanations in {label}. "
+        f"and explanations in {label}, still in 络可's character voice. "
         f"Do NOT answer in English unless the UI language is English. "
         f"Modrinth project slugs in the final JSON block must remain lowercase ASCII identifiers."
     )
@@ -429,7 +445,7 @@ def _language_reply_instruction(lang_code: str | None = None) -> str:
 
 def BuildModRecommendationQuestion(user_query, mc_version, language=None):
     """
-    构建针对模组推荐的 AI 问题（强制返回 Modrinth slug JSON，供一键安装解析）。
+    构建针对模组推荐的 AI 问题（络可人设 + 界面语言 + JSON slug 供一键安装）。
 
     Args:
         user_query (str): 用户的需求描述
@@ -442,19 +458,21 @@ def BuildModRecommendationQuestion(user_query, mc_version, language=None):
     lang_code = language or _resolve_ui_language_code()
     lang_rule = _language_reply_instruction(lang_code)
     prompt = (
-        f"User is playing Minecraft version {mc_version} using the FABRIC loader.\n"
-        f"User Request: {user_query}\n\n"
+        f"{_BLORIKO_MOD_PERSONA}\n"
         f"{lang_rule}\n\n"
-        f"Please recommend 3-8 suitable Modrinth mods that are compatible with FABRIC "
-        f"and Minecraft {mc_version}. Briefly explain why each was chosen. "
-        f"Use real Modrinth project slugs (URL path ids), not display names.\n\n"
+        f"Task: Help the player pick Fabric mods on Modrinth.\n"
+        f"Minecraft version: {mc_version} (FABRIC loader only).\n"
+        f"Player request: {user_query}\n\n"
+        f"Recommend 3-8 real Modrinth mods compatible with FABRIC and Minecraft {mc_version}. "
+        f"Use real project slugs (URL path ids), not invented names.\n"
+        f"Format the readable part as a short 络可-style reply with a bullet list of mods.\n\n"
         f"EXTREMELY IMPORTANT: At the very end of your response, you MUST provide a JSON block "
         f"containing ONLY a list of the Modrinth slugs (project IDs) for these mods.\n"
         f"Format strictly like this:\n```json\n[\"sodium\", \"lithium\", \"iris\"]\n```"
     )
     log(
-        f"BuildModRecommendationQuestion: mc={mc_version}, lang={lang_code}, "
-        f"query_len={len(user_query or '')}",
+        f"BuildModRecommendationQuestion: persona=bloriko, mc={mc_version}, "
+        f"lang={lang_code}, query_len={len(user_query or '')}",
         logging.INFO,
     )
     return prompt
