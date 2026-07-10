@@ -438,6 +438,11 @@ class BlorikoBackend(QObject):
         self._wechat_connector_lock = threading.Lock()
         self._pending_wechat_reply: Optional[str] = None  # 待回复的微信 chat_id
 
+        # 已配置则自动启动微信连接器
+        if load_config() is not None:
+            log.info("[Bloriko] 检测到已保存的微信配置，自动启动连接器...")
+            self.startWechatConnector()
+
     # ========== 全局设置 ==========
 
     @staticmethod

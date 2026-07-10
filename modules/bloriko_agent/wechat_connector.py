@@ -740,12 +740,49 @@ class BlorikoWechatConnector:
     # ── 轮询循环 ───────────────────────────────────────────────
 
     def _poll_loop(self) -> None:
-        """后台轮询线程：长轮询 iLink getupdates API"""
+        """后台轮询线程：长轮询 iLink getupdates API，退出后自动重连"""
+        MAX_RECONNECT_ATTEMPTS = 5
+        RECONNECT_DELAYS = [10, 30, 60, 120, 300]  # 递增退避
+
+        for attempt in range(MAX_RECONNECT_ATTEMPTS + 1):
+            if not self._running:
+                break
+
+            if attempt > 0:
+                delay = RECONNECT_DELAYS[min(attempt - 1, len(RECONNECT_DELAYS) - 1)]
+                log.info("[WeChat] 第 %d 次重连，等待 %d 秒...", attempt, delay)
+                self._set_status(self.STATUS_CONNECTING)
+                for _ in range(int(delay)):
+                    if not self._running:
+                        return
+                    time.sleep(1)
+
+            # 重新加载凭据（可能已刷新）
+            self._load_saved_config()
+            if not self._token or not self._account_id:
+                log.warning("[WeChat] 无凭据，无法重连")
+                break
+
+            self._sender = WechatMessageSender(self._base_url, self._token, self._account_id)
+            should_retry = self._run_single_poll_cycle()
+
+            if should_retry:
+                # 正常退出（stop() 被调用），不需要重连
+                break
+            # 异常退出，继续下一轮重连
+
+        self._set_status(self.STATUS_DISCONNECTED)
+        log.info("[WeChat] 轮询线程已退出")
+
+    def _run_single_poll_cycle(self) -> bool:
+        """
+        执行一轮长轮询。返回 True 表示正常退出（stop 被调用），False 表示需要重连。
+        """
         sync_buf = load_sync_buf()
         timeout = LONG_POLL_TIMEOUT
         consecutive_failures = 0
 
-        log.info("微信轮询线程已启动")
+        log.info("[WeChat] 轮询线程已启动")
         self._set_status(self.STATUS_CONNECTED)
 
         while self._running:
@@ -767,31 +804,33 @@ class BlorikoWechatConnector:
 
                 if ret != 0 or errcode != 0:
                     if ret == SESSION_EXPIRED or errcode == SESSION_EXPIRED:
-                        log.error("微信会话过期，10分钟后重试")
+                        log.error("[WeChat] 会话过期，等待 2 分钟后重连")
                         self._set_status(self.STATUS_ERROR)
                         if self._on_error:
-                            self._on_error("微信会话过期，10分钟后自动重试")
-                        # 暂停10分钟
-                        for _ in range(600):
+                            self._on_error("微信会话过期，正在重新连接...")
+                        for _ in range(120):
                             if not self._running:
-                                return
+                                return True
                             time.sleep(1)
-                        consecutive_failures = 0
-                        self._set_status(self.STATUS_CONNECTED)
-                        continue
+                        return False  # 触发重连
 
                     consecutive_failures += 1
                     log.warning(
-                        "getUpdates 失败: ret=%s errcode=%s errmsg=%s (%d/%d)",
+                        "[WeChat] getUpdates 失败: ret=%s errcode=%s errmsg=%s (%d/%d)",
                         ret, errcode, response.get("errmsg", ""),
                         consecutive_failures, MAX_RETRIES,
                     )
                     delay = BACKOFF_DELAY if consecutive_failures >= MAX_RETRIES else RETRY_DELAY
                     if consecutive_failures >= MAX_RETRIES:
                         self._set_status(self.STATUS_ERROR)
+                        for _ in range(int(delay)):
+                            if not self._running:
+                                return True
+                            time.sleep(1)
+                        return False  # 触发重连
                     for _ in range(int(delay)):
                         if not self._running:
-                            return
+                            return True
                         time.sleep(1)
                     continue
 
@@ -808,21 +847,25 @@ class BlorikoWechatConnector:
                 # 处理消息
                 for message in response.get("msgs") or []:
                     if not self._running:
-                        return
+                        return True
                     self._process_message(message)
 
             except Exception as e:
                 consecutive_failures += 1
-                log.error("轮询异常 (%d/%d): %s", consecutive_failures, MAX_RETRIES, e)
-                delay = BACKOFF_DELAY if consecutive_failures >= MAX_RETRIES else RETRY_DELAY
+                log.error("[WeChat] 轮询异常 (%d/%d): %s", consecutive_failures, MAX_RETRIES, e)
                 if consecutive_failures >= MAX_RETRIES:
                     self._set_status(self.STATUS_ERROR)
-                for _ in range(int(delay)):
+                    for _ in range(int(BACKOFF_DELAY)):
+                        if not self._running:
+                            return True
+                        time.sleep(1)
+                    return False  # 触发重连
+                for _ in range(int(RETRY_DELAY)):
                     if not self._running:
-                        return
+                        return True
                     time.sleep(1)
 
-        log.info("微信轮询线程已退出")
+        return True  # while 循环正常结束（stop 被调用）
 
     # ── 消息处理 ───────────────────────────────────────────────
 
