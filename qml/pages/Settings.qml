@@ -25,6 +25,7 @@ FluentPage {
         console.log("[Settings] page loaded, showing category hub")
         refreshData()
         loadBlorikoProviders()
+        loadConnectors()
         // 初始化微信状态
         if (Bloriko) {
             wechatStatus = Bloriko.getWechatStatus()
@@ -65,6 +66,30 @@ FluentPage {
             console.log("[Settings] WeChat status:", status)
             wechatStatus = status
             wechatConfigured = Bloriko ? Bloriko.isWechatConfigured() : false
+            // 同步更新 connectorModel 中微信的状态
+            for (var i = 0; i < connectorModel.count; i++) {
+                if (connectorModel.get(i).platform_id === "wechat") {
+                    connectorModel.setProperty(i, "status", status)
+                    connectorModel.setProperty(i, "configured", wechatConfigured)
+                    break
+                }
+            }
+        }
+
+        function onConnectorStatusChanged(platformId, status) {
+            console.log("[Settings] Connector status:", platformId, status)
+            for (var i = 0; i < connectorModel.count; i++) {
+                if (connectorModel.get(i).platform_id === platformId) {
+                    connectorModel.setProperty(i, "status", status)
+                    connectorModel.setProperty(i, "configured", Bloriko.isConnectorConfigured(platformId))
+                    break
+                }
+            }
+            // 向后兼容
+            if (platformId === "wechat") {
+                wechatStatus = status
+                wechatConfigured = Bloriko ? Bloriko.isWechatConfigured() : false
+            }
         }
 
         function onWechatQRProgress(qrStatus, progressText) {
@@ -167,6 +192,8 @@ FluentPage {
         updatePageTitle()
         if (id === "ai")
             loadSettingsProviders()
+        if (id === "bloriko")
+            loadConnectors()
     }
 
     function goBack() {
@@ -287,7 +314,7 @@ FluentPage {
         _aiProvidersSection = Backend ? Backend.tr("AI 供应商") : "AI 供应商"
         _aiHubDesc = Backend ? Backend.tr("默认模型与自定义供应商") : "默认模型与自定义供应商"
         _blorikoSection = Backend ? Backend.tr("络可 Agent") : "络可 Agent"
-        _blorikoHubDesc = Backend ? Backend.tr("AI 设置与微信连接器管理") : "AI 设置与微信连接器管理"
+        _blorikoHubDesc = Backend ? Backend.tr("AI 设置与消息连接器管理") : "AI 设置与消息连接器管理"
         _aiProvidersTitle = Backend ? Backend.tr("AI 供应商管理") : "AI 供应商管理"
         _aiProvidersDesc = Backend ? Backend.tr("管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用") : "管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用"
         _addProviderBtn = Backend ? Backend.tr("添加供应商") : "添加供应商"
@@ -423,7 +450,7 @@ FluentPage {
 
     // ── Bloriko Agent / WeChat ──
     property string _blorikoSection: Backend ? Backend.tr("络可 Agent") : "络可 Agent"
-    property string _blorikoHubDesc: Backend ? Backend.tr("AI 设置与微信连接器管理") : "AI 设置与微信连接器管理"
+    property string _blorikoHubDesc: Backend ? Backend.tr("AI 设置与消息连接器管理") : "AI 设置与消息连接器管理"
     property string _wechatTitle: Backend ? Backend.tr("微信连接器") : "微信连接器"
     property string _wechatDesc: Backend ? Backend.tr("将络可通过微信连接，扫码后可直接在微信中与络可对话") : "将络可通过微信连接，扫码后可直接在微信中与络可对话"
     property string _wechatStatusPrefix: Backend ? Backend.tr("连接状态") : "连接状态"
@@ -518,6 +545,10 @@ FluentPage {
     property bool wechatConfigured: false
     property string wechatQRUrl: ""
 
+    // 多平台连接器状态
+    ListModel { id: connectorModel }
+    property var connectorStatuses: ({})
+
     function loadSettingsProviders() {
         console.log("[Settings] loadSettingsProviders")
         settingsProviderModel.clear()
@@ -590,6 +621,44 @@ FluentPage {
             if (blorikoModelCombo.currentIndex < 0 && blorikoModelModel.count > 0)
                 blorikoModelCombo.currentIndex = 0
         } catch(e) { console.warn("[Settings] loadBlorikoModels error:", e) }
+    }
+
+    function loadConnectors() {
+        if (!Bloriko) return
+        try {
+            var list = JSON.parse(Bloriko.getAvailableConnectors())
+            connectorModel.clear()
+            for (var i = 0; i < list.length; i++) {
+                var c = list[i]
+                var status = Bloriko.getConnectorStatus(c.platform_id)
+                var configured = Bloriko.isConnectorConfigured(c.platform_id)
+                connectorModel.append({
+                    platform_id: c.platform_id,
+                    platform_name: c.platform_name,
+                    platform_icon: c.platform_icon,
+                    status: status,
+                    configured: configured,
+                    requires_sdk: c.requires_sdk || "",
+                    sdk_available: c.sdk_available
+                })
+            }
+        } catch(e) {
+            console.warn("[Settings] loadConnectors error:", e)
+        }
+    }
+
+    function connectorStatusText(status) {
+        if (status === "connected") return _wechatConnected
+        if (status === "connecting") return _wechatConnecting
+        if (status === "error") return _wechatErrorStatus
+        return _wechatDisconnected
+    }
+
+    function connectorStatusColor(status) {
+        if (status === "connected") return "#4CAF50"
+        if (status === "connecting") return "#FFC107"
+        if (status === "error") return "#F44336"
+        return "#9E9E9E"
     }
 
     function loadGlobalModels(providerKey, selectedModel) {
@@ -1398,7 +1467,7 @@ FluentPage {
 
             // ── 分隔 ──
             Label {
-                text: _wechatTitle
+                text: Backend ? Backend.tr("消息连接器") : "消息连接器"
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
                 color: Theme.currentTheme.colors.textColor
@@ -1406,86 +1475,143 @@ FluentPage {
             }
 
             Label {
-                text: _wechatDesc
+                text: Backend ? Backend.tr("将络可连接到各种消息平台，随时随地与络可对话") : "将络可连接到各种消息平台，随时随地与络可对话"
                 font.pixelSize: 12
                 color: Theme.currentTheme.colors.textSecondaryColor
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
 
-            // ── 微信连接状态 ──
-            SettingCard {
-                Layout.fillWidth: true
-                title: _wechatStatusPrefix
-                icon.name: "ic_fluent_chat_20_regular"
-                RowLayout {
-                    spacing: 8
+            // ── 动态连接器列表 ──
+            Repeater {
+                model: connectorModel
+                delegate: SettingCard {
+                    Layout.fillWidth: true
+                    title: model.platform_icon + " " + model.platform_name
+                    description: connectorStatusText(model.status) + (model.sdk_available ? "" : " (需要安装 " + model.requires_sdk + ")")
+                    icon.name: "ic_fluent_chat_20_regular"
+                    RowLayout {
+                        spacing: 8
 
-                    // 状态指示灯
-                    Rectangle {
-                        id: wechatStatusDot
-                        width: 10
-                        height: 10
-                        radius: 5
-                        color: {
-                            if (wechatStatus === "connected") return "#4CAF50"
-                            if (wechatStatus === "connecting") return "#FFC107"
-                            if (wechatStatus === "error") return "#F44336"
-                            return "#9E9E9E"  // disconnected
+                        // 状态指示灯
+                        Rectangle {
+                            width: 10
+                            height: 10
+                            radius: 5
+                            color: connectorStatusColor(model.status)
+                            Layout.alignment: Qt.AlignVCenter
                         }
-                        Layout.alignment: Qt.AlignVCenter
-                    }
 
-                    Label {
-                        id: wechatStatusLabel
-                        text: {
-                            if (wechatStatus === "connected") return _wechatConnected
-                            if (wechatStatus === "connecting") return _wechatConnecting
-                            if (wechatStatus === "error") return _wechatErrorStatus
-                            return _wechatDisconnected
+                        Label {
+                            text: connectorStatusText(model.status)
+                            font.pixelSize: 11
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            Layout.alignment: Qt.AlignVCenter
                         }
-                        font.pixelSize: 12
-                        color: Theme.currentTheme.colors.textColor
-                        Layout.alignment: Qt.AlignVCenter
-                    }
 
-                    Item { Layout.fillWidth: true }
+                        Item { Layout.fillWidth: true }
 
-                    // 操作按钮
-                    Button {
-                        id: wechatConnectBtn
-                        text: wechatStatus === "connected" ? _wechatDisconnectBtn : _wechatReconnectBtn
-                        font.pixelSize: 11
-                        flat: true
-                        visible: wechatConfigured
-                        onClicked: {
-                            if (wechatStatus === "connected") {
-                                if (Bloriko) Bloriko.stopWechatConnector()
-                            } else {
-                                if (Bloriko) Bloriko.reconnectWechat()
+                        // 连接/断开按钮
+                        Button {
+                            text: model.status === "connected" ? _wechatDisconnectBtn : _wechatReconnectBtn
+                            font.pixelSize: 11
+                            flat: true
+                            visible: model.configured
+                            onClicked: {
+                                if (!Bloriko) return
+                                if (model.status === "connected") {
+                                    Bloriko.stopConnector(model.platform_id)
+                                } else {
+                                    Bloriko.reconnectConnector(model.platform_id)
+                                }
                             }
                         }
-                    }
 
-                    Button {
-                        id: wechatConfigBtn
-                        text: wechatConfigured ? _wechatReconfigureBtn : _wechatConfigureBtn
-                        font.pixelSize: 11
-                        highlighted: true
-                        onClicked: {
-                            if (!Bloriko) return
-                            if (wechatConfigured) {
-                                // 重新配置：先清除再登录
-                                Bloriko.clearWechatConfig()
+                        // 配置按钮
+                        Button {
+                            text: model.configured ? _wechatReconfigureBtn : _wechatConfigureBtn
+                            font.pixelSize: 11
+                            highlighted: true
+                            onClicked: {
+                                if (!Bloriko) return
+                                if (model.platform_id === "wechat") {
+                                    // 微信用 QR 登录
+                                    if (model.configured) {
+                                        Bloriko.clearConnectorConfig("wechat")
+                                    }
+                                    Bloriko.startConnectorQRLogin("wechat")
+                                    wechatQRLoginArea.visible = true
+                                } else if (model.platform_id === "dingtalk") {
+                                    // 钉钉：需要 Client ID 和 Client Secret
+                                    connectorConfigDialog.platformId = model.platform_id
+                                    connectorConfigDialog.platformName = model.platform_name
+                                    connectorConfigDialog.configFields = [
+                                        { name: "client_id", label: "Client ID", placeholder: "钉钉应用 Client ID" },
+                                        { name: "client_secret", label: "Client Secret", placeholder: "应用密钥" }
+                                    ]
+                                    connectorConfigDialog.open()
+                                } else if (model.platform_id === "telegram") {
+                                    connectorConfigDialog.platformId = model.platform_id
+                                    connectorConfigDialog.platformName = model.platform_name
+                                    connectorConfigDialog.configFields = [
+                                        { name: "bot_token", label: "Bot Token", placeholder: "从 @BotFather 获取的 Token" }
+                                    ]
+                                    connectorConfigDialog.open()
+                                } else if (model.platform_id === "qq") {
+                                    connectorConfigDialog.platformId = model.platform_id
+                                    connectorConfigDialog.platformName = model.platform_name
+                                    connectorConfigDialog.configFields = [
+                                        { name: "app_id", label: "App ID", placeholder: "QQ 开放平台 App ID" },
+                                        { name: "client_secret", label: "Client Secret", placeholder: "应用密钥" }
+                                    ]
+                                    connectorConfigDialog.open()
+                                } else if (model.platform_id === "discord") {
+                                    connectorConfigDialog.platformId = model.platform_id
+                                    connectorConfigDialog.platformName = model.platform_name
+                                    connectorConfigDialog.configFields = [
+                                        { name: "bot_token", label: "Bot Token", placeholder: "Discord Bot Token" }
+                                    ]
+                                    connectorConfigDialog.open()
+                                } else if (model.platform_id === "slack") {
+                                    connectorConfigDialog.platformId = model.platform_id
+                                    connectorConfigDialog.platformName = model.platform_name
+                                    connectorConfigDialog.configFields = [
+                                        { name: "app_token", label: "App Token (xapp-)", placeholder: "xapp-..." },
+                                        { name: "bot_token", label: "Bot Token (xoxb-)", placeholder: "xoxb-..." }
+                                    ]
+                                    connectorConfigDialog.open()
+                                } else if (model.platform_id === "wecom") {
+                                    connectorConfigDialog.platformId = model.platform_id
+                                    connectorConfigDialog.platformName = model.platform_name
+                                    connectorConfigDialog.configFields = [
+                                        { name: "bot_id", label: "Bot ID", placeholder: "企业微信 AI Bot ID" },
+                                        { name: "secret", label: "Secret", placeholder: "应用密钥" }
+                                    ]
+                                    connectorConfigDialog.open()
+                                } else if (model.platform_id === "feishu") {
+                                    connectorConfigDialog.platformId = model.platform_id
+                                    connectorConfigDialog.platformName = model.platform_name
+                                    connectorConfigDialog.configFields = [
+                                        { name: "app_id", label: "App ID", placeholder: "飞书应用 App ID" },
+                                        { name: "app_secret", label: "App Secret", placeholder: "应用密钥" }
+                                    ]
+                                    connectorConfigDialog.open()
+                                } else if (model.platform_id === "matrix") {
+                                    connectorConfigDialog.platformId = model.platform_id
+                                    connectorConfigDialog.platformName = model.platform_name
+                                    connectorConfigDialog.configFields = [
+                                        { name: "server_url", label: "服务器 URL", placeholder: "https://matrix.org" },
+                                        { name: "access_token", label: "Access Token", placeholder: "Matrix Access Token" }
+                                    ]
+                                    connectorConfigDialog.open()
+                                }
                             }
-                            Bloriko.startWechatQRLogin()
-                            wechatQRLoginArea.visible = true
                         }
                     }
                 }
             }
 
-            // ── QR 登录区域 ──
+            // ── 微信 QR 登录区域 ──
             Frame {
                 id: wechatQRLoginArea
                 visible: false
@@ -1504,7 +1630,6 @@ FluentPage {
                         Layout.alignment: Qt.AlignHCenter
                     }
 
-                    // QR 图片显示（本地生成的 PNG）
                     Rectangle {
                         id: qrImageFrame
                         visible: wechatQRUrl !== ""
@@ -1530,7 +1655,6 @@ FluentPage {
                         }
                     }
 
-                    // 二维码不可用时的提示
                     Label {
                         visible: wechatQRUrl === "" && wechatQRLoginArea.visible
                         text: _wechatInstallQrHint
@@ -1541,7 +1665,6 @@ FluentPage {
                         Layout.alignment: Qt.AlignHCenter
                     }
 
-                    // 登录进度
                     Label {
                         id: wechatQRProgressLabel
                         text: _wechatQRWaiting
@@ -1551,7 +1674,6 @@ FluentPage {
                         visible: wechatQRLoginArea.visible
                     }
 
-                    // 取消/关闭按钮
                     Button {
                         text: _cancelBtn
                         flat: true
@@ -1562,51 +1684,77 @@ FluentPage {
                     }
                 }
             }
+        }
 
-            // ── 账号信息 ──
-            Frame {
-                id: wechatAccountFrame
-                visible: wechatConfigured
-                Layout.fillWidth: true
-                padding: 12
+        // ── 通用连接器配置对话框 ──
+        Dialog {
+            id: connectorConfigDialog
+            title: (Backend ? Backend.tr("配置") : "配置") + " " + platformName
+            anchors.centerIn: parent
+            width: 400
+            modal: true
+            property string platformId: ""
+            property string platformName: ""
+            property var configFields: []
+            property var _fieldValues: ({})
 
-                ColumnLayout {
-                    width: parent.width
-                    spacing: 4
-
-                    Label {
-                        text: _wechatAccountInfo
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                        color: Theme.currentTheme.colors.textColor
-                    }
-
-                    Label {
-                        id: wechatAccountLabel
-                        text: {
-                            if (!Bloriko) return ""
-                            try {
-                                var info = JSON.parse(Bloriko.getWechatAccountInfo())
-                                var parts = []
-                                if (info.account_id) parts.push("ID: " + info.account_id.slice(0, 8) + "...")
-                                if (info.connected) parts.push(_wechatConnected)
-                                return parts.join(" · ")
-                            } catch(e) { return "" }
-                        }
-                        font.pixelSize: 11
-                        color: Theme.currentTheme.colors.textSecondaryColor
-                    }
+            onOpened: {
+                // 重置字段值
+                var vals = {}
+                for (var i = 0; i < configFields.length; i++) {
+                    vals[configFields[i].name] = ""
                 }
+                _fieldValues = vals
             }
 
-            // ── 未配置提示 ──
-            Label {
-                visible: !wechatConfigured && !wechatQRLoginArea.visible
-                text: _wechatNotConfigured
-                font.pixelSize: 12
-                color: Theme.currentTheme.colors.textSecondaryColor
-                Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 8
+            ColumnLayout {
+                spacing: 12
+                Repeater {
+                    id: configRepeater
+                    model: connectorConfigDialog.configFields
+                    delegate: ColumnLayout {
+                        spacing: 4
+                        property string fieldName: modelData.name
+                        Label {
+                            text: modelData.label
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                            color: Theme.currentTheme.colors.textColor
+                        }
+                        TextField {
+                            id: cfgInput
+                            Layout.fillWidth: true
+                            placeholderText: modelData.placeholder
+                            echoMode: modelData.name.indexOf("token") >= 0 || modelData.name.indexOf("secret") >= 0 ? TextInput.Password : TextInput.Normal
+                            onTextChanged: {
+                                var vals = connectorConfigDialog._fieldValues
+                                vals[modelData.name] = text
+                                connectorConfigDialog._fieldValues = vals
+                            }
+                        }
+                    }
+                }
+                RowLayout {
+                    Layout.topMargin: 8
+                    Item { Layout.fillWidth: true }
+                    Button {
+                        text: _cancelBtn
+                        flat: true
+                        onClicked: connectorConfigDialog.close()
+                    }
+                    Button {
+                        text: Backend ? Backend.tr("保存并连接") : "保存并连接"
+                        highlighted: true
+                        onClicked: {
+                            if (!Bloriko) return
+                            var config = connectorConfigDialog._fieldValues
+                            console.log("[Settings] Saving connector config:", connectorConfigDialog.platformId, JSON.stringify(config))
+                            Bloriko.configureConnectorToken(connectorConfigDialog.platformId, JSON.stringify(config))
+                            connectorConfigDialog.close()
+                            loadConnectors()
+                        }
+                    }
+                }
             }
         }
 

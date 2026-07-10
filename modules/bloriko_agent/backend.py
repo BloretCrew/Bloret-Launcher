@@ -10,7 +10,7 @@
 - 会话持久化
 - 记忆系统（MEMORY.md / USER.md）
 - 情感系统
-- 微信连接器（通过 iLink Bot API）
+- 多平台连接器（微信、Telegram、QQ、Discord 等）
 """
 
 import json
@@ -28,6 +28,11 @@ from PySide6.QtGui import QGuiApplication
 from .agent_loop import BlorikoAgentLoop, run_agent_async, AGENT_ROLES
 from .memory import MemoryStore
 from .background_review import spawn_background_review_thread
+
+# 多平台连接器框架
+from .connectors import CONNECTOR_REGISTRY, get_all_connectors_info_json, BaseConnector
+
+# 微信连接器（保持向后兼容的直接导入）
 from .wechat_connector import (
     BlorikoWechatConnector,
     qr_login_step,
@@ -384,7 +389,12 @@ class BlorikoBackend(QObject):
     # 情感信号
     emotionChanged = Signal(str)
 
-    # ========== 微信连接器信号 ==========
+    # ========== 连接器信号（通用） ==========
+    connectorStatusChanged = Signal(str, str)       # platform_id, status
+    connectorMessageReceived = Signal(str, str, str) # platform_id, sender_id, text
+    connectorError = Signal(str, str)                # platform_id, error
+
+    # ========== 微信连接器信号（保持向后兼容） ==========
     wechatStatusChanged = Signal(str)       # connected / disconnected / connecting / error
     wechatQRProgress = Signal(str, str)     # status, progress_text  (QR 登录进度)
     wechatQRUrlChanged = Signal(str)        # 二维码图片 URL
@@ -433,15 +443,18 @@ class BlorikoBackend(QObject):
         # 情感状态
         self._current_emotion = "neutral"
 
-        # ========== 微信连接器 ==========
+        # ========== 多平台连接器 ==========
+        self._connectors: dict[str, BaseConnector] = {}
+        self._connectors_lock = threading.Lock()
+        self._pending_reply: Optional[dict] = None  # {"platform": str, "chat_id": str}
+
+        # 微信连接器（保持向后兼容的快捷引用）
         self._wechat_connector: Optional[BlorikoWechatConnector] = None
         self._wechat_connector_lock = threading.Lock()
         self._pending_wechat_reply: Optional[str] = None  # 待回复的微信 chat_id
 
-        # 已配置则自动启动微信连接器
-        if load_config() is not None:
-            log.info("[Bloriko] 检测到已保存的微信配置，自动启动连接器...")
-            self.startWechatConnector()
+        # 自动启动所有已配置的连接器
+        self._auto_start_connectors()
 
     # ========== 全局设置 ==========
 
@@ -1028,13 +1041,198 @@ class BlorikoBackend(QObject):
 
         log.info("[Bloriko] 全部完成")
 
-        # 如果消息来自微信，自动回复
+        # 如果消息来自某个连接器，自动回复
+        if self._pending_reply and self._current_text and not self._had_error:
+            p = self._pending_reply
+            self._pending_reply = None
+            connector = self._connectors.get(p["platform"])
+            if connector and connector.is_connected:
+                log.info("[Connector] 回复消息到 %s chat_id=%s (长度=%d)",
+                         p["platform"], p["chat_id"][:8], len(self._current_text))
+                sent = connector.send_message_chunks(p["chat_id"], self._current_text)
+                if sent > 0:
+                    log.info("[Connector] 成功发送 %d 条消息", sent)
+            else:
+                log.warning("[Connector] %s 连接器未就绪，无法回复", p["platform"])
+
+        # 向后兼容：微信专用回复路径
         if self._pending_wechat_reply and self._current_text and not self._had_error:
             chat_id = self._pending_wechat_reply
             self._pending_wechat_reply = None
             self._send_wechat_reply(chat_id, self._current_text)
 
-    # ========== 微信连接器 ==========
+    # ========== 多平台连接器管理 ==========
+
+    def _auto_start_connectors(self):
+        """启动时自动启动所有已配置的连接器"""
+        for platform_id, connector_cls in CONNECTOR_REGISTRY.items():
+            try:
+                connector = connector_cls(
+                    on_message=lambda cid, sid, text, pid=platform_id: self._on_connector_message(pid, cid, sid, text),
+                    on_status_change=lambda status, pid=platform_id: self._on_connector_status_change(pid, status),
+                    on_error=lambda error, pid=platform_id: self._on_connector_error(pid, error),
+                )
+                if connector.is_configured():
+                    with self._connectors_lock:
+                        self._connectors[platform_id] = connector
+                    log.info("[Connector] 自动启动 %s 连接器...", connector.display_name)
+                    connector.start()
+                else:
+                    # 即使未配置也注册到字典中（但不启动）
+                    with self._connectors_lock:
+                        self._connectors[platform_id] = connector
+                    log.debug("[Connector] %s 未配置，跳过自动启动", connector.display_name)
+            except Exception as e:
+                log.error("[Connector] 初始化 %s 连接器失败: %s", platform_id, e)
+
+    def _get_connector(self, platform_id: str) -> Optional[BaseConnector]:
+        with self._connectors_lock:
+            return self._connectors.get(platform_id)
+
+    def _on_connector_message(self, platform_id: str, chat_id: str, sender_id: str, text: str) -> None:
+        """统一连接器消息回调（在各连接器的轮询线程中调用）"""
+        log.info("[Connector] 收到 %s 消息 from=%s text='%s'", platform_id, sender_id[:8], text[:50])
+
+        # 通知 UI
+        self.connectorMessageReceived.emit(platform_id, sender_id, text)
+
+        # 向后兼容：微信专用信号
+        if platform_id == "wechat":
+            self.wechatMessageReceived.emit(sender_id, text)
+
+        # 送入 Agent 处理
+        self._pending_reply = {"platform": platform_id, "chat_id": chat_id}
+        # 向后兼容
+        if platform_id == "wechat":
+            self._pending_wechat_reply = chat_id
+
+        from PySide6.QtCore import QMetaObject, Qt, Q_ARG
+        QMetaObject.invokeMethod(
+            self,
+            "sendMessageFromConnector",
+            Qt.ConnectionType.QueuedConnection,
+            Q_ARG(str, text),
+        )
+
+    @Slot(str)
+    def sendMessageFromConnector(self, text: str):
+        """从连接器收到的消息，调用 Agent 处理（必须在主线程调用）"""
+        self.sendMessage(text)
+
+    def _on_connector_status_change(self, platform_id: str, status: str) -> None:
+        """统一连接器状态变化回调"""
+        log.info("[Connector] %s 状态变化: %s", platform_id, status)
+        self.connectorStatusChanged.emit(platform_id, status)
+
+        # 向后兼容：微信专用信号
+        if platform_id == "wechat":
+            self.wechatStatusChanged.emit(status)
+
+    def _on_connector_error(self, platform_id: str, error: str) -> None:
+        """统一连接器错误回调"""
+        log.error("[Connector] %s 错误: %s", platform_id, error)
+        self.connectorError.emit(platform_id, error)
+
+        # 向后兼容：微信专用信号
+        if platform_id == "wechat":
+            self.wechatError.emit(error)
+
+    # ── 通用连接器槽函数 ──
+
+    @Slot(result=str)
+    def getAvailableConnectors(self) -> str:
+        """获取所有注册连接器的静态信息（JSON 数组）"""
+        return get_all_connectors_info_json()
+
+    @Slot(str, result=str)
+    def getConnectorStatus(self, platform_id: str) -> str:
+        """获取指定连接器的状态"""
+        connector = self._get_connector(platform_id)
+        if not connector:
+            return "disconnected"
+        return connector.status
+
+    @Slot(str, result=bool)
+    def isConnectorConfigured(self, platform_id: str) -> bool:
+        """检查指定连接器是否已配置"""
+        connector = self._get_connector(platform_id)
+        if not connector:
+            return False
+        return connector.is_configured()
+
+    @Slot(str)
+    def startConnector(self, platform_id: str) -> None:
+        """启动指定连接器"""
+        connector = self._get_connector(platform_id)
+        if connector:
+            if connector.start():
+                log.info("[Connector] %s 启动成功", platform_id)
+            else:
+                log.warning("[Connector] %s 启动失败", platform_id)
+        else:
+            log.warning("[Connector] 未找到连接器: %s", platform_id)
+
+    @Slot(str)
+    def stopConnector(self, platform_id: str) -> None:
+        """停止指定连接器"""
+        connector = self._get_connector(platform_id)
+        if connector:
+            connector.stop()
+
+    @Slot(str, result=str)
+    def getConnectorAccountInfo(self, platform_id: str) -> str:
+        """获取指定连接器的账号信息（JSON）"""
+        connector = self._get_connector(platform_id)
+        if connector:
+            info = connector.get_account_info()
+            return json.dumps(info, ensure_ascii=False)
+        return "{}"
+
+    @Slot(str, str)
+    def configureConnectorToken(self, platform_id: str, config_json: str) -> None:
+        """配置指定连接器的 Token（JSON 格式的配置）"""
+        connector = self._get_connector(platform_id)
+        if not connector:
+            log.warning("[Connector] 未找到连接器: %s", platform_id)
+            return
+
+        try:
+            config = json.loads(config_json)
+            if connector.save_token_config(config):
+                log.info("[Connector] %s 配置已保存", platform_id)
+                connector.reload_config()
+                connector.start()
+            else:
+                log.warning("[Connector] %s 配置保存失败", platform_id)
+        except json.JSONDecodeError:
+            log.error("[Connector] 配置 JSON 解析失败: %s", config_json)
+
+    @Slot(str)
+    def clearConnectorConfig(self, platform_id: str) -> None:
+        """清除指定连接器的配置并断开"""
+        connector = self._get_connector(platform_id)
+        if connector:
+            connector.clear_config()
+        self.connectorStatusChanged.emit(platform_id, "disconnected")
+        # 向后兼容
+        if platform_id == "wechat":
+            self.wechatStatusChanged.emit("disconnected")
+
+    @Slot(str)
+    def startConnectorQRLogin(self, platform_id: str) -> None:
+        """启动指定连接器的 QR 登录（目前仅微信支持）"""
+        if platform_id != "wechat":
+            log.warning("[Connector] %s 不支持 QR 登录", platform_id)
+            return
+        self.startWechatQRLogin()
+
+    @Slot(str)
+    def reconnectConnector(self, platform_id: str) -> None:
+        """重新连接指定连接器"""
+        self.stopConnector(platform_id)
+        self.startConnector(platform_id)
+
+    # ========== 微信连接器（保持向后兼容） ==========
 
     def _create_wechat_connector(self) -> BlorikoWechatConnector:
         """创建微信连接器实例（线程安全）"""
@@ -1045,6 +1243,9 @@ class BlorikoBackend(QObject):
                     on_status_change=self._on_wechat_status_change,
                     on_error=self._on_wechat_error,
                 )
+                # 也注册到通用连接器字典
+                with self._connectors_lock:
+                    self._connectors["wechat"] = self._wechat_connector
             return self._wechat_connector
 
     def _get_wechat_connector(self) -> Optional[BlorikoWechatConnector]:
