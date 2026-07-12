@@ -4486,7 +4486,9 @@ class LauncherTrayIcon(QSystemTrayIcon):
         self.menu = RoundMenu()
         self.launch_menu = RoundMenu(i18nText("🔼  启动版本"), self.menu)
         self.menu.addMenu(self.launch_menu)
-        self._refresh_launch_menu()
+
+        # 在菜单即将显示时刷新启动版本列表，确保内容最新
+        self.launch_menu.aboutToShow.connect(self._refresh_launch_menu)
 
         self.menu.addSeparator()
         self.menu.addAction(Action(i18nText('🔡  访问 BBS'), self.menu, triggered=links.open_BBBS_link))
@@ -4497,6 +4499,9 @@ class LauncherTrayIcon(QSystemTrayIcon):
         self.menu.addAction(Action(i18nText('🔄️  重启程序'), self.menu, triggered=self.main_window.restart_app))
         self.menu.addAction(Action(i18nText('✅  显示窗口'), self.menu, triggered=self.main_window.show_main_window))
         self.menu.addAction(Action(i18nText('❎  退出程序'), self.menu, triggered=self.main_window.quit_app))
+
+        # 注册为系统托盘的上下文菜单（Linux 下必须，否则菜单内容为空）
+        self.setContextMenu(self.menu)
 
         self.activated.connect(self._on_tray_activated)
 
@@ -4591,8 +4596,9 @@ class LauncherTrayIcon(QSystemTrayIcon):
 
             is_context = self._reason_equals(reason, self._context_reason)
             if is_context:
-                self._refresh_launch_menu()
-                self.menu.popup(QCursor.pos())
+                # 菜单已通过 setContextMenu(menu) 注册，由平台负责显示
+                # 无需手动 popup（Linux 下 StatusNotifierItem 通过 DBus 获取菜单）
+                return
         except Exception as e:
             print(f"Tray activation handler failed: {e}")
 
