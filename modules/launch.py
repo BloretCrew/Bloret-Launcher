@@ -4,7 +4,7 @@ except ImportError:
     InfoBar = None
     InfoBarPosition = None
     ComboBox = None
-import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, psutil, subprocess
+import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, psutil, subprocess, re, shlex
 try:
     import send2trash
 except ImportError:
@@ -42,7 +42,84 @@ if platform.system() == "Windows":
 else:
     mwtool = None
 
-def Get_Run_Script(mc_version, skip_completion=False):
+
+def _mojang_os_context():
+    system = platform.system()
+    os_name = {"Windows": "windows", "Darwin": "osx", "Linux": "linux"}.get(system, system.lower())
+    machine = platform.machine().lower()
+    arch = "x86" if machine in ("x86", "i386", "i686") else "x86_64"
+    return os_name, arch
+
+
+def _mojang_rule_matches(rule, features=None):
+    """判断单条 Mojang rule 的条件是否匹配当前运行环境。"""
+    os_rule = rule.get("os") or {}
+    current_os, current_arch = _mojang_os_context()
+    if os_rule.get("name") and os_rule["name"] != current_os:
+        return False
+    if os_rule.get("arch") and os_rule["arch"] != current_arch:
+        return False
+    if os_rule.get("version"):
+        try:
+            if not re.search(os_rule["version"], platform.version()):
+                return False
+        except re.error as e:
+            log(f"忽略无效 Mojang OS version 规则 {os_rule['version']!r}: {e}", logging.WARNING)
+            return False
+
+    actual_features = features or {}
+    for name, required in (rule.get("features") or {}).items():
+        if bool(actual_features.get(name, False)) != bool(required):
+            return False
+    return True
+
+
+def _mojang_rules_allow(rules, features=None):
+    """按 Mojang 顺序规则求值；无 rules 时允许，有 rules 时默认拒绝，最后匹配项生效。"""
+    if not rules:
+        return True
+    allowed = False
+    for rule in rules:
+        if _mojang_rule_matches(rule, features):
+            allowed = rule.get("action") == "allow"
+    return allowed
+
+
+def _process_tree_pids(root_pid):
+    if not root_pid:
+        return None
+    try:
+        root = psutil.Process(root_pid)
+        return {root.pid, *(child.pid for child in root.children(recursive=True))}
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        return set()
+
+
+def _split_legacy_arguments(command_line):
+    """按目标平台命令行规则解析旧 minecraftArguments。"""
+    if os.name != "nt":
+        return shlex.split(command_line, posix=True)
+    try:
+        shell32 = ctypes.windll.shell32
+        shell32.CommandLineToArgvW.argtypes = [ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_int)]
+        shell32.CommandLineToArgvW.restype = ctypes.POINTER(ctypes.c_wchar_p)
+        argc = ctypes.c_int()
+        argv = shell32.CommandLineToArgvW(command_line, ctypes.byref(argc))
+        if not argv:
+            raise ctypes.WinError()
+        try:
+            return [argv[index] for index in range(argc.value)]
+        finally:
+            ctypes.windll.kernel32.LocalFree(argv)
+    except Exception as e:
+        log(f"CommandLineToArgvW 解析旧参数失败，回退 shlex: {e}", logging.WARNING)
+        return [
+            value[1:-1] if len(value) >= 2 and value[0] == value[-1] == '"' else value
+            for value in shlex.split(command_line, posix=False)
+        ]
+
+
+def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
     """
     根据 config.json 的内容生成启动 .minecraft 文件夹中指定版本的命令
     支持 Fabric 加载器启动
@@ -51,11 +128,18 @@ def Get_Run_Script(mc_version, skip_completion=False):
     Args:
         mc_version (str): 要启动的 Minecraft 版本号
         skip_completion (bool): 是否跳过文件补全，直接启动
+        cancellation_event (threading.Event): 启动会话取消信号
         
     Returns:
         tuple: (launch_args, game_dir) 启动参数列表和工作目录
     """
     
+    def raise_if_cancelled(stage):
+        if cancellation_event is not None and cancellation_event.is_set():
+            raise RuntimeError(f"启动会话已取消（{stage}）")
+
+    raise_if_cancelled("读取配置前")
+
     # 1. 读取配置文件 (替代原有的 cmcl.json 读取)
     try:
         config_data = cfg.read()
@@ -153,9 +237,10 @@ def Get_Run_Script(mc_version, skip_completion=False):
         version_output = result.stderr if result.stderr else result.stdout
         # 提取版本号（例如 "25.0.1" 或 "17.0.8"）
         import re
-        version_match = re.search(r'version\s+"?(\d+)', version_output)
+        version_match = re.search(r'version\s+"?(\d+)(?:\.(\d+))?', version_output)
         if version_match:
-            java_version = int(version_match.group(1))
+            major = int(version_match.group(1))
+            java_version = int(version_match.group(2)) if major == 1 and version_match.group(2) else major
             log(f"检测到 Java版本: {java_version}")
         else:
             log(f"无法检测 Java 版本，假定为 8")
@@ -188,10 +273,19 @@ def Get_Run_Script(mc_version, skip_completion=False):
         if acc_type_str == "Microsoft":
             login_method = 2
             user_type = "msa"
-            access_token = current_account.get("access_token", access_token)
-            # config.json 中可能没有 client_id 和 xuid，根据需要添加或留空
-            client_id = current_account.get("clientId", "") 
+            access_token = current_account.get("access_token", "")
+            client_id = current_account.get("clientId", "")
             xuid = current_account.get("xuid", "")
+            missing_fields = [
+                field for field, value in (
+                    ("Username", username), ("UUID", user_uuid), ("AccessToken", access_token)
+                ) if not isinstance(value, str) or not value.strip()
+            ]
+            if missing_fields:
+                raise ValueError(
+                    f"Microsoft 在线账户缺少必要字段: {', '.join(missing_fields)}，请重新登录后再启动。"
+                )
+            log(f"Microsoft 在线账户验证通过: username={username}, uuid={user_uuid}")
         else:
             login_method = 0
             user_type = "legacy"
@@ -212,43 +306,18 @@ def Get_Run_Script(mc_version, skip_completion=False):
         launch_args.append("-XstartOnFirstThread")
         log("检测到 macOS，已添加 -XstartOnFirstThread 参数")
 
-    launch_args.extend([
-        "--add-modules=jdk.unsupported", # 解决 sun.misc 和 Unsafe 访问问题
-        "--enable-native-access=ALL-UNNAMED",
-        "--add-opens", "java.base/java.lang=ALL-UNNAMED",
-        "--add-opens", "java.base/java.util=ALL-UNNAMED",
-        "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED",
-        "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",
-        "--add-opens", "java.base/jdk.internal.ref=ALL-UNNAMED",
-        "--add-opens", "java.base/jdk.internal.loader=ALL-UNNAMED",
-        "--add-opens", "java.base/java.net=ALL-UNNAMED",
-        "--add-opens", "java.base/java.security=ALL-UNNAMED",
-        "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",
-        "--add-exports", "java.base/jdk.internal.misc=ALL-UNNAMED",
-        "--add-exports", "java.base/jdk.internal.ref=ALL-UNNAMED",
+    # 启动器 JVM 参数按 Java 版本选择。模块系统参数不能传给 Java 8。
+    launcher_jvm_args = [
         "-Dio.netty.tryReflectionSetAccessible=true",
         "-Dio.netty.native.skipTryReflectionSetAccessible=true",
-        "-Dsun.misc.unsafe.throwException=false",
-        "-Djdk.attach.allowAttachSelf=true",
-        "-Djdk.module.IllegalAccess.silent=true",
         "-Dlog4j2.formatMsgNoLookups=true",
         "-Dfile.encoding=UTF-8",
         "-Dsun.jnu.encoding=UTF-8",
-        "-Dstderr.encoding=UTF-8", 
-        "-Dstdout.encoding=UTF-8",
-        "-XX:+UseG1GC",
-        "-XX:-UseAdaptiveSizePolicy",
         "-XX:-OmitStackTraceInFastThrow",
-        "-Djdk.lang.Process.allowAmbiguousCommands=true",
         "-Dfml.ignoreInvalidMinecraftCertificates=True",
         "-Dfml.ignorePatchDiscrepancies=True",
         "-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump",
-        "-Dsun.misc.URLClassPath.disableJarChecking=true",
         "-Djava.rmi.server.useCodebaseOnly=true",
-        "-Dcom.sun.management.jmxremote.local.only=true",
-        "-Dcom.sun.management.jmxremote.authenticate=false",
-        "-Dcom.sun.management.jmxremote.ssl=false",
-        "-XX:-OmitStackTraceInFastThrow",
         "-Djna.nosys=true",
         "-Djnidispatch.preserve=true",
         "-Dorg.lwjgl.util.Debug=false",
@@ -260,12 +329,27 @@ def Get_Run_Script(mc_version, skip_completion=False):
         "-Dsun.java2d.pmoffscreen=false",
         "-Dsun.java2d.accthreshold=0",
         "-XX:ErrorFile=./hs_err_pid%p.log",
-        "-XX:+UnlockExperimentalVMOptions",
-        "-XX:+UseG1GC",
-        "-XX:+UseCompressedOops",
-        "-XX:+OptimizeStringConcat",
-        "-XX:+UseStringDeduplication"
-    ])
+    ]
+    if java_version >= 9:
+        launcher_jvm_args.extend([
+            "--add-modules=jdk.unsupported",
+            "--add-opens=java.base/java.lang=ALL-UNNAMED",
+            "--add-opens=java.base/java.util=ALL-UNNAMED",
+            "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+            "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
+            "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED",
+            "--add-opens=java.base/jdk.internal.loader=ALL-UNNAMED",
+            "--add-opens=java.base/java.net=ALL-UNNAMED",
+            "--add-opens=java.base/java.security=ALL-UNNAMED",
+            "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED",
+            "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED",
+            "--add-exports=java.base/jdk.internal.ref=ALL-UNNAMED",
+            "-Djdk.attach.allowAttachSelf=true",
+            "-Djdk.module.IllegalAccess.silent=true",
+        ])
+    if java_version >= 17:
+        launcher_jvm_args.append("--enable-native-access=ALL-UNNAMED")
+    log(f"已选择适用于 Java {java_version} 的启动器 JVM 参数: {len(launcher_jvm_args)} 项")
     
     # 添加 Native 库路径参数
     natives_path = os.path.join(versions_dir, f"{mc_version}-natives")
@@ -312,20 +396,11 @@ def Get_Run_Script(mc_version, skip_completion=False):
     missing_libraries = []
     if "libraries" in version_data:
         for lib in version_data["libraries"]:
-            # 检查库是否适用于当前系统
-            should_include = True
-            if "rules" in lib:
-                should_include = False
-                for rule in lib["rules"]:
-                    if rule.get("action") == "allow":
-                        os_rule = rule.get("os", {})
-                        if not os_rule or (os_rule.get("name", "").lower() == platform.system().lower() or 
-                                          (os_rule.get("name") == "windows" and platform.system() == "Windows") or
-                                          (os_rule.get("name") == "osx" and platform.system() == "Darwin") or
-                                          (os_rule.get("name") == "linux" and platform.system() == "Linux")):
-                            should_include = True
-                            break
-            
+            # Mojang rules 按顺序求值，最后一条匹配规则决定是否启用。
+            should_include = _mojang_rules_allow(lib.get("rules"))
+            if not should_include:
+                log(f"按 Mojang rules 跳过库: {lib.get('name', '<unknown>')}", logging.DEBUG)
+
             if should_include:
                 lib_path = None
                 if "downloads" in lib and "artifact" in lib["downloads"]:
@@ -523,20 +598,51 @@ def Get_Run_Script(mc_version, skip_completion=False):
             # 从 config.json 读取 MaxThread
             max_workers = config_data.get("MaxThread", 64)
             
-            # 创建下载器并启动下载线程
-            downloader = LibraryDownloader(missing_libraries, max_workers)
-            download_thread = threading.Thread(target=downloader.download_libraries)
-            download_thread.daemon = True
-            download_thread.start()
-            
-            # 等待下载完成
-            downloader.completed_event.wait()
-            
-            # 重新检查库文件并添加到类路径中
+            # 启动补全在当前启动工作线程中直接等待，可靠取得返回结果。
+            downloader_kwargs = {}
+            try:
+                import inspect
+                if "cancellation_event" in inspect.signature(LibraryDownloader).parameters:
+                    downloader_kwargs["cancellation_event"] = cancellation_event
+            except (TypeError, ValueError):
+                pass
+            downloader = LibraryDownloader(missing_libraries, max_workers, **downloader_kwargs)
+            # 兼容 install.py 代理类：即使构造器暂未暴露参数，也保留会话取消信号。
+            if cancellation_event is not None and not hasattr(downloader, "cancellation_event"):
+                downloader.cancellation_event = cancellation_event
+            cancel_watcher = None
+            if cancellation_event is not None:
+                def watch_cancellation():
+                    cancellation_event.wait()
+                    if cancellation_event.is_set() and not downloader.completed_event.is_set():
+                        log("启动会话取消，正在取消库文件补全", logging.WARNING)
+                        downloader.cancel()
+
+                cancel_watcher = threading.Thread(target=watch_cancellation, daemon=True)
+                cancel_watcher.start()
+
+            direct_result = downloader.download_libraries()
+            # install.py 的代理接口可通过 result 暴露最终结果；没有该属性时使用直接返回值。
+            downloader_result = getattr(downloader, "result", direct_result)
+            if callable(downloader_result):
+                downloader_result = downloader_result()
+            raise_if_cancelled("库文件补全")
+            if downloader_result is not True:
+                raise RuntimeError(
+                    f"库文件补全失败: result={downloader_result!r}, "
+                    f"completed={downloader.completed_count}/{downloader.total_count}"
+                )
+
+            still_missing = []
             for lib, lib_path in missing_libraries:
-                if os.path.exists(lib_path) and lib_path not in classpath:
-                    classpath.append(lib_path)
+                if os.path.exists(lib_path):
+                    if lib_path not in classpath:
+                        classpath.append(lib_path)
                     log(f"添加之前缺失但现已下载的库: {lib_path}")
+                else:
+                    still_missing.append(lib_path)
+            if still_missing:
+                raise RuntimeError(f"库文件补全返回成功但仍缺少 {len(still_missing)} 个文件")
     
     # 添加自定义参数 - 设置 Java 运行临时目录
     # 在 macOS 上使用标准缓存目录，Windows/Linux 使用环境变量或数据目录
@@ -572,38 +678,68 @@ def Get_Run_Script(mc_version, skip_completion=False):
     # 因此，我们现在默认直接禁用它，改用原生直接启动方式
     use_wrapper = False  # 强制禁用
 
-    # 添加类路径参数
-    # 注意：在 shell=False 时，不要手动添加引号。
-    launch_args.extend(["-cp", os.pathsep.join(classpath)])  # 使用系统分隔符 (Windows: ;, Unix: :)
-    
-    # Add Fabric Loader arguments to ensure mods are loaded
+    # JSON arguments.jvm 是版本声明的权威 JVM 模板；启动器固定参数只作为附加兼容参数保留。
+    jvm_variables = {
+        "natives_directory": natives_path,
+        "launcher_name": "Bloret-Launcher",
+        "launcher_version": "361",
+        "classpath": os.pathsep.join(classpath),
+        "classpath_separator": os.pathsep,
+        "library_directory": libraries_dir,
+    }
+
+    def replace_variables(value, variables):
+        if not isinstance(value, str):
+            return value
+        for key, replacement in variables.items():
+            value = value.replace("${" + key + "}", str(replacement))
+        return value
+
+    # 版本 JSON JVM 模板优先，随后追加启动器兼容参数，并在最终阶段去重。
+    pending_launcher_jvm_args = launch_args[1:] + launcher_jvm_args
+    launch_args = [java_arg]
+
+    json_jvm_arguments = version_data.get("arguments", {}).get("jvm")
+    if isinstance(json_jvm_arguments, list):
+        added_jvm_count = 0
+        for entry in json_jvm_arguments:
+            if isinstance(entry, str):
+                launch_args.append(replace_variables(entry, jvm_variables))
+                added_jvm_count += 1
+            elif isinstance(entry, dict) and _mojang_rules_allow(entry.get("rules")):
+                values = entry.get("value", [])
+                if isinstance(values, str):
+                    values = [values]
+                for value in values:
+                    if isinstance(value, str):
+                        launch_args.append(replace_variables(value, jvm_variables))
+                        added_jvm_count += 1
+        log(f"已按 Mojang rules 应用版本 JSON JVM 参数: {added_jvm_count} 项")
+    else:
+        launch_args.extend(["-cp", os.pathsep.join(classpath)])
+        log("版本 JSON 未提供 arguments.jvm，已使用兼容类路径参数", logging.WARNING)
+
+    pending_launcher_jvm_args.extend([
+        f'-Doolloo.jlw.tmpdir={temp_dir}',
+        f'-Djava.io.tmpdir={temp_dir}',
+    ])
     if is_fabric and os.path.exists(mods_dir):
         log(f"添加 Fabric mods 目录: {mods_dir}")
-        launch_args.extend([f'-Dfabric.addMods={mods_dir}'])
-    
-    # 添加主类和参数
-    if is_fabric:
-        # Fabric 使用 KnotClient 主类
-        launch_args.append("net.fabricmc.loader.impl.launch.knot.KnotClient")
-    elif is_forge_like:
-        main_class = version_data.get("mainClass") or "cpw.mods.bootstraplauncher.BootstrapLauncher"
-        launch_args.append(main_class)
-    else:
-        # 原始 Minecraft 启动方式
-        # 最终检查：即使 use_wrapper 为 True，如果 Java 版本 >= 17 也强制禁用
-        if use_wrapper and java_version >= 17:
-            log(f"⚠️ 最终保护：Java {java_version} >= 17，强制禁用 JavaWrapper")
-            use_wrapper = False
-        
-        if use_wrapper:
-            # 在 Windows 上，Wrapper 充当启动入口
-            launch_args.append("oolloo.jlw.Wrapper")
-            log("⚠️ 使用 JavaWrapper 启动（Java 版本 < 17）")
+        pending_launcher_jvm_args.append(f'-Dfabric.addMods={mods_dir}')
 
-        # 指定 Minecraft 的真正主类
-        launch_args.append("net.minecraft.client.main.Main")
-        if not use_wrapper:
-            log(f"✅ 直接启动 Minecraft（未使用 JavaWrapper，Java {java_version}）")
+    seen_jvm_args = set(launch_args[1:])
+    for arg in pending_launcher_jvm_args:
+        if arg not in seen_jvm_args:
+            launch_args.append(arg)
+            seen_jvm_args.add(arg)
+    log(f"JVM 参数合并去重完成: {len(launch_args) - 1} 项")
+
+    main_class = version_data.get("mainClass")
+    if not main_class:
+        main_class = "net.minecraft.client.main.Main"
+        log("版本 JSON 缺少 mainClass，回退到原版主类", logging.WARNING)
+    launch_args.append(main_class)
+    log(f"使用版本 JSON 主类: {main_class}")
     
     # 游戏目录应该是主 .minecraft 目录，而不是版本特定目录
     # 修改：为了实现版本隔离，game_dir 应该指向 versions_dir
@@ -646,94 +782,66 @@ def Get_Run_Script(mc_version, skip_completion=False):
     }
 
     def replace_game_variables(value):
-        if not isinstance(value, str):
-            return value
-        for key, replacement in game_variables.items():
-            value = value.replace("${" + key + "}", str(replacement))
-        return value
+        return replace_variables(value, game_variables)
 
-    def append_version_game_arguments():
-        appended = False
-        arguments = version_data.get("arguments", {}).get("game", [])
-        for arg in arguments:
-            if isinstance(arg, str):
-                launch_args.append(replace_game_variables(arg))
-                appended = True
-            elif isinstance(arg, dict):
-                value = arg.get("value")
-                if isinstance(value, list):
-                    for item in value:
-                        launch_args.append(replace_game_variables(item))
-                        appended = True
-                elif isinstance(value, str):
-                    launch_args.append(replace_game_variables(value))
-                    appended = True
-        if appended:
-            return True
+    game_arguments = version_data.get("arguments", {}).get("game")
+    appended_count = 0
+    if isinstance(game_arguments, list):
+        for entry in game_arguments:
+            if isinstance(entry, str):
+                launch_args.append(replace_game_variables(entry))
+                appended_count += 1
+            elif isinstance(entry, dict) and _mojang_rules_allow(entry.get("rules")):
+                values = entry.get("value", [])
+                if isinstance(values, str):
+                    values = [values]
+                for value in values:
+                    if isinstance(value, str):
+                        launch_args.append(replace_game_variables(value))
+                        appended_count += 1
+        log(f"已按 Mojang rules 应用版本 JSON 游戏参数: {appended_count} 项")
+    else:
         minecraft_arguments = version_data.get("minecraftArguments")
         if minecraft_arguments:
-            launch_args.extend(replace_game_variables(minecraft_arguments).split())
-            return True
-        return False
-    
-    # 根据登录方式设置启动参数
-    if is_forge_like and append_version_game_arguments():
-        log("已使用版本 JSON 中的 Forge/NeoForge 游戏参数")
-    elif login_method == 0:  # 离线登录
-        launch_args.extend([
-            "--username", username,
-            "--version", mc_version,
-            "--gameDir", game_dir,
-            "--assetsDir", assets_dir,
-            "--assetIndex", str(asset_index),
-            "--uuid", user_uuid, # 使用配置中的UUID
-            "--accessToken", "00000000000000000000000000000000",
-            "--userType", "legacy",
-            "--versionType", version_type,
-            "--width", "854",
-            "--height", "480"
-        ])
-    elif login_method == 2:  # 微软登录
-        # 检查账户信息相关字段
-        missing_fields = []
-        if not username:
-            missing_fields.append("Username")
-        if not user_uuid:
-            missing_fields.append("UUID")
-        if not access_token:
-            missing_fields.append("AccessToken")
+            expanded = replace_game_variables(minecraft_arguments)
+            parsed_legacy_args = _split_legacy_arguments(expanded)
+            launch_args.extend(parsed_legacy_args)
+            log(f"已使用 shlex 可靠解析旧版 minecraftArguments: {len(parsed_legacy_args)} 项")
+        else:
+            # 极旧或不完整 JSON 的最后兼容路径。
+            launch_args.extend([
+                "--username", username, "--version", mc_version,
+                "--gameDir", game_dir, "--assetsDir", assets_dir,
+                "--assetIndex", str(asset_index), "--uuid", user_uuid,
+                "--accessToken", game_variables["auth_access_token"],
+                "--userType", game_variables["user_type"],
+                "--versionType", version_type, "--width", "854", "--height", "480"
+            ])
+            log("版本 JSON 未提供游戏参数模板，已使用兼容参数", logging.WARNING)
 
-        if missing_fields:
-            raise ValueError(f"缺少必要的启动参数: {', '.join(missing_fields)}，请先登录或完善账户信息。")
-            
-        launch_args.extend([
-            "--username", username,
-            "--version", mc_version,
-            "--gameDir", game_dir,
-            "--assetsDir", assets_dir,
-            "--assetIndex", str(asset_index),
-            "--uuid", user_uuid,
-            "--accessToken", access_token,
-            "--clientId", client_id,
-            "--xuid", xuid,
-            "--userType", user_type,
-            "--versionType", version_type,
-            "--width", "854",
-            "--height", "480"
-        ])
-    
-    # 返回启动参数列表和游戏目录，而不是批处理脚本
-    log(f"生成的启动参数: {launch_args}")
+    # clientId/xuid 只在模板实际引用且账户有值时才补充，避免发送空参数或重复参数。
+    template_text = json.dumps(game_arguments if isinstance(game_arguments, list) else version_data.get("minecraftArguments", ""))
+    existing_flags = set(launch_args)
+    if login_method == 2 and "${clientid}" in template_text and client_id and "--clientId" not in existing_flags:
+        launch_args.extend(["--clientId", client_id])
+    if login_method == 2 and "${auth_xuid}" in template_text and xuid and "--xuid" not in existing_flags:
+        launch_args.extend(["--xuid", xuid])
+
+    # 返回启动参数列表和游戏目录；日志必须脱敏。
+    sensitive_values = {value for value in (access_token, client_id, xuid) if value}
+    safe_args = ["******" if arg in sensitive_values else arg for arg in launch_args]
+    log(f"生成的启动参数（敏感字段已脱敏）: {safe_args}")
     return launch_args, game_dir
 
 # Change timeout default to 300
-def get_minecraft_window_handle(version=None, timeout=300):
+def get_minecraft_window_handle(version=None, timeout=300, mc_pid=None):
     """
     获取 Minecraft 窗口句柄（Windows）或 进程PID（macOS/Linux）
     
     Args:
         version (str): Minecraft 版本号，用于识别特定版本的窗口
         timeout (int): 超时时间（秒）
+        mc_pid (int): 启动得到的根进程 PID；提供后仅匹配该进程树
     
     Returns:
         int: 窗口句柄或PID，如果未找到则返回 None
@@ -744,7 +852,13 @@ def get_minecraft_window_handle(version=None, timeout=300):
         try:
             start_time = time.time()
             while time.time() - start_time < timeout:
+                allowed_pids = _process_tree_pids(mc_pid)
+                if mc_pid and not allowed_pids:
+                    log(f"Minecraft 根进程 {mc_pid} 已退出，停止等待进程窗口")
+                    return None
                 for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                    if allowed_pids is not None and proc.pid not in allowed_pids:
+                        continue
                     try:
                         cmdline_list = proc.info.get('cmdline', [])
                         if not cmdline_list: continue
@@ -766,6 +880,11 @@ def get_minecraft_window_handle(version=None, timeout=300):
         start_time = time.time()
         
         while time.time() - start_time < timeout:
+            allowed_pids = _process_tree_pids(mc_pid)
+            if mc_pid and not allowed_pids:
+                log(f"Minecraft 根进程 {mc_pid} 已退出，停止等待窗口")
+                return None
+
             # 枚举所有窗口
             def enum_windows_callback(hwnd, windows_list):
                 if win32gui.IsWindowVisible(hwnd) and win32gui.IsWindowEnabled(hwnd):
@@ -787,7 +906,9 @@ def get_minecraft_window_handle(version=None, timeout=300):
                                 
                                 # 获取进程ID
                                 _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                                
+                                if allowed_pids is not None and pid not in allowed_pids:
+                                    return True
+
                                 # 检查进程命令行是否包含 Minecraft 相关参数
                                 try:
                                     process = psutil.Process(pid)
@@ -875,8 +996,8 @@ def monitor_minecraft_window(version, check_interval=1, callback=None, mc_pid=No
         # 等待一段时间让 Minecraft 启动
         time.sleep(3)
         
-        # 尝试获取窗口句柄，延长超时时间至300秒（5分钟）
-        hwnd = get_minecraft_window_handle(version, timeout=300)
+        # 仅在传入的 Minecraft 根进程及其子进程树内查找窗口。
+        hwnd = get_minecraft_window_handle(version, timeout=300, mc_pid=mc_pid)
         
         if hwnd:
             log(f"✅ Minecraft {version} 已找到！")

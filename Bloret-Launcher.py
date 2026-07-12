@@ -251,6 +251,9 @@ class Backend(QObject):
         self._last_core_manager_request_time = 0  # 防止重复请求
         self._is_launching = False
         self._launch_session_id = 0
+        self._launch_state_lock = threading.RLock()
+        self._launch_start_lock = threading.Lock()
+        self._launch_cancellation_event = None
         self._current_launching_version = ""  # 当前正在启动的版本
         self._screenshot_widget = None
         # Play time tracking
@@ -430,14 +433,22 @@ class Backend(QObject):
         except Exception as e:
             print(f"[PluginHost] launch.pre 失败: {e}")
 
-        self._is_launching = True
-        self._launch_session_id += 1
-        self._current_launching_version = version  # 存储当前启动的版本
-        launch_session_id = self._launch_session_id
+        with self._launch_state_lock:
+            self._is_launching = True
+            self._launch_session_id += 1
+            self._current_launching_version = version
+            launch_session_id = self._launch_session_id
+            cancellation_event = threading.Event()
+            self._launch_cancellation_event = cancellation_event
         self.launchDialogRequested.emit(i18nText("正在启动 {version}").replace("{version}", version))
 
         def is_current_session():
-            return launch_session_id == self._launch_session_id
+            with self._launch_state_lock:
+                return (
+                    launch_session_id == self._launch_session_id
+                    and self._launch_cancellation_event is cancellation_event
+                    and not cancellation_event.is_set()
+                )
 
         def emit_progress(progress, status, detail=""):
             if not is_current_session():
@@ -448,8 +459,11 @@ class Backend(QObject):
             if not is_current_session():
                 print(f"[Launch] 忽略已失效启动会话的清理请求: session={launch_session_id}, version={version}")
                 return
-            self._is_launching = False
-            self._current_launching_version = ""
+            with self._launch_state_lock:
+                self._is_launching = False
+                self._current_launching_version = ""
+                if self._launch_cancellation_event is cancellation_event:
+                    self._launch_cancellation_event = None
             print(f"[Launch] 启动任务已清理: session={launch_session_id}, version={version}, close_dialog={close_dialog}")
             if close_dialog:
                 self.launchDialogClosed.emit()
@@ -490,12 +504,16 @@ class Backend(QObject):
                     emit_progress(80, "跳过文件补全，直接解析启动参数...", "用户选择跳过文件补全")
                 else:
                     emit_progress(80, "正在补全文件并解析启动参数...", "如有缺失文件会自动下载")
-                launch_args, game_dir = Get_Run_Script(version, skip_completion=skip_completion)
+                launch_args, game_dir = Get_Run_Script(
+                    version,
+                    skip_completion=skip_completion,
+                    cancellation_event=cancellation_event,
+                )
                 if abort_if_cancelled("resolve_launch_args"):
                     return
 
                 emit_progress(95, "正在执行启动命令...", "")
-                print(f"Launching with args: {launch_args}")
+                print(f"[Launch] 启动参数已生成，共 {len(launch_args)} 项（敏感值不输出）")
 
                 # Linux：为 Minecraft/GLFW 继承并补齐输入法环境，保证游戏内可切换中文输入
                 _launch_env = None
@@ -523,20 +541,22 @@ class Backend(QObject):
                 except Exception as _env_err:
                     print(f"[PluginHost] launch.env 失败: {_env_err}")
 
-                if abort_if_cancelled("before_process_start"):
-                    return
-
-                # 使用 PIPE 捕获输出，同时实时打印到控制台并解析聊天消息
-                proc = subprocess.Popen(
-                    launch_args, cwd=game_dir,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,  # 合并 stderr 到 stdout
-                    encoding='utf-8',
-                    errors='replace',
-                    bufsize=1,  # 行缓冲
-                    env=_launch_env,
-                    **hidden_process_kwargs(),
-                )
+                # 最终会话校验与 Popen 在同一把锁内串行化；取消操作也取得此锁，
+                # 从而消除“检查通过后、Popen 前”被取消的竞态。
+                with self._launch_start_lock:
+                    if abort_if_cancelled("before_process_start"):
+                        return
+                    proc = subprocess.Popen(
+                        launch_args, cwd=game_dir,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        encoding='utf-8',
+                        errors='replace',
+                        bufsize=1,
+                        env=_launch_env,
+                        **hidden_process_kwargs(),
+                    )
+                    print(f"[Launch] Popen 已完成: session={launch_session_id}, pid={proc.pid}")
 
                 import uuid as _uuid
                 instance_id = str(_uuid.uuid4())
@@ -598,7 +618,20 @@ class Backend(QObject):
                         p.wait()
                         # End play time tracking
                         self._end_play_time_session(instance_id)
-                        if p.returncode != 0 and not evt.is_set():
+                        exited_before_window = not evt.is_set()
+                        if exited_before_window:
+                            evt.set()
+                            emit_progress(
+                                100,
+                                i18nText("Minecraft 进程已退出"),
+                                i18nText("游戏在窗口出现前退出，返回码: {code}").replace("{code}", str(p.returncode)),
+                            )
+                            finish_launch(close_dialog=False)
+                            print(
+                                f"[Launch] Minecraft 在窗口出现前退出，已立即结束等待: "
+                                f"version={ver}, pid={p.pid}, returncode={p.returncode}"
+                            )
+                        if p.returncode != 0 and exited_before_window:
                             print(f"\n[错误] Minecraft {ver} 进程异常退出，返回码: {p.returncode}")
                             self.minecraftCrashDetected.emit(
                                 i18nText("Minecraft {ver} 崩溃").replace("{ver}", ver),
@@ -664,6 +697,9 @@ class Backend(QObject):
 
                 threading.Thread(target=monitor_timeout_guard, daemon=True).start()
             except Exception as e:
+                if cancellation_event.is_set() or not is_current_session():
+                    print(f"[Launch] 已取消的启动会话结束: session={launch_session_id}, version={version}, reason={e}")
+                    return
                 print(f"Failed to launch: {e}")
                 import traceback
                 tb_str = traceback.format_exc()
@@ -696,10 +732,15 @@ class Backend(QObject):
             return
         
         print(f"[Launch] 用户请求跳过文件补全: version={version}, session={self._launch_session_id}")
-        # 使旧会话立即失效，避免旧线程补全结束后继续启动第二个 Minecraft。
-        self._launch_session_id += 1
-        self._is_launching = False
-        self._current_launching_version = ""
+        # 真实取消旧会话及正在进行的 LibraryDownloader，然后启动跳过补全的新会话。
+        with self._launch_start_lock:
+            with self._launch_state_lock:
+                if self._launch_cancellation_event is not None:
+                    self._launch_cancellation_event.set()
+                self._launch_session_id += 1
+                self._is_launching = False
+                self._current_launching_version = ""
+                self._launch_cancellation_event = None
         self.launchDialogClosed.emit()
         self.launchGameWithSkip(version, skip_completion=True)
 
@@ -714,10 +755,15 @@ class Backend(QObject):
 
         version = self._current_launching_version
         cancelled_session = self._launch_session_id
-        # 递增会话 ID，使后台线程的进度、异常和后续 Popen 操作全部失效。
-        self._launch_session_id += 1
-        self._is_launching = False
-        self._current_launching_version = ""
+        # 与最终 Popen 使用同一把锁：若尚未启动则可靠阻止；若 Popen 正在执行则等待其完成。
+        with self._launch_start_lock:
+            with self._launch_state_lock:
+                if self._launch_cancellation_event is not None:
+                    self._launch_cancellation_event.set()
+                self._launch_session_id += 1
+                self._is_launching = False
+                self._current_launching_version = ""
+                self._launch_cancellation_event = None
         self.launchDialogClosed.emit()
         print(
             f"[Launch] 用户已取消启动任务: version={version}, "
