@@ -25,7 +25,14 @@ FluentPage {
         }
         
         launchItems = Backend.getLaunchItems()
-        if (launchItems.length > 0) {
+        
+        // 优先使用配置中保存的核心选择，若不存在或无效则回退到第一项
+        var saved = Backend.getSelectedLaunchItem()
+        var found = launchItems.find(function(item) { return item.name === saved })
+        if (found) {
+            currentVersion = found.name
+            console.log("[Home] Restored saved core selection:", found.name)
+        } else if (launchItems.length > 0) {
             currentVersion = launchItems[0].name
         }
         

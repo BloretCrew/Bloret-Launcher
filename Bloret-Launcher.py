@@ -1117,9 +1117,19 @@ class Backend(QObject):
             config_data['ChoosedRun'] = name
             with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
                 json.dump(config_data, f, indent=4, ensure_ascii=False)
-            print(f"Selected launch item: {name}")
+            print(f"[Home] Selected launch item: {name}")
         except Exception as e:
             print(f"Error selecting launch item: {e}")
+
+    @Slot(result=str)
+    def getSelectedLaunchItem(self):
+        """读取配置中保存的核心选择，若不存在则返回空字符串"""
+        try:
+            config_data = cfg.read()
+            return config_data.get('ChoosedRun', '')
+        except Exception as e:
+            print(f"Error reading selected launch item: {e}")
+            return ''
 
     @Slot(str)
     def openVersionFolder(self, versionName):
