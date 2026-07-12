@@ -49,7 +49,7 @@ jobs:
             artifact: Bloret-Launcher-macOS-ARM
     runs-on: ${{ matrix.os }}
     env:
-      PYTHON_VERSION: '3.9'
+      PYTHON_VERSION: '3.10'
       OUTPUT_DIR: 'output'
     steps:
     - name: 检出最新版本
