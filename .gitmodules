@@ -7,3 +7,6 @@
 [submodule "RinUI"]
 	path = RinUI
 	url = https://github.com/Detritalw/Rin-UI
+[submodule "Bloret-Launcher.wiki"]
+	path = Bloret-Launcher.wiki
+	url = git@github.com:BloretCrew/Bloret-Launcher.wiki.git
