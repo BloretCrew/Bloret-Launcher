@@ -400,8 +400,12 @@ FluentWindow {
         }
 
         onCancelLaunchClicked: {
-            // 取消启动
-            launchProgressDialog.close()
+            // 取消后台启动任务并释放启动状态，不能只关闭对话框。
+            if (Backend) {
+                Backend.cancelCurrentLaunch()
+            } else {
+                launchProgressDialog.close()
+            }
         }
     }
 

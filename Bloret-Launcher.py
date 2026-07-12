@@ -446,10 +446,19 @@ class Backend(QObject):
 
         def finish_launch(close_dialog=False):
             if not is_current_session():
+                print(f"[Launch] 忽略已失效启动会话的清理请求: session={launch_session_id}, version={version}")
                 return
             self._is_launching = False
+            self._current_launching_version = ""
+            print(f"[Launch] 启动任务已清理: session={launch_session_id}, version={version}, close_dialog={close_dialog}")
             if close_dialog:
                 self.launchDialogClosed.emit()
+
+        def abort_if_cancelled(stage):
+            if is_current_session():
+                return False
+            print(f"[Launch] 启动会话已取消，停止后续流程: session={launch_session_id}, version={version}, stage={stage}")
+            return True
 
         def run_launch():
             try:
@@ -460,6 +469,8 @@ class Backend(QObject):
 
                 emit_progress(20, "正在向 Bloret PassPort 刷新令牌...", "")
                 refresh_ok = refresh_minecraft_token()
+                if abort_if_cancelled("refresh_token"):
+                    return
                 if refresh_ok:
                     emit_progress(35, "令牌刷新完成", "")
                 else:
@@ -467,6 +478,8 @@ class Backend(QObject):
 
                 emit_progress(50, "正在重新获取 Minecraft 档案数据...", "")
                 sync_ok = sync_bloret_passport_account_to_mc(parent_window=None)
+                if abort_if_cancelled("sync_profile"):
+                    return
                 if sync_ok:
                     self.minecraftAccountsChanged.emit([])
                     emit_progress(65, "档案数据更新完成", "")
@@ -478,6 +491,8 @@ class Backend(QObject):
                 else:
                     emit_progress(80, "正在补全文件并解析启动参数...", "如有缺失文件会自动下载")
                 launch_args, game_dir = Get_Run_Script(version, skip_completion=skip_completion)
+                if abort_if_cancelled("resolve_launch_args"):
+                    return
 
                 emit_progress(95, "正在执行启动命令...", "")
                 print(f"Launching with args: {launch_args}")
@@ -507,6 +522,9 @@ class Backend(QObject):
                         print(f"[PluginHost] 已合并插件环境变量 keys={list(merged_env.keys())[:8]}...")
                 except Exception as _env_err:
                     print(f"[PluginHost] launch.env 失败: {_env_err}")
+
+                if abort_if_cancelled("before_process_start"):
+                    return
 
                 # 使用 PIPE 捕获输出，同时实时打印到控制台并解析聊天消息
                 proc = subprocess.Popen(
@@ -677,12 +695,34 @@ class Backend(QObject):
             print("No version to skip completion for")
             return
         
-        print(f"Skipping file completion for version: {version}")
-        # 关闭当前启动对话框
-        self.launchDialogClosed.emit()
-        # 重新启动游戏，跳过补全
+        print(f"[Launch] 用户请求跳过文件补全: version={version}, session={self._launch_session_id}")
+        # 使旧会话立即失效，避免旧线程补全结束后继续启动第二个 Minecraft。
+        self._launch_session_id += 1
         self._is_launching = False
+        self._current_launching_version = ""
+        self.launchDialogClosed.emit()
         self.launchGameWithSkip(version, skip_completion=True)
+
+    @Slot()
+    def cancelCurrentLaunch(self):
+        """取消当前启动会话，并立即释放启动按钮状态。"""
+        if not self._is_launching:
+            print("[Launch] 忽略取消请求：当前没有启动任务")
+            self._current_launching_version = ""
+            self.launchDialogClosed.emit()
+            return
+
+        version = self._current_launching_version
+        cancelled_session = self._launch_session_id
+        # 递增会话 ID，使后台线程的进度、异常和后续 Popen 操作全部失效。
+        self._launch_session_id += 1
+        self._is_launching = False
+        self._current_launching_version = ""
+        self.launchDialogClosed.emit()
+        print(
+            f"[Launch] 用户已取消启动任务: version={version}, "
+            f"session={cancelled_session}, next_session={self._launch_session_id}"
+        )
 
     # ========== 聊天记录持久化 ==========
 
