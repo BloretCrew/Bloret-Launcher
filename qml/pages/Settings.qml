@@ -264,6 +264,10 @@ FluentPage {
         _langDesc = Backend ? Backend.tr("调整语言设置") : "调整语言设置"
         _themeTitle = Backend ? Backend.tr("主题") : "主题"
         _themeDesc = Backend ? Backend.tr("选择界面的颜色模式") : "选择界面的颜色模式"
+        _windowEffectTitle = Backend ? Backend.tr("窗口效果") : "窗口效果"
+        _windowEffectDesc = Backend ? Backend.tr("控制窗口背景透明与亚克力效果") : "控制窗口背景透明与亚克力效果"
+        _backdropNone = Backend ? Backend.tr("无") : "无"
+        _backdropAcrylic = Backend ? Backend.tr("亚克力") : "亚克力"
         _logSection = Backend ? Backend.tr("日志") : "日志"
         _logHubDesc = Backend ? Backend.tr("打开或清空日志文件") : "打开或清空日志文件"
         _logFolderTitle = Backend ? Backend.tr("日志文件夹位置") : "日志文件夹位置"
@@ -398,6 +402,10 @@ FluentPage {
     property string _langDesc: Backend ? Backend.tr("调整语言设置") : "调整语言设置"
     property string _themeTitle: Backend ? Backend.tr("主题") : "主题"
     property string _themeDesc: Backend ? Backend.tr("选择界面的颜色模式") : "选择界面的颜色模式"
+    property string _windowEffectTitle: Backend ? Backend.tr("窗口效果") : "窗口效果"
+    property string _windowEffectDesc: Backend ? Backend.tr("控制窗口背景透明与亚克力效果") : "控制窗口背景透明与亚克力效果"
+    property string _backdropNone: Backend ? Backend.tr("无") : "无"
+    property string _backdropAcrylic: Backend ? Backend.tr("亚克力") : "亚克力"
     property string _logSection: Backend ? Backend.tr("日志") : "日志"
     property string _logHubDesc: Backend ? Backend.tr("打开或清空日志文件") : "打开或清空日志文件"
     property string _logFolderTitle: Backend ? Backend.tr("日志文件夹位置") : "日志文件夹位置"
@@ -1234,6 +1242,36 @@ FluentPage {
                     onActivated: {
                         if (Backend)
                             Backend.setThemeMode(currentText)
+                    }
+                }
+            }
+
+            SettingCard {
+                Layout.fillWidth: true
+                title: _windowEffectTitle
+                description: _windowEffectDesc
+                icon.name: "ic_fluent_window_20_regular"
+                ComboBox {
+                    id: backdropCombo
+                    Layout.preferredWidth: 150
+                    model: [
+                        { text: _backdropNone, value: "none" },
+                        { text: _backdropAcrylic, value: "acrylic" }
+                    ]
+                    textRole: "text"
+                    valueRole: "value"
+                    currentIndex: {
+                        if (!Backend) return 0
+                        var effect = Backend.getBackdropEffect()
+                        for (var i = 0; i < backdropCombo.model.length; i++) {
+                            if (backdropCombo.model[i].value === effect)
+                                return i
+                        }
+                        return 0
+                    }
+                    onActivated: function(index) {
+                        if (Backend)
+                            Backend.setBackdropEffect(backdropCombo.currentValue)
                     }
                 }
             }

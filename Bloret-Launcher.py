@@ -241,6 +241,9 @@ class Backend(QObject):
     # Resource Pack Editor signal
     resourcePackEditorRequested = Signal()
 
+    # Backdrop/acrylic effect signal
+    backdropEffectChanged = Signal(str)
+
     def __init__(self):
         super().__init__()
         self._server_info = {}
@@ -2375,6 +2378,26 @@ class Backend(QObject):
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print(f"Theme mode updated to: {mode}")
+
+    @Slot(str)
+    def setBackdropEffect(self, effect):
+        """设置背景效果 (none/acrylic)"""
+        config_data = cfg.read()
+        config_data['backdrop_effect'] = effect
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        # 通知 RinUI（Windows 处理原生效果，Linux 仅打印日志）
+        parent = getattr(self, "parent", None)
+        if parent and hasattr(parent, "theme_manager"):
+            parent.theme_manager.apply_backdrop_effect(effect)
+        # 发射信号让 QML 端更新 Utils.backdropEnabled
+        self.backdropEffectChanged.emit(effect)
+        print(f"Backdrop effect set to: {effect}")
+
+    @Slot(result=str)
+    def getBackdropEffect(self):
+        config_data = cfg.read()
+        return config_data.get('backdrop_effect', 'none')
 
     @Slot(result=str)
     def getDownloadSource(self):

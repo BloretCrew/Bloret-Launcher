@@ -59,5 +59,6 @@
         "bark_account": true
     },
     "ai_provider": "bloret_passport",
-    "ai_model": "default"
+    "ai_model": "default",
+    "backdrop_effect": "none"
 }

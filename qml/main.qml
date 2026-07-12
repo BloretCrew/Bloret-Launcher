@@ -131,11 +131,13 @@ FluentWindow {
                     // 已登录：显示用户头像和名字
                     navItems[i].title = passPortName
                     navItems[i].source = passPortAvatar  // 使用source显示自定义图片
+                    navItems[i].radius = 10  // 头像圆角
                     navItems[i].icon = ""  // 清除默认icon
                 } else {
                     // 未登录：显示默认icon和"通行证"文本
                     navItems[i].title = (Backend ? Backend.tr("通行证") : "通行证")
                     navItems[i].source = ""
+                    navItems[i].radius = 0
                     navItems[i].icon = "ic_fluent_person_20_regular"
                 }
                 break
@@ -149,6 +151,10 @@ FluentWindow {
         function onMinecraftAccountsChanged(accounts) {
             // 账户信息变化时更新导航
             updatePassPortNavigation()
+        }
+
+        function onBackdropEffectChanged(effect) {
+            Utils.backdropEnabled = (effect === "acrylic")
         }
 
         function onLaunchDialogRequested(title) {
@@ -373,6 +379,12 @@ FluentWindow {
 
     Component.onCompleted: {
         updatePassPortNavigation()
+
+        // 初始化背景效果
+        if (Backend) {
+            var effect = Backend.getBackdropEffect()
+            Utils.backdropEnabled = (effect === "acrylic")
+        }
 
         // 检查是否是首次运行
         var firstRun = Backend ? Backend.isFirstRun() : false

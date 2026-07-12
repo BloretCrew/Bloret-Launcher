@@ -1468,6 +1468,10 @@
     "请填写 API Base URL": "Please enter API Base URL",
     "请填写 API 密钥": "Please enter API key",
     "请至少添加一个模型（每行一个模型 ID）": "Add at least one model (one model ID per line)",
-    "不能修改内置供应商": "Cannot modify built-in providers"
+    "不能修改内置供应商": "Cannot modify built-in providers",
+    "窗口效果": "Window Effect",
+    "控制窗口背景透明与亚克力效果": "Control window background transparency and acrylic effect",
+    "无": "None",
+    "亚克力": "Acrylic"
   }
 }
