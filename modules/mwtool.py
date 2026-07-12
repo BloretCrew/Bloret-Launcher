@@ -559,6 +559,55 @@ class MinecraftWindowTool(QWidget):
         layout.addWidget(self.session_time_label)
         layout.addStretch()
 
+        # 插件贡献的工具栏按钮
+        self._plugin_buttons = []
+        try:
+            from modules.plugin_host.registry import get_registry
+            toolbar_items = get_registry().get_toolbar()
+            log.info(f"[PluginHost] 小工具栏加载 {len(toolbar_items)} 个插件按钮")
+            for item in toolbar_items:
+                btn = QPushButton(str(item.get("label") or "Plugin")[:12])
+                btn.setFixedHeight(24)
+                btn.setCursor(Qt.PointingHandCursor)
+                btn.setStyleSheet(
+                    "QPushButton { border: none; font-size: 11px; color: #333; background: #f0f0f0; "
+                    "border-radius: 4px; padding: 0 8px; }"
+                    "QPushButton:hover { background-color: #e0e0e0; }"
+                )
+                plugin_id = item.get("plugin_id") or ""
+                button_id = item.get("id") or ""
+                callback = item.get("callback")
+                action = item.get("action") or ""
+
+                def _make_handler(cb, act, pid, bid):
+                    def _handler():
+                        log.info(f"[PluginHost] 工具栏按钮点击 id={bid} plugin={pid}")
+                        try:
+                            from modules.plugin_host.event_bus import get_event_bus
+                            get_event_bus().emit("toolbar.action", bid, self.version, pid)
+                        except Exception as e:
+                            log.warning(f"[PluginHost] toolbar.action 事件失败: {e}")
+                        if callable(cb):
+                            try:
+                                cb(self.version, self.minecraft_hwnd)
+                            except TypeError:
+                                try:
+                                    cb()
+                                except Exception as e:
+                                    log.error(f"[PluginHost] 工具栏回调失败: {e}")
+                            except Exception as e:
+                                log.error(f"[PluginHost] 工具栏回调失败: {e}")
+                        elif act.startswith("http://") or act.startswith("https://"):
+                            import webbrowser
+                            webbrowser.open(act)
+                    return _handler
+
+                btn.clicked.connect(_make_handler(callback, action, plugin_id, button_id))
+                layout.addWidget(btn)
+                self._plugin_buttons.append(btn)
+        except Exception as e:
+            log.warning(f"[PluginHost] 加载工具栏按钮失败: {e}")
+
         self._close_btn = QPushButton("✕")
         self._close_btn.setFixedSize(24, 24)
         self._close_btn.setStyleSheet(
@@ -570,7 +619,8 @@ class MinecraftWindowTool(QWidget):
         layout.addWidget(self._close_btn)
 
         self.setLayout(layout)
-        self.resize(450, 40)
+        extra_w = max(0, len(getattr(self, "_plugin_buttons", [])) * 70)
+        self.resize(450 + extra_w, 40)
 
     def _on_close_clicked(self):
         hide_minecraft_tool()

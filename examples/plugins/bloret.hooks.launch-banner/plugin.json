@@ -1,0 +1,18 @@
+{
+  "id": "bloret.hooks.launch-banner",
+  "name": "Launch Banner",
+  "version": "1.0.0",
+  "author": "Bloret",
+  "description": "启动前后输出日志并追加 JVM 参数 -Dbloret.plugin.banner=1",
+  "entry": {
+    "python": "main.py"
+  },
+  "permissions": ["launch.hooks", "download.hooks", "ui.toolbar"],
+  "hooks": {
+    "on_enable": "main:on_enable",
+    "launch.pre": "main:before_launch",
+    "launch.jvm_args": "main:jvm_args",
+    "launch.post": "main:after_launch",
+    "download.post": "main:after_download"
+  }
+}

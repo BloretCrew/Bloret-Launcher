@@ -293,6 +293,16 @@ def Get_Run_Script(mc_version, skip_completion=False):
             log(f"Live EasyTier 目标地址: {easytier_context['target_address']}")
     except Exception as e:
         log(f"准备 EasyTier 启动上下文失败: {e}", logging.WARNING)
+
+    # 插件钩子：追加 JVM 参数
+    try:
+        from modules.plugin_host.registry import get_registry
+        plugin_jvm = get_registry().collect_jvm_args(mc_version, list(launch_args))
+        if plugin_jvm:
+            launch_args.extend(plugin_jvm)
+            log(f"[PluginHost] 已注入插件 JVM 参数: {plugin_jvm}")
+    except Exception as e:
+        log(f"[PluginHost] 收集插件 JVM 参数失败: {e}", logging.WARNING)
     
     # 构建类路径 (classpath)
     classpath = []

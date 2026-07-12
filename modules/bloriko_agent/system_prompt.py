@@ -172,6 +172,16 @@ def build_system_prompt(memory_store, working_dir: str, current_emotion: str = "
     if user_snapshot:
         sections.append(user_snapshot)
 
+    # === 插件追加提示词 ===
+    try:
+        from modules.plugin_host.registry import get_registry
+        appends = get_registry().get_prompt_appends("bloriko")
+        if appends:
+            sections.append("## 插件扩展指引\n\n" + "\n\n".join(appends))
+            log.info(f"[SystemPrompt] 已合并 {len(appends)} 段插件提示词")
+    except Exception as e:
+        log.warning(f"[SystemPrompt] 合并插件提示词失败: {e}")
+
     prompt = "\n\n".join(sections)
     log.info(f"[SystemPrompt] 构建完成: {len(prompt)} 字符")
     return prompt

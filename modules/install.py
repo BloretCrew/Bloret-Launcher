@@ -2016,6 +2016,28 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         # 通知 UI 安装完成（对话框不关闭，秒表暂停）
         if backend:
             backend.notifyDownloadComplete(i18nText(f"Minecraft {version} 安装完成！"))
+
+        # 插件钩子：下载/安装完成
+        try:
+            from modules.plugin_host.registry import get_registry
+            from modules.plugin_host.event_bus import get_event_bus
+            _fabric = locals().get("fabric_version_id_final")
+            _forge = locals().get("forge_like_version_id_final")
+            installed_name = _fabric or _forge or version
+            installed_path = os.path.join(minecraft_dir, "versions", installed_name)
+            ctx = {
+                "version": version,
+                "installed_name": installed_name,
+                "path": installed_path,
+                "loader": Loader_Type,
+                "fabric": bool(_fabric),
+            }
+            get_registry().call_hooks("download.post", version, Loader_Type, installed_path)
+            get_event_bus().emit("download.complete", ctx)
+            get_event_bus().emit("download.post", ctx)
+            log(f"[PluginHost] download.post 已触发: {installed_name}")
+        except Exception as plugin_err:
+            log(f"[PluginHost] download.post 失败: {plugin_err}", logging.WARNING)
         return True
 
     except Exception as e:

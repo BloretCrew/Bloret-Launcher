@@ -321,6 +321,67 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 })
                 return
 
+            if api_path == '/api/v1/plugin/enable':
+                plugin_name = query_params.get('name', [None])[0]
+                if not plugin_name:
+                    self._send_json(400, {'status': 'error', 'message': '缺少必填参数 name'})
+                    return
+                try:
+                    from modules.plugin_host import get_plugin_host
+                    ok = get_plugin_host().setPluginEnabled(plugin_name, True)
+                    if not ok:
+                        self._send_json(500, {'status': 'error', 'message': '启用失败'})
+                        return
+                    self._redirect_or_json_success(query_params, {
+                        'status': 'success',
+                        'message': f'已启用 {plugin_name}'
+                    })
+                except Exception as e:
+                    self._send_json(500, {'status': 'error', 'message': str(e)})
+                return
+
+            if api_path == '/api/v1/plugin/disable':
+                plugin_name = query_params.get('name', [None])[0]
+                if not plugin_name:
+                    self._send_json(400, {'status': 'error', 'message': '缺少必填参数 name'})
+                    return
+                try:
+                    from modules.plugin_host import get_plugin_host
+                    ok = get_plugin_host().setPluginEnabled(plugin_name, False)
+                    if not ok:
+                        self._send_json(500, {'status': 'error', 'message': '禁用失败'})
+                        return
+                    self._redirect_or_json_success(query_params, {
+                        'status': 'success',
+                        'message': f'已禁用 {plugin_name}'
+                    })
+                except Exception as e:
+                    self._send_json(500, {'status': 'error', 'message': str(e)})
+                return
+
+            if api_path == '/api/v1/plugin/info':
+                plugin_name = query_params.get('name', [None])[0]
+                try:
+                    from modules.plugin_host import get_plugin_host
+                    items = get_plugin_host().list_plugins_info()
+                    if plugin_name:
+                        items = [p for p in items if plugin_name in (
+                            p.get('id'), p.get('name'), p.get('folderName')
+                        )]
+                        if not items:
+                            self._send_json(404, {'status': 'error', 'message': '未找到插件'})
+                            return
+                        data = items[0]
+                    else:
+                        data = items
+                    self._redirect_or_json_success(query_params, {
+                        'status': 'success',
+                        'data': data
+                    })
+                except Exception as e:
+                    self._send_json(500, {'status': 'error', 'message': str(e)})
+                return
+
             if api_path == '/api/v1/help':
                 self._send_json(200, {
                     'status': 'success',
@@ -345,7 +406,10 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             '/api/v1/activity/refresh',
                             '/api/v1/plugin/install?download=...&name=...',
                             '/api/v1/plugin/list',
-                            '/api/v1/plugin/uninstall?name=...'
+                            '/api/v1/plugin/uninstall?name=...',
+                            '/api/v1/plugin/enable?name=...',
+                            '/api/v1/plugin/disable?name=...',
+                            '/api/v1/plugin/info?name=...'
                         ]
                     }
                 })

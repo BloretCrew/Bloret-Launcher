@@ -45,7 +45,7 @@ FluentWindow {
 
     navigationView.navExpandWidth: 200
 
-    property var navItems: [
+    property var baseNavItems: [
         {
             title: (Backend ? Backend.tr("主页") : "主页"),
             page: Qt.resolvedUrl("pages/Home.qml"),
@@ -115,7 +115,93 @@ FluentWindow {
         }
     ]
 
+    property var navItems: baseNavItems
     navigationItems: navItems
+
+    function rebuildNavigation() {
+        console.log("[Main] rebuildNavigation")
+        var items = baseNavItems.slice()
+        // 在「设置」之前插入插件导航
+        var insertAt = items.length
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].position === Position.Bottom && items[i].icon === "ic_fluent_settings_20_regular") {
+                insertAt = i
+                break
+            }
+        }
+        if (typeof PluginHost !== "undefined" && PluginHost) {
+            try {
+                var contrib = JSON.parse(PluginHost.getNavContributionsJson())
+                console.log("[Main] plugin nav count:", contrib.length)
+                for (var c = 0; c < contrib.length; c++) {
+                    var n = contrib[c]
+                    var pageUrl = n.page || ""
+                    items.splice(insertAt, 0, {
+                        title: n.title || n.id || "Plugin",
+                        page: pageUrl,
+                        icon: n.icon || "ic_fluent_puzzle_piece_20_regular",
+                        position: (n.position === "bottom") ? Position.Bottom : Position.Top,
+                        pluginNav: true,
+                        pluginId: n.plugin_id || ""
+                    })
+                    insertAt++
+                }
+            } catch (e) {
+                console.log("[Main] plugin nav merge error:", e)
+            }
+        }
+        navItems = items
+        navigationItems = navItems
+        updatePassPortNavigation()
+    }
+
+    function applyPluginTheme() {
+        if (typeof PluginHost === "undefined" || !PluginHost)
+            return
+        try {
+            var raw = PluginHost.getActiveThemeJson()
+            if (!raw || raw === "{}") {
+                console.log("[Main] no active plugin theme")
+                return
+            }
+            var theme = JSON.parse(raw)
+            var accent = theme.accent || (theme.colors && theme.colors.primaryColor) || ""
+            console.log("[Main] apply plugin theme:", theme.name || theme.plugin_id, "accent=", accent)
+            if (accent && Theme) {
+                try {
+                    // RinUI 可能暴露 themeColor / accentColor
+                    if (typeof Theme.setThemeColor === "function")
+                        Theme.setThemeColor(accent)
+                    else if (Theme.themeColor !== undefined)
+                        Theme.themeColor = accent
+                    else if (Theme.accentColor !== undefined)
+                        Theme.accentColor = accent
+                } catch (te) {
+                    console.log("[Main] set theme accent failed:", te)
+                }
+            }
+        } catch (e) {
+            console.log("[Main] applyPluginTheme error:", e)
+        }
+    }
+
+    Connections {
+        target: (typeof PluginHost !== "undefined") ? PluginHost : null
+        enabled: (typeof PluginHost !== "undefined") && PluginHost !== null
+        function onNavContributionsChanged() {
+            console.log("[Main] PluginHost.navContributionsChanged")
+            rebuildNavigation()
+        }
+        function onThemeOverrideChanged(pluginId) {
+            console.log("[Main] PluginHost.themeOverrideChanged:", pluginId)
+            applyPluginTheme()
+        }
+        function onPluginsChanged() {
+            console.log("[Main] PluginHost.pluginsChanged")
+            rebuildNavigation()
+            applyPluginTheme()
+        }
+    }
 
     function updatePassPortNavigation() {
         if (!Backend) return
@@ -124,25 +210,27 @@ FluentWindow {
         let passPortAvatar = Backend.getPassPortAvatar()
         let passPortName = Backend.getPassPortName()
 
-        // 更新通行证导航项
-        for (let i = 0; i < navItems.length; i++) {
-            if (navItems[i].passportItem) {
-                if (isLoggedIn && passPortAvatar) {
-                    // 已登录：显示用户头像和名字
-                    navItems[i].title = passPortName
-                    navItems[i].source = passPortAvatar  // 使用source显示自定义图片
-                    navItems[i].radius = 10  // 头像圆角
-                    navItems[i].icon = ""  // 清除默认icon
-                } else {
-                    // 未登录：显示默认icon和"通行证"文本
-                    navItems[i].title = (Backend ? Backend.tr("通行证") : "通行证")
-                    navItems[i].source = ""
-                    navItems[i].radius = 0
-                    navItems[i].icon = "ic_fluent_person_20_regular"
+        // 更新通行证导航项（同时同步 baseNavItems，避免 rebuild 覆盖）
+        function patchPassport(list) {
+            for (let i = 0; i < list.length; i++) {
+                if (list[i].passportItem) {
+                    if (isLoggedIn && passPortAvatar) {
+                        list[i].title = passPortName
+                        list[i].source = passPortAvatar
+                        list[i].radius = 10
+                        list[i].icon = ""
+                    } else {
+                        list[i].title = (Backend ? Backend.tr("通行证") : "通行证")
+                        list[i].source = ""
+                        list[i].radius = 0
+                        list[i].icon = "ic_fluent_person_20_regular"
+                    }
+                    break
                 }
-                break
             }
         }
+        patchPassport(baseNavItems)
+        patchPassport(navItems)
         navigationItems = navItems  // 触发更新
     }
 
@@ -378,6 +466,9 @@ FluentWindow {
     }
 
     Component.onCompleted: {
+        console.log("[Main] Component.onCompleted")
+        rebuildNavigation()
+        applyPluginTheme()
         updatePassPortNavigation()
 
         // 初始化背景效果

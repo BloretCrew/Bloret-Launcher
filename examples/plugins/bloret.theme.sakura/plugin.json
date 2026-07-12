@@ -1,0 +1,14 @@
+{
+  "id": "bloret.theme.sakura",
+  "name": "Sakura Theme",
+  "version": "1.0.0",
+  "author": "Bloret",
+  "description": "樱花主题：粉色强调色与深色卡片（声明式示例）",
+  "permissions": ["ui.theme"],
+  "contributes": {
+    "theme": {
+      "path": "theme/theme.json",
+      "accent": "#ff8fab"
+    }
+  }
+}

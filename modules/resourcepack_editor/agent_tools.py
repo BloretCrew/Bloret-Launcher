@@ -1243,10 +1243,22 @@ def execute_tool(pack_path: Path, tool_name: str, arguments: dict, **kwargs) -> 
     """
     executor = TOOL_EXECUTORS.get(tool_name)
     if executor is None:
+        try:
+            from modules.plugin_host.registry import get_registry
+            for item in get_registry().get_agent_tools("blrpe"):
+                if item.get("name") == tool_name and callable(item.get("executor")):
+                    executor = item["executor"]
+                    break
+        except Exception:
+            pass
+    if executor is None:
         return i18nText("错误: 未知工具 '{v0}'").replace("{v0}", str(tool_name))
     try:
         return executor(pack_path, **arguments, **kwargs)
-    except TypeError as e:
-        return i18nText("错误: 工具参数错误 - {v0}").replace("{v0}", str(e))
+    except TypeError:
+        try:
+            return executor(**arguments, **kwargs)
+        except TypeError as e:
+            return i18nText("错误: 工具参数错误 - {v0}").replace("{v0}", str(e))
     except Exception as e:
         return i18nText("错误: 工具执行失败 - {v0}").replace("{v0}", str(e))

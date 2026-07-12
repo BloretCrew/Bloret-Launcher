@@ -1,0 +1,19 @@
+{
+  "id": "bloret.demo.nav",
+  "name": "Demo Nav Page",
+  "version": "1.0.0",
+  "author": "Bloret",
+  "description": "在侧栏添加一个示例插件页面",
+  "permissions": ["ui.nav"],
+  "contributes": {
+    "nav": [
+      {
+        "id": "demo_nav",
+        "title": "插件示例",
+        "page": "ui/Page.qml",
+        "icon": "ic_fluent_puzzle_piece_20_regular",
+        "position": "top"
+      }
+    ]
+  }
+}

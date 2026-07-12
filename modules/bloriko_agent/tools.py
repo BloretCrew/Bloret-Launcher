@@ -553,11 +553,41 @@ def _exec_spawn_agent(working_dir: Path, **kwargs) -> str:
     return "错误：子 Agent 执行器未初始化"
 
 
+def _plugin_tool_definitions(target: str = "bloriko") -> list:
+    """合并插件注册的工具定义。"""
+    try:
+        from modules.plugin_host.registry import get_registry
+        tools = []
+        for item in get_registry().get_agent_tools(target):
+            defn = item.get("definition")
+            if isinstance(defn, dict):
+                tools.append(defn)
+        return tools
+    except Exception as e:
+        log.warning(f"[Tool] 加载插件工具定义失败: {e}")
+        return []
+
+
 def _get_tools_for_agent(allowed_tools) -> list:
-    """根据工具白名单过滤工具定义"""
+    """根据工具白名单过滤工具定义（含插件工具）。"""
+    base = list(TOOL_DEFINITIONS)
+    plugin_tools = _plugin_tool_definitions("bloriko")
+    # 去重（按 name）
+    seen = set()
+    merged = []
+    for t in base + plugin_tools:
+        try:
+            name = t["function"]["name"]
+        except Exception:
+            continue
+        if name in seen:
+            continue
+        seen.add(name)
+        merged.append(t)
+
     if allowed_tools is None:
-        return [t for t in TOOL_DEFINITIONS if t["function"]["name"] != SPAWN_AGENT_TOOL]
-    return [t for t in TOOL_DEFINITIONS if t["function"]["name"] in allowed_tools]
+        return [t for t in merged if t["function"]["name"] != SPAWN_AGENT_TOOL]
+    return [t for t in merged if t["function"]["name"] in allowed_tools]
 
 
 # 工具执行器注册表
@@ -609,12 +639,27 @@ def execute_tool(working_dir: Path, tool_name: str, tool_args: dict, **kwargs) -
 
     executor = TOOL_EXECUTORS.get(tool_name)
     if not executor:
+        # 尝试插件工具
+        try:
+            from modules.plugin_host.registry import get_registry
+            for item in get_registry().get_agent_tools("bloriko"):
+                if item.get("name") == tool_name and callable(item.get("executor")):
+                    executor = item["executor"]
+                    log.info(f"[Tool] 使用插件工具 {tool_name} @ {item.get('plugin_id')}")
+                    break
+        except Exception as e:
+            log.warning(f"[Tool] 查找插件工具失败: {e}")
+
+    if not executor:
         return f"错误：未知工具 {tool_name}"
 
     try:
         return executor(working_dir, **tool_args, **kwargs)
-    except TypeError as e:
-        return f"错误：工具参数错误 - {str(e)}"
+    except TypeError:
+        try:
+            return executor(**tool_args, **kwargs)
+        except TypeError as e:
+            return f"错误：工具参数错误 - {str(e)}"
     except Exception as e:
         log.error(f"[Tool] {tool_name} 执行异常: {e}", exc_info=True)
         return f"错误：工具执行失败 - {str(e)}"

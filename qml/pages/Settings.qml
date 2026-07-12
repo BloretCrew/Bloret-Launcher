@@ -194,6 +194,8 @@ FluentPage {
             loadSettingsProviders()
         if (id === "bloriko")
             loadConnectors()
+        if (id === "plugins")
+            loadPlugins()
     }
 
     function goBack() {
@@ -223,6 +225,7 @@ FluentPage {
         case "network": return _networkSection
         case "ai": return _aiProvidersSection
         case "bloriko": return _blorikoSection
+        case "plugins": return _pluginsSection
         default: return id
         }
     }
@@ -528,6 +531,23 @@ FluentPage {
     property string _modelsDotSuffix: Backend ? Backend.tr(" 模型 · ") : " 模型 · "
     property string _noProvidersYet: Backend ? Backend.tr("暂无已添加的供应商") : "暂无已添加的供应商"
 
+    // ── Plugins ──
+    property string _pluginsSection: Backend ? Backend.tr("插件") : "插件"
+    property string _pluginsHubDesc: Backend ? Backend.tr("管理已安装插件，查看信息或卸载") : "管理已安装插件，查看信息或卸载"
+    property string _pluginsInstalledTitle: Backend ? Backend.tr("已安装的插件") : "已安装的插件"
+    property string _pluginsInstalledDesc: Backend ? Backend.tr("管理已安装插件，查看信息或卸载") : "管理已安装插件，查看信息或卸载"
+    property string _pluginsEmpty: Backend ? Backend.tr("暂无插件") : "暂无插件"
+    property string _pluginsOpenDir: Backend ? Backend.tr("打开插件目录") : "打开插件目录"
+    property string _pluginsEnable: Backend ? Backend.tr("启用") : "启用"
+    property string _pluginsDisable: Backend ? Backend.tr("禁用") : "禁用"
+    property string _pluginsUninstall: Backend ? Backend.tr("卸载插件") : "卸载插件"
+    property string _pluginsRefresh: Backend ? Backend.tr("刷新") : "刷新"
+    property string _pluginsNoDesc: Backend ? Backend.tr("暂无插件描述") : "暂无插件描述"
+    property string _pluginsThemeTitle: Backend ? Backend.tr("插件主题") : "插件主题"
+    property string _pluginsThemeDesc: Backend ? Backend.tr("选择由插件提供的主题（可选）") : "选择由插件提供的主题（可选）"
+    property string _pluginsThemeNone: Backend ? Backend.tr("默认主题") : "默认主题"
+    property string _pluginsUnnamed: Backend ? Backend.tr("未命名插件") : "未命名插件"
+
     // Category cards model for hub
     property var categoryCards: [
         { id: "minecraft", title: _mcJavaSection, desc: _mcJavaHubDesc, icon: "ic_fluent_cube_20_regular" },
@@ -536,6 +556,7 @@ FluentPage {
         { id: "gamepad", title: _gamepadSection, desc: _gamepadHubDesc, icon: "ic_fluent_xbox_controller_20_regular" },
         { id: "notification", title: _notificationSection, desc: _notificationHubDesc, icon: "ic_fluent_alert_20_regular" },
         { id: "appearance", title: _appearanceSection, desc: _appearanceHubDesc, icon: "ic_fluent_color_20_regular" },
+        { id: "plugins", title: _pluginsSection, desc: _pluginsHubDesc, icon: "ic_fluent_puzzle_piece_20_regular" },
         { id: "log", title: _logSection, desc: _logHubDesc, icon: "ic_fluent_text_bullet_list_square_20_regular" },
         { id: "network", title: _networkSection, desc: _networkHubDesc, icon: "ic_fluent_globe_20_regular" },
         { id: "ai", title: _aiProvidersSection, desc: _aiHubDesc, icon: "ic_fluent_bot_20_regular" },
@@ -547,6 +568,69 @@ FluentPage {
     ListModel { id: settingsGlobalModelModel }
     ListModel { id: blorikoProviderModel }
     ListModel { id: blorikoModelModel }
+    ListModel { id: pluginListModel }
+    ListModel { id: pluginThemeModel }
+
+    function loadPlugins() {
+        console.log("[Settings] loadPlugins")
+        pluginListModel.clear()
+        pluginThemeModel.clear()
+        pluginThemeModel.append({ plugin_id: "", name: _pluginsThemeNone })
+        if (typeof PluginHost === "undefined" || !PluginHost) {
+            console.log("[Settings] PluginHost 不可用")
+            return
+        }
+        try {
+            var list = JSON.parse(PluginHost.getPluginsJson())
+            console.log("[Settings] plugins count:", list.length)
+            for (var i = 0; i < list.length; i++) {
+                var p = list[i]
+                pluginListModel.append({
+                    id: p.id || "",
+                    name: p.name || _pluginsUnnamed,
+                    version: p.version || "",
+                    author: p.author || "",
+                    description: p.description || _pluginsNoDesc,
+                    enabled: !!p.enabled,
+                    active: !!p.active,
+                    error: p.error || "",
+                    permissions: (p.permissions || []).join(", ")
+                })
+            }
+            var themes = JSON.parse(PluginHost.getThemesJson())
+            var activeTheme = ""
+            for (var t = 0; t < themes.length; t++) {
+                pluginThemeModel.append({
+                    plugin_id: themes[t].plugin_id || "",
+                    name: themes[t].name || themes[t].plugin_id || ""
+                })
+                if (themes[t].active)
+                    activeTheme = themes[t].plugin_id
+            }
+            // select active theme in combo after model filled
+            for (var j = 0; j < pluginThemeModel.count; j++) {
+                if (pluginThemeModel.get(j).plugin_id === activeTheme) {
+                    pluginThemeCombo.currentIndex = j
+                    break
+                }
+            }
+        } catch (e) {
+            console.log("[Settings] loadPlugins error:", e)
+        }
+    }
+
+    Connections {
+        target: (typeof PluginHost !== "undefined") ? PluginHost : null
+        enabled: (typeof PluginHost !== "undefined") && PluginHost !== null
+        function onPluginsChanged() {
+            console.log("[Settings] PluginHost.pluginsChanged")
+            if (currentCategory === "plugins")
+                loadPlugins()
+        }
+        function onThemeOverrideChanged(pluginId) {
+            console.log("[Settings] theme override:", pluginId)
+        }
+    }
 
     // ── WeChat state ──
     property string wechatStatus: "disconnected"
@@ -1272,6 +1356,114 @@ FluentPage {
                     onActivated: function(index) {
                         if (Backend)
                             Backend.setBackdropEffect(backdropCombo.currentValue)
+                    }
+                }
+            }
+        }
+
+        // --- Plugins ---
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+            visible: currentCategory === "plugins"
+
+            SettingCard {
+                Layout.fillWidth: true
+                title: _pluginsInstalledTitle
+                description: _pluginsInstalledDesc
+                icon.name: "ic_fluent_puzzle_piece_20_regular"
+                RowLayout {
+                    spacing: 8
+                    Button {
+                        flat: true
+                        text: _pluginsRefresh
+                        onClicked: {
+                            console.log("[Settings] refresh plugins")
+                            loadPlugins()
+                        }
+                    }
+                    Button {
+                        flat: true
+                        text: _pluginsOpenDir
+                        onClicked: {
+                            if (typeof PluginHost !== "undefined" && PluginHost)
+                                PluginHost.openPluginDir()
+                        }
+                    }
+                }
+            }
+
+            SettingCard {
+                Layout.fillWidth: true
+                title: _pluginsThemeTitle
+                description: _pluginsThemeDesc
+                icon.name: "ic_fluent_color_20_regular"
+                ComboBox {
+                    id: pluginThemeCombo
+                    Layout.preferredWidth: 200
+                    model: pluginThemeModel
+                    textRole: "name"
+                    onActivated: function(index) {
+                        if (typeof PluginHost === "undefined" || !PluginHost)
+                            return
+                        var item = pluginThemeModel.get(index)
+                        var pid = item ? (item.plugin_id || "") : ""
+                        console.log("[Settings] set active theme plugin:", pid)
+                        PluginHost.setActiveThemePlugin(pid)
+                    }
+                }
+            }
+
+            Label {
+                visible: pluginListModel.count === 0
+                text: _pluginsEmpty
+                font.pixelSize: 13
+                color: Theme.currentTheme.colors.textSecondaryColor
+                Layout.fillWidth: true
+                Layout.topMargin: 8
+            }
+
+            Repeater {
+                model: pluginListModel
+                delegate: SettingCard {
+                    Layout.fillWidth: true
+                    title: model.name + (model.version ? ("  v" + model.version) : "")
+                    description: (model.author ? (model.author + " · ") : "")
+                        + (model.description || _pluginsNoDesc)
+                        + (model.error ? ("\n⚠ " + model.error) : "")
+                        + (model.permissions ? ("\n" + model.permissions) : "")
+                    icon.name: model.active ? "ic_fluent_checkmark_circle_20_regular" : "ic_fluent_puzzle_piece_20_regular"
+                    RowLayout {
+                        spacing: 4
+                        Switch {
+                            checked: model.enabled
+                            onToggled: {
+                                if (typeof PluginHost === "undefined" || !PluginHost)
+                                    return
+                                console.log("[Settings] toggle plugin", model.id, checked)
+                                PluginHost.setPluginEnabled(model.id, checked)
+                                loadPlugins()
+                            }
+                        }
+                        Button {
+                            flat: true
+                            text: _openText
+                            onClicked: {
+                                if (typeof PluginHost !== "undefined" && PluginHost)
+                                    PluginHost.openPluginFolder(model.id)
+                            }
+                        }
+                        Button {
+                            flat: true
+                            text: _pluginsUninstall
+                            onClicked: {
+                                if (typeof PluginHost === "undefined" || !PluginHost)
+                                    return
+                                console.log("[Settings] uninstall plugin", model.id)
+                                PluginHost.uninstallPlugin(model.id)
+                                loadPlugins()
+                            }
+                        }
                     }
                 }
             }

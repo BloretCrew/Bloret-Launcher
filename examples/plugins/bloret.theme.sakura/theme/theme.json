@@ -1,0 +1,11 @@
+{
+  "name": "Sakura",
+  "mode": "dark",
+  "accent": "#ff8fab",
+  "colors": {
+    "primaryColor": "#ff8fab",
+    "backgroundColor": "#1a1020",
+    "cardColor": "#2a1830",
+    "textSecondaryColor": "#c9b0c0"
+  }
+}

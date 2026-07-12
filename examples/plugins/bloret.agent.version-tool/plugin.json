@@ -1,0 +1,16 @@
+{
+  "id": "bloret.agent.version-tool",
+  "name": "Bloriko Version Tool",
+  "version": "1.0.0",
+  "author": "Bloret",
+  "description": "为络可增加 list_local_mc_versions 工具，列出本地 Minecraft 版本",
+  "entry": {
+    "python": "main.py"
+  },
+  "permissions": ["agent.bloriko"],
+  "contributes": {
+    "prompts": {
+      "bloriko_append": "prompts/extra.md"
+    }
+  }
+}

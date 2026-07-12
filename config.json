@@ -1,7 +1,7 @@
 {
     "minecraft-part": ".minecraft",
     "first-run": true,
-    "ver": "27.1",
+    "ver": "27.2",
     "123": "123",
     "size": 85,
     "themelight": false,
@@ -60,5 +60,11 @@
     },
     "ai_provider": "bloret_passport",
     "ai_model": "default",
-    "backdrop_effect": "none"
+    "backdrop_effect": "none",
+    "plugins": {
+        "enabled": {},
+        "permissions_granted": {},
+        "data": {},
+        "active_theme_plugin": ""
+    }
 }

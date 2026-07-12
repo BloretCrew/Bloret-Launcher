@@ -189,11 +189,34 @@ GET http://localhost:25252/api/v1/ping?oauth=...
   - `name` (必填) 插件名称或目录名
 - **返回**: 卸载结果
 
-### 4.16 帮助
+### 4.16 插件启用
+
+- **路径**: `/api/v1/plugin/enable`
+- **参数**:
+  - `name` (必填) 插件 id / 名称 / 目录名
+- **返回**: 启用结果
+
+### 4.17 插件禁用
+
+- **路径**: `/api/v1/plugin/disable`
+- **参数**:
+  - `name` (必填) 插件 id / 名称 / 目录名
+- **返回**: 禁用结果
+
+### 4.18 插件详情
+
+- **路径**: `/api/v1/plugin/info`
+- **参数**:
+  - `name` (可选) 指定插件；省略则返回全部
+- **返回**: 插件运行时信息（enabled/active/permissions 等）
+
+### 4.19 帮助
 
 - **路径**: `/api/v1/help`
 - **参数**: 无
 - **返回**: 规则与路径清单
+
+> 进程内插件宿主（PluginHost）开发文档见 `docs/PLUGIN_DEVELOPER.md`。
 
 ## 5. 插件交互式页面接口（/plugin）
 

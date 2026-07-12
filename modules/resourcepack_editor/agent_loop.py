@@ -64,12 +64,35 @@ DEFAULT_ROLE = "accept_edits"
 # Sub-Agent 工具过滤
 # ============================================================
 
+def _plugin_blrpe_tools():
+    try:
+        from modules.plugin_host.registry import get_registry
+        return list(get_registry().get_agent_tools("blrpe"))
+    except Exception:
+        return []
+
+
 def _get_tools_for_agent(allowed_tools):
-    """根据工具白名单过滤工具定义"""
+    """根据工具白名单过滤工具定义（含插件 BLRPE 工具）。"""
+    base = list(TOOL_DEFINITIONS)
+    for item in _plugin_blrpe_tools():
+        defn = item.get("definition")
+        if isinstance(defn, dict):
+            base.append(defn)
+    seen = set()
+    merged = []
+    for t in base:
+        try:
+            name = t["function"]["name"]
+        except Exception:
+            continue
+        if name in seen:
+            continue
+        seen.add(name)
+        merged.append(t)
     if allowed_tools is None:
-        # 全部工具，但排除 spawn_agent（防递归）
-        return [t for t in TOOL_DEFINITIONS if t["function"]["name"] != SPAWN_AGENT_TOOL]
-    return [t for t in TOOL_DEFINITIONS if t["function"]["name"] in allowed_tools]
+        return [t for t in merged if t["function"]["name"] != SPAWN_AGENT_TOOL]
+    return [t for t in merged if t["function"]["name"] in allowed_tools]
 
 
 # ============================================================
@@ -300,6 +323,15 @@ class AgentLoop:
             pack_path=pack_path,
             dynamic_context=dynamic_context,
         )
+
+        try:
+            from modules.plugin_host.registry import get_registry
+            appends = get_registry().get_prompt_appends("blrpe")
+            if appends:
+                prompt = prompt + "\n\n## 插件扩展指引\n\n" + "\n\n".join(appends)
+                log.info(f"[AgentLoop] 已合并 {len(appends)} 段 BLRPE 插件提示词")
+        except Exception as e:
+            log.warning(f"[AgentLoop] 合并插件提示词失败: {e}")
 
         log.info(f"[AgentLoop] 系统提示词构建完成, 长度={len(prompt)}字符")
         return prompt

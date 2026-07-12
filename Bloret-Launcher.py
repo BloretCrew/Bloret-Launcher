@@ -413,6 +413,23 @@ class Backend(QObject):
             print("Launch request ignored: another launch is already in progress")
             return
 
+        # 插件钩子：launch.pre 可取消启动
+        try:
+            from modules.plugin_host.registry import get_registry
+            from modules.plugin_host.event_bus import get_event_bus
+            cancel_reason = get_registry().launch_pre_cancel(version, {"skip_completion": skip_completion})
+            if cancel_reason:
+                print(f"[PluginHost] 启动被插件取消: {cancel_reason}")
+                try:
+                    from modules.notification import send_notification
+                    send_notification(i18nText("启动已取消"), cancel_reason, category="launch")
+                except Exception:
+                    pass
+                return
+            get_event_bus().emit("launch.pre", version, {"skip_completion": skip_completion})
+        except Exception as e:
+            print(f"[PluginHost] launch.pre 失败: {e}")
+
         self._is_launching = True
         self._launch_session_id += 1
         self._current_launching_version = version  # 存储当前启动的版本
@@ -480,6 +497,17 @@ class Backend(QObject):
                     except Exception as _im_err:
                         print(f"[IM] 游戏输入法环境准备失败（继续启动）: {_im_err}")
 
+                # 插件钩子：合并环境变量
+                try:
+                    from modules.plugin_host.registry import get_registry
+                    base_env = dict(_launch_env) if _launch_env else dict(os.environ)
+                    merged_env = get_registry().collect_env(version, base_env)
+                    if merged_env and merged_env != base_env:
+                        _launch_env = merged_env
+                        print(f"[PluginHost] 已合并插件环境变量 keys={list(merged_env.keys())[:8]}...")
+                except Exception as _env_err:
+                    print(f"[PluginHost] launch.env 失败: {_env_err}")
+
                 # 使用 PIPE 捕获输出，同时实时打印到控制台并解析聊天消息
                 proc = subprocess.Popen(
                     launch_args, cwd=game_dir,
@@ -498,6 +526,14 @@ class Backend(QObject):
                     "name": version, "type": "minecraft",
                     "pid": proc.pid, "suspended": False
                 }
+                try:
+                    from modules.plugin_host.registry import get_registry
+                    from modules.plugin_host.event_bus import get_event_bus
+                    get_registry().call_hooks("launch.post", version, proc.pid)
+                    get_event_bus().emit("launch.post", version, proc.pid)
+                    print(f"[PluginHost] launch.post version={version} pid={proc.pid}")
+                except Exception as _post_err:
+                    print(f"[PluginHost] launch.post 失败: {_post_err}")
                 # Start play time tracking
                 from modules.play_time import start_session, start_detailed_session
                 self._play_time_sessions[instance_id] = start_session(version)
@@ -4692,6 +4728,23 @@ class LauncherV2(RinUIWindow):
         except Exception as e:
             import traceback
             traceback.print_exc()
+
+        # Inject Plugin Host
+        try:
+            from modules.plugin_host import bootstrap_plugins, get_plugin_host
+            self.plugin_host = bootstrap_plugins()
+            self.engine.rootContext().setContextProperty("PluginHost", self.plugin_host)
+            print(f"[PluginHost] 已注入 QML，插件数={len(self.plugin_host.list_plugins_info())}")
+        except Exception as e:
+            import traceback
+            print(f"[PluginHost] 初始化失败: {e}")
+            traceback.print_exc()
+            try:
+                from modules.plugin_host import get_plugin_host
+                self.plugin_host = get_plugin_host()
+                self.engine.rootContext().setContextProperty("PluginHost", self.plugin_host)
+            except Exception:
+                self.engine.rootContext().setContextProperty("PluginHost", None)
         
         # 启动时检查并修复 .BL.json
         try:

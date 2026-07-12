@@ -88,6 +88,12 @@ def install_plugin_from_zip(zip_url, plugin_name):
             log(f"插件主程序不存在: {plugin_exe_path}")
         
         log(f"插件安装成功: {plugin_name}")
+        try:
+            from modules.plugin_host import get_plugin_host
+            get_plugin_host().notify_installed(plugin_name)
+            log(f"[Plugin] 已通知 PluginHost 加载: {plugin_name}")
+        except Exception as host_err:
+            log(f"[Plugin] 通知 PluginHost 失败（可忽略）: {host_err}")
         return True
         
     except Exception as e:
@@ -265,6 +271,12 @@ def addPlugin(list_url, plugin_name):
                     log(f"插件主程序不存在: {plugin_exe_path}")
 
                 log(f"插件安装成功: {plugin['name']}")
+                try:
+                    from modules.plugin_host import get_plugin_host
+                    get_plugin_host().notify_installed(plugin['name'])
+                    log(f"[Plugin] 已通知 PluginHost 加载: {plugin['name']}")
+                except Exception as host_err:
+                    log(f"[Plugin] 通知 PluginHost 失败（可忽略）: {host_err}")
 
             except Exception as e:
                 log(f"安装插件失败: {plugin['name']}, 错误: {str(e)}")
@@ -341,6 +353,16 @@ def _find_entry_path(plugin_dir, manifest):
 
 
 def list_installed_plugins():
+    """列出已安装插件；优先使用 PluginHost 运行时信息。"""
+    try:
+        from modules.plugin_host import get_plugin_host
+        host = get_plugin_host()
+        runtime = host.list_plugins_info()
+        if runtime:
+            return runtime
+    except Exception as e:
+        log(f"[Plugin] PluginHost 列表不可用，回退目录扫描: {e}")
+
     plugin_root = get_plugin_root()
     if not os.path.exists(plugin_root):
         return []
@@ -367,6 +389,8 @@ def list_installed_plugins():
                 "path": plugin_dir,
                 "iconPath": _find_icon_path(plugin_dir, manifest),
                 "entryPath": _find_entry_path(plugin_dir, manifest),
+                "enabled": True,
+                "active": False,
             }
             plugins.append(info)
     except Exception as e:
@@ -430,4 +454,12 @@ def uninstall_plugin(plugin_name):
         return False, f"删除插件目录失败: {str(e)}"
 
     plugin_display = target_info.get("name") if target_info else os.path.basename(target_dir)
+    try:
+        from modules.plugin_host import get_plugin_host
+        from modules.plugin_host import state as plugin_state
+        pid = (target_info or {}).get("id") or plugin_name
+        get_plugin_host().notify_uninstalled(pid)
+        plugin_state.remove_plugin_state(pid)
+    except Exception as e:
+        log(f"[Plugin] 卸载后通知 PluginHost 失败: {e}")
     return True, f"已卸载插件 {plugin_display}，移除 {removed_customize} 个启动项"
