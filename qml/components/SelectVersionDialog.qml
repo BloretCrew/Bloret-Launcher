@@ -15,6 +15,7 @@ Dialog {
     property var currentVersions: []
     property string selectedVersion: ""
     property bool isLoading: false
+    property string loadError: ""
     
     width: 420
     height: 280
@@ -34,22 +35,46 @@ Dialog {
     Connections {
         target: Backend
         function onVersionListReady(category, versions) {
+            console.log(`[SelectVersionDialog] Version list ready: ${category}, count=${versions ? versions.length : 0}`)
             if (category === categories[categoryCombo.currentIndex]) {
+                loadError = ""
                 refreshCurrentCategory()
             }
+        }
+        function onVersionListLoadFailed(message) {
+            console.log(`[SelectVersionDialog] Version list load failed: ${message}`)
+            isLoading = false
+            loadError = message || (Backend ? Backend.tr("版本列表加载失败") : "版本列表加载失败")
         }
     }
 
     function refreshCurrentCategory() {
-        if (!Backend) return
+        if (!Backend) {
+            isLoading = false
+            loadError = "Backend unavailable"
+            return
+        }
         let category = categories[categoryCombo.currentIndex]
+        console.log(`[SelectVersionDialog] Refreshing category: ${category}`)
         currentVersions = Backend.getVersionsByCategory(category)
         versionCombo.model = currentVersions
         if (currentVersions.length > 0) {
             versionCombo.currentIndex = 0
             selectedVersion = currentVersions[0]
+            isLoading = false
+            loadError = ""
+        } else {
+            selectedVersion = ""
+            isLoading = true
         }
-        isLoading = currentVersions.length === 0
+    }
+
+    function retryLoad() {
+        if (!Backend) return
+        console.log("[SelectVersionDialog] Retrying version list load")
+        loadError = ""
+        isLoading = true
+        Backend.retryVersionListLoad()
     }
 
     function updateVersionList(categoryIndex) {
@@ -149,6 +174,27 @@ Dialog {
             Layout.alignment: Qt.AlignHCenter
         }
 
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: loadError.length > 0
+            spacing: 8
+
+            Label {
+                Layout.fillWidth: true
+                text: loadError
+                wrapMode: Text.Wrap
+                horizontalAlignment: Text.AlignHCenter
+                font.pixelSize: 13
+                color: Theme.currentTheme.colors.errorColor || "#d13438"
+            }
+
+            Button {
+                Layout.alignment: Qt.AlignHCenter
+                text: (Backend ? Backend.tr("重新加载") : "重新加载")
+                onClicked: retryLoad()
+            }
+        }
+
         Item {
             Layout.fillHeight: true
         }
@@ -169,7 +215,7 @@ Dialog {
         Button {
             text: (Backend ? Backend.tr("取消") : "取消")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
-            enabled: !isLoading
+            enabled: true
             onClicked: {
                 console.log("[SelectVersionDialog] User clicked Cancel")
                 selectVersionDialog.reject()

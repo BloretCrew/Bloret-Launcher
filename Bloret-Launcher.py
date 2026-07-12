@@ -232,6 +232,7 @@ class Backend(QObject):
 
     # Version list signals
     versionListReady = Signal(str, list)  # category, versions
+    versionListLoadFailed = Signal(str)  # error message
     playTimeTick = Signal()  # emitted every second while game is running
     statisticsUpdated = Signal()  # emitted when play statistics are updated
 
@@ -273,6 +274,10 @@ class Backend(QObject):
         self._live_easytier_publish_thread = None
         self._live_easytier_publish_running = False
         self._live_space_list_cache = []
+        self._versions_cache = {}
+        self._manifest_fetched = False
+        self._version_prefetch_running = False
+        self._version_prefetch_lock = threading.Lock()
 
     # ========== 全局 AI 供应商/模型设置 ==========
 
@@ -321,26 +326,59 @@ class Backend(QObject):
         # 后台预加载版本列表，避免阻塞 UI
         self._prefetch_version_list()
 
-    def _prefetch_version_list(self):
-        """在后台线程中预加载版本列表"""
-        import threading
+    def _prefetch_version_list(self, force=False):
+        """在后台线程中预加载版本列表，并在失败时通知 QML 结束加载状态。"""
+        with self._version_prefetch_lock:
+            if self._version_prefetch_running:
+                print("[VersionList] 版本清单请求已在进行中，忽略重复请求")
+                return
+            if self._manifest_fetched and not force:
+                print("[VersionList] 使用已缓存的版本清单")
+                for category, versions in self._versions_cache.items():
+                    self.versionListReady.emit(category, versions)
+                return
+            self._version_prefetch_running = True
+
         def _fetch():
+            sources = [
+                "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json",
+                "https://launchermeta.mojang.com/mc/game/version_manifest.json",
+            ]
+            last_error = ""
             try:
-                api_url = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
-                response = requests.get(api_url, timeout=15)
-                if response.status_code == 200:
-                    data = response.json()
-                    all_versions = data.get("versions", [])
-                    self._versions_cache["正式版本"] = [v["id"] for v in all_versions if v.get("type") == "release"]
-                    self._versions_cache["快照版本"] = [v["id"] for v in all_versions if v.get("type") == "snapshot"]
-                    self._versions_cache["远古版本"] = [v["id"] for v in all_versions if v.get("type") in ["old_alpha", "old_beta"]]
-                    self._manifest_fetched = True
-                    for cat, versions in self._versions_cache.items():
-                        self.versionListReady.emit(cat, versions)
-                    print(f"[DEBUG] Prefetch done: {', '.join(f'{k}({len(v)})' for k,v in self._versions_cache.items())}")
-            except Exception as e:
-                print(f"[ERROR] Prefetch version list failed: {e}")
-        threading.Thread(target=_fetch, daemon=True).start()
+                for api_url in sources:
+                    try:
+                        print(f"[VersionList] 正在获取版本清单: {api_url}")
+                        response = requests.get(api_url, timeout=(8, 20))
+                        response.raise_for_status()
+                        data = response.json()
+                        all_versions = data.get("versions", [])
+                        if not isinstance(all_versions, list) or not all_versions:
+                            raise ValueError("版本清单为空或格式不正确")
+
+                        new_cache = {
+                            "正式版本": [v["id"] for v in all_versions if v.get("type") == "release" and v.get("id")],
+                            "快照版本": [v["id"] for v in all_versions if v.get("type") == "snapshot" and v.get("id")],
+                            "远古版本": [v["id"] for v in all_versions if v.get("type") in ["old_alpha", "old_beta"] and v.get("id")],
+                        }
+                        self._versions_cache = new_cache
+                        self._manifest_fetched = True
+                        for category, versions in new_cache.items():
+                            self.versionListReady.emit(category, versions)
+                        print(f"[VersionList] 版本清单加载完成: {', '.join(f'{k}({len(v)})' for k, v in new_cache.items())}")
+                        return
+                    except Exception as source_error:
+                        last_error = f"{api_url}: {source_error}"
+                        print(f"[VersionList] 获取版本清单失败，尝试下一个来源: {last_error}")
+
+                error_message = f"无法加载 Minecraft 版本列表：{last_error or '所有下载源均不可用'}"
+                print(f"[VersionList] {error_message}")
+                self.versionListLoadFailed.emit(error_message)
+            finally:
+                with self._version_prefetch_lock:
+                    self._version_prefetch_running = False
+
+        threading.Thread(target=_fetch, daemon=True, name="VersionManifestPrefetch").start()
 
     @Slot(result=bool)
     def handleWindowCloseRequest(self):
@@ -2017,12 +2055,22 @@ class Backend(QObject):
     
     @Slot(str, result=list)
     def getVersionsByCategory(self, category):
-        """根据类别返回版本列表（非阻塞，数据由后台线程预加载）"""
+        """根据类别返回缓存版本列表；缓存未就绪时触发后台加载。"""
         if category == "百络谷支持版本":
             from modules.install import fetch_fastdownload_versions
             fastdownload = fetch_fastdownload_versions()
             return list(fastdownload.keys())
-        return self._versions_cache.get(category, [])
+        versions = self._versions_cache.get(category, [])
+        if not versions and not self._manifest_fetched:
+            print(f"[VersionList] 类别 {category} 尚无缓存，触发后台加载")
+            self._prefetch_version_list()
+        return versions
+
+    @Slot()
+    def retryVersionListLoad(self):
+        """供版本选择对话框在加载失败后主动重试。"""
+        print("[VersionList] 用户请求重新加载版本清单")
+        self._prefetch_version_list(force=True)
 
     # Removed incorrect getFabricVersions implementation here to use the correct one below
 
