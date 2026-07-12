@@ -4487,7 +4487,9 @@ class LauncherTrayIcon(QSystemTrayIcon):
         self.launch_menu = RoundMenu(i18nText("🔼  启动版本"), self.menu)
         self.menu.addMenu(self.launch_menu)
 
-        # 在菜单即将显示时刷新启动版本列表，确保内容最新
+        # 初始化时填充一次，确保菜单首次显示时有内容
+        self._refresh_launch_menu()
+        # 之后每次子菜单展开时刷新，保持版本列表最新
         self.launch_menu.aboutToShow.connect(self._refresh_launch_menu)
 
         self.menu.addSeparator()
