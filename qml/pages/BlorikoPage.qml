@@ -501,6 +501,7 @@ Item {
                             text: (Backend ? Backend.tr("哥哥好呀！络可在这里等你很久啦~(开心地挥挥小手)\n\n试试跟络可说：\n• 帮我创建一个文件\n• 搜索一下项目里的 TODO\n• 执行一个命令看看\n• 记住我的偏好是...") : "哥哥好呀！络可在这里等你很久啦~(开心地挥挥小手)\n\n试试跟络可说：\n• 帮我创建一个文件\n• 搜索一下项目里的 TODO\n• 执行一个命令看看\n• 记住我的偏好是...")
                             horizontalAlignment: Text.AlignHCenter
                             font.pixelSize: 11
+                            lineHeightMode: Text.ProportionalHeight
                             lineHeight: 1.4
                             color: Theme.currentTheme.colors.textSecondaryColor
                             wrapMode: Text.Wrap
@@ -527,7 +528,7 @@ Item {
                         visible: role === "user"
                         anchors.right: parent.right; anchors.rightMargin: 16
                         anchors.top: parent.top; anchors.topMargin: 4
-                        width: Math.min(Math.max(userTxt.contentWidth + 24, 50), parent.width * 0.65)
+                        width: Math.min(Math.max(userTxt.implicitWidth + 24, 50), parent.width * 0.65)
                         spacing: 0
 
                         Rectangle {
@@ -542,6 +543,7 @@ Item {
                                 font.pixelSize: 13
                                 wrapMode: TextEdit.Wrap
                                 readOnly: true; selectByMouse: true
+                                textFormat: TextEdit.PlainText
                             }
                         }
                     }
