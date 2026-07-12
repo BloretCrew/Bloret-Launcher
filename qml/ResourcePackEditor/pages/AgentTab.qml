@@ -387,6 +387,7 @@ Item {
                             text: (Backend ? Backend.tr("用自然语言描述你想做的修改\nAI 会帮你操作资源包\n\n试试：\n• 帮我看看这个资源包\n• 读取 pack.mcmeta\n• 把描述改成 '我的资源包'") : "用自然语言描述你想做的修改\nAI 会帮你操作资源包\n\n试试：\n• 帮我看看这个资源包\n• 读取 pack.mcmeta\n• 把描述改成 '我的资源包'")
                             horizontalAlignment: Text.AlignHCenter
                             font.pixelSize: 11
+                            lineHeightMode: Text.ProportionalHeight
                             lineHeight: 1.4
                             color: Theme.currentTheme.colors.textSecondaryColor
                             wrapMode: Text.Wrap
