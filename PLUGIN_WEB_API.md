@@ -251,6 +251,9 @@ GET http://localhost:25252/plugin/add?action=confirm&list=PLUGIN_JSON_URL&oauth=
 
 ### 5.4 插件商店一键安装（推荐，无 OAuth）
 
+> **商店服务端 / 前端完整对接手册**（元数据、打包、白名单、API 形状、联调清单）：  
+> [`docs/PLUGIN_STORE_SERVER.md`](docs/PLUGIN_STORE_SERVER.md)
+
 商店用户安装请优先使用 **`bloret://` 协议**（可冷启动/激活启动器）。本机 HTTP 仅作「启动器已在运行」时的增强路径。
 
 #### 协议（主路径）

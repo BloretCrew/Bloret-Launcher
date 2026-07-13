@@ -257,7 +257,8 @@ BLDEV plugin install my-plugin --force
      打开链接 → 激活 Bloret Launcher → **原生确认** → 用户确认后下载安装（无 OAuth，禁止静默安装）。
    - 启动器已在运行时：`POST http://127.0.0.1:25252/plugin/store/propose`（无 OAuth，仅投递确认队列）
    - 旧工具链：`/plugin/add?download=...zip`（**需要 OAuth**，不适合商店用户按钮）
-6. **插件商店**：分发 BLAPI 打出的同一 ZIP；元数据字段与 `plugin.json` 对齐
+6. **插件商店**：分发 BLAPI 打出的同一 ZIP；元数据字段与 `plugin.json` 对齐  
+   - **服务端 / 商店前端对接文档**：[`docs/PLUGIN_STORE_SERVER.md`](PLUGIN_STORE_SERVER.md)
 
 ZIP 要求：
 
