@@ -249,6 +249,77 @@ GET http://localhost:25252/plugin/add?action=confirm&list=PLUGIN_JSON_URL&oauth=
 - **路径**: `/plugin/install`
 - **参数**: `oauth` + `download` + `name`(可选) + `redirect`(可选)
 
+### 5.4 插件商店一键安装（推荐，无 OAuth）
+
+商店用户安装请优先使用 **`bloret://` 协议**（可冷启动/激活启动器）。本机 HTTP 仅作「启动器已在运行」时的增强路径。
+
+#### 协议（主路径）
+
+```text
+bloret://plugin/install
+  ?download=https%3A%2F%2Fexample.com%2Fplugin-1.0.0.zip
+  &id=com.example.plugin
+  &name=Example
+  &version=1.0.0
+  &author=Author
+  &description=...
+  &sha256=<optional-64-hex>
+  &source=store
+```
+
+兼容别名：`bloret://install-plugin?...`
+
+**安全约束**（确认前不会写入 Plugin 目录）：
+
+- `download` 仅允许 `https://`
+- 可选主机白名单（配置 `plugin_store_trusted_hosts` / `plugin_store_allow_any_https`）
+- 可选 `sha256` 下载后校验
+- **必须**在启动器原生对话框中确认后才安装（无静默安装）
+
+商店前端最小示例：
+
+```js
+function installPlugin(p) {
+  const q = new URLSearchParams({
+    download: p.download,
+    id: p.id || "",
+    name: p.name || "",
+    version: p.version || "",
+    author: p.author || "",
+    description: p.description || "",
+    sha256: p.sha256 || "",
+    source: "store",
+  });
+  window.location.href = `bloret://plugin/install?${q.toString()}`;
+}
+
+// 可选增强：探测本机启动器在线后走 HTTP 投递
+async function installPluginSmart(p) {
+  try {
+    const r = await fetch("http://127.0.0.1:25252/api/v1/ping?oauth=" + encodeURIComponent("{}"), { mode: "no-cors" });
+    // ping 通常需 oauth；更稳妥直接尝试 propose，失败再协议
+  } catch (_) {}
+  try {
+    const res = await fetch("http://127.0.0.1:25252/plugin/store/propose", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...p, source: "store" }),
+    });
+    if (res.ok) return;
+  } catch (_) {}
+  installPlugin(p);
+}
+```
+
+#### HTTP 投递（增强路径，无 OAuth）
+
+- **路径**: `GET|POST /plugin/store/propose` 或 `/api/v1/plugin/store/propose`
+- **参数**: 与协议 query 相同（`download` 必填；`id/name/version/author/description/sha256/source` 可选）
+- **行为**: 仅将请求放入启动器确认队列并弹出原生确认框；**不会**静默安装
+- **返回**: `{ ok, token, pending, request, note }`
+
+> 旧版 `/plugin/add` 仍要求 OAuth，面向工具链/自动化，不适合商店用户按钮。
+
 ## 6. 示例
 
 ### 6.1 启动游戏

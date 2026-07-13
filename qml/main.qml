@@ -245,6 +245,22 @@ FluentWindow {
             rebuildNavigation()
             applyPluginTheme()
         }
+        function onPluginInstallProposed(payloadJson) {
+            console.log("[Main] PluginHost.pluginInstallProposed", String(payloadJson || "").substring(0, 200))
+            try {
+                var meta = JSON.parse(payloadJson || "{}")
+                // 激活窗口到前台
+                window.raise()
+                window.requestActivate()
+                pluginInstallDialog.showProposal(meta)
+            } catch (e) {
+                console.log("[Main] pluginInstallProposed parse error:", e)
+            }
+        }
+        function onPluginInstallProgress(token, stage, message, progress) {
+            console.log("[Main] PluginHost.pluginInstallProgress", token, stage, message, progress)
+            pluginInstallDialog.applyProgress(token, stage, message, progress)
+        }
     }
 
     // RinUI NavigationView 明确暴露 pageChanged/currentPage；按页面 URL 反查贡献元数据。
@@ -495,6 +511,10 @@ FluentWindow {
         id: exportMrpackDialog
     }
 
+    PluginInstallDialog {
+        id: pluginInstallDialog
+    }
+
     // OOBE 覆盖层
     Loader {
         id: oobeLoader
@@ -561,6 +581,16 @@ FluentWindow {
             // 加载 OOBE 覆盖层
             oobeLoader.source = "OOBEOverlay.qml"
             oobeLoader.visible = true
+        }
+
+        // 通知 PluginHost：QML 已就绪，可弹出商店安装确认 / 处理 deep link
+        if (typeof PluginHost !== "undefined" && PluginHost) {
+            try {
+                console.log("[Main] PluginHost.mark_ui_ready")
+                PluginHost.mark_ui_ready()
+            } catch (e) {
+                console.log("[Main] mark_ui_ready failed:", e)
+            }
         }
     }
 }

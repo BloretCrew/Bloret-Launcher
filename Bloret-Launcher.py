@@ -4948,6 +4948,48 @@ class LauncherV2(RinUIWindow):
                 self.engine.rootContext().setContextProperty("PluginHost", self.plugin_host)
             except Exception:
                 self.engine.rootContext().setContextProperty("PluginHost", None)
+
+        # 协议 / 商店 deep link：IPC 服务 + 冷启动 argv
+        try:
+            from modules.protocol_handler import (
+                start_ipc_server,
+                set_deep_link_handler,
+                extract_bloret_urls,
+                ensure_protocol_registered,
+            )
+
+            def _on_deep_link(url: str) -> None:
+                print(f"[Protocol] 收到 deep link: {str(url)[:160]}")
+                host = getattr(self, "plugin_host", None)
+                if host is not None and hasattr(host, "handleDeepLink"):
+                    try:
+                        # 尽量在主线程处理，避免与 QML 竞态
+                        from PySide6.QtCore import QMetaObject, Qt, Q_ARG
+
+                        QMetaObject.invokeMethod(
+                            host,
+                            "handleDeepLink",
+                            Qt.QueuedConnection,
+                            Q_ARG(str, str(url)),
+                        )
+                    except Exception as inv_e:
+                        print(f"[Protocol] invoke handleDeepLink 失败，直接调用: {inv_e}")
+                        host.handleDeepLink(str(url))
+                try:
+                    self.show_main_window()
+                except Exception:
+                    pass
+
+            set_deep_link_handler(_on_deep_link)
+            start_ipc_server()
+            # 幂等注册 bloret://（失败不阻断）
+            ensure_protocol_registered()
+            for _url in extract_bloret_urls():
+                print(f"[Protocol] 冷启动 argv deep link: {_url[:120]}")
+                if self.plugin_host is not None:
+                    self.plugin_host.handleDeepLink(_url)
+        except Exception as e:
+            print(f"[Protocol] 初始化失败: {e}")
         
         # 启动时检查并修复 .BL.json
         try:
@@ -5176,6 +5218,18 @@ if __name__ == "__main__":
             _already_running = True
 
     if _already_running:
+        # 优先转发 bloret:// deep link 给首实例，再退出（商店一键安装）
+        try:
+            from modules.protocol_handler import handle_second_instance_argv, extract_bloret_urls
+
+            urls = extract_bloret_urls()
+            if urls:
+                print(f"[Protocol] 二次实例检测到 deep link x{len(urls)}，转发后退出")
+                handle_second_instance_argv()
+                sys.exit(0)
+        except Exception as e:
+            print(f"[Protocol] 二次实例转发失败: {e}")
+
         config_data = cfg.read()
         if not config_data.get('repeat_run', False):
             from PySide6.QtWidgets import QMessageBox

@@ -165,15 +165,33 @@ def install_plugin_from_path(source_path, plugin_name=None, force=True):
             shutil.rmtree(temp_root, ignore_errors=True)
 
 
-def install_plugin_from_zip(zip_url, plugin_name=None):
+def install_plugin_from_zip(zip_url, plugin_name=None, expected_sha256=None):
     '''
     直接从 ZIP 文件 URL 安装插件。
     参数:
         zip_url: ZIP 文件的下载 URL
         plugin_name: 可选回退名称；实际目录优先使用清单 id
+        expected_sha256: 可选，下载后校验
+    返回:
+        bool（兼容旧调用）或在内部使用 install_plugin_from_zip_ex 获取详情
     '''
+    ok, _detail = install_plugin_from_zip_ex(
+        zip_url, plugin_name=plugin_name, expected_sha256=expected_sha256
+    )
+    return bool(ok)
+
+
+def install_plugin_from_zip_ex(zip_url, plugin_name=None, expected_sha256=None):
+    """从 URL 下载 ZIP 并安装；返回 (ok, plugin_id_or_error)。"""
     try:
+        from modules.plugin_install_request import verify_sha256, validate_download_url
+
         log(f"[Plugin] 正在从 ZIP URL 安装插件: {zip_url}")
+        ok_url, url_err = validate_download_url(str(zip_url or ""), allow_file=False)
+        if not ok_url:
+            log(f"[Plugin] download URL 校验失败: {url_err}")
+            return False, url_err
+
         session = requests.Session()
         retry_strategy = Retry(
             total=3,
@@ -184,20 +202,27 @@ def install_plugin_from_zip(zip_url, plugin_name=None):
         session.mount("http://", adapter)
         session.mount("https://", adapter)
 
-        response = session.get(zip_url, timeout=60)
+        response = session.get(zip_url, timeout=120, stream=True)
         response.raise_for_status()
 
-        with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as temp_zip:
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as temp_zip:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     temp_zip.write(chunk)
             temp_zip_path = temp_zip.name
 
         try:
-            ok, detail = install_plugin_from_path(temp_zip_path, plugin_name=plugin_name, force=True)
+            if expected_sha256:
+                ok_hash, hash_err = verify_sha256(temp_zip_path, expected_sha256)
+                if not ok_hash:
+                    log(f"[Plugin] ZIP sha256 校验失败: {hash_err}")
+                    return False, hash_err
+            ok, detail = install_plugin_from_path(
+                temp_zip_path, plugin_name=plugin_name, force=True
+            )
             if not ok:
                 log(f"[Plugin] ZIP URL 安装失败: {detail}")
-            return bool(ok)
+            return ok, detail
         finally:
             try:
                 os.unlink(temp_zip_path)
@@ -205,7 +230,52 @@ def install_plugin_from_zip(zip_url, plugin_name=None):
                 pass
     except Exception as e:
         log(f"从ZIP文件安装插件时发生错误: {str(e)}")
-        return False
+        return False, str(e)
+
+
+def install_from_request(req) -> tuple:
+    """根据 PluginInstallRequest 执行下载/安装（调用前应已用户确认）。
+
+    返回 (ok, plugin_id_or_error)。
+    """
+    from modules.plugin_install_request import (
+        PluginInstallRequest,
+        validate_download_url,
+        verify_sha256,
+    )
+
+    if not isinstance(req, PluginInstallRequest):
+        return False, "无效的安装请求"
+
+    download = (req.download or "").strip()
+    log(
+        f"[PluginStore] install_from_request token={req.token[:8]}… "
+        f"source={req.source} host={req.download_host()} sha256={'yes' if req.sha256 else 'no'}"
+    )
+
+    ok_url, url_err = validate_download_url(download, allow_file=bool(req.allow_file))
+    if not ok_url:
+        return False, url_err
+
+    # file:// 本地路径
+    if download.lower().startswith("file:"):
+        parsed = urllib.parse.urlparse(download)
+        path = urllib.parse.unquote(parsed.path or "")
+        if os.name == "nt" and path.startswith("/") and len(path) >= 3 and path[2] == ":":
+            path = path[1:]
+        if req.sha256:
+            ok_hash, hash_err = verify_sha256(path, req.sha256)
+            if not ok_hash:
+                return False, hash_err
+        return install_plugin_from_path(
+            path, plugin_name=req.name or req.id or None, force=True
+        )
+
+    return install_plugin_from_zip_ex(
+        download,
+        plugin_name=req.name or req.id or None,
+        expected_sha256=req.sha256 or None,
+    )
 
 
 def addPlugin(list_url, plugin_name):

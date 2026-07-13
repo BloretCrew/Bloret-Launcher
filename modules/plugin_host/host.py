@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot, QMetaObject, Qt, Q_ARG
 
 import modules.globals as BLglobals
 from modules.log import log
@@ -36,6 +37,10 @@ class PluginHost(QObject):
     homeContributionsChanged = Signal()
     toolsContributionsChanged = Signal()
     logMessage = Signal(str)
+    # 商店 / 协议安装：请求用户确认（payload JSON）
+    pluginInstallProposed = Signal(str)
+    # 安装进度/结果：token, stage, message, progress 0-1
+    pluginInstallProgress = Signal(str, str, str, float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -43,6 +48,8 @@ class PluginHost(QObject):
         self._bootstrapped = False
         self._bus = get_event_bus()
         self._registry = get_registry()
+        self._pending_deep_links: List[str] = []
+        self._ui_ready = False
         log("[PluginHost] 实例已创建")
 
     # ── 生命周期 ──────────────────────────────────────────
@@ -393,6 +400,246 @@ class PluginHost(QObject):
                 {"ok": False, "error": str(e), "message": f"安装失败: {e}"},
                 ensure_ascii=False,
             )
+
+    # ── 商店 / 协议：提出安装 → 原生确认 → 下载安装 ─────────
+
+    @Slot()
+    def mark_ui_ready(self) -> None:
+        """主窗口 QML 就绪后调用，冲刷冷启动 deep link 与待确认安装请求。"""
+        self._ui_ready = True
+        log(f"[PluginStore] UI 就绪，待处理 deep link={len(self._pending_deep_links)}")
+        pending = list(self._pending_deep_links)
+        self._pending_deep_links.clear()
+        for url in pending:
+            self.handleDeepLink(url)
+        # 文件队列
+        try:
+            from modules.protocol_handler import drain_deep_link_file
+
+            for url in drain_deep_link_file():
+                self.handleDeepLink(url)
+        except Exception as e:
+            log(f"[PluginStore] 冲刷文件队列失败: {e}")
+        # 已入队但未弹窗的 pending 请求
+        try:
+            from modules.plugin_install_request import get_install_queue
+
+            for req in get_install_queue().list_pending():
+                self._emit_proposed(req)
+        except Exception as e:
+            log(f"[PluginStore] 冲刷 pending 安装请求失败: {e}")
+
+    def _emit_proposed(self, req) -> None:
+        payload = req.to_json()
+        log(
+            f"[PluginStore] 发出 pluginInstallProposed token={req.token[:8]}… "
+            f"name={req.display_name()} host={req.download_host()}"
+        )
+        try:
+            self.pluginInstallProposed.emit(payload)
+        except Exception as e:
+            log(f"[PluginStore] emit proposed 失败: {e}")
+
+    def propose_install_request(self, req) -> str:
+        """将已解析的 PluginInstallRequest 入队并通知 UI。返回 JSON。"""
+        from modules.plugin_install_request import get_install_queue
+
+        get_install_queue().put(req)
+        if self._ui_ready:
+            self._emit_proposed(req)
+        else:
+            log(f"[PluginStore] UI 未就绪，请求已入队 token={req.token[:8]}…")
+        return json.dumps(
+            {
+                "ok": True,
+                "token": req.token,
+                "pending": True,
+                "request": req.to_dict(),
+                "message": "已提交安装请求，等待用户确认",
+            },
+            ensure_ascii=False,
+        )
+
+    @Slot(str, result=str)
+    def proposeInstall(self, meta_json: str) -> str:
+        """QML / 本机商店：提出安装（不自动安装）。meta_json 含 download 等字段。"""
+        log(f"[PluginStore] proposeInstall raw={str(meta_json)[:200]}")
+        try:
+            data = json.loads(meta_json or "{}")
+            if not isinstance(data, dict):
+                return json.dumps(
+                    {"ok": False, "error": "meta 必须是 JSON 对象"}, ensure_ascii=False
+                )
+            from modules.plugin_install_request import parse_install_params
+
+            allow_file = bool(data.get("allow_file") or data.get("source") == "file")
+            req, err = parse_install_params(data, allow_file=allow_file)
+            if not req:
+                log(f"[PluginStore] proposeInstall 校验失败: {err}")
+                return json.dumps({"ok": False, "error": err, "message": err}, ensure_ascii=False)
+            return self.propose_install_request(req)
+        except Exception as e:
+            log(f"[PluginStore] proposeInstall 失败: {e}")
+            return json.dumps(
+                {"ok": False, "error": str(e), "message": f"提出安装失败: {e}"},
+                ensure_ascii=False,
+            )
+
+    @Slot(str, result=str)
+    def handleDeepLink(self, url: str) -> str:
+        """处理 bloret://plugin/install?... 或入队。"""
+        raw = (url or "").strip()
+        log(f"[PluginStore] handleDeepLink: {raw[:160]}")
+        if not raw:
+            return json.dumps({"ok": False, "error": "空 URL"}, ensure_ascii=False)
+        if not self._ui_ready:
+            self._pending_deep_links.append(raw)
+            log(f"[PluginStore] UI 未就绪，deep link 已缓存 count={len(self._pending_deep_links)}")
+            return json.dumps(
+                {"ok": True, "queued": True, "message": "已缓存，等待界面就绪"},
+                ensure_ascii=False,
+            )
+        try:
+            from modules.plugin_install_request import parse_bloret_url
+
+            req, err = parse_bloret_url(raw)
+            if not req:
+                log(f"[PluginStore] deep link 解析失败: {err}")
+                return json.dumps({"ok": False, "error": err, "message": err}, ensure_ascii=False)
+            return self.propose_install_request(req)
+        except Exception as e:
+            log(f"[PluginStore] handleDeepLink 失败: {e}")
+            return json.dumps(
+                {"ok": False, "error": str(e), "message": str(e)}, ensure_ascii=False
+            )
+
+    @Slot(str, result=str)
+    def getPendingInstallJson(self, token: str = "") -> str:
+        """获取待确认请求；token 为空则返回下一个 pending。"""
+        from modules.plugin_install_request import get_install_queue
+
+        q = get_install_queue()
+        if token:
+            req = q.get(token)
+        else:
+            req = q.pop_next_pending()
+        if not req:
+            return "{}"
+        return req.to_json()
+
+    @Slot(result=str)
+    def listPendingInstallsJson(self) -> str:
+        from modules.plugin_install_request import get_install_queue
+
+        items = [r.to_dict() for r in get_install_queue().list_pending()]
+        return json.dumps(items, ensure_ascii=False)
+
+    @Slot(str, result=str)
+    def cancelInstall(self, token: str) -> str:
+        from modules.plugin_install_request import get_install_queue
+
+        log(f"[PluginStore] cancelInstall token={str(token)[:12]}")
+        q = get_install_queue()
+        req = q.update(token, status="cancelled")
+        if not req:
+            return json.dumps({"ok": False, "error": "未知 token"}, ensure_ascii=False)
+        self.pluginInstallProgress.emit(token, "cancelled", "用户取消安装", 0.0)
+        return json.dumps({"ok": True, "message": "已取消"}, ensure_ascii=False)
+
+    @Slot(str, result=str)
+    def confirmInstall(self, token: str) -> str:
+        """用户确认后异步下载安装；立即返回 accepted，进度走 pluginInstallProgress。"""
+        from modules.plugin_install_request import get_install_queue
+
+        log(f"[PluginStore] confirmInstall token={str(token)[:12]}")
+        q = get_install_queue()
+        req = q.get(token)
+        if not req:
+            return json.dumps(
+                {"ok": False, "error": "未知或已过期的安装请求"}, ensure_ascii=False
+            )
+        if req.status not in ("pending", "failed"):
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": f"请求状态不可确认: {req.status}",
+                    "status": req.status,
+                },
+                ensure_ascii=False,
+            )
+        q.update(token, status="installing", error="")
+        self.pluginInstallProgress.emit(token, "installing", "正在下载插件…", 0.1)
+
+        def _worker() -> None:
+            try:
+                from modules.plugin import install_from_request
+
+                log(f"[PluginStore] 后台安装开始 token={token[:8]}…")
+                # 进度：下载中
+                try:
+                    self.pluginInstallProgress.emit(
+                        token, "installing", "正在下载并校验…", 0.35
+                    )
+                except Exception:
+                    pass
+                ok, detail = install_from_request(req)
+                if ok:
+                    q.update(token, status="done", plugin_id=str(detail), error="")
+                    msg = f"插件已安装: {detail}"
+                    log(f"[PluginStore] 安装成功 {detail}")
+                    try:
+                        self.pluginInstallProgress.emit(token, "done", msg, 1.0)
+                    except Exception:
+                        pass
+                    # 刷新 UI 信号需在主线程
+                    try:
+                        QMetaObject.invokeMethod(
+                            self,
+                            "_onInstallFinished",
+                            Qt.QueuedConnection,
+                            Q_ARG(str, str(detail)),
+                        )
+                    except Exception as inv_e:
+                        log(f"[PluginStore] invoke _onInstallFinished: {inv_e}")
+                        self._emit_ui_signals()
+                        self.pluginsChanged.emit()
+                else:
+                    q.update(token, status="failed", error=str(detail))
+                    log(f"[PluginStore] 安装失败: {detail}")
+                    try:
+                        self.pluginInstallProgress.emit(
+                            token, "failed", f"安装失败: {detail}", 0.0
+                        )
+                    except Exception:
+                        pass
+            except Exception as e:
+                log(f"[PluginStore] 安装线程异常: {e}")
+                q.update(token, status="failed", error=str(e))
+                try:
+                    self.pluginInstallProgress.emit(
+                        token, "failed", f"安装异常: {e}", 0.0
+                    )
+                except Exception:
+                    pass
+
+        threading.Thread(
+            target=_worker, name=f"plugin-install-{token[:8]}", daemon=True
+        ).start()
+        return json.dumps(
+            {
+                "ok": True,
+                "accepted": True,
+                "token": token,
+                "message": "已开始安装",
+            },
+            ensure_ascii=False,
+        )
+
+    @Slot(str)
+    def _onInstallFinished(self, plugin_id: str) -> None:
+        log(f"[PluginStore] _onInstallFinished plugin_id={plugin_id}")
+        self._emit_ui_signals()
+        self.pluginsChanged.emit()
 
     @Slot(str, result=bool)
     def uninstallPlugin(self, plugin_id: str) -> bool:

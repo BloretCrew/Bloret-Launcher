@@ -985,9 +985,75 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         }
         return key_map.get(key_name)
 
+    def _handle_plugin_store_propose(self, query_params, body_params=None):
+        """商店投递安装请求：无 OAuth，仅本机，仍须启动器内原生确认，禁止静默安装。"""
+        try:
+            params = {}
+            if isinstance(body_params, dict):
+                params.update(body_params)
+            for k, v in (query_params or {}).items():
+                if k not in params:
+                    params[k] = v[0] if isinstance(v, list) and v else v
+
+            log(f"[PluginStore] /plugin/store/propose keys={list(params.keys())}")
+            from modules.plugin_install_request import parse_install_params
+            from modules.plugin_host import get_plugin_host
+
+            if params.get("source") in (None, ""):
+                params["source"] = "localhost"
+            req, err = parse_install_params(params, allow_file=False)
+            if not req:
+                self._send_json(400, {
+                    "status": "error",
+                    "ok": False,
+                    "message": err or "invalid request",
+                    "hint": "需要 https download；确认在启动器内完成，不会静默安装",
+                })
+                return
+
+            host = get_plugin_host()
+            result_raw = host.propose_install_request(req)
+            try:
+                result = json.loads(result_raw)
+            except Exception:
+                result = {"ok": True, "token": req.token, "message": "proposed"}
+            result["status"] = "success" if result.get("ok") else "error"
+            result["silent"] = False
+            result["note"] = "已投递到启动器，需用户在原生对话框中确认后才会安装"
+            self._send_json(200 if result.get("ok") else 400, result)
+        except Exception as e:
+            logger.error(f"plugin store propose failed: {e}")
+            log(f"[PluginStore] propose 失败: {e}")
+            self._send_json(500, {"status": "error", "ok": False, "message": str(e)})
+
     def do_POST(self):
         parsed_path = urllib.parse.urlparse(self.path)
         request_path = parsed_path.path
+        query_params = urllib.parse.parse_qs(parsed_path.query)
+
+        # 插件商店：投递安装请求（无 OAuth）
+        if request_path in ("/plugin/store/propose", "/api/v1/plugin/store/propose"):
+            body_params = {}
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+            except Exception:
+                length = 0
+            if length > 0:
+                raw = self.rfile.read(length)
+                ctype = (self.headers.get("Content-Type") or "").lower()
+                try:
+                    if "application/json" in ctype:
+                        body_params = json.loads(raw.decode("utf-8") or "{}")
+                    else:
+                        body_params = {
+                            k: (v[0] if isinstance(v, list) and v else v)
+                            for k, v in urllib.parse.parse_qs(raw.decode("utf-8")).items()
+                        }
+                except Exception as e:
+                    log(f"[PluginStore] 解析 POST body 失败: {e}")
+            self._handle_plugin_store_propose(query_params, body_params)
+            return
+
         if request_path == '/api/v1/remote/key' or request_path == '/api/v1/remote/mouse':
             if not self._is_remoter_enabled():
                 self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
@@ -1030,6 +1096,10 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             return
         if request_path == '/chat-manager':
             self._serve_chat_manager_page()
+            return
+        # 商店安装投递：须在 /api/v1/* OAuth 分支之前，无 OAuth
+        if request_path in ("/plugin/store/propose", "/api/v1/plugin/store/propose"):
+            self._handle_plugin_store_propose(query_params)
             return
         if request_path == '/remoter.css':
             self._serve_file('web/remoter.css', 'text/css; charset=utf-8')
@@ -1406,6 +1476,11 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 logger.error(f"Error during plugin installation: {e}")
                 # 错误处理在install_plugin方法中完成
                 pass
+        elif self.path.startswith('/plugin/store/propose') or self.path.startswith('/api/v1/plugin/store/propose'):
+            # 商店安装请求投递（无 OAuth，仅投递到启动器确认队列）
+            parsed_path = urllib.parse.urlparse(self.path)
+            query_params = urllib.parse.parse_qs(parsed_path.query)
+            self._handle_plugin_store_propose(query_params)
         elif self.path.startswith('/plugin/add'):
             # 处理 /plugin/add 路径 - 合并确认、安装和添加功能
             try:
