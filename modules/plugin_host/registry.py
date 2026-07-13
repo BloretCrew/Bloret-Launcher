@@ -1,4 +1,4 @@
-"""贡献点注册表：nav / theme / toolbar / agent tools / prompts / settings / i18n / web。"""
+"""贡献点注册表：nav / theme / toolbar / agent / settings / home / tools / i18n / web。"""
 
 from __future__ import annotations
 
@@ -14,6 +14,8 @@ class ContributionRegistry:
         self.nav: List[dict] = []
         self.settings: List[dict] = []
         self.toolbar: List[dict] = []
+        self.home: List[dict] = []
+        self.tools: List[dict] = []
         self.themes: Dict[str, dict] = {}  # plugin_id -> theme dict
         self.i18n: List[dict] = []  # {plugin_id, locale, path, data}
         self.web_routes: List[dict] = []
@@ -27,6 +29,8 @@ class ContributionRegistry:
             self.nav = [x for x in self.nav if x.get("plugin_id") != plugin_id]
             self.settings = [x for x in self.settings if x.get("plugin_id") != plugin_id]
             self.toolbar = [x for x in self.toolbar if x.get("plugin_id") != plugin_id]
+            self.home = [x for x in self.home if x.get("plugin_id") != plugin_id]
+            self.tools = [x for x in self.tools if x.get("plugin_id") != plugin_id]
             self.themes.pop(plugin_id, None)
             self.i18n = [x for x in self.i18n if x.get("plugin_id") != plugin_id]
             self.web_routes = [x for x in self.web_routes if x.get("plugin_id") != plugin_id]
@@ -51,11 +55,22 @@ class ContributionRegistry:
     def add_settings(self, item: dict) -> None:
         with self._lock:
             self.settings.append(item)
+        log(f"[PluginHost] 注册设置: {item.get('id')} @ {item.get('plugin_id')}")
 
     def add_toolbar(self, item: dict) -> None:
         with self._lock:
             self.toolbar.append(item)
         log(f"[PluginHost] 注册工具栏按钮: {item.get('id')} @ {item.get('plugin_id')}")
+
+    def add_home(self, item: dict) -> None:
+        with self._lock:
+            self.home.append(item)
+        log(f"[PluginHost] 注册主页卡片: {item.get('id')} @ {item.get('plugin_id')}")
+
+    def add_tools(self, item: dict) -> None:
+        with self._lock:
+            self.tools.append(item)
+        log(f"[PluginHost] 注册小工具卡片: {item.get('id')} @ {item.get('plugin_id')}")
 
     def set_theme(self, plugin_id: str, theme: dict) -> None:
         with self._lock:
@@ -98,6 +113,24 @@ class ContributionRegistry:
         with self._lock:
             return list(self.toolbar)
 
+    def get_home(self) -> List[dict]:
+        with self._lock:
+            items = list(self.home)
+        return sorted(items, key=lambda x: (x.get("order", 100), str(x.get("id") or "")))
+
+    def get_tools(self) -> List[dict]:
+        with self._lock:
+            items = list(self.tools)
+        return sorted(items, key=lambda x: (x.get("order", 100), str(x.get("id") or "")))
+
+    def get_i18n(self) -> List[dict]:
+        with self._lock:
+            return list(self.i18n)
+
+    def get_web_routes(self) -> List[dict]:
+        with self._lock:
+            return list(self.web_routes)
+
     def get_theme(self, plugin_id: str) -> Optional[dict]:
         with self._lock:
             return self.themes.get(plugin_id)
@@ -134,8 +167,10 @@ class ContributionRegistry:
 
     def collect_jvm_args(self, version: str, base_args: Optional[List[str]] = None) -> List[str]:
         """调用 launch.jvm_args 钩子，合并追加参数。"""
+        from modules.plugin_host.dispatch import invoke_hook
+
         extra: List[str] = []
-        results = self.call_hooks("launch.jvm_args", version, list(base_args or []))
+        results = invoke_hook("launch.jvm_args", version, list(base_args or []))
         for r in results:
             if isinstance(r, (list, tuple)):
                 extra.extend(str(x) for x in r)
@@ -144,16 +179,23 @@ class ContributionRegistry:
         return extra
 
     def collect_env(self, version: str, base_env: Optional[dict] = None) -> dict:
+        from modules.plugin_host.dispatch import invoke_hook
+
         env = dict(base_env or {})
-        results = self.call_hooks("launch.env", version, dict(env))
+        results = invoke_hook("launch.env", version, dict(env))
         for r in results:
             if isinstance(r, dict):
                 env.update({str(k): str(v) for k, v in r.items()})
         return env
 
     def launch_pre_cancel(self, version: str, context: Optional[dict] = None) -> Optional[str]:
-        """若任一钩子返回 cancel，返回 reason。"""
-        results = self.call_hooks("launch.pre", version, context or {})
+        """若任一钩子返回 cancel，返回 reason。
+
+        使用统一派发，使 api.on('launch.pre') 与 register_hook 均可拦截。
+        """
+        from modules.plugin_host.dispatch import invoke_hook
+
+        results = invoke_hook("launch.pre", version, context or {})
         for r in results:
             if isinstance(r, dict) and r.get("cancel"):
                 return str(r.get("reason") or "插件取消启动")

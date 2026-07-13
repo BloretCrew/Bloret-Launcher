@@ -32,6 +32,9 @@ class PluginHost(QObject):
     pluginsChanged = Signal()
     themeOverrideChanged = Signal(str)  # plugin_id or empty
     navContributionsChanged = Signal()
+    settingsContributionsChanged = Signal()
+    homeContributionsChanged = Signal()
+    toolsContributionsChanged = Signal()
     logMessage = Signal(str)
 
     def __init__(self, parent=None):
@@ -51,12 +54,35 @@ class PluginHost(QObject):
         log("[PluginHost] bootstrap 开始")
         self.scan_and_load()
         self._bootstrapped = True
-        self._bus.emit("app.ready")
+        try:
+            from modules.plugin_host.dispatch import invoke_hook
+
+            invoke_hook("app.ready")
+        except Exception as e:
+            log(f"[PluginHost] app.ready 派发失败: {e}")
+            self._bus.emit("app.ready")
+        # 语言包可能在 bootstrap 后才进入 registry，重新合并
+        try:
+            from modules.i18n import merge_plugin_i18n
+
+            merge_plugin_i18n()
+        except Exception as e:
+            log(f"[PluginHost] merge_plugin_i18n 失败: {e}")
         log(f"[PluginHost] bootstrap 完成，已加载 {len(self._plugins)} 个插件")
 
     def shutdown(self) -> None:
+        if getattr(self, "_shutdown_done", False):
+            log("[PluginHost] shutdown 跳过（已完成）")
+            return
+        self._shutdown_done = True
         log("[PluginHost] shutdown")
-        self._bus.emit("app.quit")
+        try:
+            from modules.plugin_host.dispatch import invoke_hook
+
+            invoke_hook("app.quit")
+        except Exception as e:
+            log(f"[PluginHost] app.quit 派发失败: {e}")
+            self._bus.emit("app.quit")
         for plugin_id in list(self._plugins.keys()):
             try:
                 self._deactivate(plugin_id, persist=False)
@@ -381,9 +407,62 @@ class PluginHost(QObject):
                     "plugin_id": s.get("plugin_id"),
                     "title": s.get("title"),
                     "qml": qml,
+                    "icon": s.get("icon") or "ic_fluent_puzzle_piece_20_regular",
                 }
             )
         return json.dumps(items, ensure_ascii=False)
+
+    @Slot(result=str)
+    def getHomeContributionsJson(self) -> str:
+        items = []
+        for h in self._registry.get_home():
+            qml = self._path_to_url(h.get("qml") or "")
+            items.append(
+                {
+                    "id": h.get("id"),
+                    "plugin_id": h.get("plugin_id"),
+                    "title": h.get("title") or "",
+                    "qml": qml,
+                    "icon": h.get("icon") or "ic_fluent_news_20_regular",
+                    "order": h.get("order", 100),
+                }
+            )
+        log(f"[PluginHost] getHomeContributionsJson count={len(items)}")
+        return json.dumps(items, ensure_ascii=False)
+
+    @Slot(result=str)
+    def getToolsContributionsJson(self) -> str:
+        items = []
+        for t in self._registry.get_tools():
+            qml = self._path_to_url(t.get("qml") or "")
+            items.append(
+                {
+                    "id": t.get("id"),
+                    "plugin_id": t.get("plugin_id"),
+                    "title": t.get("title") or "",
+                    "qml": qml,
+                    "icon": t.get("icon") or "ic_fluent_wrench_20_regular",
+                    "order": t.get("order", 100),
+                }
+            )
+        log(f"[PluginHost] getToolsContributionsJson count={len(items)}")
+        return json.dumps(items, ensure_ascii=False)
+
+    @Slot(str, str, str)
+    def notifyPageOpen(self, page_id: str, title: str = "", plugin_id: str = "") -> None:
+        """QML 导航切换时调用，触发 ui.page.open。"""
+        try:
+            from modules.plugin_host.dispatch import invoke_hook
+
+            ctx = {
+                "page_id": page_id or "",
+                "title": title or "",
+                "plugin_id": plugin_id or "",
+            }
+            log(f"[PluginHost] ui.page.open {ctx}")
+            invoke_hook("ui.page.open", ctx)
+        except Exception as e:
+            log(f"[PluginHost] notifyPageOpen 失败: {e}")
 
     @Slot(result=str)
     def getToolbarContributionsJson(self) -> str:
@@ -436,9 +515,11 @@ class PluginHost(QObject):
         if plugin_id and plugin_id not in self._registry.get_themes():
             log(f"[PluginHost] 主题插件未注册: {plugin_id}")
             return False
+        from modules.plugin_host.dispatch import invoke_hook
+
         plugin_state.set_active_theme_plugin(plugin_id or "")
         theme = self._registry.get_theme(plugin_id) if plugin_id else {}
-        self._bus.emit("theme.changed", plugin_id, theme or {})
+        invoke_hook("theme.changed", plugin_id, theme or {})
         self.themeOverrideChanged.emit(plugin_id or "")
         return True
 
@@ -457,6 +538,9 @@ class PluginHost(QObject):
 
     def _emit_ui_signals(self) -> None:
         self.navContributionsChanged.emit()
+        self.settingsContributionsChanged.emit()
+        self.homeContributionsChanged.emit()
+        self.toolsContributionsChanged.emit()
         active = plugin_state.get_active_theme_plugin()
         # 若 active 主题插件已不在 registry，清空
         if active and active not in self._registry.get_themes():
@@ -470,6 +554,13 @@ class PluginHost(QObject):
                 plugin_state.set_active_theme_plugin("")
                 active = ""
         self.themeOverrideChanged.emit(active or "")
+        # 插件启用/禁用后刷新 i18n 合并
+        try:
+            from modules.i18n import merge_plugin_i18n
+
+            merge_plugin_i18n()
+        except Exception as e:
+            log(f"[PluginHost] _emit_ui_signals merge_plugin_i18n: {e}")
 
 
 # 单例

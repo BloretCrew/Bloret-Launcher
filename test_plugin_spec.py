@@ -67,3 +67,64 @@ def test_plugin_spec_entry_candidates_match_runtime_manifest():
         "process": ["main.exe", "main"],
         "qml_page": ["main.qml", "ui/Page.qml", "ui/page.qml"],
     }
+
+
+def test_plugin_spec_version_and_new_ui_permissions():
+    spec = _load_spec()
+    assert spec["spec_version"] == "1.1.0"
+    assert "ui.home" in spec["permissions"]
+    assert "ui.tools" in spec["permissions"]
+    assert spec["contributes"]["home"] == "ui.home"
+    assert spec["contributes"]["tools"] == "ui.tools"
+
+
+def test_manifest_resolve_path_rejects_escape(tmp_path):
+    manifest_mod = _load_module(
+        "modules.plugin_host.manifest",
+        "modules/plugin_host/manifest.py",
+    )
+    plugin_dir = tmp_path / "plugin"
+    plugin_dir.mkdir()
+    assert manifest_mod.resolve_path(str(plugin_dir), "ui/Card.qml").startswith(str(plugin_dir))
+    for unsafe in ("../outside.qml", str(tmp_path / "absolute.qml")):
+        try:
+            manifest_mod.resolve_path(str(plugin_dir), unsafe)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"unsafe plugin path accepted: {unsafe}")
+
+
+def test_invoke_hook_reaches_registry_and_bus():
+    registry_mod = _load_module(
+        "modules.plugin_host.registry",
+        "modules/plugin_host/registry.py",
+    )
+    bus_mod = _load_module(
+        "modules.plugin_host.event_bus",
+        "modules/plugin_host/event_bus.py",
+    )
+    # dispatch imports registry/bus; load after stubs
+    dispatch_mod = _load_module(
+        "modules.plugin_host.dispatch",
+        "modules/plugin_host/dispatch.py",
+    )
+
+    # reset singletons for isolation
+    registry_mod._registry = registry_mod.ContributionRegistry()
+    bus_mod._bus = bus_mod.EventBus()
+
+    seen = []
+
+    def hook_fn(*args, **kwargs):
+        seen.append(("hook", args))
+
+    def bus_fn(*args, **kwargs):
+        seen.append(("bus", args))
+
+    registry_mod.get_registry().add_hook("test.event", "p1", hook_fn)
+    bus_mod.get_event_bus().on("test.event", bus_fn, plugin_id="p2")
+    results = dispatch_mod.invoke_hook("test.event", 1, 2)
+    assert len(results) >= 2
+    kinds = {x[0] for x in seen}
+    assert "hook" in kinds and "bus" in kinds

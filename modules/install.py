@@ -1091,9 +1091,36 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
 def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Loader=False, VersionName=None, backend=None, Loader_Type="vanilla", task_state=None):
     global _current_download_state
     
+    _plugin_progress_last = {"pct": -1, "ts": 0.0}
+
     def update_progress_ui(progress, status, speed="", downloaded="", total=""):
         if backend:
             backend.updateDownloadProgress(progress, status, speed, downloaded, total)
+        # 插件 download.progress：每 5% 或 500ms 节流
+        try:
+            import time as _time
+            pct = float(progress or 0)
+            if pct <= 1.0:
+                pct = pct * 100.0
+            now = _time.monotonic()
+            last = _plugin_progress_last
+            if abs(pct - last["pct"]) >= 5.0 or (now - last["ts"]) >= 0.5:
+                last["pct"] = pct
+                last["ts"] = now
+                from modules.plugin_host.dispatch import invoke_hook
+                invoke_hook(
+                    "download.progress",
+                    {
+                        "version": version,
+                        "progress": pct,
+                        "status": status,
+                        "speed": speed,
+                        "downloaded": downloaded,
+                        "total": total,
+                    },
+                )
+        except Exception:
+            pass
     
     def close_dialog_ui():
         if backend:
@@ -1112,6 +1139,19 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
             send_notification(i18nText("安装失败"), message, category="install")
         except Exception as notify_error:
             log(f"发送安装失败通知时出错: {notify_error}", logging.WARNING)
+        try:
+            from modules.plugin_host.dispatch import invoke_hook
+            invoke_hook(
+                "download.error",
+                {
+                    "version": version,
+                    "message": str(message),
+                    "loader": Loader_Type if "Loader_Type" in dir() else None,
+                },
+            )
+            log(f"[PluginHost] download.error version={version}: {message}")
+        except Exception as plugin_err:
+            log(f"[PluginHost] download.error 失败: {plugin_err}", logging.WARNING)
         return False
     
     '''
@@ -1152,6 +1192,23 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         # 如果未提供VersionName，则使用version作为默认值
         if VersionName is None:
             VersionName = version
+
+        try:
+            from modules.plugin_host.dispatch import invoke_hook
+            invoke_hook(
+                "download.start",
+                {
+                    "version": version,
+                    "minecraft_dir": minecraft_dir,
+                    "version_name": VersionName,
+                    "loader_type": Loader_Type,
+                    "fabric": bool(Fabric_Loader),
+                },
+            )
+            log(f"[PluginHost] download.start version={version} loader={Loader_Type}")
+        except Exception as plugin_err:
+            log(f"[PluginHost] download.start 失败: {plugin_err}", logging.WARNING)
+
         if not _is_safe_version_name(VersionName):
             raise ValueError(f"VersionName 不是安全的单路径组件: {VersionName!r}")
 
@@ -1845,8 +1902,7 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
 
         # 插件钩子：下载/安装完成
         try:
-            from modules.plugin_host.registry import get_registry
-            from modules.plugin_host.event_bus import get_event_bus
+            from modules.plugin_host.dispatch import invoke_hook
             _fabric = locals().get("fabric_version_id_final")
             _forge = locals().get("forge_like_version_id_final")
             installed_name = _fabric or _forge or version
@@ -1858,9 +1914,8 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                 "loader": Loader_Type,
                 "fabric": bool(_fabric),
             }
-            get_registry().call_hooks("download.post", version, Loader_Type, installed_path)
-            get_event_bus().emit("download.complete", ctx)
-            get_event_bus().emit("download.post", ctx)
+            invoke_hook("download.post", version, Loader_Type, installed_path)
+            invoke_hook("download.complete", ctx)
             log(f"[PluginHost] download.post 已触发: {installed_name}")
         except Exception as plugin_err:
             log(f"[PluginHost] download.post 失败: {plugin_err}", logging.WARNING)

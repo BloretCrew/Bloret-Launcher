@@ -165,23 +165,67 @@ FluentWindow {
                 return
             }
             var theme = JSON.parse(raw)
-            var accent = theme.accent || (theme.colors && theme.colors.primaryColor) || ""
-            console.log("[Main] apply plugin theme:", theme.name || theme.plugin_id, "accent=", accent)
-            if (accent && Theme) {
-                try {
-                    // RinUI 可能暴露 themeColor / accentColor
+            var colors = theme.colors || {}
+            var accent = theme.accent || colors.primaryColor || ""
+            console.log("[Main] apply plugin theme:", theme.name || theme.plugin_id, "accent=", accent,
+                        "colorKeys=", Object.keys(colors))
+            if (!Theme)
+                return
+            try {
+                // RinUI 可能暴露 themeColor / accentColor
+                if (accent) {
                     if (typeof Theme.setThemeColor === "function")
                         Theme.setThemeColor(accent)
                     else if (Theme.themeColor !== undefined)
                         Theme.themeColor = accent
                     else if (Theme.accentColor !== undefined)
                         Theme.accentColor = accent
-                } catch (te) {
-                    console.log("[Main] set theme accent failed:", te)
                 }
+                // 尝试写入 Theme.currentTheme.colors 白名单键
+                var target = (Theme.currentTheme && Theme.currentTheme.colors)
+                    ? Theme.currentTheme.colors
+                    : (Theme.colors || null)
+                if (target) {
+                    var keys = [
+                        "primaryColor", "backgroundColor", "cardColor", "cardBorderColor",
+                        "textColor", "textSecondaryColor", "textTertialyColor", "textTertiaryColor",
+                        "controlBorderColor", "controlColor", "systemAccentColor"
+                    ]
+                    for (var i = 0; i < keys.length; i++) {
+                        var k = keys[i]
+                        if (colors[k]) {
+                            try {
+                                target[k] = colors[k]
+                                console.log("[Main] theme color applied:", k, colors[k])
+                            } catch (ck) {
+                                console.log("[Main] theme color skip:", k, ck)
+                            }
+                        }
+                    }
+                    // accent 同步到 primary
+                    if (accent && !colors.primaryColor) {
+                        try { target.primaryColor = accent } catch (e2) {}
+                    }
+                }
+            } catch (te) {
+                console.log("[Main] set theme failed:", te)
             }
         } catch (e) {
             console.log("[Main] applyPluginTheme error:", e)
+        }
+    }
+
+    function notifyPluginPageOpen(item) {
+        if (typeof PluginHost === "undefined" || !PluginHost || !item)
+            return
+        try {
+            var pageId = item.pluginId || item.page || item.title || ""
+            var title = item.title || ""
+            var pluginId = item.pluginId || ""
+            console.log("[Main] ui.page.open", title, pageId, pluginId)
+            PluginHost.notifyPageOpen(String(pageId), String(title), String(pluginId))
+        } catch (e) {
+            console.log("[Main] notifyPluginPageOpen error:", e)
         }
     }
 
@@ -200,6 +244,28 @@ FluentWindow {
             console.log("[Main] PluginHost.pluginsChanged")
             rebuildNavigation()
             applyPluginTheme()
+        }
+    }
+
+    // RinUI NavigationView 明确暴露 pageChanged/currentPage；按页面 URL 反查贡献元数据。
+    Connections {
+        target: navigationView
+        function onPageChanged() {
+            try {
+                var current = String(navigationView.currentPage || "")
+                var matched = { title: "", page: current, pluginId: "" }
+                for (var i = 0; i < window.navItems.length; i++) {
+                    var item = window.navItems[i]
+                    if (String(item.page || "") === current) {
+                        matched = item
+                        break
+                    }
+                }
+                console.log("[Main] navigation page changed:", current, matched.title || "")
+                window.notifyPluginPageOpen(matched)
+            } catch (e) {
+                console.log("[Main] onPageChanged error:", e)
+            }
         }
     }
 

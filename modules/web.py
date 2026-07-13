@@ -132,6 +132,45 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         except Exception:
             return value_text
 
+    def _launch_game_with_plugin_hooks(self, version):
+        """供 Web API 使用的统一启动入口，保持插件启动生命周期语义。"""
+        from modules.launch import Get_Run_Script
+        from modules.plugin_host.dispatch import invoke_hook
+        from modules.plugin_host.registry import get_registry
+
+        context = {"source": "web", "skip_completion": False}
+        cancel_reason = get_registry().launch_pre_cancel(version, context)
+        if cancel_reason:
+            log(f"[Web][PluginHost] launch.pre cancelled version={version} reason={cancel_reason}")
+            raise PermissionError(cancel_reason)
+
+        launch_args, game_dir = Get_Run_Script(version)
+        launch_env = get_registry().collect_env(version, dict(os.environ))
+        log(f"[Web][PluginHost] starting version={version} args={len(launch_args)} cwd={game_dir}")
+        process = subprocess.Popen(
+            launch_args,
+            cwd=game_dir,
+            env=launch_env,
+            **hidden_process_kwargs(),
+        )
+        invoke_hook("launch.post", version, process.pid)
+        log(f"[Web][PluginHost] launch.post version={version} pid={process.pid}")
+
+        def wait_for_exit():
+            try:
+                return_code = process.wait()
+                invoke_hook("launch.exit", version, process.pid, return_code)
+                log(f"[Web][PluginHost] launch.exit version={version} pid={process.pid} code={return_code}")
+            except Exception as error:
+                log(f"[Web][PluginHost] launch.exit monitor failed pid={process.pid}: {error}")
+
+        threading.Thread(
+            target=wait_for_exit,
+            daemon=True,
+            name=f"web-launch-monitor-{process.pid}",
+        ).start()
+        return process
+
     def _handle_open_api(self, api_path, query_params):
         ok, _ = self._ensure_oauth(query_params)
         if not ok:
@@ -175,9 +214,11 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     self._send_json(400, {'status': 'error', 'message': '缺少必填参数 version'})
                     return
 
-                from modules.launch import Get_Run_Script
-                launch_args, game_dir = Get_Run_Script(version)
-                process = subprocess.Popen(launch_args, cwd=game_dir, **hidden_process_kwargs())
+                try:
+                    process = self._launch_game_with_plugin_hooks(version)
+                except PermissionError as error:
+                    self._send_json(409, {'status': 'error', 'message': f'启动被插件取消: {error}'})
+                    return
 
                 self._redirect_or_json_success(query_params, {
                     'status': 'success',
@@ -383,6 +424,18 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 return
 
             if api_path == '/api/v1/help':
+                plugin_routes = []
+                try:
+                    from modules.plugin_host.registry import get_registry
+                    for r in get_registry().get_web_routes():
+                        plugin_routes.append({
+                            'method': r.get('method') or 'GET',
+                            'path': r.get('path'),
+                            'plugin_id': r.get('plugin_id'),
+                            'auth': r.get('auth') or 'oauth',
+                        })
+                except Exception:
+                    pass
                 self._send_json(200, {
                     'status': 'success',
                     'data': {
@@ -409,11 +462,63 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             '/api/v1/plugin/uninstall?name=...',
                             '/api/v1/plugin/enable?name=...',
                             '/api/v1/plugin/disable?name=...',
-                            '/api/v1/plugin/info?name=...'
-                        ]
+                            '/api/v1/plugin/info?name=...',
+                            '/api/v1/plugin/{plugin_id}/... (plugin web.routes)'
+                        ],
+                        'plugin_routes': plugin_routes,
                     }
                 })
                 return
+
+            # 插件自定义路由：/api/v1/plugin/{plugin_id}/...
+            if api_path.startswith('/api/v1/plugin/') and api_path.count('/') >= 4:
+                try:
+                    from modules.plugin_host.registry import get_registry
+                    from modules.log import log as _plog
+                    method = getattr(self, 'command', None) or 'GET'
+                    method = str(method).upper()
+                    matched = None
+                    for r in get_registry().get_web_routes():
+                        rpath = r.get('path') or ''
+                        rmethod = (r.get('method') or 'GET').upper()
+                        if rpath == api_path and rmethod in (method, 'ANY', '*'):
+                            matched = r
+                            break
+                        # 前缀匹配：注册 /foo 可匹配 /foo/bar 若 exact 未命中
+                        if rmethod in (method, 'ANY', '*') and api_path.startswith(rpath.rstrip('/') + '/'):
+                            matched = r
+                    if matched and callable(matched.get('handler')):
+                        auth_mode = (matched.get('auth') or 'oauth').lower()
+                        if auth_mode not in ('none', 'local', 'public'):
+                            # OAuth 已在 _handle_open_api 入口校验
+                            pass
+                        _plog(f"[PluginHost] web.route {method} {api_path} @ {matched.get('plugin_id')}")
+                        req = {
+                            'method': method,
+                            'path': api_path,
+                            'query': {k: (v[0] if isinstance(v, list) and v else v) for k, v in query_params.items()},
+                            'plugin_id': matched.get('plugin_id'),
+                        }
+                        result = matched['handler'](req)
+                        if isinstance(result, tuple) and len(result) == 2:
+                            status_code, body = result
+                            if isinstance(body, dict):
+                                self._send_json(int(status_code), body)
+                            else:
+                                self._send_json(int(status_code), {'status': 'success', 'data': body})
+                        elif isinstance(result, dict):
+                            self._redirect_or_json_success(query_params, result if 'status' in result else {
+                                'status': 'success', 'data': result
+                            })
+                        else:
+                            self._redirect_or_json_success(query_params, {
+                                'status': 'success', 'data': result
+                            })
+                        return
+                except Exception as e:
+                    logger.exception(f"Plugin web route error: {e}")
+                    self._send_json(500, {'status': 'error', 'message': str(e)})
+                    return
 
             self._send_json(404, {'status': 'error', 'message': f'Unknown API path: {api_path}'})
         except Exception as e:
@@ -512,9 +617,12 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     "finished": False
                 }
 
-                from modules.launch import Get_Run_Script
-                launch_args, game_dir = Get_Run_Script(version)
-                process = subprocess.Popen(launch_args, cwd=game_dir, **hidden_process_kwargs())
+                try:
+                    process = self._launch_game_with_plugin_hooks(version)
+                except PermissionError as error:
+                    BLglobals.launch_status.update({"finished": True, "status": "启动已取消", "detail": str(error)})
+                    self._send_json(409, {'status': 'error', 'message': f'启动被插件取消: {error}'})
+                    return
 
                 # 将实例添加到运行列表
                 instance_id = str(uuid.uuid4())

@@ -80,6 +80,8 @@ def activate_python_plugin(manifest: dict, api: PluginAPI) -> Optional[ModuleTyp
     module = None
     if entry:
         module = load_python_module(plugin_id, plugin_dir, entry)
+        if module is None:
+            raise RuntimeError(f"Python 入口加载失败: {entry}")
 
     registry = get_registry()
     if module is not None:
@@ -91,6 +93,7 @@ def activate_python_plugin(manifest: dict, api: PluginAPI) -> Optional[ModuleTyp
                 log(f"[PluginHost] register() 完成: {plugin_id}")
             except Exception as e:
                 log(f"[PluginHost] register() 失败 {plugin_id}: {e}")
+                raise RuntimeError(f"插件 register() 失败: {e}") from e
         else:
             log(f"[PluginHost] 插件 {plugin_id} 无 register()，仅使用 manifest hooks")
 
@@ -136,6 +139,41 @@ def activate_python_plugin(manifest: dict, api: PluginAPI) -> Optional[ModuleTyp
 
     if disable_fn is not None and module is not None:
         setattr(module, "_bloret_on_disable", disable_fn)
+
+    # 解析声明式 toolbar 的 python:action 回调（直接改 registry 内条目）
+    try:
+        with registry._lock:
+            toolbar_list = registry.toolbar
+            for item in toolbar_list:
+                if item.get("plugin_id") != plugin_id:
+                    continue
+                if item.get("callback"):
+                    continue
+                action = str(item.get("action") or "")
+                if not action.startswith("python:"):
+                    continue
+                ref = action[len("python:") :].strip()
+                fn = _resolve_attr(module, plugin_dir, ref) if module else None
+                if not callable(fn):
+                    log(f"[PluginHost] 无法解析 toolbar python action: {action} @ {plugin_id}")
+                    continue
+
+                def _make_tb(f, a=api):
+                    def _cb(*args, **kwargs):
+                        try:
+                            return f(a, *args, **kwargs)
+                        except TypeError:
+                            try:
+                                return f(*args, **kwargs)
+                            except TypeError:
+                                return f()
+
+                    return _cb
+
+                item["callback"] = _make_tb(fn)
+                log(f"[PluginHost] 已绑定 toolbar python action: {action} @ {plugin_id}")
+    except Exception as e:
+        log(f"[PluginHost] 解析 toolbar python action 失败 {plugin_id}: {e}")
 
     return module
 

@@ -454,10 +454,9 @@ class Backend(QObject):
             print("Launch request ignored: another launch is already in progress")
             return
 
-        # 插件钩子：launch.pre 可取消启动
+        # 插件钩子：launch.pre 可取消启动（registry + bus 统一派发）
         try:
             from modules.plugin_host.registry import get_registry
-            from modules.plugin_host.event_bus import get_event_bus
             cancel_reason = get_registry().launch_pre_cancel(version, {"skip_completion": skip_completion})
             if cancel_reason:
                 print(f"[PluginHost] 启动被插件取消: {cancel_reason}")
@@ -467,7 +466,6 @@ class Backend(QObject):
                 except Exception:
                     pass
                 return
-            get_event_bus().emit("launch.pre", version, {"skip_completion": skip_completion})
         except Exception as e:
             print(f"[PluginHost] launch.pre 失败: {e}")
 
@@ -603,10 +601,8 @@ class Backend(QObject):
                     "pid": proc.pid, "suspended": False
                 }
                 try:
-                    from modules.plugin_host.registry import get_registry
-                    from modules.plugin_host.event_bus import get_event_bus
-                    get_registry().call_hooks("launch.post", version, proc.pid)
-                    get_event_bus().emit("launch.post", version, proc.pid)
+                    from modules.plugin_host.dispatch import invoke_hook
+                    invoke_hook("launch.post", version, proc.pid)
                     print(f"[PluginHost] launch.post version={version} pid={proc.pid}")
                 except Exception as _post_err:
                     print(f"[PluginHost] launch.post 失败: {_post_err}")
@@ -657,6 +653,22 @@ class Backend(QObject):
                         # End play time tracking
                         self._end_play_time_session(instance_id)
                         exited_before_window = not evt.is_set()
+                        crashed = bool(p.returncode not in (0, None))
+                        try:
+                            from modules.plugin_host.dispatch import invoke_hook
+                            invoke_hook(
+                                "launch.exit",
+                                ver,
+                                p.pid,
+                                p.returncode,
+                                crashed,
+                            )
+                            print(
+                                f"[PluginHost] launch.exit version={ver} pid={p.pid} "
+                                f"code={p.returncode} crashed={crashed}"
+                            )
+                        except Exception as _exit_err:
+                            print(f"[PluginHost] launch.exit 失败: {_exit_err}")
                         if exited_before_window:
                             evt.set()
                             emit_progress(
@@ -3541,12 +3553,19 @@ class Backend(QObject):
         from modules.Bloret_PassPort import Bloret_PassPort_Account_logout
         # We need to pass the main window or a mock for homeInterface
         config_data = cfg.read()
+        prev_user = config_data.get("Bloret_PassPort_UserName") or ""
         config_data['Bloret_PassPort_Login'] = False
         config_data['Bloret_PassPort_UserName'] = ""
         config_data['Bloret_PassPort_PassWord'] = ""
         with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=4, ensure_ascii=False)
         print("Logged out from Bloret PassPort")
+        try:
+            from modules.plugin_host.dispatch import invoke_hook
+            invoke_hook("account.logout", {"username": prev_user, "source": "passport"})
+            print(f"[PluginHost] account.logout user={prev_user}")
+        except Exception as e:
+            print(f"[PluginHost] account.logout 失败: {e}")
         # 发出信号以刷新 UI（不传递参数，让 QML 主动查询）
         self.minecraftAccountsChanged.emit([])
 
@@ -5072,6 +5091,13 @@ class LauncherV2(RinUIWindow):
         self._force_quit = True
         if self.tray_icon:
             self.tray_icon.hide()
+        try:
+            host = getattr(self, "plugin_host", None)
+            if host is not None and hasattr(host, "shutdown"):
+                print("[PluginHost] quit_app -> shutdown")
+                host.shutdown()
+        except Exception as e:
+            print(f"[PluginHost] quit_app shutdown 失败: {e}")
         QApplication.quit()
 
     def restart_app(self):
@@ -5111,6 +5137,13 @@ class LauncherV2(RinUIWindow):
         self._force_quit = True
         if self.tray_icon:
             self.tray_icon.hide()
+        try:
+            host = getattr(self, "plugin_host", None)
+            if host is not None and hasattr(host, "shutdown"):
+                print("[PluginHost] closeEvent -> shutdown")
+                host.shutdown()
+        except Exception as e:
+            print(f"[PluginHost] closeEvent shutdown 失败: {e}")
         try:
             super().closeEvent(event)
         except Exception:

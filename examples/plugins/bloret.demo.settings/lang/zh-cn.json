@@ -1,0 +1,10 @@
+{
+  "texts": {
+    "插件设置示例": "插件设置示例",
+    "此页面由 bloret.demo.settings 通过 contributes.settings 注入。": "此页面由 bloret.demo.settings 通过 contributes.settings 注入。",
+    "示例开关": "示例开关",
+    "当前状态": "当前状态",
+    "开启": "开启",
+    "关闭": "关闭"
+  }
+}

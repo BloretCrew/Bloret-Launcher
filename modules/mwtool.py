@@ -583,8 +583,8 @@ class MinecraftWindowTool(QWidget):
                     def _handler():
                         log.info(f"[PluginHost] 工具栏按钮点击 id={bid} plugin={pid}")
                         try:
-                            from modules.plugin_host.event_bus import get_event_bus
-                            get_event_bus().emit("toolbar.action", bid, self.version, pid)
+                            from modules.plugin_host.dispatch import invoke_hook
+                            invoke_hook("toolbar.action", bid, self.version, pid)
                         except Exception as e:
                             log.warning(f"[PluginHost] toolbar.action 事件失败: {e}")
                         if callable(cb):

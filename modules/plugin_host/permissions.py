@@ -10,6 +10,8 @@ ALL_PERMISSIONS: Set[str] = {
     "ui.theme",
     "ui.settings",
     "ui.toolbar",
+    "ui.home",
+    "ui.tools",
     "launch.hooks",
     "download.hooks",
     "agent.bloriko",
@@ -28,6 +30,8 @@ DEFAULT_SAFE_PERMISSIONS: Set[str] = {
     "ui.theme",
     "ui.settings",
     "ui.toolbar",
+    "ui.home",
+    "ui.tools",
     "config.read",
 }
 
@@ -50,6 +54,8 @@ PERMISSION_LABELS = {
     "ui.theme": "修改主题",
     "ui.settings": "添加设置项",
     "ui.toolbar": "扩展 Minecraft 小工具栏",
+    "ui.home": "扩展主页卡片",
+    "ui.tools": "扩展小工具页卡片",
     "launch.hooks": "拦截/修改游戏启动",
     "download.hooks": "拦截下载/安装流程",
     "agent.bloriko": "扩展络可 Agent",

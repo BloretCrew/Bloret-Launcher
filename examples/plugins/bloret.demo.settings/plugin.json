@@ -1,0 +1,24 @@
+{
+  "id": "bloret.demo.settings",
+  "name": "Demo Settings Page",
+  "version": "1.0.0",
+  "author": "Bloret",
+  "description": "在设置中心添加插件设置分类（ui.settings）",
+  "permissions": ["ui.settings"],
+  "contributes": {
+    "settings": [
+      {
+        "id": "demo_settings",
+        "title": "插件设置示例",
+        "qml": "ui/SettingsPage.qml",
+        "icon": "ic_fluent_puzzle_piece_20_regular"
+      }
+    ],
+    "i18n": [
+      {
+        "locale": "zh-cn",
+        "path": "lang/zh-cn.json"
+      }
+    ]
+  }
+}

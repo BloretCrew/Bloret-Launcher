@@ -1,5 +1,5 @@
 {
-  "spec_version": "1.0.0",
+  "spec_version": "1.1.0",
   "manifest_names": ["plugin.json", "cwplugin.json"],
   "entry_candidates": {
     "python": ["main.py", "plugin.py"],
@@ -11,6 +11,8 @@
     "ui.theme": {"risk": "safe", "label": "修改主题"},
     "ui.settings": {"risk": "safe", "label": "添加设置项"},
     "ui.toolbar": {"risk": "safe", "label": "扩展 Minecraft 小工具栏"},
+    "ui.home": {"risk": "safe", "label": "扩展主页卡片"},
+    "ui.tools": {"risk": "safe", "label": "扩展小工具页卡片"},
     "launch.hooks": {"risk": "high", "label": "拦截或修改游戏启动"},
     "download.hooks": {"risk": "high", "label": "拦截下载或安装流程"},
     "agent.bloriko": {"risk": "high", "label": "扩展络可 Agent"},
@@ -54,6 +56,8 @@
     "theme": "ui.theme",
     "settings": "ui.settings",
     "toolbar": "ui.toolbar",
+    "home": "ui.home",
+    "tools": "ui.tools",
     "prompts.bloriko": "agent.bloriko",
     "prompts.blrpe": "agent.blrpe",
     "agent_tools.bloriko": "agent.bloriko",

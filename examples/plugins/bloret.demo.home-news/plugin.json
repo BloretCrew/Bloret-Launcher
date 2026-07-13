@@ -1,0 +1,19 @@
+{
+  "id": "bloret.demo.home-news",
+  "name": "Demo Home News",
+  "version": "1.0.0",
+  "author": "Bloret",
+  "description": "在主页注入 Minecraft 新闻卡片示例（ui.home）",
+  "permissions": ["ui.home", "net.http"],
+  "contributes": {
+    "home": [
+      {
+        "id": "mc_news_card",
+        "title": "Minecraft 新闻",
+        "qml": "ui/HomeCard.qml",
+        "icon": "ic_fluent_news_20_regular",
+        "order": 50
+      }
+    ]
+  }
+}

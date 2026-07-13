@@ -7,6 +7,38 @@ FluentPage {
     id: toolsPage
     title: (Backend ? Backend.tr("小工具") : "小工具")
 
+    property var pluginToolCards: []
+
+    function loadPluginToolCards() {
+        pluginToolCards = []
+        if (typeof PluginHost === "undefined" || !PluginHost) {
+            console.log("[Tools] PluginHost 不可用")
+            return
+        }
+        try {
+            var list = JSON.parse(PluginHost.getToolsContributionsJson() || "[]")
+            console.log("[Tools] plugin tool cards:", list.length)
+            pluginToolCards = list
+        } catch (e) {
+            console.log("[Tools] loadPluginToolCards error:", e)
+            pluginToolCards = []
+        }
+    }
+
+    Component.onCompleted: loadPluginToolCards()
+
+    Connections {
+        target: (typeof PluginHost !== "undefined") ? PluginHost : null
+        enabled: (typeof PluginHost !== "undefined") && PluginHost !== null
+        function onToolsContributionsChanged() {
+            console.log("[Tools] toolsContributionsChanged")
+            loadPluginToolCards()
+        }
+        function onPluginsChanged() {
+            loadPluginToolCards()
+        }
+    }
+
     // Easytier status handler (not displayed in this page, but kept for backend communication)
     Connections {
         target: Backend
@@ -51,6 +83,35 @@ FluentPage {
             text: (Backend ? Backend.tr("日志已成功清空") : "日志已成功清空")
             severity: Severity.Success
             visible: false
+        }
+
+        // --- 插件小工具卡片 ---
+        Label {
+            visible: pluginToolCards && pluginToolCards.length > 0
+            font.pixelSize: 20
+            font.weight: Font.DemiBold
+            text: (Backend ? Backend.tr("插件工具") : "插件工具")
+            Layout.topMargin: 10
+            color: Theme.currentTheme.colors.textColor
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 12
+            visible: pluginToolCards && pluginToolCards.length > 0
+            Repeater {
+                model: pluginToolCards
+                delegate: Loader {
+                    Layout.fillWidth: true
+                    source: modelData.qml || ""
+                    onStatusChanged: {
+                        if (status === Loader.Error)
+                            console.log("[Tools] plugin card error:", modelData.id, modelData.qml)
+                        else if (status === Loader.Ready)
+                            console.log("[Tools] plugin card ready:", modelData.id)
+                    }
+                }
+            }
         }
 
         // --- Resource Pack Editor Section ---

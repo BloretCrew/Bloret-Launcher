@@ -76,6 +76,47 @@ def apply_declarative(manifest: dict, api: PluginAPI) -> None:
                     "plugin_id": plugin_id,
                     "title": item.get("title") or manifest.get("name") or plugin_id,
                     "qml": resolve_path(plugin_dir, qml),
+                    "icon": item.get("icon") or "ic_fluent_puzzle_piece_20_regular",
+                }
+            )
+
+    # home cards
+    home_items = contributes.get("home") or []
+    if isinstance(home_items, dict):
+        home_items = [home_items]
+    if home_items and has_permission(perms, "ui.home"):
+        for item in home_items:
+            if not isinstance(item, dict):
+                continue
+            qml = item.get("qml") or item.get("page") or ""
+            registry.add_home(
+                {
+                    "id": item.get("id") or f"{plugin_id}-home",
+                    "plugin_id": plugin_id,
+                    "title": item.get("title") or manifest.get("name") or plugin_id,
+                    "qml": resolve_path(plugin_dir, qml),
+                    "icon": item.get("icon") or "ic_fluent_news_20_regular",
+                    "order": int(item.get("order", 100)),
+                }
+            )
+
+    # tools cards
+    tools_items = contributes.get("tools") or []
+    if isinstance(tools_items, dict):
+        tools_items = [tools_items]
+    if tools_items and has_permission(perms, "ui.tools"):
+        for item in tools_items:
+            if not isinstance(item, dict):
+                continue
+            qml = item.get("qml") or item.get("page") or ""
+            registry.add_tools(
+                {
+                    "id": item.get("id") or f"{plugin_id}-tools",
+                    "plugin_id": plugin_id,
+                    "title": item.get("title") or manifest.get("name") or plugin_id,
+                    "qml": resolve_path(plugin_dir, qml),
+                    "icon": item.get("icon") or "ic_fluent_wrench_20_regular",
+                    "order": int(item.get("order", 100)),
                 }
             )
 

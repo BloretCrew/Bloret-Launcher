@@ -14,6 +14,24 @@ FluentPage {
     property var launchItems: []
     property string currentVersion: ""
     property string showAccountOnHome: "compact"
+    property var pluginHomeCards: []
+
+    function loadPluginHomeCards() {
+        pluginHomeCards = []
+        if (typeof PluginHost === "undefined" || !PluginHost) {
+            console.log("[Home] PluginHost 不可用，跳过主页插件卡片")
+            return
+        }
+        try {
+            var raw = PluginHost.getHomeContributionsJson()
+            var list = JSON.parse(raw || "[]")
+            console.log("[Home] plugin home cards:", list.length)
+            pluginHomeCards = list
+        } catch (e) {
+            console.log("[Home] loadPluginHomeCards error:", e)
+            pluginHomeCards = []
+        }
+    }
 
     Component.onCompleted: {
         // 从后端获取活动信息（从 API https://launcher.bloret.net/api/info 获取）
@@ -39,6 +57,7 @@ FluentPage {
         showAccountOnHome = Backend.getShowAccountOnHome()
         
         Backend.refreshServerInfo()
+        loadPluginHomeCards()
     }
 
     Connections {
@@ -50,6 +69,19 @@ FluentPage {
             if (data && Object.keys(data).length > 0) {
                 activityInfo = data
             }
+        }
+    }
+
+    Connections {
+        target: (typeof PluginHost !== "undefined") ? PluginHost : null
+        enabled: (typeof PluginHost !== "undefined") && PluginHost !== null
+        function onHomeContributionsChanged() {
+            console.log("[Home] PluginHost.homeContributionsChanged")
+            loadPluginHomeCards()
+        }
+        function onPluginsChanged() {
+            console.log("[Home] PluginHost.pluginsChanged -> reload home cards")
+            loadPluginHomeCards()
         }
     }
 
@@ -163,6 +195,37 @@ FluentPage {
                     text: (Backend ? Backend.tr("前往") : "前往")
                     highlighted: true
                     onClicked: Backend.openUrl(activityInfo.link)
+                }
+            }
+        }
+
+        // 插件主页卡片插槽（contributes.home / ui.home）
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 12
+            visible: pluginHomeCards && pluginHomeCards.length > 0
+
+            Repeater {
+                model: pluginHomeCards
+                delegate: Loader {
+                    Layout.fillWidth: true
+                    // 高度由子项决定
+                    asynchronous: false
+                    source: modelData.qml || ""
+                    onStatusChanged: {
+                        if (status === Loader.Error)
+                            console.log("[Home] plugin card load error:", modelData.id, modelData.qml, sourceComponent)
+                        else if (status === Loader.Ready)
+                            console.log("[Home] plugin card ready:", modelData.id, modelData.title)
+                    }
+                    onLoaded: {
+                        if (item) {
+                            if (item.pluginId === undefined && modelData.plugin_id)
+                                try { item.pluginId = modelData.plugin_id } catch (e) {}
+                            if (item.cardTitle === undefined && modelData.title)
+                                try { item.cardTitle = modelData.title } catch (e2) {}
+                        }
+                    }
                 }
             }
         }

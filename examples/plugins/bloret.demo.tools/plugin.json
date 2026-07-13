@@ -1,0 +1,19 @@
+{
+  "id": "bloret.demo.tools",
+  "name": "Demo Tools Card",
+  "version": "1.0.0",
+  "author": "Bloret",
+  "description": "在小工具页注入插件卡片（ui.tools）",
+  "permissions": ["ui.tools"],
+  "contributes": {
+    "tools": [
+      {
+        "id": "demo_tool",
+        "title": "插件工具示例",
+        "qml": "ui/ToolCard.qml",
+        "icon": "ic_fluent_wrench_20_regular",
+        "order": 10
+      }
+    ]
+  }
+}

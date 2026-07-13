@@ -279,6 +279,30 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
                 parent_window.config['MinecraftAccount'] = new_account_data
                 log("已同步更新 MainWindow 内存配置")
             log(f"成功同步 {len(accounts)} 个账户到 config.json")
+            try:
+                from modules.plugin_host.dispatch import invoke_hook
+                invoke_hook(
+                    "passport.sync",
+                    {
+                        "username": username,
+                        "account_count": len(accounts),
+                        "source": "passport",
+                    },
+                )
+                # 仅在 Minecraft 账户从未登录变为已登录时广播生命周期转换。
+                if accounts and not bool(old_minecraft_account.get("logined")):
+                    invoke_hook(
+                        "account.login",
+                        {
+                            "username": username,
+                            "account_count": len(accounts),
+                            "source": "passport",
+                        },
+                    )
+                    log(f"[PluginHost] account.login user={username} n={len(accounts)}")
+                log(f"[PluginHost] passport.sync user={username} n={len(accounts)}")
+            except Exception as plugin_err:
+                log(f"[PluginHost] passport.sync 失败: {plugin_err}")
 
             return True
         else:

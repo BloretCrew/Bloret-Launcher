@@ -89,6 +89,10 @@ def normalize_manifest(plugin_dir: str, folder_name: str, raw: Optional[dict] = 
             inferred.add("ui.settings")
         if contributes.get("toolbar"):
             inferred.add("ui.toolbar")
+        if contributes.get("home"):
+            inferred.add("ui.home")
+        if contributes.get("tools"):
+            inferred.add("ui.tools")
         if contributes.get("agent_tools") or contributes.get("prompts"):
             tools = contributes.get("agent_tools") or {}
             if isinstance(tools, dict):
@@ -109,13 +113,14 @@ def normalize_manifest(plugin_dir: str, folder_name: str, raw: Optional[dict] = 
 
     icon = str(raw.get("icon") or "")
     icon_path = ""
-    for cand in (
-        os.path.join(plugin_dir, icon) if icon else "",
-        os.path.join(plugin_dir, "icon.png"),
-        os.path.join(plugin_dir, "icon.jpg"),
-        os.path.join(plugin_dir, "logo.png"),
-    ):
-        if cand and os.path.isfile(cand):
+    icon_candidates = ([icon] if icon else []) + ["icon.png", "icon.jpg", "logo.png"]
+    for relative_icon in icon_candidates:
+        try:
+            cand = resolve_path(plugin_dir, relative_icon)
+        except ValueError as e:
+            log(f"[PluginHost] 忽略越界图标路径 {relative_icon}: {e}")
+            continue
+        if os.path.isfile(cand):
             icon_path = cand
             break
 
@@ -140,8 +145,17 @@ def normalize_manifest(plugin_dir: str, folder_name: str, raw: Optional[dict] = 
 
 
 def resolve_path(plugin_dir: str, relative: str) -> str:
+    """解析插件包内路径，并拒绝绝对路径、.. 与符号链接逃逸。"""
     if not relative:
         return ""
-    if os.path.isabs(relative):
-        return relative
-    return os.path.normpath(os.path.join(plugin_dir, relative))
+    if not isinstance(relative, str) or os.path.isabs(relative):
+        raise ValueError("插件资源路径必须是包内相对路径")
+    root = os.path.realpath(plugin_dir)
+    target = os.path.realpath(os.path.join(root, relative))
+    try:
+        common = os.path.commonpath([root, target])
+    except ValueError as exc:
+        raise ValueError("插件资源路径越界") from exc
+    if os.path.normcase(common) != os.path.normcase(root):
+        raise ValueError(f"插件资源路径越界: {relative}")
+    return target

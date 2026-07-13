@@ -68,24 +68,39 @@ class PluginAPI:
 
     def set_config(self, key: str, value: Any) -> None:
         self.require("config.write")
+        from modules.plugin_host.dispatch import invoke_hook
         from modules.plugin_host.state import _write_config
 
         data = cfg.read() or {}
         data[key] = value
         _write_config(data)
-        self._bus.emit("config.changed", key, value, plugin_id=self.plugin_id)
+        invoke_hook("config.changed", key, value)
         self.log(f"set_config {key}")
 
     # ── 事件 ──────────────────────────────────────────────
 
+    def _require_event_permission(self, event: str) -> None:
+        """标准生命周期事件沿用 hook 权限，避免 event bus 绕过权限检查。"""
+        from modules.plugin_host.hooks import HOOK_PERMISSIONS
+
+        required = HOOK_PERMISSIONS.get(event)
+        if required:
+            self.require(required)
+
     def emit(self, event: str, *args, **kwargs) -> list:
+        from modules.plugin_host.hooks import HOOK_PERMISSIONS
+
+        if event in HOOK_PERMISSIONS:
+            raise PermissionError(f"标准生命周期事件只能由启动器派发: {event}")
         self.log(f"emit {event}")
         return self._bus.emit(event, *args, **kwargs)
 
     def on(self, event: str, callback: Callable) -> Callable:
+        self._require_event_permission(event)
         return self._bus.on(event, callback, plugin_id=self.plugin_id)
 
     def once(self, event: str, callback: Callable) -> Callable:
+        self._require_event_permission(event)
         return self._bus.once(event, callback, plugin_id=self.plugin_id)
 
     # ── 钩子与贡献 ────────────────────────────────────────
@@ -99,11 +114,14 @@ class PluginAPI:
         self._registry.add_hook(name, self.plugin_id, fn)
         self.log(f"register_hook {name}")
 
+    def _resolve_plugin_resource(self, relative_path: str) -> str:
+        from modules.plugin_host.manifest import resolve_path
+
+        return resolve_path(self.plugin_dir, relative_path)
+
     def register_nav(self, nav_id: str, title: str, page: str, icon: str = "", position: str = "top") -> None:
         self.require("ui.nav")
-        page_path = page
-        if page and not os.path.isabs(page):
-            page_path = os.path.join(self.plugin_dir, page)
+        page_path = self._resolve_plugin_resource(page)
         item = {
             "id": nav_id,
             "plugin_id": self.plugin_id,
@@ -116,7 +134,7 @@ class PluginAPI:
 
     def register_settings(self, settings_id: str, title: str, qml: str) -> None:
         self.require("ui.settings")
-        qml_path = qml if os.path.isabs(qml) else os.path.join(self.plugin_dir, qml)
+        qml_path = self._resolve_plugin_resource(qml)
         self._registry.add_settings(
             {
                 "id": settings_id,
@@ -128,9 +146,7 @@ class PluginAPI:
 
     def register_toolbar(self, button_id: str, label: str, callback: Callable, icon: str = "") -> None:
         self.require("ui.toolbar")
-        icon_path = ""
-        if icon:
-            icon_path = icon if os.path.isabs(icon) else os.path.join(self.plugin_dir, icon)
+        icon_path = self._resolve_plugin_resource(icon) if icon else ""
         self._registry.add_toolbar(
             {
                 "id": button_id,
@@ -141,13 +157,61 @@ class PluginAPI:
             }
         )
 
+    def register_home_card(
+        self,
+        card_id: str,
+        title: str,
+        qml: str,
+        icon: str = "",
+        order: int = 100,
+    ) -> None:
+        """在主页注入 QML 卡片（需 ui.home）。"""
+        self.require("ui.home")
+        qml_path = self._resolve_plugin_resource(qml)
+        self._registry.add_home(
+            {
+                "id": card_id,
+                "plugin_id": self.plugin_id,
+                "title": title,
+                "qml": qml_path,
+                "icon": icon or "ic_fluent_news_20_regular",
+                "order": int(order) if order is not None else 100,
+            }
+        )
+        self.log(f"register_home_card {card_id}")
+
+    def register_tools_card(
+        self,
+        card_id: str,
+        title: str,
+        qml: str,
+        icon: str = "",
+        order: int = 100,
+    ) -> None:
+        """在小工具页注入卡片（需 ui.tools）。"""
+        self.require("ui.tools")
+        qml_path = self._resolve_plugin_resource(qml)
+        self._registry.add_tools(
+            {
+                "id": card_id,
+                "plugin_id": self.plugin_id,
+                "title": title,
+                "qml": qml_path,
+                "icon": icon or "ic_fluent_wrench_20_regular",
+                "order": int(order) if order is not None else 100,
+            }
+        )
+        self.log(f"register_tools_card {card_id}")
+
     def apply_theme_override(self, theme: dict) -> None:
         self.require("ui.theme")
         if not isinstance(theme, dict):
             return
+        from modules.plugin_host.dispatch import invoke_hook
+
         self._registry.set_theme(self.plugin_id, theme)
         plugin_state.set_active_theme_plugin(self.plugin_id)
-        self._bus.emit("theme.changed", self.plugin_id, theme)
+        invoke_hook("theme.changed", self.plugin_id, theme)
         self.log(f"apply_theme_override name={theme.get('name')}")
 
     def register_agent_tool(
@@ -246,6 +310,161 @@ class PluginAPI:
         t = threading.Thread(target=runner, daemon=True, name=f"plugin-{self.plugin_id}")
         t.start()
         return t
+
+    # ── 文件系统（限 datapath / PluginData）────────────────
+
+    def _resolve_datapath_target(self, relative_path: str, *, allow_plugin_data_only: bool = False) -> str:
+        """将相对路径解析到 datapath 下，并防止路径穿越。"""
+        self.require("fs.datapath")
+        rel = (relative_path or "").replace("\\", "/").lstrip("/")
+        if not rel or ".." in rel.split("/"):
+            raise PermissionError("非法路径")
+        root = self.datapath
+        if not root:
+            raise PermissionError("datapath 不可用")
+        if allow_plugin_data_only:
+            base = os.path.join(root, "PluginData", self.plugin_id)
+        else:
+            base = root
+        target = os.path.normpath(os.path.join(base, rel))
+        base_real = os.path.realpath(base)
+        target_real = os.path.realpath(target)
+        try:
+            common = os.path.commonpath([base_real, target_real])
+        except ValueError:
+            # Windows 不同盘符等情况
+            raise PermissionError("路径越界，拒绝访问")
+        if os.path.normcase(common) != os.path.normcase(base_real):
+            raise PermissionError("路径越界，拒绝访问")
+        return target_real
+
+    def read_data_file(self, relative_path: str, encoding: str = "utf-8") -> str:
+        """读取 datapath 下的文件（需 fs.datapath）。"""
+        path = self._resolve_datapath_target(relative_path)
+        self.log(f"read_data_file {relative_path}")
+        with open(path, "r", encoding=encoding) as f:
+            return f.read()
+
+    def write_data_file(self, relative_path: str, content: str, encoding: str = "utf-8") -> None:
+        """写入 datapath 下的文件（需 fs.datapath）。建议优先写 PluginData/{id}/。"""
+        path = self._resolve_datapath_target(relative_path)
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        self.log(f"write_data_file {relative_path} bytes={len(content or '')}")
+        with open(path, "w", encoding=encoding) as f:
+            f.write(content if content is not None else "")
+
+    def read_plugin_data_file(self, relative_path: str, encoding: str = "utf-8") -> str:
+        """读取本插件 PluginData 目录下的文件（需 fs.datapath）。"""
+        path = self._resolve_datapath_target(relative_path, allow_plugin_data_only=True)
+        self.log(f"read_plugin_data_file {relative_path}")
+        with open(path, "r", encoding=encoding) as f:
+            return f.read()
+
+    def write_plugin_data_file(self, relative_path: str, content: str, encoding: str = "utf-8") -> None:
+        """写入本插件 PluginData 目录（需 fs.datapath）。"""
+        path = self._resolve_datapath_target(relative_path, allow_plugin_data_only=True)
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        self.log(f"write_plugin_data_file {relative_path}")
+        with open(path, "w", encoding=encoding) as f:
+            f.write(content if content is not None else "")
+
+    # ── 进程 ──────────────────────────────────────────────
+
+    def exec_process(
+        self,
+        args: List[str],
+        cwd: Optional[str] = None,
+        timeout: Optional[float] = 60,
+        env: Optional[dict] = None,
+    ) -> dict:
+        """
+        执行外部进程（需 process.exec）。
+        cwd 必须在 datapath 或插件目录下；默认 timeout 60s。
+        返回 {returncode, stdout, stderr}。
+        """
+        self.require("process.exec")
+        import subprocess
+
+        if not args or not isinstance(args, (list, tuple)):
+            raise ValueError("args 必须为非空列表")
+        cmd = [str(x) for x in args]
+        workdir = cwd or self.plugin_dir
+        workdir = os.path.realpath(workdir)
+        allowed_roots = []
+        if self.datapath:
+            allowed_roots.append(os.path.realpath(self.datapath))
+        if self.plugin_dir:
+            allowed_roots.append(os.path.realpath(self.plugin_dir))
+        if not any(workdir == r or workdir.startswith(r + os.sep) for r in allowed_roots):
+            raise PermissionError(f"cwd 不在允许范围内: {workdir}")
+        self.log(f"exec_process cmd={cmd[:3]}... cwd={workdir} timeout={timeout}")
+        try:
+            completed = subprocess.run(
+                cmd,
+                cwd=workdir,
+                timeout=timeout,
+                capture_output=True,
+                text=True,
+                env={**os.environ, **{str(k): str(v) for k, v in (env or {}).items()}} if env else None,
+                shell=False,
+            )
+            return {
+                "returncode": completed.returncode,
+                "stdout": completed.stdout or "",
+                "stderr": completed.stderr or "",
+            }
+        except subprocess.TimeoutExpired as e:
+            self.log(f"exec_process 超时: {e}")
+            return {"returncode": -1, "stdout": e.stdout or "", "stderr": f"timeout: {e}"}
+        except Exception as e:
+            self.log(f"exec_process 失败: {e}")
+            return {"returncode": -1, "stdout": "", "stderr": str(e)}
+
+    def register_web_route(
+        self,
+        method: str,
+        path: str,
+        handler: Callable,
+        auth: str = "oauth",
+    ) -> None:
+        """
+        注册本地 Web 路由（需 web.routes）。
+        最终路径强制为 /api/v1/plugin/{plugin_id}/...
+        handler(request_dict) -> dict|str|tuple
+        """
+        self.require("web.routes")
+        method = (method or "GET").upper()
+        if method not in ("GET", "ANY", "*"):
+            raise ValueError("当前本地 Web 服务器仅支持 GET 路由")
+        raw = (path or "").strip()
+        if not raw.startswith("/"):
+            raw = "/" + raw
+        if "?" in raw or "#" in raw or ".." in raw.split("/"):
+            raise ValueError("非法 Web 路由路径")
+        # 去掉重复前缀
+        prefix = f"/api/v1/plugin/{self.plugin_id}"
+        if raw.startswith(prefix):
+            full = raw
+        else:
+            full = prefix + (raw if raw.startswith("/") else "/" + raw)
+        # 当前所有 /api/v1 路由均在入口统一 OAuth 校验；不接受伪 public 声明。
+        auth_mode = (auth or "oauth").lower()
+        if auth_mode != "oauth":
+            self.log(f"register_web_route auth={auth_mode} 被规范化为 oauth")
+            auth_mode = "oauth"
+        item = {
+            "plugin_id": self.plugin_id,
+            "method": method,
+            "path": full,
+            "handler": handler,
+            "auth": auth_mode,
+        }
+        self._registry.add_web_route(item)
+        self.log(f"register_web_route {method} {full}")
 
     # ── 启动器能力封装 ────────────────────────────────────
 

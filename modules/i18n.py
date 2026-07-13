@@ -31,8 +31,7 @@ def _read_language_file(language):
     return lang
 
 
-def load_language(language=None):
-    # 如果没有指定语言，则读取配置文件获取语言设置
+def _current_language_code(language=None):
     if language is None:
         try:
             with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
@@ -41,13 +40,100 @@ def load_language(language=None):
         except (OSError, json.JSONDecodeError) as error:
             log(f"读取语言配置失败，回退到 zh-cn: {error}")
             language = 'zh-cn'
-
     if not isinstance(language, str):
         language = 'zh-cn'
-    language = language.strip() or 'zh-cn'
+    return language.strip() or 'zh-cn'
+
+
+def _deep_merge_dict(base: dict, overlay: dict) -> dict:
+    """递归合并 overlay 到 base（overlay 优先）。"""
+    if not isinstance(base, dict):
+        base = {}
+    result = dict(base)
+    for key, value in (overlay or {}).items():
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = _deep_merge_dict(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def merge_plugin_i18n(language=None, base_data=None):
+    """
+    将插件 contributes.i18n 合并进当前语言数据。
+    插件 JSON 可为完整 lang 结构 {texts: {...}} 或仅 texts 字典。
+    """
+    global lang_data, _active_language
+    target_lang = _current_language_code(language if language is not None else _active_language)
+    if base_data is None:
+        # 每次从启动器原始语言文件重新开始，避免禁用/卸载插件后旧翻译残留。
+        base_data = load_language(target_lang)
+    merged = dict(base_data)
+    if "texts" not in merged or not isinstance(merged.get("texts"), dict):
+        merged["texts"] = dict(merged.get("texts") or {})
 
     try:
-        return _read_language_file(language)
+        from modules.plugin_host.registry import get_registry
+
+        entries = get_registry().get_i18n()
+    except Exception as e:
+        log(f"[i18n] 读取插件 i18n 失败: {e}")
+        entries = []
+
+    def _locale_matches(locale: str, target: str) -> bool:
+        loc = (locale or "zh-cn").lower()
+        tgt = (target or "zh-cn").lower()
+        if loc in ("*", "default", "all"):
+            return True
+        if loc == tgt:
+            return True
+        # en 匹配 en-GB / en-US
+        if "-" not in loc and tgt.startswith(loc + "-"):
+            return True
+        return False
+
+    # 通配 < 语言前缀 < 精确区域（后写入覆盖）。
+    def _locale_priority(entry: dict) -> int:
+        loc = str(entry.get("locale") or "zh-cn").lower()
+        tgt = target_lang.lower()
+        if loc in ("*", "default", "all"):
+            return 0
+        if loc == tgt:
+            return 2
+        return 1
+
+    ordered = sorted(entries, key=_locale_priority)
+    applied = 0
+    for entry in ordered:
+        locale = str(entry.get("locale") or "zh-cn")
+        if not _locale_matches(locale, target_lang):
+            continue
+        data = entry.get("data")
+        if not isinstance(data, dict):
+            continue
+        # 完整语言文件 or 纯 texts
+        if "texts" in data and isinstance(data["texts"], dict):
+            overlay = data
+        else:
+            overlay = {"texts": data}
+        merged = _deep_merge_dict(merged, overlay)
+        applied += 1
+        log(f"[i18n] 合并插件语言 plugin={entry.get('plugin_id')} locale={locale} keys={len(overlay.get('texts') or {})}")
+
+    lang_data = merged
+    _active_language = target_lang
+    if applied:
+        log(f"[i18n] 插件语言合并完成 language={target_lang} plugins={applied}")
+    return lang_data
+
+
+def load_language(language=None):
+    # 如果没有指定语言，则读取配置文件获取语言设置
+    language = _current_language_code(language)
+
+    try:
+        data = _read_language_file(language)
+        return data
     except (OSError, json.JSONDecodeError, ValueError) as error:
         log(f"加载语言失败: language={language}, path={_lang_file_path(language)}, error={error}")
 
@@ -64,14 +150,20 @@ def load_language(language=None):
     return {"texts": {}}
 
 def reload_language(language=None):
-    """手动重新加载语言数据"""
-    global lang_data
+    """手动重新加载语言数据，并合并插件 i18n。"""
+    global lang_data, _active_language
     lang_data = load_language(language)
+    _active_language = _current_language_code(language)
+    try:
+        merge_plugin_i18n(_active_language, lang_data)
+    except Exception as e:
+        log(f"[i18n] reload 合并插件语言失败: {e}")
     log(f"Language reloaded: {language if language else 'default'}")
 
 
 # 全局变量存储语言数据
-lang_data = load_language()
+_active_language = _current_language_code(None)
+lang_data = load_language(_active_language)
 
 
 def i18n(key):
@@ -246,11 +338,13 @@ def i18nText(key):
             # 如果列表包含多个元素或元素不是字符串，则直接返回原列表
             return key  
     
-    # 原始功能：从语言数据中获取对应文本
+    # 原始功能：从语言数据中获取对应文本（含插件合并后的 texts）
     try:
-        # 尝试从语言数据中获取对应键值的文本
+        texts = lang_data.get("texts") if isinstance(lang_data, dict) else None
+        if isinstance(texts, dict) and key in texts:
+            return texts[key]
         return lang_data["texts"][key]
-    except KeyError:
+    except (KeyError, TypeError):
         # 如果在语言数据中找不到对应键值，则返回原始键值
         # log(f"[i18n][i18nText] 发现未翻译的值: {key}")
         return key

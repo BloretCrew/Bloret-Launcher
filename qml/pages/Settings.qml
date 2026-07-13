@@ -27,6 +27,7 @@ FluentPage {
         refreshData()
         loadBlorikoProviders()
         loadConnectors()
+        loadPluginSettings()
         // 初始化微信状态
         if (Bloriko) {
             wechatStatus = Bloriko.getWechatStatus()
@@ -197,6 +198,11 @@ FluentPage {
             loadConnectors()
         if (id === "plugins")
             loadPlugins()
+        // 插件设置页：预加载对应 QML
+        if (typeof id === "string" && id.indexOf("plugin:") === 0) {
+            console.log("[Settings] open plugin settings category:", id)
+            loadPluginSettings()
+        }
     }
 
     function goBack() {
@@ -227,7 +233,16 @@ FluentPage {
         case "ai": return _aiProvidersSection
         case "bloriko": return _blorikoSection
         case "plugins": return _pluginsSection
-        default: return id
+        default:
+            // 插件设置：plugin:{plugin_id}:{settings_id}
+            if (typeof id === "string" && id.indexOf("plugin:") === 0) {
+                for (var i = 0; i < pluginSettingsModel.count; i++) {
+                    var row = pluginSettingsModel.get(i)
+                    if (row.categoryId === id)
+                        return row.title || id
+                }
+            }
+            return id
         }
     }
 
@@ -549,20 +564,8 @@ FluentPage {
     property string _pluginsThemeNone: Backend ? Backend.tr("默认主题") : "默认主题"
     property string _pluginsUnnamed: Backend ? Backend.tr("未命名插件") : "未命名插件"
 
-    // Category cards model for hub
-    property var categoryCards: [
-        { id: "minecraft", title: _mcJavaSection, desc: _mcJavaHubDesc, icon: "ic_fluent_cube_20_regular" },
-        { id: "home", title: _homeSection, desc: _homeHubDesc, icon: "ic_fluent_home_20_regular" },
-        { id: "webremoter", title: _webRemoterSection, desc: _webRemoterHubDesc, icon: "ic_fluent_phone_20_regular" },
-        { id: "gamepad", title: _gamepadSection, desc: _gamepadHubDesc, icon: "ic_fluent_xbox_controller_20_regular" },
-        { id: "notification", title: _notificationSection, desc: _notificationHubDesc, icon: "ic_fluent_alert_20_regular" },
-        { id: "appearance", title: _appearanceSection, desc: _appearanceHubDesc, icon: "ic_fluent_color_20_regular" },
-        { id: "plugins", title: _pluginsSection, desc: _pluginsHubDesc, icon: "ic_fluent_puzzle_piece_20_regular" },
-        { id: "log", title: _logSection, desc: _logHubDesc, icon: "ic_fluent_text_bullet_list_square_20_regular" },
-        { id: "network", title: _networkSection, desc: _networkHubDesc, icon: "ic_fluent_globe_20_regular" },
-        { id: "ai", title: _aiProvidersSection, desc: _aiHubDesc, icon: "ic_fluent_bot_20_regular" },
-        { id: "bloriko", title: _blorikoSection, desc: _blorikoHubDesc, icon: "ic_fluent_chat_20_regular" }
-    ]
+    // Category cards model for hub（由 rebuildHubCards 维护，含插件设置）
+    property var categoryCards: []
 
     ListModel { id: settingsProviderModel }
     ListModel { id: settingsGlobalProviderModel }
@@ -571,6 +574,67 @@ FluentPage {
     ListModel { id: blorikoModelModel }
     ListModel { id: pluginListModel }
     ListModel { id: pluginThemeModel }
+    ListModel { id: pluginSettingsModel }
+    property var hubCategoryCards: []
+
+    function rebuildHubCards() {
+        // 内置分类 + 插件设置分类
+        var base = [
+            { id: "minecraft", title: _mcJavaSection, desc: _mcJavaHubDesc, icon: "ic_fluent_cube_20_regular" },
+            { id: "home", title: _homeSection, desc: _homeHubDesc, icon: "ic_fluent_home_20_regular" },
+            { id: "webremoter", title: _webRemoterSection, desc: _webRemoterHubDesc, icon: "ic_fluent_phone_20_regular" },
+            { id: "gamepad", title: _gamepadSection, desc: _gamepadHubDesc, icon: "ic_fluent_xbox_controller_20_regular" },
+            { id: "notification", title: _notificationSection, desc: _notificationHubDesc, icon: "ic_fluent_alert_20_regular" },
+            { id: "appearance", title: _appearanceSection, desc: _appearanceHubDesc, icon: "ic_fluent_color_20_regular" },
+            { id: "plugins", title: _pluginsSection, desc: _pluginsHubDesc, icon: "ic_fluent_puzzle_piece_20_regular" },
+            { id: "log", title: _logSection, desc: _logHubDesc, icon: "ic_fluent_text_bullet_list_square_20_regular" },
+            { id: "network", title: _networkSection, desc: _networkHubDesc, icon: "ic_fluent_globe_20_regular" },
+            { id: "ai", title: _aiProvidersSection, desc: _aiHubDesc, icon: "ic_fluent_bot_20_regular" },
+            { id: "bloriko", title: _blorikoSection, desc: _blorikoHubDesc, icon: "ic_fluent_chat_20_regular" }
+        ]
+        for (var i = 0; i < pluginSettingsModel.count; i++) {
+            var s = pluginSettingsModel.get(i)
+            base.push({
+                id: s.categoryId,
+                title: s.title || s.id,
+                desc: s.plugin_id || (Backend ? Backend.tr("插件设置") : "插件设置"),
+                icon: s.icon || "ic_fluent_puzzle_piece_20_regular"
+            })
+        }
+        hubCategoryCards = base
+        categoryCards = base
+        console.log("[Settings] hub cards rebuilt, total=", base.length, "pluginSettings=", pluginSettingsModel.count)
+    }
+
+    function loadPluginSettings() {
+        console.log("[Settings] loadPluginSettings")
+        pluginSettingsModel.clear()
+        if (typeof PluginHost === "undefined" || !PluginHost) {
+            console.log("[Settings] PluginHost 不可用 (settings)")
+            rebuildHubCards()
+            return
+        }
+        try {
+            var list = JSON.parse(PluginHost.getSettingsContributionsJson() || "[]")
+            console.log("[Settings] plugin settings count:", list.length)
+            for (var i = 0; i < list.length; i++) {
+                var s = list[i]
+                var sid = s.id || ("settings_" + i)
+                var pid = s.plugin_id || ""
+                pluginSettingsModel.append({
+                    id: sid,
+                    plugin_id: pid,
+                    title: s.title || sid,
+                    qml: s.qml || "",
+                    icon: s.icon || "ic_fluent_puzzle_piece_20_regular",
+                    categoryId: "plugin:" + pid + ":" + sid
+                })
+            }
+        } catch (e) {
+            console.log("[Settings] loadPluginSettings error:", e)
+        }
+        rebuildHubCards()
+    }
 
     function loadPlugins() {
         console.log("[Settings] loadPlugins")
@@ -618,6 +682,7 @@ FluentPage {
         } catch (e) {
             console.log("[Settings] loadPlugins error:", e)
         }
+        loadPluginSettings()
     }
 
     Connections {
@@ -625,8 +690,13 @@ FluentPage {
         enabled: (typeof PluginHost !== "undefined") && PluginHost !== null
         function onPluginsChanged() {
             console.log("[Settings] PluginHost.pluginsChanged")
+            loadPluginSettings()
             if (currentCategory === "plugins")
                 loadPlugins()
+        }
+        function onSettingsContributionsChanged() {
+            console.log("[Settings] PluginHost.settingsContributionsChanged")
+            loadPluginSettings()
         }
         function onThemeOverrideChanged(pluginId) {
             console.log("[Settings] theme override:", pluginId)
@@ -863,7 +933,7 @@ FluentPage {
             spacing: 12
 
             Repeater {
-                model: categoryCards
+                model: hubCategoryCards.length > 0 ? hubCategoryCards : categoryCards
 
                 Frame {
                     id: catCard
@@ -1428,6 +1498,44 @@ FluentPage {
                             Backend.setBackdropEffect(backdropCombo.currentValue)
                     }
                 }
+            }
+        }
+
+        // --- Plugin settings detail (Loader) ---
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+            visible: typeof currentCategory === "string" && currentCategory.indexOf("plugin:") === 0
+
+            Loader {
+                id: pluginSettingsLoader
+                Layout.fillWidth: true
+                Layout.preferredHeight: item ? Math.max(item.implicitHeight, 200) : 200
+                asynchronous: false
+                source: {
+                    if (typeof currentCategory !== "string" || currentCategory.indexOf("plugin:") !== 0)
+                        return ""
+                    for (var i = 0; i < pluginSettingsModel.count; i++) {
+                        var row = pluginSettingsModel.get(i)
+                        if (row.categoryId === currentCategory) {
+                            console.log("[Settings] load plugin settings qml:", row.qml)
+                            return row.qml || ""
+                        }
+                    }
+                    return ""
+                }
+                onStatusChanged: {
+                    if (status === Loader.Error)
+                        console.log("[Settings] plugin settings load error:", source)
+                    else if (status === Loader.Ready)
+                        console.log("[Settings] plugin settings ready:", source)
+                }
+            }
+
+            Label {
+                visible: pluginSettingsLoader.status === Loader.Error || (pluginSettingsLoader.source === "" && currentCategory.indexOf("plugin:") === 0)
+                text: Backend ? Backend.tr("无法加载插件设置页") : "无法加载插件设置页"
+                color: Theme.currentTheme.colors.textSecondaryColor
             }
         }
 
