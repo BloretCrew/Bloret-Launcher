@@ -1724,62 +1724,105 @@ FluentPage {
 
             Repeater {
                 model: pluginListModel
-                delegate: ColumnLayout {
+                // 整卡包含标题操作区 + 权限胶囊，避免胶囊跑到 SettingCard 外
+                delegate: Frame {
+                    id: pluginCard
                     Layout.fillWidth: true
-                    spacing: 0
+                    leftPadding: 18
+                    rightPadding: 18
+                    topPadding: 16
+                    bottomPadding: 16
+                    clip: true
 
-                    SettingCard {
-                        Layout.fillWidth: true
-                        title: model.name + (model.version ? ("  v" + model.version) : "")
-                        description: (model.author ? (model.author + " · ") : "")
-                            + (model.description || _pluginsNoDesc)
-                            + (model.error ? ("\n⚠ " + model.error) : "")
-                        icon.name: model.active ? "ic_fluent_checkmark_circle_20_regular" : "ic_fluent_puzzle_piece_20_regular"
+                    // 不用 anchors.fill，让 Frame 按 content 隐式高度撑开（与 SettingCard 同类）
+                    ColumnLayout {
+                        id: pluginCardBody
+                        width: parent.width
+                        spacing: 10
+
+                        // 与 SettingCard 一致的顶栏：图标 / 标题描述 / 操作
                         RowLayout {
-                            spacing: 4
-                            Switch {
-                                checked: model.enabled
-                                onToggled: {
-                                    if (typeof PluginHost === "undefined" || !PluginHost)
-                                        return
-                                    console.log("[Settings] toggle plugin", model.id, checked)
-                                    PluginHost.setPluginEnabled(model.id, checked)
-                                    loadPlugins()
+                            Layout.fillWidth: true
+                            spacing: 16
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.maximumWidth: parent.width * 0.62
+                                spacing: 18
+
+                                Icon {
+                                    size: 22
+                                    name: model.active
+                                           ? "ic_fluent_checkmark_circle_20_regular"
+                                           : "ic_fluent_puzzle_piece_20_regular"
+                                }
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 0
+                                    Text {
+                                        Layout.fillWidth: true
+                                        typography: Typography.Body
+                                        text: model.name + (model.version ? ("  v" + model.version) : "")
+                                        maximumLineCount: 2
+                                        elide: Text.ElideRight
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        typography: Typography.Caption
+                                        text: (model.author ? (model.author + " · ") : "")
+                                              + (model.description || _pluginsNoDesc)
+                                              + (model.error ? ("\n⚠ " + model.error) : "")
+                                        color: Theme.currentTheme.colors.textSecondaryColor
+                                        wrapMode: Text.Wrap
+                                        maximumLineCount: 3
+                                        elide: Text.ElideRight
+                                    }
                                 }
                             }
-                            Button {
-                                flat: true
-                                text: _openText
-                                onClicked: {
-                                    if (typeof PluginHost !== "undefined" && PluginHost)
-                                        PluginHost.openPluginFolder(model.id)
+
+                            RowLayout {
+                                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                spacing: 4
+                                Switch {
+                                    checked: model.enabled
+                                    onToggled: {
+                                        if (typeof PluginHost === "undefined" || !PluginHost)
+                                            return
+                                        console.log("[Settings] toggle plugin", model.id, checked)
+                                        PluginHost.setPluginEnabled(model.id, checked)
+                                        loadPlugins()
+                                    }
                                 }
-                            }
-                            Button {
-                                flat: true
-                                text: _pluginsUninstall
-                                onClicked: {
-                                    if (typeof PluginHost === "undefined" || !PluginHost)
-                                        return
-                                    console.log("[Settings] uninstall plugin", model.id)
-                                    PluginHost.uninstallPlugin(model.id)
-                                    loadPlugins()
+                                Button {
+                                    flat: true
+                                    text: _openText
+                                    onClicked: {
+                                        if (typeof PluginHost !== "undefined" && PluginHost)
+                                            PluginHost.openPluginFolder(model.id)
+                                    }
+                                }
+                                Button {
+                                    flat: true
+                                    text: _pluginsUninstall
+                                    onClicked: {
+                                        if (typeof PluginHost === "undefined" || !PluginHost)
+                                            return
+                                        console.log("[Settings] uninstall plugin", model.id)
+                                        PluginHost.uninstallPlugin(model.id)
+                                        loadPlugins()
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    // 权限胶囊：国际化标签 + 高/低风险配色
-                    PluginPermissionChips {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 48
-                        Layout.rightMargin: 12
-                        Layout.topMargin: 2
-                        Layout.bottomMargin: 10
-                        compact: true
-                        showTitle: true
-                        title: Backend ? Backend.tr("权限") : "权限"
-                        detailsJson: model.permissionDetailsJson || "[]"
+                        // 权限胶囊：限制在卡片宽度内换行
+                        PluginPermissionChips {
+                            Layout.fillWidth: true
+                            compact: true
+                            showTitle: true
+                            title: Backend ? Backend.tr("权限") : "权限"
+                            detailsJson: model.permissionDetailsJson || "[]"
+                        }
                     }
                 }
             }

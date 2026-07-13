@@ -11,9 +11,13 @@ import RinUI
  */
 Item {
     id: root
+    // 高度随内容；宽度由父级 Layout / anchors 约束，防止胶囊撑破卡片
     implicitHeight: col.implicitHeight
-    implicitWidth: parent ? parent.width : 200
+    implicitWidth: 200
+    height: col.implicitHeight
     Layout.fillWidth: true
+    Layout.preferredHeight: col.implicitHeight
+    clip: true
 
     property string detailsJson: ""
     property var permissionIds: []
@@ -22,6 +26,8 @@ Item {
     property bool compact: false
     /** 空数据时是否占位隐藏 */
     property bool hideWhenEmpty: true
+    /** 单枚胶囊最大宽度（相对容器），过长标签省略 */
+    property real chipMaxWidthRatio: 0.92
 
     property var _items: []
 
@@ -76,7 +82,7 @@ Item {
         }
         _items = items
         console.log("[PluginPermissionChips] refresh count=", items.length,
-                    "title=", title || "(none)")
+                    "title=", title || "(none)", "width=", root.width)
     }
 
     onDetailsJsonChanged: refresh()
@@ -89,6 +95,7 @@ Item {
         id: col
         anchors.left: parent.left
         anchors.right: parent.right
+        width: parent.width
         spacing: compact ? 4 : 6
 
         Text {
@@ -102,6 +109,8 @@ Item {
         Flow {
             id: chipFlow
             Layout.fillWidth: true
+            // Flow 需要明确宽度才会在容器内换行，否则会横向撑出父级
+            width: root.width > 0 ? root.width : parent.width
             spacing: 6
             visible: _items.length > 0
 
@@ -111,10 +120,19 @@ Item {
                     id: chip
                     property string riskLevel: (modelData.risk || "safe").toLowerCase()
                     property bool isHigh: riskLevel === "high" || riskLevel === "warning" || riskLevel === "error"
+                    // 胶囊不得宽过 Flow，否则会“跑出”卡片
+                    property real maxChipW: {
+                        var flowW = chipFlow.width > 0 ? chipFlow.width : root.width
+                        return Math.max(72, flowW * root.chipMaxWidthRatio)
+                    }
+                    property real hPad: compact ? 14 : 16
+                    property real textMaxW: Math.max(32, maxChipW - hPad - 10)
 
                     radius: height / 2
-                    implicitHeight: compact ? 20 : 22
-                    implicitWidth: chipRow.implicitWidth + (compact ? 14 : 16)
+                    height: compact ? 20 : 22
+                    // 自然宽度，但封顶在容器内
+                    width: Math.min(chipRow.implicitWidth + hPad, maxChipW)
+                    clip: true
 
                     // 不依赖 darkMode 属性：浅色半透明底 + 实色边框，深浅主题都可读
                     color: chip.isHigh ? "#33f59e0b" : "#333b82f6"
@@ -144,19 +162,24 @@ Item {
                             color: Theme.currentTheme.colors.textColor
                             elide: Text.ElideRight
                             maximumLineCount: 1
+                            // 用固定上限 elide，避免与 chip.width 互相绑定
+                            width: Math.min(implicitWidth, chip.textMaxW)
                         }
                     }
 
                     ToolTip.visible: chipMa.containsMouse
                     ToolTip.delay: 400
                     ToolTip.text: {
+                        var label = modelData.label || modelData.id || ""
                         var idPart = modelData.id ? String(modelData.id) : ""
                         var riskText = chip.isHigh
                             ? (Backend ? Backend.tr("高风险") : "高风险")
                             : (Backend ? Backend.tr("低风险") : "低风险")
+                        if (idPart && label && idPart !== label)
+                            return label + "\n" + idPart + " · " + riskText
                         if (idPart)
                             return idPart + " · " + riskText
-                        return riskText
+                        return (label ? label + " · " : "") + riskText
                     }
 
                     MouseArea {
