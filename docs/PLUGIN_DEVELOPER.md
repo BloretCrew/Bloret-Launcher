@@ -152,9 +152,34 @@ def register(api):
 
 `target` 为 `bloriko` 或 `blrpe`。
 
-## 安装与调试
+## 使用 BLAPI 开发（推荐）
 
-1. 将插件目录复制到 `{datapath}/Plugin/你的插件名/`，或打包 zip 后通过 Web API `/plugin/add` 安装。
+安装 PyPI 工具后，可以从脚手架到本地联调完成整个开发流程：
+
+```bash
+pip install BLAPI
+BLAPI plugin init my-plugin --template python --id com.example.my-plugin --non-interactive
+BLAPI plugin validate my-plugin --strict
+BLAPI plugin inspect my-plugin
+BLAPI plugin build my-plugin -o dist
+BLAPI plugin install my-plugin
+```
+
+`plugin init` 支持 `declarative`、`python`、`theme`、`nav`、`agent` 模板。生成的 Python 与 QML 模板默认包含详细日志，便于分别从 `[Plugin:插件ID]` 和浏览器/Qt 控制台排查问题。
+
+需要与正在运行的启动器联调时，可使用：
+
+```bash
+BLAPI plugin dev my-plugin --oauth-name YOUR_APP --oauth-secret YOUR_SECRET
+```
+
+该命令会先校验并同步插件，再通过本地 Launcher Web API 检查插件状态。纯本地的 `init`、`validate`、`inspect` 和 `build` 不需要 OAuth，也不会联网。
+
+插件规范的机器可读版本位于 `docs/plugin-spec.json`。BLAPI 内置同版本快照用于离线校验；规范版本不一致时应先升级 BLAPI。
+
+## 手动安装与调试
+
+1. 将插件目录复制到 `{datapath}/Plugin/你的插件名/`，或打包 zip 后通过 Web API `/plugin/add` 安装。ZIP 根目录必须直接包含 `plugin.json`，不要额外套一层目录。
 2. 打开 **设置 → 插件** 启用/禁用/卸载。
 3. 日志前缀：`[PluginHost]`、`[Plugin:id]`；QML 用 `console.log`。
 
