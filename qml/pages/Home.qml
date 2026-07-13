@@ -187,7 +187,7 @@ FluentPage {
             
             TextField {
                 id: aiInput
-                placeholderText: (Backend ? Backend.tr("关于 Minecraft 的任何问题，可以问Blora 哦 ~") : "关于 Minecraft 的任何问题，可以问Blora 哦 ~")
+                placeholderText: (Backend ? Backend.tr("关于 Minecraft 的任何问题，可以问 Blora 哦 ~") : "关于 Minecraft 的任何问题，可以问 Blora 哦 ~")
                 Layout.fillWidth: true
                 padding: 10
                 onAccepted: sendBtn.clicked()
@@ -216,7 +216,7 @@ FluentPage {
         }
         
         Label {
-            text: (Backend ? Backend.tr("Blora依靠 AI。Blora也可能犯错，请核实重要信息。") : "Blora依靠 AI。Blora也可能犯错，请核实重要信息。")
+            text: (Backend ? Backend.tr("Blora 依靠 AI。 Blora 也可能犯错，请核实重要信息。") : "Blora 依靠 AI。 Blora 也可能犯错，请核实重要信息。")
             color: Theme.currentTheme.colors.textTertialyColor
             font.pixelSize: 12
         }
@@ -296,14 +296,14 @@ FluentPage {
 
                 Label {
                     font.weight: Font.Bold
-                    text: (Backend ? Backend.tr("Blora推荐时间段") : "Blora推荐时间段")
+                    text: (Backend ? Backend.tr("Blora 推荐时间段") : "Blora 推荐时间段")
                     color: Theme.currentTheme.colors.textColor
                 }
                 
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    text: serverInfo.BestTime || (Backend ? Backend.tr("嗨嗨~Blora来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~") : "嗨嗨~Blora来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~")
+                    text: serverInfo.BestTime || (Backend ? Backend.tr("嗨嗨~ Blora 来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~") : "嗨嗨~ Blora 来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~")
                     textFormat: Text.MarkdownText
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }

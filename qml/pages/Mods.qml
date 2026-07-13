@@ -157,11 +157,11 @@ FluentPage {
                         Layout.fillWidth: true
                         Label {
                             font.weight: Font.DemiBold
-                            text: (Backend ? Backend.tr("让Blora帮你挑选合适的 Mod") : "让Blora帮你挑选合适的 Mod")
+                            text: (Backend ? Backend.tr("让 Blora 帮你挑选合适的 Mod") : "让 Blora 帮你挑选合适的 Mod")
                             color: Theme.currentTheme.colors.textColor
                         }
                         Label {
-                            text: (Backend ? Backend.tr("无需一个一个找 Mod，让Blora帮你找齐。") : "无需一个一个找 Mod，让Blora帮你找齐。")
+                            text: (Backend ? Backend.tr("无需一个一个找 Mod，让 Blora 帮你找齐。") : "无需一个一个找 Mod，让 Blora 帮你找齐。")
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
                     }
@@ -199,7 +199,7 @@ FluentPage {
         }
 
         Label {
-            text: (Backend ? Backend.tr("Blora依靠 AI。Blora也可能犯错，请核实重要信息。") : "Blora依靠 AI。Blora也可能犯错，请核实重要信息。")
+            text: (Backend ? Backend.tr("Blora 依靠 AI。 Blora 也可能犯错，请核实重要信息。") : "Blora 依靠 AI。 Blora 也可能犯错，请核实重要信息。")
             color: Theme.currentTheme.colors.textTertialyColor
             font.pixelSize: 12
         }
@@ -491,7 +491,7 @@ FluentPage {
     Dialog {
         id: versionSelectDialog
         title: versionSelectDialog.loading
-            ? (Backend ? Backend.tr("Blora正在挑选 Mod…") : "Blora正在挑选 Mod…")
+            ? (Backend ? Backend.tr("Blora 正在挑选 Mod…") : "Blora 正在挑选 Mod…")
             : (Backend ? Backend.tr("选择 Minecraft 版本") : "选择 Minecraft 版本")
         width: versionSelectDialog.loading ? Math.min(modsPage.width * 0.92, 640) : 400
         modal: true
@@ -549,7 +549,7 @@ FluentPage {
                     TextArea {
                         text: modsPage.blorikoThinkingLog.length > 0
                             ? modsPage.blorikoThinkingLog
-                            : (Backend ? Backend.tr("等待Blora开始搜索…") : "等待Blora开始搜索…")
+                            : (Backend ? Backend.tr("等待 Blora 开始搜索…") : "等待 Blora 开始搜索…")
                         readOnly: true
                         wrapMode: Text.Wrap
                         selectByMouse: true
@@ -573,7 +573,7 @@ FluentPage {
                     TextArea {
                         text: modsPage.blorikoStreamText.length > 0
                             ? modsPage.blorikoStreamText
-                            : (Backend ? Backend.tr("Blora还在搜索与整理中，正文会显示在这里…") : "Blora还在搜索与整理中，正文会显示在这里…")
+                            : (Backend ? Backend.tr("Blora 还在搜索与整理中，正文会显示在这里…") : "Blora 还在搜索与整理中，正文会显示在这里…")
                         readOnly: true
                         wrapMode: Text.Wrap
                         selectByMouse: true
@@ -614,7 +614,7 @@ FluentPage {
                             modsPage.selectedFabricVersion = fabricVersionCombo.currentText
                             if (Backend && askBlorikoInput.text.trim() !== "") {
                                 console.log(
-                                    "[Mods] 请求 Blora推荐: version=",
+                                    "[Mods] 请求 Blora 推荐: version=",
                                     modsPage.selectedFabricVersion,
                                     " query=",
                                     askBlorikoInput.text.substring(0, 80)
