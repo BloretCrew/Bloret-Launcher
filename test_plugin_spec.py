@@ -78,6 +78,47 @@ def test_plugin_spec_version_and_new_ui_permissions():
     assert spec["contributes"]["tools"] == "ui.tools"
 
 
+def test_install_plugin_from_path_uses_manifest_id(tmp_path, monkeypatch):
+    import modules.plugin as plugin_mod
+
+    plugin_root = tmp_path / "Plugin"
+    plugin_root.mkdir()
+    monkeypatch.setattr(plugin_mod.BLglobals, "datapath", str(tmp_path), raising=False)
+
+    source = tmp_path / "src"
+    source.mkdir()
+    (source / "plugin.json").write_text(
+        json.dumps(
+            {
+                "id": "com.example.news",
+                "name": "News",
+                "version": "1.2.3",
+                "permissions": ["ui.home"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (source / "ui").mkdir()
+    (source / "ui" / "HomeCard.qml").write_text("import QtQuick\nItem {}", encoding="utf-8")
+
+    ok, detail = plugin_mod.install_plugin_from_path(str(source), force=True)
+    assert ok is True
+    assert detail == "com.example.news"
+    installed = plugin_root / "com.example.news" / "plugin.json"
+    assert installed.is_file()
+
+    # nested zip root
+    import zipfile
+
+    nested_zip = tmp_path / "nested.zip"
+    with zipfile.ZipFile(nested_zip, "w") as bundle:
+        bundle.writestr("wrap/plugin.json", (source / "plugin.json").read_text(encoding="utf-8"))
+        bundle.writestr("wrap/ui/HomeCard.qml", "import QtQuick\nItem {}")
+    ok, detail = plugin_mod.install_plugin_from_path(str(nested_zip), force=True)
+    assert ok is True
+    assert detail == "com.example.news"
+
+
 def test_manifest_resolve_path_rejects_escape(tmp_path):
     manifest_mod = _load_module(
         "modules.plugin_host.manifest",

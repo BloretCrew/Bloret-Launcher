@@ -97,6 +97,9 @@ class PluginHost(QObject):
 
         found_ids = set()
         for entry in sorted(os.listdir(root)):
+            # 跳过备份/暂存目录与隐藏项，避免 .backups 被当成插件
+            if entry.startswith(".") or entry in (".backups", "__pycache__"):
+                continue
             plugin_dir = os.path.join(root, entry)
             if not os.path.isdir(plugin_dir):
                 continue
@@ -297,6 +300,37 @@ class PluginHost(QObject):
         self._emit_ui_signals()
         self.pluginsChanged.emit()
         return ok
+
+    @Slot(str, result=str)
+    def installFromPath(self, path: str) -> str:
+        """从本地 ZIP 或插件目录安装，返回 JSON: {ok, plugin_id|error, message}。"""
+        log(f"[PluginHost] installFromPath path={path}")
+        try:
+            from modules.plugin import install_plugin_from_path
+
+            ok, detail = install_plugin_from_path(path, force=True)
+            if ok:
+                payload = {
+                    "ok": True,
+                    "plugin_id": detail,
+                    "message": f"已安装插件 {detail}",
+                }
+            else:
+                payload = {
+                    "ok": False,
+                    "error": detail,
+                    "message": f"安装失败: {detail}",
+                }
+            log(f"[PluginHost] installFromPath result={payload}")
+            self._emit_ui_signals()
+            self.pluginsChanged.emit()
+            return json.dumps(payload, ensure_ascii=False)
+        except Exception as e:
+            log(f"[PluginHost] installFromPath 失败: {e}")
+            return json.dumps(
+                {"ok": False, "error": str(e), "message": f"安装失败: {e}"},
+                ensure_ascii=False,
+            )
 
     @Slot(str, result=bool)
     def uninstallPlugin(self, plugin_id: str) -> bool:

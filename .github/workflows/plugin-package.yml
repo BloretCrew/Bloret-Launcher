@@ -1,0 +1,83 @@
+name: Package Plugins
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "examples/plugins/**"
+      - "BLAPI/**"
+      - ".github/workflows/plugin-package.yml"
+      - "docs/plugin-spec.json"
+  pull_request:
+    paths:
+      - "examples/plugins/**"
+      - "BLAPI/**"
+      - ".github/workflows/plugin-package.yml"
+      - "docs/plugin-spec.json"
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install BLDEV (BLAPI)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ./BLAPI
+          BLDEV --help >/dev/null
+          python -c "from BLAPI.plugin import build_plugin, validate_project; print('BLAPI plugin SDK ready')"
+
+      - name: Validate and package example plugins
+        run: |
+          set -euo pipefail
+          mkdir -p dist/plugins
+          shopt -s nullglob
+          plugins=(examples/plugins/*/)
+          if [ ${#plugins[@]} -eq 0 ]; then
+            echo "No plugins found under examples/plugins/"
+            exit 1
+          fi
+          for plugin_dir in "${plugins[@]}"; do
+            plugin_dir="${plugin_dir%/}"
+            if [ ! -f "${plugin_dir}/plugin.json" ] && [ ! -f "${plugin_dir}/cwplugin.json" ]; then
+              echo "Skip ${plugin_dir}: no plugin manifest"
+              continue
+            fi
+            echo "==> validate ${plugin_dir}"
+            BLDEV plugin validate "${plugin_dir}" --strict
+            echo "==> package ${plugin_dir}"
+            BLDEV plugin package "${plugin_dir}" -o dist/plugins
+          done
+          echo "==> packaged files"
+          ls -lah dist/plugins
+          python - <<'PY'
+          import json, pathlib
+          root = pathlib.Path("dist/plugins")
+          items = []
+          for path in sorted(root.glob("*.zip")):
+              items.append({
+                  "name": path.name,
+                  "size": path.stat().st_size,
+              })
+          manifest = {"count": len(items), "artifacts": items}
+          (root / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+          print(json.dumps(manifest, indent=2, ensure_ascii=False))
+          if not items:
+              raise SystemExit("no plugin zip produced")
+          PY
+
+      - name: Upload plugin artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloret-plugins
+          path: dist/plugins/*
+          if-no-files-found: error

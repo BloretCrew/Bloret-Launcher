@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
+import Qt.labs.platform 1.1
 import RinUI
 import "../components"
 
@@ -554,6 +555,7 @@ FluentPage {
     property string _pluginsInstalledDesc: Backend ? Backend.tr("管理已安装插件，查看信息或卸载") : "管理已安装插件，查看信息或卸载"
     property string _pluginsEmpty: Backend ? Backend.tr("暂无插件") : "暂无插件"
     property string _pluginsOpenDir: Backend ? Backend.tr("打开插件目录") : "打开插件目录"
+    property string _pluginsInstallFile: Backend ? Backend.tr("从文件安装") : "从文件安装"
     property string _pluginsEnable: Backend ? Backend.tr("启用") : "启用"
     property string _pluginsDisable: Backend ? Backend.tr("禁用") : "禁用"
     property string _pluginsUninstall: Backend ? Backend.tr("卸载插件") : "卸载插件"
@@ -563,6 +565,10 @@ FluentPage {
     property string _pluginsThemeDesc: Backend ? Backend.tr("选择由插件提供的主题（可选）") : "选择由插件提供的主题（可选）"
     property string _pluginsThemeNone: Backend ? Backend.tr("默认主题") : "默认主题"
     property string _pluginsUnnamed: Backend ? Backend.tr("未命名插件") : "未命名插件"
+    property string _pluginsInstallHint: Backend ? Backend.tr("选择 BLAPI 打包的插件 ZIP（plugin.json 在压缩包根目录）") : "选择 BLAPI 打包的插件 ZIP（plugin.json 在压缩包根目录）"
+    property string _pluginsInstallOk: Backend ? Backend.tr("插件安装成功") : "插件安装成功"
+    property string _pluginsInstallFail: Backend ? Backend.tr("插件安装失败") : "插件安装失败"
+    property string lastPluginInstallMessage: ""
 
     // Category cards model for hub（由 rebuildHubCards 维护，含插件设置）
     property var categoryCards: []
@@ -1554,6 +1560,14 @@ FluentPage {
                     spacing: 8
                     Button {
                         flat: true
+                        text: _pluginsInstallFile
+                        onClicked: {
+                            console.log("[Settings] open plugin install file dialog")
+                            pluginInstallDialog.open()
+                        }
+                    }
+                    Button {
+                        flat: true
                         text: _pluginsRefresh
                         onClicked: {
                             console.log("[Settings] refresh plugins")
@@ -1567,6 +1581,63 @@ FluentPage {
                             if (typeof PluginHost !== "undefined" && PluginHost)
                                 PluginHost.openPluginDir()
                         }
+                    }
+                }
+            }
+
+            Label {
+                visible: lastPluginInstallMessage !== ""
+                text: lastPluginInstallMessage
+                wrapMode: Text.Wrap
+                font.pixelSize: 13
+                color: Theme.currentTheme.colors.textSecondaryColor
+                Layout.fillWidth: true
+            }
+
+            FileDialog {
+                id: pluginInstallDialog
+                title: _pluginsInstallFile
+                fileMode: FileDialog.OpenFile
+                nameFilters: [
+                    Backend ? Backend.tr("插件包 (*.zip)") : "插件包 (*.zip)",
+                    Backend ? Backend.tr("所有文件 (*)") : "所有文件 (*)"
+                ]
+                onAccepted: {
+                    try {
+                        if (typeof PluginHost === "undefined" || !PluginHost) {
+                            lastPluginInstallMessage = _pluginsInstallFail + ": PluginHost 不可用"
+                            console.log("[Settings] install plugin failed: PluginHost unavailable")
+                            return
+                        }
+                        var selected = pluginInstallDialog.file
+                            ? pluginInstallDialog.file.toString()
+                            : ""
+                        // Qt.labs.platform FileDialog 返回 file:// URL
+                        if (selected.indexOf("file://") === 0) {
+                            selected = decodeURIComponent(selected.substring(
+                                Qt.platform.os === "windows" ? 8 : 7
+                            ))
+                        }
+                        console.log("[Settings] install plugin from path:", selected)
+                        var raw = PluginHost.installFromPath(selected)
+                        var result = {}
+                        try {
+                            result = JSON.parse(raw || "{}")
+                        } catch (parseErr) {
+                            result = { ok: false, message: String(raw || parseErr) }
+                        }
+                        if (result.ok) {
+                            lastPluginInstallMessage = _pluginsInstallOk + ": " + (result.plugin_id || "")
+                            console.log("[Settings] plugin installed:", result.plugin_id)
+                        } else {
+                            lastPluginInstallMessage = _pluginsInstallFail + ": "
+                                + (result.message || result.error || "unknown")
+                            console.log("[Settings] plugin install failed:", result.message || result.error)
+                        }
+                        loadPlugins()
+                    } catch (e) {
+                        lastPluginInstallMessage = _pluginsInstallFail + ": " + e
+                        console.log("[Settings] install plugin exception:", e)
                     }
                 }
             }

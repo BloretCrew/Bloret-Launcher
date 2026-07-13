@@ -12,7 +12,7 @@ Bloret Launcher 支持混合插件模型：
 | **声明式资源** | 仅 `plugin.json` + theme/qml/lang，不执行任意代码 |
 | **外部进程** | `main.exe`，兼容旧插件，可走 Web API / `web.routes` |
 
-插件安装目录：`{datapath}/Plugin/{folder}/`  
+插件安装目录：`{datapath}/Plugin/{folder}/`
 私有数据目录：`{datapath}/PluginData/{plugin_id}/`
 
 ## 三层扩展模型
@@ -220,17 +220,50 @@ def register(api):
 ## 使用 BLAPI 开发（推荐）
 
 ```bash
+# 安装 CLI（命令名 BLDEV / BLAPI / BLCLI 均可）
 pip install BLAPI
-BLAPI plugin init my-plugin --template python --id com.example.my-plugin --non-interactive
-BLAPI plugin validate my-plugin --strict
-BLAPI plugin install my-plugin
+# 或开发模式: pip install ./BLAPI
+
+BLDEV plugin init my-plugin --template python --id com.example.my-plugin --non-interactive
+BLDEV plugin validate my-plugin --strict
+BLDEV plugin package my-plugin -o dist
+# 产物: dist/com.example.my-plugin-1.0.0.zip
+
+# 开发机直接安装到本机启动器数据目录
+BLDEV plugin install dist/com.example.my-plugin-1.0.0.zip --force
+# 或安装源码目录:
+BLDEV plugin install my-plugin --force
 ```
+
+`plugin package` 与 `plugin build` 等价。`-o dist` 表示输出到目录，文件名自动为 `{id}-{version}.zip`。
+
+## 发布与分发流程
+
+推荐链路：
+
+1. **开发**：`plugin init` / 手写 `plugin.json` + QML/Python
+2. **校验**：`BLDEV plugin validate . --strict`
+3. **打包**：`BLDEV plugin package . -o dist` → 得到可分发 ZIP
+4. **CI 自动打包**：仓库已提供 `.github/workflows/plugin-package.yml`
+   - 对 `examples/plugins/*` 执行 validate + package
+   - 上传 artifact：`bloret-plugins`（内含各插件 ZIP）
+5. **用户安装**
+   - 启动器：**设置 → 插件 → 从文件安装**，选择 ZIP
+   - 开发者：`BLDEV plugin install xxx.zip --force`
+   - 远程 URL：Web API `/plugin/add?download=...zip`（需启动器在线）
+6. **插件商店**（规划中）：商店将分发同样格式的 ZIP，安装器与本地文件路径共用
+
+ZIP 要求：
+
+- 根目录（或仅一层包装目录）含 `plugin.json` / `cwplugin.json`
+- 由 BLAPI 打包时已做路径校验，安装时会按清单 `id` 写入 `{datapath}/Plugin/{id}/`
 
 ## 手动安装与调试
 
-1. 将插件目录复制到 `{datapath}/Plugin/你的插件名/`
-2. **设置 → 插件** 启用
-3. 日志：`[PluginHost]`、`[Plugin:id]`；QML：`console.log`
+1. **推荐**：设置 → 插件 → **从文件安装**（选择 `*.zip`）
+2. 或将插件目录复制到 `{datapath}/Plugin/{plugin_id}/`
+3. **设置 → 插件** 启用 / 刷新
+4. 日志：`[PluginHost]`、`[Plugin]`、`[Plugin:id]`；QML：`console.log`
 
 ## 官方示例
 

@@ -8,6 +8,8 @@ import shutil
 import tempfile
 import threading
 import urllib.parse
+import re
+from pathlib import Path
 from PySide6.QtWidgets import QApplication
 import time
 from requests.adapters import HTTPAdapter
@@ -16,18 +18,162 @@ from modules.customize import CustomizeAppAdd
 import modules.globals as BLglobals
 import modules.config as cfg
 
-def install_plugin_from_zip(zip_url, plugin_name):
+MANIFEST_NAMES = ("plugin.json", "cwplugin.json")
+
+
+def _safe_plugin_id(raw: str, fallback: str = "plugin") -> str:
+    value = (raw or "").strip() or fallback
+    value = re.sub(r"[^a-zA-Z0-9._-]+", "-", value).strip("-")
+    return value or fallback
+
+
+def _read_manifest_file(plugin_dir: str) -> dict:
+    for name in MANIFEST_NAMES:
+        path = os.path.join(plugin_dir, name)
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+            if isinstance(data, dict):
+                return data
+        except Exception as error:
+            log(f"[Plugin] 读取清单失败 {path}: {error}")
+    return {}
+
+
+def _resolve_project_root(extracted_dir: str) -> str:
+    """支持 ZIP 根直接是插件，或仅有一层包装目录。"""
+    if _read_manifest_file(extracted_dir):
+        return extracted_dir
+    try:
+        children = [
+            os.path.join(extracted_dir, entry)
+            for entry in os.listdir(extracted_dir)
+            if os.path.isdir(os.path.join(extracted_dir, entry)) and not entry.startswith(".")
+        ]
+    except Exception:
+        children = []
+    if len(children) == 1 and _read_manifest_file(children[0]):
+        return children[0]
+    raise ValueError("插件包中未找到 plugin.json / cwplugin.json")
+
+
+def _safe_extract_zip(archive_path: str, destination: str) -> None:
+    root = Path(destination).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive_path, "r") as bundle:
+        for member in bundle.infolist():
+            target = (root / member.filename).resolve()
+            try:
+                target.relative_to(root)
+            except ValueError as error:
+                raise ValueError(f"不安全的压缩包成员: {member.filename}") from error
+            if member.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with bundle.open(member, "r") as source, target.open("wb") as output:
+                shutil.copyfileobj(source, output)
+
+
+def _maybe_register_legacy_process(plugin_dir: str, plugin_name: str) -> None:
+    plugin_exe_path = os.path.join(plugin_dir, "main.exe")
+    if not os.path.exists(plugin_exe_path):
+        log(f"[Plugin] 未找到兼容进程入口 main.exe: {plugin_exe_path}")
+        return
+    log(f"[Plugin] 找到插件主程序: {plugin_exe_path}")
+    try:
+        result = CustomizeAppAdd(plugin_exe_path, plugin_name)
+        if result:
+            log(f"[Plugin] 已将主程序加入自定义程序列表: {plugin_exe_path}")
+        else:
+            log(f"[Plugin] 未能将主程序加入自定义程序列表: {plugin_exe_path}")
+    except Exception as error:
+        log(f"[Plugin] 调用 CustomizeAppAdd 失败: {error}")
+
+
+def install_plugin_from_path(source_path, plugin_name=None, force=True):
+    """
+    从本地目录或 ZIP 安装插件。
+    目录名优先使用 plugin.json 的 id；返回 (ok, plugin_id_or_error)。
+    """
+    source = os.path.abspath(os.path.expanduser(str(source_path or "")))
+    if not source:
+        return False, "未指定插件路径"
+    log(f"[Plugin] install_plugin_from_path source={source} force={force}")
+    temp_root = None
+    try:
+        if os.path.isdir(source):
+            project = _resolve_project_root(source)
+        elif os.path.isfile(source) and zipfile.is_zipfile(source):
+            temp_root = tempfile.mkdtemp(prefix="bloret-plugin-")
+            extract_dir = os.path.join(temp_root, "archive")
+            os.makedirs(extract_dir, exist_ok=True)
+            log(f"[Plugin] 解压插件包到临时目录: {extract_dir}")
+            _safe_extract_zip(source, extract_dir)
+            project = _resolve_project_root(extract_dir)
+        else:
+            return False, "插件源必须是目录或 .zip 文件"
+
+        manifest = _read_manifest_file(project)
+        if not manifest:
+            return False, "插件包缺少 plugin.json / cwplugin.json"
+
+        plugin_id = _safe_plugin_id(
+            str(manifest.get("id") or plugin_name or os.path.basename(project.rstrip(os.sep))),
+            fallback=str(plugin_name or os.path.basename(project.rstrip(os.sep)) or "plugin"),
+        )
+        display_name = str(manifest.get("name") or plugin_id)
+        plugin_root = get_plugin_root()
+        os.makedirs(plugin_root, exist_ok=True)
+        target_dir = os.path.join(plugin_root, plugin_id)
+        staging_dir = os.path.join(plugin_root, f".{plugin_id}.installing")
+
+        if os.path.exists(target_dir) and not force:
+            return False, f"插件已安装: {plugin_id}"
+
+        if os.path.exists(staging_dir):
+            shutil.rmtree(staging_dir)
+        shutil.copytree(project, staging_dir)
+        log(f"[Plugin] 暂存完成: {staging_dir}")
+
+        if os.path.exists(target_dir):
+            backup_root = os.path.join(plugin_root, ".backups")
+            os.makedirs(backup_root, exist_ok=True)
+            backup_dir = os.path.join(backup_root, f"{plugin_id}-{int(time.time())}")
+            log(f"[Plugin] 备份旧版本到 {backup_dir}")
+            shutil.move(target_dir, backup_dir)
+
+        os.replace(staging_dir, target_dir)
+        _maybe_register_legacy_process(target_dir, display_name)
+        log(f"[Plugin] 插件安装成功 id={plugin_id} path={target_dir}")
+
+        try:
+            from modules.plugin_host import get_plugin_host
+
+            get_plugin_host().notify_installed(plugin_id)
+            log(f"[Plugin] 已通知 PluginHost 加载: {plugin_id}")
+        except Exception as host_err:
+            log(f"[Plugin] 通知 PluginHost 失败（可忽略）: {host_err}")
+        return True, plugin_id
+    except Exception as error:
+        log(f"[Plugin] install_plugin_from_path 失败: {error}")
+        return False, str(error)
+    finally:
+        if temp_root and os.path.isdir(temp_root):
+            shutil.rmtree(temp_root, ignore_errors=True)
+
+
+def install_plugin_from_zip(zip_url, plugin_name=None):
     '''
-    直接从ZIP文件URL安装插件
+    直接从 ZIP 文件 URL 安装插件。
     参数:
-        zip_url: ZIP文件的下载URL
+        zip_url: ZIP 文件的下载 URL
+        plugin_name: 可选回退名称；实际目录优先使用清单 id
     '''
     try:
-        log(f"正在直接从ZIP文件安装插件: {zip_url}")
-            
-        log(f"插件名称为: {plugin_name}")
-        
-        # 创建一个带有重试策略的会话用于下载
+        log(f"[Plugin] 正在从 ZIP URL 安装插件: {zip_url}")
         session = requests.Session()
         retry_strategy = Retry(
             total=3,
@@ -37,65 +183,26 @@ def install_plugin_from_zip(zip_url, plugin_name):
         adapter = HTTPAdapter(max_retries=retry_strategy)
         session.mount("http://", adapter)
         session.mount("https://", adapter)
-        
-        # 下载ZIP文件
-        log(f"正在下载ZIP文件: {zip_url}")
+
         response = session.get(zip_url, timeout=60)
         response.raise_for_status()
-        
-        # 创建临时文件保存下载的 zip
+
         with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as temp_zip:
-            # 写入文件
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     temp_zip.write(chunk)
             temp_zip_path = temp_zip.name
-            
-        # 将 zip 解压缩到 data path/Plugin/{plugin_name} 中
-        plugin_dir = os.path.join(BLglobals.datapath, 'Plugin', plugin_name)
-        
-        # 如果目录已存在，先删除
-        if os.path.exists(plugin_dir):
-            shutil.rmtree(plugin_dir)
-            
-        # 创建插件目录
-        os.makedirs(plugin_dir, exist_ok=True)
-        
-        # 解压缩 zip 文件
-        log(f"正在解压缩插件: {plugin_name} 到 {plugin_dir}")
-        with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
-            zip_ref.extractall(plugin_dir)
-            
-        # 删除临时文件
-        os.unlink(temp_zip_path)
-        
-        # 构造插件主程序路径（固定为main.exe）
-        plugin_exe_path = os.path.join(plugin_dir, "main.exe")
-        
-        # 检查main.exe是否存在
-        if os.path.exists(plugin_exe_path):
-            log(f"找到插件主程序: {plugin_exe_path}")
-            # 尝试将插件主程序添加到自定义程序列表
-            try:
-                result = CustomizeAppAdd(plugin_exe_path, plugin_name)
-                if result:
-                    log(f"成功将插件主程序添加到自定义程序列表: {plugin_exe_path}")
-                else:
-                    log(f"未能将插件主程序添加到自定义程序列表: {plugin_exe_path}")
-            except Exception as e:
-                log(f"调用CustomizeAppAdd时发生错误: {str(e)}")
-        else:
-            log(f"插件主程序不存在: {plugin_exe_path}")
-        
-        log(f"插件安装成功: {plugin_name}")
+
         try:
-            from modules.plugin_host import get_plugin_host
-            get_plugin_host().notify_installed(plugin_name)
-            log(f"[Plugin] 已通知 PluginHost 加载: {plugin_name}")
-        except Exception as host_err:
-            log(f"[Plugin] 通知 PluginHost 失败（可忽略）: {host_err}")
-        return True
-        
+            ok, detail = install_plugin_from_path(temp_zip_path, plugin_name=plugin_name, force=True)
+            if not ok:
+                log(f"[Plugin] ZIP URL 安装失败: {detail}")
+            return bool(ok)
+        finally:
+            try:
+                os.unlink(temp_zip_path)
+            except OSError:
+                pass
     except Exception as e:
         log(f"从ZIP文件安装插件时发生错误: {str(e)}")
         return False
@@ -195,88 +302,12 @@ def addPlugin(list_url, plugin_name):
             try:
                 log(f"开始安装插件: {plugin['name']}")
 
-                # 3. 根据 plugin 的 download 值下载 zip 文件
                 download_url = plugin['download']
-                log(f"正在下载插件: {plugin['name']} 从 {download_url}")
-
-                # 创建一个带有重试策略的会话用于下载
-                download_session = requests.Session()
-                download_retry_strategy = Retry(
-                    total=3,
-                    backoff_factor=1,
-                    status_forcelist=[429, 500, 502, 503, 504],
-                )
-                download_adapter = HTTPAdapter(max_retries=download_retry_strategy)
-                download_session.mount("http://", download_adapter)
-                download_session.mount("https://", download_adapter)
-
-                # 创建临时文件保存下载的 zip
-                with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as temp_zip:
-                    try:
-                        response = download_session.get(download_url, stream=True, timeout=60)
-                        response.raise_for_status()
-                    except requests.exceptions.SSLError as ssl_error:
-                        log(f"下载时SSL错误: {str(ssl_error)}")
-                        # 尝试禁用SSL验证再次请求（仅作为备选方案）
-                        try:
-                            response = download_session.get(download_url, stream=True, verify=False, timeout=60)
-                            response.raise_for_status()
-                            log("警告: 下载时SSL验证已禁用，仅作为备选方案")
-                        except Exception as fallback_error:
-                            raise Exception(f"下载时SSL连接失败，备选方案也失败: {str(fallback_error)}")
-                    except Exception as e:
-                        raise Exception(f"下载失败: {str(e)}")
-
-                    # 写入文件
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            temp_zip.write(chunk)
-
-                    temp_zip_path = temp_zip.name
-
-                # 4. 将 zip 解压缩到 data path/Plugin/{plugin[name]} 中
-                plugin_dir = os.path.join(BLglobals.datapath, 'Plugin', plugin['name'])
-
-                # 如果目录已存在，先删除
-                if os.path.exists(plugin_dir):
-                    shutil.rmtree(plugin_dir)
-
-                # 创建插件目录
-                os.makedirs(plugin_dir, exist_ok=True)
-
-                # 解压缩 zip 文件
-                log(f"正在解压缩插件: {plugin['name']} 到 {plugin_dir}")
-                with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(plugin_dir)
-
-                # 删除临时文件
-                os.unlink(temp_zip_path)
-                
-                # 构造插件主程序路径（固定为main.exe）
-                plugin_exe_path = os.path.join(plugin_dir, "main.exe")
-                
-                # 检查main.exe是否存在
-                if os.path.exists(plugin_exe_path):
-                    log(f"找到插件主程序: {plugin_exe_path}")
-                    # 尝试将插件主程序添加到自定义程序列表
-                    try:
-                        result = CustomizeAppAdd(plugin_exe_path, plugin['name'])
-                        if result:
-                            log(f"成功将插件主程序添加到自定义程序列表: {plugin_exe_path}")
-                        else:
-                            log(f"未能将插件主程序添加到自定义程序列表: {plugin_exe_path}")
-                    except Exception as e:
-                        log(f"调用CustomizeAppAdd时发生错误: {str(e)}")
-                else:
-                    log(f"插件主程序不存在: {plugin_exe_path}")
-
-                log(f"插件安装成功: {plugin['name']}")
-                try:
-                    from modules.plugin_host import get_plugin_host
-                    get_plugin_host().notify_installed(plugin['name'])
-                    log(f"[Plugin] 已通知 PluginHost 加载: {plugin['name']}")
-                except Exception as host_err:
-                    log(f"[Plugin] 通知 PluginHost 失败（可忽略）: {host_err}")
+                log(f"[Plugin] 正在下载插件: {plugin['name']} 从 {download_url}")
+                ok = install_plugin_from_zip(download_url, plugin.get('name') or plugin_name)
+                if not ok:
+                    raise Exception(f"安装插件失败: {plugin['name']}")
+                log(f"[Plugin] 插件安装成功: {plugin['name']}")
 
             except Exception as e:
                 log(f"安装插件失败: {plugin['name']}, 错误: {str(e)}")
@@ -299,17 +330,7 @@ def get_plugin_root():
 
 
 def _load_manifest(plugin_dir):
-    manifest_path = os.path.join(plugin_dir, "cwplugin.json")
-    if not os.path.exists(manifest_path):
-        return {}
-
-    try:
-        with open(manifest_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return data if isinstance(data, dict) else {}
-    except Exception as e:
-        log(f"读取插件清单失败: {manifest_path}, 错误: {str(e)}")
-        return {}
+    return _read_manifest_file(plugin_dir)
 
 
 def _find_icon_path(plugin_dir, manifest):
