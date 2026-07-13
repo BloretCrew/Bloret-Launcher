@@ -187,7 +187,7 @@ FluentPage {
             
             TextField {
                 id: aiInput
-                placeholderText: (Backend ? Backend.tr("关于 Minecraft 的任何问题，可以问 Blora 哦 ~") : "关于 Minecraft 的任何问题，可以问 Blora 哦 ~")
+                placeholderText: (Backend ? Backend.tr("关于 Minecraft 的任何问题，可以问 Blora Agent 哦 ~") : "关于 Minecraft 的任何问题，可以问 Blora Agent 哦 ~")
                 Layout.fillWidth: true
                 padding: 10
                 onAccepted: sendBtn.clicked()
@@ -202,8 +202,8 @@ FluentPage {
                     var text = aiInput.text.trim()
                     if (text === "")
                         return
-                    console.log("[Home] 发送到 Blora 页处理:", text.substring(0, 80))
-                    // 跳转到 Blora 页面并由 Blora Agent 处理
+                    console.log("[Home] 发送到 Blora Agent 页处理:", text.substring(0, 80))
+                    // 跳转到 Blora Agent 页面并由 Blora Agent 处理
                     var win = Window.window
                     if (win && typeof win.navigateToBlorikoWithMessage === "function") {
                         win.navigateToBlorikoWithMessage(text)
@@ -216,7 +216,7 @@ FluentPage {
         }
         
         Label {
-            text: (Backend ? Backend.tr("Blora 依靠 AI。 Blora 也可能犯错，请核实重要信息。") : "Blora 依靠 AI。 Blora 也可能犯错，请核实重要信息。")
+            text: (Backend ? Backend.tr("Blora Agent 依靠 AI。 Blora Agent 也可能犯错，请核实重要信息。") : "Blora Agent 依靠 AI。 Blora Agent 也可能犯错，请核实重要信息。")
             color: Theme.currentTheme.colors.textTertialyColor
             font.pixelSize: 12
         }
@@ -296,14 +296,14 @@ FluentPage {
 
                 Label {
                     font.weight: Font.Bold
-                    text: (Backend ? Backend.tr("Blora 推荐时间段") : "Blora 推荐时间段")
+                    text: (Backend ? Backend.tr("Blora Agent 推荐时间段") : "Blora Agent 推荐时间段")
                     color: Theme.currentTheme.colors.textColor
                 }
                 
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    text: serverInfo.BestTime || (Backend ? Backend.tr("嗨嗨~ Blora 来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~") : "嗨嗨~ Blora 来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~")
+                    text: serverInfo.BestTime || (Backend ? Backend.tr("嗨嗨~ Blora Agent 来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~") : "嗨嗨~ Blora Agent 来啦！Bloret 百络谷的玩家人数变化超有趣的！让我来告诉你一些最佳游玩时间段吧~")
                     textFormat: Text.MarkdownText
                     color: Theme.currentTheme.colors.textSecondaryColor
                 }

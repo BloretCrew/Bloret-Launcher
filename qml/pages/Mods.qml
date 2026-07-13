@@ -157,11 +157,11 @@ FluentPage {
                         Layout.fillWidth: true
                         Label {
                             font.weight: Font.DemiBold
-                            text: (Backend ? Backend.tr("让 Blora 帮你挑选合适的 Mod") : "让 Blora 帮你挑选合适的 Mod")
+                            text: (Backend ? Backend.tr("让 Blora Agent 帮你挑选合适的 Mod") : "让 Blora Agent 帮你挑选合适的 Mod")
                             color: Theme.currentTheme.colors.textColor
                         }
                         Label {
-                            text: (Backend ? Backend.tr("无需一个一个找 Mod，让 Blora 帮你找齐。") : "无需一个一个找 Mod，让 Blora 帮你找齐。")
+                            text: (Backend ? Backend.tr("无需一个一个找 Mod，让 Blora Agent 帮你找齐。") : "无需一个一个找 Mod，让 Blora Agent 帮你找齐。")
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
                     }
@@ -174,10 +174,10 @@ FluentPage {
                     TextField {
                         id: askBlorikoInput
                         Layout.fillWidth: true
-                        placeholderText: (Backend ? Backend.tr("告诉 Blora 你的需求...") : "告诉 Blora 你的需求...")
+                        placeholderText: (Backend ? Backend.tr("告诉 Blora Agent 你的需求...") : "告诉 Blora Agent 你的需求...")
                         onAccepted: {
                             if (askBlorikoInput.text.trim() !== "" && Backend) {
-                                console.log("[Mods] 回车发送 Blora Mod 建议:", askBlorikoInput.text.substring(0, 80))
+                                console.log("[Mods] 回车发送 Blora Agent Mod 建议:", askBlorikoInput.text.substring(0, 80))
                                 versionSelectDialog.open()
                             }
                         }
@@ -188,7 +188,7 @@ FluentPage {
                         highlighted: true
                         onClicked: {
                             if (askBlorikoInput.text.trim() !== "" && Backend) {
-                                console.log("[Mods] 发送 Blora Mod 建议:", askBlorikoInput.text.substring(0, 80))
+                                console.log("[Mods] 发送 Blora Agent Mod 建议:", askBlorikoInput.text.substring(0, 80))
                                 // 先打开版本选择对话框
                                 versionSelectDialog.open()
                             }
@@ -199,7 +199,7 @@ FluentPage {
         }
 
         Label {
-            text: (Backend ? Backend.tr("Blora 依靠 AI。 Blora 也可能犯错，请核实重要信息。") : "Blora 依靠 AI。 Blora 也可能犯错，请核实重要信息。")
+            text: (Backend ? Backend.tr("Blora Agent 依靠 AI。 Blora Agent 也可能犯错，请核实重要信息。") : "Blora Agent 依靠 AI。 Blora Agent 也可能犯错，请核实重要信息。")
             color: Theme.currentTheme.colors.textTertialyColor
             font.pixelSize: 12
         }
@@ -400,7 +400,7 @@ FluentPage {
 
     Dialog {
         id: blorikoDialog
-        title: (Backend ? Backend.tr("Blora 的建议") : "Blora 的建议")
+        title: (Backend ? Backend.tr("Blora Agent 的建议") : "Blora Agent 的建议")
         property string text: ""
         property var slugs: []
         width: Math.min(parent.width * 0.9, 650)
@@ -491,7 +491,7 @@ FluentPage {
     Dialog {
         id: versionSelectDialog
         title: versionSelectDialog.loading
-            ? (Backend ? Backend.tr("Blora 正在挑选 Mod…") : "Blora 正在挑选 Mod…")
+            ? (Backend ? Backend.tr("Blora Agent 正在挑选 Mod…") : "Blora Agent 正在挑选 Mod…")
             : (Backend ? Backend.tr("选择 Minecraft 版本") : "选择 Minecraft 版本")
         width: versionSelectDialog.loading ? Math.min(modsPage.width * 0.92, 640) : 400
         modal: true
@@ -549,7 +549,7 @@ FluentPage {
                     TextArea {
                         text: modsPage.blorikoThinkingLog.length > 0
                             ? modsPage.blorikoThinkingLog
-                            : (Backend ? Backend.tr("等待 Blora 开始搜索…") : "等待 Blora 开始搜索…")
+                            : (Backend ? Backend.tr("等待 Blora Agent 开始搜索…") : "等待 Blora Agent 开始搜索…")
                         readOnly: true
                         wrapMode: Text.Wrap
                         selectByMouse: true
@@ -573,7 +573,7 @@ FluentPage {
                     TextArea {
                         text: modsPage.blorikoStreamText.length > 0
                             ? modsPage.blorikoStreamText
-                            : (Backend ? Backend.tr("Blora 还在搜索与整理中，正文会显示在这里…") : "Blora 还在搜索与整理中，正文会显示在这里…")
+                            : (Backend ? Backend.tr("Blora Agent 还在搜索与整理中，正文会显示在这里…") : "Blora Agent 还在搜索与整理中，正文会显示在这里…")
                         readOnly: true
                         wrapMode: Text.Wrap
                         selectByMouse: true
@@ -614,7 +614,7 @@ FluentPage {
                             modsPage.selectedFabricVersion = fabricVersionCombo.currentText
                             if (Backend && askBlorikoInput.text.trim() !== "") {
                                 console.log(
-                                    "[Mods] 请求 Blora 推荐: version=",
+                                    "[Mods] 请求 Blora Agent 推荐: version=",
                                     modsPage.selectedFabricVersion,
                                     " query=",
                                     askBlorikoInput.text.substring(0, 80)

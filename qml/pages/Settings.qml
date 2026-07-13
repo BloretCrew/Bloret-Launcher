@@ -464,7 +464,7 @@ FluentPage {
     property string _blorikoSection: Backend ? Backend.tr("Blora Agent") : "Blora Agent"
     property string _blorikoHubDesc: Backend ? Backend.tr("AI 设置与消息连接器管理") : "AI 设置与消息连接器管理"
     property string _wechatTitle: Backend ? Backend.tr("微信连接器") : "微信连接器"
-    property string _wechatDesc: Backend ? Backend.tr("将 Blora 通过微信连接，扫码后可直接在微信中与 Blora 对话") : "将 Blora 通过微信连接，扫码后可直接在微信中与 Blora 对话"
+    property string _wechatDesc: Backend ? Backend.tr("将 Blora Agent 通过微信连接，扫码后可直接在微信中与 Blora Agent 对话") : "将 Blora Agent 通过微信连接，扫码后可直接在微信中与 Blora Agent 对话"
     property string _wechatStatusPrefix: Backend ? Backend.tr("连接状态") : "连接状态"
     property string _wechatConfigureBtn: Backend ? Backend.tr("配置微信") : "配置微信"
     property string _wechatReconfigureBtn: Backend ? Backend.tr("重新配置") : "重新配置"
@@ -1775,7 +1775,7 @@ FluentPage {
             }
 
             Label {
-                text: Backend ? Backend.tr("将 Blora 连接到各种消息平台，随时随地与 Blora 对话") : "将 Blora 连接到各种消息平台，随时随地与 Blora 对话"
+                text: Backend ? Backend.tr("将 Blora Agent 连接到各种消息平台，随时随地与 Blora Agent 对话") : "将 Blora Agent 连接到各种消息平台，随时随地与 Blora Agent 对话"
                 font.pixelSize: 12
                 color: Theme.currentTheme.colors.textSecondaryColor
                 wrapMode: Text.Wrap
