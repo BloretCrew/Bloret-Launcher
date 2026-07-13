@@ -54,6 +54,7 @@ class PluginInstallRequest:
     description: str = ""
     sha256: str = ""
     source: str = "store"  # store | web | file | protocol | localhost
+    permissions: List[str] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
     status: str = "pending"  # pending | installing | done | failed | cancelled
     error: str = ""
@@ -73,6 +74,15 @@ class PluginInstallRequest:
         data = asdict(self)
         data["download_host"] = self.download_host()
         data["display_name"] = self.display_name()
+        # 权限国际化详情，供确认框胶囊展示
+        try:
+            from modules.plugin_host.permissions import permission_details
+
+            data["permission_details"] = permission_details(self.permissions or [])
+        except Exception:
+            data["permission_details"] = [
+                {"id": p, "label": p, "risk": "high"} for p in (self.permissions or [])
+            ]
         # 不向 QML 暴露内部 allow_file 细节以外的敏感字段
         return data
 
@@ -195,6 +205,27 @@ def parse_install_params(params: Dict[str, Any], *, allow_file: bool = False) ->
     description = _get("description", "desc", "summary")
     source = _normalize_source(_get("source", default="store"))
 
+    # 权限：JSON 数组字符串，或逗号分隔，或 list
+    perms_raw = params.get("permissions")
+    if perms_raw is None:
+        perms_raw = params.get("permission") or params.get("perms") or []
+    if isinstance(perms_raw, list) and len(perms_raw) == 1 and isinstance(perms_raw[0], str):
+        # parse_qs 风格
+        perms_raw = perms_raw[0]
+    permissions: List[str] = []
+    if isinstance(perms_raw, list):
+        permissions = [str(x).strip() for x in perms_raw if str(x).strip()]
+    elif isinstance(perms_raw, str) and perms_raw.strip():
+        text = perms_raw.strip()
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                permissions = [str(x).strip() for x in parsed if str(x).strip()]
+            elif isinstance(parsed, str):
+                permissions = [parsed.strip()] if parsed.strip() else []
+        except Exception:
+            permissions = [p.strip() for p in re.split(r"[,;\s]+", text) if p.strip()]
+
     token = secrets.token_urlsafe(16)
     req = PluginInstallRequest(
         token=token,
@@ -206,6 +237,7 @@ def parse_install_params(params: Dict[str, Any], *, allow_file: bool = False) ->
         description=description,
         sha256=sha256.lower() if sha256 else "",
         source=source,
+        permissions=permissions,
         allow_file=allow_file,
     )
     log(

@@ -658,6 +658,27 @@ FluentPage {
             console.log("[Settings] plugins count:", list.length)
             for (var i = 0; i < list.length; i++) {
                 var p = list[i]
+                var permDetails = p.permission_details || []
+                // 兼容旧宿主：仅有 permissions id 列表时走解析
+                var permDetailsJson = "[]"
+                try {
+                    if (permDetails && permDetails.length > 0) {
+                        permDetailsJson = JSON.stringify(permDetails)
+                    } else if (p.permissions && p.permissions.length > 0
+                               && typeof PluginHost.resolvePermissionsJson === "function") {
+                        permDetailsJson = PluginHost.resolvePermissionsJson(
+                            JSON.stringify(p.permissions)
+                        )
+                    } else if (p.requestedPermissions && p.requestedPermissions.length > 0
+                               && typeof PluginHost.resolvePermissionsJson === "function") {
+                        permDetailsJson = PluginHost.resolvePermissionsJson(
+                            JSON.stringify(p.requestedPermissions)
+                        )
+                    }
+                } catch (pe) {
+                    console.log("[Settings] permission details build failed:", pe)
+                    permDetailsJson = "[]"
+                }
                 pluginListModel.append({
                     id: p.id || "",
                     name: p.name || _pluginsUnnamed,
@@ -667,7 +688,8 @@ FluentPage {
                     enabled: !!p.enabled,
                     active: !!p.active,
                     error: p.error || "",
-                    permissions: (p.permissions || []).join(", ")
+                    permissions: (p.permissions || []).join(", "),
+                    permissionDetailsJson: permDetailsJson
                 })
             }
             var themes = JSON.parse(PluginHost.getThemesJson())
@@ -1702,45 +1724,62 @@ FluentPage {
 
             Repeater {
                 model: pluginListModel
-                delegate: SettingCard {
+                delegate: ColumnLayout {
                     Layout.fillWidth: true
-                    title: model.name + (model.version ? ("  v" + model.version) : "")
-                    description: (model.author ? (model.author + " · ") : "")
-                        + (model.description || _pluginsNoDesc)
-                        + (model.error ? ("\n⚠ " + model.error) : "")
-                        + (model.permissions ? ("\n" + model.permissions) : "")
-                    icon.name: model.active ? "ic_fluent_checkmark_circle_20_regular" : "ic_fluent_puzzle_piece_20_regular"
-                    RowLayout {
-                        spacing: 4
-                        Switch {
-                            checked: model.enabled
-                            onToggled: {
-                                if (typeof PluginHost === "undefined" || !PluginHost)
-                                    return
-                                console.log("[Settings] toggle plugin", model.id, checked)
-                                PluginHost.setPluginEnabled(model.id, checked)
-                                loadPlugins()
+                    spacing: 0
+
+                    SettingCard {
+                        Layout.fillWidth: true
+                        title: model.name + (model.version ? ("  v" + model.version) : "")
+                        description: (model.author ? (model.author + " · ") : "")
+                            + (model.description || _pluginsNoDesc)
+                            + (model.error ? ("\n⚠ " + model.error) : "")
+                        icon.name: model.active ? "ic_fluent_checkmark_circle_20_regular" : "ic_fluent_puzzle_piece_20_regular"
+                        RowLayout {
+                            spacing: 4
+                            Switch {
+                                checked: model.enabled
+                                onToggled: {
+                                    if (typeof PluginHost === "undefined" || !PluginHost)
+                                        return
+                                    console.log("[Settings] toggle plugin", model.id, checked)
+                                    PluginHost.setPluginEnabled(model.id, checked)
+                                    loadPlugins()
+                                }
+                            }
+                            Button {
+                                flat: true
+                                text: _openText
+                                onClicked: {
+                                    if (typeof PluginHost !== "undefined" && PluginHost)
+                                        PluginHost.openPluginFolder(model.id)
+                                }
+                            }
+                            Button {
+                                flat: true
+                                text: _pluginsUninstall
+                                onClicked: {
+                                    if (typeof PluginHost === "undefined" || !PluginHost)
+                                        return
+                                    console.log("[Settings] uninstall plugin", model.id)
+                                    PluginHost.uninstallPlugin(model.id)
+                                    loadPlugins()
+                                }
                             }
                         }
-                        Button {
-                            flat: true
-                            text: _openText
-                            onClicked: {
-                                if (typeof PluginHost !== "undefined" && PluginHost)
-                                    PluginHost.openPluginFolder(model.id)
-                            }
-                        }
-                        Button {
-                            flat: true
-                            text: _pluginsUninstall
-                            onClicked: {
-                                if (typeof PluginHost === "undefined" || !PluginHost)
-                                    return
-                                console.log("[Settings] uninstall plugin", model.id)
-                                PluginHost.uninstallPlugin(model.id)
-                                loadPlugins()
-                            }
-                        }
+                    }
+
+                    // 权限胶囊：国际化标签 + 高/低风险配色
+                    PluginPermissionChips {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 48
+                        Layout.rightMargin: 12
+                        Layout.topMargin: 2
+                        Layout.bottomMargin: 10
+                        compact: true
+                        showTitle: true
+                        title: Backend ? Backend.tr("权限") : "权限"
+                        detailsJson: model.permissionDetailsJson || "[]"
                     }
                 }
             }

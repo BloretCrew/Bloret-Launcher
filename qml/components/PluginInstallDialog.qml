@@ -19,6 +19,8 @@ Dialog {
     property string stage: "pending" // pending | installing | done | failed | cancelled
     property string statusMessage: ""
     property double progress: 0.0
+    /** 权限详情 JSON：[{id,label,risk},...] */
+    property string permissionDetailsJson: "[]"
 
     title: {
         if (stage === "installing")
@@ -52,6 +54,45 @@ Dialog {
         stage = "pending"
         statusMessage = ""
         progress = 0.0
+        permissionDetailsJson = "[]"
+    }
+
+    function _buildPermissionDetails(meta) {
+        // 优先使用服务端/宿主已解析的 permission_details
+        if (meta.permission_details) {
+            try {
+                return typeof meta.permission_details === "string"
+                    ? meta.permission_details
+                    : JSON.stringify(meta.permission_details)
+            } catch (e) {
+                console.log("[PluginInstallDialog] stringify permission_details failed:", e)
+            }
+        }
+        var ids = meta.permissions || meta.requestedPermissions || meta.permission || []
+        if (typeof ids === "string") {
+            try {
+                ids = JSON.parse(ids)
+            } catch (e2) {
+                ids = ids.split(/[,;\s]+/).filter(function (s) { return s && s.length > 0 })
+            }
+        }
+        if (!ids || ids.length === 0)
+            return "[]"
+        if (typeof PluginHost !== "undefined" && PluginHost
+                && typeof PluginHost.resolvePermissionsJson === "function") {
+            try {
+                return PluginHost.resolvePermissionsJson(JSON.stringify(ids))
+            } catch (e3) {
+                console.log("[PluginInstallDialog] resolvePermissionsJson failed:", e3)
+            }
+        }
+        try {
+            return JSON.stringify(ids.map(function (id) {
+                return { id: id, label: id, risk: "high" }
+            }))
+        } catch (e4) {
+            return "[]"
+        }
     }
 
     function showProposal(meta) {
@@ -68,6 +109,9 @@ Dialog {
         downloadHost = meta.download_host || ""
         sha256 = meta.sha256 || ""
         source = meta.source || ""
+        permissionDetailsJson = _buildPermissionDetails(meta)
+        console.log("[PluginInstallDialog] permissions chips:",
+                    String(permissionDetailsJson).substring(0, 200))
         stage = "pending"
         statusMessage = ""
         progress = 0.0
@@ -168,6 +212,36 @@ Dialog {
                         visible: pluginDescription.length > 0
                         text: pluginDescription
                         typography: Typography.Caption
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                    }
+
+                    PluginPermissionChips {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        compact: true
+                        showTitle: true
+                        title: tr("此插件将获得以下权限")
+                        detailsJson: permissionDetailsJson
+                        hideWhenEmpty: true
+                    }
+
+                    Text {
+                        visible: {
+                            try {
+                                var arr = JSON.parse(permissionDetailsJson || "[]")
+                                if (!Array.isArray(arr))
+                                    return false
+                                for (var i = 0; i < arr.length; i++) {
+                                    if ((arr[i].risk || "") === "high")
+                                        return true
+                                }
+                            } catch (e) {}
+                            return false
+                        }
+                        text: tr("橙色为高风险权限，安装前请仔细确认")
+                        typography: Typography.Caption
+                        color: "#c2410c"
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }

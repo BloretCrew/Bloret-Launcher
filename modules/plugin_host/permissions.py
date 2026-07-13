@@ -48,25 +48,84 @@ HIGH_RISK_PERMISSIONS: Set[str] = {
     "web.routes",
 }
 
-# 权限 -> 所需 contributes / hooks 映射提示
-PERMISSION_LABELS = {
-    "ui.nav": "添加导航页",
-    "ui.theme": "修改主题",
-    "ui.settings": "添加设置项",
-    "ui.toolbar": "扩展 Minecraft 小工具栏",
-    "ui.home": "扩展主页卡片",
-    "ui.tools": "扩展小工具页卡片",
-    "launch.hooks": "拦截/修改游戏启动",
-    "download.hooks": "拦截下载/安装流程",
-    "agent.bloriko": "扩展络可 Agent",
-    "agent.blrpe": "扩展 BLRPE Copilot",
-    "config.read": "读取启动器配置",
-    "config.write": "写入启动器配置",
-    "fs.datapath": "访问数据目录文件",
-    "net.http": "发起网络请求",
-    "process.exec": "执行外部进程",
-    "web.routes": "注册本地 Web 路由",
+# 权限元数据：label 为 i18n 源文案（中文 key，与 lang/*.json texts 对齐）
+PERMISSION_META = {
+    "ui.nav": {"label": "添加导航页", "risk": "safe"},
+    "ui.theme": {"label": "修改主题", "risk": "safe"},
+    "ui.settings": {"label": "添加设置项", "risk": "safe"},
+    "ui.toolbar": {"label": "扩展 Minecraft 小工具栏", "risk": "safe"},
+    "ui.home": {"label": "扩展主页卡片", "risk": "safe"},
+    "ui.tools": {"label": "扩展小工具页卡片", "risk": "safe"},
+    "launch.hooks": {"label": "拦截/修改游戏启动", "risk": "high"},
+    "download.hooks": {"label": "拦截下载/安装流程", "risk": "high"},
+    "agent.bloriko": {"label": "扩展络可 Agent", "risk": "high"},
+    "agent.blrpe": {"label": "扩展 BLRPE Copilot", "risk": "high"},
+    "config.read": {"label": "读取启动器配置", "risk": "safe"},
+    "config.write": {"label": "写入启动器配置", "risk": "high"},
+    "fs.datapath": {"label": "访问数据目录文件", "risk": "high"},
+    "net.http": {"label": "发起网络请求", "risk": "high"},
+    "process.exec": {"label": "执行外部进程", "risk": "high"},
+    "web.routes": {"label": "注册本地 Web 路由", "risk": "high"},
 }
+
+# 兼容旧代码：权限 id -> 中文标签（未翻译）
+PERMISSION_LABELS = {k: v["label"] for k, v in PERMISSION_META.items()}
+
+
+def permission_risk(perm_id: str) -> str:
+    meta = PERMISSION_META.get(perm_id)
+    if meta:
+        return meta.get("risk") or "safe"
+    if perm_id in HIGH_RISK_PERMISSIONS:
+        return "high"
+    if perm_id in DEFAULT_SAFE_PERMISSIONS:
+        return "safe"
+    # 未知权限按高风险展示，提醒用户注意
+    return "high"
+
+
+def permission_label_key(perm_id: str) -> str:
+    """返回 i18n 键（中文源文案）；未知权限回退为 id 本身。"""
+    meta = PERMISSION_META.get(perm_id)
+    if meta:
+        return meta["label"]
+    return str(perm_id or "")
+
+
+def permission_label(perm_id: str) -> str:
+    """当前语言下的权限显示名。"""
+    key = permission_label_key(perm_id)
+    if not key:
+        return ""
+    try:
+        from modules.i18n import i18nText
+
+        return i18nText(key)
+    except Exception:
+        return key
+
+
+def permission_detail(perm_id: str) -> dict:
+    """供 QML 胶囊使用：{id, label, risk, label_key}。"""
+    pid = str(perm_id or "").strip()
+    return {
+        "id": pid,
+        "label": permission_label(pid) if pid else "",
+        "label_key": permission_label_key(pid),
+        "risk": permission_risk(pid) if pid else "safe",
+    }
+
+
+def permission_details(perms: Iterable[str]) -> List[dict]:
+    """批量解析权限展示信息（去重保序）。"""
+    seen = set()
+    out: List[dict] = []
+    for p in normalize_permissions(list(perms or [])):
+        if p in seen:
+            continue
+        seen.add(p)
+        out.append(permission_detail(p))
+    return out
 
 
 def normalize_permissions(raw) -> List[str]:

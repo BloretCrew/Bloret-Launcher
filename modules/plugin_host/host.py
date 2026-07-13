@@ -322,9 +322,16 @@ class PluginHost(QObject):
         return json.dumps(self.list_plugins_info(), ensure_ascii=False)
 
     def list_plugins_info(self) -> List[dict]:
+        from modules.plugin_host.permissions import permission_details
+
         result = []
         for plugin_id, info in sorted(self._plugins.items(), key=lambda x: x[0]):
             m = info["manifest"]
+            granted = list(info.get("permissions") or [])
+            requested = list(m.get("permissions") or [])
+            # 展示优先用已授权；若为空则回退清单请求，便于用户检查
+            show_perms = granted or requested
+            details = permission_details(show_perms)
             result.append(
                 {
                     "id": plugin_id,
@@ -339,8 +346,9 @@ class PluginHost(QObject):
                     "enabled": bool(info.get("enabled")),
                     "active": bool(info.get("active")),
                     "error": info.get("error") or "",
-                    "permissions": list(info.get("permissions") or []),
-                    "requestedPermissions": list(m.get("permissions") or []),
+                    "permissions": granted,
+                    "requestedPermissions": requested,
+                    "permission_details": details,
                     "hasTheme": plugin_id in self._registry.get_themes(),
                     "entry": m.get("entry") or {},
                 }
@@ -872,9 +880,28 @@ class PluginHost(QObject):
 
     @Slot(result="QVariantList")
     def getPermissionLabels(self) -> list:
-        from modules.plugin_host.permissions import PERMISSION_LABELS
+        """全部已知权限的国际化标签与风险等级（供 UI 胶囊/图例）。"""
+        from modules.plugin_host.permissions import PERMISSION_META, permission_detail
 
-        return [{"id": k, "label": v} for k, v in PERMISSION_LABELS.items()]
+        items = []
+        for pid in sorted(PERMISSION_META.keys()):
+            items.append(permission_detail(pid))
+        return items
+
+    @Slot(str, result=str)
+    def resolvePermissionsJson(self, perms_json: str) -> str:
+        """将权限 id 列表 JSON 解析为带 label/risk 的详情 JSON。"""
+        from modules.plugin_host.permissions import permission_details
+
+        try:
+            raw = json.loads(perms_json or "[]")
+        except Exception:
+            raw = []
+        if isinstance(raw, str):
+            raw = [raw]
+        if not isinstance(raw, list):
+            raw = []
+        return json.dumps(permission_details(raw), ensure_ascii=False)
 
     def get_toolbar_callbacks(self) -> List[dict]:
         return self._registry.get_toolbar()
