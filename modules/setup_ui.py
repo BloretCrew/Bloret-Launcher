@@ -55,6 +55,7 @@ from modules.install import InstallMinecraftVersion
 from modules.modrinth import search_mods, Get_Mod_File_Download_Url, add_mrpack
 from modules.win11toast import notify, update_progress
 from modules.java import InstallJava, java_versions
+from modules.java_runtime import scan_java_runtimes
 from modules.i18n import i18nText
 from modules.customize import CustomizeAdd, CustomizeRun
 from modules.Bloriko import AskBlorikoAndSet, AskBloriko
@@ -87,40 +88,9 @@ def resource_path(relative_path):
     return app_path(relative_path)
 
 def scan_java_paths():
-    """扫描系统中的 Java 安装路径"""
-    java_paths = []
-    
-    # 1. 检查 PATH 环境变量
-    path_java = shutil.which("java")
-    if path_java:
-        java_paths.append(path_java)
-        
-    # 2. 常见安装目录
-    common_roots = [
-        os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Java"),
-        os.path.join(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"), "Java"),
-        os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Eclipse Adoptium"),
-        os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Zulu"),
-        os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "BellSoft"),
-        os.path.join(os.path.expanduser("~"), ".jdks"),
-        "/Library/Java/JavaVirtualMachines",  # macOS
-        "/usr/lib/jvm",                       # Linux
-        "/usr/java"                           # Linux alternative
-    ]
-    
-    for root in common_roots:
-        if os.path.exists(root):
-            try:
-                for dirpath, dirnames, filenames in os.walk(root):
-                    # 简单优化：只查找 bin 目录下的 java.exe
-                    if os.path.basename(dirpath) == 'bin' and "java.exe" in filenames:
-                        full_path = os.path.join(dirpath, "java.exe")
-                        if full_path not in java_paths:
-                            java_paths.append(full_path)
-            except Exception:
-                pass
-                
-    return list(set(java_paths))
+    """扫描并探测系统中的 Java，返回适合 QML 使用的结构化元数据。"""
+    runtime_root = os.path.join(BLglobals.datapath, "runtime")
+    return scan_java_runtimes(extra_roots=[runtime_root])
 
 class DownloadDialog(MessageBoxBase):
     """ 自定义下载对话框 """

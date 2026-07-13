@@ -415,6 +415,10 @@ FluentWindow {
 
     ErrorAnalysisDialog {
         id: errorAnalysisDialog
+        onAskBlorikoRequested: function(prompt) {
+            console.log("[Main] 从 Minecraft 错误分析跳转络可，提示词长度:", prompt.length)
+            window.navigateToBlorikoWithMessage(prompt)
+        }
     }
 
     CoreManagerDialog {

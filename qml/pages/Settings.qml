@@ -14,7 +14,8 @@ FluentPage {
     property string currentCategory: ""
 
     property string currentMcDir: ""
-    property var javaPaths: []
+    property var javaRuntimes: []
+    property string javaSelectionMode: "auto"
     property string currentJavaPath: ""
     property string themeMode: ""
     property var languages: []
@@ -776,23 +777,36 @@ FluentPage {
         }
     }
 
+    function refreshJavaComboSelection() {
+        javaCombo.currentIndex = -1
+        for (var i = 0; i < javaRuntimes.length; i++) {
+            if (javaRuntimes[i].path === currentJavaPath) {
+                javaCombo.currentIndex = i
+                break
+            }
+        }
+        if (javaCombo.currentIndex < 0 && javaRuntimes.length > 0)
+            javaCombo.currentIndex = 0
+    }
+
+    function rescanJavas() {
+        if (!Backend) return
+        console.log("[Settings] 重新扫描 Java")
+        javaRuntimes = Backend.getSystemJavas()
+        refreshJavaComboSelection()
+    }
+
     function refreshData() {
         refreshTranslations()
         loadSettingsProviders()
         if (Backend) {
             currentMcDir = Backend.getMinecraftDir()
-            javaPaths = Backend.getSystemJavas()
+            javaRuntimes = Backend.getSystemJavas()
+            javaSelectionMode = Backend.getJavaSelectionMode()
             currentJavaPath = Backend.getCurrentJavaPath()
+            javaModeCombo.currentIndex = javaSelectionMode === "fixed" ? 1 : 0
+            refreshJavaComboSelection()
             themeMode = Backend.getThemeMode()
-
-            if (javaPaths.indexOf("Auto") === -1)
-                javaPaths.unshift("Auto")
-
-            javaCombo.currentIndex = javaPaths.indexOf(currentJavaPath)
-            if (javaCombo.currentIndex === -1) {
-                javaPaths.push(currentJavaPath)
-                javaCombo.currentIndex = javaPaths.length - 1
-            }
 
             themeCombo.currentIndex = ["Auto", "Light", "Dark"].indexOf(themeMode)
 
@@ -973,15 +987,71 @@ FluentPage {
             SettingCard {
                 Layout.fillWidth: true
                 title: _javaTitle
-                description: _javaDesc
+                description: javaSelectionMode === "auto"
+                             ? (Backend ? Backend.tr("按 Minecraft 版本自动匹配已安装的 Java") : "按 Minecraft 版本自动匹配已安装的 Java")
+                             : _javaDesc
                 icon.name: "ic_fluent_code_20_regular"
-                ComboBox {
-                    id: javaCombo
-                    model: javaPaths
-                    Layout.preferredWidth: 250
-                    onActivated: {
-                        if (Backend)
-                            Backend.setCurrentJavaPath(currentText)
+
+                ColumnLayout {
+                    spacing: 6
+                    Layout.preferredWidth: 430
+
+                    RowLayout {
+                        spacing: 8
+                        ComboBox {
+                            id: javaModeCombo
+                            model: [
+                                Backend ? Backend.tr("自动选择（推荐）") : "自动选择（推荐）",
+                                Backend ? Backend.tr("固定 Java") : "固定 Java"
+                            ]
+                            Layout.preferredWidth: 170
+                            onActivated: {
+                                javaSelectionMode = currentIndex === 1 ? "fixed" : "auto"
+                                if (Backend && javaSelectionMode === "auto")
+                                    Backend.setJavaSelection("auto", "")
+                            }
+                        }
+
+                        Button {
+                            text: Backend ? Backend.tr("重新扫描") : "重新扫描"
+                            onClicked: rescanJavas()
+                        }
+
+                        Button {
+                            text: _browseText
+                            visible: javaSelectionMode === "fixed"
+                            onClicked: {
+                                if (!Backend) return
+                                var selected = Backend.browseJavaExecutable()
+                                if (!selected) return
+                                currentJavaPath = selected
+                                rescanJavas()
+                                refreshJavaComboSelection()
+                                Backend.setJavaSelection("fixed", selected)
+                            }
+                        }
+                    }
+
+                    ComboBox {
+                        id: javaCombo
+                        visible: javaSelectionMode === "fixed"
+                        model: javaRuntimes
+                        textRole: "display"
+                        Layout.fillWidth: true
+                        onActivated: {
+                            if (!Backend || currentIndex < 0) return
+                            currentJavaPath = javaRuntimes[currentIndex].path
+                            Backend.setJavaSelection("fixed", currentJavaPath)
+                        }
+                    }
+
+                    Label {
+                        visible: javaSelectionMode === "fixed" && javaCombo.currentIndex >= 0
+                        text: visible ? javaRuntimes[javaCombo.currentIndex].path : ""
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        font.pixelSize: 11
+                        elide: Text.ElideMiddle
+                        Layout.fillWidth: true
                     }
                 }
             }

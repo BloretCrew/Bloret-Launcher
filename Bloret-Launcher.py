@@ -2472,10 +2472,6 @@ class Backend(QObject):
                 except Exception:
                     pass
 
-    @Slot(result=list)
-    def getSystemJavas(self):
-        return ["C:\\Program Files\\Java\\jre1.8.0_361\\bin\\java.exe", "E:\\Java\\jdk-17\\bin\\java.exe"]
-
     @Slot()
     def openMinecraftDir(self):
         config_data = cfg.read()
@@ -2531,20 +2527,74 @@ class Backend(QObject):
 
     @Slot(result=list)
     def getSystemJavas(self):
-        return scan_java_paths()
+        from modules.java_runtime import probe_java
+        runtimes = scan_java_paths()
+        configured_path = self.getCurrentJavaPath()
+        if configured_path and not any(item.get('path') == configured_path for item in runtimes):
+            configured = probe_java(configured_path)
+            if configured['valid']:
+                runtimes.append(configured)
+        log(f"[Settings] 返回 {len(runtimes)} 个 Java 扫描结果")
+        return runtimes
+
+    @Slot(result=str)
+    def getJavaSelectionMode(self):
+        config_data = cfg.read()
+        mode = config_data.get('java_mode')
+        if mode in ('auto', 'fixed'):
+            return mode
+        legacy_path = config_data.get('java_path', config_data.get('Java_Path', 'Auto'))
+        return 'auto' if not legacy_path or legacy_path == 'Auto' else 'fixed'
 
     @Slot(result=str)
     def getCurrentJavaPath(self):
         config_data = cfg.read()
-        return config_data.get('java_path', 'Auto')
+        path = config_data.get('java_fixed_path') or config_data.get('java_path', config_data.get('Java_Path', 'Auto'))
+        return '' if path == 'Auto' else path
+
+    @Slot(str, str, result=bool)
+    def setJavaSelection(self, mode, path):
+        from modules.java_runtime import probe_java
+        if mode not in ('auto', 'fixed'):
+            log(f"[Settings] 拒绝未知 Java 选择模式: {mode}", logging.WARNING)
+            return False
+        normalized_path = ''
+        if mode == 'fixed':
+            info = probe_java(path)
+            if not info['valid']:
+                log(f"[Settings] 拒绝无效固定 Java: {path}，原因={info['error']}", logging.WARNING)
+                return False
+            normalized_path = info['path']
+        config_data = cfg.read()
+        config_data['java_mode'] = mode
+        config_data['java_fixed_path'] = normalized_path
+        config_data['java_path'] = normalized_path if mode == 'fixed' else 'Auto'
+        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        log(f"[Settings] Java 选择已更新：模式={mode}，路径={normalized_path or '自动'}")
+        return True
 
     @Slot(str)
     def setCurrentJavaPath(self, path):
-        config_data = cfg.read()
-        config_data['java_path'] = path
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
-        print(f"Java path updated to: {path}")
+        self.setJavaSelection('auto' if path == 'Auto' else 'fixed', '' if path == 'Auto' else path)
+
+    @Slot(result=str)
+    def browseJavaExecutable(self):
+        executable, _ = QFileDialog.getOpenFileName(
+            None,
+            i18nText("选择 Java 可执行文件"),
+            "",
+            "Java (java java.exe);;All Files (*)",
+        )
+        if not executable:
+            return ""
+        from modules.java_runtime import probe_java
+        info = probe_java(executable)
+        if not info['valid']:
+            log(f"[Settings] 浏览选择的文件不是有效 Java: {executable}，原因={info['error']}", logging.WARNING)
+            return ""
+        log(f"[Settings] 浏览选择 Java {info['major']}：{info['path']}")
+        return info['path']
 
     @Slot(result=str)
     def getThemeMode(self):

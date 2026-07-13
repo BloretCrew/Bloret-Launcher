@@ -21,6 +21,7 @@ from modules.i18n import i18nText
 from modules.install import LibraryDownloader
 import modules.globals as BLglobals
 import modules.config as cfg # 确保导入了 config 模块
+from modules.java_runtime import select_java_runtime
 
 # Windows API 导入，用于获取窗口句柄
 if platform.system() == "Windows":
@@ -172,80 +173,22 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
     if not os.path.exists(client_jar_path):
         raise FileNotFoundError(f"客户端 JAR 文件 {client_jar_path} 不存在")
     
-    # 获取 Java 路径
-    java_path = "java"  # 默认值
-    
-    # 1. 优先使用配置中指定的 Java 路径 (新增逻辑)
-    config_java_path = config_data.get('java_path', '')
-    if config_java_path and os.path.exists(config_java_path) and config_java_path != "Auto":
-        java_path = config_java_path
-    else:
-        # 2. 检查系统PATH中是否存在java命令
-        import shutil
-        java_in_path = shutil.which("java")
-        
-        if java_in_path:
-            java_path = java_in_path
-        else:
-            # 3. 如果系统PATH中没有java，尝试使用配置中的旧字段 java_dir (兼容旧配置)
-            java_dir = config_data.get('java_dir', '') 
-            
-            if java_dir and os.path.exists(java_dir):
-                java_exe_path = os.path.join(java_dir, "bin", "java.exe")
-                if os.path.exists(java_exe_path):
-                    java_path = java_exe_path
-            else:
-                # 4. 尝试默认的Java安装路径
-                default_java_paths = [
-                    r"C:\Program Files\Java\jdk-17\bin\java.exe",
-                    r"C:\Program Files\Java\jdk-21\bin\java.exe",
-                    r"C:\Program Files\Java\jdk-24\bin\java.exe",
-                    r"C:\Program Files\Eclipse Adoptium\jdk-17-hotspot\bin\java.exe",
-                    r"C:\Program Files\Eclipse Adoptium\jdk-21-hotspot\bin\java.exe",
-                    r"C:\Program Files\Eclipse Adoptium\jdk-24-hotspot\bin\java.exe",
-                    r"C:\Program Files\Zulu\zulu-24\bin\java.exe",
-                    r"C:\Program Files\Zulu\zulu-17\bin\java.exe",
-                    r"C:\Program Files\Zulu\zulu-21\bin\java.exe"
-                ]
-                
-                # Mac/Linux defaults
-                if sys.platform != "win32":
-                    default_java_paths = [
-                         "/usr/bin/java",
-                         "/usr/local/bin/java",
-                         "/opt/java/bin/java",
-                         "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home/bin/java",
-                         "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home/bin/java"
-                    ]
-                
-                for default_path in default_java_paths:
-                    if os.path.exists(default_path):
-                        java_path = default_path
-                        break
-
-    # 检测 Java 版本，用于后续兼容性判断
-    java_version = 8  # 默认版本
-    try:
-        result = subprocess.run(
-            [java_path, "-version"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-        )
-        # Java 版本输出通常在 stderr 中
-        version_output = result.stderr if result.stderr else result.stdout
-        # 提取版本号（例如 "25.0.1" 或 "17.0.8"）
-        import re
-        version_match = re.search(r'version\s+"?(\d+)(?:\.(\d+))?', version_output)
-        if version_match:
-            major = int(version_match.group(1))
-            java_version = int(version_match.group(2)) if major == 1 and version_match.group(2) else major
-            log(f"检测到 Java版本: {java_version}")
-        else:
-            log(f"无法检测 Java 版本，假定为 8")
-    except Exception as e:
-        log(f"检测 Java 版本失败: {e}，假定为 8")
+    # 按版本 JSON 声明选择兼容 Java；官方 JVM 参数必须由匹配版本执行。
+    java_requirement = version_data.get("javaVersion") or {}
+    required_java_major = java_requirement.get("majorVersion")
+    java_component = java_requirement.get("component", "")
+    log(
+        f"Minecraft {mc_version} Java 要求：component={java_component or '未声明'}，"
+        f"major={required_java_major or '未声明'}"
+    )
+    legacy_java_dir = config_data.get("java_dir", "")
+    extra_java_roots = [os.path.join(BLglobals.datapath, "runtime")]
+    if legacy_java_dir:
+        extra_java_roots.append(legacy_java_dir)
+    java_info = select_java_runtime(config_data, required_java_major, extra_roots=extra_java_roots)
+    java_path = java_info["path"]
+    java_version = java_info["major"]
+    log(f"Minecraft {mc_version} 最终 Java：{java_path}（Java {java_version}）")
     
     # --- 账户信息处理 (从 config.json 读取) ---
     mc_account_config = config_data.get("MinecraftAccount", {})

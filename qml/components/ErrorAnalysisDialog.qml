@@ -10,6 +10,7 @@ Dialog {
     property string errorMessage: ""
     property string errorStackTrace: ""
     property string errorSuggestion: ""
+    signal askBlorikoRequested(string prompt)
 
     title: Backend ? Backend.tr("启动错误分析") : "启动错误分析"
     modal: true
@@ -19,6 +20,7 @@ Dialog {
     height: 450
 
     property var _copyButton: null
+    property var _askButton: null
 
     onOpened: {
         if (standardButton(Dialog.Close)) {
@@ -35,6 +37,15 @@ Dialog {
                 _copyButton = copyBtn
             }
         }
+        if (!_askButton && footer && footer.contentItem) {
+            var askBtn = askButtonComponent.createObject(footer.contentItem)
+            if (askBtn) {
+                var askLayout = footer.contentItem.children[0]
+                if (askLayout && askLayout.addItem)
+                    askLayout.addItem(askBtn)
+                _askButton = askBtn
+            }
+        }
     }
 
     Component {
@@ -49,6 +60,22 @@ Dialog {
                 if (errorMessage) fullText += errorMessage + "\n\n"
                 if (errorStackTrace) fullText += errorStackTrace
                 if (Backend) Backend.copyToClipboard(fullText)
+            }
+        }
+    }
+
+    Component {
+        id: askButtonComponent
+        Button {
+            text: Backend ? Backend.tr("询问络可") : "询问络可"
+            highlighted: true
+            Layout.alignment: Qt.AlignRight
+            Layout.preferredWidth: footer ? footer.availableWidth / 2 : 120
+            onClicked: {
+                var prompt = buildBlorikoPrompt()
+                console.log("[ErrorAnalysis] 请求络可分析，提示词长度:", prompt.length)
+                errorAnalysisDialog.close()
+                errorAnalysisDialog.askBlorikoRequested(prompt)
             }
         }
     }
@@ -214,6 +241,27 @@ Dialog {
         open()
     }
 
+    function sanitizeDiagnosticText(text) {
+        var sanitized = text || ""
+        sanitized = sanitized.replace(/(Authorization\s*[:=]\s*)([^\s,;]+)/gi, "$1[已脱敏]")
+        sanitized = sanitized.replace(/((?:access[_-]?token|refresh[_-]?token|client[_-]?secret|api[_-]?key)\s*[:=]\s*[\"']?)([^\s\"',;]+)/gi, "$1[已脱敏]")
+        sanitized = sanitized.replace(/(Bearer\s+)[A-Za-z0-9._~+\/-]+/gi, "$1[已脱敏]")
+        return sanitized
+    }
+
+    function buildBlorikoPrompt() {
+        var maxLogLength = 24000
+        var safeStack = sanitizeDiagnosticText(errorStackTrace)
+        if (safeStack.length > maxLogLength)
+            safeStack = "[日志过长，已保留末尾 " + maxLogLength + " 个字符]\n" + safeStack.slice(-maxLogLength)
+        var prompt = "请分析下面的 Minecraft 启动或崩溃错误，独立判断最可能的根因，并给出按优先级排列、可以直接执行的排查与修复步骤。不要只重复启动器的本地提示。\n\n"
+        if (errorTitle) prompt += "错误标题：\n" + sanitizeDiagnosticText(errorTitle) + "\n\n"
+        if (errorMessage) prompt += "错误信息：\n" + sanitizeDiagnosticText(errorMessage) + "\n\n"
+        if (errorSuggestion) prompt += "启动器本地初步提示：\n" + sanitizeDiagnosticText(errorSuggestion) + "\n\n"
+        if (safeStack) prompt += "堆栈或日志尾部：\n```text\n" + safeStack + "\n```\n"
+        return prompt
+    }
+
     function analyzeError(text) {
         if (!text) return ""
 
@@ -221,6 +269,10 @@ Dialog {
 
         if (text.indexOf("NullPointerException") !== -1) {
             tips.push((Backend ? Backend.tr("检测到空指针异常 (NullPointerException)。这通常是由于 Mod 冲突、版本不兼容或 Java 环境问题导致的。建议检查 Mod 兼容性，或尝试移除最近添加的 Mod 后重新启动。") : "检测到空指针异常 (NullPointerException)。这通常是由于 Mod 冲突、版本不兼容或 Java 环境问题导致的。建议检查 Mod 兼容性，或尝试移除最近添加的 Mod 后重新启动。"))
+        }
+
+        if (text.indexOf("Unrecognized option") !== -1 || text.indexOf("需要 Java") !== -1 || text.indexOf("Java ") !== -1 && text.indexOf("但固定 Java") !== -1) {
+            tips.push((Backend ? Backend.tr("检测到 Java 版本或 JVM 参数不兼容。请在设置中使用“自动选择”，或选择该 Minecraft 版本要求的 Java 主版本。") : "检测到 Java 版本或 JVM 参数不兼容。请在设置中使用“自动选择”，或选择该 Minecraft 版本要求的 Java 主版本。"))
         }
 
         if (text.indexOf("OutOfMemoryError") !== -1) {
