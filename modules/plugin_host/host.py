@@ -90,10 +90,34 @@ class PluginHost(QObject):
                 log(f"[PluginHost] shutdown 停用 {plugin_id} 失败: {e}")
 
     def scan_and_load(self) -> None:
+        """重新扫描 Plugin 目录并加载插件。
+
+        可重复调用：会先安全停用已激活实例，再按磁盘目录重建，
+        这样「刷新」能发现手动复制/删除/更新的插件。
+        """
         root = get_plugin_root()
         log(f"[PluginHost] 扫描插件目录: {root}")
         if not os.path.isdir(root):
+            # 目录不存在时清空运行时缓存
+            for plugin_id in list(self._plugins.keys()):
+                try:
+                    if self._plugins[plugin_id].get("active"):
+                        self._deactivate(plugin_id, persist=False)
+                except Exception as e:
+                    log(f"[PluginHost] 清空插件 {plugin_id} 失败: {e}")
+                self._plugins.pop(plugin_id, None)
+            self._emit_ui_signals()
+            self.pluginsChanged.emit()
             return
+
+        # 先停用全部已激活插件，避免二次扫描重复注册钩子/贡献
+        for plugin_id in list(self._plugins.keys()):
+            info = self._plugins.get(plugin_id) or {}
+            if info.get("active"):
+                try:
+                    self._deactivate(plugin_id, persist=False)
+                except Exception as e:
+                    log(f"[PluginHost] 扫描前停用 {plugin_id} 失败: {e}")
 
         found_ids = set()
         for entry in sorted(os.listdir(root)):
@@ -126,13 +150,51 @@ class PluginHost(QObject):
             except Exception as e:
                 log(f"[PluginHost] 扫描插件 {entry} 失败: {e}")
 
-        # 清理目录中已不存在的状态（不删 config，仅日志）
+        # 清理目录中已不存在的插件运行时状态
         for pid in list(self._plugins.keys()):
-            if pid not in found_ids and not os.path.isdir(self._plugins[pid]["manifest"]["path"]):
+            if pid not in found_ids:
+                log(f"[PluginHost] 插件目录已移除，清理运行时: {pid}")
+                try:
+                    if self._plugins[pid].get("active"):
+                        self._deactivate(pid, persist=False)
+                except Exception as e:
+                    log(f"[PluginHost] 清理已删除插件 {pid} 失败: {e}")
                 del self._plugins[pid]
 
+        log(f"[PluginHost] 扫描完成 count={len(self._plugins)} ids={sorted(self._plugins.keys())}")
         self._emit_ui_signals()
         self.pluginsChanged.emit()
+
+    @Slot(result=str)
+    def rescanPlugins(self) -> str:
+        """供 QML「刷新」调用：重新扫描磁盘插件目录并返回摘要 JSON。"""
+        log("[PluginHost] rescanPlugins 开始")
+        try:
+            self.scan_and_load()
+            items = self.list_plugins_info()
+            payload = {
+                "ok": True,
+                "count": len(items),
+                "plugins": [
+                    {
+                        "id": p.get("id"),
+                        "name": p.get("name"),
+                        "enabled": p.get("enabled"),
+                        "active": p.get("active"),
+                        "error": p.get("error") or "",
+                    }
+                    for p in items
+                ],
+                "message": f"已刷新，共 {len(items)} 个插件",
+            }
+            log(f"[PluginHost] rescanPlugins 完成 count={len(items)}")
+            return json.dumps(payload, ensure_ascii=False)
+        except Exception as e:
+            log(f"[PluginHost] rescanPlugins 失败: {e}")
+            return json.dumps(
+                {"ok": False, "count": 0, "plugins": [], "message": f"刷新失败: {e}", "error": str(e)},
+                ensure_ascii=False,
+            )
 
     def reload_plugin(self, plugin_id: str) -> bool:
         log(f"[PluginHost] reload {plugin_id}")

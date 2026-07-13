@@ -560,6 +560,8 @@ FluentPage {
     property string _pluginsDisable: Backend ? Backend.tr("禁用") : "禁用"
     property string _pluginsUninstall: Backend ? Backend.tr("卸载插件") : "卸载插件"
     property string _pluginsRefresh: Backend ? Backend.tr("刷新") : "刷新"
+    property string _pluginsRefreshOk: Backend ? Backend.tr("已重新扫描插件目录") : "已重新扫描插件目录"
+    property string _pluginsRefreshFail: Backend ? Backend.tr("刷新插件失败") : "刷新插件失败"
     property string _pluginsNoDesc: Backend ? Backend.tr("暂无插件描述") : "暂无插件描述"
     property string _pluginsThemeTitle: Backend ? Backend.tr("插件主题") : "插件主题"
     property string _pluginsThemeDesc: Backend ? Backend.tr("选择由插件提供的主题（可选）") : "选择由插件提供的主题（可选）"
@@ -1570,7 +1572,33 @@ FluentPage {
                         flat: true
                         text: _pluginsRefresh
                         onClicked: {
-                            console.log("[Settings] refresh plugins")
+                            console.log("[Settings] refresh plugins (rescan disk)")
+                            if (typeof PluginHost === "undefined" || !PluginHost) {
+                                lastPluginInstallMessage = _pluginsRefreshFail + ": PluginHost 不可用"
+                                console.log("[Settings] rescan failed: PluginHost unavailable")
+                                return
+                            }
+                            try {
+                                var raw = PluginHost.rescanPlugins()
+                                var result = {}
+                                try {
+                                    result = JSON.parse(raw || "{}")
+                                } catch (parseErr) {
+                                    result = { ok: false, message: String(raw || parseErr) }
+                                }
+                                if (result.ok) {
+                                    lastPluginInstallMessage = _pluginsRefreshOk
+                                        + " · " + (result.message || ("count=" + (result.count || 0)))
+                                    console.log("[Settings] rescan ok count=", result.count)
+                                } else {
+                                    lastPluginInstallMessage = _pluginsRefreshFail
+                                        + ": " + (result.message || result.error || "unknown")
+                                    console.log("[Settings] rescan failed:", result.message || result.error)
+                                }
+                            } catch (e) {
+                                lastPluginInstallMessage = _pluginsRefreshFail + ": " + e
+                                console.log("[Settings] rescan exception:", e)
+                            }
                             loadPlugins()
                         }
                     }
