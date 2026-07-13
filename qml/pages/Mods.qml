@@ -157,11 +157,11 @@ FluentPage {
                         Layout.fillWidth: true
                         Label {
                             font.weight: Font.DemiBold
-                            text: (Backend ? Backend.tr("让络可帮你挑选合适的 Mod") : "让络可帮你挑选合适的 Mod")
+                            text: (Backend ? Backend.tr("让Blora帮你挑选合适的 Mod") : "让Blora帮你挑选合适的 Mod")
                             color: Theme.currentTheme.colors.textColor
                         }
                         Label {
-                            text: (Backend ? Backend.tr("无需一个一个找 Mod，让络可帮你找齐。") : "无需一个一个找 Mod，让络可帮你找齐。")
+                            text: (Backend ? Backend.tr("无需一个一个找 Mod，让Blora帮你找齐。") : "无需一个一个找 Mod，让Blora帮你找齐。")
                             color: Theme.currentTheme.colors.textSecondaryColor
                         }
                     }
@@ -177,7 +177,7 @@ FluentPage {
                         placeholderText: (Backend ? Backend.tr("告诉 Bloriko 你的需求...") : "告诉 Bloriko 你的需求...")
                         onAccepted: {
                             if (askBlorikoInput.text.trim() !== "" && Backend) {
-                                console.log("[Mods] 回车发送络可 Mod 建议:", askBlorikoInput.text.substring(0, 80))
+                                console.log("[Mods] 回车发送 Blora Mod 建议:", askBlorikoInput.text.substring(0, 80))
                                 versionSelectDialog.open()
                             }
                         }
@@ -188,7 +188,7 @@ FluentPage {
                         highlighted: true
                         onClicked: {
                             if (askBlorikoInput.text.trim() !== "" && Backend) {
-                                console.log("[Mods] 发送络可 Mod 建议:", askBlorikoInput.text.substring(0, 80))
+                                console.log("[Mods] 发送 Blora Mod 建议:", askBlorikoInput.text.substring(0, 80))
                                 // 先打开版本选择对话框
                                 versionSelectDialog.open()
                             }
@@ -199,7 +199,7 @@ FluentPage {
         }
 
         Label {
-            text: (Backend ? Backend.tr("络可依靠 AI。络可也可能犯错，请核实重要信息。") : "络可依靠 AI。络可也可能犯错，请核实重要信息。")
+            text: (Backend ? Backend.tr("Blora依靠 AI。Blora也可能犯错，请核实重要信息。") : "Blora依靠 AI。Blora也可能犯错，请核实重要信息。")
             color: Theme.currentTheme.colors.textTertialyColor
             font.pixelSize: 12
         }
@@ -491,7 +491,7 @@ FluentPage {
     Dialog {
         id: versionSelectDialog
         title: versionSelectDialog.loading
-            ? (Backend ? Backend.tr("络可正在挑选 Mod…") : "络可正在挑选 Mod…")
+            ? (Backend ? Backend.tr("Blora正在挑选 Mod…") : "Blora正在挑选 Mod…")
             : (Backend ? Backend.tr("选择 Minecraft 版本") : "选择 Minecraft 版本")
         width: versionSelectDialog.loading ? Math.min(modsPage.width * 0.92, 640) : 400
         modal: true
@@ -549,7 +549,7 @@ FluentPage {
                     TextArea {
                         text: modsPage.blorikoThinkingLog.length > 0
                             ? modsPage.blorikoThinkingLog
-                            : (Backend ? Backend.tr("等待络可开始搜索…") : "等待络可开始搜索…")
+                            : (Backend ? Backend.tr("等待Blora开始搜索…") : "等待Blora开始搜索…")
                         readOnly: true
                         wrapMode: Text.Wrap
                         selectByMouse: true
@@ -573,7 +573,7 @@ FluentPage {
                     TextArea {
                         text: modsPage.blorikoStreamText.length > 0
                             ? modsPage.blorikoStreamText
-                            : (Backend ? Backend.tr("络可还在搜索与整理中，正文会显示在这里…") : "络可还在搜索与整理中，正文会显示在这里…")
+                            : (Backend ? Backend.tr("Blora还在搜索与整理中，正文会显示在这里…") : "Blora还在搜索与整理中，正文会显示在这里…")
                         readOnly: true
                         wrapMode: Text.Wrap
                         selectByMouse: true
@@ -614,7 +614,7 @@ FluentPage {
                             modsPage.selectedFabricVersion = fabricVersionCombo.currentText
                             if (Backend && askBlorikoInput.text.trim() !== "") {
                                 console.log(
-                                    "[Mods] 请求络可推荐: version=",
+                                    "[Mods] 请求 Blora推荐: version=",
                                     modsPage.selectedFabricVersion,
                                     " query=",
                                     askBlorikoInput.text.substring(0, 80)

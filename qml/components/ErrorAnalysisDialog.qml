@@ -67,13 +67,13 @@ Dialog {
     Component {
         id: askButtonComponent
         Button {
-            text: Backend ? Backend.tr("询问络可") : "询问络可"
+            text: Backend ? Backend.tr("询问 Blora") : "询问 Blora"
             highlighted: true
             Layout.alignment: Qt.AlignRight
             Layout.preferredWidth: footer ? footer.availableWidth / 2 : 120
             onClicked: {
                 var prompt = buildBlorikoPrompt()
-                console.log("[ErrorAnalysis] 请求络可分析，提示词长度:", prompt.length)
+                console.log("[ErrorAnalysis] 请求 Blora 分析，提示词长度:", prompt.length)
                 errorAnalysisDialog.close()
                 errorAnalysisDialog.askBlorikoRequested(prompt)
             }

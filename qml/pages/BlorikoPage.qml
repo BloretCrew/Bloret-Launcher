@@ -396,7 +396,7 @@ Item {
                     }
 
                     Text {
-                        text: (Backend ? Backend.tr("络可") : "络可")
+                        text: (Backend ? Backend.tr("Blora") : "Blora")
                         font.pixelSize: 14
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
@@ -490,7 +490,7 @@ Item {
 
                         Text {
                             Layout.alignment: Qt.AlignHCenter
-                            text: (Backend ? Backend.tr("络可") : "络可")
+                            text: (Backend ? Backend.tr("Blora") : "Blora")
                             font.pixelSize: 20; font.bold: true
                             color: Theme.currentTheme.colors.textColor
                         }
@@ -498,7 +498,7 @@ Item {
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.maximumWidth: 260
-                            text: (Backend ? Backend.tr("哥哥好呀！络可在这里等你很久啦~(开心地挥挥小手)\n\n试试跟络可说：\n• 帮我创建一个文件\n• 搜索一下项目里的 TODO\n• 执行一个命令看看\n• 记住我的偏好是...") : "哥哥好呀！络可在这里等你很久啦~(开心地挥挥小手)\n\n试试跟络可说：\n• 帮我创建一个文件\n• 搜索一下项目里的 TODO\n• 执行一个命令看看\n• 记住我的偏好是...")
+                            text: (Backend ? Backend.tr("哥哥好呀！Blora 在这里等你很久啦~(开心地挥挥小手)\n\n试试跟 Blora 说：\n• 帮我创建一个文件\n• 搜索一下项目里的 TODO\n• 执行一个命令看看\n• 记住我的偏好是...") : "哥哥好呀！Blora 在这里等你很久啦~(开心地挥挥小手)\n\n试试跟 Blora 说：\n• 帮我创建一个文件\n• 搜索一下项目里的 TODO\n• 执行一个命令看看\n• 记住我的偏好是...")
                             horizontalAlignment: Text.AlignHCenter
                             font.pixelSize: 11
                             lineHeightMode: Text.ProportionalHeight
@@ -832,7 +832,7 @@ Item {
                             TextArea {
                                 id: inputField
                                 anchors.fill: parent; anchors.margins: 6
-                                placeholderText: (Backend ? Backend.tr("向络可说些什么... (Enter 发送, Shift+Enter 换行)") : "向络可说些什么... (Enter 发送, Shift+Enter 换行)")
+                                placeholderText: (Backend ? Backend.tr("向Blora说些什么... (Enter 发送, Shift+Enter 换行)") : "向Blora说些什么... (Enter 发送, Shift+Enter 换行)")
                                 wrapMode: TextArea.Wrap
                                 font.pixelSize: 13
                                 color: Theme.currentTheme.colors.textColor
@@ -888,7 +888,7 @@ Item {
 
         contentItem: ColumnLayout {
             spacing: 10
-            Text { text: (Backend ? Backend.tr("络可想要执行写入操作：") : "络可想要执行写入操作："); font.pixelSize: 13; font.bold: true; color: Theme.currentTheme.colors.textColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            Text { text: (Backend ? Backend.tr("Blora想要执行写入操作：") : "Blora想要执行写入操作："); font.pixelSize: 13; font.bold: true; color: Theme.currentTheme.colors.textColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
             Rectangle {
                 Layout.fillWidth: true; Layout.preferredHeight: permTxt.implicitHeight + 12; radius: 6
                 color: Theme.currentTheme.colors.controlAltSecondaryColor || "#FFF3CD"
@@ -898,7 +898,7 @@ Item {
             ColumnLayout {
                 visible: permDlg.pReason.length > 0
                 spacing: 4
-                Text { text: (Backend ? Backend.tr("络可的理由：") : "络可的理由："); font.pixelSize: 11; font.bold: true; color: Theme.currentTheme.colors.textSecondaryColor }
+                Text { text: (Backend ? Backend.tr("Blora的理由：") : "Blora的理由："); font.pixelSize: 11; font.bold: true; color: Theme.currentTheme.colors.textSecondaryColor }
                 Rectangle {
                     Layout.fillWidth: true; Layout.preferredHeight: Math.min(reasonTxt.implicitHeight + 12, 120); radius: 6
                     color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
@@ -921,7 +921,7 @@ Item {
     // AI 提问对话框
     Dialog {
         id: askDlg
-        title: (Backend ? Backend.tr("络可提问") : "络可提问"); modal: true; width: 400; closePolicy: Popup.NoAutoClose
+        title: (Backend ? Backend.tr("Blora提问") : "Blora提问"); modal: true; width: 400; closePolicy: Popup.NoAutoClose
         property string qText: ""
         property string qType: "text"
         property var qOptions: []

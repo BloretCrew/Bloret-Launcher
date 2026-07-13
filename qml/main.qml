@@ -16,7 +16,7 @@ FluentWindow {
     // 用于保持 OOBE 窗口引用的属性
     property var oobeWindowRef: null
 
-    // 首页发送给络可的待处理消息（跳转到络可页后消费）
+    // 首页发送给 Blora 的待处理消息（跳转到 Blora 页后消费）
     property string pendingBlorikoMessage: ""
 
     function navigateToBlorikoWithMessage(message) {
@@ -25,15 +25,15 @@ FluentWindow {
             console.log("[Main] navigateToBlorikoWithMessage: 空消息，忽略")
             return
         }
-        console.log("[Main] 跳转络可页处理消息:", text.substring(0, 80))
+        console.log("[Main] 跳转 Blora 页处理消息:", text.substring(0, 80))
         pendingBlorikoMessage = text
         // currentPage 只更新导航高亮，真正切页需 navigationView.push / safePush
         if (navItems && navItems.length > 1 && navigationView) {
             var blorikoPage = navItems[1].page
-            console.log("[Main] safePush 络可页:", blorikoPage)
+            console.log("[Main] safePush Blora 页:", blorikoPage)
             navigationView.push(blorikoPage)
         } else {
-            console.error("[Main] 无法找到络可导航项或 navigationView")
+            console.error("[Main] 无法找到 Blora 导航项或 navigationView")
         }
     }
 
@@ -53,7 +53,7 @@ FluentWindow {
             position: Position.Top
         },
         {
-            title: (Backend ? Backend.tr("络可") : "络可"),
+            title: (Backend ? Backend.tr("Blora") : "Blora"),
             page: Qt.resolvedUrl("pages/BlorikoPage.qml"),
             source: Qt.resolvedUrl("../icon/Bloriko.jpg"),
             icon: "",
@@ -416,7 +416,7 @@ FluentWindow {
     ErrorAnalysisDialog {
         id: errorAnalysisDialog
         onAskBlorikoRequested: function(prompt) {
-            console.log("[Main] 从 Minecraft 错误分析跳转络可，提示词长度:", prompt.length)
+            console.log("[Main] 从 Minecraft 错误分析跳转 Blora，提示词长度:", prompt.length)
             window.navigateToBlorikoWithMessage(prompt)
         }
     }

@@ -304,7 +304,7 @@ FluentPage {
         _notifUpdate = Backend ? Backend.tr("应用更新") : "应用更新"
         _notifChatMessage = Backend ? Backend.tr("Minecraft 聊天消息") : "Minecraft 聊天消息"
         _notifCopilot = Backend ? Backend.tr("Copilot Agent") : "Copilot Agent"
-        _notifBloriko = Backend ? Backend.tr("络可 Agent") : "络可 Agent"
+        _notifBloriko = Backend ? Backend.tr("Blora Agent") : "Blora Agent"
         _notifAccount = Backend ? Backend.tr("账户登录 / 同步") : "账户登录 / 同步"
         _notifConfigBtn = Backend ? Backend.tr("配置通知...") : "配置通知..."
         _notifCloseBtn = Backend ? Backend.tr("关闭") : "关闭"
@@ -321,7 +321,7 @@ FluentPage {
         _proxyPlaceholder = Backend ? Backend.tr("不使用代理") : "不使用代理"
         _aiProvidersSection = Backend ? Backend.tr("AI 供应商") : "AI 供应商"
         _aiHubDesc = Backend ? Backend.tr("默认模型与自定义供应商") : "默认模型与自定义供应商"
-        _blorikoSection = Backend ? Backend.tr("络可 Agent") : "络可 Agent"
+        _blorikoSection = Backend ? Backend.tr("Blora Agent") : "Blora Agent"
         _blorikoHubDesc = Backend ? Backend.tr("AI 设置与消息连接器管理") : "AI 设置与消息连接器管理"
         _aiProvidersTitle = Backend ? Backend.tr("AI 供应商管理") : "AI 供应商管理"
         _aiProvidersDesc = Backend ? Backend.tr("管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用") : "管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用"
@@ -442,7 +442,7 @@ FluentPage {
     property string _notifUpdate: Backend ? Backend.tr("应用更新") : "应用更新"
     property string _notifChatMessage: Backend ? Backend.tr("Minecraft 聊天消息") : "Minecraft 聊天消息"
     property string _notifCopilot: Backend ? Backend.tr("Copilot Agent") : "Copilot Agent"
-    property string _notifBloriko: Backend ? Backend.tr("络可 Agent") : "络可 Agent"
+    property string _notifBloriko: Backend ? Backend.tr("Blora Agent") : "Blora Agent"
     property string _notifAccount: Backend ? Backend.tr("账户登录 / 同步") : "账户登录 / 同步"
     property string _notifConfigBtn: Backend ? Backend.tr("配置通知...") : "配置通知..."
     property string _notifCloseBtn: Backend ? Backend.tr("关闭") : "关闭"
@@ -460,11 +460,11 @@ FluentPage {
     property string _aiProvidersSection: Backend ? Backend.tr("AI 供应商") : "AI 供应商"
     property string _aiHubDesc: Backend ? Backend.tr("默认模型与自定义供应商") : "默认模型与自定义供应商"
 
-    // ── Bloriko Agent / WeChat ──
-    property string _blorikoSection: Backend ? Backend.tr("络可 Agent") : "络可 Agent"
+    // ── Blora Agent / WeChat ──
+    property string _blorikoSection: Backend ? Backend.tr("Blora Agent") : "Blora Agent"
     property string _blorikoHubDesc: Backend ? Backend.tr("AI 设置与消息连接器管理") : "AI 设置与消息连接器管理"
     property string _wechatTitle: Backend ? Backend.tr("微信连接器") : "微信连接器"
-    property string _wechatDesc: Backend ? Backend.tr("将络可通过微信连接，扫码后可直接在微信中与络可对话") : "将络可通过微信连接，扫码后可直接在微信中与络可对话"
+    property string _wechatDesc: Backend ? Backend.tr("将Blora通过微信连接，扫码后可直接在微信中与 Blora 对话") : "将Blora通过微信连接，扫码后可直接在微信中与 Blora 对话"
     property string _wechatStatusPrefix: Backend ? Backend.tr("连接状态") : "连接状态"
     property string _wechatConfigureBtn: Backend ? Backend.tr("配置微信") : "配置微信"
     property string _wechatReconfigureBtn: Backend ? Backend.tr("重新配置") : "重新配置"
@@ -1726,7 +1726,7 @@ FluentPage {
             }
         }
 
-        // --- Bloriko Agent ---
+        // --- Blora Agent ---
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -1775,7 +1775,7 @@ FluentPage {
             }
 
             Label {
-                text: Backend ? Backend.tr("将络可连接到各种消息平台，随时随地与络可对话") : "将络可连接到各种消息平台，随时随地与络可对话"
+                text: Backend ? Backend.tr("将Blora连接到各种消息平台，随时随地与 Blora 对话") : "将Blora连接到各种消息平台，随时随地与 Blora 对话"
                 font.pixelSize: 12
                 color: Theme.currentTheme.colors.textSecondaryColor
                 wrapMode: Text.Wrap
