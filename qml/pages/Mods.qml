@@ -174,7 +174,7 @@ FluentPage {
                     TextField {
                         id: askBlorikoInput
                         Layout.fillWidth: true
-                        placeholderText: (Backend ? Backend.tr("告诉 Bloriko 你的需求...") : "告诉 Bloriko 你的需求...")
+                        placeholderText: (Backend ? Backend.tr("告诉 Blora 你的需求...") : "告诉 Blora 你的需求...")
                         onAccepted: {
                             if (askBlorikoInput.text.trim() !== "" && Backend) {
                                 console.log("[Mods] 回车发送 Blora Mod 建议:", askBlorikoInput.text.substring(0, 80))
@@ -400,7 +400,7 @@ FluentPage {
 
     Dialog {
         id: blorikoDialog
-        title: (Backend ? Backend.tr("Bloriko 的建议") : "Bloriko 的建议")
+        title: (Backend ? Backend.tr("Blora 的建议") : "Blora 的建议")
         property string text: ""
         property var slugs: []
         width: Math.min(parent.width * 0.9, 650)

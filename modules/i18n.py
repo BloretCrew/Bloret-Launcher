@@ -21,6 +21,16 @@ def _lang_file_path(language):
     # 使用统一的资源路径解析，兼容 PyInstaller / Nuitka 打包
     return app_path("lang", f"{language}.json")
 
+def _read_language_file(language):
+    """读取并校验单个语言文件，失败时由调用方决定回退策略。"""
+    lang_file_path = _lang_file_path(language)
+    with open(lang_file_path, 'r', encoding='utf-8') as f:
+        lang = json.load(f)
+    if not isinstance(lang, dict) or not isinstance(lang.get('texts'), dict):
+        raise ValueError(f"语言文件缺少 texts 字典: {lang_file_path}")
+    return lang
+
+
 def load_language(language=None):
     # 如果没有指定语言，则读取配置文件获取语言设置
     if language is None:
@@ -28,27 +38,30 @@ def load_language(language=None):
             with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
                 language = config.get('language') or config.get('Language') or 'zh-cn'
-        except (FileNotFoundError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError) as error:
+            log(f"读取语言配置失败，回退到 zh-cn: {error}")
             language = 'zh-cn'
 
     if not isinstance(language, str):
         language = 'zh-cn'
     language = language.strip() or 'zh-cn'
 
-    # 加载对应的语言文件
-    lang_file_path = _lang_file_path(language)
     try:
-        with open(lang_file_path, 'r', encoding='utf-8') as f:
-            lang = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        # 如果指定的语言文件不存在，尝试加载默认的中文文件
+        return _read_language_file(language)
+    except (OSError, json.JSONDecodeError, ValueError) as error:
+        log(f"加载语言失败: language={language}, path={_lang_file_path(language)}, error={error}")
+
+    # 所选语言不是中文时，再尝试一次中文回退；避免 zh-cn 损坏后重复读取同一文件。
+    if language != 'zh-cn':
         try:
-            with open(_lang_file_path('zh-cn'), 'r', encoding='utf-8') as f:
-                lang = json.load(f)
-        except FileNotFoundError:
-            lang = {}
-    
-    return lang
+            fallback = _read_language_file('zh-cn')
+            log(f"语言 {language} 加载失败，已回退到 zh-cn")
+            return fallback
+        except (OSError, json.JSONDecodeError, ValueError) as error:
+            log(f"默认语言 zh-cn 也无法加载: path={_lang_file_path('zh-cn')}, error={error}")
+
+    log("无可用语言文件，使用安全空翻译表")
+    return {"texts": {}}
 
 def reload_language(language=None):
     """手动重新加载语言数据"""
