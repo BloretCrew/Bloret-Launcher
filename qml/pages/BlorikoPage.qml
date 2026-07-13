@@ -396,7 +396,7 @@ Item {
                     }
 
                     Text {
-                        text: (Backend ? Backend.tr("Blora") : "Blora")
+                        text: (Backend ? Backend.tr("Blora Agent") : "Blora Agent")
                         font.pixelSize: 14
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
@@ -490,7 +490,7 @@ Item {
 
                         Text {
                             Layout.alignment: Qt.AlignHCenter
-                            text: (Backend ? Backend.tr("Blora") : "Blora")
+                            text: (Backend ? Backend.tr("Blora Agent") : "Blora Agent")
                             font.pixelSize: 20; font.bold: true
                             color: Theme.currentTheme.colors.textColor
                         }

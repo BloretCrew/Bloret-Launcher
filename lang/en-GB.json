@@ -974,7 +974,7 @@
     "的下载链接": "download link",
     "管理自定义 AI 供应商，添加后可在资源包编辑器 Copilot 中使用": "Manage custom AI providers. Once added, they can be used in the Resource Pack Editor Copilot.",
     "系统": "System",
-    "Blora": "Blora",
+    "Blora Agent": "Blora Agent",
     "Blora Agent": "Blora Agent",
     "网络代理": "Network proxy",
     "设置 HTTP/HTTPS/SOCKS5 代理地址，如 http://127.0.0.1:7890，留空表示不使用代理": "Set HTTP/HTTPS/SOCKS5 proxy, e.g. http://127.0.0.1:7890. Leave empty for no proxy.",

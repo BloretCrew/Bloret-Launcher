@@ -53,7 +53,7 @@ FluentWindow {
             position: Position.Top
         },
         {
-            title: (Backend ? Backend.tr("Blora") : "Blora"),
+            title: (Backend ? Backend.tr("Blora Agent") : "Blora Agent"),
             page: Qt.resolvedUrl("pages/BlorikoPage.qml"),
             source: Qt.resolvedUrl("../icon/Bloriko.jpg"),
             icon: "",
