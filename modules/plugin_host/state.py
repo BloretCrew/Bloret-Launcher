@@ -44,13 +44,17 @@ def read_plugins_state() -> dict:
         return dict(DEFAULT_PLUGINS_STATE)
 
 
-def _write_config(config: dict) -> bool:
-    path = getattr(BLglobals, "config_path", None) or cfg.config_path
+def _write_config(config: dict, changed_keys: Optional[dict] = None) -> bool:
+    """统一走 modules.config.write，确保 config.changed 钩子被派发。"""
     try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(config, f, ensure_ascii=False, indent=4)
-        return True
+        # plugins 段内部状态变更：若未指定 keys，用 plugins 摘要触发一次
+        keys = changed_keys
+        if keys is None and isinstance(config, dict) and "plugins" in config:
+            keys = {"plugins": "<updated>"}
+        ok = cfg.write(config, changed_keys=keys)
+        if not ok:
+            log("[PluginHost] 写入配置失败: config.write returned False")
+        return bool(ok)
     except Exception as e:
         log(f"[PluginHost] 写入配置失败: {e}")
         return False

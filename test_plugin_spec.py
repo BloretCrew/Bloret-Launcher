@@ -71,11 +71,15 @@ def test_plugin_spec_entry_candidates_match_runtime_manifest():
 
 def test_plugin_spec_version_and_new_ui_permissions():
     spec = _load_spec()
-    assert spec["spec_version"] == "1.1.0"
+    assert spec["spec_version"] == "2.0.0"
     assert "ui.home" in spec["permissions"]
     assert "ui.tools" in spec["permissions"]
+    assert "ui.live" in spec["permissions"]
+    assert "versions.read" in spec["permissions"]
+    assert "download.source" in spec["permissions"]
     assert spec["contributes"]["home"] == "ui.home"
     assert spec["contributes"]["tools"] == "ui.tools"
+    assert "live" in (spec.get("panel_areas") or [])
 
 
 def test_install_plugin_from_path_uses_manifest_id(tmp_path, monkeypatch):
@@ -169,3 +173,39 @@ def test_invoke_hook_reaches_registry_and_bus():
     assert len(results) >= 2
     kinds = {x[0] for x in seen}
     assert "hook" in kinds and "bus" in kinds
+
+
+def test_registry_panels_and_clear():
+    registry_mod = _load_module(
+        "modules.plugin_host.registry",
+        "modules/plugin_host/registry.py",
+    )
+    registry_mod._registry = registry_mod.ContributionRegistry()
+    reg = registry_mod.get_registry()
+    reg.add_panel(
+        "live",
+        {
+            "id": "p1",
+            "plugin_id": "com.demo",
+            "title": "Demo",
+            "qml": "/tmp/x.qml",
+            "order": 10,
+        },
+    )
+    reg.add_source("mods", {"id": "src1", "plugin_id": "com.demo", "title": "Src"})
+    reg.add_channel({"id": "ch1", "plugin_id": "com.demo"})
+    assert len(reg.get_panels("live")) == 1
+    assert len(reg.get_sources("mods")) == 1
+    assert len(reg.get_channels()) == 1
+    reg.clear_plugin("com.demo")
+    assert reg.get_panels("live") == []
+    assert reg.get_sources("mods") == []
+    assert reg.get_channels() == []
+
+
+def test_services_base_result():
+    base = _load_module("modules.services.base", "modules/services/base.py")
+    r = base.ok({"a": 1})
+    assert r.ok and r.to_dict()["status"] == "success"
+    e = base.err("boom", "x")
+    assert not e.ok and e.to_dict()["message"] == "boom"

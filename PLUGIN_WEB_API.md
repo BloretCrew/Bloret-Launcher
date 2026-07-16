@@ -4,10 +4,11 @@
 
 ## 1. 基础规则
 
-- **全部使用 GET**。
+- **内置业务接口以 GET 为主**；**插件自定义路由**（`web.routes`）支持 **GET / POST / PUT / DELETE / PATCH**。
 - **所有插件 API 都必须携带 `oauth` 参数**，否则会返回 400/401。
-- 可选参数：`redirect=<url>`，用于操作成功后跳转到指定页面。
+- 可选参数：`redirect=<url>`，用于操作成功后跳转到指定页面（主要用于 GET）。
 - API 默认监听：`http://localhost:25252`。
+- 结构化版本列表：`GET /api/v1/versions/list`（OAuth）。
 
 > 注意：`oauth` 包含应用的 `name` 与 `secret`，会被转发到 Bloret PassPort 的 OAuth 应用校验接口进行验证。
 

@@ -36,6 +36,7 @@ class PluginHost(QObject):
     settingsContributionsChanged = Signal()
     homeContributionsChanged = Signal()
     toolsContributionsChanged = Signal()
+    panelsContributionsChanged = Signal()  # 泛化面板（live/mods/…）
     logMessage = Signal(str)
     # 商店 / 协议安装：请求用户确认（payload JSON）
     pluginInstallProposed = Signal(str)
@@ -799,6 +800,33 @@ class PluginHost(QObject):
         log(f"[PluginHost] getToolsContributionsJson count={len(items)}")
         return json.dumps(items, ensure_ascii=False)
 
+    @Slot(str, result=str)
+    def getPanelContributionsJson(self, area: str) -> str:
+        """按功能区返回插件面板列表（cores/mods/download/live/…）。"""
+        items = []
+        for p in self._registry.get_panels(area or ""):
+            qml = self._path_to_url(p.get("qml") or "")
+            items.append(
+                {
+                    "id": p.get("id"),
+                    "plugin_id": p.get("plugin_id"),
+                    "title": p.get("title") or "",
+                    "qml": qml,
+                    "icon": p.get("icon") or "ic_fluent_puzzle_piece_20_regular",
+                    "order": p.get("order", 100),
+                    "area": p.get("area") or area,
+                }
+            )
+        log(f"[PluginHost] getPanelContributionsJson area={area} count={len(items)}")
+        return json.dumps(items, ensure_ascii=False)
+
+    @Slot(result=str)
+    def getAllPanelAreasJson(self) -> str:
+        """返回当前有贡献的 panel 区域及数量。"""
+        all_panels = self._registry.get_all_panels()
+        summary = {k: len(v) for k, v in all_panels.items() if v}
+        return json.dumps(summary, ensure_ascii=False)
+
     @Slot(str, str, str)
     def notifyPageOpen(self, page_id: str, title: str = "", plugin_id: str = "") -> None:
         """QML 导航切换时调用，触发 ui.page.open。"""
@@ -911,6 +939,10 @@ class PluginHost(QObject):
         self.settingsContributionsChanged.emit()
         self.homeContributionsChanged.emit()
         self.toolsContributionsChanged.emit()
+        try:
+            self.panelsContributionsChanged.emit()
+        except Exception:
+            pass
         active = plugin_state.get_active_theme_plugin()
         # 若 active 主题插件已不在 registry，清空
         if active and active not in self._registry.get_themes():

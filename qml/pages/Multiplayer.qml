@@ -8,6 +8,11 @@ FluentPage {
     id: multiplayerPage
     title: (Backend ? Backend.tr("联机") : "联机")
 
+    PluginPanelHost {
+        area: "multiplayer"
+        Layout.fillWidth: true
+    }
+
     // --- Network Section ---
     Label {
         font.pixelSize: 20

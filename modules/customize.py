@@ -1,4 +1,5 @@
 from modules.compat_widgets import InfoBar, InfoBarPosition
+import modules.config as cfg
 import os,subprocess,json,sys,logging
 from modules.log import log
 from modules.i18n import i18nText
@@ -135,8 +136,7 @@ def CustomizeAdd(self):
         config_data["Customize"].append(new_custom)
         
         # 保存到配置文件
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as file:
-            json.dump(config_data, file, ensure_ascii=False, indent=4)
+        cfg.write(config_data)
             
         # 更新当前配置
         self.config = config_data
@@ -237,8 +237,7 @@ def CustomizeAppAdd(file_path, file_name):
         # 保存到配置文件
         log("正在将配置保存到 config.json")
         try:
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as file:
-                json.dump(config_data, file, ensure_ascii=False, indent=4)
+            cfg.write(config_data)
             log("配置文件保存成功")
         except Exception as e:
             log(f"保存配置文件时发生错误: {e}", logging.ERROR)

@@ -119,6 +119,11 @@ FluentPage {
         _ignoreIndexChange = false
     }
 
+    PluginPanelHost {
+        area: "download"
+        Layout.fillWidth: true
+    }
+
     // --- Vanilla Minecraft Card ---
     Frame {
         Layout.fillWidth: true

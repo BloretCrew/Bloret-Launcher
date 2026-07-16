@@ -68,13 +68,10 @@ class PluginAPI:
 
     def set_config(self, key: str, value: Any) -> None:
         self.require("config.write")
-        from modules.plugin_host.dispatch import invoke_hook
-        from modules.plugin_host.state import _write_config
-
         data = cfg.read() or {}
         data[key] = value
-        _write_config(data)
-        invoke_hook("config.changed", key, value)
+        # 统一 write：磁盘 + config.changed（含脱敏）
+        cfg.write(data, changed_keys={key: value})
         self.log(f"set_config {key}")
 
     # ── 事件 ──────────────────────────────────────────────
@@ -202,6 +199,64 @@ class PluginAPI:
             }
         )
         self.log(f"register_tools_card {card_id}")
+
+    def register_panel(
+        self,
+        area: str,
+        panel_id: str,
+        title: str,
+        qml: str,
+        icon: str = "",
+        order: int = 100,
+    ) -> None:
+        """在指定功能页注入 QML 面板（需对应 ui.{area} 权限）。"""
+        from modules.services.base import PANEL_PERMISSIONS
+
+        area_key = (area or "").strip().lower()
+        perm = PANEL_PERMISSIONS.get(area_key) or f"ui.{area_key}"
+        self.require(perm)
+        qml_path = self._resolve_plugin_resource(qml)
+        self._registry.add_panel(
+            area_key,
+            {
+                "id": panel_id,
+                "plugin_id": self.plugin_id,
+                "title": title,
+                "qml": qml_path,
+                "icon": icon or "ic_fluent_puzzle_piece_20_regular",
+                "order": int(order) if order is not None else 100,
+                "area": area_key,
+            },
+        )
+        self.log(f"register_panel area={area_key} id={panel_id}")
+
+    def register_content_source(
+        self,
+        kind: str,
+        source_id: str,
+        title: str,
+        *,
+        priority: int = 100,
+        meta: Optional[dict] = None,
+    ) -> None:
+        """注册 mods / download 内容源元数据（执行器由后续 Phase 接线）。"""
+        kind_key = (kind or "").strip().lower()
+        if kind_key == "download":
+            self.require("download.source")
+        else:
+            self.require("mods.source")
+            kind_key = "mods"
+        self._registry.add_source(
+            kind_key,
+            {
+                "id": source_id,
+                "plugin_id": self.plugin_id,
+                "title": title,
+                "priority": int(priority),
+                "meta": meta or {},
+            },
+        )
+        self.log(f"register_content_source kind={kind_key} id={source_id}")
 
     def apply_theme_override(self, theme: dict) -> None:
         self.require("ui.theme")
@@ -438,8 +493,9 @@ class PluginAPI:
         """
         self.require("web.routes")
         method = (method or "GET").upper()
-        if method not in ("GET", "ANY", "*"):
-            raise ValueError("当前本地 Web 服务器仅支持 GET 路由")
+        allowed = ("GET", "POST", "PUT", "DELETE", "PATCH", "ANY", "*")
+        if method not in allowed:
+            raise ValueError(f"不支持的 HTTP 方法: {method}，允许: {', '.join(allowed)}")
         raw = (path or "").strip()
         if not raw.startswith("/"):
             raw = "/" + raw
@@ -469,23 +525,109 @@ class PluginAPI:
     # ── 启动器能力封装 ────────────────────────────────────
 
     def list_versions(self) -> List[str]:
+        """版本名列表。有 versions.read 时走服务层；无权限时仍返回只读列表（兼容 1.x）。"""
         try:
-            data = cfg.read() or {}
-            mc_dir = data.get("minecraft_dir") or ""
-            versions_dir = os.path.join(mc_dir, "versions") if mc_dir else ""
-            if not versions_dir or not os.path.isdir(versions_dir):
-                return []
-            return sorted(
-                [
-                    name
-                    for name in os.listdir(versions_dir)
-                    if os.path.isdir(os.path.join(versions_dir, name))
-                ]
-            )
+            if self.has_perm("versions.read") or self.has_perm("config.read"):
+                from modules.services.versions_service import list_version_names
+
+                return list_version_names()
+            from modules.services.versions_service import list_version_names
+
+            return list_version_names()
         except Exception as e:
             self.log(f"list_versions 失败: {e}")
             return []
 
+    def list_versions_detail(self) -> List[dict]:
+        """结构化版本列表（需 versions.read）。"""
+        self.require("versions.read")
+        from modules.services.versions_service import list_versions_detail
+
+        result = list_versions_detail()
+        if not result.ok:
+            self.log(f"list_versions_detail 失败: {result.error}")
+            return []
+        return list(result.data or [])
+
+    def get_version_path(self, version_name: str) -> Optional[dict]:
+        """版本目录信息（需 versions.read）。"""
+        self.require("versions.read")
+        from modules.services.versions_service import get_version_path
+
+        result = get_version_path(version_name)
+        if not result.ok:
+            self.log(f"get_version_path 失败: {result.error}")
+            return None
+        return result.data
+
+    def list_running_instances(self) -> List[dict]:
+        """当前运行中的游戏实例（需 launch.control 或默认只读兼容）。"""
+        if not self.has_perm("launch.control"):
+            # 只读摘要：仍要求至少 config.read 或 versions.read 之一，避免完全开放
+            if not (self.has_perm("versions.read") or self.has_perm("config.read")):
+                self.require("launch.control")
+        from modules.services.launch_service import list_running_instances
+
+        result = list_running_instances()
+        if not result.ok:
+            self.log(f"list_running_instances 失败: {result.error}")
+            return []
+        return list(result.data or [])
+
     def get_minecraft_dir(self) -> str:
-        data = cfg.read() or {}
-        return str(data.get("minecraft_dir") or "")
+        try:
+            from modules.services.config_service import get_minecraft_dir
+
+            return get_minecraft_dir()
+        except Exception:
+            data = cfg.read() or {}
+            return str(data.get("minecraft_dir") or "")
+
+    def list_mods(self, version_name: str) -> List[dict]:
+        self.require("mods.read")
+        from modules.services.content_service import list_mods
+
+        result = list_mods(version_name)
+        if not result.ok:
+            self.log(f"list_mods 失败: {result.error}")
+            return []
+        return list(result.data or [])
+
+    def list_resourcepacks(self, version_name: str) -> List[dict]:
+        self.require("content.read")
+        from modules.services.content_service import list_resourcepacks
+
+        result = list_resourcepacks(version_name)
+        if not result.ok:
+            self.log(f"list_resourcepacks 失败: {result.error}")
+            return []
+        return list(result.data or [])
+
+    def register_notification_channel(self, channel_id: str, handler: Callable, title: str = "") -> None:
+        """注册通知渠道（需 notify.channel）。handler(title, body, **kwargs)。"""
+        self.require("notify.channel")
+        if not callable(handler):
+            raise ValueError("handler 必须可调用")
+        self._registry.add_channel(
+            {
+                "id": channel_id,
+                "plugin_id": self.plugin_id,
+                "title": title or channel_id,
+                "handler": handler,
+            }
+        )
+        self.log(f"register_notification_channel {channel_id}")
+
+    def register_protocol_handler(self, path_prefix: str, handler: Callable) -> None:
+        """注册 bloret:// 子路径处理器（需 protocol.handle）。"""
+        self.require("protocol.handle")
+        if not callable(handler):
+            raise ValueError("handler 必须可调用")
+        self._registry.add_protocol(
+            {
+                "path": (path_prefix or "").lstrip("/"),
+                "plugin_id": self.plugin_id,
+                "handler": handler,
+            }
+        )
+        self.log(f"register_protocol_handler {path_prefix}")

@@ -153,6 +153,32 @@ def set_deep_link_handler(callback: Callable[[str], None]) -> None:
 
 def _dispatch_url(url: str) -> None:
     log(f"[Protocol] 分发 deep link: {url[:120]}…")
+    # 插件 protocol 贡献：匹配 path 前缀后优先处理
+    try:
+        from modules.plugin_host.registry import get_registry
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        path = (parsed.path or "").lstrip("/")
+        host = (parsed.netloc or "").strip()
+        # bloret://plugin/install → netloc=plugin, path=install
+        full_key = f"{host}/{path}".strip("/") if host else path
+        for item in get_registry().get_protocols():
+            prefix = str(item.get("path") or item.get("prefix") or "").lstrip("/")
+            handler = item.get("handler")
+            if not prefix or not callable(handler):
+                continue
+            if full_key == prefix or full_key.startswith(prefix.rstrip("/") + "/"):
+                try:
+                    handled = handler(url, parsed)
+                    if handled is not False:
+                        log(f"[Protocol] 由插件处理 prefix={prefix} @ {item.get('plugin_id')}")
+                        return
+                except Exception as pe:
+                    log(f"[Protocol] 插件协议处理失败 {item.get('plugin_id')}: {pe}")
+    except Exception as e:
+        log(f"[Protocol] 插件协议分发跳过: {e}")
+
     cb = _on_deep_link
     if cb:
         try:

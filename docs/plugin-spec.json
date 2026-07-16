@@ -1,28 +1,221 @@
 {
-  "spec_version": "1.1.0",
-  "manifest_names": ["plugin.json", "cwplugin.json"],
+  "spec_version": "2.0.0",
+  "manifest_names": [
+    "plugin.json",
+    "cwplugin.json"
+  ],
   "entry_candidates": {
-    "python": ["main.py", "plugin.py"],
-    "process": ["main.exe", "main"],
-    "qml_page": ["main.qml", "ui/Page.qml", "ui/page.qml"]
+    "python": [
+      "main.py",
+      "plugin.py"
+    ],
+    "process": [
+      "main.exe",
+      "main"
+    ],
+    "qml_page": [
+      "main.qml",
+      "ui/Page.qml",
+      "ui/page.qml"
+    ]
   },
   "permissions": {
-    "ui.nav": {"risk": "safe", "label": "添加导航页"},
-    "ui.theme": {"risk": "safe", "label": "修改主题"},
-    "ui.settings": {"risk": "safe", "label": "添加设置项"},
-    "ui.toolbar": {"risk": "safe", "label": "扩展 Minecraft 小工具栏"},
-    "ui.home": {"risk": "safe", "label": "扩展主页卡片"},
-    "ui.tools": {"risk": "safe", "label": "扩展小工具页卡片"},
-    "launch.hooks": {"risk": "high", "label": "拦截或修改游戏启动"},
-    "download.hooks": {"risk": "high", "label": "拦截下载或安装流程"},
-    "agent.bloriko": {"risk": "high", "label": "扩展络可 Agent"},
-    "agent.blrpe": {"risk": "high", "label": "扩展 BLRPE Copilot"},
-    "config.read": {"risk": "safe", "label": "读取启动器配置"},
-    "config.write": {"risk": "high", "label": "写入启动器配置"},
-    "fs.datapath": {"risk": "high", "label": "访问数据目录文件"},
-    "net.http": {"risk": "high", "label": "发起网络请求"},
-    "process.exec": {"risk": "high", "label": "执行外部进程"},
-    "web.routes": {"risk": "high", "label": "注册本地 Web 路由"}
+    "ui.nav": {
+      "risk": "safe",
+      "label": "添加导航页"
+    },
+    "ui.theme": {
+      "risk": "safe",
+      "label": "修改主题"
+    },
+    "ui.settings": {
+      "risk": "safe",
+      "label": "添加设置项"
+    },
+    "ui.toolbar": {
+      "risk": "safe",
+      "label": "扩展 Minecraft 小工具栏"
+    },
+    "ui.home": {
+      "risk": "safe",
+      "label": "扩展主页卡片"
+    },
+    "ui.tools": {
+      "risk": "safe",
+      "label": "扩展小工具页卡片"
+    },
+    "ui.cores": {
+      "risk": "safe",
+      "label": "扩展核心管理面板"
+    },
+    "ui.mods": {
+      "risk": "safe",
+      "label": "扩展 Mods 页面板"
+    },
+    "ui.download": {
+      "risk": "safe",
+      "label": "扩展下载页面板"
+    },
+    "ui.live": {
+      "risk": "safe",
+      "label": "扩展 Live 面板"
+    },
+    "ui.passport": {
+      "risk": "safe",
+      "label": "扩展 PassPort 页面板"
+    },
+    "ui.bbbs": {
+      "risk": "safe",
+      "label": "扩展 BBBS 页面板"
+    },
+    "ui.stats": {
+      "risk": "safe",
+      "label": "扩展统计页面板"
+    },
+    "ui.info": {
+      "risk": "safe",
+      "label": "扩展信息页面板"
+    },
+    "ui.bloriko": {
+      "risk": "safe",
+      "label": "扩展络可页面板"
+    },
+    "ui.rpe": {
+      "risk": "safe",
+      "label": "扩展资源包编辑器面板"
+    },
+    "ui.multiplayer": {
+      "risk": "safe",
+      "label": "扩展联机页面板"
+    },
+    "ui.tray": {
+      "risk": "high",
+      "label": "扩展系统托盘菜单"
+    },
+    "ui.hotkey": {
+      "risk": "high",
+      "label": "注册全局热键"
+    },
+    "launch.hooks": {
+      "risk": "high",
+      "label": "拦截/修改游戏启动"
+    },
+    "launch.control": {
+      "risk": "high",
+      "label": "控制游戏启动与进程"
+    },
+    "launch.items": {
+      "risk": "high",
+      "label": "注册自定义启动项"
+    },
+    "download.hooks": {
+      "risk": "high",
+      "label": "拦截下载/安装流程"
+    },
+    "download.control": {
+      "risk": "high",
+      "label": "控制下载任务"
+    },
+    "download.source": {
+      "risk": "high",
+      "label": "注册自定义下载源"
+    },
+    "versions.read": {
+      "risk": "safe",
+      "label": "读取版本列表"
+    },
+    "versions.write": {
+      "risk": "high",
+      "label": "修改或删除版本"
+    },
+    "mods.read": {
+      "risk": "safe",
+      "label": "读取 Mods 列表"
+    },
+    "mods.write": {
+      "risk": "high",
+      "label": "安装/启用/删除 Mods"
+    },
+    "mods.source": {
+      "risk": "high",
+      "label": "注册 Mods 内容源"
+    },
+    "content.read": {
+      "risk": "safe",
+      "label": "读取资源包/服务器等"
+    },
+    "content.write": {
+      "risk": "high",
+      "label": "修改资源包/服务器等"
+    },
+    "accounts.read": {
+      "risk": "safe",
+      "label": "读取账户摘要"
+    },
+    "accounts.write": {
+      "risk": "high",
+      "label": "切换或管理账户"
+    },
+    "live.control": {
+      "risk": "high",
+      "label": "控制 Live / EasyTier"
+    },
+    "agent.bloriko": {
+      "risk": "high",
+      "label": "扩展络可 Agent"
+    },
+    "agent.blrpe": {
+      "risk": "high",
+      "label": "扩展 BLRPE Copilot"
+    },
+    "agent.provider": {
+      "risk": "high",
+      "label": "注册自定义 AI 供应商"
+    },
+    "notify.send": {
+      "risk": "safe",
+      "label": "发送系统通知"
+    },
+    "notify.channel": {
+      "risk": "high",
+      "label": "注册通知渠道"
+    },
+    "config.read": {
+      "risk": "safe",
+      "label": "读取启动器配置"
+    },
+    "config.write": {
+      "risk": "high",
+      "label": "写入启动器配置"
+    },
+    "fs.datapath": {
+      "risk": "high",
+      "label": "访问数据目录文件"
+    },
+    "net.http": {
+      "risk": "high",
+      "label": "发起网络请求"
+    },
+    "process.exec": {
+      "risk": "high",
+      "label": "执行外部进程"
+    },
+    "web.routes": {
+      "risk": "high",
+      "label": "注册本地 Web 路由"
+    },
+    "java.manage": {
+      "risk": "high",
+      "label": "管理 Java 运行时"
+    },
+    "protocol.handle": {
+      "risk": "high",
+      "label": "处理自定义协议链接"
+    },
+    "stats.read": {
+      "risk": "safe",
+      "label": "读取游玩统计"
+    }
   },
   "hooks": {
     "on_enable": null,
@@ -34,22 +227,63 @@
     "launch.pre": "launch.hooks",
     "launch.jvm_args": "launch.hooks",
     "launch.env": "launch.hooks",
+    "launch.args": "launch.hooks",
+    "launch.classpath": "launch.hooks",
+    "launch.script": "launch.hooks",
     "launch.post": "launch.hooks",
     "launch.exit": "launch.hooks",
+    "launch.window": "launch.hooks",
     "download.start": "download.hooks",
     "download.progress": "download.hooks",
     "download.complete": "download.hooks",
     "download.error": "download.hooks",
     "download.post": "download.hooks",
+    "download.resolve_url": "download.hooks",
+    "install.pre": "download.hooks",
+    "install.post": "download.hooks",
+    "java.install.pre": "java.manage",
+    "java.install.post": "java.manage",
+    "mrpack.import.pre": "content.write",
+    "mrpack.import.post": "content.write",
+    "mrpack.export.pre": "content.read",
+    "mrpack.export.post": "content.read",
+    "version.created": "versions.write",
+    "version.deleted": "versions.write",
+    "version.renamed": "versions.write",
+    "version.icon_changed": "versions.write",
+    "core.data.changed": "versions.write",
+    "mods.list": "mods.read",
+    "mods.toggle": "mods.write",
+    "mods.delete": "mods.write",
+    "mods.install.pre": "mods.write",
+    "mods.install.post": "mods.write",
+    "resourcepack.list": "content.read",
+    "resourcepack.delete": "content.write",
+    "resourcepack.install": "content.write",
+    "servers.changed": "content.write",
     "account.login": null,
     "account.logout": null,
+    "account.chosen": null,
     "passport.sync": null,
+    "mc_token.refresh": null,
+    "live.join": "live.control",
+    "live.leave": "live.control",
+    "live.chat": "live.control",
+    "live.easytier.start": "live.control",
+    "live.easytier.stop": "live.control",
+    "live.easytier.connected": "live.control",
+    "easytier.session.changed": "live.control",
     "theme.changed": "ui.theme",
     "ui.page.open": null,
     "agent.bloriko.message": "agent.bloriko",
     "agent.blrpe.message": "agent.blrpe",
     "toolbar.action": "ui.toolbar",
-    "config.changed": null
+    "notify.send": "notify.send",
+    "config.changed": null,
+    "update.check": null,
+    "update.available": null,
+    "playtime.session.start": "stats.read",
+    "playtime.session.end": "stats.read"
   },
   "contributes": {
     "nav": "ui.nav",
@@ -58,11 +292,44 @@
     "toolbar": "ui.toolbar",
     "home": "ui.home",
     "tools": "ui.tools",
+    "panels": null,
+    "cores": "ui.cores",
+    "mods": "ui.mods",
+    "download": "ui.download",
+    "live": "ui.live",
+    "passport": "ui.passport",
+    "bbbs": "ui.bbbs",
+    "stats": "ui.stats",
+    "info": "ui.info",
+    "bloriko": "ui.bloriko",
+    "rpe": "ui.rpe",
+    "multiplayer": "ui.multiplayer",
+    "download_source": "download.source",
+    "mods_source": "mods.source",
     "prompts.bloriko": "agent.bloriko",
     "prompts.blrpe": "agent.blrpe",
     "agent_tools.bloriko": "agent.bloriko",
     "agent_tools.blrpe": "agent.blrpe",
     "web_routes": "web.routes",
-    "i18n": null
-  }
+    "i18n": null,
+    "notification_channel": "notify.channel",
+    "ai_provider": "agent.provider",
+    "protocol": "protocol.handle",
+    "tray_menu": "ui.tray",
+    "hotkey": "ui.hotkey",
+    "launch_item": "launch.items"
+  },
+  "panel_areas": [
+    "bbbs",
+    "bloriko",
+    "cores",
+    "download",
+    "info",
+    "live",
+    "mods",
+    "multiplayer",
+    "passport",
+    "rpe",
+    "stats"
+  ]
 }

@@ -187,7 +187,7 @@ def Bloret_PassPort_Account_logout(self, homeInterface):
     self.config.update(Bloret_PassPort_PassWord='')
     self.config.update(Bloret_PassPort_Admin=False)
     
-    open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4))
+    cfg.write(self.config)
     # 更新界面显示
     Bloret_PassPort_User_UserName = homeInterface.findChild(QLabel, "Bloret_PassPort_UserName")
     if Bloret_PassPort_User_UserName:
@@ -271,8 +271,7 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
                 log(f"已更新用户头像: {api_result['avatar']}")
             
             # 保存配置到 config.json
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, ensure_ascii=False, indent=4)
+            cfg.write(config_data)
             
             # 关键补充：如果传入了 parent_window (MainWindow)，同步更新其内存中的 config
             if parent_window and hasattr(parent_window, 'config'):

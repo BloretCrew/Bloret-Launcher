@@ -171,6 +171,94 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         ).start()
         return process
 
+    def _read_request_body(self):
+        """解析 POST/PUT/PATCH body 为 dict（JSON 或 form）。"""
+        body_params = {}
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except Exception:
+            length = 0
+        if length <= 0:
+            return body_params
+        raw = self.rfile.read(length)
+        ctype = (self.headers.get("Content-Type") or "").lower()
+        try:
+            text = raw.decode("utf-8") if raw else ""
+            if "application/json" in ctype:
+                parsed = json.loads(text or "{}")
+                if isinstance(parsed, dict):
+                    body_params = parsed
+                else:
+                    body_params = {"_body": parsed}
+            else:
+                body_params = {
+                    k: (v[0] if isinstance(v, list) and v else v)
+                    for k, v in urllib.parse.parse_qs(text).items()
+                }
+        except Exception as e:
+            log(f"[Web] 解析 body 失败: {e}")
+        return body_params
+
+    def _dispatch_plugin_web_route(self, api_path, query_params, body=None):
+        """匹配并执行插件注册的 web.routes。成功处理返回 True。"""
+        try:
+            from modules.plugin_host.registry import get_registry
+            from modules.log import log as _plog
+
+            method = getattr(self, "command", None) or "GET"
+            method = str(method).upper()
+            matched = None
+            for r in get_registry().get_web_routes():
+                rpath = r.get("path") or ""
+                rmethod = (r.get("method") or "GET").upper()
+                if rpath == api_path and rmethod in (method, "ANY", "*"):
+                    matched = r
+                    break
+                if rmethod in (method, "ANY", "*") and api_path.startswith(
+                    rpath.rstrip("/") + "/"
+                ):
+                    matched = r
+            if not matched or not callable(matched.get("handler")):
+                return False
+            _plog(
+                f"[PluginHost] web.route {method} {api_path} @ {matched.get('plugin_id')}"
+            )
+            req = {
+                "method": method,
+                "path": api_path,
+                "query": {
+                    k: (v[0] if isinstance(v, list) and v else v)
+                    for k, v in query_params.items()
+                },
+                "body": body if body is not None else {},
+                "plugin_id": matched.get("plugin_id"),
+            }
+            result = matched["handler"](req)
+            if isinstance(result, tuple) and len(result) == 2:
+                status_code, body_out = result
+                if isinstance(body_out, dict):
+                    self._send_json(int(status_code), body_out)
+                else:
+                    self._send_json(
+                        int(status_code), {"status": "success", "data": body_out}
+                    )
+            elif isinstance(result, dict):
+                self._redirect_or_json_success(
+                    query_params,
+                    result
+                    if "status" in result
+                    else {"status": "success", "data": result},
+                )
+            else:
+                self._redirect_or_json_success(
+                    query_params, {"status": "success", "data": result}
+                )
+            return True
+        except Exception as e:
+            logger.exception(f"Plugin web route error: {e}")
+            self._send_json(500, {"status": "error", "message": str(e)})
+            return True
+
     def _handle_open_api(self, api_path, query_params):
         ok, _ = self._ensure_oauth(query_params)
         if not ok:
@@ -292,9 +380,9 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     return
 
                 config_data = cfg.read()
-                config_data[key] = self._parse_value(value_raw)
-                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                    json.dump(config_data, f, ensure_ascii=False, indent=4)
+                parsed = self._parse_value(value_raw)
+                config_data[key] = parsed
+                cfg.write(config_data, changed_keys={key: parsed})
 
                 self._redirect_or_json_success(query_params, {
                     'status': 'success',
@@ -440,7 +528,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     'status': 'success',
                     'data': {
                         'rules': {
-                            'method': 'GET only',
+                            'method': 'GET for built-in; plugin routes support GET/POST/PUT/DELETE/PATCH',
                             'oauth': 'required, format oauth={"name":"APP_NAME","secret":"APP_SECRET"}',
                             'redirect': 'optional, redirect=<url>'
                         },
@@ -463,61 +551,53 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             '/api/v1/plugin/enable?name=...',
                             '/api/v1/plugin/disable?name=...',
                             '/api/v1/plugin/info?name=...',
-                            '/api/v1/plugin/{plugin_id}/... (plugin web.routes)'
+                            '/api/v1/plugin/{plugin_id}/... (plugin web.routes GET/POST/PUT/DELETE/PATCH)',
+                            '/api/v1/versions/list',
                         ],
                         'plugin_routes': plugin_routes,
                     }
                 })
                 return
 
+            # 结构化版本列表（服务层）
+            if api_path == '/api/v1/versions/list':
+                try:
+                    from modules.services.versions_service import list_versions_detail
+                    result = list_versions_detail()
+                    self._send_json(200 if result.ok else 500, result.to_dict())
+                except Exception as e:
+                    self._send_json(500, {'status': 'error', 'message': str(e)})
+                return
+
+            if api_path == '/api/v1/mods/list':
+                version = query_params.get('version', [None])[0]
+                if not version:
+                    self._send_json(400, {'status': 'error', 'message': '缺少必填参数 version'})
+                    return
+                try:
+                    from modules.services.content_service import list_mods
+                    result = list_mods(version)
+                    self._send_json(200 if result.ok else 500, result.to_dict())
+                except Exception as e:
+                    self._send_json(500, {'status': 'error', 'message': str(e)})
+                return
+
+            if api_path == '/api/v1/resourcepacks/list':
+                version = query_params.get('version', [None])[0]
+                if not version:
+                    self._send_json(400, {'status': 'error', 'message': '缺少必填参数 version'})
+                    return
+                try:
+                    from modules.services.content_service import list_resourcepacks
+                    result = list_resourcepacks(version)
+                    self._send_json(200 if result.ok else 500, result.to_dict())
+                except Exception as e:
+                    self._send_json(500, {'status': 'error', 'message': str(e)})
+                return
+
             # 插件自定义路由：/api/v1/plugin/{plugin_id}/...
             if api_path.startswith('/api/v1/plugin/') and api_path.count('/') >= 4:
-                try:
-                    from modules.plugin_host.registry import get_registry
-                    from modules.log import log as _plog
-                    method = getattr(self, 'command', None) or 'GET'
-                    method = str(method).upper()
-                    matched = None
-                    for r in get_registry().get_web_routes():
-                        rpath = r.get('path') or ''
-                        rmethod = (r.get('method') or 'GET').upper()
-                        if rpath == api_path and rmethod in (method, 'ANY', '*'):
-                            matched = r
-                            break
-                        # 前缀匹配：注册 /foo 可匹配 /foo/bar 若 exact 未命中
-                        if rmethod in (method, 'ANY', '*') and api_path.startswith(rpath.rstrip('/') + '/'):
-                            matched = r
-                    if matched and callable(matched.get('handler')):
-                        auth_mode = (matched.get('auth') or 'oauth').lower()
-                        if auth_mode not in ('none', 'local', 'public'):
-                            # OAuth 已在 _handle_open_api 入口校验
-                            pass
-                        _plog(f"[PluginHost] web.route {method} {api_path} @ {matched.get('plugin_id')}")
-                        req = {
-                            'method': method,
-                            'path': api_path,
-                            'query': {k: (v[0] if isinstance(v, list) and v else v) for k, v in query_params.items()},
-                            'plugin_id': matched.get('plugin_id'),
-                        }
-                        result = matched['handler'](req)
-                        if isinstance(result, tuple) and len(result) == 2:
-                            status_code, body = result
-                            if isinstance(body, dict):
-                                self._send_json(int(status_code), body)
-                            else:
-                                self._send_json(int(status_code), {'status': 'success', 'data': body})
-                        elif isinstance(result, dict):
-                            self._redirect_or_json_success(query_params, result if 'status' in result else {
-                                'status': 'success', 'data': result
-                            })
-                        else:
-                            self._redirect_or_json_success(query_params, {
-                                'status': 'success', 'data': result
-                            })
-                        return
-                except Exception as e:
-                    logger.exception(f"Plugin web route error: {e}")
-                    self._send_json(500, {'status': 'error', 'message': str(e)})
+                if self._dispatch_plugin_web_route(api_path, query_params, body=None):
                     return
 
             self._send_json(404, {'status': 'error', 'message': f'Unknown API path: {api_path}'})
@@ -711,8 +791,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     config_data = cfg.read()
                     for key, value in data.items():
                         config_data[key] = value
-                    with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                        json.dump(config_data, f, ensure_ascii=False, indent=4)
+                    cfg.write(config_data)
                     self._send_json(200, {'status': 'success', 'message': 'Gamepad config saved'})
                 except Exception as e:
                     logger.exception(f"Error saving gamepad config: {e}")
@@ -1027,61 +1106,77 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"status": "error", "ok": False, "message": str(e)})
 
     def do_POST(self):
+        self._handle_mutating_method()
+
+    def do_PUT(self):
+        self._handle_mutating_method()
+
+    def do_DELETE(self):
+        self._handle_mutating_method()
+
+    def do_PATCH(self):
+        self._handle_mutating_method()
+
+    def _handle_mutating_method(self):
+        """POST/PUT/DELETE/PATCH 统一入口：远程控制 + 插件路由 + OAuth API。"""
         parsed_path = urllib.parse.urlparse(self.path)
         request_path = parsed_path.path
         query_params = urllib.parse.parse_qs(parsed_path.query)
+        method = (getattr(self, "command", None) or "POST").upper()
 
-        # 插件商店：投递安装请求（无 OAuth）
-        if request_path in ("/plugin/store/propose", "/api/v1/plugin/store/propose"):
-            body_params = {}
-            try:
-                length = int(self.headers.get("Content-Length") or 0)
-            except Exception:
-                length = 0
-            if length > 0:
-                raw = self.rfile.read(length)
-                ctype = (self.headers.get("Content-Type") or "").lower()
-                try:
-                    if "application/json" in ctype:
-                        body_params = json.loads(raw.decode("utf-8") or "{}")
-                    else:
-                        body_params = {
-                            k: (v[0] if isinstance(v, list) and v else v)
-                            for k, v in urllib.parse.parse_qs(raw.decode("utf-8")).items()
-                        }
-                except Exception as e:
-                    log(f"[PluginStore] 解析 POST body 失败: {e}")
+        # 插件商店：投递安装请求（无 OAuth）— 仅 POST
+        if method == "POST" and request_path in (
+            "/plugin/store/propose",
+            "/api/v1/plugin/store/propose",
+        ):
+            body_params = self._read_request_body()
             self._handle_plugin_store_propose(query_params, body_params)
             return
 
-        if request_path == '/api/v1/remote/key' or request_path == '/api/v1/remote/mouse':
+        if method == "POST" and (
+            request_path == "/api/v1/remote/key" or request_path == "/api/v1/remote/mouse"
+        ):
             if not self._is_remoter_enabled():
-                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
+                self._send_json(403, {"status": "error", "message": "Web Remoter is disabled"})
                 return
-            if request_path == '/api/v1/remote/key':
+            if request_path == "/api/v1/remote/key":
                 self._handle_remote_key()
             else:
                 self._handle_remote_mouse()
             return
-        if request_path == '/api/v1/chat/send':
+        if method == "POST" and request_path == "/api/v1/chat/send":
             if not self._is_remoter_enabled():
-                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
+                self._send_json(403, {"status": "error", "message": "Web Remoter is disabled"})
                 return
             self._handle_chat_send()
             return
-        if request_path.startswith('/api/v1/running/suspend/') or request_path.startswith('/api/v1/running/terminate/'):
+        if request_path.startswith("/api/v1/running/suspend/") or request_path.startswith(
+            "/api/v1/running/terminate/"
+        ):
             if not self._is_remoter_enabled():
-                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
+                self._send_json(403, {"status": "error", "message": "Web Remoter is disabled"})
                 return
-            self._handle_remote_api(request_path, urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query))
+            self._handle_remote_api(request_path, query_params)
             return
-        if request_path == '/api/v1/gamepad/config/save':
+        if method == "POST" and request_path == "/api/v1/gamepad/config/save":
             if not self._is_remoter_enabled():
-                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
+                self._send_json(403, {"status": "error", "message": "Web Remoter is disabled"})
                 return
             self._handle_remote_api(request_path, {})
             return
-        self._send_json(404, {'status': 'error', 'message': 'Not found'})
+
+        # 插件自定义路由（需 OAuth）：支持 POST/PUT/DELETE/PATCH
+        if request_path.startswith("/api/v1/plugin/") and request_path.count("/") >= 4:
+            ok, _oauth = self._ensure_oauth(query_params)
+            if not ok:
+                return
+            body = self._read_request_body()
+            if self._dispatch_plugin_web_route(request_path, query_params, body=body):
+                return
+            self._send_json(404, {"status": "error", "message": f"Unknown API path: {request_path}"})
+            return
+
+        self._send_json(404, {"status": "error", "message": "Not found"})
 
     def do_GET(self):
         parsed_path = urllib.parse.urlparse(self.path)
@@ -1253,8 +1348,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             logger.info(f"头像: {avatar_val}")
                             
                             # 保存配置到文件
-                            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                                json.dump(config_data, f, ensure_ascii=False, indent=4)
+                            cfg.write(config_data)
                             
                             print(f"已保存到文件，验证配置内容...")
                             
@@ -1374,8 +1468,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     }
                     
                     # 保存配置
-                    with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                        json.dump(config_data, f, ensure_ascii=False, indent=4)
+                    cfg.write(config_data)
                     
                     print(f"已保存 {len(accounts)} 个账户到 config.json")
                     log(f"Minecraft accounts synced: {len(accounts)} accounts found.")

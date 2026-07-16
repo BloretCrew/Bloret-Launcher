@@ -1,4 +1,4 @@
-"""贡献点注册表：nav / theme / toolbar / agent / settings / home / tools / i18n / web。"""
+"""贡献点注册表：nav / theme / toolbar / agent / settings / home / tools / panels / sources / i18n / web。"""
 
 from __future__ import annotations
 
@@ -23,6 +23,20 @@ class ContributionRegistry:
         self.prompt_appends: Dict[str, List[dict]] = {"bloriko": [], "blrpe": []}
         self.hooks: Dict[str, List[dict]] = {}  # hook_name -> [{plugin_id, fn}]
         self.plugin_modules: Dict[str, Any] = {}  # plugin_id -> module
+        # Phase 0 泛化：按区域的 QML 面板
+        # area -> [{id, plugin_id, title, qml, icon, order, ...}]
+        self.panels: Dict[str, List[dict]] = {}
+        # 内容源 / 下载源 / 通知渠道 / AI Provider / 协议 / 托盘 / 热键
+        self.sources: Dict[str, List[dict]] = {
+            "mods": [],
+            "download": [],
+        }
+        self.channels: List[dict] = []  # notification channels
+        self.providers: List[dict] = []  # AI providers
+        self.protocols: List[dict] = []
+        self.tray_menus: List[dict] = []
+        self.hotkeys: List[dict] = []
+        self.launch_items: List[dict] = []
 
     def clear_plugin(self, plugin_id: str) -> None:
         with self._lock:
@@ -45,6 +59,20 @@ class ContributionRegistry:
             for hook_name, lst in list(self.hooks.items()):
                 self.hooks[hook_name] = [x for x in lst if x.get("plugin_id") != plugin_id]
             self.plugin_modules.pop(plugin_id, None)
+            for area in list(self.panels.keys()):
+                self.panels[area] = [
+                    x for x in self.panels[area] if x.get("plugin_id") != plugin_id
+                ]
+            for key in list(self.sources.keys()):
+                self.sources[key] = [
+                    x for x in self.sources[key] if x.get("plugin_id") != plugin_id
+                ]
+            self.channels = [x for x in self.channels if x.get("plugin_id") != plugin_id]
+            self.providers = [x for x in self.providers if x.get("plugin_id") != plugin_id]
+            self.protocols = [x for x in self.protocols if x.get("plugin_id") != plugin_id]
+            self.tray_menus = [x for x in self.tray_menus if x.get("plugin_id") != plugin_id]
+            self.hotkeys = [x for x in self.hotkeys if x.get("plugin_id") != plugin_id]
+            self.launch_items = [x for x in self.launch_items if x.get("plugin_id") != plugin_id]
         log(f"[PluginHost] Registry 已清除插件贡献: {plugin_id}")
 
     def add_nav(self, item: dict) -> None:
@@ -71,6 +99,50 @@ class ContributionRegistry:
         with self._lock:
             self.tools.append(item)
         log(f"[PluginHost] 注册小工具卡片: {item.get('id')} @ {item.get('plugin_id')}")
+
+    def add_panel(self, area: str, item: dict) -> None:
+        area = (area or "").strip().lower()
+        if not area:
+            return
+        with self._lock:
+            self.panels.setdefault(area, []).append(item)
+        log(
+            f"[PluginHost] 注册面板 area={area} id={item.get('id')} @ {item.get('plugin_id')}"
+        )
+
+    def add_source(self, kind: str, item: dict) -> None:
+        kind = (kind or "").strip().lower()
+        if kind not in ("mods", "download"):
+            kind = "mods"
+        with self._lock:
+            self.sources.setdefault(kind, []).append(item)
+        log(f"[PluginHost] 注册源 kind={kind} id={item.get('id')} @ {item.get('plugin_id')}")
+
+    def add_channel(self, item: dict) -> None:
+        with self._lock:
+            self.channels.append(item)
+        log(f"[PluginHost] 注册通知渠道: {item.get('id')} @ {item.get('plugin_id')}")
+
+    def add_provider(self, item: dict) -> None:
+        with self._lock:
+            self.providers.append(item)
+        log(f"[PluginHost] 注册 AI Provider: {item.get('id')} @ {item.get('plugin_id')}")
+
+    def add_protocol(self, item: dict) -> None:
+        with self._lock:
+            self.protocols.append(item)
+
+    def add_tray_menu(self, item: dict) -> None:
+        with self._lock:
+            self.tray_menus.append(item)
+
+    def add_hotkey(self, item: dict) -> None:
+        with self._lock:
+            self.hotkeys.append(item)
+
+    def add_launch_item(self, item: dict) -> None:
+        with self._lock:
+            self.launch_items.append(item)
 
     def set_theme(self, plugin_id: str, theme: dict) -> None:
         with self._lock:
@@ -122,6 +194,45 @@ class ContributionRegistry:
         with self._lock:
             items = list(self.tools)
         return sorted(items, key=lambda x: (x.get("order", 100), str(x.get("id") or "")))
+
+    def get_panels(self, area: str) -> List[dict]:
+        area = (area or "").strip().lower()
+        with self._lock:
+            items = list(self.panels.get(area, []))
+        return sorted(items, key=lambda x: (x.get("order", 100), str(x.get("id") or "")))
+
+    def get_all_panels(self) -> Dict[str, List[dict]]:
+        with self._lock:
+            return {k: list(v) for k, v in self.panels.items()}
+
+    def get_sources(self, kind: str) -> List[dict]:
+        kind = (kind or "").strip().lower()
+        with self._lock:
+            return list(self.sources.get(kind, []))
+
+    def get_channels(self) -> List[dict]:
+        with self._lock:
+            return list(self.channels)
+
+    def get_providers(self) -> List[dict]:
+        with self._lock:
+            return list(self.providers)
+
+    def get_protocols(self) -> List[dict]:
+        with self._lock:
+            return list(self.protocols)
+
+    def get_tray_menus(self) -> List[dict]:
+        with self._lock:
+            return list(self.tray_menus)
+
+    def get_hotkeys(self) -> List[dict]:
+        with self._lock:
+            return list(self.hotkeys)
+
+    def get_launch_items(self) -> List[dict]:
+        with self._lock:
+            return list(self.launch_items)
 
     def get_i18n(self) -> List[dict]:
         with self._lock:

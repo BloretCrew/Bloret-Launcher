@@ -333,6 +333,11 @@ FluentPage {
     content: ColumnLayout {
         spacing: 18
 
+        PluginPanelHost {
+            area: "live"
+            Layout.fillWidth: true
+        }
+
         RowLayout {
             Layout.fillWidth: true
             spacing: 10

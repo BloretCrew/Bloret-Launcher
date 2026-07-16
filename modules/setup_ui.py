@@ -365,8 +365,7 @@ def on_self_starting_changed(main_window, value):
         try:
             config = cfg.read()
             config["self-starting"] = value
-            with open(BLglobals.config_path, "w", encoding="utf-8") as f:
-                json.dump(config, f, ensure_ascii=False, indent=4)
+            cfg.write(config, changed_keys={"self-starting": value})
         except Exception as e:
             log(f"备用写入配置文件失败: {e}")
 
@@ -538,8 +537,7 @@ class LaunchSelectorDialog(MessageBoxBase):
                 # 备用写入
                 config = cfg.read()
                 config["ChoosedRun"] = name
-                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                    json.dump(config, f, indent=4, ensure_ascii=False)
+                cfg.write(config, changed_keys={"ChoosedRun": name})
             
         # 设置选中的项目以便调用者知道（虽然这里直接启动了）
         self.selected_item = next((i for i in self.items if i['name'] == name), None)
@@ -1316,8 +1314,10 @@ def setup_passport_ui(self, widget, homeInterface):
             # 2. 修改磁盘配置并保存
             if "MinecraftAccount" in disk_config:
                 disk_config["MinecraftAccount"]["chosen"] = index
-                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                    json.dump(disk_config, f, ensure_ascii=False, indent=4)
+                cfg.write(
+                    disk_config,
+                    changed_keys={"MinecraftAccount": disk_config.get("MinecraftAccount")},
+                )
             
             # 3. 同步更新内存配置
             if "MinecraftAccount" in self.config:
@@ -1428,7 +1428,7 @@ def setup_settings_ui(self, widget):
             language_choose.setCurrentText(self.config.get("language", "zh-cn"))
             language_choose.currentTextChanged.connect(lambda language: (
                 self.config.update(language=language),
-                open(BLglobals.config_path, 'w', encoding='utf-8').write(json.dumps(self.config, ensure_ascii=False, indent=4)),
+                cfg.write(self.config, changed_keys={"language": language}),
                 log(f"语言设置已更改为: {language}")
             ))
 
@@ -2724,10 +2724,10 @@ class ShortCutSettingDialog(MessageBoxBase):
                 
             config = cfg.read()
             config["screen_cut_shortcut"] = self.new_shortcut_text
-            
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=4)
-                
+            cfg.write(
+                config,
+                changed_keys={"screen_cut_shortcut": self.new_shortcut_text},
+            )
             return True
         except Exception as e:
             log(f"保存快捷键失败: {e}", logging.ERROR)

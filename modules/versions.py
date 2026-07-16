@@ -97,6 +97,24 @@ def _gitcode_base_url(version=None):
         return None
     return f"https://raw.gitcode.com/Bloret/{v}/raw/main"
 
+def _apply_download_resolve_hooks(kind: str, original_url: str, urls: list) -> list:
+    """允许插件通过 download.resolve_url 改写/追加镜像 URL。"""
+    try:
+        from modules.plugin_host.hook_util import fire, merge_url_lists
+
+        results = fire(
+            "download.resolve_url",
+            {
+                "kind": kind,
+                "original_url": original_url,
+                "urls": list(urls or []),
+            },
+        )
+        return merge_url_lists(list(urls or []), results)
+    except Exception:
+        return list(urls or [])
+
+
 def dl_source_launcher_or_meta_get(original_url):
     """
     根据PCL启动器的DlSourceLauncherOrMetaGet方法实现
@@ -107,7 +125,7 @@ def dl_source_launcher_or_meta_get(original_url):
     if not original_url:
         raise Exception("无对应的 json 下载地址")
     if BLglobals.download_source == "official":
-        return [original_url]
+        return _apply_download_resolve_hooks("launcher_meta", original_url, [original_url])
 
     official_urls = [original_url]
     mirror_urls = [original_url
@@ -116,7 +134,7 @@ def dl_source_launcher_or_meta_get(original_url):
         .replace("https://launcher.mojang.com", "https://bmclapi2.bangbang93.com")
         .replace("https://launchermeta.mojang.com", "https://bmclapi2.bangbang93.com")
     ]
-    return mirror_urls + official_urls
+    return _apply_download_resolve_hooks("launcher_meta", original_url, mirror_urls + official_urls)
 
 def dl_source_library_get(original_url):
     """
@@ -125,7 +143,7 @@ def dl_source_library_get(original_url):
     注：GitCode 的 git clone 补全在 LibraryDownloader 中处理，HTTP 回退走 BMCLAPI。
     """
     if BLglobals.download_source == "official":
-        return [original_url]
+        return _apply_download_resolve_hooks("library", original_url, [original_url])
     # gitcode 和 bmclapi 都使用 BMCLAPI 镜像（git clone 在上层处理）
     mirror = original_url
     for src in ["https://piston-data.mojang.com", "https://piston-meta.mojang.com",
@@ -135,8 +153,8 @@ def dl_source_library_get(original_url):
             mirror = mirror.replace(src, "https://bmclapi2.bangbang93.com/maven")
             break
     if mirror != original_url:
-        return [mirror, original_url]
-    return [original_url]
+        return _apply_download_resolve_hooks("library", original_url, [mirror, original_url])
+    return _apply_download_resolve_hooks("library", original_url, [original_url])
 
 def dl_source_assets_get(original_url):
     """
@@ -147,14 +165,14 @@ def dl_source_assets_get(original_url):
     """
     original_url = original_url.replace("http://resources.download.minecraft.net", "https://resources.download.minecraft.net")
     if BLglobals.download_source == "official":
-        return [original_url]
+        return _apply_download_resolve_hooks("assets", original_url, [original_url])
     official_urls = [original_url]
     mirror_urls = [original_url
         .replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com/assets")
         .replace("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com/assets")
         .replace("https://resources.download.minecraft.net", "https://bmclapi2.bangbang93.com/assets")
     ]
-    return mirror_urls + official_urls
+    return _apply_download_resolve_hooks("assets", original_url, mirror_urls + official_urls)
 
 # 初始化全局变量
 set_list = []
@@ -397,8 +415,7 @@ def delete_Customize(self,version,label,card,customize_list,homeInterface):
                 config_data["Customize"] = []
             if item in config_data["Customize"]:
                 config_data["Customize"].remove(item)
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as file:
-                json.dump(config_data, file, ensure_ascii=False, indent=4)
+            cfg.write(config_data)
             self.config = config_data
             InfoBar.success(
                 title=i18nText('✅ 成功'),
@@ -512,8 +529,7 @@ def Change_Customize_name(self,version,label,homeInterface):
                     parent=self
                 )
                 return
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as file:
-                json.dump(config_data, file, ensure_ascii=False, indent=4)
+            cfg.write(config_data)
             self.config = config_data
             InfoBar.success(
                 title=f'✅ 成功',

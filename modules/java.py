@@ -14,6 +14,7 @@ from threading import Thread
 import requests
 
 from modules.win11toast import update_progress, notify
+import modules.config as cfg
 from modules.notification import send_notification as _send_notification
 from modules.log import log
 from modules.i18n import i18nText
@@ -311,8 +312,7 @@ def _install_java_thread(Java_Version):
         log(f"成功探测到版本匹配的 java.exe: {java_path}")
         config["java_path"] = java_path
         config["Java_Path"] = java_path
-        with open(BLglobals.config_path, "w", encoding="utf-8") as config_file:
-            json.dump(config, config_file, indent=4, ensure_ascii=False)
+        cfg.write(config)
         log(f"已统一更新 java_path 与 Java_Path: {java_path}")
         install_succeeded = True
         if reboot_message:

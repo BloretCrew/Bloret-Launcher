@@ -24,6 +24,11 @@ Dialog {
         width: parent.width
         height: parent.height
         spacing: 15
+
+        PluginPanelHost {
+            area: "cores"
+            Layout.fillWidth: true
+        }
         
         RowLayout {
             spacing: 5

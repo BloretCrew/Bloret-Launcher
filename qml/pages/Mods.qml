@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
+import "../components"
 
 FluentPage {
     id: modsPage
@@ -126,6 +127,11 @@ FluentPage {
             Layout.fillWidth: true
             visible: false
             timeout: 4000
+        }
+
+        PluginPanelHost {
+            area: "mods"
+            Layout.fillWidth: true
         }
 
         // --- Header ---

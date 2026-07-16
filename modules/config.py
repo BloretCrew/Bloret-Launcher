@@ -121,6 +121,72 @@ def read():
         log(f"read() 读取配置文件失败: {str(e)}，返回空配置")
         return {}
 
+
+def _sanitize_hook_value(key, value):
+    """钩子 payload 脱敏：token/password/session 等不进入插件事件。"""
+    key_lower = str(key or "").lower()
+    sensitive_markers = ("password", "token", "session", "sig", "secret", "passport_password")
+    if any(m in key_lower for m in sensitive_markers):
+        return "***"
+    if isinstance(value, dict):
+        # MinecraftAccount 等：只给结构摘要，不泄露 accounts 内 token
+        if "account" in key_lower or "passport" in key_lower:
+            return {
+                "logined": bool(value.get("logined")) if isinstance(value.get("logined"), (bool, int)) else value.get("logined"),
+                "chosen": value.get("chosen"),
+                "account_count": len(value.get("accounts") or []) if isinstance(value.get("accounts"), list) else None,
+            }
+        return f"<dict:{len(value)} keys>"
+    if isinstance(value, list):
+        return f"<list:{len(value)} items>"
+    return value
+
+
+def write(config, *, changed_keys=None, fire_hooks=True):
+    """
+    将配置写入磁盘，并（默认）派发 config.changed 钩子。
+
+    所有设置页 / Backend / Web 保存应走此函数，避免直接 json.dump 绕过插件事件。
+
+    Args:
+        config: 完整配置 dict
+        changed_keys: 可选 dict{key: new_value}；若提供则按键派发，否则派发 ("*", None)
+        fire_hooks: 版本迁移等内部写入可设 False
+    """
+    if not isinstance(config, dict):
+        raise TypeError("config must be a dict")
+    path = getattr(BLglobals, "config_path", None) or config_path
+    try:
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(config, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        log(f"write() 写入配置失败: {e}")
+        return False
+
+    if fire_hooks:
+        try:
+            from modules.plugin_host.hook_util import fire
+
+            if isinstance(changed_keys, dict) and changed_keys:
+                for key, value in changed_keys.items():
+                    fire("config.changed", key, _sanitize_hook_value(key, value))
+            else:
+                fire("config.changed", "*", None)
+        except Exception as e:
+            log(f"write() 派发 config.changed 失败: {e}")
+    return True
+
+
+def update_keys(**kwargs):
+    """读取 → 更新若干键 → write（带 changed_keys）。返回更新后的完整配置。"""
+    data = read() or {}
+    data.update(kwargs)
+    write(data, changed_keys=dict(kwargs))
+    return data
+
 try:
     log(f"正在读取最终配置文件: {BLglobals.config_path}")
     config_data = read()

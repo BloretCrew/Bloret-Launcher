@@ -120,6 +120,113 @@ def apply_declarative(manifest: dict, api: PluginAPI) -> None:
                 }
             )
 
+    # 通用 panels：contributes.panels = { "live": [...], "mods": [...] }
+    # 或 contributes.panels = [ { "area": "live", "qml": "..." }, ... ]
+    panels_spec = contributes.get("panels")
+    if panels_spec:
+        from modules.services.base import PANEL_PERMISSIONS
+
+        area_map: Dict[str, List] = {}
+        if isinstance(panels_spec, dict) and not panels_spec.get("area"):
+            for area, items in panels_spec.items():
+                if isinstance(items, dict):
+                    items = [items]
+                if isinstance(items, list):
+                    area_map[str(area)] = items
+        elif isinstance(panels_spec, list):
+            for item in panels_spec:
+                if not isinstance(item, dict):
+                    continue
+                area = str(item.get("area") or "")
+                area_map.setdefault(area, []).append(item)
+        elif isinstance(panels_spec, dict) and panels_spec.get("area"):
+            area_map[str(panels_spec.get("area"))] = [panels_spec]
+
+        for area, items in area_map.items():
+            area_key = (area or "").strip().lower()
+            perm = PANEL_PERMISSIONS.get(area_key) or f"ui.{area_key}"
+            if not has_permission(perms, perm):
+                continue
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                qml = item.get("qml") or item.get("page") or ""
+                if not qml:
+                    continue
+                registry.add_panel(
+                    area_key,
+                    {
+                        "id": item.get("id") or f"{plugin_id}-{area_key}",
+                        "plugin_id": plugin_id,
+                        "title": item.get("title") or manifest.get("name") or plugin_id,
+                        "qml": resolve_path(plugin_dir, qml),
+                        "icon": item.get("icon") or "ic_fluent_puzzle_piece_20_regular",
+                        "order": int(item.get("order", 100)),
+                        "area": area_key,
+                    },
+                )
+
+    # 兼容：contributes.live / mods / download 等单 key 数组
+    for area_key, perm in {
+        "cores": "ui.cores",
+        "mods": "ui.mods",
+        "download": "ui.download",
+        "live": "ui.live",
+        "passport": "ui.passport",
+        "bbbs": "ui.bbbs",
+        "stats": "ui.stats",
+        "info": "ui.info",
+        "bloriko": "ui.bloriko",
+        "rpe": "ui.rpe",
+        "multiplayer": "ui.multiplayer",
+    }.items():
+        items = contributes.get(area_key) or contributes.get(f"{area_key}_panel") or []
+        if isinstance(items, dict):
+            items = [items]
+        if not items or not has_permission(perms, perm):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            qml = item.get("qml") or item.get("page") or ""
+            if not qml:
+                continue
+            registry.add_panel(
+                area_key,
+                {
+                    "id": item.get("id") or f"{plugin_id}-{area_key}",
+                    "plugin_id": plugin_id,
+                    "title": item.get("title") or manifest.get("name") or plugin_id,
+                    "qml": resolve_path(plugin_dir, qml),
+                    "icon": item.get("icon") or "ic_fluent_puzzle_piece_20_regular",
+                    "order": int(item.get("order", 100)),
+                    "area": area_key,
+                },
+            )
+
+    # download.source / mods.source 声明式元数据
+    for kind, perm, key in (
+        ("download", "download.source", "download_source"),
+        ("mods", "mods.source", "mods_source"),
+    ):
+        src = contributes.get(key) or contributes.get(f"{kind}.source") or []
+        if isinstance(src, dict):
+            src = [src]
+        if src and has_permission(perms, perm):
+            for item in src:
+                if not isinstance(item, dict):
+                    continue
+                registry.add_source(
+                    kind,
+                    {
+                        "id": item.get("id") or f"{plugin_id}-{kind}-src",
+                        "plugin_id": plugin_id,
+                        "title": item.get("title") or manifest.get("name") or plugin_id,
+                        "priority": int(item.get("priority", 100)),
+                        "meta": item.get("meta") or {},
+                    },
+                )
+
     # theme
     theme_spec = contributes.get("theme")
     if theme_spec and has_permission(perms, "ui.theme"):

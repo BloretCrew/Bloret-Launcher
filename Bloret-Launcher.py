@@ -293,8 +293,7 @@ class Backend(QObject):
         try:
             config_data = cfg.read()
             config_data["ai_provider"] = provider_key
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            cfg.write(config_data)
             model = config_data.get("ai_model", "default")
             self.globalAIProviderChanged.emit(provider_key, model)
             print(f"[AI] 全局供应商已设置为: {provider_key}, 当前模型: {model}")
@@ -313,8 +312,7 @@ class Backend(QObject):
         try:
             config_data = cfg.read()
             config_data["ai_model"] = model_id
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            cfg.write(config_data)
             provider = config_data.get("ai_provider", "bloret_passport")
             self.globalAIProviderChanged.emit(provider, model_id)
             print(f"[AI] 全局模型已设置为: {model_id}, 当前供应商: {provider}")
@@ -1287,8 +1285,7 @@ class Backend(QObject):
         try:
             config_data = cfg.read()
             config_data['ChoosedRun'] = name
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            cfg.write(config_data)
             print(f"[Home] Selected launch item: {name}")
         except Exception as e:
             print(f"Error selecting launch item: {e}")
@@ -1385,8 +1382,7 @@ class Backend(QObject):
                 BLglobals.customize_list.remove(name)
                 config_data = cfg.read()
                 config_data['customize_list'] = BLglobals.customize_list
-                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                cfg.write(config_data)
                 print(f"Deleted custom item: {name}")
         except Exception as e:
             print(f"Error deleting custom item: {e}")
@@ -1401,8 +1397,7 @@ class Backend(QObject):
                 config_data['customize_list'] = BLglobals.customize_list
                 if config_data.get('ChoosedRun') == oldName:
                     config_data['ChoosedRun'] = newName
-                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                cfg.write(config_data)
                 print(f"Renamed custom item: {oldName} -> {newName}")
         except Exception as e:
             print(f"Error renaming custom item: {e}")
@@ -1490,6 +1485,13 @@ class Backend(QObject):
                 json.dump(full_data, f, ensure_ascii=False, indent=4)
             
             print(f"Core data saved for: {new_name}")
+            try:
+                from modules.plugin_host.hook_util import fire
+                if new_name != versionName:
+                    fire("version.renamed", {"old": versionName, "new": new_name})
+                fire("core.data.changed", {"version": new_name, "keys": list((data or {}).keys()) if isinstance(data, dict) else []})
+            except Exception as _pe:
+                print(f"[PluginHost] core.data.changed 失败: {_pe}")
         except Exception as e:
             print(f"Error saving core data: {e}")
 
@@ -1542,6 +1544,11 @@ class Backend(QObject):
                         json.dump(full_data, f, ensure_ascii=False, indent=4)
                 
                 print(f"Core deleted: {versionName}")
+                try:
+                    from modules.plugin_host.hook_util import fire
+                    fire("version.deleted", {"version": versionName})
+                except Exception as _pe:
+                    print(f"[PluginHost] version.deleted 失败: {_pe}")
                 return True
             return False
         except Exception as e:
@@ -1649,6 +1656,11 @@ class Backend(QObject):
             
             self._save_servers_dat(version_servers_dat, servers)
             print(f"Server added: {name}")
+            try:
+                from modules.plugin_host.hook_util import fire
+                fire("servers.changed", {"version": versionName, "action": "add", "name": name, "ip": ip})
+            except Exception as _pe:
+                print(f"[PluginHost] servers.changed 失败: {_pe}")
         except Exception as e:
             print(f"Error adding server: {e}")
 
@@ -1776,6 +1788,14 @@ class Backend(QObject):
         try:
             if not os.path.exists(path):
                 return
+            try:
+                from modules.plugin_host.hook_util import fire, any_cancel
+                cancel = any_cancel(fire("mods.toggle", {"path": path, "enabled": bool(enabled)}))
+                if cancel:
+                    print(f"[PluginHost] mods.toggle cancelled: {cancel}")
+                    return
+            except Exception as _pe:
+                print(f"[PluginHost] mods.toggle 失败: {_pe}")
             
             dirname, filename = os.path.split(path)
             
@@ -1795,6 +1815,14 @@ class Backend(QObject):
     @Slot(str, result=bool)
     def deleteMod(self, path):
         try:
+            try:
+                from modules.plugin_host.hook_util import fire, any_cancel
+                cancel = any_cancel(fire("mods.delete", {"path": path}))
+                if cancel:
+                    print(f"[PluginHost] mods.delete cancelled: {cancel}")
+                    return False
+            except Exception as _pe:
+                print(f"[PluginHost] mods.delete 失败: {_pe}")
             from PySide6.QtWidgets import QMessageBox
             reply = QMessageBox.question(
                 None,
@@ -1807,6 +1835,11 @@ class Backend(QObject):
                     send2trash.send2trash(path)
                 else:
                     os.remove(path)
+                try:
+                    from modules.plugin_host.hook_util import fire
+                    fire("mods.delete", {"path": path, "done": True})
+                except Exception:
+                    pass
                 return True
             return False
         except Exception as e:
@@ -1899,6 +1932,14 @@ class Backend(QObject):
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
             if reply == QMessageBox.StandardButton.Yes:
+                try:
+                    from modules.plugin_host.hook_util import fire, any_cancel
+                    cancel = any_cancel(fire("resourcepack.delete", {"path": path}))
+                    if cancel:
+                        print(f"[PluginHost] resourcepack.delete cancelled: {cancel}")
+                        return False
+                except Exception as _pe:
+                    print(f"[PluginHost] resourcepack.delete 失败: {_pe}")
                 if send2trash:
                     send2trash.send2trash(path)
                 else:
@@ -2246,8 +2287,7 @@ class Backend(QObject):
                 "path": file_path
             })
             
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            cfg.write(config_data)
             
             print(f"成功添加自定义项: {display_name} -> {file_path}")
             # 可以在这里发出信号或刷新 UI（如果需要）
@@ -2368,8 +2408,7 @@ class Backend(QObject):
             config_data['language'] = lang_code
             # Drop legacy key to avoid ambiguity.
             config_data.pop('Language', None)
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            cfg.write(config_data)
             
             from modules.i18n import reload_language
             reload_language(lang_code)
@@ -2532,8 +2571,7 @@ class Backend(QObject):
     def setMinecraftDir(self, path):
         config_data = cfg.read()
         config_data['minecraft_dir'] = path
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         BLglobals.minecraft_dir = path
         print(f"Minecraft directory updated to: {path}")
 
@@ -2581,8 +2619,7 @@ class Backend(QObject):
         config_data['java_mode'] = mode
         config_data['java_fixed_path'] = normalized_path
         config_data['java_path'] = normalized_path if mode == 'fixed' else 'Auto'
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         log(f"[Settings] Java 选择已更新：模式={mode}，路径={normalized_path or '自动'}")
         return True
 
@@ -2617,8 +2654,7 @@ class Backend(QObject):
     def setThemeMode(self, mode):
         config_data = cfg.read()
         config_data['theme'] = mode
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data, changed_keys={'theme': mode})
         print(f"Theme mode updated to: {mode}")
 
     @Slot(str)
@@ -2626,8 +2662,7 @@ class Backend(QObject):
         """设置背景效果 (none/acrylic)"""
         config_data = cfg.read()
         config_data['backdrop_effect'] = effect
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data, changed_keys={'backdrop_effect': effect})
         # 通知 RinUI（Windows 处理原生效果，Linux 仅打印日志）
         parent = getattr(self, "parent", None)
         if parent and hasattr(parent, "theme_manager"):
@@ -2650,8 +2685,7 @@ class Backend(QObject):
     def setDownloadSource(self, source):
         config_data = cfg.read()
         config_data['download_source'] = source
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data, changed_keys={'download_source': source})
         BLglobals.download_source = source
         print(f"Download source updated to: {source}")
 
@@ -2672,8 +2706,7 @@ class Backend(QObject):
     def setShowAccountOnHome(self, mode):
         config_data = cfg.read()
         config_data['show_account_on_home'] = mode
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         print(f"Show account on home updated to: {mode}")
 
     @Slot(result=bool)
@@ -2685,8 +2718,7 @@ class Backend(QObject):
     def setMinimizeToTrayOnClose(self, enabled):
         config_data = cfg.read()
         config_data['minimize_to_tray_on_close'] = enabled
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         print(f"Minimize to tray on close updated to: {enabled}")
 
     @Slot(result=bool)
@@ -2698,8 +2730,7 @@ class Backend(QObject):
     def setRepeatRun(self, enabled):
         config_data = cfg.read()
         config_data['repeat_run'] = enabled
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         print(f"Repeat run updated to: {enabled}")
 
     # ========== 资源包编辑器全局设置 ==========
@@ -2717,8 +2748,7 @@ class Backend(QObject):
         if "rpe" not in config_data:
             config_data["rpe"] = {}
         config_data["rpe"][key] = value
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         print(f"RPE setting {key} updated to: {value}")
 
     @Slot(str, result=bool)
@@ -2735,8 +2765,7 @@ class Backend(QObject):
         if "notifications" not in config_data:
             config_data["notifications"] = {}
         config_data["notifications"][key] = value
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         invalidate_config_cache()
         print(f"Notification setting {key} updated to: {value}")
 
@@ -2754,8 +2783,7 @@ class Backend(QObject):
         if "notifications" not in config_data:
             config_data["notifications"] = {}
         config_data["notifications"]["bark_url"] = url.strip()
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         invalidate_config_cache()
         print(f"Bark URL updated to: {url.strip()}")
 
@@ -2774,8 +2802,7 @@ class Backend(QObject):
     def setWebRemoterEnabled(self, enabled):
         config_data = cfg.read()
         config_data['web_remoter_enabled'] = enabled
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         print(f"Web Remoter enabled updated to: {enabled}")
 
     @Slot(result=str)
@@ -2841,8 +2868,7 @@ class Backend(QObject):
         try:
             config_data = cfg.read()
             config_data['gamepad_move_sensitivity'] = max(10, min(100, value))
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, ensure_ascii=False, indent=4)
+            cfg.write(config_data)
         except Exception as e:
             print(f"setGamepadMoveSensitivity failed: {e}")
 
@@ -2859,8 +2885,7 @@ class Backend(QObject):
         try:
             config_data = cfg.read()
             config_data['gamepad_view_sensitivity'] = max(10, min(100, value))
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, ensure_ascii=False, indent=4)
+            cfg.write(config_data)
         except Exception as e:
             print(f"setGamepadViewSensitivity failed: {e}")
 
@@ -2877,8 +2902,7 @@ class Backend(QObject):
         try:
             config_data = cfg.read()
             config_data['gamepad_button_layout'] = layout
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, ensure_ascii=False, indent=4)
+            cfg.write(config_data)
         except Exception as e:
             print(f"setGamepadButtonLayout failed: {e}")
 
@@ -2909,8 +2933,7 @@ class Backend(QObject):
             config_data = cfg.read()
             config_data['gamepad_layout_data'] = layoutData
             config_data['gamepad_button_layout'] = 'custom'
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, ensure_ascii=False, indent=4)
+            cfg.write(config_data)
         except Exception as e:
             print(f"setGamepadLayoutData failed: {e}")
 
@@ -2925,8 +2948,7 @@ class Backend(QObject):
     def setProxy(self, proxy_addr):
         config_data = cfg.read()
         config_data['proxy'] = proxy_addr
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         BLglobals.proxy = proxy_addr
         print(f"Proxy updated to: {proxy_addr or '(none)'}")
 
@@ -3557,8 +3579,7 @@ class Backend(QObject):
         config_data['Bloret_PassPort_Login'] = False
         config_data['Bloret_PassPort_UserName'] = ""
         config_data['Bloret_PassPort_PassWord'] = ""
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         print("Logged out from Bloret PassPort")
         try:
             from modules.plugin_host.dispatch import invoke_hook
@@ -3611,8 +3632,7 @@ class Backend(QObject):
         if "MinecraftAccount" not in config_data:
             config_data["MinecraftAccount"] = {}
         config_data["MinecraftAccount"]["chosen"] = index
-        with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        cfg.write(config_data)
         print(f"Set default Minecraft account to index: {index}")
         self.minecraftAccountsChanged.emit([])
 
@@ -4000,6 +4020,11 @@ class Backend(QObject):
                 self._live_sse_client.start()
                 self._current_live_connection_state = "connecting"
                 self.liveConnectionStateChanged.emit("connecting")
+                try:
+                    from modules.plugin_host.hook_util import fire
+                    fire("live.join", {"space_id": spaceId})
+                except Exception as _pe:
+                    log(f"[PluginHost] live.join 失败: {_pe}", logging.WARNING)
 
                 # 立即用已有的空间信息发射 joinedSpace 信号，不等待服务器 init 事件
                 space_name = access.get('spaceName', '') if access else ''
@@ -4060,6 +4085,11 @@ class Backend(QObject):
         self.liveLeftSpace.emit()
         self.liveEasyTierStateChanged.emit({})
         self.liveConnectionStateChanged.emit("disconnected")
+        try:
+            from modules.plugin_host.hook_util import fire
+            fire("live.leave", {"space_id": current_space_id or ""})
+        except Exception as _pe:
+            log(f"[PluginHost] live.leave 失败: {_pe}", logging.WARNING)
 
     @Slot(str)
     def sendLiveChatMessage(self, message):
@@ -4095,6 +4125,19 @@ class Backend(QObject):
                         "from": username,
                         "payload": payload
                     })
+                    try:
+                        from modules.plugin_host.hook_util import fire
+                        fire(
+                            "live.chat",
+                            {
+                                "space_id": self._current_live_space_id,
+                                "from": username,
+                                "msg_id": msg_id,
+                                # 不向插件暴露完整聊天内容以外的敏感字段
+                            },
+                        )
+                    except Exception:
+                        pass
             except Exception as e:
                 self.liveErrorOccurred.emit(i18nText("发送消息失败: {error}").replace("{error}", str(e)))
         threading.Thread(target=run, daemon=True).start()
@@ -4157,6 +4200,18 @@ class Backend(QObject):
 
                 log(f"[EasyTier] 本地会话已启动，准备启动发布循环，space_id={self._current_live_space_id}", logging.INFO)
                 self._start_live_easytier_publish_loop()
+                try:
+                    from modules.plugin_host.hook_util import fire
+                    fire(
+                        "live.easytier.start",
+                        {
+                            "space_id": self._current_live_space_id,
+                            "mode": "host",
+                        },
+                    )
+                    fire("easytier.session.changed", {"mode": "host", "active": True})
+                except Exception as _pe:
+                    log(f"[PluginHost] live.easytier.start 失败: {_pe}", logging.WARNING)
             except Exception as e:
                 log(f"[EasyTier] startLiveEasyTier 异常: {e}", logging.ERROR)
                 import traceback
@@ -4209,6 +4264,18 @@ class Backend(QObject):
                 import time
                 time.sleep(0.5)
                 self._emit_live_easytier_state()
+                try:
+                    from modules.plugin_host.hook_util import fire
+                    fire(
+                        "live.easytier.connected",
+                        {
+                            "space_id": self._current_live_space_id,
+                            "mode": "client",
+                        },
+                    )
+                    fire("easytier.session.changed", {"mode": "client", "active": True})
+                except Exception as _pe:
+                    log(f"[PluginHost] live.easytier.connected 失败: {_pe}", logging.WARNING)
             except Exception as e:
                 self.liveErrorOccurred.emit(i18nText("连接 EasyTier 失败: {error}").replace("{error}", str(e)))
 
@@ -4228,6 +4295,12 @@ class Backend(QObject):
                 stop_live_session(space_id=self._current_live_space_id)
                 self._stop_live_easytier_publish_loop()
                 self._emit_live_easytier_state(self._current_live_easytier_state)
+                try:
+                    from modules.plugin_host.hook_util import fire
+                    fire("live.easytier.stop", {"space_id": self._current_live_space_id})
+                    fire("easytier.session.changed", {"active": False})
+                except Exception as _pe:
+                    log(f"[PluginHost] live.easytier.stop 失败: {_pe}", logging.WARNING)
             except Exception as e:
                 self.liveErrorOccurred.emit(i18nText("断开 EasyTier 失败: {error}").replace("{error}", str(e)))
 
@@ -4484,8 +4557,7 @@ class Backend(QObject):
             try:
                 config_data = cfg.read()
                 config_data["minecraft_dir"] = selected_dir
-                with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                cfg.write(config_data)
                 print(f"Minecraft directory set to: {selected_dir}")
                 return selected_dir
             except Exception as e:
@@ -4498,8 +4570,7 @@ class Backend(QObject):
         try:
             config_data = cfg.read()
             config_data["minecraft_dir"] = minecraft_dir
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            cfg.write(config_data)
             print(f"Minecraft directory set to: {minecraft_dir}")
         except Exception as e:
             print(f"Error setting minecraft directory: {e}")
@@ -4609,8 +4680,7 @@ class Backend(QObject):
                         if result.returncode == 0:
                             # 保存到配置
                             config_data["Java_Path"] = java_path
-                            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                                json.dump(config_data, f, indent=4, ensure_ascii=False)
+                            cfg.write(config_data)
                             print(f"Java found: {java_path}")
                             self.javaEnvironmentChecked.emit(True, java_path)
                             return
@@ -4696,8 +4766,7 @@ class Backend(QObject):
         try:
             config_data = cfg.read()
             config_data["language"] = language
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            cfg.write(config_data)
             
             # 重新加载语言数据
             from modules.i18n import reload_language

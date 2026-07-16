@@ -4,6 +4,7 @@ import QtQuick.Layouts 2.15
 import Qt.labs.platform 1.1
 import RinUI
 import "pages"
+import "../components"
 
 FluentWindowBase {
     id: editorWindow
@@ -38,6 +39,12 @@ FluentWindowBase {
 
     ColumnLayout {
         anchors.fill: parent
+
+        PluginPanelHost {
+            area: "rpe"
+            Layout.fillWidth: true
+            z: 5
+        }
         spacing: 0
 
         // ========== Copilot Agent 系统通知 ==========

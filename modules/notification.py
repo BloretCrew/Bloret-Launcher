@@ -144,12 +144,58 @@ def send_notification(title: str, body: str, *, category: str = None, app_id: st
         category: 通知类别（用于读取用户偏好），为 None 则强制发送
         app_id: 应用标识（Linux notify-send 用）
     """
+    # 插件可拦截/改写通知（notify.send）；返回 cancel 则跳过后续发送
+    try:
+        from modules.plugin_host.hook_util import fire, any_cancel
+
+        results = fire(
+            "notify.send",
+            {
+                "title": title,
+                "body": body,
+                "category": category,
+                "app_id": app_id,
+            },
+        )
+        if any_cancel(results, "插件取消通知"):
+            return
+        for r in results or []:
+            if isinstance(r, dict):
+                if r.get("title") is not None:
+                    title = str(r.get("title"))
+                if r.get("body") is not None:
+                    body = str(r.get("body"))
+                if r.get("category") is not None:
+                    category = r.get("category")
+    except Exception:
+        pass
+
     cfg = _read_notifications_config()
     master_on = cfg.get("enabled", True)
 
     send_system = category is None or (master_on and cfg.get(category, True))
     bark_url = cfg.get("bark_url", "")
     send_bark = category is not None and master_on and bark_url and cfg.get(f"bark_{category}", True)
+
+    # 插件注册的通知渠道
+    try:
+        from modules.plugin_host.registry import get_registry
+
+        for ch in get_registry().get_channels():
+            handler = ch.get("handler") or ch.get("send")
+            if not callable(handler):
+                continue
+            try:
+                handler(title, body, category=category, app_id=app_id)
+            except TypeError:
+                try:
+                    handler(title, body)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+    except Exception:
+        pass
 
     if not send_system and not send_bark:
         return

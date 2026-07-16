@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
+import "../components"
 
 FluentPage {
     id: statsPage
@@ -58,6 +59,11 @@ FluentPage {
     content: ColumnLayout {
             id: contentColumn
             spacing: 20
+
+            PluginPanelHost {
+                area: "stats"
+                Layout.fillWidth: true
+            }
 
             // ===== Overview Section =====
             Label {

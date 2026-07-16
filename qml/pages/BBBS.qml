@@ -47,6 +47,11 @@ FluentPage {
     content: ColumnLayout {
         spacing: 18
 
+        PluginPanelHost {
+            area: "bbbs"
+            Layout.fillWidth: true
+        }
+
         // 页面标题
         RowLayout {
             Layout.fillWidth: true

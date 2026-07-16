@@ -1,0 +1,20 @@
+2026-07-15 15:49:19,159 [INFO] [config.py:20 - <module>()] 正在检查配置文件路径: /data/Bloret-Launcher/config.json
+2026-07-15 15:49:19,159 [INFO] [config.py:21 - <module>()] 源配置文件路径: /data/Bloret-Launcher/config.json
+2026-07-15 15:49:19,159 [INFO] [config.py:22 - <module>()] 默认配置文件是否存在: True
+2026-07-15 15:49:19,159 [INFO] [config.py:39 - <module>()] 目标配置文件已存在: /data/Bloret-Launcher/config.json
+2026-07-15 15:49:19,159 [INFO] [config.py:42 - <module>()] 正在读取配置文件: /data/Bloret-Launcher/config.json
+2026-07-15 15:49:19,160 [INFO] [config.py:46 - <module>()] 成功读取配置文件，正在检查版本字段...
+2026-07-15 15:49:19,160 [INFO] [config.py:56 - <module>()] 当前配置文件版本: 27.2
+2026-07-15 15:49:19,160 [INFO] [config.py:57 - <module>()] 默认配置文件版本: 27.2
+2026-07-15 15:49:19,160 [INFO] [config.py:73 - <module>()] 配置文件版本匹配，无需更新
+2026-07-15 15:49:19,161 [INFO] [config.py:90 - <module>()] 配置文件路径: /data/Bloret-Launcher/config.json
+2026-07-15 15:49:19,161 [INFO] [config.py:125 - <module>()] 正在读取最终配置文件: /data/Bloret-Launcher/config.json
+2026-07-15 15:49:19,161 [INFO] [config.py:127 - <module>()] 成功读取配置文件内容摘要: {'minecraft-part': '.minecraft', 'first-run': True, 'ver': '27.2', '123': '123', 'size': 85, 'themelight': False, 'repeat_run': False, 'show_runtime_do': False, 'Customize': '<list:0 items>', 'Bloret_PassPort_Login': '***', 'Bloret_PassPort_UserName': '***', 'Bloret_PassPort_PassWord': '***', 'Bloret_PassPort_Admin': '***', 'bbbs_session': '***', 'whenCWopen_BLopen': True, 'localmod': False, 'home_show_login_mod': True, 'self-starting': False, 'MaxThread': 64, 'SkipFileCompletion': False, 'Minecraft_Versions': '<list:2 items>', 'minecraft_dir': '', 'Java_Path': 'C:\\Program Files\\Zulu\\zulu-23\\bin\\java.exe', 'language': 'zh-cn', 'screen_cut_shortcut': 'Ctrl+Alt+A', 'MinecraftAccount': '<dict:3 keys>', 'mwtool_switch_open': True, 'show_account_on_home': 'compact', 'minimize_to_tray_on_close': True, 'gamepad_move_sensitivity': 50, 'gamepad_view_sensitivity': 50, 'gamepad_button_layout': 'default', 'notifications': '<dict:18 keys>', 'ai_provider': 'bloret_passport', 'ai_model': 'default', 'backdrop_effect': 'none', 'plugins': '<dict:4 keys>'}
+2026-07-15 15:49:19,161 [INFO] [config.py:130 - <module>()] Minecraft目录已设置为: ''
+2026-07-15 15:49:19,161 [INFO] [config.py:133 - <module>()] 下载源: gitcode
+2026-07-15 15:49:19,161 [INFO] [config.py:136 - <module>()] 代理: (无)
+2026-07-15 15:49:19,161 [INFO] [config.py:145 - <module>()] 警告：Minecraft目录未设置（为空字符串）
+2026-07-15 15:49:19,168 [INFO] [registry.py:174 - add_hook()] [PluginHost] 注册钩子 download.resolve_url @ p
+2026-07-15 15:49:19,495 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook download.resolve_url args=1 kwargs=[]
+2026-07-15 15:49:19,495 [INFO] [registry.py:174 - add_hook()] [PluginHost] 注册钩子 mods.toggle @ p2
+2026-07-15 15:49:19,495 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook mods.toggle args=1 kwargs=[]

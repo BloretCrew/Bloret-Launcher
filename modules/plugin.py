@@ -533,8 +533,7 @@ def uninstall_plugin(plugin_name):
                 new_customize.append(item)
 
             config_data["Customize"] = new_customize
-            with open(BLglobals.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, ensure_ascii=False, indent=4)
+            cfg.write(config_data)
     except Exception as e:
         log(f"更新自定义程序配置失败: {str(e)}")
 

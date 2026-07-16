@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import QtQuick.Window 2.15
 import RinUI
+import "../components"
 
 Item {
     id: blorikoPage
@@ -234,8 +235,19 @@ Item {
     // ============================================================
     // 主布局：左侧历史栏 + 右侧聊天区
     // ============================================================
+    // 顶部插件面板（络可页扩展）
+    PluginPanelHost {
+        id: blorikoPluginPanels
+        area: "bloriko"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        z: 10
+    }
+
     RowLayout {
         anchors.fill: parent
+        anchors.topMargin: blorikoPluginPanels.visible ? blorikoPluginPanels.height + 8 : 0
         spacing: 0
 
         // ========== 左侧历史栏 ==========

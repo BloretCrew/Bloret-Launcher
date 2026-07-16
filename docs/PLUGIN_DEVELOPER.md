@@ -1,6 +1,44 @@
 # Bloret Launcher 插件开发文档
 
-规范版本：**1.1.0**（机器可读：`docs/plugin-spec.json`）
+规范版本：**2.0.0**（机器可读：`docs/plugin-spec.json`；兼容 1.1 清单）  
+Wiki 同步页：[插件开发规范](https://github.com/BloretCrew/Bloret-Launcher/wiki/插件开发规范)
+
+---
+
+## 插件能做什么？（先看这里）
+
+不改启动器源码即可扩展主要功能。按目标选路径：
+
+| 我想… | 怎么做 | 权限示例 |
+|--------|--------|----------|
+| 主题 / 侧栏页 / 主页卡片 / 设置页 | `contributes.theme` / `nav` / `home` / `settings` | `ui.theme` / `ui.nav` / `ui.home` / `ui.settings` |
+| 在 Mods、下载、Live、核心、通行证、统计、关于、论坛、络可、联机等页插入 UI | `contributes.panels` 或 `api.register_panel(area, …)` | `ui.mods` / `ui.download` / `ui.live` / … |
+| 拦截启动、加 JVM 参数、改环境变量 | `launch.pre` / `jvm_args` / `env` 钩子 | `launch.hooks` |
+| 下载进度、改镜像 URL | `download.*` / `download.resolve_url` | `download.hooks` |
+| 监听登录、配置变更、切页 | `account.*` / `config.changed` / `ui.page.open` | 多为安全权限 |
+| Live / EasyTier | `live.*` / `easytier.*` 钩子 | `live.control` |
+| 扩展络可 / BLRPE | `register_agent_tool` / `prompts` | `agent.bloriko` / `agent.blrpe` |
+| 读版本 / Mods / 资源包 | `list_versions*` / `list_mods` / Web `/api/v1/…` | `versions.read` / `mods.read` |
+| 自定义本地 HTTP、通知渠道、`bloret://` 路径 | `register_web_route` / `register_notification_channel` / `register_protocol_handler` | `web.routes` / `notify.channel` / `protocol.handle` |
+
+**三层模型**（可组合）：① `contributes` 声明式 UI → ② `hooks` 拦截回调 → ③ `PluginAPI` / Web API 主动调用。
+
+**三种形态**：声明式（无代码）/ Python（`register(api)`）/ 外部进程（`main.exe` + Web API）。
+
+**5 分钟上手**：
+
+```bash
+pip install BLAPI
+BLDEV plugin init my-plugin --template python --id com.example.my-plugin --non-interactive
+BLDEV plugin package my-plugin -o dist
+# 设置 → 插件 → 从文件安装
+```
+
+官方示例：`examples/plugins/`。完整对照与 FAQ 见 Wiki「插件开发规范」。
+
+**安全边界**：钩子无 token/密码；高风险权限需用户授权；只装可信源。
+
+---
 
 ## 概述
 
@@ -12,14 +50,14 @@ Bloret Launcher 支持混合插件模型：
 | **声明式资源** | 仅 `plugin.json` + theme/qml/lang，不执行任意代码 |
 | **外部进程** | `main.exe`，兼容旧插件，可走 Web API / `web.routes` |
 
-插件安装目录：`{datapath}/Plugin/{folder}/`
+插件安装目录：`{datapath}/Plugin/{folder}/`  
 私有数据目录：`{datapath}/PluginData/{plugin_id}/`
 
 ## 三层扩展模型
 
-1. **contributes**：UI / 资源注入（nav、home、tools、settings、theme…）
+1. **contributes**：UI / 资源注入（nav、home、tools、settings、theme、**panels**…）
 2. **hooks + 事件总线**：生命周期（`invoke_hook` 会同时通知 `register_hook` 与 `api.on`）
-3. **PluginAPI**：受权限保护的能力调用（HTTP、FS、进程、通知…）
+3. **PluginAPI**：受权限保护的能力调用（HTTP、FS、进程、通知、版本/内容只读…）
 
 ## 清单 `plugin.json`
 
@@ -61,23 +99,29 @@ Bloret Launcher 支持混合插件模型：
 
 ## 权限
 
+完整列表见 `docs/plugin-spec.json`。常用项：
+
 | 权限 | 风险 | 用途 |
 |------|------|------|
 | `ui.nav` | safe | 侧栏导航页 |
 | `ui.theme` | safe | 主题包（accent + colors） |
 | `ui.settings` | safe | 设置中心分类 + QML 页 |
 | `ui.toolbar` | safe | Minecraft 小工具栏按钮 |
-| `ui.home` | safe | 主页卡片 |
-| `ui.tools` | safe | 小工具页卡片 |
-| `launch.hooks` | high | 启动 pre/jvm/env/post/exit |
-| `download.hooks` | high | 下载 start/progress/post/error |
-| `agent.bloriko` | high | 络可工具与提示词 |
-| `agent.blrpe` | high | BLRPE Copilot 工具与提示词 |
+| `ui.home` / `ui.tools` | safe | 主页 / 小工具卡片 |
+| `ui.cores` / `ui.mods` / `ui.download` / `ui.live` / … | safe | 各功能页 **panel** 注入 |
+| `launch.hooks` / `launch.control` | high | 启动拦截 / 控制进程 |
+| `download.hooks` / `download.source` | high | 下载钩子 / 自定义源 |
+| `versions.read` / `versions.write` | safe/high | 版本列表与修改 |
+| `mods.read` / `mods.write` / `mods.source` | safe/high | Mods 读写与内容源 |
+| `content.read` / `content.write` | safe/high | 资源包 / 服务器等 |
+| `live.control` | high | Live / EasyTier |
+| `agent.bloriko` / `agent.blrpe` / `agent.provider` | high | Agent 与 AI 供应商 |
+| `notify.send` / `notify.channel` | safe/high | 通知与渠道 |
 | `config.read` / `config.write` | safe/high | 读写启动器配置 |
 | `fs.datapath` | high | 读写 datapath / PluginData 文件 |
 | `net.http` | high | HTTP 请求 |
 | `process.exec` | high | 执行外部进程（cwd 限 datapath/插件目录） |
-| `web.routes` | high | 注册本地 Web 路由 |
+| `web.routes` | high | 注册本地 Web 路由（GET/POST/PUT/DELETE/PATCH） |
 
 ## Python 插件
 
@@ -106,16 +150,19 @@ def jvm_args(api, version, base_args=None):
 - `api.register_hook(name, fn)` — 与 `api.on` 均能收到 `invoke_hook` 标准事件
 - `api.register_nav` / `register_settings` / `register_toolbar`
 - `api.register_home_card` / `register_tools_card`（需 `ui.home` / `ui.tools`）
+- `api.register_panel(area, id, title, qml, ...)`（需 `ui.{area}`，如 `live` → `ui.live`）
+- `api.register_content_source(kind, id, title, ...)`（`mods` / `download`）
 - `api.apply_theme_override(dict)`
 - `api.register_agent_tool` / `append_system_prompt`
-- `api.list_versions()` / `get_minecraft_dir()`
+- `api.list_versions()` / `list_versions_detail()` / `get_version_path()` / `get_minecraft_dir()`
+- `api.list_running_instances()`
 - `api.on` / `api.once`：订阅标准生命周期事件时执行对应权限检查；自定义事件无需额外权限
 - `api.emit`：仅用于插件自定义事件，标准生命周期事件只能由启动器派发
 - `api.http_get` / `http_post`（`net.http`）
 - `api.read_data_file` / `write_data_file` / `read_plugin_data_file` / `write_plugin_data_file`（`fs.datapath`）
 - `api.exec_process(args, cwd=..., timeout=...)`（`process.exec`）
 - `api.register_web_route(method, path, handler, auth="oauth")`（`web.routes`）
-  当前仅支持 `GET`/`ANY`，路径强制前缀为 `/api/v1/plugin/{plugin_id}/...`，并统一要求 OAuth
+  支持 `GET`/`POST`/`PUT`/`DELETE`/`PATCH`/`ANY`，路径强制前缀为 `/api/v1/plugin/{plugin_id}/...`，并统一要求 OAuth
 
 钩子函数签名推荐：`fn(api, ...)`；若不接受 `api` 也可直接 `fn(...)`。
 
@@ -142,6 +189,22 @@ def jvm_args(api, version, base_args=None):
 
 > **统一派发**：宿主通过 `invoke_hook` 同时调用 registry hooks 与 event bus。
 > 因此 `api.register_hook("app.ready", ...)` 与 `api.on("app.ready", ...)` 都能收到。
+
+## 功能页面板注入（2.0）
+
+```json
+"contributes": {
+  "panels": {
+    "live": [{ "id": "status", "title": "状态", "qml": "ui/LivePanel.qml", "order": 50 }],
+    "mods": [{ "id": "extra", "title": "扩展", "qml": "ui/ModsPanel.qml" }]
+  }
+}
+```
+
+或使用简写键：`"live": [{ "qml": "..." }]`（需 `ui.live`）。
+
+QML 侧通过 `PluginHost.getPanelContributionsJson("live")` 读取；宿主信号 `panelsContributionsChanged`。  
+主要功能页（Mods / Download / Live / Cores / PassPort / Statistics / Info / BBBS / Bloriko / Multiplayer / CoreManager / RPE）已接入 `PluginPanelHost`。
 
 ## 主页 / 小工具 / 设置 UI 注入
 
@@ -295,4 +358,12 @@ ZIP 要求：
 
 ## 路线图（后续）
 
-Core Manager 标签、Mods 内容源、Live 面板、通知渠道、AI 连接器 / Provider 等，见开发计划 Phase 2–5。
+| Phase | 内容 | 状态 |
+|-------|------|------|
+| 0 | Service 门面、Registry 泛化 panels/sources、权限/钩子 2.0、Web POST、spec 2.0 | **已落地** |
+| 1 | 钩子接线审计 + 版本/启动/内容只读 API + Web 镜像 | **已落地** |
+| 2 | Mods / 资源包 / Core / servers 钩子 + 页面板 | **已落地** |
+| 3 | `download.resolve_url` + Download 面板 | **已落地** |
+| 4 | Live / EasyTier 钩子 + 各功能页 PluginPanelHost | **已落地** |
+| 5 | 通知渠道、协议 handler、notify.send 钩子 | **已落地**（AI Provider / 托盘热键注册表就绪，运行时替换可后续深化） |
+| 6 | 契约测试 `test_plugin_extensibility.py` + 文档 | **已落地** |

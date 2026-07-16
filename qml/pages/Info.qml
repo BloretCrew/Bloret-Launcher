@@ -2,10 +2,16 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
+import "../components"
 
 FluentPage {
     id: infoPage
     title: (Backend ? Backend.tr("关于") : "关于")
+
+    PluginPanelHost {
+        area: "info"
+        Layout.fillWidth: true
+    }
 
     // --- Header Card ---
     Frame {

@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import Qt5Compat.GraphicalEffects
 import RinUI
+import "../components"
 
 FluentPage {
     id: passportPage
@@ -68,6 +69,11 @@ FluentPage {
             Layout.fillWidth: true
             visible: false
             timeout: 5000
+        }
+
+        PluginPanelHost {
+            area: "passport"
+            Layout.fillWidth: true
         }
 
         // --- Bloret PassPort Section ---

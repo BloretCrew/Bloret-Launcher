@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
 import "../components"
+import "../components"
 
 FluentPage {
     id: coresPage
@@ -20,6 +21,11 @@ FluentPage {
 
     content: ColumnLayout {
         spacing: 10
+
+        PluginPanelHost {
+            area: "cores"
+            Layout.fillWidth: true
+        }
 
         Label {
             text: Backend ? Backend.tr("右键单击启动项可进行管理。") : "右键单击启动项可进行管理。"
