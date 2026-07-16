@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - name: 检出代码
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -53,12 +53,12 @@ jobs:
       OUTPUT_DIR: 'output'
     steps:
     - name: 检出最新版本
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         submodules: true
 
     - name: 设置 Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
@@ -257,7 +257,7 @@ jobs:
 
     steps:
     - name: 检出最新版本
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -298,7 +298,7 @@ jobs:
 
     steps:
     - name: 检出最新版本
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         submodules: true
 
