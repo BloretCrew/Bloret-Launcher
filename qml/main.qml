@@ -299,11 +299,15 @@ FluentWindow {
                     if (isLoggedIn && passPortAvatar) {
                         list[i].title = passPortName
                         list[i].source = passPortAvatar
-                        list[i].radius = 10
+                        list[i].size = 22
+                        list[i].circular = true  // 圆形头像
+                        list[i].radius = 11
                         list[i].icon = ""
                     } else {
                         list[i].title = (Backend ? Backend.tr("通行证") : "通行证")
                         list[i].source = ""
+                        list[i].size = undefined
+                        list[i].circular = false
                         list[i].radius = 0
                         list[i].icon = "ic_fluent_person_20_regular"
                     }

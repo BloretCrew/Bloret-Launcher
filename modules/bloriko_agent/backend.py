@@ -715,13 +715,14 @@ class BlorikoBackend(QObject):
 
             def _gen_title():
                 try:
-                    from .agent_loop import generate_title
+                    from .agent_loop import generate_title, _sanitize_conversation_title
                     title = generate_title(api_url, auth_header, text, model)
-                    self._title = title
-                    self.titleChanged.emit(title)
+                    self._title = _sanitize_conversation_title(title, fallback=text)
+                    self.titleChanged.emit(self._title)
                 except Exception as e:
                     log.warning(f"[Bloriko] 标题生成失败: {e}")
-                    self._title = text[:15]
+                    from .agent_loop import _sanitize_conversation_title
+                    self._title = _sanitize_conversation_title(text)
                     self.titleChanged.emit(self._title)
 
             threading.Thread(target=_gen_title, daemon=True).start()
@@ -881,7 +882,8 @@ class BlorikoBackend(QObject):
                 self._current_model = loaded_model
             loaded_role = data.get("role", self._agent_role)
             self._agent_role = loaded_role if loaded_role in AGENT_ROLES else next(iter(AGENT_ROLES), self._agent_role)
-            self._title = data.get("title", "")
+            from .agent_loop import _sanitize_conversation_title
+            self._title = _sanitize_conversation_title(data.get("title", ""))
             self._current_emotion = data.get("emotion", "neutral")
             if self._agent_role != previous_role:
                 self.roleChanged.emit()
@@ -916,7 +918,8 @@ class BlorikoBackend(QObject):
                     self._current_model = loaded_model
                 loaded_role = data.get("role", self._agent_role)
                 self._agent_role = loaded_role if loaded_role in AGENT_ROLES else next(iter(AGENT_ROLES), self._agent_role)
-                self._title = data.get("title", "")
+                from .agent_loop import _sanitize_conversation_title
+                self._title = _sanitize_conversation_title(data.get("title", ""))
                 self._current_emotion = data.get("emotion", "neutral")
                 if self._agent_role != previous_role:
                     self.roleChanged.emit()

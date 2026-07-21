@@ -942,6 +942,27 @@ def run_agent_async(
     return agent
 
 
+# 对话标题最大长度（字符）。模型常忽略「15字」约束，后端再硬截断，避免顶栏被撑爆。
+MAX_CONVERSATION_TITLE_LEN = 24
+
+
+def _sanitize_conversation_title(raw: str, fallback: str = "") -> str:
+    """规范化对话标题：去换行/Markdown，限制长度。"""
+    title = (raw or "").strip()
+    if not title:
+        title = (fallback or "").strip()
+    # 只取第一行，避免模型把整段分析塞进标题
+    title = title.splitlines()[0].strip() if title else ""
+    # 去掉常见 Markdown / 列表前缀
+    for prefix in ("#", "*", "-", "•", "—", "–"):
+        while title.startswith(prefix):
+            title = title[1:].strip()
+    title = title.replace("**", "").replace("__", "").replace("`", "")
+    if len(title) > MAX_CONVERSATION_TITLE_LEN:
+        title = title[: MAX_CONVERSATION_TITLE_LEN - 1].rstrip() + "…"
+    return title
+
+
 def generate_title(api_url: str, auth_header: str, user_message: str, model: str = "Bloriko") -> str:
     """生成简短的对话标题"""
     log.info(f"[Title] 开始生成标题, model='{model}'")
@@ -952,13 +973,20 @@ def generate_title(api_url: str, auth_header: str, user_message: str, model: str
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": "你是一个对话标题生成器。根据用户的请求，用不超过15个字概括对话主题。只输出标题，不要任何其他内容。"},
-            {"role": "user", "content": user_message}
+            {
+                "role": "system",
+                "content": (
+                    "你是一个对话标题生成器。根据用户的请求，用不超过12个中文字（或24个英文字符）"
+                    "概括对话主题。只输出一行纯文本标题，不要标点装饰、Markdown、列表或解释。"
+                ),
+            },
+            {"role": "user", "content": user_message},
         ],
         "stream": False,
     }
 
     last_error = None
+    title = ""
     for attempt in range(2):
         try:
             resp = requests.post(api_url, json=payload, headers=headers, timeout=30)
@@ -975,5 +1003,6 @@ def generate_title(api_url: str, auth_header: str, user_message: str, model: str
     else:
         raise last_error or RuntimeError("标题生成失败")
 
+    title = _sanitize_conversation_title(title, fallback=user_message[:MAX_CONVERSATION_TITLE_LEN])
     log.info(f"[Title] 生成标题: '{title}'")
     return title

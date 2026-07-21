@@ -4777,6 +4777,18 @@ class Backend(QObject):
         except Exception as e:
             print(f"Error setting language: {e}")
 
+    @Slot()
+    def restartApp(self):
+        """重启程序（从设置页面调用）"""
+        if hasattr(self, 'parent') and self.parent is not None:
+            self.parent.restart_app()
+
+    @Slot()
+    def shutdownApp(self):
+        """关闭/退出程序（从设置页面调用）"""
+        if hasattr(self, 'parent') and self.parent is not None:
+            self.parent.quit_app()
+
 
 class LauncherTrayIcon(QSystemTrayIcon):
     """RinUI 版系统托盘图标与菜单"""
@@ -5212,13 +5224,45 @@ class LauncherV2(RinUIWindow):
         QApplication.quit()
 
     def restart_app(self):
-        if getattr(sys, 'frozen', False):
-            args = [sys.executable] + sys.argv[1:]
+        """关闭并重新启动。
+
+        必须先释放单实例锁，再拉起新进程，并尽快退出当前进程。
+        否则新实例会在旧实例尚未退出时撞上「不允许重复启动」检测。
+        """
+        # 重启标记：新实例若仍短暂检测到旧锁，会等待而不是直接拦截
+        restart_flag = "--from-restart"
+
+        if getattr(sys, "frozen", False):
+            raw_args = list(sys.argv[1:])
         else:
-            args = [sys.executable] + sys.argv
+            raw_args = list(sys.argv)
+
+        # 去掉可能残留的重启标记，避免叠加
+        filtered = [a for a in raw_args if a != restart_flag]
+        args = [sys.executable] + filtered + [restart_flag]
+
+        # 尽量优雅清理插件宿主
+        try:
+            host = getattr(self, "plugin_host", None)
+            if host is not None and hasattr(host, "shutdown"):
+                host.shutdown()
+        except Exception as e:
+            print(f"[Restart] plugin_host.shutdown 失败: {e}")
+
+        if self.tray_icon:
+            try:
+                self.tray_icon.hide()
+            except Exception:
+                pass
+
+        # 关键：先释放单实例互斥/文件锁，再启动新进程
+        try:
+            release_single_instance_lock()
+        except Exception as e:
+            print(f"[Restart] 释放单实例锁失败: {e}")
 
         kwargs = {"shell": False}
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             kwargs = hidden_process_kwargs(
                 **kwargs,
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
@@ -5226,8 +5270,16 @@ class LauncherV2(RinUIWindow):
         else:
             kwargs["start_new_session"] = True
 
-        subprocess.Popen(args, **kwargs)
-        self.quit_app()
+        try:
+            subprocess.Popen(args, **kwargs)
+        except Exception as e:
+            print(f"[Restart] 启动新进程失败: {e}")
+            # 启动失败时仍退出当前实例，避免卡在半重启状态
+            os._exit(1)
+
+        # 立即硬退出：QApplication.quit() 是异步的，窗口/事件循环收尾期间
+        # 新实例仍可能看到旧进程存活，从而被防重复启动拦截
+        os._exit(0)
 
     def closeEvent(self, event):
         if self._force_quit:
@@ -5260,31 +5312,118 @@ class LauncherV2(RinUIWindow):
         except Exception:
             event.accept()
 
+# --- 单实例锁：供启动检测与「重启」时主动释放 ---
+RESTART_ARGV_FLAG = "--from-restart"
+_single_instance_mutex = None  # Windows HANDLE
+_single_instance_lock_file = None  # Linux/macOS 锁文件对象
+_SINGLE_INSTANCE_MUTEX_NAME = "Global\\BloretLauncherMutex"
+
+
+def release_single_instance_lock():
+    """释放本进程持有的单实例互斥/文件锁，便于重启后的新实例立刻启动。"""
+    global _single_instance_mutex, _single_instance_lock_file
+
+    if sys.platform == "win32":
+        if _single_instance_mutex:
+            try:
+                import ctypes
+                ctypes.windll.kernel32.CloseHandle(_single_instance_mutex)
+            except Exception as e:
+                print(f"[SingleInstance] CloseHandle 失败: {e}")
+            _single_instance_mutex = None
+        return
+
+    if _single_instance_lock_file is not None:
+        try:
+            import fcntl
+            try:
+                fcntl.lockf(_single_instance_lock_file, fcntl.LOCK_UN)
+            except Exception:
+                pass
+            try:
+                _single_instance_lock_file.close()
+            except Exception:
+                pass
+        except Exception as e:
+            print(f"[SingleInstance] 解锁失败: {e}")
+        _single_instance_lock_file = None
+
+
+def _acquire_single_instance_lock():
+    """尝试获取单实例锁。返回 (already_running: bool)。"""
+    global _single_instance_mutex, _single_instance_lock_file
+
+    if sys.platform == "win32":
+        import ctypes
+        # 先丢掉旧句柄，避免重试时泄漏
+        if _single_instance_mutex:
+            try:
+                ctypes.windll.kernel32.CloseHandle(_single_instance_mutex)
+            except Exception:
+                pass
+            _single_instance_mutex = None
+
+        handle = ctypes.windll.kernel32.CreateMutexW(
+            None, False, _SINGLE_INSTANCE_MUTEX_NAME
+        )
+        # ERROR_ALREADY_EXISTS = 183
+        already = bool(handle) and ctypes.windll.kernel32.GetLastError() == 183
+        _single_instance_mutex = handle
+        return already
+
+    import fcntl
+    import tempfile
+
+    if _single_instance_lock_file is None:
+        lock_path = os.path.join(tempfile.gettempdir(), "bloret.lock")
+        _single_instance_lock_file = open(lock_path, "w")
+    try:
+        fcntl.lockf(_single_instance_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return False
+    except OSError:
+        return True
+
+
+def _wait_for_single_instance_after_restart(timeout_s: float = 30.0) -> bool:
+    """重启场景下轮询获取单实例锁，直到成功或超时。成功返回 True。"""
+    import time
+
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        already = _acquire_single_instance_lock()
+        if not already:
+            print("[SingleInstance] 重启等待：已取得单实例锁")
+            return True
+        # Windows 下若仍拿到「已存在」的句柄，先关掉再等，避免占着引用
+        if sys.platform == "win32" and _single_instance_mutex:
+            try:
+                import ctypes
+                ctypes.windll.kernel32.CloseHandle(_single_instance_mutex)
+            except Exception:
+                pass
+            globals()["_single_instance_mutex"] = None
+        time.sleep(0.15)
+    print(f"[SingleInstance] 重启等待超时（{timeout_s}s），仍检测到其它实例")
+    return False
+
+
 if __name__ == "__main__":
     # app is already created at the top
     global_icon_path = get_app_icon_path()
     if global_icon_path:
         app.setWindowIcon(QIcon(str(global_icon_path)))
 
+    # 是否由「重启」拉起：若短暂撞上旧实例锁，应等待而不是弹「请勿重复打开」
+    _from_restart = RESTART_ARGV_FLAG in sys.argv
+    if _from_restart:
+        sys.argv = [a for a in sys.argv if a != RESTART_ARGV_FLAG]
+        print("[SingleInstance] 检测到 --from-restart，将在锁冲突时等待旧实例退出")
+
     # --- Single-instance mutex ---
-    _mutex_handle = None
-    if sys.platform == "win32":
-        import ctypes
-        _mutex_handle = ctypes.windll.kernel32.CreateMutexW(
-            None, False, "Global\\BloretLauncherMutex"
-        )
-        _already_running = (
-            _mutex_handle and ctypes.windll.kernel32.GetLastError() == 183
-        )
-    else:
-        import fcntl, tempfile
-        _lock_path = os.path.join(tempfile.gettempdir(), "bloret.lock")
-        _lock_file = open(_lock_path, "w")
-        try:
-            fcntl.lockf(_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            _already_running = False
-        except IOError:
-            _already_running = True
+    _already_running = _acquire_single_instance_lock()
+
+    if _already_running and _from_restart:
+        _already_running = not _wait_for_single_instance_after_restart(30.0)
 
     if _already_running:
         # 优先转发 bloret:// deep link 给首实例，再退出（商店一键安装）

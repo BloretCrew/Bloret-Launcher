@@ -104,15 +104,41 @@ def send_system_notification(title, message):
 
 
 def restart():
+    """重启程序。
+
+    附带 --from-restart，让新实例在旧进程尚未完全退出时等待锁释放，
+    避免被「不允许重复启动」误拦。
+    """
     log(i18nText('重启程序'))
-    
+
+    restart_flag = "--from-restart"
     if getattr(sys, 'frozen', False):
-        args = [sys.executable] + sys.argv[1:]
+        raw_args = list(sys.argv[1:])
     else:
-        args = [sys.executable] + sys.argv
-        
+        raw_args = list(sys.argv)
+    filtered = [a for a in raw_args if a != restart_flag]
+    args = [sys.executable] + filtered + [restart_flag]
+
+    # 若主程序已加载并暴露了释放单实例锁的接口，优先调用
+    try:
+        releaser = None
+        for mod in list(sys.modules.values()):
+            if mod is not None and hasattr(mod, "release_single_instance_lock"):
+                releaser = getattr(mod, "release_single_instance_lock")
+                break
+        if callable(releaser):
+            releaser()
+    except Exception as e:
+        log(f"释放单实例锁失败: {e}", logging.WARNING)
+
     if sys.platform == "win32":
-        subprocess.Popen(args, shell=False, **hidden_process_kwargs(creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS))
+        subprocess.Popen(
+            args,
+            shell=False,
+            **hidden_process_kwargs(
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+            ),
+        )
     else:
         # Linux/macOS 使用 start_new_session, 相当于 DETACHED_PROCESS
         subprocess.Popen(args, start_new_session=True, shell=False)

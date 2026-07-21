@@ -319,6 +319,7 @@ Item {
 
                         contentItem: ColumnLayout {
                             spacing: 2
+                            width: parent ? parent.width : undefined
                             anchors.leftMargin: 12; anchors.rightMargin: 8
 
                             Text {
@@ -327,13 +328,21 @@ Item {
                                 font.bold: model.displayText !== model.subText
                                 color: Theme.currentTheme.colors.textColor
                                 Layout.fillWidth: true
+                                Layout.maximumWidth: historyListView.width - 24
                                 elide: Text.ElideRight
+                                wrapMode: Text.NoWrap
+                                maximumLineCount: 1
                             }
 
                             Text {
                                 text: model.subText
                                 font.pixelSize: 10
                                 color: Theme.currentTheme.colors.textSecondaryColor
+                                Layout.fillWidth: true
+                                Layout.maximumWidth: historyListView.width - 24
+                                elide: Text.ElideRight
+                                wrapMode: Text.NoWrap
+                                maximumLineCount: 1
                             }
                         }
 
@@ -381,7 +390,9 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 48
+                Layout.maximumHeight: 48
                 color: "transparent"
+                clip: true
 
                 RowLayout {
                     anchors.fill: parent
@@ -395,6 +406,8 @@ Item {
                         icon.name: "ic_fluent_line_horizontal_3_20_regular"
                         flat: true
                         implicitWidth: 32; implicitHeight: 32
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
                         font.pixelSize: 16
                         onClicked: {
                             historyPanelOpen = !historyPanelOpen
@@ -403,6 +416,8 @@ Item {
                     }
 
                     Rectangle {
+                        Layout.preferredWidth: 24
+                        Layout.preferredHeight: 24
                         width: 24; height: 24; radius: 12; clip: true; color: "transparent"
                         Image { anchors.fill: parent; source: Qt.resolvedUrl("../../icon/Bloriko.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
                     }
@@ -412,31 +427,62 @@ Item {
                         font.pixelSize: 14
                         font.bold: true
                         color: Theme.currentTheme.colors.textColor
+                        Layout.alignment: Qt.AlignVCenter
                     }
 
-                    Text {
-                        text: conversationTitle ? "— " + conversationTitle : ""
-                        font.pixelSize: 12
-                        font.italic: true
-                        color: Theme.currentTheme.colors.textSecondaryColor
-                        visible: conversationTitle.length > 0
+                    // 对话标题：占满中间剩余空间，过长时右侧省略，避免顶栏被撑爆
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.preferredHeight: 24
+                        Layout.alignment: Qt.AlignVCenter
+                        clip: true
+
+                        Text {
+                            id: conversationTitleLabel
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: conversationTitle ? "— " + conversationTitle : ""
+                            font.pixelSize: 12
+                            font.italic: true
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            elide: Text.ElideRight
+                            wrapMode: Text.NoWrap
+                            maximumLineCount: 1
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.NoButton
+                            ToolTip.visible: containsMouse && conversationTitle.length > 0
+                            ToolTip.text: conversationTitle
+                            ToolTip.delay: 400
+                        }
                     }
 
                     // 情感状态显示
                     Rectangle {
                         Layout.preferredWidth: emotionText.implicitWidth + 12
+                        Layout.maximumWidth: 120
                         Layout.preferredHeight: 22
+                        Layout.alignment: Qt.AlignVCenter
                         radius: 11
                         color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
                         border.color: Theme.currentTheme.colors.controlBorderColor || "#E0E0E0"
                         border.width: 1
+                        clip: true
 
                         Text {
                             id: emotionText
                             anchors.centerIn: parent
+                            width: parent.width - 8
                             text: getEmotionDisplay(currentEmotion)
                             font.pixelSize: 10
                             color: Theme.currentTheme.colors.textColor
+                            elide: Text.ElideRight
+                            horizontalAlignment: Text.AlignHCenter
                         }
                     }
 
@@ -444,11 +490,14 @@ Item {
                         text: Bloriko && Bloriko.busy ? (Backend ? Backend.tr("思考中...") : "思考中...") : (Backend ? Backend.tr("就绪") : "就绪")
                         font.pixelSize: 11
                         color: Bloriko && Bloriko.busy ? (Theme.accentColor || "#0078D4") : Theme.currentTheme.colors.textSecondaryColor
+                        Layout.alignment: Qt.AlignVCenter
                     }
 
                     ComboBox {
                         id: roleCombo
                         Layout.preferredWidth: 80
+                        Layout.maximumWidth: 100
+                        Layout.alignment: Qt.AlignVCenter
                         model: roleModel
                         textRole: "name"
                         font.pixelSize: 10
@@ -459,12 +508,11 @@ Item {
                         }
                     }
 
-                    Item { Layout.fillWidth: true }
-
                     Button {
                         text: (Backend ? Backend.tr("新对话") : "新对话")
                         flat: true
                         font.pixelSize: 11
+                        Layout.alignment: Qt.AlignVCenter
                         enabled: Bloriko && !Bloriko.busy
                         onClicked: { messageModel.clear(); if (Bloriko) Bloriko.clearHistory() }
                     }
