@@ -225,6 +225,7 @@ FluentPage {
         switch (id) {
         case "minecraft": return _mcJavaSection
         case "home": return _homeSection
+        case "system": return _systemSection
         case "webremoter": return _webRemoterSection
         case "gamepad": return _gamepadSection
         case "notification": return _notificationSection
@@ -262,6 +263,14 @@ FluentPage {
         _sourceDesc = Backend ? Backend.tr("选择下载来源：BMCLAPI（优先镜像，失败回退官方）、Bloret (以非常规方式快速下载，只支持部分版本) 或 Mojang 官方直连") : "选择下载来源：BMCLAPI（优先镜像，失败回退官方）、Bloret (以非常规方式快速下载，只支持部分版本) 或 Mojang 官方直连"
         _homeSection = Backend ? Backend.tr("首页") : "首页"
         _homeHubDesc = Backend ? Backend.tr("账户展示、托盘与多开") : "账户展示、托盘与多开"
+        _systemSection = Backend ? Backend.tr("系统") : "系统"
+        _systemHubDesc = Backend ? Backend.tr("关闭与重启程序") : "关闭与重启程序"
+        _shutdownTitle = Backend ? Backend.tr("关闭程序") : "关闭程序"
+        _shutdownDesc = Backend ? Backend.tr("完全退出 Bloret Launcher") : "完全退出 Bloret Launcher"
+        _restartTitle = Backend ? Backend.tr("重启程序") : "重启程序"
+        _restartDesc = Backend ? Backend.tr("关闭并重新启动 Bloret Launcher") : "关闭并重新启动 Bloret Launcher"
+        _shutdownBtn = Backend ? Backend.tr("关闭") : "关闭"
+        _restartBtn = Backend ? Backend.tr("重启") : "重启"
         _showAccountTitle = Backend ? Backend.tr("显示账户信息") : "显示账户信息"
         _showAccountDesc = Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息"
         _showAccountModeCompact = Backend ? Backend.tr("简略展示") : "简略展示"
@@ -400,6 +409,14 @@ FluentPage {
     property string _sourceDesc: Backend ? Backend.tr("选择下载来源：Bloret (以非常规方式快速下载，只支持部分版本)、Mojang 官方直连 或 BMCLAPI（优先镜像，失败回退官方）") : "选择下载来源：Bloret (以非常规方式快速下载，只支持部分版本)、Mojang 官方直连 或 BMCLAPI（优先镜像，失败回退官方）"
     property string _homeSection: Backend ? Backend.tr("首页") : "首页"
     property string _homeHubDesc: Backend ? Backend.tr("账户展示、托盘与多开") : "账户展示、托盘与多开"
+    property string _systemSection: Backend ? Backend.tr("系统") : "系统"
+    property string _systemHubDesc: Backend ? Backend.tr("关闭与重启程序") : "关闭与重启程序"
+    property string _shutdownTitle: Backend ? Backend.tr("关闭程序") : "关闭程序"
+    property string _shutdownDesc: Backend ? Backend.tr("完全退出 Bloret Launcher") : "完全退出 Bloret Launcher"
+    property string _restartTitle: Backend ? Backend.tr("重启程序") : "重启程序"
+    property string _restartDesc: Backend ? Backend.tr("关闭并重新启动 Bloret Launcher") : "关闭并重新启动 Bloret Launcher"
+    property string _shutdownBtn: Backend ? Backend.tr("关闭") : "关闭"
+    property string _restartBtn: Backend ? Backend.tr("重启") : "重启"
     property string _showAccountTitle: Backend ? Backend.tr("显示账户信息") : "显示账户信息"
     property string _showAccountDesc: Backend ? Backend.tr("在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息") : "在首页启动卡片上显示 Bloret PassPort 和 Minecraft 账户信息"
     property string _showAccountModeCompact: Backend ? Backend.tr("简略展示") : "简略展示"
@@ -590,6 +607,7 @@ FluentPage {
         var base = [
             { id: "minecraft", title: _mcJavaSection, desc: _mcJavaHubDesc, icon: "ic_fluent_cube_20_regular" },
             { id: "home", title: _homeSection, desc: _homeHubDesc, icon: "ic_fluent_home_20_regular" },
+            { id: "system", title: _systemSection, desc: _systemHubDesc, icon: "ic_fluent_power_20_regular" },
             { id: "webremoter", title: _webRemoterSection, desc: _webRemoterHubDesc, icon: "ic_fluent_phone_20_regular" },
             { id: "gamepad", title: _gamepadSection, desc: _gamepadHubDesc, icon: "ic_fluent_xbox_controller_20_regular" },
             { id: "notification", title: _notificationSection, desc: _notificationHubDesc, icon: "ic_fluent_alert_20_regular" },
@@ -1282,6 +1300,115 @@ FluentPage {
                     onCheckedChanged: {
                         if (Backend)
                             Backend.setRepeatRun(checked)
+                    }
+                }
+            }
+        }
+
+        // --- System ---
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+            visible: currentCategory === "system"
+
+            SettingCard {
+                Layout.fillWidth: true
+                title: _shutdownTitle
+                description: _shutdownDesc
+                icon.name: "ic_fluent_power_20_regular"
+                Button {
+                    text: _shutdownBtn
+                    highlighted: true
+                    onClicked: systemShutdownDialog.open()
+                }
+            }
+
+            SettingCard {
+                Layout.fillWidth: true
+                title: _restartTitle
+                description: _restartDesc
+                icon.name: "ic_fluent_arrow_sync_20_regular"
+                Button {
+                    text: _restartBtn
+                    highlighted: true
+                    onClicked: systemRestartDialog.open()
+                }
+            }
+        }
+
+        // ── System confirmation dialogs ──
+
+        Dialog {
+            id: systemShutdownDialog
+            title: _shutdownTitle
+            modal: true
+            anchors.centerIn: parent
+            width: 360
+            closePolicy: Popup.CloseOnEscape
+
+            ColumnLayout {
+                spacing: 16
+                Label {
+                    text: Backend ? Backend.tr("确定要关闭 Bloret Launcher 吗？") : "确定要关闭 Bloret Launcher 吗？"
+                    font.pixelSize: 14
+                    color: Theme.currentTheme.colors.textColor
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Item { Layout.fillWidth: true }
+                    Button {
+                        text: _cancelBtn
+                        flat: true
+                        onClicked: systemShutdownDialog.close()
+                    }
+                    Button {
+                        text: _shutdownBtn
+                        highlighted: true
+                        onClicked: {
+                            systemShutdownDialog.close()
+                            if (Backend)
+                                Backend.shutdownApp()
+                        }
+                    }
+                }
+            }
+        }
+
+        Dialog {
+            id: systemRestartDialog
+            title: _restartTitle
+            modal: true
+            anchors.centerIn: parent
+            width: 360
+            closePolicy: Popup.CloseOnEscape
+
+            ColumnLayout {
+                spacing: 16
+                Label {
+                    text: Backend ? Backend.tr("确定要重启 Bloret Launcher 吗？") : "确定要重启 Bloret Launcher 吗？"
+                    font.pixelSize: 14
+                    color: Theme.currentTheme.colors.textColor
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Item { Layout.fillWidth: true }
+                    Button {
+                        text: _cancelBtn
+                        flat: true
+                        onClicked: systemRestartDialog.close()
+                    }
+                    Button {
+                        text: _restartBtn
+                        highlighted: true
+                        onClicked: {
+                            systemRestartDialog.close()
+                            if (Backend)
+                                Backend.restartApp()
+                        }
                     }
                 }
             }

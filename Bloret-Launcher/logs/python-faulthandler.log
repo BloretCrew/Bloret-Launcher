@@ -420,3 +420,199 @@ Extension modules: _brotli, charset_normalizer.md, charset_normalizer.cd, reques
 ===== Bloret Launcher fault handler enabled =====
 
 ===== Bloret Launcher fault handler enabled =====
+
+===== Bloret Launcher fault handler enabled =====
+
+===== Bloret Launcher fault handler enabled =====
+
+===== Bloret Launcher fault handler enabled =====
+
+===== Bloret Launcher fault handler enabled =====
+
+===== Bloret Launcher fault handler enabled =====
+
+===== Bloret Launcher fault handler enabled =====
+
+===== Bloret Launcher fault handler enabled =====
+Fatal Python error: Segmentation fault
+
+Thread 0x00007fb7749fe6c0 [bloret-ipc] (most recent call first):
+  File "/usr/lib/python3.14/socket.py", line 298 in accept
+  File "/home/detrital/work/Bloret-Launcher/modules/protocol_handler.py", line 223 in _serve
+  File "/usr/lib/python3.14/threading.py", line 1024 in run
+  File "/usr/lib/python3.14/threading.py", line 1082 in _bootstrap_inner
+  File "/usr/lib/python3.14/threading.py", line 1044 in _bootstrap
+
+Thread 0x00007fb7771216c0 [Thread-1 (start] (most recent call first):
+  File "/usr/lib/python3.14/selectors.py", line 398 in select
+  File "/usr/lib/python3.14/socketserver.py", line 235 in serve_forever
+  File "/home/detrital/work/Bloret-Launcher/modules/web.py", line 2117 in start_server
+  File "/usr/lib/python3.14/threading.py", line 1024 in run
+  File "/usr/lib/python3.14/threading.py", line 1082 in _bootstrap_inner
+  File "/usr/lib/python3.14/threading.py", line 1044 in _bootstrap
+
+Current thread 0x00007fb78f2afbc0 [python] (most recent call first):
+  File "/home/detrital/work/Bloret-Launcher/Bloret-Launcher.py", line 5317 in <module>
+
+Current thread's C stack trace (most recent call first):
+  Binary file "/usr/lib/libpython3.14.so.1.0", at _Py_DumpStack+0x4d [0x7fb78ed67ba1]
+  Binary file "/usr/lib/libpython3.14.so.1.0", at +0x16ce35 [0x7fb78ed6ce35]
+  Binary file "/usr/lib/libc.so.6", at +0x3e270 [0x7fb78e83e270]
+  Binary file "/usr/lib/libpython3.14.so.1.0", at +0x1e327f [0x7fb78ede327f]
+  Binary file "/usr/lib/libpython3.14.so.1.0", at +0x234db1 [0x7fb78ee34db1]
+  Binary file "/usr/lib/libpyside6.cpython-314-x86_64-linux-gnu.so.6.11", at +0x1ef0d [0x7fb78c4ccf0d]
+  Binary file "/usr/lib/libpyside6.cpython-314-x86_64-linux-gnu.so.6.11", at _ZN6PySide13SignalManager20callPythonMetaMethodE11QMetaMethodPPvP7_object+0xad [0x7fb78c4d009d]
+  Binary file "/usr/lib/libpyside6.cpython-314-x86_64-linux-gnu.so.6.11", at _ZN6PySide13SignalManager11qt_metacallEP7QObjectN11QMetaObject4CallEiPPv+0x291 [0x7fb78c4d3c91]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x1f0b5d [0x7fb78a5f0b5d]
+  Binary file "/usr/lib/libQt6Widgets.so.6", at +0x1c8ea1 [0x7fb78b7c8ea1]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x1f0a59 [0x7fb78a5f0a59]
+  Binary file "/usr/lib/libQt6Gui.so.6", at _ZN23QPlatformSystemTrayIcon9activatedENS_16ActivationReasonE+0x47 [0x7fb78adf50e7]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x1f081b [0x7fb78a5f081b]
+  Binary file "/usr/lib/libKF6StatusNotifierItem.so.6", at _ZN19KStatusNotifierItem17activateRequestedEbRK6QPoint+0x4f [0x7fb7851d80ef]
+  Binary file "/usr/lib/libKF6StatusNotifierItem.so.6", at +0x3c1c8 [0x7fb7852051c8]
+  Binary file "/usr/lib/libKF6StatusNotifierItem.so.6", at +0x3ce27 [0x7fb785205e27]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x44f89 [0x7fb78a214f89]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x4601a [0x7fb78a21601a]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x4c34d [0x7fb78a21c34d]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x4ce5a [0x7fb78a21ce5a]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN7QObject5eventEP6QEvent+0x126 [0x7fb78a5e7d46]
+  Binary file "/usr/lib/libQt6Widgets.so.6", at _ZN19QApplicationPrivate13notify_helperEP7QObjectP6QEvent+0x8f [0x7fb78b70411f]
+  Binary file "/usr/lib/python3.14/site-packages/PySide6/QtWidgets.cpython-314-x86_64-linux-gnu.so", at +0xdafff [0x7fb78bedafff]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent+0x158 [0x7fb78a583658]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData+0x3b1 [0x7fb78a583a61]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x49fc98 [0x7fb78a89fc98]
+  Binary file "/usr/lib/libglib-2.0.so.0", at +0x61bfd [0x7fb78a2febfd]
+  Binary file "/usr/lib/libglib-2.0.so.0", at +0x63e57 [0x7fb78a300e57]
+  Binary file "/usr/lib/libglib-2.0.so.0", at g_main_context_iteration+0x35 [0x7fb78a300fe5]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN20QEventDispatcherGlib13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE+0x72 [0x7fb78a89d0b2]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE+0x193 [0x7fb78a591983]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN16QCoreApplication4execEv+0xba [0x7fb78a586eaa]
+  <truncated rest of calls>
+
+Extension modules: charset_normalizer.md, charset_normalizer.cd, requests.packages.charset_normalizer.md, requests.packages.chardet.md, requests.packages.charset_normalizer.cd, requests.packages.chardet.cd, shiboken6.Shiboken, PySide6.QtCore, PySide6.QtGui, PySide6.QtWidgets, PySide6.QtNetwork, PySide6.QtQml, PySide6.QtOpenGL, PySide6.QtQuick, psutil._psutil_linux, gi._gi, cairo._cairo, gi._gi_cairo, PySide6.QtUiTools, PySide6.QtQuickWidgets (total: 20)
+
+===== Bloret Launcher fault handler enabled =====
+Fatal Python error: Segmentation fault
+
+Thread 0x00007fbb195ff6c0 [bloret-ipc] (most recent call first):
+  File "/usr/lib/python3.14/socket.py", line 298 in accept
+  File "/home/detrital/work/Bloret-Launcher/modules/protocol_handler.py", line 223 in _serve
+  File "/usr/lib/python3.14/threading.py", line 1024 in run
+  File "/usr/lib/python3.14/threading.py", line 1082 in _bootstrap_inner
+  File "/usr/lib/python3.14/threading.py", line 1044 in _bootstrap
+
+Thread 0x00007fbb1aa6a6c0 [Thread-1 (start] (most recent call first):
+  File "/usr/lib/python3.14/selectors.py", line 398 in select
+  File "/usr/lib/python3.14/socketserver.py", line 235 in serve_forever
+  File "/home/detrital/work/Bloret-Launcher/modules/web.py", line 2117 in start_server
+  File "/usr/lib/python3.14/threading.py", line 1024 in run
+  File "/usr/lib/python3.14/threading.py", line 1082 in _bootstrap_inner
+  File "/usr/lib/python3.14/threading.py", line 1044 in _bootstrap
+
+Current thread 0x00007fbb32abdbc0 [python] (most recent call first):
+  File "/home/detrital/work/Bloret-Launcher/Bloret-Launcher.py", line 5317 in <module>
+
+Current thread's C stack trace (most recent call first):
+  Binary file "/usr/lib/libpython3.14.so.1.0", at _Py_DumpStack+0x4d [0x7fbb32567ba1]
+  Binary file "/usr/lib/libpython3.14.so.1.0", at +0x16ce35 [0x7fbb3256ce35]
+  Binary file "/usr/lib/libc.so.6", at +0x3e270 [0x7fbb3203e270]
+  Binary file "/usr/lib/libpython3.14.so.1.0", at +0x1e327f [0x7fbb325e327f]
+  Binary file "/usr/lib/libpython3.14.so.1.0", at +0x234db1 [0x7fbb32634db1]
+  Binary file "/usr/lib/libpyside6.cpython-314-x86_64-linux-gnu.so.6.11", at +0x1ef0d [0x7fbb300f0f0d]
+  Binary file "/usr/lib/libpyside6.cpython-314-x86_64-linux-gnu.so.6.11", at _ZN6PySide13SignalManager20callPythonMetaMethodE11QMetaMethodPPvP7_object+0xad [0x7fbb300f409d]
+  Binary file "/usr/lib/libpyside6.cpython-314-x86_64-linux-gnu.so.6.11", at _ZN6PySide13SignalManager11qt_metacallEP7QObjectN11QMetaObject4CallEiPPv+0x291 [0x7fbb300f7c91]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x1f0b5d [0x7fbb2ddf0b5d]
+  Binary file "/usr/lib/libQt6Widgets.so.6", at +0x1c8ea1 [0x7fbb2efc8ea1]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x1f0a59 [0x7fbb2ddf0a59]
+  Binary file "/usr/lib/libQt6Gui.so.6", at _ZN23QPlatformSystemTrayIcon9activatedENS_16ActivationReasonE+0x47 [0x7fbb2e5f50e7]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x1f081b [0x7fbb2ddf081b]
+  Binary file "/usr/lib/libKF6StatusNotifierItem.so.6", at _ZN19KStatusNotifierItem17activateRequestedEbRK6QPoint+0x4f [0x7fbb28b190ef]
+  Binary file "/usr/lib/libKF6StatusNotifierItem.so.6", at +0x3c1c8 [0x7fbb28b461c8]
+  Binary file "/usr/lib/libKF6StatusNotifierItem.so.6", at +0x3ce27 [0x7fbb28b46e27]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x44f89 [0x7fbb2db77f89]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x4601a [0x7fbb2db7901a]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x4c34d [0x7fbb2db7f34d]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x4ce5a [0x7fbb2db7fe5a]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN7QObject5eventEP6QEvent+0x126 [0x7fbb2dde7d46]
+  Binary file "/usr/lib/libQt6Widgets.so.6", at _ZN19QApplicationPrivate13notify_helperEP7QObjectP6QEvent+0x8f [0x7fbb2ef0411f]
+  Binary file "/usr/lib/python3.14/site-packages/PySide6/QtWidgets.cpython-314-x86_64-linux-gnu.so", at +0xdafff [0x7fbb2f6dafff]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent+0x158 [0x7fbb2dd83658]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData+0x3b1 [0x7fbb2dd83a61]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x49fc98 [0x7fbb2e09fc98]
+  Binary file "/usr/lib/libglib-2.0.so.0", at +0x61bfd [0x7fbb2e2febfd]
+  Binary file "/usr/lib/libglib-2.0.so.0", at +0x63e57 [0x7fbb2e300e57]
+  Binary file "/usr/lib/libglib-2.0.so.0", at g_main_context_iteration+0x35 [0x7fbb2e300fe5]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN20QEventDispatcherGlib13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE+0x72 [0x7fbb2e09d0b2]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE+0x193 [0x7fbb2dd91983]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN16QCoreApplication4execEv+0xba [0x7fbb2dd86eaa]
+  <truncated rest of calls>
+
+Extension modules: charset_normalizer.md, charset_normalizer.cd, requests.packages.charset_normalizer.md, requests.packages.chardet.md, requests.packages.charset_normalizer.cd, requests.packages.chardet.cd, shiboken6.Shiboken, PySide6.QtCore, PySide6.QtGui, PySide6.QtWidgets, PySide6.QtNetwork, PySide6.QtQml, PySide6.QtOpenGL, PySide6.QtQuick, psutil._psutil_linux, gi._gi, cairo._cairo, gi._gi_cairo, PySide6.QtUiTools, PySide6.QtQuickWidgets (total: 20)
+
+===== Bloret Launcher fault handler enabled =====
+Fatal Python error: Segmentation fault
+
+Thread 0x00007fccb9dff6c0 [bloret-ipc] (most recent call first):
+  File "/usr/lib/python3.14/socket.py", line 298 in accept
+  File "/home/detrital/work/Bloret-Launcher/modules/protocol_handler.py", line 223 in _serve
+  File "/usr/lib/python3.14/threading.py", line 1024 in run
+  File "/usr/lib/python3.14/threading.py", line 1082 in _bootstrap_inner
+  File "/usr/lib/python3.14/threading.py", line 1044 in _bootstrap
+
+Thread 0x00007fccbb3b16c0 [Thread-1 (start] (most recent call first):
+  File "/usr/lib/python3.14/selectors.py", line 398 in select
+  File "/usr/lib/python3.14/socketserver.py", line 235 in serve_forever
+  File "/home/detrital/work/Bloret-Launcher/modules/web.py", line 2117 in start_server
+  File "/usr/lib/python3.14/threading.py", line 1024 in run
+  File "/usr/lib/python3.14/threading.py", line 1082 in _bootstrap_inner
+  File "/usr/lib/python3.14/threading.py", line 1044 in _bootstrap
+
+Current thread 0x00007fccd353abc0 [python] (most recent call first):
+  File "/home/detrital/work/Bloret-Launcher/Bloret-Launcher.py", line 5317 in <module>
+
+Current thread's C stack trace (most recent call first):
+  Binary file "/usr/lib/libpython3.14.so.1.0", at _Py_DumpStack+0x4d [0x7fccd2f67ba1]
+  Binary file "/usr/lib/libpython3.14.so.1.0", at +0x16ce35 [0x7fccd2f6ce35]
+  Binary file "/usr/lib/libc.so.6", at +0x3e270 [0x7fccd2a3e270]
+  Binary file "/usr/lib/libpython3.14.so.1.0", at +0x1e327f [0x7fccd2fe327f]
+  Binary file "/usr/lib/libpython3.14.so.1.0", at +0x234db1 [0x7fccd3034db1]
+  Binary file "/usr/lib/libpyside6.cpython-314-x86_64-linux-gnu.so.6.11", at +0x1ef0d [0x7fccd0b38f0d]
+  Binary file "/usr/lib/libpyside6.cpython-314-x86_64-linux-gnu.so.6.11", at _ZN6PySide13SignalManager20callPythonMetaMethodE11QMetaMethodPPvP7_object+0xad [0x7fccd0b3c09d]
+  Binary file "/usr/lib/libpyside6.cpython-314-x86_64-linux-gnu.so.6.11", at _ZN6PySide13SignalManager11qt_metacallEP7QObjectN11QMetaObject4CallEiPPv+0x291 [0x7fccd0b3fc91]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x1f0b5d [0x7fccce7f0b5d]
+  Binary file "/usr/lib/libQt6Widgets.so.6", at +0x1c8ea1 [0x7fcccf9c8ea1]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x1f0a59 [0x7fccce7f0a59]
+  Binary file "/usr/lib/libQt6Gui.so.6", at _ZN23QPlatformSystemTrayIcon9activatedENS_16ActivationReasonE+0x47 [0x7fccceff50e7]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x1f081b [0x7fccce7f081b]
+  Binary file "/usr/lib/libKF6StatusNotifierItem.so.6", at _ZN19KStatusNotifierItem17activateRequestedEbRK6QPoint+0x4f [0x7fccc946f0ef]
+  Binary file "/usr/lib/libKF6StatusNotifierItem.so.6", at +0x3c1c8 [0x7fccc949c1c8]
+  Binary file "/usr/lib/libKF6StatusNotifierItem.so.6", at +0x3ce27 [0x7fccc949ce27]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x44f89 [0x7fccce414f89]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x4601a [0x7fccce41601a]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x4c34d [0x7fccce41c34d]
+  Binary file "/usr/lib/libQt6DBus.so.6", at +0x4ce5a [0x7fccce41ce5a]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN7QObject5eventEP6QEvent+0x126 [0x7fccce7e7d46]
+  Binary file "/usr/lib/libQt6Widgets.so.6", at _ZN19QApplicationPrivate13notify_helperEP7QObjectP6QEvent+0x8f [0x7fcccf90411f]
+  Binary file "/usr/lib/python3.14/site-packages/PySide6/QtWidgets.cpython-314-x86_64-linux-gnu.so", at +0xdafff [0x7fccd00dafff]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent+0x158 [0x7fccce783658]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData+0x3b1 [0x7fccce783a61]
+  Binary file "/usr/lib/libQt6Core.so.6", at +0x49fc98 [0x7fcccea9fc98]
+  Binary file "/usr/lib/libglib-2.0.so.0", at +0x61bfd [0x7fccce4febfd]
+  Binary file "/usr/lib/libglib-2.0.so.0", at +0x63e57 [0x7fccce500e57]
+  Binary file "/usr/lib/libglib-2.0.so.0", at g_main_context_iteration+0x35 [0x7fccce500fe5]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN20QEventDispatcherGlib13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE+0x72 [0x7fcccea9d0b2]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE+0x193 [0x7fccce791983]
+  Binary file "/usr/lib/libQt6Core.so.6", at _ZN16QCoreApplication4execEv+0xba [0x7fccce786eaa]
+  <truncated rest of calls>
+
+Extension modules: charset_normalizer.md, charset_normalizer.cd, requests.packages.charset_normalizer.md, requests.packages.chardet.md, requests.packages.charset_normalizer.cd, requests.packages.chardet.cd, shiboken6.Shiboken, PySide6.QtCore, PySide6.QtGui, PySide6.QtWidgets, PySide6.QtNetwork, PySide6.QtQml, PySide6.QtOpenGL, PySide6.QtQuick, psutil._psutil_linux, gi._gi, cairo._cairo, gi._gi_cairo, PySide6.QtUiTools, PySide6.QtQuickWidgets (total: 20)
+
+===== Bloret Launcher fault handler enabled =====
+
+===== Bloret Launcher fault handler enabled =====
+
+===== Bloret Launcher fault handler enabled =====
+
+===== Bloret Launcher fault handler enabled =====
+
+===== Bloret Launcher fault handler enabled =====
