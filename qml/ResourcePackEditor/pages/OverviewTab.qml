@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
+import "../components"
 
 Item {
     id: overviewPage
@@ -90,11 +91,11 @@ Item {
                         color: Theme.currentTheme.colors.textSecondaryColor
                     }
 
-                    Label {
+                    MinecraftFormattedText {
                         id: descField
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: "-"
+                        rawText: "-"
                         color: Theme.currentTheme.colors.textColor
                     }
                 }

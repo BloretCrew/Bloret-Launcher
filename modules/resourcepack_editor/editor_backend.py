@@ -708,6 +708,83 @@ class ResourcePackEditorBackend(QObject):
             return _execute_get_mc_reference(self._pack_path or Path("."), topic=topic)
         except Exception as e:
             return i18nText("查询失败: {v0}").replace("{v0}", str(str(e)))
+    @Slot(str, result=str)
+    def formatMcText(self, text):
+        if not text:
+            return ""
+        MC_COLORS = {
+            '0': '#000000', '1': '#0000AA', '2': '#00AA00', '3': '#00AAAA',
+            '4': '#AA0000', '5': '#AA00AA', '6': '#FFAA00', '7': '#AAAAAA',
+            '8': '#555555', '9': '#5555FF', 'a': '#55FF55', 'b': '#55FFFF',
+            'c': '#FF5555', 'd': '#FF55FF', 'e': '#FFFF55', 'f': '#FFFFFF',
+        }
+        parts = []
+        i = 0
+        current_color = None
+        current_bold = False
+        current_italic = False
+        current_underline = False
+        current_strikethrough = False
+        buf = []
+        def flush():
+            nonlocal buf
+            if not buf:
+                return
+            content = ''.join(buf)
+            buf = []
+            styles = []
+            if current_color:
+                styles.append(f"color:{current_color}")
+            if current_bold:
+                styles.append("font-weight:700")
+            if current_italic:
+                styles.append("font-style:italic")
+            decos = []
+            if current_underline:
+                decos.append("underline")
+            if current_strikethrough:
+                decos.append("line-through")
+            if decos:
+                styles.append("text-decoration:" + " ".join(decos))
+            if styles:
+                parts.append(f"<span style=\"{'; '.join(styles)}\">{content}</span>")
+            else:
+                parts.append(content)
+        while i < len(text):
+            ch = text[i]
+            if ch == '§' and i + 1 < len(text):
+                flush()
+                code = text[i + 1].lower()
+                i += 2
+                if code == 'r':
+                    current_color = None
+                    current_bold = False
+                    current_italic = False
+                    current_underline = False
+                    current_strikethrough = False
+                elif code in MC_COLORS:
+                    current_color = MC_COLORS[code]
+                elif code == 'l':
+                    current_bold = True
+                elif code == 'o':
+                    current_italic = True
+                elif code == 'n':
+                    current_underline = True
+                elif code == 'm':
+                    current_strikethrough = True
+                elif code == 'k':
+                    pass
+                else:
+                    buf.append(ch)
+                    i -= 1
+                    i += 1
+            else:
+                buf.append(ch)
+                i += 1
+        flush()
+        result = ''.join(parts)
+        return result
+
     @Slot(str, str, result=str)
     def createResourceTemplate(self, templateType, optionsJson="{}"):
         """创建资源包模板文件"""

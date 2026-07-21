@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
+import "../components"
 
 Item {
     id: langPage
@@ -178,8 +179,8 @@ Item {
                                         elide: Text.ElideMiddle
                                         Layout.fillWidth: true
                                     }
-                                    Label {
-                                        text: modelData.value
+                                    MinecraftFormattedText {
+                                        rawText: modelData.value
                                         font.pixelSize: 12
                                         color: Theme.currentTheme.colors.textColor
                                         elide: Text.ElideRight
@@ -221,6 +222,23 @@ Item {
 
             Label { text: (Backend ? Backend.tr("值") : "值"); color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
             TextArea { id: editValueInput; Layout.fillWidth: true; Layout.preferredHeight: 60; wrapMode: Text.Wrap }
+
+            Label { text: (Backend ? Backend.tr("预览") : "预览"); color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 36
+                radius: 4
+                color: Theme.currentTheme.colors.controlAltSecondaryColor
+                border.color: Theme.currentTheme.colors.controlBorderColor
+                MinecraftFormattedText {
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    rawText: editValueInput.text
+                    verticalAlignment: Text.AlignVCenter
+                    font.pixelSize: 13
+                    color: Theme.currentTheme.colors.textColor
+                }
+            }
 
             RowLayout {
                 Layout.fillWidth: true
