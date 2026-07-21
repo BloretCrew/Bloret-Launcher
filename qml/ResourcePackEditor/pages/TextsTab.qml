@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
+import "../components"
 
 Item {
     id: textsPage
@@ -204,18 +205,66 @@ Item {
                 color: Theme.currentTheme.colors.cardColor
                 border.color: Theme.currentTheme.colors.controlBorderColor
 
-                TextArea {
-                    id: editorArea
+                ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 8
-                    font.family: "monospace"
-                    font.pixelSize: 13
-                    color: Theme.currentTheme.colors.textColor
-                    wrapMode: Text.Wrap
-                    selectByMouse: true
-                    background: null
-                    onTextChanged: {
-                        _modified = true
+                    spacing: 0
+
+                    TextArea {
+                        id: editorArea
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.margins: 8
+                        font.family: "monospace"
+                        font.pixelSize: 13
+                        color: Theme.currentTheme.colors.textColor
+                        wrapMode: Text.Wrap
+                        selectByMouse: true
+                        background: null
+                        onTextChanged: {
+                            _modified = true
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 1
+                        color: Theme.currentTheme.colors.controlBorderColor
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: previewLabel.implicitHeight + 12
+                        color: "transparent"
+                        Label {
+                            id: previewLabel
+                            anchors.left: parent.left
+                            anchors.leftMargin: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: (Backend ? Backend.tr("格式化预览") : "格式化预览")
+                            font.pixelSize: 11
+                            font.weight: Font.DemiBold
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 1
+                        color: Theme.currentTheme.colors.controlBorderColor
+                    }
+
+                    MinecraftFormattedText {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 60
+                        Layout.leftMargin: 8
+                        Layout.rightMargin: 8
+                        Layout.bottomMargin: 8
+                        Layout.topMargin: 4
+                        rawText: editorArea.text
+                        wrapMode: Text.Wrap
+                        font.pixelSize: 13
+                        color: Theme.currentTheme.colors.textColor
+                        clip: true
                     }
                 }
             }

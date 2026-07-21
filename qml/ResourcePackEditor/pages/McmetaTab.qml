@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import RinUI 1.0
+import "../components"
 
 Flickable {
     id: root
@@ -299,6 +300,22 @@ Flickable {
                             radius: 6
                             border.color: Theme.currentTheme.colors.controlBorderColor
                             border.width: 1
+                        }
+                    }
+                    Text { text: (Backend ? Backend.tr("预览:") : "预览:"); color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12 }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 28
+                        radius: 4
+                        color: Theme.currentTheme.colors.controlAltSecondaryColor
+                        border.color: Theme.currentTheme.colors.controlBorderColor
+                        MinecraftFormattedText {
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            rawText: descriptionArea.text
+                            verticalAlignment: Text.AlignVCenter
+                            font.pixelSize: 13
+                            color: Theme.currentTheme.colors.textColor
                         }
                     }
 
