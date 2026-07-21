@@ -1017,7 +1017,14 @@ def _safe_extract_native(archive_path, natives_dir, excludes):
 
 
 class LibraryDownloader:
-    def __init__(self, missing_libraries, max_workers=_DEFAULT_MAX_THREAD, natives_dir=None, pause_event=None):
+    def __init__(
+        self,
+        missing_libraries,
+        max_workers=_DEFAULT_MAX_THREAD,
+        natives_dir=None,
+        pause_event=None,
+        cancellation_event=None,
+    ):
         self.missing_libraries = missing_libraries
         self.max_workers = _clamp_workers(max_workers)
         self.natives_dir = natives_dir
@@ -1029,10 +1036,25 @@ class LibraryDownloader:
         self.completed_event = threading.Event()
         self.cancel_event = threading.Event()
         self.pause_event = pause_event  # shared with secure_download when set
+        self.cancellation_event = cancellation_event
         self.result = None
         self._paused = False
         self._cancelled = False
         self._pause_cond = threading.Condition(self.lock)
+        self._external_cancel_watcher = None
+        if cancellation_event is not None:
+            def _watch_external_cancel():
+                try:
+                    cancellation_event.wait()
+                except Exception:
+                    return
+                if cancellation_event.is_set() and not self.completed_event.is_set():
+                    self.cancel()
+
+            self._external_cancel_watcher = threading.Thread(
+                target=_watch_external_cancel, daemon=True, name="LibDlCancelWatch"
+            )
+            self._external_cancel_watcher.start()
 
     @property
     def is_paused(self):
@@ -1151,6 +1173,440 @@ class LibraryDownloader:
                 self.result = False
             self.completed_event.set()
             log(f"库下载任务结束: success={success}, completed={self.completed_count}/{self.total_count}, active={self._active_downloads}")
+
+
+# ---------------------------------------------------------------------------
+# Shared launch/install runtime file ensure (libraries, natives, client, assets)
+# ---------------------------------------------------------------------------
+
+def _version_json_path(minecraft_dir, version_id):
+    return os.path.join(minecraft_dir, "versions", version_id, f"{version_id}.json")
+
+
+def _read_version_json_file(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_merged_version_json(minecraft_dir, version_id, _visited=None):
+    """
+    Load version JSON and merge inheritsFrom parents (loader child over base).
+    Raises FileNotFoundError if the leaf version JSON is missing.
+    """
+    if _visited is None:
+        _visited = set()
+    if version_id in _visited:
+        raise RuntimeError(f"版本 inheritsFrom 形成环: {version_id}")
+    _visited.add(version_id)
+
+    path = _version_json_path(minecraft_dir, version_id)
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"版本配置文件不存在: {path}")
+
+    data = _read_version_json_file(path)
+    parent_id = data.get("inheritsFrom")
+    if not parent_id:
+        return data
+
+    parent_data = load_merged_version_json(minecraft_dir, parent_id, _visited)
+    return _merge_loader_json(parent_data, data, version_id)
+
+
+def _local_file_ok(path, metadata=None, *, is_native=False, natives_dir=None):
+    """True if path exists and (when metadata present) size/sha1 pass light checks."""
+    if not path or not os.path.exists(path):
+        return False
+    metadata = metadata or {}
+    expected_size = metadata.get("size")
+    expected_sha1 = metadata.get("sha1") or metadata.get("hash")
+    if expected_size is not None or expected_sha1:
+        strict = _strict_hash_verify_enabled()
+        ok, _ = _verify_file(
+            path,
+            expected_size,
+            expected_sha1,
+            fast=not strict,
+        )
+        if not ok:
+            return False
+    if is_native and natives_dir:
+        # After install, natives are extracted; presence of jar alone is enough for
+        # re-extract decision — empty natives dir means we should re-download/extract.
+        try:
+            if not os.path.isdir(natives_dir) or not os.listdir(natives_dir):
+                return False
+        except OSError:
+            return False
+    return True
+
+
+def collect_missing_runtime_files(
+    minecraft_dir,
+    version_data,
+    version_id,
+    *,
+    natives_dir=None,
+    check_assets=True,
+    check_client=True,
+):
+    """
+    Collect missing runtime artifacts for launch/install completion.
+
+    Returns dict:
+      libraries: list of (lib, path, artifact, is_native) for LibraryDownloader
+      client: None or (path, client_info dict)
+      assets: {
+          index: None or (path, asset_index_meta),
+          objects: list of (asset_name, asset_info, object_path),
+          skipped: int,
+          total: int,
+      }
+    """
+    if natives_dir is None:
+        version_dir = os.path.join(minecraft_dir, "versions", version_id)
+        natives_dir = os.path.join(version_dir, f"{version_id}-natives")
+
+    missing_libs = []
+    for item in _library_download_items(version_data.get("libraries") or [], minecraft_dir):
+        lib, path, artifact, is_native = item
+        if not _local_file_ok(path, artifact, is_native=is_native, natives_dir=natives_dir if is_native else None):
+            missing_libs.append(item)
+
+    # Deduplicate by destination path (keep first)
+    seen_paths = set()
+    deduped = []
+    for item in missing_libs:
+        path = item[1]
+        key = os.path.normcase(os.path.abspath(path)) if path else id(item)
+        if key in seen_paths:
+            continue
+        seen_paths.add(key)
+        deduped.append(item)
+    missing_libs = deduped
+
+    client_missing = None
+    if check_client:
+        version_dir = os.path.join(minecraft_dir, "versions", version_id)
+        client_path = os.path.join(version_dir, f"{version_id}.jar")
+        client_info = (version_data.get("downloads") or {}).get("client") or {}
+        if not _local_file_ok(client_path, client_info if client_info else None):
+            if client_info.get("url"):
+                client_missing = (client_path, client_info)
+            elif not os.path.exists(client_path):
+                client_missing = (client_path, client_info)
+
+    assets_info = {"index": None, "objects": [], "skipped": 0, "total": 0}
+    if check_assets and version_data.get("assetIndex"):
+        asset_index = version_data["assetIndex"]
+        assets_dir = os.path.join(minecraft_dir, "assets")
+        indexes_dir = os.path.join(assets_dir, "indexes")
+        objects_dir = os.path.join(assets_dir, "objects")
+        asset_index_id = asset_index.get("id") or version_id
+        asset_index_path = os.path.join(indexes_dir, f"{asset_index_id}.json")
+
+        index_data = None
+        if not _local_file_ok(asset_index_path, asset_index):
+            assets_info["index"] = (asset_index_path, asset_index)
+        elif os.path.exists(asset_index_path):
+            try:
+                with open(asset_index_path, "r", encoding="utf-8") as f:
+                    index_data = json.load(f)
+            except Exception as exc:
+                log(f"读取资源索引失败，将重新下载: {exc}", logging.WARNING)
+                assets_info["index"] = (asset_index_path, asset_index)
+
+        if index_data is None and assets_info["index"] is None and os.path.exists(asset_index_path):
+            try:
+                with open(asset_index_path, "r", encoding="utf-8") as f:
+                    index_data = json.load(f)
+            except Exception:
+                pass
+
+        # Objects can only be enumerated when index is present; if index missing,
+        # ensure_runtime_files downloads index first then re-scans.
+        if index_data is not None:
+            objects = index_data.get("objects") or {}
+            assets_info["total"] = len(objects)
+            strict = _strict_hash_verify_enabled()
+            for asset_name, asset_meta in objects.items():
+                hash_value = asset_meta.get("hash")
+                if not hash_value:
+                    continue
+                object_path = os.path.join(objects_dir, hash_value[:2], hash_value)
+                if os.path.exists(object_path):
+                    ok, _ = _verify_file(
+                        object_path,
+                        asset_meta.get("size"),
+                        hash_value,
+                        fast=not strict,
+                    )
+                    if ok:
+                        assets_info["skipped"] += 1
+                        continue
+                assets_info["objects"].append((asset_name, asset_meta, object_path))
+
+    return {
+        "libraries": missing_libs,
+        "client": client_missing,
+        "assets": assets_info,
+        "natives_dir": natives_dir,
+    }
+
+
+def _raise_if_cancelled(cancellation_event, stage):
+    if cancellation_event is not None and cancellation_event.is_set():
+        raise RuntimeError(f"启动会话已取消（{stage}）")
+
+
+def _download_missing_assets(pending_objects, max_workers, cancellation_event=None, progress_cb=None):
+    """Download missing asset objects. Returns True on full success."""
+    if not pending_objects:
+        return True
+    strict = _strict_hash_verify_enabled()
+    max_workers = _clamp_workers(max_workers)
+    total = len(pending_objects)
+    item_ok = {}
+    completed = 0
+    lock = threading.Lock()
+
+    def download_one(item):
+        if cancellation_event is not None and cancellation_event.is_set():
+            return False
+        asset_name, asset_info, object_path = item
+        hash_value = asset_info["hash"]
+        asset_url = f"https://resources.download.minecraft.net/{hash_value[:2]}/{hash_value}"
+        urls = dl_source_assets_get(asset_url)
+        if asset_url not in urls:
+            urls.append(asset_url)
+        return secure_download(
+            urls,
+            object_path,
+            asset_info,
+            f"资源对象 {asset_name}",
+            cancel_event=cancellation_event,
+            quiet=True,
+            fast_verify=not strict,
+        )
+
+    def run_batch(items, prefix):
+        nonlocal completed
+        with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix=prefix) as executor:
+            future_map = {executor.submit(download_one, item): item for item in items}
+            for future in concurrent.futures.as_completed(future_map):
+                item = future_map[future]
+                try:
+                    ok = bool(future.result())
+                except Exception as exc:
+                    log(f"资源下载异常: {exc}", logging.ERROR)
+                    ok = False
+                item_ok[id(item)] = ok
+                with lock:
+                    completed += 1
+                    if progress_cb:
+                        try:
+                            progress_cb(
+                                "assets",
+                                completed,
+                                total,
+                                f"资源对象 {completed}/{total}",
+                            )
+                        except Exception:
+                            pass
+
+    run_batch(pending_objects, "LaunchAssets")
+    failed = [item for item in pending_objects if not item_ok.get(id(item))]
+    if failed and (cancellation_event is None or not cancellation_event.is_set()):
+        log(f"启动资源补全首轮失败 {len(failed)} 个，重试", logging.WARNING)
+        for item in failed:
+            item_ok.pop(id(item), None)
+        run_batch(failed, "LaunchAssetsRetry")
+        failed = [item for item in pending_objects if not item_ok.get(id(item))]
+
+    if cancellation_event is not None and cancellation_event.is_set():
+        return False
+    if failed:
+        sample = ", ".join(name for name, _, _ in failed[:5])
+        log(f"资源补全仍失败 {len(failed)} 个（例: {sample}）", logging.ERROR)
+        return False
+    return True
+
+
+def ensure_runtime_files(
+    minecraft_dir,
+    version_data,
+    version_id,
+    *,
+    max_workers=None,
+    natives_dir=None,
+    cancellation_event=None,
+    progress_cb=None,
+    check_assets=True,
+    check_client=True,
+    skip_completion=False,
+):
+    """
+    Ensure libraries, natives, client jar, and (optionally) assets for a version.
+
+    progress_cb(stage, current, total, message) optional.
+    Returns True on success. Raises RuntimeError on hard failure / cancel.
+    When skip_completion=True, only reports missing counts and returns True if
+    critical client jar exists (or soft-warns).
+    """
+    if max_workers is None:
+        try:
+            max_workers = _clamp_workers(cfg.read().get("MaxThread", _DEFAULT_MAX_THREAD))
+        except Exception:
+            max_workers = _DEFAULT_MAX_THREAD
+    else:
+        max_workers = _clamp_workers(max_workers)
+
+    if natives_dir is None:
+        version_dir = os.path.join(minecraft_dir, "versions", version_id)
+        natives_dir = os.path.join(version_dir, f"{version_id}-natives")
+    os.makedirs(natives_dir, exist_ok=True)
+    os.makedirs(os.path.join(minecraft_dir, "assets", "indexes"), exist_ok=True)
+    os.makedirs(os.path.join(minecraft_dir, "assets", "objects"), exist_ok=True)
+
+    def emit(stage, current, total, message):
+        if progress_cb:
+            try:
+                progress_cb(stage, current, total, message)
+            except Exception:
+                pass
+
+    _raise_if_cancelled(cancellation_event, "补全开始前")
+    plan = collect_missing_runtime_files(
+        minecraft_dir,
+        version_data,
+        version_id,
+        natives_dir=natives_dir,
+        check_assets=check_assets,
+        check_client=check_client,
+    )
+
+    n_lib = len(plan["libraries"])
+    n_obj = len(plan["assets"].get("objects") or [])
+    has_index = plan["assets"].get("index") is not None
+    has_client = plan["client"] is not None
+    log(
+        f"运行时补全计划: libs={n_lib}, client={'yes' if has_client else 'no'}, "
+        f"asset_index={'yes' if has_index else 'no'}, asset_objects={n_obj}, "
+        f"assets_skipped={plan['assets'].get('skipped', 0)}"
+    )
+
+    if skip_completion:
+        if n_lib or has_client or has_index or n_obj:
+            log(
+                f"跳过文件补全：仍缺 libs={n_lib}, client={has_client}, "
+                f"index={has_index}, objects={n_obj}",
+                logging.WARNING,
+            )
+        version_dir = os.path.join(minecraft_dir, "versions", version_id)
+        client_path = os.path.join(version_dir, f"{version_id}.jar")
+        if not os.path.exists(client_path):
+            raise FileNotFoundError(f"客户端 JAR 文件 {client_path} 不存在（已跳过补全）")
+        return True
+
+    # --- client jar ---
+    if plan["client"]:
+        _raise_if_cancelled(cancellation_event, "客户端 JAR 补全")
+        client_path, client_info = plan["client"]
+        if not client_info.get("url"):
+            raise FileNotFoundError(f"客户端 JAR 缺失且无下载元数据: {client_path}")
+        emit("client", 0, 1, "正在补全客户端 JAR...")
+        client_url = client_info["url"]
+        client_urls = dl_source_launcher_or_meta_get(client_url)
+        if not secure_download(
+            client_urls + [client_url],
+            client_path,
+            client_info,
+            "客户端 JAR",
+            cancel_event=cancellation_event,
+        ):
+            _raise_if_cancelled(cancellation_event, "客户端 JAR 补全失败")
+            raise RuntimeError(f"客户端 JAR 补全失败: {client_path}")
+        emit("client", 1, 1, "客户端 JAR 已就绪")
+
+    # --- libraries + natives ---
+    if plan["libraries"]:
+        _raise_if_cancelled(cancellation_event, "库文件补全")
+        emit("libraries", 0, len(plan["libraries"]), f"正在补全 {len(plan['libraries'])} 个库/native...")
+        downloader = LibraryDownloader(
+            plan["libraries"],
+            max_workers,
+            natives_dir=natives_dir,
+            cancellation_event=cancellation_event,
+        )
+        ok = downloader.download_libraries()
+        _raise_if_cancelled(cancellation_event, "库文件补全")
+        if not ok:
+            raise RuntimeError(
+                f"库文件补全失败: completed={downloader.completed_count}/{downloader.total_count}"
+            )
+        # Re-extract natives if jar present but natives dir empty (download skipped as ok)
+        for item in plan["libraries"]:
+            if len(item) >= 4 and item[3]:
+                lib, path, artifact, _ = item
+                if os.path.exists(path) and natives_dir:
+                    excludes = (lib.get("extract") or {}).get("exclude", [])
+                    if not os.path.isdir(natives_dir) or not os.listdir(natives_dir):
+                        _safe_extract_native(path, natives_dir, excludes)
+        emit("libraries", len(plan["libraries"]), len(plan["libraries"]), "库/native 补全完成")
+
+    # --- asset index ---
+    if plan["assets"].get("index"):
+        _raise_if_cancelled(cancellation_event, "资源索引补全")
+        asset_index_path, asset_index = plan["assets"]["index"]
+        emit("asset_index", 0, 1, "正在补全资源索引...")
+        asset_index_url = asset_index.get("url")
+        if not asset_index_url:
+            raise RuntimeError("资源索引缺少 url，无法补全")
+        asset_index_urls = dl_source_launcher_or_meta_get(asset_index_url)
+        if not secure_download(
+            asset_index_urls + [asset_index_url],
+            asset_index_path,
+            asset_index,
+            "资源索引",
+            cancel_event=cancellation_event,
+        ):
+            _raise_if_cancelled(cancellation_event, "资源索引补全失败")
+            raise RuntimeError(f"资源索引补全失败: {asset_index_path}")
+        emit("asset_index", 1, 1, "资源索引已就绪")
+        # Re-collect objects after index download
+        replan = collect_missing_runtime_files(
+            minecraft_dir,
+            version_data,
+            version_id,
+            natives_dir=natives_dir,
+            check_assets=True,
+            check_client=False,
+        )
+        plan["assets"] = replan["assets"]
+
+    # --- asset objects (lightweight: only missing) ---
+    pending_objects = plan["assets"].get("objects") or []
+    if pending_objects:
+        _raise_if_cancelled(cancellation_event, "资源对象补全")
+        emit("assets", 0, len(pending_objects), f"正在补全 {len(pending_objects)} 个资源对象...")
+        if not _download_missing_assets(
+            pending_objects,
+            max_workers,
+            cancellation_event=cancellation_event,
+            progress_cb=progress_cb,
+        ):
+            _raise_if_cancelled(cancellation_event, "资源对象补全失败")
+            raise RuntimeError(f"资源对象补全失败: {len(pending_objects)} 个待下载项未全部成功")
+        emit("assets", len(pending_objects), len(pending_objects), "资源对象补全完成")
+
+    # Final client existence check
+    version_dir = os.path.join(minecraft_dir, "versions", version_id)
+    client_path = os.path.join(version_dir, f"{version_id}.jar")
+    if not os.path.exists(client_path):
+        raise FileNotFoundError(f"客户端 JAR 文件 {client_path} 不存在")
+
+    emit("done", 1, 1, "运行时文件已就绪")
+    return True
+
 
 def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, Fabric_Loader=False, VersionName=None, backend=None, Loader_Type="vanilla"):
     global _current_download_state

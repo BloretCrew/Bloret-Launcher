@@ -18,7 +18,12 @@ from modules.log import log
 import sys
 from modules.customize import find_Customize
 from modules.i18n import i18nText
-from modules.install import LibraryDownloader
+from modules.install import (
+    load_merged_version_json,
+    ensure_runtime_files,
+    _library_download_items,
+    _version_sort_key,
+)
 import modules.globals as BLglobals
 import modules.config as cfg # 确保导入了 config 模块
 from modules.java_runtime import select_java_runtime
@@ -159,21 +164,16 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
     if not os.path.exists(versions_dir):
         raise FileNotFoundError(f"版本 {mc_version} 不存在于 {versions_dir}")
     
-    # 获取版本 JSON 文件路径
-    version_json_path = os.path.join(versions_dir, f"{mc_version}.json")
-    if not os.path.exists(version_json_path):
-        raise FileNotFoundError(f"版本配置文件 {version_json_path} 不存在")
-    
-    # 读取版本配置
-    with open(version_json_path, 'r', encoding='utf-8') as f:
-        version_data = json.load(f)
-    
-    # 获取客户端 JAR 文件路径
+    # 读取并合并 inheritsFrom 父版本 JSON
+    version_data = load_merged_version_json(minecraft_dir, mc_version)
+    raise_if_cancelled("版本 JSON 解析后")
+
     client_jar_path = os.path.join(versions_dir, f"{mc_version}.jar")
-    if not os.path.exists(client_jar_path):
-        raise FileNotFoundError(f"客户端 JAR 文件 {client_jar_path} 不存在")
-    
-    # 按版本 JSON 声明选择兼容 Java；官方 JVM 参数必须由匹配版本执行。
+    natives_path = os.path.join(versions_dir, f"{mc_version}-natives")
+    mods_dir = os.path.join(versions_dir, "mods")
+    os.makedirs(natives_path, exist_ok=True)
+
+    # 先选 Java（有缓存），避免无运行时仍下载补全
     java_requirement = version_data.get("javaVersion") or {}
     required_java_major = java_requirement.get("majorVersion")
     java_component = java_requirement.get("component", "")
@@ -189,6 +189,27 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
     java_path = java_info["path"]
     java_version = java_info["major"]
     log(f"Minecraft {mc_version} 最终 Java：{java_path}（Java {java_version}）")
+    raise_if_cancelled("Java 选择后")
+
+    # 运行时文件补全（库 / native / client / 轻量 assets）
+    def _completion_progress(stage, current, total, message):
+        log(f"[补全:{stage}] {message} ({current}/{total})", logging.DEBUG)
+
+    ensure_runtime_files(
+        minecraft_dir,
+        version_data,
+        mc_version,
+        natives_dir=natives_path,
+        cancellation_event=cancellation_event,
+        progress_cb=_completion_progress,
+        check_assets=True,
+        check_client=True,
+        skip_completion=skip_completion,
+    )
+    raise_if_cancelled("运行时文件补全后")
+
+    if not os.path.exists(client_jar_path):
+        raise FileNotFoundError(f"客户端 JAR 文件 {client_jar_path} 不存在")
     
     # --- 账户信息处理 (从 config.json 读取) ---
     mc_account_config = config_data.get("MinecraftAccount", {})
@@ -294,8 +315,7 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
         launcher_jvm_args.append("--enable-native-access=ALL-UNNAMED")
     log(f"已选择适用于 Java {java_version} 的启动器 JVM 参数: {len(launcher_jvm_args)} 项")
     
-    # 添加 Native 库路径参数
-    natives_path = os.path.join(versions_dir, f"{mc_version}-natives")
+    # 添加 Native 库路径参数（natives_path 已在补全阶段确定）
     launch_args.extend([
         f'-Djava.library.path={natives_path}',
         f'-Djna.tmpdir={natives_path}',
@@ -331,45 +351,55 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
     except Exception as e:
         log(f"[PluginHost] 收集插件 JVM 参数失败: {e}", logging.WARNING)
     
-    # 构建类路径 (classpath)
-    classpath = []
-    
-    # 添加所有依赖库
+    # 构建类路径：仅 rules 允许的 artifact jars（不含 mods；Fabric mods 由 Loader 加载）
     libraries_dir = os.path.join(minecraft_dir, "libraries")
-    missing_libraries = []
-    if "libraries" in version_data:
-        for lib in version_data["libraries"]:
-            # Mojang rules 按顺序求值，最后一条匹配规则决定是否启用。
-            should_include = _mojang_rules_allow(lib.get("rules"))
-            if not should_include:
-                log(f"按 Mojang rules 跳过库: {lib.get('name', '<unknown>')}", logging.DEBUG)
+    classpath = []
+    asm_libs = {}  # module -> {"version": str, "path": str, "sort": key}
 
-            if should_include:
-                lib_path = None
-                if "downloads" in lib and "artifact" in lib["downloads"]:
-                    lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
-                elif "name" in lib:
-                    # 处理 Maven 风格的库名称
-                    parts = lib["name"].split(":")
-                    if len(parts) >= 3:
-                        group_id, artifact_id, lib_version = parts[0:3]
-                        relative_path = os.path.join(
-                            group_id.replace(".", "/"),
-                            artifact_id,
-                            lib_version,
-                            f"{artifact_id}-{lib_version}.jar"
-                        )
-                        lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
-                
-                if lib_path:
-                    # 检查库文件是否存在
-                    if os.path.exists(lib_path):
-                        classpath.append(lib_path)
-                    else:
-                        # 记录缺失的库文件
-                        missing_libraries.append((lib, lib_path))
-    
-    # 检查是否为加载器版本
+    for item in _library_download_items(version_data.get("libraries") or [], minecraft_dir):
+        lib, lib_path, artifact, is_native = item
+        if is_native:
+            continue  # natives 已解压到 natives_path，不进 classpath
+        if not lib_path or not os.path.exists(lib_path):
+            log(f"classpath 跳过缺失库: {lib.get('name', lib_path)}", logging.WARNING)
+            continue
+        lib_name = lib.get("name", "")
+        name_lower = lib_name.lower()
+        if name_lower.startswith("org.ow2.asm:"):
+            parts = lib_name.split(":")
+            if len(parts) >= 3:
+                asm_module = parts[1]
+                lib_ver = parts[2]
+                sort_key = _version_sort_key(lib_ver)
+                prev = asm_libs.get(asm_module)
+                if prev is None or sort_key > prev["sort"]:
+                    asm_libs[asm_module] = {"version": lib_ver, "path": lib_path, "sort": sort_key}
+            continue
+        classpath.append(lib_path)
+
+    # ASM 按固定模块顺序、仅最高版本
+    asm_modules_order = ["asm", "asm-commons", "asm-tree", "asm-analysis", "asm-util"]
+    ordered_asm = []
+    for module in asm_modules_order:
+        if module in asm_libs:
+            ordered_asm.append(asm_libs[module]["path"])
+            log(f"ASM {module}@{asm_libs[module]['version']}", logging.DEBUG)
+    # 其它 ASM 模块（若有）
+    for module, info in asm_libs.items():
+        if module not in asm_modules_order:
+            ordered_asm.append(info["path"])
+
+    # 去重 classpath（保留顺序）
+    seen_cp = set()
+    deduped_cp = []
+    for path in ordered_asm + classpath:
+        key = os.path.normcase(os.path.abspath(path))
+        if key in seen_cp:
+            continue
+        seen_cp.add(key)
+        deduped_cp.append(path)
+    classpath = deduped_cp
+
     library_names = [lib.get("name", "").lower() for lib in version_data.get("libraries", [])]
     is_fabric = "fabric" in mc_version.lower() or any("fabric" in name for name in library_names)
     is_forge_like = (
@@ -386,213 +416,22 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
     else:
         log(f"检测到原版: {mc_version}")
     
-    # 添加内存参数 (从配置读取，默认最小 512MB，最大 4096MB)
     java_min_memory = config_data.get('java_min_memory', 512)
     java_max_memory = config_data.get('java_max_memory', 4096)
     
     launch_args.extend([
-        f"-Xms{java_min_memory}m",  # 初始堆内存
-        f"-Xmx{java_max_memory}m"   # 最大堆内存
+        f"-Xms{java_min_memory}m",
+        f"-Xmx{java_max_memory}m"
     ])
     
-    # 添加 Fabric 特定参数和处理
     if is_fabric:
         launch_args.append("-DFabricMcEmu=net.minecraft.client.main.Main")
-        
-        # 用于存储所有库
-        fabric_libs = []
-        # 跟踪已添加的ASM库
-        asm_libs = {}
-        
-        # 添加 Fabric 版本文件夹中的所有 JAR 文件
-        fabric_version_dir = os.path.join(versions_dir, mc_version)
-        if os.path.exists(fabric_version_dir):
-            for file in os.listdir(fabric_version_dir):
-                if file.endswith('.jar') and 'fabric' in file.lower():
-                    jar_path = os.path.join(fabric_version_dir, file)
-                    fabric_libs.append(jar_path)
-        
-        # 添加 mods 目录中的所有 JAR 文件 (Fabric mods)
-        mods_dir = os.path.join(minecraft_dir, "versions", mc_version, "mods")
-        if os.path.exists(mods_dir):
-            for file in os.listdir(mods_dir):
-                if file.endswith('.jar'):
-                    fabric_libs.append(os.path.join(mods_dir, file))
-        
-        # 首先添加 Fabric Loader 核心库和关键依赖
-        fabric_loader_libs = [
-            "net/fabricmc/fabric-loader",
-            "net/fabricmc/sponge-mixin",
-            "net/fabricmc/intermediary",
-            "net/fabricmc/fabric-api",
-            "net/fabricmc/fabric",
-            "net/fabricmc/tiny-mappings-parser",
-            "net/fabricmc/tiny-remapper",
-            "net/fabricmc/access-widener"
-        ]
-        
-        # 跟踪已添加的ASM库
-        asm_libs = {}  # 使用字典跟踪每个ASM模块的最高版本
-        
-        for lib in version_data.get("libraries", []):
-            lib_name = lib.get("name", "").lower()
-            lib_path = None
-            
-            # 检查是否为 Fabric 相关库或关键依赖
-            if "downloads" in lib and "artifact" in lib["downloads"]:
-                lib_path = os.path.join(minecraft_dir, "libraries", lib["downloads"]["artifact"]["path"])
-            elif "name" in lib:
-                # 处理 Maven 风格的库名称
-                parts = lib["name"].split(":")
-                if len(parts) >= 3:
-                    group_id, artifact_id, lib_version = parts[0:3]
-                    relative_path = os.path.join(
-                        group_id.replace(".", "/"),
-                        artifact_id,
-                        lib_version,
-                        f"{artifact_id}-{lib_version}.jar"
-                    )
-                    lib_path = os.path.join(minecraft_dir, "libraries", relative_path)
-            
-            if lib_path:
-                # 检查库文件是否存在
-                if not os.path.exists(lib_path):
-                    # 记录缺失的库文件
-                    missing_libraries.append((lib, lib_path))
-                    continue
-                    
-                # 处理ASM库
-                if "org.ow2.asm" in lib_name:
-                    # 从库名中提取版本号和模块名
-                    parts = lib_name.split(":")
-                    if len(parts) >= 3:
-                        asm_module = parts[1]  # 例如 "asm", "asm-commons" 等
-                        lib_version = parts[2]  # 版本号
-                        
-                        # 如果这是一个更高版本，或者这个模块还没有被记录
-                        if asm_module not in asm_libs or lib_version > asm_libs[asm_module]["version"]:
-                            asm_libs[asm_module] = {"version": lib_version, "path": lib_path}
-                            log(f"记录ASM库 {asm_module} 版本 {lib_version}")
-                        else:
-                            log(f"跳过较低版本的ASM库 {asm_module} 版本 {lib_version}，已有版本 {asm_libs[asm_module]['version']}")
-                    continue  # 跳过当前的库添加，稍后会统一添加ASM库
-                        
-                # 添加Fabric核心库
-                elif any(fabric_lib in lib_name for fabric_lib in fabric_loader_libs):
-                    if "fabric-loader" in lib_name or "intermediary" in lib_name:
-                        fabric_libs.insert(0, lib_path)  # 放在前面
-                    else:
-                        fabric_libs.append(lib_path)  # 其他的放在后面
-                # 其他 Fabric 相关库
-                elif "fabric" in lib_name or "mixin" in lib_name:
-                    fabric_libs.append(lib_path)
-            # 记录找到的库
-            if lib_path and os.path.exists(lib_path):
-                log(f"已添加库: {lib_path}")
-        
-        # 按照特定顺序构建最终的类路径
-        final_classpath = []
-        
-        # 1. 添加 ASM 库（按特定顺序，只添加最高版本）
-        asm_modules_order = ["asm", "asm-commons", "asm-tree", "asm-analysis", "asm-util"]
-        for module in asm_modules_order:
-            if module in asm_libs:
-                final_classpath.append(asm_libs[module]["path"])
-                log(f"添加ASM库 {module} 版本 {asm_libs[module]['version']}，路径: {asm_libs[module]['path']}")
-        
-        # 2. 添加 Fabric 核心库
-        final_classpath.extend(fabric_libs)
-        
-        # 3. 添加其他所有库（排除已添加的ASM库）
-        # 创建已添加ASM库路径的集合，用于过滤
-        added_asm_paths = set()
-        for module in asm_libs:
-            added_asm_paths.add(asm_libs[module]["path"].lower())
-        
-        # 过滤掉已添加的ASM库
-        filtered_classpath = []
-        for lib_path in classpath:
-            # 检查是否为ASM库
-            if "org/ow2/asm" in lib_path.lower() or "/asm-" in lib_path.lower():
-                if lib_path.lower() not in added_asm_paths:
-                    log(f"跳过重复的ASM库: {lib_path}")
-                    continue
-            filtered_classpath.append(lib_path)
-        
-        final_classpath.extend(filtered_classpath)
-        
-        # 更新类路径
-        classpath = final_classpath
     
-    # 将客户端核心 JAR 插入到 classpath 的最前面，确保加载器优先找到
+    # 客户端 JAR 置于 classpath 最前
     classpath.insert(0, client_jar_path)
-    if not os.path.exists(client_jar_path): missing_libraries.append(({"name": f"{mc_version}.jar", "downloads": {"artifact": {"path": f"{mc_version}/{mc_version}.jar"}}}, client_jar_path))
-    
-    # 检查是否有缺失的库文件并尝试下载
-    if missing_libraries:
-        if skip_completion:
-            log(f"跳过文件补全：发现 {len(missing_libraries)} 个缺失的库文件，但用户选择跳过补全")
-            # 记录跳过的库文件，但不中断启动流程
-            for lib, lib_path in missing_libraries:
-                log(f"跳过补全的库文件: {lib_path}", logging.WARNING)
-        else:
-            log(f"发现 {len(missing_libraries)} 个缺失的库文件，正在尝试下载...")
+    log(f"classpath 条目数: {len(classpath)}")
 
-            # 从 config.json 读取 MaxThread（与安装器统一上限）
-            try:
-                from modules.download import clamp_workers
-                max_workers = clamp_workers(config_data.get("MaxThread", 16))
-            except Exception:
-                max_workers = min(max(int(config_data.get("MaxThread", 16) or 16), 1), 64)
-            
-            # 启动补全在当前启动工作线程中直接等待，可靠取得返回结果。
-            downloader_kwargs = {}
-            try:
-                import inspect
-                if "cancellation_event" in inspect.signature(LibraryDownloader).parameters:
-                    downloader_kwargs["cancellation_event"] = cancellation_event
-            except (TypeError, ValueError):
-                pass
-            downloader = LibraryDownloader(missing_libraries, max_workers, **downloader_kwargs)
-            # 兼容 install.py 代理类：即使构造器暂未暴露参数，也保留会话取消信号。
-            if cancellation_event is not None and not hasattr(downloader, "cancellation_event"):
-                downloader.cancellation_event = cancellation_event
-            cancel_watcher = None
-            if cancellation_event is not None:
-                def watch_cancellation():
-                    cancellation_event.wait()
-                    if cancellation_event.is_set() and not downloader.completed_event.is_set():
-                        log("启动会话取消，正在取消库文件补全", logging.WARNING)
-                        downloader.cancel()
-
-                cancel_watcher = threading.Thread(target=watch_cancellation, daemon=True)
-                cancel_watcher.start()
-
-            direct_result = downloader.download_libraries()
-            # install.py 的代理接口可通过 result 暴露最终结果；没有该属性时使用直接返回值。
-            downloader_result = getattr(downloader, "result", direct_result)
-            if callable(downloader_result):
-                downloader_result = downloader_result()
-            raise_if_cancelled("库文件补全")
-            if downloader_result is not True:
-                raise RuntimeError(
-                    f"库文件补全失败: result={downloader_result!r}, "
-                    f"completed={downloader.completed_count}/{downloader.total_count}"
-                )
-
-            still_missing = []
-            for lib, lib_path in missing_libraries:
-                if os.path.exists(lib_path):
-                    if lib_path not in classpath:
-                        classpath.append(lib_path)
-                    log(f"添加之前缺失但现已下载的库: {lib_path}")
-                else:
-                    still_missing.append(lib_path)
-            if still_missing:
-                raise RuntimeError(f"库文件补全返回成功但仍缺少 {len(still_missing)} 个文件")
-    
-    # 添加自定义参数 - 设置 Java 运行临时目录
-    # 在 macOS 上使用标准缓存目录，Windows/Linux 使用环境变量或数据目录
+    # Java 临时目录
     if sys.platform == "darwin":
         temp_dir = os.path.expanduser("~/Library/Caches/Bloret-Launcher-Temp")
     else:
@@ -602,21 +441,14 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
     if not os.path.exists(temp_dir):
         try:
             os.makedirs(temp_dir, exist_ok=True)
-        except:
+        except Exception:
             pass
     
-    # 设置特定组件和 Java 标准临时路径
     launch_args.append(f'-Doolloo.jlw.tmpdir={temp_dir}')
     launch_args.append(f'-Djava.io.tmpdir={temp_dir}')
     
-    # 初始化mods_dir变量 - 使用版本目录下的mods文件夹
-    mods_dir = os.path.join(versions_dir, mc_version, "mods")
-    
-    # 确保mods目录存在
-    if not os.path.exists(mods_dir):
-        os.makedirs(mods_dir)
-        log(f"创建mods目录: {mods_dir}")
-    
+    # 正确路径：versions/{version}/mods（无双重版本名）
+    os.makedirs(mods_dir, exist_ok=True)
     log("mods 目录: " + mods_dir)
 
     # 处理 JavaWrapper.jar 路径
@@ -698,8 +530,7 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
     if not os.path.exists(game_dir):
         raise FileNotFoundError(f"游戏目录不存在: {game_dir}")
     
-    if not os.path.exists(assets_dir):
-        raise FileNotFoundError(f"资产目录不存在: {assets_dir}")
+    os.makedirs(assets_dir, exist_ok=True)
     
     # 获取资产索引
     asset_index = version_data.get("assetIndex", {}).get("id", mc_version)

@@ -53,7 +53,7 @@ if sys.platform.startswith("linux"):
 else:
     log_runtime_im_status = None  # type: ignore
 
-# 获取服务器 IP（不依赖 Qt，放在输入法初始化之后即可）
+# 服务器 IP：仅 import 模块，网络刷新延后到 UI 就绪（见 refresh_server_ip_async）
 import modules.IP  # noqa: E402
 
 # Create the QApplication early so it can be used in shims and module imports
@@ -104,10 +104,9 @@ import modules.config as cfg
 import modules.globals as BLglobals
 from modules.launch import Get_Run_Script
 from modules.chafuwang import getServerData
-from modules.setup_ui import get_all_launch_items, scan_java_paths
 from modules.i18n import i18nText
 from modules.Bloriko import AskBloriko
-import modules.web
+import modules.web  # 保持 import 即启动 0.0.0.0:25252（本轮不改 Web 行为）
 import modules.links as links
 import socket
 import send2trash
@@ -515,24 +514,42 @@ class Backend(QObject):
 
                 emit_progress(5, f"正在准备启动环境: {version}", "")
 
-                emit_progress(20, "正在向 Bloret PassPort 刷新令牌...", "")
-                refresh_ok = refresh_minecraft_token()
-                if abort_if_cancelled("refresh_token"):
-                    return
-                if refresh_ok:
-                    emit_progress(35, "令牌刷新完成", "")
-                else:
-                    emit_progress(35, "令牌刷新未完成，继续使用现有状态", "")
+                # Passport：仅在已登录且当前账户为 Microsoft 时刷新/同步；离线或未登录直接跳过
+                need_passport = False
+                try:
+                    _cfg = cfg.read()
+                    passport_login = bool(_cfg.get("Bloret_PassPort_Login"))
+                    mc_acc = _cfg.get("MinecraftAccount") or {}
+                    accounts = mc_acc.get("accounts") or []
+                    chosen = int(mc_acc.get("chosen", 0) or 0)
+                    current_acc = accounts[chosen] if accounts and 0 <= chosen < len(accounts) else {}
+                    acc_type = (current_acc.get("type") or "Offline") if isinstance(current_acc, dict) else "Offline"
+                    need_passport = passport_login and str(acc_type) == "Microsoft"
+                except Exception as _passport_check_err:
+                    print(f"[Launch] Passport 预检失败，将尝试同步: {_passport_check_err}")
+                    need_passport = True
 
-                emit_progress(50, "正在重新获取 Minecraft 档案数据...", "")
-                sync_ok = sync_bloret_passport_account_to_mc(parent_window=None)
-                if abort_if_cancelled("sync_profile"):
-                    return
-                if sync_ok:
-                    self.minecraftAccountsChanged.emit([])
-                    emit_progress(65, "档案数据更新完成", "")
+                if need_passport:
+                    emit_progress(20, "正在向 Bloret PassPort 刷新令牌...", "")
+                    refresh_ok = refresh_minecraft_token()
+                    if abort_if_cancelled("refresh_token"):
+                        return
+                    if refresh_ok:
+                        emit_progress(35, "令牌刷新完成", "")
+                    else:
+                        emit_progress(35, "令牌刷新未完成，继续同步档案...", "")
+
+                    emit_progress(50, "正在重新获取 Minecraft 档案数据...", "")
+                    sync_ok = sync_bloret_passport_account_to_mc(parent_window=None)
+                    if abort_if_cancelled("sync_profile"):
+                        return
+                    if sync_ok:
+                        self.minecraftAccountsChanged.emit([])
+                        emit_progress(65, "档案数据更新完成", "")
+                    else:
+                        emit_progress(65, "档案同步失败，将使用本地缓存档案", "")
                 else:
-                    emit_progress(65, "档案同步失败，将使用本地缓存档案", "")
+                    emit_progress(65, "跳过在线账户同步（离线/未登录）", "")
 
                 if skip_completion:
                     emit_progress(80, "跳过文件补全，直接解析启动参数...", "用户选择跳过文件补全")
@@ -2577,8 +2594,9 @@ class Backend(QObject):
 
     @Slot(result=list)
     def getSystemJavas(self):
-        from modules.java_runtime import probe_java
-        runtimes = scan_java_paths()
+        from modules.java_runtime import probe_java, scan_java_runtimes, invalidate_java_runtime_cache
+        invalidate_java_runtime_cache()
+        runtimes = scan_java_runtimes(force_refresh=True)
         configured_path = self.getCurrentJavaPath()
         if configured_path and not any(item.get('path') == configured_path for item in runtimes):
             configured = probe_java(configured_path)
@@ -2604,7 +2622,7 @@ class Backend(QObject):
 
     @Slot(str, str, result=bool)
     def setJavaSelection(self, mode, path):
-        from modules.java_runtime import probe_java
+        from modules.java_runtime import probe_java, invalidate_java_runtime_cache
         if mode not in ('auto', 'fixed'):
             log(f"[Settings] 拒绝未知 Java 选择模式: {mode}", logging.WARNING)
             return False
@@ -2620,6 +2638,7 @@ class Backend(QObject):
         config_data['java_fixed_path'] = normalized_path
         config_data['java_path'] = normalized_path if mode == 'fixed' else 'Auto'
         cfg.write(config_data)
+        invalidate_java_runtime_cache()
         log(f"[Settings] Java 选择已更新：模式={mode}，路径={normalized_path or '自动'}")
         return True
 
@@ -5100,33 +5119,38 @@ class LauncherV2(RinUIWindow):
         except Exception as e:
             print(f"[Protocol] 初始化失败: {e}")
         
-        # 启动时检查并修复 .BL.json
-        try:
-            from modules.install import repair_bl_json
-            config_data = cfg.read()
-            mc_dir = config_data.get('minecraft_dir', '')
-            if mc_dir:
-                repair_bl_json(mc_dir)
-        except Exception as e:
-            print(f"启动时 .BL.json 检查失败: {e}")
+        # 启动时后台检查并修复 .BL.json（不阻塞首帧）
+        def _repair_bl_json_bg():
+            try:
+                from modules.install import repair_bl_json
+                config_data = cfg.read()
+                mc_dir = config_data.get('minecraft_dir', '')
+                if mc_dir:
+                    repair_bl_json(mc_dir)
+            except Exception as e:
+                print(f"启动时 .BL.json 检查失败: {e}")
+
+        threading.Thread(target=_repair_bl_json_bg, daemon=True, name="RepairBLJson").start()
         
         qml_file = SCRIPT_DIR / "qml" / "main.qml"
         
-        # 调试信息
-        print(f"[DEBUG] SCRIPT_DIR: {SCRIPT_DIR}")
-        print(f"[DEBUG] QML file path: {qml_file}")
-        print(f"[DEBUG] QML file exists: {qml_file.exists()}")
-        print(f"[DEBUG] sys.frozen: {getattr(sys, 'frozen', False)}")
-        print(f"[DEBUG] sys.__nuitka_binary_dir: {getattr(sys, '__nuitka_binary_dir', 'NOT SET')}")
-        print(f"[DEBUG] RINUI_PATH: {RINUI_PATH}")
-        print(f"[DEBUG] RINUI_PATH exists: {RINUI_PATH.exists()}")
-        
-        # 检查qml目录
-        qml_dir = SCRIPT_DIR / "qml"
-        if qml_dir.exists():
-            print(f"[DEBUG] QML directory contents: {list(qml_dir.iterdir())}")
-        else:
-            print(f"[DEBUG] QML directory not found at {qml_dir}")
+        # 调试信息（默认安静；BLORET_DEBUG=1 时详细输出）
+        _debug_boot = os.environ.get("BLORET_DEBUG", "").strip() in ("1", "true", "TRUE", "yes")
+        if _debug_boot:
+            print(f"[DEBUG] SCRIPT_DIR: {SCRIPT_DIR}")
+            print(f"[DEBUG] QML file path: {qml_file}")
+            print(f"[DEBUG] QML file exists: {qml_file.exists()}")
+            print(f"[DEBUG] sys.frozen: {getattr(sys, 'frozen', False)}")
+            print(f"[DEBUG] sys.__nuitka_binary_dir: {getattr(sys, '__nuitka_binary_dir', 'NOT SET')}")
+            print(f"[DEBUG] RINUI_PATH: {RINUI_PATH}")
+            print(f"[DEBUG] RINUI_PATH exists: {RINUI_PATH.exists()}")
+            qml_dir = SCRIPT_DIR / "qml"
+            if qml_dir.exists():
+                print(f"[DEBUG] QML directory contents: {list(qml_dir.iterdir())}")
+            else:
+                print(f"[DEBUG] QML directory not found at {qml_dir}")
+        elif not qml_file.exists():
+            print(f"[Boot] QML file missing: {qml_file}")
         
         self.load(str(qml_file))
         
@@ -5137,7 +5161,11 @@ class LauncherV2(RinUIWindow):
 
         self._init_system_tray()
 
-        # Check for software updates after UI is ready
+        # UI 就绪后：异步刷新服务器 IP + 检查更新
+        try:
+            modules.IP.refresh_server_ip_async()
+        except Exception as e:
+            print(f"[Boot] 后台刷新服务器 IP 失败: {e}")
         self.backend.checkForUpdates()
 
     def _read_minimize_to_tray_on_close(self):

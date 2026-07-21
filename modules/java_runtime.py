@@ -5,10 +5,22 @@ import platform
 import re
 import shutil
 import subprocess
+import threading
+import time
 from pathlib import Path
 
 from modules.log import log
 from modules.process_utils import hidden_process_kwargs
+
+# Process-local cache for scan_java_runtimes (avoids walk + java -version every launch)
+_runtime_cache_lock = threading.Lock()
+_runtime_cache = {
+    "runtimes": None,
+    "paths_key": None,
+    "extra_roots": None,
+    "cached_at": 0.0,
+}
+_RUNTIME_CACHE_TTL_SEC = 300.0
 
 
 def java_major_version(version_output):
@@ -131,10 +143,47 @@ def discover_java_paths(extra_roots=None):
     return unique
 
 
-def scan_java_runtimes(extra_roots=None):
-    runtimes = [probe_java(path) for path in discover_java_paths(extra_roots)]
+def invalidate_java_runtime_cache():
+    """Clear process-local Java scan cache (call after settings change / re-scan)."""
+    with _runtime_cache_lock:
+        _runtime_cache["runtimes"] = None
+        _runtime_cache["paths_key"] = None
+        _runtime_cache["extra_roots"] = None
+        _runtime_cache["cached_at"] = 0.0
+    log("Java 运行时缓存已失效")
+
+
+def scan_java_runtimes(extra_roots=None, *, force_refresh=False):
+    paths = discover_java_paths(extra_roots)
+    paths_key = tuple(os.path.normcase(os.path.abspath(p)) for p in paths)
+    roots_key = tuple(extra_roots or ())
+    now = time.monotonic()
+
+    with _runtime_cache_lock:
+        cached = _runtime_cache["runtimes"]
+        cache_valid = (
+            not force_refresh
+            and cached is not None
+            and _runtime_cache["paths_key"] == paths_key
+            and _runtime_cache["extra_roots"] == roots_key
+            and (now - _runtime_cache["cached_at"]) < _RUNTIME_CACHE_TTL_SEC
+        )
+        if cache_valid:
+            log(
+                f"Java 扫描使用缓存：{len(cached)} 个候选，"
+                f"其中 {sum(1 for item in cached if item['valid'])} 个有效"
+            )
+            return list(cached)
+
+    runtimes = [probe_java(path) for path in paths]
     runtimes.sort(key=lambda item: (not item["valid"], -item["major"], item["path"].lower()))
     log(f"Java 扫描完成：发现 {len(runtimes)} 个候选，其中 {sum(1 for item in runtimes if item['valid'])} 个有效")
+
+    with _runtime_cache_lock:
+        _runtime_cache["runtimes"] = list(runtimes)
+        _runtime_cache["paths_key"] = paths_key
+        _runtime_cache["extra_roots"] = roots_key
+        _runtime_cache["cached_at"] = now
     return runtimes
 
 
@@ -162,7 +211,6 @@ def select_java_runtime(config_data, required_major=None, extra_roots=None):
 
     runtimes = scan_java_runtimes(extra_roots)
     for info in runtimes:
-        log(f"自动 Java 候选：路径={info['path']}，版本={info['major'] or '未知'}，有效={info['valid']}")
         if info["valid"] and (required is None or info["major"] == required):
             log(f"自动选择 Java：{info['path']}（Java {info['major']}）")
             return info
