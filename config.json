@@ -17,7 +17,7 @@
     "localmod": false,
     "home_show_login_mod": true,
     "self-starting": false,
-    "MaxThread": 16,
+    "MaxThread": 64,
     "StrictHashVerify": false,
     "SkipFileCompletion": false,
     "Minecraft_Versions": [
