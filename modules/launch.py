@@ -538,8 +538,12 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
         else:
             log(f"发现 {len(missing_libraries)} 个缺失的库文件，正在尝试下载...")
 
-            # 从 config.json 读取 MaxThread
-            max_workers = config_data.get("MaxThread", 64)
+            # 从 config.json 读取 MaxThread（与安装器统一上限）
+            try:
+                from modules.download import clamp_workers
+                max_workers = clamp_workers(config_data.get("MaxThread", 16))
+            except Exception:
+                max_workers = min(max(int(config_data.get("MaxThread", 16) or 16), 1), 64)
             
             # 启动补全在当前启动工作线程中直接等待，可靠取得返回结果。
             downloader_kwargs = {}

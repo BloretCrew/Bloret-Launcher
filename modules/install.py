@@ -1,7 +1,6 @@
 # Removed qfluentwidgets imports for PySide6 compatibility
-import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, sys, subprocess, hashlib, zipfile, re
+import logging, os, json, platform, requests, shutil, concurrent.futures, threading, time, sys, subprocess, zipfile, re
 import xml.etree.ElementTree as ET
-from urllib.parse import urlparse
 try:
     import send2trash
 except ImportError:
@@ -9,51 +8,77 @@ except ImportError:
 from pathlib import Path
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
-from modules.versions import dl_source_launcher_or_meta_get, dl_source_library_get, dl_source_assets_get
 
-thread_local_data = threading.local()
+from modules.download import (
+    DEFAULT_MAX_THREAD as _DEFAULT_MAX_THREAD,
+    MAX_THREAD_CAP as _MAX_THREAD_CAP,
+    FASTDOWNLOAD_TTL_SEC as _FASTDOWNLOAD_TTL_SEC,
+    clamp_workers as _clamp_workers,
+    get_session,
+    DownloadCancelled as _DownloadCancelled,
+    verify_file as _verify_file,
+    strict_hash_verify_enabled as _strict_hash_verify_enabled,
+    secure_download,
+    download_file,
+    dl_source_launcher_or_meta_get,
+    dl_source_library_get,
+    dl_source_assets_get,
+)
 
 _install_state_lock = threading.Lock()
 _current_download_state = {
     'task_id': None,
     'thread': None,
     'cancel_event': threading.Event(),
+    'pause_event': threading.Event(),  # set = paused
     'downloader': None,
     'is_paused': False,
     'backend': None,
-    'cancelled': False
+    'cancelled': False,
 }
 
-def get_session():
-    """获取线程本地的 requests.Session 对象，实现连接复用"""
-    if not hasattr(thread_local_data, "session"):
-        thread_local_data.session = requests.Session()
-    return thread_local_data.session
 
 def toggle_current_download_pause():
+    """Pause/resume current install: LibraryDownloader + secure_download pause_event."""
     global _current_download_state
-    downloader = _current_download_state.get('downloader')
-    backend = _current_download_state.get('backend')
-    if downloader:
-        if _current_download_state['is_paused']:
+    state = _current_download_state
+    downloader = state.get('downloader')
+    backend = state.get('backend')
+    pause_event = state.get('pause_event')
+    if pause_event is None:
+        pause_event = threading.Event()
+        state['pause_event'] = pause_event
+
+    if state.get('is_paused'):
+        if downloader and hasattr(downloader, 'resume'):
             downloader.resume()
-            _current_download_state['is_paused'] = False
-        else:
+        pause_event.clear()
+        state['is_paused'] = False
+        log("下载已恢复")
+    else:
+        if downloader and hasattr(downloader, 'pause'):
             downloader.pause()
-            _current_download_state['is_paused'] = True
-        if backend:
-            backend.setDownloadPaused(_current_download_state['is_paused'])
+        pause_event.set()
+        state['is_paused'] = True
+        log("下载已暂停")
+    if backend:
+        backend.setDownloadPaused(state['is_paused'])
+
 
 def cancel_current_download():
     global _current_download_state
     _current_download_state['cancelled'] = True
     _current_download_state['cancel_event'].set()
+    pause_event = _current_download_state.get('pause_event')
+    if pause_event is not None:
+        pause_event.clear()  # unblock waiters so cancel can proceed
     downloader = _current_download_state.get('downloader')
     if downloader:
         downloader.cancel()
     backend = _current_download_state.get('backend')
     if backend:
         backend.closeDownloadDialog()
+
 
 # Bloret Launcher modules
 from modules.win11toast import notify, update_progress
@@ -112,26 +137,37 @@ def safe_ui_update(widget, method, value, widget_type=None):
 
 _FASTDOWNLOAD_API = "https://launcher.bloret.net/api/fastdownload"
 _fastdownload_cache = None  # 缓存 API 返回结果
+_fastdownload_cache_ts = 0.0
 
-def fetch_fastdownload_versions():
+
+def fetch_fastdownload_versions(force_refresh=False):
     """
     从 fastdownload API 获取支持的版本列表。
     返回 {version: git_url} 字典，失败返回空字典。
+    结果带 TTL 缓存，避免进程内永久过期。
     """
-    global _fastdownload_cache
-    if _fastdownload_cache is not None:
+    global _fastdownload_cache, _fastdownload_cache_ts
+    now = time.time()
+    if (
+        not force_refresh
+        and _fastdownload_cache is not None
+        and (now - _fastdownload_cache_ts) < _FASTDOWNLOAD_TTL_SEC
+    ):
         return _fastdownload_cache
 
     try:
-        resp = requests.get(_FASTDOWNLOAD_API, timeout=10)
+        resp = get_session().get(_FASTDOWNLOAD_API, timeout=10)
         if resp.status_code != 200:
             log(f"fastdownload API 请求失败: HTTP {resp.status_code}", logging.WARNING)
+            # 短期缓存空结果，避免连打失败接口
             _fastdownload_cache = {}
+            _fastdownload_cache_ts = now
             return {}
         data = resp.json()
         if not data.get("enabled", False):
             log("fastdownload API 返回 enabled=false", logging.INFO)
             _fastdownload_cache = {}
+            _fastdownload_cache_ts = now
             return {}
         result = {}
         for entry in data.get("versions", []):
@@ -140,27 +176,26 @@ def fetch_fastdownload_versions():
             if v and url:
                 result[v] = url
         _fastdownload_cache = result
+        _fastdownload_cache_ts = now
         log(f"fastdownload API 获取到 {len(result)} 个版本: {list(result.keys())}")
         return result
     except Exception as e:
         log(f"fastdownload API 请求异常: {e}", logging.WARNING)
         _fastdownload_cache = {}
+        _fastdownload_cache_ts = now
         return {}
 
 
-class _DownloadCancelled(Exception):
-    """用户取消下载时抛出"""
-    pass
-
-
 class _GitProgressStream:
-    """捕获 dulwich 的进度输出并转发到 UI，支持取消"""
-    def __init__(self, backend=None):
+    """捕获 dulwich 的进度输出并转发到 UI，支持取消。"""
+
+    def __init__(self, backend=None, cancel_event=None):
         self._backend = backend
+        self._cancel_event = cancel_event
         self._buf = b""
 
     def write(self, data):
-        if task_state['cancel_event'].is_set():
+        if self._cancel_event is not None and self._cancel_event.is_set():
             raise _DownloadCancelled("用户取消了下载")
         if isinstance(data, bytes):
             self._buf += data
@@ -181,7 +216,7 @@ class _GitProgressStream:
         raise OSError("GitProgressStream has no fileno")
 
 
-def bloret_git_clone_download(version, minecraft_dir, backend=None):
+def bloret_git_clone_download(version, minecraft_dir, backend=None, cancel_event=None):
     """
     使用 dulwich clone 从 Bloret Git 仓库下载 Minecraft 版本文件。
     如果版本不在 fastdownload API 列表中，返回 False（回退正常下载）。
@@ -202,24 +237,33 @@ def bloret_git_clone_download(version, minecraft_dir, backend=None):
         if backend:
             backend.updateDownloadProgress(progress, status, "", "", "")
 
+    if cancel_event is not None and cancel_event.is_set():
+        log("Bloret git clone 在开始前已被取消")
+        return False
+
     tmp_dir = None
     try:
-        # 1. 克隆到临时目录
-        tmp_dir = tempfile.mkdtemp(prefix="bloret_git_")
+        # 克隆到目标目录旁，减少跨盘复制成本
+        parent = os.path.dirname(os.path.abspath(minecraft_dir)) or minecraft_dir
+        os.makedirs(parent, exist_ok=True)
+        tmp_dir = tempfile.mkdtemp(prefix="bloret_git_", dir=parent)
         update_progress(0.05, i18nText("正在从 Bloret 仓库克隆文件..."))
         log(f"开始 git clone {git_url} -> {tmp_dir}")
 
-        progress_stream = _GitProgressStream(backend)
+        progress_stream = _GitProgressStream(backend, cancel_event=cancel_event)
         porcelain.clone(git_url, tmp_dir, depth=1, errstream=progress_stream, outstream=progress_stream)
+        if cancel_event is not None and cancel_event.is_set():
+            raise _DownloadCancelled("用户取消了下载")
         log(f"git clone 完成: {tmp_dir}")
 
         update_progress(0.6, i18nText("正在复制文件到 Minecraft 目录..."))
 
-        # 2. 将克隆内容复制到 .minecraft（合并覆盖）
         os.makedirs(minecraft_dir, exist_ok=True)
         for item in os.listdir(tmp_dir):
             if item == ".git":
                 continue
+            if cancel_event is not None and cancel_event.is_set():
+                raise _DownloadCancelled("用户取消了下载")
             src = os.path.join(tmp_dir, item)
             dst = os.path.join(minecraft_dir, item)
             if os.path.isdir(src):
@@ -227,7 +271,7 @@ def bloret_git_clone_download(version, minecraft_dir, backend=None):
             else:
                 shutil.copy2(src, dst)
 
-        update_progress(0.9, i18nText("文件复制完成"))
+        update_progress(0.85, i18nText("文件复制完成"))
         log(f"Bloret git clone 下载完成: {version}")
         return True
 
@@ -238,7 +282,6 @@ def bloret_git_clone_download(version, minecraft_dir, backend=None):
         log(f"Bloret git clone 下载失败: {e}", logging.ERROR)
         return False
     finally:
-        # 3. 清理临时目录
         if tmp_dir and os.path.exists(tmp_dir):
             try:
                 shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -270,15 +313,95 @@ def _request_text_from_urls(urls, timeout=30):
     return None
 
 def _get_java_path_for_installer():
+    """Resolve a usable java executable for Forge/NeoForge installers."""
     config_data = cfg.read()
+    candidates = []
     for key in ("java_path", "Java_Path"):
         java_path = config_data.get(key, "")
-        if java_path and java_path != "Auto" and os.path.exists(java_path):
-            return java_path
-    java_in_path = shutil.which("java")
-    if java_in_path:
-        return java_in_path
-    return "java"
+        if java_path and java_path != "Auto":
+            candidates.append(java_path)
+    which_java = shutil.which("java")
+    if which_java:
+        candidates.append(which_java)
+    candidates.append("java")
+
+    for java_path in candidates:
+        if not java_path:
+            continue
+        # bare "java" may resolve via PATH even if not exists as file
+        if java_path != "java" and not os.path.exists(java_path):
+            continue
+        try:
+            proc = subprocess.run(
+                [java_path, "-version"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                **(
+                    {"creationflags": subprocess.CREATE_NO_WINDOW}
+                    if os.name == "nt" and hasattr(subprocess, "CREATE_NO_WINDOW")
+                    else {}
+                ),
+            )
+            # java -version writes to stderr; success if process ran
+            if proc.returncode == 0 or proc.stderr or proc.stdout:
+                log(f"Forge installer 将使用 Java: {java_path}")
+                return java_path
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            log(f"检测 Java 失败 ({java_path}): {exc}", logging.WARNING)
+            continue
+    return None
+
+
+def _cleanup_incomplete_version_dir(version_dir, reason=""):
+    """Remove a half-installed version directory on hard failure (best-effort)."""
+    if not version_dir or not os.path.isdir(version_dir):
+        return
+    marker = os.path.join(version_dir, ".bloret_installing")
+    # Only remove dirs we marked as in-progress, or empty-ish new dirs
+    try:
+        if os.path.exists(marker) or not os.path.exists(
+            os.path.join(version_dir, os.path.basename(version_dir) + ".json")
+        ):
+            log(f"清理未完成的版本目录: {version_dir} ({reason})", logging.WARNING)
+            shutil.rmtree(version_dir, ignore_errors=True)
+        else:
+            # leave files but drop marker
+            if os.path.exists(marker):
+                try:
+                    os.remove(marker)
+                except OSError:
+                    pass
+    except Exception as exc:
+        log(f"清理版本目录失败 {version_dir}: {exc}", logging.WARNING)
+
+
+def _mark_installing(version_dir):
+    try:
+        os.makedirs(version_dir, exist_ok=True)
+        with open(os.path.join(version_dir, ".bloret_installing"), "w", encoding="utf-8") as f:
+            f.write(str(time.time()))
+    except OSError as exc:
+        log(f"写入安装标记失败: {exc}", logging.WARNING)
+
+
+def _clear_installing_marker(version_dir):
+    marker = os.path.join(version_dir, ".bloret_installing") if version_dir else ""
+    if marker and os.path.exists(marker):
+        try:
+            os.remove(marker)
+        except OSError:
+            pass
+
+
+def _dl_kwargs(task_state):
+    """Common cancel/pause kwargs for secure_download during an install task."""
+    if not task_state:
+        return {}
+    return {
+        "cancel_event": task_state.get("cancel_event"),
+        "pause_event": task_state.get("pause_event"),
+    }
 
 def _ensure_launcher_profile(minecraft_dir, minecraft_version):
     """Forge installer expects a launcher profile in the target .minecraft directory."""
@@ -418,21 +541,46 @@ def _install_forge_like_loader(loader_type, minecraft_version, minecraft_dir, ve
     installer_path = os.path.join(temp_dir, installer_filename)
     downloaded = False
     for url in dl_source_library_get(installer_url):
-        if download_file(url, installer_path):
+        if secure_download(
+            url,
+            installer_path,
+            description=f"{display_name} installer",
+            **_dl_kwargs(task_state),
+        ):
             downloaded = True
             break
     if not downloaded:
-        raise RuntimeError(f"{display_name} installer 下载失败")
+        raise RuntimeError(
+            f"{display_name} installer 下载失败。请检查网络或切换下载源后重试。"
+        )
 
     _ensure_launcher_profile(minecraft_dir, minecraft_version)
 
-    before_dirs = {d for d in os.listdir(versions_dir) if os.path.isdir(os.path.join(versions_dir, d))}
+    before_dirs = {
+        d for d in os.listdir(versions_dir) if os.path.isdir(os.path.join(versions_dir, d))
+    }
     java_path = _get_java_path_for_installer()
+    if not java_path:
+        raise RuntimeError(
+            f"未找到可用的 Java，无法安装 {display_name}。"
+            "请在设置中配置 Java 路径，或先安装 JDK 17+。"
+        )
+
+    backend = task_state.get("backend") if task_state else None
     install_success = False
     last_error = ""
     for args in install_commands:
+        if task_state and task_state.get("cancel_event") and task_state["cancel_event"].is_set():
+            raise RuntimeError(f"{display_name} 安装已被用户取消")
         cmd = [java_path, "-jar", installer_path] + args
         log(f"执行 {display_name} installer: {' '.join(cmd)}")
+        if backend:
+            try:
+                backend.updateDownloadProgress(
+                    0.92, f"正在运行 {display_name} 安装程序...", "", "", ""
+                )
+            except Exception:
+                pass
         process = subprocess.Popen(
             cmd,
             cwd=minecraft_dir,
@@ -440,18 +588,34 @@ def _install_forge_like_loader(loader_type, minecraft_version, minecraft_dir, ve
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
         captured_lines = []
         last_output_time = time.time()
+        line_count = 0
         try:
             while True:
+                if task_state and task_state.get("cancel_event") and task_state["cancel_event"].is_set():
+                    process.kill()
+                    raise RuntimeError(f"{display_name} 安装已被用户取消")
                 line = process.stdout.readline() if process.stdout else ""
                 if line:
                     stripped = line.rstrip()
                     captured_lines.append(stripped)
                     last_output_time = time.time()
+                    line_count += 1
                     log(f"{display_name} installer: {stripped}")
+                    if backend and line_count % 5 == 0:
+                        try:
+                            backend.updateDownloadProgress(
+                                0.92,
+                                f"{display_name}: {stripped[:80]}",
+                                "",
+                                "",
+                                "",
+                            )
+                        except Exception:
+                            pass
                     continue
 
                 if process.poll() is not None:
@@ -472,9 +636,20 @@ def _install_forge_like_loader(loader_type, minecraft_version, minecraft_dir, ve
         if return_code == 0:
             install_success = True
             break
-        log(f"{display_name} installer 执行失败，返回码 {return_code}: {last_error}", logging.WARNING)
+        log(
+            f"{display_name} installer 执行失败，返回码 {return_code}: {last_error}",
+            logging.WARNING,
+        )
     if not install_success:
-        raise RuntimeError(f"{display_name} installer 执行失败: {last_error}")
+        hint = ""
+        low = (last_error or "").lower()
+        if "unsupportedclassversion" in low or "class file version" in low:
+            hint = "（Java 版本过旧，请安装并选择更高版本的 JDK）"
+        elif "permission" in low or "access" in low:
+            hint = "（权限不足，请检查 .minecraft 目录写权限）"
+        raise RuntimeError(
+            f"{display_name} installer 执行失败{hint}: {last_error or '无输出'}"
+        )
 
     after_dirs = {d for d in os.listdir(versions_dir) if os.path.isdir(os.path.join(versions_dir, d))}
     candidates = [d for d in after_dirs - before_dirs if display_name.lower() in d.lower() or "forge" in d.lower()]
@@ -524,7 +699,7 @@ def _install_forge_like_loader(loader_type, minecraft_version, minecraft_dir, ve
     os.makedirs(natives_dir, exist_ok=True)
     processed_libraries = _library_download_items(merged_data.get("libraries", []), minecraft_dir)
     if processed_libraries:
-        downloader = LibraryDownloader(processed_libraries, max_workers=max_thread_value, natives_dir=natives_dir)
+        downloader = LibraryDownloader(processed_libraries, max_workers=max_thread_value, natives_dir=natives_dir, pause_event=task_state.get('pause_event') if task_state else None)
         task_state['downloader'] = downloader
         if task_state['cancel_event'].is_set():
             downloader.cancel()
@@ -689,100 +864,29 @@ def _is_safe_version_name(value):
     return True
 
 
-def _verify_file(path, expected_size=None, expected_sha1=None):
+def _resolve_version_file(version_dir, version_name, minecraft_version, extension):
+    """按 VersionName 优先、原版 id 回退，解析 jar/json 路径。"""
+    candidates = []
+    if version_name:
+        candidates.append(os.path.join(version_dir, f"{version_name}.{extension}"))
+    if minecraft_version and minecraft_version != version_name:
+        candidates.append(os.path.join(version_dir, f"{minecraft_version}.{extension}"))
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return candidates[0] if candidates else os.path.join(version_dir, f"{version_name}.{extension}")
+
+
+def _load_version_json(version_dir, version_name, minecraft_version):
+    path = _resolve_version_file(version_dir, version_name, minecraft_version, "json")
+    if not os.path.exists(path):
+        return None, path
     try:
-        if expected_size is not None and os.path.getsize(path) != int(expected_size):
-            return False, f"size mismatch: expected {expected_size}, got {os.path.getsize(path)}"
-        if expected_sha1:
-            digest = hashlib.sha1()
-            with open(path, "rb") as stream:
-                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-                    digest.update(chunk)
-            actual = digest.hexdigest()
-            if actual.lower() != str(expected_sha1).lower():
-                return False, f"sha1 mismatch: expected {expected_sha1}, got {actual}"
-        return True, "ok"
-    except (OSError, ValueError) as exc:
-        return False, str(exc)
-
-
-def secure_download(urls, destination, metadata=None, description="文件", retries=3, progress_callback=None, cancel_event=None):
-    """仅通过 HTTPS 下载到 .part，校验 size/sha1 后原子替换目标文件。"""
-    metadata = metadata or {}
-    expected_size = metadata.get("size")
-    expected_sha1 = metadata.get("sha1") or metadata.get("hash")
-    if os.path.exists(destination):
-        valid, reason = _verify_file(destination, expected_size, expected_sha1)
-        if valid:
-            log(f"{description}已存在且校验通过，跳过下载: {destination}")
-            return True
-        log(f"{description}现有文件校验失败，将重新下载: {destination}; {reason}", logging.WARNING)
-
-    if isinstance(urls, str):
-        urls = [urls]
-    https_urls = []
-    for url in urls or []:
-        parsed = urlparse(str(url))
-        if parsed.scheme.lower() != "https" or not parsed.netloc:
-            log(f"拒绝非 HTTPS 下载地址: {url}", logging.ERROR)
-            continue
-        if url not in https_urls:
-            https_urls.append(url)
-    if not https_urls:
-        log(f"{description}没有可用的 HTTPS 下载地址: {destination}", logging.ERROR)
-        return False
-
-    os.makedirs(os.path.dirname(destination), exist_ok=True)
-    part_path = destination + ".part"
-    for url in https_urls:
-        for attempt in range(1, retries + 1):
-            if cancel_event is not None and cancel_event.is_set():
-                log(f"{description}下载已取消: {destination}", logging.WARNING)
-                return False
-            try:
-                try:
-                    os.remove(part_path)
-                except FileNotFoundError:
-                    pass
-                log(f"安全下载{description} (尝试 {attempt}/{retries}): {url} -> {part_path}")
-                response = get_session().get(url, stream=True, proxies=BLglobals.get_proxies(), timeout=(15, 60))
-                response.raise_for_status()
-                total = int(response.headers.get("content-length", 0) or 0)
-                downloaded = 0
-                with open(part_path, "wb") as stream:
-                    for chunk in response.iter_content(chunk_size=64 * 1024):
-                        if cancel_event is not None and cancel_event.is_set():
-                            raise _DownloadCancelled("用户取消了下载")
-                        if chunk:
-                            stream.write(chunk)
-                            downloaded += len(chunk)
-                            if progress_callback:
-                                progress_callback(downloaded, total)
-                    stream.flush()
-                    os.fsync(stream.fileno())
-                valid, reason = _verify_file(part_path, expected_size, expected_sha1)
-                if not valid:
-                    raise ValueError(reason)
-                os.replace(part_path, destination)
-                log(f"{description}下载并校验成功: {destination} ({downloaded} bytes)")
-                return True
-            except _DownloadCancelled:
-                log(f"{description}下载已取消: {destination}", logging.WARNING)
-                try: os.remove(part_path)
-                except OSError: pass
-                return False
-            except Exception as exc:
-                log(f"{description}下载失败 (尝试 {attempt}/{retries}) {url}: {exc}", logging.WARNING)
-                try: os.remove(part_path)
-                except OSError: pass
-                if attempt < retries:
-                    time.sleep(1)
-    log(f"{description}所有 HTTPS 地址均下载失败: {destination}", logging.ERROR)
-    return False
-
-
-def download_file(url, file_path, metadata=None):
-    return secure_download(url, file_path, metadata, "文件")
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f), path
+    except Exception as exc:
+        log(f"读取版本 JSON 失败 {path}: {exc}", logging.WARNING)
+        return None, path
 
 
 def _rule_matches(rule):
@@ -874,21 +978,17 @@ def _library_download_items(libraries, minecraft_dir):
                     items.append((lib, _safe_library_destination(minecraft_dir, rel_path), native, True))
             else:
                 log(f"缺少当前平台 native classifier {classifier}: {lib.get('name')}", logging.ERROR)
-                items.append((lib, "", {}, True))
+                # 不加入空 path 项，避免必然失败的下载任务
     return items
 
 
 def _safe_extract_native(archive_path, natives_dir, excludes):
+    """安全解压 native jar 到目标目录（路径校验，禁止符号链接/穿越）。直接写入目标，避免全量 copytree。"""
     import stat
-    import tempfile
     destination = os.path.realpath(natives_dir)
-    parent = os.path.dirname(destination)
+    os.makedirs(destination, exist_ok=True)
     exclude_prefixes = tuple(str(item).replace("\\", "/").lstrip("/") for item in excludes or [])
-    stage_dir = tempfile.mkdtemp(prefix=os.path.basename(destination) + ".extract-", dir=parent)
-    backup_dir = destination + ".backup"
     try:
-        if os.path.isdir(destination):
-            shutil.copytree(destination, stage_dir, dirs_exist_ok=True, symlinks=False)
         with zipfile.ZipFile(archive_path) as archive:
             for info in archive.infolist():
                 name = info.filename.replace("\\", "/").lstrip("/")
@@ -900,42 +1000,26 @@ def _safe_extract_native(archive_path, natives_dir, excludes):
                     raise ValueError(f"native ZIP 包含符号链接: {info.filename}")
                 if mode and not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
                     raise ValueError(f"native ZIP 包含非普通条目: {info.filename}")
-                target = os.path.realpath(os.path.join(stage_dir, *name.split("/")))
-                if os.path.commonpath((stage_dir, target)) != stage_dir:
+                target = os.path.realpath(os.path.join(destination, *name.split("/")))
+                if os.path.commonpath((destination, target)) != destination:
                     raise ValueError(f"native ZIP 包含路径穿越条目: {info.filename}")
                 if is_dir:
                     os.makedirs(target, exist_ok=True)
                     continue
                 os.makedirs(os.path.dirname(target), exist_ok=True)
-                with archive.open(info) as source, open(target, "xb") as output:
+                with archive.open(info) as source, open(target, "wb") as output:
                     shutil.copyfileobj(source, output)
-        if os.path.lexists(backup_dir):
-            shutil.rmtree(backup_dir, ignore_errors=True)
-        if os.path.lexists(destination):
-            os.replace(destination, backup_dir)
-        try:
-            os.replace(stage_dir, destination)
-            stage_dir = None
-        except Exception:
-            if os.path.lexists(backup_dir) and not os.path.lexists(destination):
-                os.replace(backup_dir, destination)
-            raise
-        if os.path.lexists(backup_dir):
-            shutil.rmtree(backup_dir, ignore_errors=True)
-        log(f"native 已事务性安全解压: {archive_path} -> {natives_dir}")
+        log(f"native 已安全解压: {archive_path} -> {natives_dir}")
         return True
     except Exception as exc:
         log(f"安全解压 native 失败 {archive_path}: {exc}", logging.ERROR)
         return False
-    finally:
-        if stage_dir and os.path.lexists(stage_dir):
-            shutil.rmtree(stage_dir, ignore_errors=True)
 
 
 class LibraryDownloader:
-    def __init__(self, missing_libraries, max_workers=64, natives_dir=None):
+    def __init__(self, missing_libraries, max_workers=_DEFAULT_MAX_THREAD, natives_dir=None, pause_event=None):
         self.missing_libraries = missing_libraries
-        self.max_workers = max(1, int(max_workers))
+        self.max_workers = _clamp_workers(max_workers)
         self.natives_dir = natives_dir
         self.completed_count = 0
         self.total_count = len(missing_libraries)
@@ -944,6 +1028,7 @@ class LibraryDownloader:
         self.lock = threading.Lock()
         self.completed_event = threading.Event()
         self.cancel_event = threading.Event()
+        self.pause_event = pause_event  # shared with secure_download when set
         self.result = None
         self._paused = False
         self._cancelled = False
@@ -997,7 +1082,15 @@ class LibraryDownloader:
             urls = dl_source_library_get(artifact["url"])
             if artifact["url"] not in urls:
                 urls.append(artifact["url"])
-            if not secure_download(urls, path, artifact, "native 库" if is_native else "库文件", cancel_event=self.cancel_event):
+            if not secure_download(
+                urls,
+                path,
+                artifact,
+                "native 库" if is_native else "库文件",
+                cancel_event=self.cancel_event,
+                pause_event=self.pause_event,
+                quiet=True,
+            ):
                 return False
             if is_native:
                 if not self.natives_dir:
@@ -1019,21 +1112,38 @@ class LibraryDownloader:
     def download_libraries(self):
         log(f"使用 {self.max_workers} 个线程下载 {self.total_count} 个库/native 文件")
         success = False
+        item_ok = {}
         try:
             if not self.missing_libraries:
+                success = True
+                self.result = True
                 return True
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="LibraryDownloader") as executor:
-                futures = [executor.submit(self.download_single_library, item) for item in self.missing_libraries]
-                results = []
-                for future in concurrent.futures.as_completed(futures):
-                    try:
-                        results.append(bool(future.result()))
-                    except Exception as exc:
-                        log(f"库下载任务异常: {exc}", logging.ERROR)
-                        results.append(False)
-            success = not self.is_cancelled and not self.cancel_event.is_set() and len(results) == self.total_count and all(results)
+
+            def _run_batch(items, prefix):
+                with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix=prefix) as executor:
+                    future_map = {executor.submit(self.download_single_library, item): item for item in items}
+                    for future in concurrent.futures.as_completed(future_map):
+                        item = future_map[future]
+                        try:
+                            item_ok[id(item)] = bool(future.result())
+                        except Exception as exc:
+                            log(f"库下载任务异常: {exc}", logging.ERROR)
+                            item_ok[id(item)] = False
+
+            _run_batch(self.missing_libraries, "LibraryDownloader")
+            failed_items = [item for item in self.missing_libraries if not item_ok.get(id(item))]
+            if failed_items and not self.is_cancelled and not self.cancel_event.is_set():
+                log(f"库文件首轮失败 {len(failed_items)} 个，开始第二轮重试", logging.WARNING)
+                _run_batch(failed_items, "LibraryRetry")
+
+            ok_count = sum(1 for item in self.missing_libraries if item_ok.get(id(item)))
+            success = (
+                not self.is_cancelled
+                and not self.cancel_event.is_set()
+                and ok_count == self.total_count
+            )
             if not success:
-                log(f"库文件下载失败: 成功 {sum(results)}/{self.total_count}", logging.ERROR)
+                log(f"库文件下载失败: 成功 {ok_count}/{self.total_count}", logging.ERROR)
             self.result = success
             return success
         finally:
@@ -1062,20 +1172,35 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
         return False
     task_id = object()
     state = {
-        'task_id': task_id, 'thread': None, 'cancel_event': threading.Event(),
-        'downloader': None, 'is_paused': False, 'backend': backend, 'cancelled': False,
-        'completed_event': threading.Event(), 'result': None
+        'task_id': task_id,
+        'thread': None,
+        'cancel_event': threading.Event(),
+        'pause_event': threading.Event(),
+        'downloader': None,
+        'is_paused': False,
+        'backend': backend,
+        'cancelled': False,
+        'completed_event': threading.Event(),
+        'result': None,
+        'version_dir': None,
+        'cleanup_on_fail': True,
     }
     _current_download_state = state
+
     def run_install_task():
         try:
-            state['result'] = bool(_install_minecraft_version_threaded(version, minecraft_dir, Fabric_Loader, VersionName, backend, Loader_Type, state))
+            state['result'] = bool(
+                _install_minecraft_version_threaded(
+                    version, minecraft_dir, Fabric_Loader, VersionName, backend, Loader_Type, state
+                )
+            )
         except Exception as exc:
             state['result'] = False
             log(f"安装任务包装器捕获异常: {exc}", logging.ERROR)
         finally:
             state['completed_event'].set()
             log(f"安装任务已完全结束: version={version}, result={state['result']}")
+
     thread = Thread(target=run_install_task, daemon=True)
     state['thread'] = thread
     thread.install_state = state
@@ -1084,7 +1209,18 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
         return thread
     except Exception:
         if _current_download_state.get('task_id') is task_id:
-            _current_download_state = {'task_id': None, 'thread': None, 'cancel_event': threading.Event(), 'downloader': None, 'is_paused': False, 'backend': None, 'cancelled': False, 'completed_event': threading.Event(), 'result': None}
+            _current_download_state = {
+                'task_id': None,
+                'thread': None,
+                'cancel_event': threading.Event(),
+                'pause_event': threading.Event(),
+                'downloader': None,
+                'is_paused': False,
+                'backend': None,
+                'cancelled': False,
+                'completed_event': threading.Event(),
+                'result': None,
+            }
         _install_state_lock.release()
         raise
 
@@ -1126,13 +1262,15 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         if backend:
             backend.closeDownloadDialog()
 
-    def fail_install(message):
+    def fail_install(message, cleanup=True):
         log(message, logging.ERROR)
         update_progress_ui(0, i18nText(f"安装失败：{message}"), "", "", "")
         try:
             update_progress({'status': i18nText(f"安装失败：{message}"), 'value': 0})
         except Exception as notify_error:
             log(f"更新安装失败通知时出错: {notify_error}", logging.WARNING)
+        if cleanup and task_state and task_state.get("cleanup_on_fail"):
+            _cleanup_incomplete_version_dir(task_state.get("version_dir"), reason=str(message)[:120])
         close_dialog_ui()
         try:
             from modules.notification import send_notification
@@ -1214,306 +1352,362 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
 
         version_dir = os.path.join(minecraft_dir, "versions", VersionName)
         log(f"开始安装 Minecraft 版本: {version}，版本目录名称: {VersionName}，安装目录: {version_dir}")
+        if task_state is not None:
+            task_state["version_dir"] = version_dir
 
         # 确保目录存在
         os.makedirs(minecraft_dir, exist_ok=True)
         versions_dir = os.path.join(minecraft_dir, "versions")
         os.makedirs(versions_dir, exist_ok=True)
+        _mark_installing(version_dir)
 
-        # ── Bloret 快速下载源：Git Clone ──
+        # ── Bloret 快速下载源：Git Clone（成功后仍校验/补全缺失）──
         _bloret_git_done = False
         version_data = None
-        max_thread_value = 64  # 默认值，实际值在下载区块内从配置读取
+        config = cfg.read()
+        max_thread_value = _clamp_workers(config.get("MaxThread", _DEFAULT_MAX_THREAD))
+
         if BLglobals.download_source == "gitcode":
             try:
-                if bloret_git_clone_download(version, minecraft_dir, backend):
-                    _bloret_git_done = True
-                    # 从克隆的文件中加载 version_data（后续 Loader 安装需要）
-                    version_json_path = os.path.join(version_dir, f"{version}.json")
-                    if not os.path.exists(version_json_path):
-                        version_json_path = os.path.join(version_dir, f"{VersionName}.json")
-                    if os.path.exists(version_json_path):
-                        with open(version_json_path, 'r', encoding='utf-8') as f:
-                            version_data = json.load(f)
-                        log(f"从克隆文件加载 version_data: {version_json_path}")
-                    else:
+                if bloret_git_clone_download(
+                    version,
+                    minecraft_dir,
+                    backend,
+                    cancel_event=task_state["cancel_event"] if task_state else None,
+                ):
+                    # git 仓库常以官方 version id 落盘；自定义 VersionName 时尝试两处
+                    for candidate_dir in (
+                        version_dir,
+                        os.path.join(versions_dir, version),
+                    ):
+                        loaded, loaded_path = _load_version_json(candidate_dir, VersionName, version)
+                        if loaded:
+                            version_data = loaded
+                            # 若落在官方 id 目录且用户指定了不同名称，复制到 VersionName 目录
+                            if os.path.realpath(candidate_dir) != os.path.realpath(version_dir):
+                                os.makedirs(version_dir, exist_ok=True)
+                                for ext in ("json", "jar"):
+                                    src = _resolve_version_file(candidate_dir, version, version, ext)
+                                    if os.path.exists(src):
+                                        dst = os.path.join(version_dir, f"{VersionName}.{ext}")
+                                        if not os.path.exists(dst):
+                                            shutil.copy2(src, dst)
+                                # 以 VersionName 再写一份 JSON（id 字段保持原版）
+                                with open(os.path.join(version_dir, f"{VersionName}.json"), "w", encoding="utf-8") as f:
+                                    json.dump(version_data, f, ensure_ascii=False, indent=4)
+                            log(f"从克隆文件加载 version_data: {loaded_path}")
+                            _bloret_git_done = True
+                            break
+                    if not _bloret_git_done:
                         log("克隆完成但未找到 version JSON，将回退正常下载", logging.WARNING)
-                        _bloret_git_done = False
             except Exception as e:
                 log(f"Bloret git clone 流程异常: {e}，回退正常下载", logging.WARNING)
                 _bloret_git_done = False
+                version_data = None
 
-        # 检查是否被取消
         if task_state['cancel_event'].is_set():
             return fail_install("安装已被用户取消")
 
-        # 如果 Bloret git clone 已成功，跳过所有下载步骤，直接进入 Loader 安装
         if _bloret_git_done:
-            log("Bloret git clone 已完成，跳过常规下载步骤")
+            log("Bloret git clone 已完成，将校验并补全缺失的库/资源")
             update_progress({
-                'value': 0.9,
-                'valueStringOverride': '90%',
-                'status': i18nText('Minecraft 核心文件已通过 Bloret 快速下载完成')
+                'value': 0.35,
+                'valueStringOverride': '35%',
+                'status': i18nText('快速下载完成，正在校验文件...')
             })
 
-        if not _bloret_git_done:
-            # 1. 获取版本清单，使用PCL风格的镜像源处理
+        # 常规路径：拉取 manifest + version JSON + client.jar
+        if not version_data:
             update_progress({
-                'value': 0.1, 
+                'value': 0.1,
                 'valueStringOverride': '10%',
                 'status': i18nText('正在获取版本清单...')
             })
+            update_progress_ui(5, i18nText("正在获取版本清单..."), "", "", "")
 
-            # 创建 LibraryDownloader 实例
-            # 假设 missing_libraries 在后续步骤中获取
-            # 这里先创建一个空的，后续再更新
-
-
-        
-            # 定义版本清单URL列表，使用PCL风格的镜像源处理
-            manifest_urls = dl_source_launcher_or_meta_get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
-        
+            manifest_urls = dl_source_launcher_or_meta_get(
+                "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+            )
             manifest_data = None
             for url in manifest_urls:
                 try:
                     log(f"正在获取版本清单: {url}")
-                    response = requests.get(url, proxies=BLglobals.get_proxies(), timeout=30)
+                    response = get_session().get(url, proxies=BLglobals.get_proxies(), timeout=30)
                     if response.status_code == 200:
                         manifest_data = response.json()
                         break
-                    else:
-                        log(f"获取版本清单失败: {url}, HTTP {response.status_code}", logging.WARNING)
-                except requests.exceptions.ConnectionError as e:
-                    log(f"网络连接错误: {url}, {e}", logging.WARNING)
+                    log(f"获取版本清单失败: {url}, HTTP {response.status_code}", logging.WARNING)
                 except requests.exceptions.RequestException as e:
                     log(f"请求错误: {url}, {e}", logging.WARNING)
-        
+
             if not manifest_data:
                 return fail_install("所有版本清单 HTTPS URL 都获取失败")
 
-            # 2. 在清单中查找指定版本
-            update_progress({
-                'value': 0.2, 
-                'valueStringOverride': '20%',
-                'status': i18nText('正在查找指定版本...')
-            })
-            version_info = None
-            for ver in manifest_data.get("versions", []):
-                if ver.get("id") == version:
-                    version_info = ver
-                    break
-
+            update_progress_ui(8, i18nText("正在查找指定版本..."), "", "", "")
+            version_info = next(
+                (ver for ver in manifest_data.get("versions", []) if ver.get("id") == version),
+                None,
+            )
             if not version_info:
                 return fail_install(f"未找到 Minecraft 版本 {version}")
-
             log(f"找到版本信息: {version_info}")
 
-            # 3. 获取版本详细信息URL并使用PCL风格的镜像源处理
-            update_progress({
-                'value': 0.3, 
-                'valueStringOverride': '30%',
-                'status': i18nText('正在获取版本详细信息...')
-            })
+            update_progress_ui(12, i18nText("正在获取版本详细信息..."), "", "", "")
             original_url = version_info.get("url")
-        
-            # 使用PCL风格的镜像源处理
             version_info_urls = dl_source_launcher_or_meta_get(original_url)
-
-            log(f"正在获取版本详细信息: {version_info_urls}")
             version_data = None
-        
             for url in version_info_urls:
                 try:
                     log(f"正在获取版本详细信息: {url}")
-                    response = requests.get(url, timeout=30)
+                    response = get_session().get(url, timeout=30)
                     if response.status_code == 200:
                         version_data = response.json()
                         break
-                    else:
-                        log(f"获取版本详细信息失败: {url}, HTTP {response.status_code}", logging.WARNING)
-                except requests.exceptions.ConnectionError as e:
-                    log(f"网络连接错误: {url}, {e}", logging.WARNING)
+                    log(f"获取版本详细信息失败: {url}, HTTP {response.status_code}", logging.WARNING)
                 except requests.exceptions.RequestException as e:
                     log(f"请求错误: {url}, {e}", logging.WARNING)
-        
+
             if not version_data:
                 return fail_install("所有版本详细信息 HTTPS URL 都获取失败")
 
-            # 5. 确保版本目录存在
-            update_progress({
-                'value': 0.4, 
-                'valueStringOverride': '40%',
-                'status': i18nText('正在确保版本目录存在...')
-            })
             os.makedirs(version_dir, exist_ok=True)
-
-            # 保存版本JSON文件
-            version_json_path = os.path.join(version_dir, f"{VersionName}.json")  # JSON文件名也使用VersionName
-            with open(version_json_path, 'w', encoding='utf-8') as f:
+            version_json_path = os.path.join(version_dir, f"{VersionName}.json")
+            with open(version_json_path, "w", encoding="utf-8") as f:
                 json.dump(version_data, f, ensure_ascii=False, indent=4)
-
             log(f"已保存版本JSON文件: {version_json_path}")
 
-            update_progress_ui(10, i18nText("正在下载客户端JAR文件..."), "", "", "")
-            if "downloads" in version_data and "client" in version_data["downloads"]:
-                client_info = version_data["downloads"]["client"]
-                client_url = client_info["url"]
-            
-                # 使用PCL风格的镜像源处理
-                client_urls = dl_source_launcher_or_meta_get(client_url)
+        # 确保 version_dir 与 JSON 存在
+        os.makedirs(version_dir, exist_ok=True)
+        version_json_path = os.path.join(version_dir, f"{VersionName}.json")
+        if not os.path.exists(version_json_path) and version_data:
+            with open(version_json_path, "w", encoding="utf-8") as f:
+                json.dump(version_data, f, ensure_ascii=False, indent=4)
 
-                client_jar_path = os.path.join(version_dir, f"{VersionName}.jar")  # 使用VersionName作为JAR文件名
-                log(f"正在下载客户端JAR文件: {client_urls}")
+        # 客户端 JAR（git 已提供则 secure_download 会跳过）
+        update_progress_ui(15, i18nText("正在下载客户端JAR文件..."), "", "", "")
+        if "downloads" not in version_data or "client" not in version_data["downloads"]:
+            return fail_install(i18nText("版本信息中未找到客户端下载链接"))
+        client_info = version_data["downloads"]["client"]
+        client_url = client_info["url"]
+        client_urls = dl_source_launcher_or_meta_get(client_url)
+        client_jar_path = os.path.join(version_dir, f"{VersionName}.jar")
+        # 兼容 git 克隆出的 {version}.jar
+        alt_client = os.path.join(version_dir, f"{version}.jar")
+        if not os.path.exists(client_jar_path) and os.path.exists(alt_client):
+            shutil.copy2(alt_client, client_jar_path)
 
-                def client_progress(downloaded_size, total_size):
-                    if total_size > 0:
-                        progress_value = int(downloaded_size * 100 / total_size)
-                        if progress_value % 5 == 0 or progress_value == 100:
-                            update_progress_ui(progress_value, i18nText("正在下载客户端JAR文件..."), "", f"{downloaded_size // 1024 // 1024}MB", f"{total_size // 1024 // 1024}MB")
-                if not secure_download(client_urls + [client_url], client_jar_path, client_info, "客户端 JAR", progress_callback=client_progress, cancel_event=task_state["cancel_event"]):
-                    return fail_install("客户端 JAR 下载或校验失败")
-            else:
-                return fail_install(i18nText("版本信息中未找到客户端下载链接"))
+        def client_progress(downloaded_size, total_size):
+            if total_size > 0:
+                # client 阶段映射到全局 15%–30%
+                frac = downloaded_size / total_size
+                global_pct = 15 + int(frac * 15)
+                if global_pct % 2 == 0 or frac >= 1.0:
+                    update_progress_ui(
+                        global_pct,
+                        i18nText("正在下载客户端JAR文件..."),
+                        "",
+                        f"{downloaded_size // 1024 // 1024}MB",
+                        f"{total_size // 1024 // 1024}MB",
+                    )
 
-            # 加载 config.json 文件
-            config = cfg.read()
-            # 创建 LibraryDownloader 实例
-            max_thread_value = config.get("MaxThread", 64)
-            # 按 rules、artifact.path 和 classifier 处理主版本库/native。
-            natives_dir = os.path.join(version_dir, f"{VersionName}-natives")
-            os.makedirs(natives_dir, exist_ok=True)
-            processed_libraries = _library_download_items(version_data.get("libraries", []), minecraft_dir)
-            if processed_libraries:
-                task_state['downloader'] = LibraryDownloader(processed_libraries, max_workers=max_thread_value, natives_dir=natives_dir)
-                if task_state['cancel_event'].is_set():
-                    task_state['downloader'].cancel()
-            update_progress_ui(60, i18nText("正在下载库文件..."), "", "", "")
-            if task_state['downloader'] is not None and not task_state['downloader'].download_libraries():
+        if not secure_download(
+            client_urls + [client_url],
+            client_jar_path,
+            client_info,
+            "客户端 JAR",
+            progress_callback=client_progress,
+            **_dl_kwargs(task_state),
+        ):
+            return fail_install("客户端 JAR 下载或校验失败")
+
+        # 库文件 / natives
+        natives_dir = os.path.join(version_dir, f"{VersionName}-natives")
+        os.makedirs(natives_dir, exist_ok=True)
+        processed_libraries = _library_download_items(version_data.get("libraries", []), minecraft_dir)
+        update_progress_ui(32, i18nText("正在下载库文件..."), "", "", "")
+        if processed_libraries:
+            task_state['downloader'] = LibraryDownloader(
+                processed_libraries,
+                max_workers=max_thread_value,
+                natives_dir=natives_dir,
+                pause_event=task_state.get("pause_event") if task_state else None,
+            )
+            if task_state['cancel_event'].is_set():
+                task_state['downloader'].cancel()
+            if not task_state['downloader'].download_libraries():
                 return fail_install("关键库/native 下载或解压失败")
-        
-            # 下载资源索引，使用PCL风格的镜像源处理
-            if "assetIndex" in version_data:
-                asset_index = version_data["assetIndex"]
-                asset_index_url = asset_index["url"]
-            
-                # 使用PCL风格的镜像源处理
-                asset_index_urls = dl_source_launcher_or_meta_get(asset_index_url)
-            
-                assets_dir = os.path.join(minecraft_dir, "assets")
-                indexes_dir = os.path.join(assets_dir, "indexes")
-                objects_dir = os.path.join(assets_dir, "objects")
-            
-                os.makedirs(indexes_dir, exist_ok=True)
-                os.makedirs(objects_dir, exist_ok=True)
-            
-                asset_index_id = asset_index["id"]
-                asset_index_path = os.path.join(indexes_dir, f"{asset_index_id}.json")
-            
-                update_progress({'status': i18nText("正在下载资源索引...")})
-                log(f"正在下载资源索引: {asset_index_urls}")
-            
-                if not secure_download(asset_index_urls + [asset_index_url], asset_index_path, asset_index, "资源索引", cancel_event=task_state["cancel_event"]):
-                    return fail_install("资源索引下载或校验失败")
-                
-                # 读取资源索引并下载资源文件
-                with open(asset_index_path, 'r', encoding='utf-8') as f:
-                    asset_index_data = json.load(f)
-            
-                if "objects" in asset_index_data:
-                    assets_count = len(asset_index_data['objects'])
-                    update_progress({'status': f"开始下载资源文件，共 {assets_count} 个..."})
-                    log(f"开始下载资源文件，共 {assets_count} 个")
-                
-                    # 使用线程池进行多线程下载
-                
-                    # 设置最大线程数，根据系统资源限制调整默认值
-                    try:
-                        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-                            config_data = json.load(f)
-                        max_workers = config_data.get("MaxThread", 64)
-                    except Exception:
-                        exc_type, exc_value, exc_traceback = sys.exc_info()
-                        handle_exception(exc_type, exc_value, exc_traceback)
-                        max_workers = 64  # 读取失败时使用默认值64
+        update_progress_ui(45, i18nText("库文件下载完成"), "", "", "")
+
+        # 资源索引 + 对象
+        if "assetIndex" in version_data:
+            asset_index = version_data["assetIndex"]
+            asset_index_url = asset_index["url"]
+            asset_index_urls = dl_source_launcher_or_meta_get(asset_index_url)
+            assets_dir = os.path.join(minecraft_dir, "assets")
+            indexes_dir = os.path.join(assets_dir, "indexes")
+            objects_dir = os.path.join(assets_dir, "objects")
+            os.makedirs(indexes_dir, exist_ok=True)
+            os.makedirs(objects_dir, exist_ok=True)
+            asset_index_id = asset_index["id"]
+            asset_index_path = os.path.join(indexes_dir, f"{asset_index_id}.json")
+
+            update_progress_ui(48, i18nText("正在下载资源索引..."), "", "", "")
+            log(f"正在下载资源索引: {asset_index_urls}")
+            if not secure_download(
+                asset_index_urls + [asset_index_url],
+                asset_index_path,
+                asset_index,
+                "资源索引",
+                **_dl_kwargs(task_state),
+            ):
+                return fail_install("资源索引下载或校验失败")
+
+            with open(asset_index_path, "r", encoding="utf-8") as f:
+                asset_index_data = json.load(f)
+
+            objects = asset_index_data.get("objects") or {}
+            assets_count = len(objects)
+            if assets_count:
+                # 预过滤：size 匹配的 hash 命名文件直接跳过，避免提交线程池与全量 SHA1
+                strict = _strict_hash_verify_enabled()
+                pending = []
+                skipped = 0
+                for asset_name, asset_info in objects.items():
+                    hash_value = asset_info.get("hash")
+                    if not hash_value:
+                        continue
+                    object_path = os.path.join(objects_dir, hash_value[:2], hash_value)
+                    if os.path.exists(object_path):
+                        ok, _ = _verify_file(
+                            object_path,
+                            asset_info.get("size"),
+                            hash_value,
+                            fast=not strict,
+                        )
+                        if ok:
+                            skipped += 1
+                            continue
+                    pending.append((asset_name, asset_info, object_path))
+
+                log(
+                    f"资源文件: 总计 {assets_count}，已存在 {skipped}，待下载 {len(pending)}"
+                )
+                update_progress({
+                    'status': f"资源: 跳过 {skipped}，下载 {len(pending)}...",
+                    'value': 0.5,
+                })
+
+                if pending:
+                    if task_state['cancel_event'].is_set():
+                        return fail_install("安装已被用户取消")
+
+                    max_workers = max_thread_value
                     log(f"使用 {max_workers} 个线程下载资源文件")
-                
-                    # 确保线程池创建时的线程安全
-                    if not threading.current_thread() is threading.main_thread():
-                        log("警告：资源文件下载不在主线程中运行，可能导致Qt线程问题", logging.WARNING)
-                
-                    # 用于跟踪活动下载线程数的变量
-                    active_downloads = 0
-                    active_downloads_lock = threading.Lock()
-                
-                    def update_thread_count():
-                        pass
-                
-                    # 创建多线程下载资源文件
-                    def download_asset(asset_name, asset_info):
-                        nonlocal active_downloads
-                        with active_downloads_lock:
-                            active_downloads += 1
-                            update_thread_count()
-                        try:
-                            hash_value = asset_info["hash"]
-                            object_path = os.path.join(objects_dir, hash_value[:2], hash_value)
-                            asset_url = f"https://resources.download.minecraft.net/{hash_value[:2]}/{hash_value}"
-                            urls = dl_source_assets_get(asset_url)
-                            if asset_url not in urls:
-                                urls.append(asset_url)
-                            return secure_download(urls, object_path, asset_info, f"资源对象 {asset_name}", cancel_event=task_state["cancel_event"])
-                        except Exception as exc:
-                            log(f"资源对象处理失败 {asset_name}: {exc}", logging.ERROR)
-                            return False
-                        finally:
-                            with active_downloads_lock:
-                                active_downloads = max(0, active_downloads - 1)
-                                update_thread_count()
-                
-                    update_progress_ui(0, i18nText("正在下载资源文件..."), "", "", "")
-                
-                    with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="AssetsDownloader") as executor:
-                        future_to_asset = {executor.submit(download_asset, asset_name, asset_info): asset_name 
-                                          for asset_name, asset_info in asset_index_data["objects"].items()}
-                    
-                        success_count = 0
-                        failed_count = 0
-                        completed_count = 0
-                        for future in concurrent.futures.as_completed(future_to_asset):
-                            asset_name = future_to_asset[future]
-                            try:
-                                success = future.result()
-                                if success:
-                                    success_count += 1
-                                else:
-                                    failed_count += 1
-                            except Exception as e:
-                                log(f"处理资源文件时发生错误: {asset_name}, {str(e)}", logging.WARNING)
-                                failed_count += 1
-                            finally:
-                                completed_count += 1
-                        
-                            current_progress = int((completed_count / assets_count) * 100)
-                            last_progress = int(((completed_count - 1) / assets_count) * 100) if completed_count > 0 else 0
-                        
-                            if current_progress // 10 > last_progress // 10 or completed_count == assets_count:
-                                update_progress_ui(current_progress, i18nText("正在下载资源文件..."), 
-                                    "", f"{completed_count}", f"{assets_count}")
-                                log(f"资源文件下载进度: {current_progress}% ({completed_count}/{assets_count})")
-                    
-                        try:
-                            concurrent.futures.wait(future_to_asset, timeout=60)
-                        except Exception as e:
-                            log(f"等待资源文件下载完成时出错: {e}")
-                
-                    update_progress_ui(100, i18nText("资源文件下载完成!"), "", f"{assets_count}", f"{assets_count}")
-                
-                    # 输出下载结果
-                    log(f"资源文件下载完成: 成功 {success_count} 个, 失败 {failed_count} 个")
-                
-                    if failed_count > 0:
-                        return fail_install(f"有 {failed_count} 个关键资源对象下载失败")
-        
+                    progress_lock = threading.Lock()
+                    completed_count = 0
+                    success_count = 0
+                    failed_items = []
+                    bytes_done = 0
+                    t0 = time.monotonic()
+                    total_pending = len(pending)
+
+                    def download_asset(item):
+                        asset_name, asset_info, object_path = item
+                        hash_value = asset_info["hash"]
+                        asset_url = f"https://resources.download.minecraft.net/{hash_value[:2]}/{hash_value}"
+                        urls = dl_source_assets_get(asset_url)
+                        if asset_url not in urls:
+                            urls.append(asset_url)
+                        ok = secure_download(
+                            urls,
+                            object_path,
+                            asset_info,
+                            f"资源对象 {asset_name}",
+                            **_dl_kwargs(task_state),
+                            quiet=True,
+                            fast_verify=not strict,
+                        )
+                        return asset_name, asset_info, object_path, ok
+
+                    def _run_asset_batch(items, label):
+                        nonlocal completed_count, success_count, bytes_done
+                        local_failed = []
+                        with ThreadPoolExecutor(
+                            max_workers=max_workers, thread_name_prefix=label
+                        ) as executor:
+                            future_map = {
+                                executor.submit(download_asset, item): item for item in items
+                            }
+                            for future in concurrent.futures.as_completed(future_map):
+                                if task_state['cancel_event'].is_set():
+                                    break
+                                try:
+                                    asset_name, asset_info, object_path, ok = future.result()
+                                except Exception as e:
+                                    item = future_map[future]
+                                    asset_name, asset_info, object_path = item
+                                    log(f"处理资源文件时发生错误: {asset_name}, {e}", logging.WARNING)
+                                    ok = False
+                                with progress_lock:
+                                    completed_count += 1
+                                    if ok:
+                                        success_count += 1
+                                        bytes_done += int(asset_info.get("size") or 0)
+                                    else:
+                                        local_failed.append((asset_name, asset_info, object_path))
+                                    # 资源阶段映射到全局 50%–88%
+                                    frac = completed_count / max(total_pending, 1)
+                                    global_pct = 50 + int(frac * 38)
+                                    elapsed = max(time.monotonic() - t0, 0.001)
+                                    speed = bytes_done / elapsed
+                                    speed_str = (
+                                        f"{speed / 1024 / 1024:.1f} MB/s"
+                                        if speed > 1024 * 1024
+                                        else f"{speed / 1024:.0f} KB/s"
+                                    )
+                                    # 粗略 ETA：按剩余文件比例
+                                    remain = max(total_pending - completed_count, 0)
+                                    if speed > 0 and completed_count > 0:
+                                        avg_bytes = bytes_done / completed_count
+                                        eta_sec = int((remain * avg_bytes) / speed) if avg_bytes > 0 else 0
+                                        if eta_sec > 0:
+                                            m, s = divmod(eta_sec, 60)
+                                            h, m = divmod(m, 60)
+                                            eta_txt = f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
+                                            speed_str = f"{speed_str} · ETA {eta_txt}"
+                                    if completed_count % max(1, total_pending // 20) == 0 or completed_count == total_pending or not ok:
+                                        update_progress_ui(
+                                            global_pct,
+                                            i18nText("正在下载资源文件..."),
+                                            speed_str,
+                                            f"{completed_count}",
+                                            f"{total_pending}",
+                                        )
+                        return local_failed
+
+                    failed_items = _run_asset_batch(pending, "AssetsDownloader")
+                    if task_state['cancel_event'].is_set():
+                        return fail_install("安装已被用户取消")
+
+                    if failed_items:
+                        log(f"资源首轮失败 {len(failed_items)} 个，开始第二轮重试", logging.WARNING)
+                        # 重置计数语义：第二轮只统计失败项
+                        retry_total = len(failed_items)
+                        completed_count = total_pending - retry_total
+                        total_pending = total_pending  # 进度分母保持首轮规模
+                        failed_items = _run_asset_batch(failed_items, "AssetsRetry")
+
+                    log(
+                        f"资源文件下载完成: 跳过 {skipped}, 成功 {success_count}, 失败 {len(failed_items)}"
+                    )
+                    if failed_items:
+                        sample = ", ".join(name for name, _, _ in failed_items[:5])
+                        return fail_install(
+                            f"有 {len(failed_items)} 个关键资源对象下载失败（例: {sample}）"
+                        )
+
+                update_progress_ui(88, i18nText("资源文件下载完成!"), "", f"{assets_count}", f"{assets_count}")
+
         # 如果需要安装Fabric Loader
         if Fabric_Loader:
             log(f"开始安装 Fabric Loader 到 Minecraft {version}")
@@ -1531,168 +1725,127 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                 fabric_versions = None
                 for url in fabric_api_urls:
                     try:
-                        fabric_response = requests.get(url, timeout=30)
+                        fabric_response = get_session().get(url, timeout=30)
                         if fabric_response.status_code == 200:
                             fabric_versions = fabric_response.json()
                             break
-                        else:
-                            log(f"获取Fabric Loader版本列表失败: {url}, HTTP {fabric_response.status_code}", logging.WARNING)
-                    except requests.exceptions.SSLError as e:
-                        log(f"SSL错误: {url}, {e}", logging.WARNING)
-                    except requests.exceptions.SSLError as e:
-                        log(f"SSL错误: {url}, {e}", logging.WARNING)
+                        log(f"获取Fabric Loader版本列表失败: {url}, HTTP {fabric_response.status_code}", logging.WARNING)
                     except requests.exceptions.RequestException as e:
                         log(f"请求错误: {url}, {e}", logging.WARNING)
-                
+
                 if not fabric_versions:
-                    log(f"未找到适用于 Minecraft {version} 的 Fabric Loader 版本，但将继续安装流程", logging.WARNING)
-                    # 不中断安装流程，继续执行，使用默认版本信息
-                    # 创建一个基本的fabric版本结构，确保后续代码可以执行
-                    fabric_versions = [{
-                        "loader": {
-                            "version": "0.15.0"  # 使用默认版本
-                        }
-                    }]
-                
-                # 获取最新版本
+                    raise RuntimeError(f"未找到适用于 Minecraft {version} 的 Fabric Loader 版本")
+
                 latest_fabric = fabric_versions[0]
                 loader_version = latest_fabric["loader"]["version"]
-                
                 log(f"找到最新的 Fabric Loader 版本: {loader_version}")
-                
-                # 使用PCL风格的版本命名格式，基于VersionName生成Fabric版本ID
+
                 fabric_version_id = f"{VersionName}-Fabric {loader_version}"
                 fabric_version_dir = os.path.join(versions_dir, fabric_version_id)
                 os.makedirs(fabric_version_dir, exist_ok=True)
-                
-                # 获取Fabric安装JSON，使用PCL风格的镜像源处理
-                fabric_json_urls = dl_source_launcher_or_meta_get(f"https://meta.fabricmc.net/v2/versions/loader/{version}/{loader_version}/profile/json")
+
+                fabric_json_urls = dl_source_launcher_or_meta_get(
+                    f"https://meta.fabricmc.net/v2/versions/loader/{version}/{loader_version}/profile/json"
+                )
                 log(f"正在获取Fabric安装JSON: {fabric_json_urls}")
 
                 fabric_json_data = None
                 for url in fabric_json_urls:
                     try:
-                        fabric_json_response = requests.get(url, timeout=30)
+                        fabric_json_response = get_session().get(url, timeout=30)
                         if fabric_json_response.status_code == 200:
                             fabric_json_data = fabric_json_response.json()
                             break
-                        else:
-                            log(f"获取Fabric安装JSON失败: {url}, HTTP {fabric_json_response.status_code}", logging.WARNING)
+                        log(f"获取Fabric安装JSON失败: {url}, HTTP {fabric_json_response.status_code}", logging.WARNING)
                     except requests.exceptions.RequestException as e:
                         log(f"请求错误: {url}, {e}", logging.WARNING)
-                
-                if not fabric_json_data:
-                    log("所有Fabric安装JSON URL都获取失败，但将继续安装流程", logging.WARNING)
-                    # 不中断安装流程，继续执行，Fabric版本可能无法正常运行但不影响Minecraft安装
-                    # 创建一个基本的fabric_json_data结构，确保后续代码可以执行
-                    fabric_json_data = {
-                        "id": fabric_version_id,
-                        "libraries": [],
-                        "mainClass": "net.fabricmc.loader.launch.knot.KnotClient",
-                        "type": "release"
-                    }
 
-                # 修改Fabric版本JSON文件，使用PCL风格的结构
+                if not fabric_json_data:
+                    raise RuntimeError("所有 Fabric 安装 JSON URL 均获取失败")
+
                 fabric_json_data["id"] = fabric_version_id
-                
-                # 如果Fabric JSON不包含downloads字段，需要添加原始版本的资源信息
-                if "downloads" not in fabric_json_data:
+
+                # 合并原版元数据（VersionName 优先，version id 回退）
+                original_version_data = version_data
+                if original_version_data is None:
+                    original_version_data, original_version_json_path = _load_version_json(
+                        version_dir, VersionName, version
+                    )
+                    if original_version_data is None:
+                        log(f"原始版本JSON不存在: {original_version_json_path}", logging.WARNING)
+
+                if "downloads" not in fabric_json_data and original_version_data:
                     log("Fabric JSON不包含downloads字段，添加原始版本的资源信息")
-                    # 从原始版本JSON中获取资源信息
-                    original_version_json_path = os.path.join(version_dir, f"{version}.json")
-                    if os.path.exists(original_version_json_path):
-                        with open(original_version_json_path, 'r', encoding='utf-8') as f:
-                            original_version_data = json.load(f)
-                        
-                        # 添加原始版本的资源信息
-                        if "assetIndex" in original_version_data:
-                            fabric_json_data["assetIndex"] = original_version_data["assetIndex"]
-                        if "assets" in original_version_data:
-                            fabric_json_data["assets"] = original_version_data["assets"]
-                        if "complianceLevel" in original_version_data:
-                            fabric_json_data["complianceLevel"] = original_version_data["complianceLevel"]
-                        if "javaVersion" in original_version_data:
-                            fabric_json_data["javaVersion"] = original_version_data["javaVersion"]
-                        if "logging" in original_version_data:
-                            fabric_json_data["logging"] = original_version_data["logging"]
-                        if "minimumLauncherVersion" in original_version_data:
-                            fabric_json_data["minimumLauncherVersion"] = original_version_data["minimumLauncherVersion"]
-                        if "releaseTime" in original_version_data:
-                            fabric_json_data["releaseTime"] = original_version_data["releaseTime"]
-                        if "time" in original_version_data:
-                            fabric_json_data["time"] = original_version_data["time"]
-                        if "type" in original_version_data:
-                            fabric_json_data["type"] = original_version_data["type"]
-                        
-                        # 添加原始版本的库文件（除了Fabric相关的库）
-                        original_libraries = original_version_data.get("libraries", [])
-                        fabric_libraries = fabric_json_data.get("libraries", [])
-                        
-                        # 合并库文件，避免重复
-                        existing_lib_names = {lib.get("name", "") for lib in fabric_libraries}
-                        for lib in original_libraries:
-                            if lib.get("name", "") not in existing_lib_names:
-                                fabric_libraries.append(lib)
-                        
-                        fabric_json_data["libraries"] = fabric_libraries
-                        log(f"已添加原始版本的资源信息到Fabric版本")
-                    else:
-                        log(f"原始版本JSON文件不存在: {original_version_json_path}", logging.WARNING)
-                
-                # PCL的Fabric版本不使用inheritsFrom，而是直接包含所有库
-                if "inheritsFrom" in fabric_json_data:
-                    del fabric_json_data["inheritsFrom"]
-                if "jar" in fabric_json_data:
-                    del fabric_json_data["jar"]
+                    for key in (
+                        "assetIndex", "assets", "complianceLevel", "javaVersion",
+                        "logging", "minimumLauncherVersion", "releaseTime", "time", "type",
+                    ):
+                        if key in original_version_data:
+                            fabric_json_data[key] = original_version_data[key]
+
+                    original_libraries = original_version_data.get("libraries", [])
+                    fabric_libraries = fabric_json_data.get("libraries", [])
+                    existing_lib_names = {lib.get("name", "") for lib in fabric_libraries}
+                    for lib in original_libraries:
+                        name = lib.get("name", "")
+                        if name not in existing_lib_names:
+                            fabric_libraries.append(lib)
+                            existing_lib_names.add(name)
+                    fabric_json_data["libraries"] = fabric_libraries
+                    log("已添加原始版本的资源信息到Fabric版本")
+
+                fabric_json_data.pop("inheritsFrom", None)
+                fabric_json_data.pop("jar", None)
 
                 fabric_json_path = os.path.join(fabric_version_dir, f"{fabric_version_id}.json")
-                with open(fabric_json_path, 'w', encoding='utf-8') as f:
+                with open(fabric_json_path, "w", encoding="utf-8") as f:
                     json.dump(fabric_json_data, f, ensure_ascii=False, indent=4)
                 log(f"已保存Fabric安装JSON: {fabric_json_path}")
 
-                # 处理Fabric版本的客户端JAR文件
-                client_jar_path = os.path.join(fabric_version_dir, f"{fabric_version_id}.jar")
-                
+                fabric_client_jar_path = os.path.join(fabric_version_dir, f"{fabric_version_id}.jar")
+
                 if "downloads" in fabric_json_data and "client" in fabric_json_data["downloads"]:
-                    # 如果Fabric JSON包含客户端下载信息，直接下载
                     client_info = fabric_json_data["downloads"]["client"]
                     client_url = client_info["url"]
-                    
-                    # 使用PCL风格的镜像源处理
                     client_urls = dl_source_launcher_or_meta_get(client_url)
-
                     log(f"正在下载Fabric客户端JAR文件: {client_urls}")
-
-                    if not secure_download(client_urls + [client_url], client_jar_path, client_info, "Fabric 客户端 JAR", cancel_event=task_state["cancel_event"]):
+                    if not secure_download(
+                        client_urls + [client_url],
+                        fabric_client_jar_path,
+                        client_info,
+                        "Fabric 客户端 JAR",
+                        **_dl_kwargs(task_state),
+                    ):
                         raise RuntimeError("Fabric 客户端 JAR 下载或校验失败")
                 else:
-                    # 如果Fabric JSON不包含客户端下载信息，从原始版本复制客户端JAR
                     log("Fabric版本信息中未找到客户端下载链接，尝试从原始版本复制客户端JAR")
-                    
-                    # 检查原始版本的客户端JAR是否存在
-                    original_client_jar_path = os.path.join(version_dir, f"{version}.jar")
+                    original_client_jar_path = _resolve_version_file(
+                        version_dir, VersionName, version, "jar"
+                    )
                     if os.path.exists(original_client_jar_path):
-                        # 复制原始版本的客户端JAR到Fabric版本目录
-                        shutil.copy2(original_client_jar_path, client_jar_path)
-                        log(f"已从原始版本复制客户端JAR: {original_client_jar_path} -> {client_jar_path}")
+                        shutil.copy2(original_client_jar_path, fabric_client_jar_path)
+                        log(f"已从原始版本复制客户端JAR: {original_client_jar_path} -> {fabric_client_jar_path}")
                     else:
                         raise RuntimeError(f"原始版本的客户端 JAR 不存在: {original_client_jar_path}")
 
-                # 下载Fabric Loader所需的库文件
                 update_progress({
                     'status': f'正在下载 Fabric Loader 库文件...',
                     'value': 0.92,
                     'valueStringOverride': '92%'
                 })
-                log(f"开始下载 Fabric Loader 库文件...")
+                log("开始下载 Fabric Loader 库文件...")
 
                 fabric_libraries = fabric_json_data.get("libraries", [])
-                
                 fabric_natives_dir = os.path.join(fabric_version_dir, f"{fabric_version_id}-natives")
                 os.makedirs(fabric_natives_dir, exist_ok=True)
                 processed_fabric_libraries = _library_download_items(fabric_libraries, minecraft_dir)
                 if processed_fabric_libraries:
-                    library_downloader = LibraryDownloader(processed_fabric_libraries, max_workers=max_thread_value, natives_dir=fabric_natives_dir)
+                    library_downloader = LibraryDownloader(
+                        processed_fabric_libraries,
+                        max_workers=max_thread_value,
+                        natives_dir=fabric_natives_dir,
+                        pause_event=task_state.get("pause_event") if task_state else None,
+                    )
                     task_state['downloader'] = library_downloader
                     if task_state['cancel_event'].is_set():
                         library_downloader.cancel()
@@ -1702,52 +1855,55 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                 else:
                     log("Fabric Loader 未声明额外库文件")
 
-                # 创建Fabric版本的mods目录（PCL风格：在版本目录下）
                 fabric_mods_dir = os.path.join(fabric_version_dir, "mods")
                 os.makedirs(fabric_mods_dir, exist_ok=True)
-                
-                # 下载Fabric API（可选）
+
+                # Fabric API：经 Modrinth（meta.fabricmc.net 无 fabric-api 端点）
                 update_progress({
                     'status': f'正在下载 Fabric API...',
                     'value': 0.95,
                     'valueStringOverride': '95%'
                 })
-                
                 try:
-                    # 获取Fabric API版本列表
-                    fabric_api_urls = dl_source_launcher_or_meta_get(f"https://meta.fabricmc.net/v2/versions/fabric-api/{version}")
-                    fabric_api_data = None
-                    for url in fabric_api_urls:
-                        try:
-                            fabric_api_response = requests.get(url, timeout=30)
-                            if fabric_api_response.status_code == 200:
-                                fabric_api_data = fabric_api_response.json()
-                                break
-                        except requests.exceptions.RequestException as e:
-                            log(f"获取Fabric API版本列表失败: {url}, {e}", logging.WARNING)
-                    
-                    if fabric_api_data and len(fabric_api_data) > 0:
-                        # 获取最新版本的Fabric API
-                        latest_fabric_api = fabric_api_data[0]
-                        fabric_api_version = latest_fabric_api["version"]
-                        fabric_api_filename = f"fabric-api-{fabric_api_version}.jar"
-                        fabric_api_path = os.path.join(fabric_mods_dir, fabric_api_filename)
-                        
-                        # 下载Fabric API
-                        fabric_api_download_urls = dl_source_launcher_or_meta_get(f"https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/{fabric_api_version}/fabric-api-{fabric_api_version}.jar")
-                        
-                        fabric_api_url = f"https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/{fabric_api_version}/fabric-api-{fabric_api_version}.jar"
-                        if fabric_api_url not in fabric_api_download_urls:
-                            fabric_api_download_urls.append(fabric_api_url)
-                        api_metadata = {
-                            "size": latest_fabric_api.get("size"),
-                            "sha1": latest_fabric_api.get("sha1"),
-                        }
-                        api_metadata = {key: value for key, value in api_metadata.items() if value is not None}
-                        if not secure_download(fabric_api_download_urls, fabric_api_path, api_metadata, "Fabric API", cancel_event=task_state["cancel_event"]):
-                            log("Fabric API 下载失败，但不影响 Fabric Loader 安装", logging.WARNING)
+                    mr_url = (
+                        "https://api.modrinth.com/v2/project/P7dR8mSH/version"
+                        f"?game_versions={requests.utils.quote(json.dumps([version]))}"
+                        f"&loaders={requests.utils.quote(json.dumps(['fabric']))}"
+                    )
+                    mr_resp = get_session().get(mr_url, timeout=30)
+                    if mr_resp.status_code == 200:
+                        versions_list = mr_resp.json() or []
+                        if versions_list:
+                            entry = versions_list[0]
+                            files = entry.get("files") or []
+                            primary = next((f for f in files if f.get("primary")), None) or (
+                                files[0] if files else None
+                            )
+                            if primary and primary.get("url"):
+                                fabric_api_path = os.path.join(
+                                    fabric_mods_dir, primary.get("filename") or "fabric-api.jar"
+                                )
+                                api_metadata = {
+                                    "size": primary.get("size"),
+                                    "sha1": (primary.get("hashes") or {}).get("sha1"),
+                                }
+                                api_metadata = {k: v for k, v in api_metadata.items() if v is not None}
+                                if not secure_download(
+                                    [primary["url"]],
+                                    fabric_api_path,
+                                    api_metadata,
+                                    "Fabric API",
+                                    **_dl_kwargs(task_state),
+                                ):
+                                    log("Fabric API 下载失败，但不影响 Fabric Loader 安装", logging.WARNING)
+                                else:
+                                    log(f"Fabric API 已安装: {fabric_api_path}")
+                            else:
+                                log("Modrinth 返回的 Fabric API 无可用文件", logging.WARNING)
+                        else:
+                            log(f"Modrinth 未找到适用于 {version} 的 Fabric API", logging.WARNING)
                     else:
-                        log("未找到适用于此版本的 Fabric API", logging.WARNING)
+                        log(f"Modrinth Fabric API 查询失败: HTTP {mr_resp.status_code}", logging.WARNING)
                 except Exception as e:
                     log(f"下载 Fabric API 时出错: {e}，但将继续安装流程", logging.WARNING)
 
@@ -1896,6 +2052,10 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         except Exception as e:
             log(f"复制 servers.dat 文件时出错: {e}，但安装流程继续", logging.WARNING)
 
+        _clear_installing_marker(version_dir)
+        if task_state is not None:
+            task_state["cleanup_on_fail"] = False
+
         # 通知 UI 安装完成（对话框不关闭，秒表暂停）
         if backend:
             backend.notifyDownloadComplete(i18nText(f"Minecraft {version} 安装完成！"))
@@ -1927,6 +2087,6 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         return fail_install(f"Minecraft {version}: {e}")
     finally:
         if task_state is not None and _current_download_state.get('task_id') is task_state.get('task_id'):
-            _current_download_state = {'task_id': None, 'thread': None, 'cancel_event': threading.Event(), 'downloader': None, 'is_paused': False, 'backend': None, 'cancelled': False, 'completed_event': threading.Event(), 'result': None}
+            _current_download_state = {'task_id': None, 'thread': None, 'cancel_event': threading.Event(), 'pause_event': threading.Event(), 'downloader': None, 'is_paused': False, 'backend': None, 'cancelled': False, 'completed_event': threading.Event(), 'result': None}
             if _install_state_lock.locked():
                 _install_state_lock.release()

@@ -2689,6 +2689,34 @@ class Backend(QObject):
         BLglobals.download_source = source
         print(f"Download source updated to: {source}")
 
+    @Slot(result=int)
+    def getMaxThread(self):
+        """Max concurrent download workers (clamped 1–64, default 16)."""
+        try:
+            from modules.download import clamp_workers
+            return int(clamp_workers(cfg.read().get("MaxThread", 16)))
+        except Exception:
+            try:
+                n = int(cfg.read().get("MaxThread", 16) or 16)
+            except (TypeError, ValueError):
+                n = 16
+            return max(1, min(n, 64))
+
+    @Slot(int)
+    def setMaxThread(self, value):
+        try:
+            from modules.download import clamp_workers
+            n = int(clamp_workers(value))
+        except Exception:
+            try:
+                n = max(1, min(int(value), 64))
+            except (TypeError, ValueError):
+                n = 16
+        config_data = cfg.read()
+        config_data["MaxThread"] = n
+        cfg.write(config_data, changed_keys={"MaxThread": n})
+        print(f"MaxThread updated to: {n}")
+
     @Slot(result=str)
     def getShowAccountOnHome(self):
         config_data = cfg.read()

@@ -1,3 +1,10 @@
+"""
+Legacy zip-pack Minecraft download path (Bloret-Launcher-Old).
+
+Current QML UI uses modules.install.InstallMinecraftVersion instead.
+Kept only for backward compatibility with the Old entrypoint.
+"""
+
 from PySide6.QtWidgets import QDialog, QApplication, QProgressBar, QMessageBox
 from PySide6.QtCore import QThread, Signal as pyqtSignal, QTimer
 from modules.win11toast import notify, update_progress

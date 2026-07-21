@@ -1243,6 +1243,24 @@ FluentPage {
                     }
                 }
             }
+
+            SettingCard {
+                Layout.fillWidth: true
+                title: Backend ? Backend.tr("下载线程数") : "下载线程数"
+                description: Backend ? Backend.tr("同时下载库/资源的并发数。建议 8–32；过高可能触发限流。") : "同时下载库/资源的并发数。建议 8–32；过高可能触发限流。"
+                icon.name: "ic_fluent_arrow_download_20_regular"
+                SpinBox {
+                    id: maxThreadSpin
+                    from: 1
+                    to: 64
+                    value: Backend && Backend.getMaxThread ? Backend.getMaxThread() : 16
+                    editable: true
+                    onValueModified: {
+                        if (Backend && Backend.setMaxThread)
+                            Backend.setMaxThread(value)
+                    }
+                }
+            }
         }
 
         // --- Home ---

@@ -10,10 +10,11 @@ Dialog {
     property string downloadStatus: ""
     property double downloadProgress: 0.0
     property string downloadSpeed: ""
+    property string downloadEta: ""
     property string downloadedSize: ""
     property string totalSize: ""
     property bool isPaused: false
-    property int maxThreads: 64
+    property int maxThreads: 16
     property bool isCompleted: false
 
     // 秒表
@@ -100,6 +101,13 @@ Dialog {
                 typography: Typography.Caption
                 color: Theme.currentTheme.colors.textSecondaryColor
             }
+
+            Text {
+                visible: downloadEta.length > 0
+                text: downloadEta
+                typography: Typography.Caption
+                color: Theme.currentTheme.colors.textSecondaryColor
+            }
         }
 
         RowLayout {
@@ -115,6 +123,12 @@ Dialog {
                 text: maxThreads.toString()
                 typography: Typography.Caption
                 font.weight: Font.DemiBold
+            }
+
+            Text {
+                text: Backend ? Backend.tr("（设置中可调，建议 8–32）") : "（设置中可调，建议 8–32）"
+                typography: Typography.Caption
+                color: Theme.currentTheme.colors.textSecondaryColor
             }
 
             Item { Layout.fillWidth: true }
@@ -136,17 +150,41 @@ Dialog {
     function updateProgress(progress, status, speed, downloaded, total) {
         downloadProgress = progress
         downloadStatus = status
-        downloadSpeed = speed
+        // speed 字段可带 "1.2 MB/s · ETA 01:23"，拆分展示
+        var speedText = speed || ""
+        var etaText = ""
+        if (speedText.indexOf("·") >= 0) {
+            var parts = speedText.split("·")
+            speedText = parts[0].trim()
+            etaText = parts.slice(1).join("·").trim()
+        } else if (speedText.indexOf("ETA") >= 0) {
+            var idx = speedText.indexOf("ETA")
+            etaText = speedText.substring(idx).trim()
+            speedText = speedText.substring(0, idx).trim()
+        }
+        downloadSpeed = speedText
+        downloadEta = etaText
         downloadedSize = downloaded
         totalSize = total
         // 首次收到进度时启动秒表
         if (!stopwatchTimer.running && !isCompleted) {
             stopwatchTimer.start()
         }
+        // 同步配置中的 MaxThread
+        if (Backend && Backend.getMaxThread) {
+            try {
+                maxThreads = Backend.getMaxThread()
+            } catch (e) {}
+        }
     }
 
     function setPaused(paused) {
         isPaused = paused
+        if (paused) {
+            stopwatchTimer.stop()
+        } else if (!isCompleted) {
+            stopwatchTimer.start()
+        }
     }
 
     function setCompleted(message) {
@@ -154,17 +192,23 @@ Dialog {
         stopwatchTimer.stop()
         downloadProgress = 100
         downloadStatus = message || (Backend ? Backend.tr("安装完成") : "安装完成")
+        downloadEta = ""
     }
 
     function resetDialog() {
         isCompleted = false
+        isPaused = false
         _elapsedSeconds = 0
         stopwatchTimer.stop()
         downloadProgress = 0
         downloadStatus = ""
         downloadSpeed = ""
+        downloadEta = ""
         downloadedSize = ""
         totalSize = ""
+        if (Backend && Backend.getMaxThread) {
+            try { maxThreads = Backend.getMaxThread() } catch (e) {}
+        }
     }
 
     onClosed: {
