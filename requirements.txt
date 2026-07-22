@@ -19,3 +19,5 @@ psutil
 dulwich
 # WeChat QR code generation (optional)
 qrcode[pil]
+darkdetect
+requests
