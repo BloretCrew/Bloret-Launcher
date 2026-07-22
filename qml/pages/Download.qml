@@ -8,9 +8,132 @@ FluentPage {
     id: downloadPage
     title: (Backend ? Backend.tr("下载") : "下载")
 
+    // 下载源映射：将配置值映射为显示文本和颜色
+    property string _currentSource: Backend ? Backend.getDownloadSource() : "gitcode"
+
+    function _sourceLabel(source) {
+        switch (source) {
+            case "gitcode": return "Bloret"
+            case "bmclapi": return "BMCLAPI"
+            case "official": return "Mojang Official"
+            default: return source || "Bloret"
+        }
+    }
+
+    function _sourceColor(source) {
+        switch (source) {
+            case "gitcode": return "Success"
+            case "bmclapi": return "Info"
+            case "official": return "Warning"
+            default: return "Info"
+        }
+    }
+
     Badge {
-        text: "bangbang93/BMCLAPI"
-        colorType: "Success"
+        text: downloadPage._sourceLabel(downloadPage._currentSource)
+        colorType: downloadPage._sourceColor(downloadPage._currentSource)
+    }
+
+    // 监听配置变更，实时更新下载源胶囊
+    Connections {
+        target: Backend
+        function onConfigChanged(key, value) {
+            if (key === "download_source" || key === "*") {
+                _currentSource = Backend.getDownloadSource()
+            }
+        }
+    }
+
+    // ── 紧凑任务条（有活跃下载时显示）──
+    property var _dlTasks: []
+    property int _dlActive: 0
+    Timer {
+        id: dlBarTimer
+        interval: 1000
+        repeat: true
+        running: visible
+        onTriggered: {
+            if (!Backend || !Backend.getDownloadTasks) return
+            _dlTasks = Backend.getDownloadTasks()
+            _dlActive = Backend.getActiveDownloadCount()
+        }
+    }
+    Component.onCompleted: dlBarTimer.start()
+
+    Frame {
+        visible: _dlActive > 0
+        Layout.fillWidth: true
+        Layout.bottomMargin: 4
+        padding: 10
+        background: Rectangle {
+            color: Theme.accentColor || "#3b82f6"
+            radius: 8
+            opacity: 0.15
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                if (Backend) Backend.openDownloadManager()
+            }
+        }
+
+        RowLayout {
+            width: parent.width
+            spacing: 10
+
+            Text {
+                text: "⬇ " + (Backend ? Backend.tr("下载中") : "下载中") + " (" + _dlActive + ")"
+                font.weight: Font.DemiBold
+                font.pixelSize: 13
+                color: Theme.accentColor || "#3b82f6"
+            }
+
+            Repeater {
+                model: {
+                    var active = []
+                    for (var i = 0; i < _dlTasks.length; i++) {
+                        if (_dlTasks[i].status === "downloading")
+                            active.push(_dlTasks[i])
+                    }
+                    return active.slice(0, 3)  // 最多显示3个
+                }
+                delegate: RowLayout {
+                    spacing: 4
+                    required property var modelData
+
+                    Text {
+                        text: "Minecraft " + modelData.version
+                        font.pixelSize: 11
+                        color: Theme.accentColor || "#3b82f6"
+                        elide: Text.ElideRight
+                    }
+
+                    ProgressBar {
+                        from: 0
+                        to: 100
+                        value: modelData.progress
+                        width: 60
+                        height: 6
+                    }
+
+                    Text {
+                        text: Math.round(modelData.progress) + "%"
+                        font.pixelSize: 10
+                        color: Theme.accentColor || "#3b82f6"
+                    }
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Text {
+                text: "▶"
+                font.pixelSize: 12
+                color: Theme.accentColor || "#3b82f6"
+            }
+        }
     }
 
     VersionNameDialog { 

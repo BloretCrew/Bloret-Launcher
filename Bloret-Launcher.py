@@ -200,10 +200,15 @@ class Backend(QObject):
     blorikoModSuggestionFailed = Signal(str)
     syncStatusChanged = Signal(str)
     languageChanged = Signal()
+    # 多任务下载信号（新 UI 使用）
+    downloadTaskAdded = Signal(str)       # task_id
+    downloadTaskRemoved = Signal(str)     # task_id
+    openDownloadManager = Signal()        # 从下载页紧凑条打开管理面板
+    # 旧信号（保持向后兼容）
     downloadDialogRequested = Signal(str)
     downloadProgressUpdated = Signal(float, str, str, str, str)
     downloadDialogClosed = Signal()
-    downloadCompleted = Signal(str)  # message — 安装完成时通知 UI
+    downloadCompleted = Signal(str)  # message
     downloadPaused = Signal(bool)
     coreManagerRequested = Signal(str, dict)
     mrpackExportRequested = Signal(str)
@@ -240,6 +245,9 @@ class Backend(QObject):
     # OOBE signals
     javaEnvironmentChecked = Signal(bool, str)  # installed, java_path
     javaInstallationComplete = Signal(str)      # java_path
+
+    # Config change signal (for QML UI to react)
+    configChanged = Signal(str, str)  # key, value
 
     # Minecraft crash analysis signal
     minecraftCrashDetected = Signal(str, str, str)  # title, message, stack_trace
@@ -898,9 +906,12 @@ class Backend(QObject):
     _recent_runs_path = os.path.join(BLglobals.datapath, 'recent_runs.json')
 
     def _notify_if_not_foreground(self, timestamp, message):
-        """当 Minecraft 窗口不在前台时发送系统通知"""
+        """当 Minecraft 窗口明确不在前台时发送系统通知。"""
         try:
-            if self._is_minecraft_foreground():
+            is_foreground = self._is_minecraft_foreground()
+            # Wayland 上若合成器不提供窗口 IPC，前台状态不可知；此时不应
+            # 将“未知”误判为后台并发送干扰性通知。
+            if is_foreground is not False:
                 return
 
             from modules.notification import send_notification
@@ -1023,16 +1034,18 @@ class Backend(QObject):
         import time
         while self._focus_monitor_running:
             try:
-                is_fg = self._is_minecraft_foreground()
                 for sid, session in list(self._detailed_sessions.items()):
+                    instance = BLglobals.running_instances.get(sid, {})
+                    root_pid = instance.get("pid")
+                    is_fg = self._is_minecraft_foreground([root_pid] if root_pid else [])
                     from modules.play_time import update_session_focus
                     update_session_focus(session, is_fg)
             except Exception:
                 pass
             time.sleep(2)
 
-    @staticmethod
-    def _is_minecraft_foreground():
+    def _is_minecraft_foreground(self, root_pids=None):
+        """返回 True/False；桌面环境不允许查询时返回 None。"""
         try:
             if sys.platform == 'win32':
                 import ctypes
@@ -1043,41 +1056,28 @@ class Backend(QObject):
                     ctypes.windll.user32.GetWindowTextW(hwnd, buf, length)
                     title = buf.value.lower()
                     return 'minecraft' in title
-            elif sys.platform == 'darwin':
+                return None
+            if sys.platform == 'darwin':
                 import subprocess
                 result = subprocess.run(
                     ['osascript', '-e', 'tell application "System Events" to get name of first application process whose frontmost is true'],
                     capture_output=True, text=True, timeout=3
                 )
+                if result.returncode != 0:
+                    return None
                 return 'minecraft' in result.stdout.lower()
-            else:
-                import subprocess
-                # 尝试 xdotool (X11)
-                try:
-                    result = subprocess.run(
-                        ['xdotool', 'getactivewindow', 'getwindowname'],
-                        capture_output=True, text=True, timeout=3
-                    )
-                    if result.returncode == 0 and result.stdout.strip():
-                        return 'minecraft' in result.stdout.lower()
-                except FileNotFoundError:
-                    pass
-                # 回退: wmctrl 列出窗口，检查是否有可见的 Minecraft 窗口
-                try:
-                    result = subprocess.run(
-                        ['wmctrl', '-l'],
-                        capture_output=True, text=True, timeout=3
-                    )
-                    if result.returncode == 0:
-                        for line in result.stdout.strip().splitlines():
-                            if 'minecraft' in line.lower():
-                                return True
-                except FileNotFoundError:
-                    pass
-                return False
-        except Exception:
-            pass
-        return False
+
+            from modules.window_focus import is_minecraft_foreground
+            if root_pids is None:
+                root_pids = [
+                    instance.get("pid")
+                    for instance in BLglobals.running_instances.values()
+                    if instance.get("type") == "minecraft" and instance.get("pid")
+                ]
+            return is_minecraft_foreground(root_pids)
+        except Exception as error:
+            log(f"检测 Minecraft 前台状态失败: {error}", logging.DEBUG)
+            return None
 
     # ========== Statistics Slots ==========
 
@@ -2199,35 +2199,31 @@ class Backend(QObject):
 
     @Slot(str, str)
     def downloadVanilla(self, version, versionName):
-        from modules.install import InstallMinecraftVersion
+        from modules.download_manager import DownloadManager
         print(f"Requested download Vanilla: {version} as {versionName}")
-        title = i18nText("正在下载 Minecraft {version}").replace("{version}", version)
-        self.downloadDialogRequested.emit(title)
-        InstallMinecraftVersion(version, VersionName=versionName, backend=self)
+        dm = DownloadManager()
+        dm.start_download(version, versionName, "vanilla", self)
 
     @Slot(str, str)
     def downloadFabric(self, version, versionName):
-        from modules.install import InstallMinecraftVersion
+        from modules.download_manager import DownloadManager
         print(f"Requested download Fabric: {version} as {versionName}")
-        title = i18nText("正在下载 Minecraft {version} 和 Fabric Loader").replace("{version}", version)
-        self.downloadDialogRequested.emit(title)
-        InstallMinecraftVersion(version, Fabric_Loader=True, VersionName=versionName, backend=self)
+        dm = DownloadManager()
+        dm.start_download(version, versionName, "fabric", self)
 
     @Slot(str, str)
     def downloadForge(self, version, versionName):
-        from modules.install import InstallMinecraftVersion
+        from modules.download_manager import DownloadManager
         print(f"Requested download Forge: {version} as {versionName}")
-        title = i18nText("正在下载 Minecraft {version} 和 Forge").replace("{version}", version)
-        self.downloadDialogRequested.emit(title)
-        InstallMinecraftVersion(version, VersionName=versionName, backend=self, Loader_Type="forge")
+        dm = DownloadManager()
+        dm.start_download(version, versionName, "forge", self)
 
     @Slot(str, str)
     def downloadNeoForge(self, version, versionName):
-        from modules.install import InstallMinecraftVersion
+        from modules.download_manager import DownloadManager
         print(f"Requested download NeoForge: {version} as {versionName}")
-        title = i18nText("正在下载 Minecraft {version} 和 NeoForge").replace("{version}", version)
-        self.downloadDialogRequested.emit(title)
-        InstallMinecraftVersion(version, VersionName=versionName, backend=self, Loader_Type="neoforge")
+        dm = DownloadManager()
+        dm.start_download(version, versionName, "neoforge", self)
 
     @Slot()
     def toggleDownloadPause(self):
@@ -2238,6 +2234,69 @@ class Backend(QObject):
     def cancelDownload(self):
         from modules.install import cancel_current_download
         cancel_current_download()
+
+    # ── 多任务下载管理 ──
+
+    @Slot(str, str, str, result=str)
+    def startDownload(self, version, versionName, loader):
+        """Start a download via DownloadManager. Returns task_id."""
+        from modules.download_manager import DownloadManager
+        print(f"startDownload: {version} as {versionName} ({loader})")
+        dm = DownloadManager()
+        return dm.start_download(version, versionName, loader, self)
+
+    @Slot(str)
+    def cancelDownloadTask(self, task_id):
+        from modules.download_manager import DownloadManager
+        DownloadManager().cancel_task(task_id)
+
+    @Slot(str)
+    def pauseDownloadTask(self, task_id):
+        from modules.download_manager import DownloadManager
+        DownloadManager().pause_task(task_id)
+
+    @Slot(str)
+    def resumeDownloadTask(self, task_id):
+        from modules.download_manager import DownloadManager
+        DownloadManager().resume_task(task_id)
+
+    @Slot(str)
+    def removeDownloadTask(self, task_id):
+        from modules.download_manager import DownloadManager
+        DownloadManager().remove_task(task_id)
+
+    @Slot(result="QVariantList")
+    def getDownloadTasks(self):
+        """Return list of all download tasks as dicts for QML."""
+        from modules.download_manager import DownloadManager
+        tasks = DownloadManager().get_tasks()
+        result = []
+        for t in tasks:
+            result.append({
+                "task_id": t.task_id,
+                "version": t.version,
+                "version_name": t.version_name,
+                "loader": t.loader,
+                "status": t.status,
+                "progress": t.progress,
+                "status_text": t.status_text,
+                "speed": t.speed,
+                "eta": t.eta,
+                "downloaded": t.downloaded,
+                "total": t.total,
+                "error_message": t.error_message,
+            })
+        return result
+
+    @Slot(result=int)
+    def getActiveDownloadCount(self):
+        from modules.download_manager import DownloadManager
+        return DownloadManager().active_count()
+
+    @Slot()
+    def openDownloadManager(self):
+        """打开下载管理面板（由 QML 紧凑条触发）"""
+        self.openDownloadManager.emit()
 
     def updateDownloadProgress(self, progress, status, speed, downloaded, total):
         self.downloadProgressUpdated.emit(progress, status, speed, downloaded, total)
@@ -2661,6 +2720,17 @@ class Backend(QObject):
     def setCurrentJavaPath(self, path):
         self.setJavaSelection('auto' if path == 'Auto' else 'fixed', '' if path == 'Auto' else path)
 
+    @Slot(str)
+    def setJavaModeOnly(self, mode):
+        """仅保存 Java 选择模式，不涉及路径（用于切换到 fixed 但还未选路径的场景）"""
+        if mode not in ('auto', 'fixed'):
+            return
+        config_data = cfg.read()
+        config_data['java_mode'] = mode
+        config_data['java_fixed_path'] = config_data.get('java_fixed_path', '')
+        cfg.write(config_data)
+        log(f"[Settings] Java 模式已保存: {mode}")
+
     @Slot(result=str)
     def browseJavaExecutable(self):
         executable, _ = QFileDialog.getOpenFileName(
@@ -2721,7 +2791,68 @@ class Backend(QObject):
         config_data['download_source'] = source
         cfg.write(config_data, changed_keys={'download_source': source})
         BLglobals.download_source = source
+        self.configChanged.emit('download_source', source)
         print(f"Download source updated to: {source}")
+
+    @Slot(result=str)
+    def getGitProtocol(self):
+        """获取 Git 连接方式：https 或 ssh"""
+        config_data = cfg.read()
+        return config_data.get('git_protocol', 'https')
+
+    @Slot(str)
+    def setGitProtocol(self, protocol):
+        """设置 Git 连接方式：https 或 ssh"""
+        if protocol not in ('https', 'ssh'):
+            print(f"Invalid git protocol: {protocol}, falling back to https")
+            protocol = 'https'
+        config_data = cfg.read()
+        config_data['git_protocol'] = protocol
+        cfg.write(config_data, changed_keys={'git_protocol': protocol})
+        BLglobals.git_protocol = protocol
+        self.configChanged.emit('git_protocol', protocol)
+        print(f"Git protocol updated to: {protocol}")
+
+    @Slot(result=bool)
+    def checkGitSshAvailable(self):
+        """检测 SSH 协议是否可用：先检查 SSH 密钥是否存在，再尝试连接 gitcode.com"""
+        import os, subprocess
+
+        # 1. 检查本地是否存在 SSH 密钥
+        ssh_dir = os.path.expanduser("~/.ssh")
+        has_key = False
+        if os.path.isdir(ssh_dir):
+            for name in ("id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"):
+                if os.path.isfile(os.path.join(ssh_dir, name)):
+                    has_key = True
+                    break
+        if not has_key:
+            print("[SSH check] no SSH key found in ~/.ssh")
+            BLglobals.git_ssh_available = False
+            return False
+
+        # 2. 尝试 SSH 连接 gitcode.com 验证认证是否通过
+        try:
+            result = subprocess.run(
+                ['ssh', '-T', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=no', 'git@gitcode.com'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            # 认证成功标志：stderr 含 "Welcome" 或 "successfully authenticated"
+            # 注意：OpenSSH 的 PQ 警告会使 returncode 为 128，不依赖它
+            ok = (
+                "Welcome" in result.stderr
+                or "successfully authenticated" in result.stderr
+            )
+            print(f"[SSH check] returncode={result.returncode}, ok={ok}")
+            print(f"[SSH check] stderr={result.stderr!r}")
+            BLglobals.git_ssh_available = ok
+            return ok
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+            print(f"[SSH check] failed: {e}")
+            BLglobals.git_ssh_available = False
+            return False
 
     @Slot(result=int)
     def getMaxThread(self):

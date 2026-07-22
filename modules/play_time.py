@@ -102,6 +102,7 @@ def start_detailed_session(version_name):
         "end": None,
         "foreground": 0,
         "background": 0,
+        "unknown": 0,
         "total": 0,
         "date": datetime.now().strftime("%Y-%m-%d"),
         "start_time": datetime.now().strftime("%H:%M:%S"),
@@ -118,10 +119,13 @@ def update_session_focus(session, is_foreground):
     delta = now - last_check
     session["_last_focus_check"] = now
 
-    if is_foreground:
+    if is_foreground is True:
         session["foreground"] += delta
-    else:
+    elif is_foreground is False:
         session["background"] += delta
+    else:
+        # The desktop compositor did not expose global focus state.
+        session["unknown"] = session.get("unknown", 0) + delta
 
 
 def end_detailed_session(session):
@@ -136,10 +140,12 @@ def end_detailed_session(session):
 
     foreground = session.get("foreground", 0)
     background = session.get("background", 0)
-    if foreground + background < elapsed:
-        remainder = elapsed - foreground - background
-        session["foreground"] = foreground + remainder * 0.7
-        session["background"] = background + remainder * 0.3
+    unknown = session.get("unknown", 0)
+    classified = foreground + background + unknown
+    if classified < elapsed:
+        # Include the short interval between the final focus poll and process
+        # exit as unknown instead of fabricating a foreground/background split.
+        session["unknown"] = unknown + (elapsed - classified)
 
     version = session.get("version", "")
     date = session.get("date", datetime.now().strftime("%Y-%m-%d"))
@@ -152,6 +158,7 @@ def end_detailed_session(session):
         "end_time": session["end_time"],
         "foreground": round(session["foreground"], 1),
         "background": round(session["background"], 1),
+        "unknown": round(session.get("unknown", 0), 1),
         "total": round(elapsed, 1),
     }
 
@@ -161,9 +168,10 @@ def end_detailed_session(session):
         stats["sessions"].append(session_record)
 
         if date not in stats["daily"]:
-            stats["daily"][date] = {"foreground": 0, "background": 0, "total": 0, "sessions": 0}
+            stats["daily"][date] = {"foreground": 0, "background": 0, "unknown": 0, "total": 0, "sessions": 0}
         stats["daily"][date]["foreground"] += session_record["foreground"]
         stats["daily"][date]["background"] += session_record["background"]
+        stats["daily"][date]["unknown"] = stats["daily"][date].get("unknown", 0) + session_record["unknown"]
         stats["daily"][date]["total"] += session_record["total"]
         stats["daily"][date]["sessions"] += 1
 
@@ -227,15 +235,16 @@ def get_version_stats():
     for s in sessions:
         v = s.get("version", "")
         if v not in version_totals:
-            version_totals[v] = {"total": 0, "foreground": 0, "background": 0, "sessions": 0}
+            version_totals[v] = {"total": 0, "foreground": 0, "background": 0, "unknown": 0, "sessions": 0}
         version_totals[v]["total"] += s.get("total", 0)
         version_totals[v]["foreground"] += s.get("foreground", 0)
         version_totals[v]["background"] += s.get("background", 0)
+        version_totals[v]["unknown"] += s.get("unknown", 0)
         version_totals[v]["sessions"] += 1
 
     for v, t in data.items():
         if v not in version_totals:
-            version_totals[v] = {"total": t, "foreground": 0, "background": 0, "sessions": 0}
+            version_totals[v] = {"total": t, "foreground": 0, "background": 0, "unknown": 0, "sessions": 0}
 
     result = []
     for v, t in sorted(version_totals.items(), key=lambda x: x[1]["total"], reverse=True):
@@ -244,6 +253,7 @@ def get_version_stats():
             "total": round(t["total"], 1),
             "foreground": round(t["foreground"], 1),
             "background": round(t["background"], 1),
+            "unknown": round(t.get("unknown", 0), 1),
             "sessions": t["sessions"],
         })
     return result
@@ -258,12 +268,14 @@ def get_overview_stats():
 
     total_foreground = 0
     total_background = 0
+    total_unknown = 0
     total_all = 0
     total_sessions = len(sessions)
 
     for s in sessions:
         total_foreground += s.get("foreground", 0)
         total_background += s.get("background", 0)
+        total_unknown += s.get("unknown", 0)
         total_all += s.get("total", 0)
 
     today = datetime.now().strftime("%Y-%m-%d")
@@ -307,6 +319,7 @@ def get_overview_stats():
     return {
         "total_foreground": round(total_foreground, 1),
         "total_background": round(total_background, 1),
+        "total_unknown": round(total_unknown, 1),
         "total": round(total_all, 1),
         "total_sessions": total_sessions,
         "unique_days": unique_days,

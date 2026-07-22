@@ -62,6 +62,7 @@
     "ai_provider": "bloret_passport",
     "ai_model": "default",
     "backdrop_effect": "none",
+    "git_protocol": "https",
     "plugins": {
         "enabled": {},
         "permissions_granted": {},

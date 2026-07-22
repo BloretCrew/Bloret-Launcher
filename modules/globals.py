@@ -51,6 +51,8 @@ launch_status = {  # 启动状态存储
 }
 
 download_source = "gitcode"  # "bmclapi" | "gitcode" | "official"  下载源
+git_protocol = "https"  # "https" | "ssh"  Git 连接方式
+git_ssh_available = None  # None=未检测, True=可用, False=不可用
 current_minecraft_version = None  # 当前安装中的 Minecraft 版本，供 gitcode 源使用
 proxy = ""  # 网络代理地址，如 "http://127.0.0.1:7890"，为空则不使用代理
 
