@@ -223,7 +223,21 @@ def InstallJava(Java_Version):
 def _install_java_thread(Java_Version):
     log(f"开始安装 Java {Java_Version}")
     if not _is_windows_x64():
-        message = "Java 自动安装仅支持 Windows x64。"
+        try:
+            from modules.platform_compat import is_freebsd
+
+            if is_freebsd():
+                message = (
+                    f"FreeBSD 不支持自动下载安装 Java。请使用系统包，例如："
+                    f"pkg install openjdk{Java_Version} 或 openjdk17 / openjdk21。"
+                )
+            else:
+                message = (
+                    "Java 自动安装仅支持 Windows x64。"
+                    "请在系统中安装匹配版本的 OpenJDK，并在设置中选择 java 可执行文件。"
+                )
+        except Exception:
+            message = "Java 自动安装仅支持 Windows x64。"
         log(message)
         send_notification(i18nText("安装失败"), message)
         return

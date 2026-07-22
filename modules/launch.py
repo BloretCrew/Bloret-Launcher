@@ -50,11 +50,107 @@ else:
 
 
 def _mojang_os_context():
-    system = platform.system()
-    os_name = {"Windows": "windows", "Darwin": "osx", "Linux": "linux"}.get(system, system.lower())
-    machine = platform.machine().lower()
-    arch = "x86" if machine in ("x86", "i386", "i686") else "x86_64"
-    return os_name, arch
+    from modules.platform_compat import mojang_arch, mojang_os_name
+
+    return mojang_os_name(), mojang_arch()
+
+
+def _prepare_system_lwjgl_natives(natives_path):
+    """
+    FreeBSD: copy/link system games/lwjgl3 .so files into the version natives dir.
+    Raises FileNotFoundError with install hints when ports LWJGL is missing.
+    """
+    from modules.platform_compat import (
+        probe_system_lwjgl,
+        system_lwjgl_lib_dir,
+        uses_system_lwjgl,
+    )
+
+    if not uses_system_lwjgl():
+        return
+    ok, message = probe_system_lwjgl()
+    if not ok:
+        log(message, logging.ERROR)
+        raise FileNotFoundError(message)
+    lib_dir = system_lwjgl_lib_dir()
+    os.makedirs(natives_path, exist_ok=True)
+    copied = 0
+    for so_path in sorted(lib_dir.glob("*.so")):
+        dest = os.path.join(natives_path, so_path.name)
+        try:
+            if os.path.lexists(dest):
+                try:
+                    os.remove(dest)
+                except OSError:
+                    pass
+            try:
+                os.symlink(str(so_path), dest)
+            except OSError:
+                shutil.copy2(str(so_path), dest)
+            copied += 1
+        except OSError as exc:
+            log(f"复制系统 LWJGL native 失败 {so_path} -> {dest}: {exc}", logging.WARNING)
+    if copied == 0:
+        raise FileNotFoundError(
+            f"系统 LWJGL 目录中无可复制的 .so: {lib_dir}。请安装: pkg install lwjgl3"
+        )
+    log(f"FreeBSD: 已注入系统 LWJGL natives ({copied} 个) -> {natives_path}")
+
+
+def _rewrite_classpath_with_system_lwjgl(classpath):
+    """
+    FreeBSD: replace org.lwjgl jars on the classpath with ports jars when present.
+    Mojang-bundled LWJGL jars may not match FreeBSD natives; prefer system jars.
+    """
+    from modules.platform_compat import system_lwjgl_jar_dir, uses_system_lwjgl
+
+    if not uses_system_lwjgl():
+        return classpath
+    jar_dir = system_lwjgl_jar_dir()
+    if not jar_dir.is_dir():
+        return classpath
+
+    # Map basename stem (without -sources / -natives-*) -> preferred jar path
+    system_jars = {}
+    for jar in jar_dir.glob("*.jar"):
+        name = jar.name
+        if name.endswith("-sources.jar") or "-natives-" in name:
+            continue
+        # e.g. lwjgl.jar, lwjgl-opengl.jar
+        stem = name[:-4] if name.endswith(".jar") else name
+        system_jars[stem.lower()] = str(jar)
+
+    if not system_jars:
+        return classpath
+
+    rewritten = []
+    replaced = 0
+    for path in classpath:
+        base = os.path.basename(path).lower()
+        # Detect Mojang LWJGL artifact paths: .../lwjgl-3.3.x.jar or lwjgl-opengl-3.3.x.jar
+        if "lwjgl" not in base:
+            rewritten.append(path)
+            continue
+        # Strip version suffix: lwjgl-3.3.1.jar -> lwjgl ; lwjgl-opengl-3.3.1.jar -> lwjgl-opengl
+        stem = base[:-4] if base.endswith(".jar") else base
+        # Remove trailing -N.N.N or -N.N.N-beta...
+        stem_no_ver = re.sub(r"-\d+(?:\.\d+)*(?:[-.].*)?$", "", stem)
+        if stem_no_ver.startswith("lwjgl") and stem_no_ver in system_jars:
+            new_path = system_jars[stem_no_ver]
+            if os.path.abspath(new_path) != os.path.abspath(path):
+                log(
+                    f"FreeBSD: classpath 使用系统 LWJGL jar: {os.path.basename(path)} -> {new_path}",
+                    logging.INFO,
+                )
+                replaced += 1
+            rewritten.append(new_path)
+        else:
+            rewritten.append(path)
+    if replaced:
+        log(f"FreeBSD: 已替换 {replaced} 个 LWJGL classpath 条目为系统 jar")
+    else:
+        log("FreeBSD: 未匹配到可替换的 LWJGL jar（仍使用 Mojang 下载的 jar）", logging.WARNING)
+    return rewritten
 
 
 def _mojang_rule_matches(rule, features=None):
@@ -207,6 +303,15 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
         skip_completion=skip_completion,
     )
     raise_if_cancelled("运行时文件补全后")
+
+    # FreeBSD: inject system LWJGL natives (ports games/lwjgl3) after Mojang libs
+    try:
+        _prepare_system_lwjgl_natives(natives_path)
+    except FileNotFoundError:
+        raise
+    except Exception as e:
+        log(f"准备系统 LWJGL natives 失败: {e}", logging.ERROR)
+        raise
 
     if not os.path.exists(client_jar_path):
         raise FileNotFoundError(f"客户端 JAR 文件 {client_jar_path} 不存在")
@@ -399,6 +504,7 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
         seen_cp.add(key)
         deduped_cp.append(path)
     classpath = deduped_cp
+    classpath = _rewrite_classpath_with_system_lwjgl(classpath)
 
     library_names = [lib.get("name", "").lower() for lib in version_data.get("libraries", [])]
     is_fabric = "fabric" in mc_version.lower() or any("fabric" in name for name in library_names)

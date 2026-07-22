@@ -78,6 +78,14 @@ jobs:
               EASYTIER_ZIP="easytier-macos-aarch64-${EASYTIER_VERSION}.zip"
             fi
             ;;
+          FreeBSD)
+            # FreeBSD Nuitka builds are not in the default matrix; keep asset name
+            # for future runners / manual builds. Official FreeBSD zip is also
+            # produced by build.yml (Build-FreeBSD job).
+            if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "x86_64" ]; then
+              EASYTIER_ZIP="easytier-freebsd-13.2-x86_64-${EASYTIER_VERSION}.zip"
+            fi
+            ;;
         esac
 
         if [ -n "$EASYTIER_ZIP" ]; then

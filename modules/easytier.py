@@ -104,6 +104,23 @@ def _binary_paths():
     cli_path = _resolve_binary(cli_name)
     binary_dir = os.path.dirname(core_path) if core_path else ""
     
+    if not core_path:
+        try:
+            from modules.platform_compat import easytier_release_zip_name, is_freebsd
+
+            zip_name = easytier_release_zip_name()
+            if is_freebsd():
+                log(
+                    "未找到 easytier-core。FreeBSD 请将官方 release 中的二进制放入 easytier/ 目录，"
+                    f"例如从 EasyTier 发布页下载 {zip_name or 'easytier-freebsd-*-x86_64-*.zip'}，"
+                    "或使用系统自行编译的 easytier-core。",
+                    logging.WARNING,
+                )
+            else:
+                log(f"警告：未找到 {core_name}", logging.WARNING)
+        except Exception:
+            log(f"警告：未找到 {core_name}", logging.WARNING)
+
     if not cli_path:
         log(f"警告：未找到 {cli_name}，虚拟 IP 查询将失败", logging.WARNING)
     

@@ -20,12 +20,22 @@ config_path = ''
 
 import os, sys
 
-if sys.platform == 'win32':
-    datapath = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'Bloret-Launcher')
-elif sys.platform == 'darwin':
-    datapath = os.path.expanduser('~/Library/Application Support/Bloret-Launcher')
-else:
-    datapath = os.path.expanduser('~/.local/share/Bloret-Launcher')
+try:
+    from modules.platform_compat import datapath_default
+
+    datapath = datapath_default()
+except Exception:
+    if sys.platform == 'win32':
+        datapath = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'Bloret-Launcher')
+    elif sys.platform == 'darwin':
+        datapath = os.path.expanduser('~/Library/Application Support/Bloret-Launcher')
+    else:
+        xdg = os.environ.get('XDG_DATA_HOME', '').strip()
+        datapath = (
+            os.path.join(xdg, 'Bloret-Launcher')
+            if xdg
+            else os.path.expanduser('~/.local/share/Bloret-Launcher')
+        )
 
 cache_path = os.path.join(datapath, 'cache')
 minecraft_dir = ""

@@ -251,6 +251,97 @@ jobs:
         name: ${{ matrix.artifact }}
         path: "${{ env.OUTPUT_DIR }}/"
 
+  # FreeBSD: source-layout zip + EasyTier binary + import smoke (via FreeBSD VM).
+  # Full PyInstaller/Nuitka on FreeBSD is optional; users run with system PySide6.
+  Build-FreeBSD:
+    needs: Set-Version
+    runs-on: ubuntu-latest
+    env:
+      EASYTIER_VERSION: v2.6.4
+      OUTPUT_DIR: output
+    steps:
+    - name: 检出最新版本
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: 下载 EasyTier FreeBSD 二进制
+      run: |
+        EASYTIER_ZIP="easytier-freebsd-13.2-x86_64-${EASYTIER_VERSION}.zip"
+        rm -rf easytier
+        mkdir -p easytier
+        curl -L --retry 3 --retry-delay 5 -o "$EASYTIER_ZIP" \
+          "https://github.com/EasyTier/EasyTier/releases/download/${EASYTIER_VERSION}/${EASYTIER_ZIP}"
+        if ! unzip -t "$EASYTIER_ZIP" &>/dev/null; then
+          echo "::error::EasyTier FreeBSD download failed: invalid zip"
+          exit 1
+        fi
+        unzip -o "$EASYTIER_ZIP" -d easytier-tmp
+        find easytier-tmp -name "easytier-core*" -exec cp {} easytier/ \;
+        find easytier-tmp -name "easytier-cli*" -exec cp {} easytier/ \;
+        chmod +x easytier/easytier-core* easytier/easytier-cli* 2>/dev/null || true
+        rm -rf easytier-tmp "$EASYTIER_ZIP"
+        ls -la easytier/
+      shell: bash
+
+    - name: FreeBSD smoke + 打包 zip
+      uses: vmactions/freebsd-vm@v1
+      with:
+        release: "14.3"
+        usesh: true
+        prepare: |
+          pkg install -y python3 py311-sqlite3 py311-pip git curl unzip
+          # PySide6 / Qt may be heavy; smoke tests pure modules without GUI
+          pkg install -y py311-requests py311-psutil py311-toml 2>/dev/null || true
+        run: |
+          set -e
+          python3 -m pip install --user Send2Trash dulwich qrcode pillow 2>/dev/null || true
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, ".")
+          from modules.platform_compat import (
+              is_freebsd, mojang_os_name, uses_system_lwjgl,
+              datapath_default, update_artifact_kind, easytier_release_zip_name,
+          )
+          assert is_freebsd(), "expected FreeBSD host"
+          assert mojang_os_name() == "linux", mojang_os_name()
+          assert uses_system_lwjgl() is True
+          assert update_artifact_kind() == "freebsd_zip"
+          print("platform_compat OK", datapath_default(), easytier_release_zip_name())
+          from modules.install import _native_classifier
+          assert _native_classifier({"natives": {"linux": "natives-linux"}}) is None
+          print("install natives classifier OK")
+          PY
+          mkdir -p output
+          STAGE=Bloret-Launcher-FreeBSD-amd64
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          for item in Bloret-Launcher.py modules qml RinUI icon lang easytier \
+            config.json requirements.txt LICENSE bloret.ico Bloret.png \
+            Bloret-Fluent.png JavaWrapper.jar docs; do
+            if [ -e "$item" ]; then
+              cp -a "$item" "$STAGE/"
+            fi
+          done
+          # Lightweight runner script (no leading whitespace)
+          printf '%s\n' \
+            '#!/bin/sh' \
+            'DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)' \
+            'exec python3 "$DIR/Bloret-Launcher.py" "$@"' \
+            > "$STAGE/bloret-launcher"
+          chmod +x "$STAGE/bloret-launcher"
+          tar -czf "output/Bloret-Launcher-FreeBSD-amd64.tar.gz" "$STAGE"
+          if command -v zip >/dev/null 2>&1; then
+            zip -r "output/Bloret-Launcher-FreeBSD-amd64.zip" "$STAGE"
+          fi
+          ls -la output/
+
+    - name: 上传 FreeBSD 产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: Bloret-Launcher-FreeBSD-amd64
+        path: "output/"
+
   Code-Package:
     needs: Set-Version
     runs-on: windows-latest

@@ -1,0 +1,37 @@
+# Sample FreeBSD port skeleton for Bloret Launcher (source layout).
+# Copy into the FreeBSD ports tree and adjust Python/Qt package names
+# to match the current default (pkg search pyside6).
+#
+# This is NOT a complete official port; see docs/FreeBSD.md.
+
+PORTNAME=	bloret-launcher
+DISTVERSION=	0.0.0
+CATEGORIES=	games java
+MASTER_SITES=	# GH / release tarball
+# PKGNAMEPREFIX=	#
+
+MAINTAINER=	ports@example.com
+COMMENT=	Open-source AI Minecraft launcher
+WWW=		https://github.com/BloretCrew/Bloret-Launcher
+
+LICENSE=	GPLv3+
+
+# Adjust pyXY- package names for the tree's default Python.
+RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}pyside6>0:devel/py-pyside6@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}requests>0:www/py-requests@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}psutil>0:sysutils/py-psutil@${PY_FLAVOR} \
+		lwjgl3>0:games/lwjgl3 \
+		openjdk17>0:java/openjdk17 \
+		notify-send:devel/libnotify \
+		xdg-open:devel/xdg-utils
+
+USES=		python:3.10+ shebangfix
+USE_PYTHON=	# concurrent flavors if needed
+
+NO_ARCH=	yes
+NO_BUILD=	yes
+
+# Install share layout + wrapper; ship EasyTier FreeBSD binary separately
+# or leave to user download from EasyTier releases.
+
+.include <bsd.port.mk>
