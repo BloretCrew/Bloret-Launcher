@@ -63,6 +63,17 @@
 
 </details>
 
+## 平台支持
+
+| 平台 | 说明 |
+|------|------|
+| Windows | 完整支持（安装包 / zip / WinGet） |
+| Linux | 源码 / AppImage / Arch `PKGBUILD` |
+| macOS | CI 产物（Intel / ARM） |
+| **FreeBSD** | **amd64 源码运行**；系统 `lwjgl3` 启动游戏；CI 产物 `Bloret-Launcher-FreeBSD-amd64` |
+
+FreeBSD 安装与 Minecraft 运行说明见 **[docs/FreeBSD.md](docs/FreeBSD.md)**。
+
 ## 功能与计划
 
 - [x] 托盘与托盘菜单
@@ -99,6 +110,7 @@
 - [x] 全新安装程序
 - [x] Bloriko DeepThink
 - [x] NewIcon
+- [x] FreeBSD 支持（系统 LWJGL / EasyTier / CI 产物）
 - [x] 等....
 
 ## 软件截图

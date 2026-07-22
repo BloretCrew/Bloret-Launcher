@@ -1,5 +1,9 @@
 # Linux 建议优先使用系统包 python-pyside6（与 fcitx5-qt 共用系统 Qt），
 # 勿用 pip 安装 PySide6：其私有 Qt 无法加载 fcitx5 插件，会导致无法切换中文输入法。
+#
+# FreeBSD：请优先使用 ports/pkg 的 PySide6 / Qt6（如 py311-pyside6），
+# pip 通常没有可用的 FreeBSD PySide6 wheel。详见 docs/FreeBSD.md。
+# 运行 Minecraft 还需：pkg install lwjgl3 openjdk17（或 openjdk21）。
 PySide6
 ./RinUI
 requests

@@ -85,20 +85,35 @@ def probe_java(java_path, timeout=10):
 
 
 def _candidate_roots(extra_roots=None):
-    roots = [
-        os.path.expanduser("~/.jdks"),
-        os.path.expanduser("~/.sdkman/candidates/java"),
-        "/usr/lib/jvm",
-        "/usr/java",
-        "/opt/java",
-        "/Library/Java/JavaVirtualMachines",
-    ]
-    for env_name in ("ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"):
-        root = os.environ.get(env_name)
-        if root:
-            roots.extend(os.path.join(root, vendor) for vendor in (
-                "Java", "Eclipse Adoptium", "Zulu", "BellSoft", "Microsoft"
-            ))
+    try:
+        from modules.platform_compat import java_candidate_roots
+
+        roots = list(java_candidate_roots())
+    except Exception:
+        roots = [
+            os.path.expanduser("~/.jdks"),
+            os.path.expanduser("~/.sdkman/candidates/java"),
+            "/usr/lib/jvm",
+            "/usr/java",
+            "/opt/java",
+            "/Library/Java/JavaVirtualMachines",
+            "/usr/local/lib/jvm",
+        ]
+        # FreeBSD OpenJDK layout
+        try:
+            from pathlib import Path as _Path
+
+            for entry in sorted(_Path("/usr/local").glob("openjdk*")):
+                if entry.is_dir():
+                    roots.append(str(entry))
+        except OSError:
+            pass
+        for env_name in ("ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"):
+            root = os.environ.get(env_name)
+            if root:
+                roots.extend(os.path.join(root, vendor) for vendor in (
+                    "Java", "Eclipse Adoptium", "Zulu", "BellSoft", "Microsoft"
+                ))
     if extra_roots:
         roots.extend(extra_roots)
     return roots

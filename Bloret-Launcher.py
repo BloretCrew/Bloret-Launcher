@@ -72,8 +72,23 @@ if log_runtime_im_status is not None:
 def _enable_fault_logging():
     """记录 Python/原生崩溃堆栈，避免仅看到退出码。"""
     try:
-        appdata = Path(os.getenv("APPDATA", str(SCRIPT_DIR)))
-        log_dir = appdata / "Bloret-Launcher" / "logs"
+        try:
+            from modules.platform_compat import datapath_default
+
+            base = Path(datapath_default())
+        except Exception:
+            if sys.platform == "win32":
+                base = Path(os.getenv("APPDATA", str(SCRIPT_DIR))) / "Bloret-Launcher"
+            elif sys.platform == "darwin":
+                base = Path.home() / "Library" / "Application Support" / "Bloret-Launcher"
+            else:
+                xdg = os.environ.get("XDG_DATA_HOME", "").strip()
+                base = (
+                    Path(xdg) / "Bloret-Launcher"
+                    if xdg
+                    else Path.home() / ".local" / "share" / "Bloret-Launcher"
+                )
+        log_dir = base / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         fault_path = log_dir / "python-faulthandler.log"
 

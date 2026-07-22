@@ -890,13 +890,24 @@ def _load_version_json(version_dir, version_name, minecraft_version):
 
 
 def _rule_matches(rule):
+    from modules.platform_compat import mojang_os_name, mojang_arch
+
     os_rule = rule.get("os") or {}
-    current_name = {"windows": "windows", "linux": "linux", "darwin": "osx"}.get(platform.system().lower(), platform.system().lower())
+    current_name = mojang_os_name()
     if os_rule.get("name") and os_rule["name"] != current_name:
         return False
     if os_rule.get("arch"):
         arch = platform.machine().lower()
-        normalized = "x86" if arch in ("i386", "i686", "x86") else "x86_64" if arch in ("amd64", "x86_64") else arch
+        normalized = (
+            "x86"
+            if arch in ("i386", "i686", "x86")
+            else "x86_64"
+            if arch in ("amd64", "x86_64")
+            else arch
+        )
+        # Prefer shared helper when it matches Mojang's coarse arch tags
+        if os_rule["arch"].lower() in ("x86", "x86_64"):
+            normalized = mojang_arch() if arch in ("amd64", "x86_64", "x86", "i386", "i686") else normalized
         if os_rule["arch"].lower() != normalized:
             return False
     if os_rule.get("version"):
@@ -933,14 +944,21 @@ def _maven_artifact_path(name, classifier=None, extension="jar"):
 
 
 def _native_classifier(lib):
+    """Return Mojang native classifier for this host, or None.
+
+    FreeBSD uses system games/lwjgl3 natives — do not select natives-linux.
+    """
+    from modules.platform_compat import arch_bits, mojang_os_name, uses_system_lwjgl
+
+    if uses_system_lwjgl():
+        return None
     natives = lib.get("natives") or {}
-    os_name = {"windows": "windows", "linux": "linux", "darwin": "osx"}.get(platform.system().lower())
+    os_name = mojang_os_name()
+    # mojang_os_name uses "osx" for Darwin; natives map key is also "osx"
     classifier = natives.get(os_name)
     if not classifier:
         return None
-    arch = platform.machine().lower()
-    bits = "64" if arch in ("amd64", "x86_64", "aarch64", "arm64") else "32"
-    return classifier.replace("${arch}", bits)
+    return classifier.replace("${arch}", arch_bits())
 
 
 
@@ -979,6 +997,14 @@ def _library_download_items(libraries, minecraft_dir):
             else:
                 log(f"缺少当前平台 native classifier {classifier}: {lib.get('name')}", logging.ERROR)
                 # 不加入空 path 项，避免必然失败的下载任务
+        else:
+            from modules.platform_compat import uses_system_lwjgl
+
+            if uses_system_lwjgl() and (lib.get("natives") or downloads.get("classifiers")):
+                log(
+                    f"FreeBSD: 跳过 Mojang native classifier，将使用系统 LWJGL: {lib.get('name', '<unknown>')}",
+                    logging.DEBUG,
+                )
     return items
 
 

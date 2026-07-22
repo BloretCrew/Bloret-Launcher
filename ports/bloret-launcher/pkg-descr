@@ -1,0 +1,6 @@
+Bloret Launcher is an open-source AI Minecraft launcher (Python + PySide6/QML).
+
+On FreeBSD, the launcher runs from source/layout under PREFIX and uses the
+system games/lwjgl3 package for Minecraft natives (no Linuxulator required).
+
+WWW: https://github.com/BloretCrew/Bloret-Launcher
