@@ -25,7 +25,6 @@ from modules.download import (
     dl_source_assets_get,
 )
 
-_install_state_lock = threading.Lock()
 _current_download_state = {
     'task_id': None,
     'thread': None,
@@ -216,78 +215,95 @@ class _GitProgressStream:
         raise OSError("GitProgressStream has no fileno")
 
 
+def _https_to_ssh_url(https_url):
+    """将 HTTPS git URL 转为 SSH 格式，如 https://gitcode.com/Bloret/1.21.8.git → git@gitcode.com:Bloret/1.21.8.git"""
+    from urllib.parse import urlparse
+    parsed = urlparse(https_url)
+    if parsed.scheme not in ("http", "https"):
+        return https_url  # 非 HTTP 链接不转换
+    host = parsed.hostname
+    path = parsed.path.lstrip("/")
+    return f"git@{host}:{path}"
+
+
 def bloret_git_clone_download(version, minecraft_dir, backend=None, cancel_event=None):
     """
     使用 dulwich clone 从 Bloret Git 仓库下载 Minecraft 版本文件。
     如果版本不在 fastdownload API 列表中，返回 False（回退正常下载）。
     成功返回 True。
+    根据 git_protocol 设置自动选择 SSH/HTTPS，SSH 失败时降级 HTTPS。
     """
     from dulwich import porcelain
     import tempfile
+    import modules.globals as BLglobals
 
     fastdownload = fetch_fastdownload_versions()
     if version not in fastdownload:
         log(f"版本 {version} 不在 fastdownload 列表中，回退正常下载")
         return False
 
-    git_url = fastdownload[version]
-    log(f"版本 {version} 在 fastdownload 列表中，使用 git clone: {git_url}")
+    orig_url = fastdownload[version]
+
+    # 准备候选 URL 列表：SSH 模式先试 SSH（仅当可用），失败后降级 HTTPS
+    candidate_urls = []
+    if BLglobals.git_protocol == "ssh":
+        if BLglobals.git_ssh_available is False:
+            log("SSH 检测不可用（未配置密钥或认证失败），跳过 SSH 尝试", logging.INFO)
+        else:
+            ssh_url = _https_to_ssh_url(orig_url)
+            candidate_urls.append(("ssh", ssh_url))
+    candidate_urls.append(("https", orig_url))
 
     def update_progress(progress, status):
         if backend:
             backend.updateDownloadProgress(progress, status, "", "", "")
 
-    if cancel_event is not None and cancel_event.is_set():
-        log("Bloret git clone 在开始前已被取消")
-        return False
+    parent = os.path.dirname(os.path.abspath(minecraft_dir)) or minecraft_dir
+    os.makedirs(parent, exist_ok=True)
 
-    tmp_dir = None
-    try:
-        # 克隆到目标目录旁，减少跨盘复制成本
-        parent = os.path.dirname(os.path.abspath(minecraft_dir)) or minecraft_dir
-        os.makedirs(parent, exist_ok=True)
+    last_error = None
+    for protocol_label, url in candidate_urls:
         tmp_dir = tempfile.mkdtemp(prefix="bloret_git_", dir=parent)
-        update_progress(0.05, i18nText("正在从 Bloret 仓库克隆文件..."))
-        log(f"开始 git clone {git_url} -> {tmp_dir}")
+        try:
+            update_progress(0.05, i18nText("正在从 Bloret 仓库克隆文件..."))
+            log(f"开始 git clone ({protocol_label}) {url} -> {tmp_dir}")
 
-        progress_stream = _GitProgressStream(backend, cancel_event=cancel_event)
-        porcelain.clone(git_url, tmp_dir, depth=1, errstream=progress_stream, outstream=progress_stream)
-        if cancel_event is not None and cancel_event.is_set():
-            raise _DownloadCancelled("用户取消了下载")
-        log(f"git clone 完成: {tmp_dir}")
-
-        update_progress(0.6, i18nText("正在复制文件到 Minecraft 目录..."))
-
-        os.makedirs(minecraft_dir, exist_ok=True)
-        for item in os.listdir(tmp_dir):
-            if item == ".git":
-                continue
+            progress_stream = _GitProgressStream(backend, cancel_event=cancel_event)
+            porcelain.clone(url, tmp_dir, depth=1, errstream=progress_stream, outstream=progress_stream)
             if cancel_event is not None and cancel_event.is_set():
                 raise _DownloadCancelled("用户取消了下载")
-            src = os.path.join(tmp_dir, item)
-            dst = os.path.join(minecraft_dir, item)
-            if os.path.isdir(src):
-                shutil.copytree(src, dst, dirs_exist_ok=True)
-            else:
-                shutil.copy2(src, dst)
+            log(f"git clone 完成 ({protocol_label}): {tmp_dir}")
 
-        update_progress(0.85, i18nText("文件复制完成"))
-        log(f"Bloret git clone 下载完成: {version}")
-        return True
+            # 克隆成功，复制文件到目标目录
+            update_progress(0.6, i18nText("正在复制文件到 Minecraft 目录..."))
+            os.makedirs(minecraft_dir, exist_ok=True)
+            for item in os.listdir(tmp_dir):
+                if item == ".git":
+                    continue
+                if cancel_event is not None and cancel_event.is_set():
+                    raise _DownloadCancelled("用户取消了下载")
+                src = os.path.join(tmp_dir, item)
+                dst = os.path.join(minecraft_dir, item)
+                if os.path.isdir(src):
+                    shutil.copytree(src, dst, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(src, dst)
 
-    except _DownloadCancelled:
-        log("Bloret git clone 下载被用户取消")
-        return False
-    except Exception as e:
-        log(f"Bloret git clone 下载失败: {e}", logging.ERROR)
-        return False
-    finally:
-        if tmp_dir and os.path.exists(tmp_dir):
-            try:
+            update_progress(0.85, i18nText("文件复制完成"))
+            log(f"Bloret git clone 下载完成: {version}")
+            return True
+        except _DownloadCancelled:
+            log("Bloret git clone 下载被用户取消")
+            return False
+        except Exception as e:
+            last_error = e
+            log(f"{protocol_label} clone 失败: {e}", logging.WARNING)
+        finally:
+            if tmp_dir and os.path.exists(tmp_dir):
                 shutil.rmtree(tmp_dir, ignore_errors=True)
-                log(f"已清理临时目录: {tmp_dir}")
-            except Exception:
-                pass
+
+    log(f"所有 clone 方式均失败: {last_error}", logging.ERROR)
+    return False
 
 
 def _request_json_from_urls(urls, timeout=30):
@@ -1646,12 +1662,6 @@ def InstallMinecraftVersion(version, minecraft_dir=None, download_dialog=None, F
         return False
     if Fabric_Loader:
         Loader_Type = "fabric"
-    if not _install_state_lock.acquire(blocking=False):
-        log(f"拒绝并发安装请求: {version}，已有安装任务正在运行", logging.WARNING)
-        if backend:
-            backend.updateDownloadProgress(0, i18nText("安装失败：已有安装任务正在运行"), "", "", "")
-            backend.closeDownloadDialog()
-        return False
     task_id = object()
     state = {
         'task_id': task_id,
@@ -1714,6 +1724,16 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
     def update_progress_ui(progress, status, speed="", downloaded="", total=""):
         if backend:
             backend.updateDownloadProgress(progress, status, speed, downloaded, total)
+        # 同步更新 DownloadManager（多任务支持）
+        try:
+            from modules.download_manager import DownloadManager
+            dm = DownloadManager()
+            for t in dm.get_tasks():
+                if t.backend is backend and t.status in ("downloading", "paused"):
+                    dm.update_progress(t.task_id, progress, status, speed, downloaded, total)
+                    break
+        except Exception:
+            pass
         # 插件 download.progress：每 5% 或 500ms 节流
         try:
             import time as _time
@@ -1847,7 +1867,10 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
         _bloret_git_done = False
         version_data = None
         config = cfg.read()
-        max_thread_value = _clamp_workers(config.get("MaxThread", _DEFAULT_MAX_THREAD))
+        # 使用 DownloadManager 分配的每任务线程数，否则退化为配置值
+        max_thread_value = task_state.get("max_thread") if task_state else None
+        if max_thread_value is None:
+            max_thread_value = _clamp_workers(config.get("MaxThread", _DEFAULT_MAX_THREAD))
 
         if BLglobals.download_source == "gitcode":
             try:
@@ -2570,5 +2593,3 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
     finally:
         if task_state is not None and _current_download_state.get('task_id') is task_state.get('task_id'):
             _current_download_state = {'task_id': None, 'thread': None, 'cancel_event': threading.Event(), 'pause_event': threading.Event(), 'downloader': None, 'is_paused': False, 'backend': None, 'cancelled': False, 'completed_event': threading.Event(), 'result': None}
-            if _install_state_lock.locked():
-                _install_state_lock.release()

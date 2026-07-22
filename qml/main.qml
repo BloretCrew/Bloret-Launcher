@@ -345,27 +345,17 @@ FluentWindow {
             launchProgressDialog.close()
         }
 
-        function onDownloadDialogRequested(title) {
-            downloadDialog.resetDialog()
-            downloadDialog.downloadTitle = title
-            downloadDialog.downloadStatus = Backend ? Backend.tr("准备下载...") : "准备下载..."
+        // 多任务下载面板自己通过 Timer + signals 管理刷新
+        function onDownloadTaskAdded(taskId) {
+            // DownloadDialog 内部的 Connections 已经处理了
+        }
+
+        function onDownloadTaskRemoved(taskId) {
+            // DownloadDialog 内部的 Connections 已经处理了
+        }
+
+        function onOpenDownloadManager() {
             downloadDialog.open()
-        }
-
-        function onDownloadProgressUpdated(progress, status, speed, downloaded, total) {
-            downloadDialog.updateProgress(progress, status, speed, downloaded, total)
-        }
-
-        function onDownloadDialogClosed() {
-            downloadDialog.close()
-        }
-
-        function onDownloadCompleted(message) {
-            downloadDialog.setCompleted(message)
-        }
-
-        function onDownloadPaused(paused) {
-            downloadDialog.setPaused(paused)
         }
 
         function onDownloadErrorOccurred(title, message, version, versionName, loaderType) {
@@ -415,14 +405,6 @@ FluentWindow {
 
     DownloadDialog {
         id: downloadDialog
-
-        onPauseClicked: {
-            if (Backend) Backend.toggleDownloadPause()
-        }
-
-        onCancelClicked: {
-            if (Backend) Backend.cancelDownload()
-        }
     }
 
     Dialog {
