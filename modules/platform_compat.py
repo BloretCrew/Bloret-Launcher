@@ -82,6 +82,22 @@ def uses_system_lwjgl() -> bool:
     return is_freebsd()
 
 
+def mojang_native_classifier(lib: dict) -> Optional[str]:
+    """Return the Mojang native classifier for this host, or ``None``.
+
+    FreeBSD uses the system ``games/lwjgl3`` package, so Mojang's Linux ELF
+    natives must not be selected even though library rules map FreeBSD to
+    Linux.
+    """
+    if uses_system_lwjgl():
+        return None
+    natives = lib.get("natives") or {}
+    classifier = natives.get(mojang_os_name())
+    if not classifier:
+        return None
+    return classifier.replace("${arch}", arch_bits())
+
+
 def system_lwjgl_lib_dir() -> Path:
     env = os.environ.get("BLORET_LWJGL_LIB", "").strip()
     if env:

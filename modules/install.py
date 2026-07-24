@@ -960,21 +960,10 @@ def _maven_artifact_path(name, classifier=None, extension="jar"):
 
 
 def _native_classifier(lib):
-    """Return Mojang native classifier for this host, or None.
+    """Return Mojang native classifier for this host, or None."""
+    from modules.platform_compat import mojang_native_classifier
 
-    FreeBSD uses system games/lwjgl3 natives — do not select natives-linux.
-    """
-    from modules.platform_compat import arch_bits, mojang_os_name, uses_system_lwjgl
-
-    if uses_system_lwjgl():
-        return None
-    natives = lib.get("natives") or {}
-    os_name = mojang_os_name()
-    # mojang_os_name uses "osx" for Darwin; natives map key is also "osx"
-    classifier = natives.get(os_name)
-    if not classifier:
-        return None
-    return classifier.replace("${arch}", arch_bits())
+    return mojang_native_classifier(lib)
 
 
 

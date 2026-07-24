@@ -290,33 +290,29 @@ jobs:
         release: "14.3"
         usesh: true
         prepare: |
-          # The latest repository can move beyond Python 3.11. Install Python
-          # first, then derive the matching versioned FreeBSD package names.
+          # This job tests platform logic and creates a source-layout archive;
+          # it intentionally does not import or install the GUI stack.
           pkg install -y python3 git curl unzip
-          PYTHON_PKG_SUFFIX=$(python3 -c 'import sys; print(f"{sys.version_info.major}{sys.version_info.minor}")')
-          pkg install -y "py${PYTHON_PKG_SUFFIX}-sqlite3" "py${PYTHON_PKG_SUFFIX}-pip"
-          # PySide6 / Qt may be heavy; smoke tests pure modules without GUI
-          pkg install -y "py${PYTHON_PKG_SUFFIX}-requests" "py${PYTHON_PKG_SUFFIX}-psutil" "py${PYTHON_PKG_SUFFIX}-toml" 2>/dev/null || true
           python3 --version
-          python3 -m pip --version
         run: |
           set -e
-          python3 -m pip install --user Send2Trash dulwich qrcode pillow 2>/dev/null || true
           python3 - <<'PY'
           import sys
           sys.path.insert(0, ".")
           from modules.platform_compat import (
-              is_freebsd, mojang_os_name, uses_system_lwjgl,
-              datapath_default, update_artifact_kind, easytier_release_zip_name,
+              is_freebsd, mojang_os_name, mojang_native_classifier,
+              uses_system_lwjgl, datapath_default, update_artifact_kind,
+              easytier_release_zip_name,
           )
           assert is_freebsd(), "expected FreeBSD host"
           assert mojang_os_name() == "linux", mojang_os_name()
           assert uses_system_lwjgl() is True
           assert update_artifact_kind() == "freebsd_zip"
+          assert mojang_native_classifier(
+              {"natives": {"linux": "natives-linux"}}
+          ) is None
           print("platform_compat OK", datapath_default(), easytier_release_zip_name())
-          from modules.install import _native_classifier
-          assert _native_classifier({"natives": {"linux": "natives-linux"}}) is None
-          print("install natives classifier OK")
+          print("native classifier OK")
           PY
           mkdir -p output
           STAGE=Bloret-Launcher-FreeBSD-amd64
