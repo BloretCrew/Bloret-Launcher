@@ -290,9 +290,15 @@ jobs:
         release: "14.3"
         usesh: true
         prepare: |
-          pkg install -y python3 py311-sqlite3 py311-pip git curl unzip
+          # The latest repository can move beyond Python 3.11. Install Python
+          # first, then derive the matching versioned FreeBSD package names.
+          pkg install -y python3 git curl unzip
+          PYTHON_PKG_SUFFIX=$(python3 -c 'import sys; print(f"{sys.version_info.major}{sys.version_info.minor}")')
+          pkg install -y "py${PYTHON_PKG_SUFFIX}-sqlite3" "py${PYTHON_PKG_SUFFIX}-pip"
           # PySide6 / Qt may be heavy; smoke tests pure modules without GUI
-          pkg install -y py311-requests py311-psutil py311-toml 2>/dev/null || true
+          pkg install -y "py${PYTHON_PKG_SUFFIX}-requests" "py${PYTHON_PKG_SUFFIX}-psutil" "py${PYTHON_PKG_SUFFIX}-toml" 2>/dev/null || true
+          python3 --version
+          python3 -m pip --version
         run: |
           set -e
           python3 -m pip install --user Send2Trash dulwich qrcode pillow 2>/dev/null || true
