@@ -12,6 +12,7 @@ FluentPage {
     property var accountList: []
     property string passportUser: ""
     property bool passportLoggedIn: false
+    property string passPortAvatarUrl: ""
 
     Component.onCompleted: {
         // 延迟更新确保 Backend 完全初始化
@@ -26,6 +27,8 @@ FluentPage {
                 passportLoggedIn = Backend.getBloretPassPortLoginStatus()
                 passportUser = Backend.getBloretPassPortUserName()
                 accountList = Backend.getMinecraftAccounts()
+                // 仅读本地缓存；缺失时后台下载，完成后 onPassPortAvatarChanged
+                passPortAvatarUrl = Backend.getPassPortAvatar() || ""
             } catch(e) {
                 console.log("Error updating passport data:", e)
             }
@@ -34,6 +37,9 @@ FluentPage {
 
     Connections {
         target: Backend
+        function onPassPortAvatarChanged(url) {
+            passPortAvatarUrl = url || ""
+        }
         function onMinecraftAccountsChanged(accounts) {
             if (Backend) {
                 try {
@@ -44,6 +50,7 @@ FluentPage {
                     }
                     passportLoggedIn = Backend.getBloretPassPortLoginStatus()
                     passportUser = Backend.getBloretPassPortUserName()
+                    passPortAvatarUrl = Backend.getPassPortAvatar() || ""
                 } catch(e) {
                     console.log("Error in onMinecraftAccountsChanged:", e)
                 }
@@ -117,14 +124,9 @@ FluentPage {
                                 radius: 8
                             }
                         }
-                        source: {
-                            let url = Backend ? Backend.getPassPortAvatar() : ""
-                            let finalUrl = url && url !== "" ? url : "../../icon/Grass_Block.png"
-                            console.log("[PassPort.qml] Image source changed")
-                            console.log("  Backend.getPassPortAvatar() returned:", url)
-                            console.log("  Final Image source:", finalUrl)
-                            return finalUrl
-                        }
+                        source: passPortAvatarUrl && passPortAvatarUrl !== ""
+                                ? passPortAvatarUrl
+                                : "../../icon/Grass_Block.png"
                         asynchronous: true
                         cache: false
                         fillMode: Image.PreserveAspectCrop

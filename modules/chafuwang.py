@@ -24,7 +24,7 @@ def getServerData(ServerName: str, callback: Callable[[Dict[str, Any]], None] = 
         
         try:
             log(f"正在发送HTTP GET请求到服务器: {ServerName}", logging.INFO)
-            response = requests.get(url)
+            response = requests.get(url, timeout=5)
             log(f"收到服务器 {ServerName} 的响应，状态码: {response.status_code}", logging.INFO)
             
             response.raise_for_status()  # 如果响应状态码不是200会抛出异常

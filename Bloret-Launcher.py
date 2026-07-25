@@ -267,6 +267,12 @@ class Backend(QObject):
     # Backdrop/acrylic effect signal
     backdropEffectChanged = Signal(str)
 
+    # PassPort avatar ready (local file URL); never block UI for download
+    passPortAvatarChanged = Signal(str)
+
+    # Home remote data refresh TTL (seconds)
+    _HOME_REMOTE_TTL_SEC = 300
+
     def __init__(self):
         super().__init__()
         self._server_info = {}
@@ -300,6 +306,12 @@ class Backend(QObject):
         self._manifest_fetched = False
         self._version_prefetch_running = False
         self._version_prefetch_lock = threading.Lock()
+        # Avatar download + home remote refresh throttling
+        self._avatar_download_running = False
+        self._avatar_download_username = ""
+        self._avatar_download_lock = threading.Lock()
+        self._activity_refresh_ts = 0.0
+        self._server_refresh_ts = 0.0
 
     # ========== 全局 AI 供应商/模型设置 ==========
 
@@ -1224,8 +1236,28 @@ class Backend(QObject):
 
     @Slot()
     def refreshActivityInfo(self):
-        """从 API 刷新活动信息"""
+        """从 API 刷新活动信息（后台线程；TTL 内复用缓存，避免侧边栏反复进入主页时重复打网）"""
+        import time
+        try:
+            if cfg.read().get("localmod", False):
+                if self._activity_info:
+                    self.activityInfoChanged.emit(self._activity_info)
+                return
+        except Exception:
+            pass
+
+        now = time.time()
+        if (
+            self._activity_refresh_ts
+            and (now - self._activity_refresh_ts) < self._HOME_REMOTE_TTL_SEC
+            and self._activity_info
+        ):
+            self.activityInfoChanged.emit(self._activity_info)
+            return
+
+        self._activity_refresh_ts = now
         from modules.BLServer import get_latest_version
+
         def update_activity():
             try:
                 _, _ = get_latest_version()
@@ -1234,8 +1266,7 @@ class Backend(QObject):
                 icon_url = BLglobals.BL_Activity.get("icon", "")
                 if icon_url.startswith("http"):
                     try:
-                        import requests, hashlib
-                        from PySide6.QtCore import QUrl
+                        import hashlib
                         resp = requests.get(icon_url, timeout=5)
                         if resp.status_code == 200:
                             # compute hash for filename
@@ -1248,31 +1279,48 @@ class Backend(QObject):
                             # convert to file URL for QML
                             url = QUrl.fromLocalFile(local_path).toString()
                             BLglobals.BL_Activity["icon"] = url
-                            icon_path = url
                         else:
-                            icon_path = icon_url
+                            pass
                     except Exception as e:
                         print(f"Failed to download activity icon: {e}")
-                        icon_path = icon_url
                 else:
                     # non-http value might be local path; convert to file URL too
-                    from PySide6.QtCore import QUrl
                     if icon_url:
                         BLglobals.BL_Activity["icon"] = QUrl.fromLocalFile(icon_url).toString()
-                        icon_path = QUrl.fromLocalFile(icon_url).toString()
-                # else icon_path remains whatever returned
                 self._activity_info = BLglobals.BL_Activity
                 self.activityInfoChanged.emit(self._activity_info)
             except Exception as e:
                 print(f"Error refreshing activity info: {e}")
-        
+
         threading.Thread(target=update_activity, daemon=True).start()
 
     @Slot()
     def refreshServerInfo(self):
+        """刷新主页服务器信息（后台线程；TTL 内复用缓存）"""
+        import time
+        try:
+            if cfg.read().get("localmod", False):
+                if self._server_info:
+                    self.serverInfoChanged.emit(self._server_info)
+                return
+        except Exception:
+            pass
+
+        now = time.time()
+        if (
+            self._server_refresh_ts
+            and (now - self._server_refresh_ts) < self._HOME_REMOTE_TTL_SEC
+            and self._server_info
+        ):
+            self.serverInfoChanged.emit(self._server_info)
+            return
+
+        self._server_refresh_ts = now
+
         def update_callback(data):
             self._server_info = data
             self.serverInfoChanged.emit(data)
+
         getServerData("Bloret", callback=update_callback)
 
     @Slot(result=list)
@@ -3653,105 +3701,109 @@ class Backend(QObject):
     def getPassPortName(self):
         return self.getBloretPassPortUserName()
 
-    @Slot(result=str)
-    def getPassPortAvatar(self):
-        """获取用户头像 - 优先使用 PassPort 头像，备用使用 Minecraft 账户头像"""
-        print(f"\n[getPassPortAvatar] 方法被调用")
-        config_data = cfg.read()
-        
-        is_logged_in = config_data.get('Bloret_PassPort_Login')
-        print(f"  登录状态: {is_logged_in}")
-        if not is_logged_in:
-            print(f"  未登录，返回空字符串")
-            return ""
-        
-        username = config_data.get('Bloret_PassPort_UserName', '')
-        print(f"  PassPort 用户名: {username}")
-        if not username:
-            print(f"  用户名为空，返回空字符串")
-            return ""
-        
-        cache_dir = os.path.join(BLglobals.cache_path, 'avatars')
-        print(f"  缓存目录: {cache_dir}")
+    def _passPortAvatarCachePath(self, username):
+        cache_dir = os.path.join(BLglobals.cache_path, "avatars")
         try:
             os.makedirs(cache_dir, exist_ok=True)
-            print(f"  缓存目录已创建")
         except Exception as e:
-            print(f"  创建缓存目录失败: {e}")
-        
-        cache_file = os.path.join(cache_dir, f"{username}_passport.png")
-        print(f"  缓存文件路径: {cache_file}")
-        
-        # 从 config.json 读取头像 URL
-        avatar_url = config_data.get('Bloret_PassPort_Avatar', '')
-        print(f"  存储的头像 URL: {avatar_url if avatar_url else '(空)'}")
-        
-        # 如果有有效的头像 URL，尝试下载
-        if avatar_url and (avatar_url.startswith('http://') or avatar_url.startswith('https://')):
-            try:
-                print(f"  开始从 PassPort 头像 URL 下载...")
-                print(f"  请求 URL: {avatar_url}")
-                
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
-                }
-                response = requests.get(avatar_url, timeout=10, headers=headers)
-                print(f"  HTTP 响应状态码: {response.status_code}")
-                print(f"  响应内容大小: {len(response.content)} bytes")
-                
-                if response.status_code == 200 and len(response.content) > 500:
-                    # 保存到缓存
-                    with open(cache_file, 'wb') as f:
-                        f.write(response.content)
-                    print(f"  PassPort 头像已保存到缓存文件")
-                    
-                    local_url = QUrl.fromLocalFile(cache_file).toString()
-                    print(f"  返回本地文件 URL: {local_url}")
-                    print(f"[getPassPortAvatar] 方法执行完成\n")
-                    return local_url
-                else:
-                    print(f"  下载失败：HTTP {response.status_code} 或内容过小")
-            except Exception as e:
-                print(f"  下载头像异常: {type(e).__name__}: {e}")
-        
-        # 如果 PassPort 头像不可用，尝试使用 Minecraft 账户的头像
-        print(f"  PassPort 头像不可用，尝试使用 Minecraft 账户头像...")
-        mc_account_config = config_data.get("MinecraftAccount", {})
-        accounts_list = mc_account_config.get("accounts", [])
+            print(f"[getPassPortAvatar] 创建缓存目录失败: {e}")
+        return os.path.join(cache_dir, f"{username}_passport.png")
+
+    def _schedulePassPortAvatarDownload(self, config_data, username, cache_file):
+        """后台下载头像；完成后发 passPortAvatarChanged。禁止在 UI 线程调用 requests。"""
+        with self._avatar_download_lock:
+            if self._avatar_download_running and self._avatar_download_username == username:
+                return
+            self._avatar_download_running = True
+            self._avatar_download_username = username
+
+        avatar_url = config_data.get("Bloret_PassPort_Avatar", "") or ""
+        mc_account_config = config_data.get("MinecraftAccount", {}) or {}
+        accounts_list = mc_account_config.get("accounts", []) or []
         chosen_index = mc_account_config.get("chosen", 0)
-        
+        mc_uuid = ""
+        mc_username = ""
         if accounts_list and 0 <= chosen_index < len(accounts_list):
-            chosen_account = accounts_list[chosen_index]
-            mc_uuid = chosen_account.get("uuid", "")
-            mc_username = chosen_account.get("username", "")
-            print(f"  选中的 Minecraft 账户: {mc_username}, UUID: {mc_uuid}")
-            
-            # 优先使用 UUID 获取头像
-            avatar_identifier = mc_uuid if mc_uuid else mc_username
-            if avatar_identifier:
-                try:
-                    # 使用 minotar.net 获取头像（更稳定）
-                    fallback_url = f"https://minotar.net/helm/{avatar_identifier}/64"
-                    print(f"  Minecraft 头像 URL: {fallback_url}")
-                    response = requests.get(fallback_url, timeout=10, headers={"User-Agent": "BloretLauncher/1.0"})
-                    print(f"  HTTP 响应状态码: {response.status_code}")
-                    print(f"  响应内容大小: {len(response.content)} bytes")
-                    
-                    if response.status_code == 200 and len(response.content) > 500:
-                        with open(cache_file, 'wb') as f:
-                            f.write(response.content)
-                        print(f"  Minecraft 头像已保存到缓存文件")
+            chosen_account = accounts_list[chosen_index] or {}
+            mc_uuid = chosen_account.get("uuid", "") or ""
+            mc_username = chosen_account.get("username", "") or ""
+
+        def run():
+            content = None
+            try:
+                headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
+                if avatar_url.startswith("http://") or avatar_url.startswith("https://"):
+                    try:
+                        print(f"[getPassPortAvatar] 后台下载 PassPort 头像: {avatar_url}")
+                        response = requests.get(avatar_url, timeout=10, headers=headers)
+                        if response.status_code == 200 and len(response.content) > 500:
+                            content = response.content
+                        else:
+                            print(
+                                f"[getPassPortAvatar] PassPort 头像下载失败: "
+                                f"HTTP {response.status_code}, size={len(response.content)}"
+                            )
+                    except Exception as e:
+                        print(f"[getPassPortAvatar] PassPort 头像下载异常: {type(e).__name__}: {e}")
+
+                if content is None:
+                    avatar_identifier = mc_uuid if mc_uuid else mc_username
+                    if avatar_identifier:
+                        try:
+                            fallback_url = f"https://minotar.net/helm/{avatar_identifier}/64"
+                            print(f"[getPassPortAvatar] 后台下载 Minecraft 头像: {fallback_url}")
+                            response = requests.get(
+                                fallback_url,
+                                timeout=10,
+                                headers={"User-Agent": "BloretLauncher/1.0"},
+                            )
+                            if response.status_code == 200 and len(response.content) > 500:
+                                content = response.content
+                            else:
+                                print(
+                                    f"[getPassPortAvatar] Minecraft 头像下载失败: "
+                                    f"HTTP {response.status_code}, size={len(response.content)}"
+                                )
+                        except Exception as e:
+                            print(f"[getPassPortAvatar] Minecraft 头像下载异常: {type(e).__name__}: {e}")
+
+                if content:
+                    try:
+                        with open(cache_file, "wb") as f:
+                            f.write(content)
                         local_url = QUrl.fromLocalFile(cache_file).toString()
-                        print(f"  返回本地文件 URL: {local_url}")
-                        print(f"[getPassPortAvatar] 方法执行完成\n")
-                        return local_url
-                    else:
-                        print(f"  Minecraft 头像下载失败：HTTP {response.status_code} 或内容过小")
-                except Exception as e:
-                    print(f"  Minecraft 头像下载异常: {type(e).__name__}: {e}")
-        
-        print(f"  所有方法都失败，返回空字符串")
-        print(f"[getPassPortAvatar] 方法执行完成\n")
+                        print(f"[getPassPortAvatar] 缓存已写入，通知 UI: {local_url}")
+                        self.passPortAvatarChanged.emit(local_url)
+                    except Exception as e:
+                        print(f"[getPassPortAvatar] 写缓存失败: {e}")
+            finally:
+                with self._avatar_download_lock:
+                    self._avatar_download_running = False
+
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot(result=str)
+    def getPassPortAvatar(self):
+        """获取用户头像 URL（仅读本地缓存，绝不在 UI 线程发起 HTTP）。
+
+        - 已登录且缓存存在：立即返回 file:// URL
+        - 缓存缺失：后台下载，完成后发 passPortAvatarChanged；本次返回 ""
+        """
+        config_data = cfg.read()
+
+        if not config_data.get("Bloret_PassPort_Login"):
+            return ""
+
+        username = config_data.get("Bloret_PassPort_UserName", "") or ""
+        if not username:
+            return ""
+
+        cache_file = self._passPortAvatarCachePath(username)
+        if os.path.exists(cache_file) and os.path.getsize(cache_file) > 500:
+            return QUrl.fromLocalFile(cache_file).toString()
+
+        # 无缓存：触发后台下载，立即返回空，避免侧边栏/主页卡顿
+        self._schedulePassPortAvatarDownload(config_data, username, cache_file)
         return ""
 
     # Removed duplicate getPlayerName, getVanillaVersions, getFabricVersions, getJavaDownloadVersions, downloadJava

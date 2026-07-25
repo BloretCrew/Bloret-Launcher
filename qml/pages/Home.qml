@@ -15,6 +15,8 @@ FluentPage {
     property string currentVersion: ""
     property string showAccountOnHome: "compact"
     property var pluginHomeCards: []
+    // 本地缓存 URL；异步下载完成后由 passPortAvatarChanged 更新，禁止在绑定里同步拉网
+    property string passPortAvatarUrl: ""
 
     function loadPluginHomeCards() {
         pluginHomeCards = []
@@ -34,16 +36,14 @@ FluentPage {
     }
 
     Component.onCompleted: {
-        // 从后端获取活动信息（从 API https://launcher.bloret.net/api/info 获取）
-        Backend.refreshActivityInfo()
-        
+        // 先用本地/内存缓存填充 UI，再后台刷新远程数据（带 TTL，不阻塞导航）
         let realInfo = Backend.getActivityInfo()
         if (realInfo && Object.keys(realInfo).length > 0) {
             activityInfo = realInfo
         }
-        
+
         launchItems = Backend.getLaunchItems()
-        
+
         // 优先使用配置中保存的核心选择，若不存在或无效则回退到第一项
         var saved = Backend.getSelectedLaunchItem()
         var found = launchItems.find(function(item) { return item.name === saved })
@@ -53,9 +53,11 @@ FluentPage {
         } else if (launchItems.length > 0) {
             currentVersion = launchItems[0].name
         }
-        
+
         showAccountOnHome = Backend.getShowAccountOnHome()
-        
+        passPortAvatarUrl = Backend.getPassPortAvatar() || ""
+
+        Backend.refreshActivityInfo()
         Backend.refreshServerInfo()
         loadPluginHomeCards()
     }
@@ -69,6 +71,14 @@ FluentPage {
             if (data && Object.keys(data).length > 0) {
                 activityInfo = data
             }
+        }
+        function onPassPortAvatarChanged(url) {
+            passPortAvatarUrl = url || ""
+        }
+        function onMinecraftAccountsChanged(accounts) {
+            // 登录/切换账户后重新取缓存并可能触发后台下载
+            if (Backend)
+                passPortAvatarUrl = Backend.getPassPortAvatar() || ""
         }
     }
 
@@ -447,12 +457,9 @@ Rectangle {
                                     radius: 8
                                 }
                             }
-                            source: {
-                                let url = Backend ? Backend.getPassPortAvatar() : ""
-                                let finalUrl = url && url !== "" ? url : "../../icon/Grass_Block.png"
-                                console.log("[Home.qml] Avatar Image source:", finalUrl)
-                                return finalUrl
-                            }
+                            source: passPortAvatarUrl && passPortAvatarUrl !== ""
+                                    ? passPortAvatarUrl
+                                    : "../../icon/Grass_Block.png"
                             asynchronous: true
                             cache: false
                             fillMode: Image.PreserveAspectCrop

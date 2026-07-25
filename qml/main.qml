@@ -327,6 +327,11 @@ FluentWindow {
             updatePassPortNavigation()
         }
 
+        function onPassPortAvatarChanged(url) {
+            // 后台头像下载完成后再刷新侧边栏头像，避免启动/切页时同步打网
+            updatePassPortNavigation()
+        }
+
         function onBackdropEffectChanged(effect) {
             Utils.backdropEnabled = (effect === "acrylic")
         }
