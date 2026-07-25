@@ -36,7 +36,7 @@ FluentPage {
     }
 
     Component.onCompleted: {
-        // 先用本地/内存缓存填充 UI，再后台刷新远程数据（带 TTL，不阻塞导航）
+        // 同步路径只做本地读：先出页面骨架，再延后远程刷新，减轻侧边栏切换卡顿
         let realInfo = Backend.getActivityInfo()
         if (realInfo && Object.keys(realInfo).length > 0) {
             activityInfo = realInfo
@@ -57,9 +57,15 @@ FluentPage {
         showAccountOnHome = Backend.getShowAccountOnHome()
         passPortAvatarUrl = Backend.getPassPortAvatar() || ""
 
-        Backend.refreshActivityInfo()
-        Backend.refreshServerInfo()
-        loadPluginHomeCards()
+        // 插件卡片与远程刷新放到下一帧，让 StackView 动画/首帧先完成
+        Qt.callLater(function() {
+            if (!homePage) return
+            loadPluginHomeCards()
+            if (Backend) {
+                Backend.refreshActivityInfo()
+                Backend.refreshServerInfo()
+            }
+        })
     }
 
     Connections {

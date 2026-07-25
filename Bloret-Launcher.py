@@ -312,6 +312,11 @@ class Backend(QObject):
         self._avatar_download_lock = threading.Lock()
         self._activity_refresh_ts = 0.0
         self._server_refresh_ts = 0.0
+        self._activity_refresh_inflight = False
+        self._server_refresh_inflight = False
+        self._launch_items_cache = None
+        self._launch_items_cache_ts = 0.0
+        self._launch_items_cache_ttl = 15.0  # seconds; page recreate is frequent
 
     # ========== 全局 AI 供应商/模型设置 ==========
 
@@ -1151,21 +1156,13 @@ class Backend(QObject):
     @Slot(result=list)
     def getLaunchItemsSortedByPlayTime(self):
         """Get launch items sorted by total play time (descending)"""
-        from modules.setup_ui import get_all_launch_items
         from modules.play_time import get_all_play_times, format_duration
-        items = get_all_launch_items()
         times = get_all_play_times()
         qml_items = []
-        for item in items:
-            icon_path = "../../icon/Grass_Block.png"
-            if item.get("type") == "custom":
-                icon_path = "../../icon/exeapps.png"
+        for item in self.getLaunchItems():
             total = times.get(item["name"], 0)
             qml_items.append({
-                "name": item["name"],
-                "type": item["type"],
-                "path": item["path"],
-                "icon": icon_path,
+                **item,
                 "playTime": total,
                 "playTimeFormatted": format_duration(total),
             })
@@ -1247,15 +1244,15 @@ class Backend(QObject):
             pass
 
         now = time.time()
-        if (
-            self._activity_refresh_ts
-            and (now - self._activity_refresh_ts) < self._HOME_REMOTE_TTL_SEC
-            and self._activity_info
-        ):
+        if self._activity_info and self._activity_refresh_ts and (now - self._activity_refresh_ts) < self._HOME_REMOTE_TTL_SEC:
             self.activityInfoChanged.emit(self._activity_info)
             return
+        if self._activity_refresh_inflight:
+            if self._activity_info:
+                self.activityInfoChanged.emit(self._activity_info)
+            return
 
-        self._activity_refresh_ts = now
+        self._activity_refresh_inflight = True
         from modules.BLServer import get_latest_version
 
         def update_activity():
@@ -1279,8 +1276,6 @@ class Backend(QObject):
                             # convert to file URL for QML
                             url = QUrl.fromLocalFile(local_path).toString()
                             BLglobals.BL_Activity["icon"] = url
-                        else:
-                            pass
                     except Exception as e:
                         print(f"Failed to download activity icon: {e}")
                 else:
@@ -1288,9 +1283,13 @@ class Backend(QObject):
                     if icon_url:
                         BLglobals.BL_Activity["icon"] = QUrl.fromLocalFile(icon_url).toString()
                 self._activity_info = BLglobals.BL_Activity
+                self._activity_refresh_ts = time.time()
                 self.activityInfoChanged.emit(self._activity_info)
             except Exception as e:
                 print(f"Error refreshing activity info: {e}")
+                # 失败不写 TTL，下次进入主页可重试
+            finally:
+                self._activity_refresh_inflight = False
 
         threading.Thread(target=update_activity, daemon=True).start()
 
@@ -1307,58 +1306,63 @@ class Backend(QObject):
             pass
 
         now = time.time()
-        if (
-            self._server_refresh_ts
-            and (now - self._server_refresh_ts) < self._HOME_REMOTE_TTL_SEC
-            and self._server_info
-        ):
+        if self._server_info and self._server_refresh_ts and (now - self._server_refresh_ts) < self._HOME_REMOTE_TTL_SEC:
             self.serverInfoChanged.emit(self._server_info)
             return
+        if self._server_refresh_inflight:
+            if self._server_info:
+                self.serverInfoChanged.emit(self._server_info)
+            return
 
-        self._server_refresh_ts = now
+        self._server_refresh_inflight = True
 
         def update_callback(data):
-            self._server_info = data
-            self.serverInfoChanged.emit(data)
+            try:
+                self._server_info = data or {}
+                # 仅在无网络 error 时记 TTL；纯错误允许尽快重试
+                if not (isinstance(data, dict) and data.get("error")):
+                    self._server_refresh_ts = time.time()
+                self.serverInfoChanged.emit(self._server_info)
+            finally:
+                self._server_refresh_inflight = False
 
         getServerData("Bloret", callback=update_callback)
 
-    @Slot(result=list)
-    def getLaunchItems(self):
+    def invalidateLaunchItemsCache(self):
+        self._launch_items_cache = None
+        self._launch_items_cache_ts = 0.0
+
+    def _buildLaunchItemsQml(self):
         from modules.setup_ui import get_all_launch_items
         items = get_all_launch_items()
         qml_items = []
-        
-        # Log for debugging
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.debug(f"getLaunchItems: Retrieved {len(items)} items from get_all_launch_items()")
-        
         for item in items:
-            # Extract icon path from item
-            icon_path = "../../icon/Grass_Block.png"  # Default
-            
-            if item.get("type") == "minecraft":
-                # For minecraft, check if we have metadata with custom icon
-                # Default to Grass_Block for minecraft
-                icon_path = "../../icon/Grass_Block.png"
-                
-            elif item.get("type") == "custom":
-                # For custom apps, use a generic app icon
+            icon_path = "../../icon/Grass_Block.png"
+            if item.get("type") == "custom":
                 icon_path = "../../icon/exeapps.png"
-            
-            qml_item = {
+            qml_items.append({
                 "name": item["name"],
                 "type": item["type"],
                 "path": item["path"],
-                "icon": icon_path
-            }
-            
-            logger.debug(f"getLaunchItems: Added item {qml_item}")
-            qml_items.append(qml_item)
-        
-        logger.debug(f"getLaunchItems: Returning {len(qml_items)} items to QML")
+                "icon": icon_path,
+            })
         return qml_items
+
+    @Slot(result=list)
+    def getLaunchItems(self):
+        """返回启动项；短时缓存，减轻侧边栏反复重建主页时的磁盘扫描开销。"""
+        import time
+        now = time.time()
+        if (
+            self._launch_items_cache is not None
+            and (now - self._launch_items_cache_ts) < self._launch_items_cache_ttl
+        ):
+            return list(self._launch_items_cache)
+
+        qml_items = self._buildLaunchItemsQml()
+        self._launch_items_cache = qml_items
+        self._launch_items_cache_ts = now
+        return list(qml_items)
 
     @Slot(str)
     def selectLaunchItem(self, name):
@@ -1369,6 +1373,11 @@ class Backend(QObject):
             print(f"[Home] Selected launch item: {name}")
         except Exception as e:
             print(f"Error selecting launch item: {e}")
+
+    @Slot()
+    def invalidateLaunchItems(self):
+        """供安装/删除核心后刷新启动列表缓存。"""
+        self.invalidateLaunchItemsCache()
 
     @Slot(result=str)
     def getSelectedLaunchItem(self):
@@ -1463,6 +1472,7 @@ class Backend(QObject):
                 config_data = cfg.read()
                 config_data['customize_list'] = BLglobals.customize_list
                 cfg.write(config_data)
+                self.invalidateLaunchItemsCache()
                 print(f"Deleted custom item: {name}")
         except Exception as e:
             print(f"Error deleting custom item: {e}")
@@ -1478,6 +1488,7 @@ class Backend(QObject):
                 if config_data.get('ChoosedRun') == oldName:
                     config_data['ChoosedRun'] = newName
                 cfg.write(config_data)
+                self.invalidateLaunchItemsCache()
                 print(f"Renamed custom item: {oldName} -> {newName}")
         except Exception as e:
             print(f"Error renaming custom item: {e}")
@@ -1624,6 +1635,7 @@ class Backend(QObject):
                         json.dump(full_data, f, ensure_ascii=False, indent=4)
                 
                 print(f"Core deleted: {versionName}")
+                self.invalidateLaunchItemsCache()
                 try:
                     from modules.plugin_host.hook_util import fire
                     fire("version.deleted", {"version": versionName})
@@ -2716,9 +2728,9 @@ class Backend(QObject):
 
     @Slot(result=list)
     def getSystemJavas(self):
-        from modules.java_runtime import probe_java, scan_java_runtimes, invalidate_java_runtime_cache
-        invalidate_java_runtime_cache()
-        runtimes = scan_java_runtimes(force_refresh=True)
+        """返回 Java 运行时列表。默认使用已有扫描缓存，避免每次打开设置都全盘扫描导致侧边栏卡顿。"""
+        from modules.java_runtime import probe_java, scan_java_runtimes
+        runtimes = scan_java_runtimes(force_refresh=False)
         configured_path = self.getCurrentJavaPath()
         if configured_path and not any(item.get('path') == configured_path for item in runtimes):
             configured = probe_java(configured_path)
@@ -3771,14 +3783,19 @@ class Backend(QObject):
                     try:
                         with open(cache_file, "wb") as f:
                             f.write(content)
-                        local_url = QUrl.fromLocalFile(cache_file).toString()
-                        print(f"[getPassPortAvatar] 缓存已写入，通知 UI: {local_url}")
-                        self.passPortAvatarChanged.emit(local_url)
+                        # 用户可能已切换账户：仅在目标用户名仍匹配时通知
+                        with self._avatar_download_lock:
+                            still_current = self._avatar_download_username == username
+                        if still_current:
+                            local_url = QUrl.fromLocalFile(cache_file).toString()
+                            print(f"[getPassPortAvatar] 缓存已写入，通知 UI: {local_url}")
+                            self.passPortAvatarChanged.emit(local_url)
                     except Exception as e:
                         print(f"[getPassPortAvatar] 写缓存失败: {e}")
             finally:
                 with self._avatar_download_lock:
-                    self._avatar_download_running = False
+                    if self._avatar_download_username == username:
+                        self._avatar_download_running = False
 
         threading.Thread(target=run, daemon=True).start()
 
