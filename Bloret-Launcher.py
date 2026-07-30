@@ -203,7 +203,9 @@ class Backend(QObject):
     # 多任务下载信号（新 UI 使用）
     downloadTaskAdded = Signal(str)       # task_id
     downloadTaskRemoved = Signal(str)     # task_id
-    openDownloadManager = Signal()        # 从下载页紧凑条打开管理面板
+    downloadTaskProgressUpdated = Signal(str, float, str, str, str, str)
+    downloadErrorOccurred = Signal(str, str, str, str, str)
+    downloadManagerOpenRequested = Signal()  # 从下载页紧凑条打开管理面板
     # 旧信号（保持向后兼容）
     downloadDialogRequested = Signal(str)
     downloadProgressUpdated = Signal(float, str, str, str, str)
@@ -221,6 +223,7 @@ class Backend(QObject):
     updateAvailable = Signal(str, str, str)    # current_ver, latest_ver, update_text
     updateProgressUpdated = Signal(float, str)  # progress (0-1), status_text
     updateFailed = Signal(str)                  # error_message
+    applicationQuitRequested = Signal()
 
     # BBBS signals
     bbbsSummaryReceived = Signal(dict)
@@ -256,6 +259,8 @@ class Backend(QObject):
     versionListReady = Signal(str, list)  # category, versions
     versionListLoadFailed = Signal(str)  # error message
     playTimeTick = Signal()  # emitted every second while game is running
+    playTimeTimerStartRequested = Signal()
+    playTimeTimerStopRequested = Signal()
     statisticsUpdated = Signal()  # emitted when play statistics are updated
 
     # Global AI settings signal
@@ -300,6 +305,19 @@ class Backend(QObject):
         self._manifest_fetched = False
         self._version_prefetch_running = False
         self._version_prefetch_lock = threading.Lock()
+        # 普通 Python 工作线程只能请求，真正的 QTimer 操作始终排队到 Backend 所在线程。
+        self.playTimeTimerStartRequested.connect(
+            self._start_play_time_tick_on_gui,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.playTimeTimerStopRequested.connect(
+            self._stop_play_time_tick_on_gui,
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.applicationQuitRequested.connect(
+            app.quit,
+            Qt.ConnectionType.QueuedConnection,
+        )
 
     # ========== 全局 AI 供应商/模型设置 ==========
 
@@ -961,31 +979,46 @@ class Backend(QObject):
     # ========== 游戏时间 ==========
 
     def _start_play_time_tick(self):
-        """Start a 1-second timer that emits playTimeTick"""
+        """Request the GUI thread to start the play-time timer."""
+        self.playTimeTimerStartRequested.emit()
+
+    @Slot()
+    def _start_play_time_tick_on_gui(self):
+        """Create and start the QTimer in Backend's Qt thread."""
         from PySide6.QtCore import QTimer
-        if self._play_time_timer is not None:
+        if self._play_time_timer is not None or not (
+            self._play_time_sessions or self._detailed_sessions
+        ):
             return
-        self._play_time_timer = QTimer()
+        self._play_time_timer = QTimer(self)
         self._play_time_timer.timeout.connect(self.playTimeTick.emit)
         self._play_time_timer.start(1000)
 
     def _stop_play_time_tick(self):
-        """Stop the tick timer when no sessions are active"""
-        if self._play_time_timer and not self._play_time_sessions:
+        """Request the GUI thread to stop the timer when sessions are idle."""
+        self.playTimeTimerStopRequested.emit()
+
+    @Slot()
+    def _stop_play_time_tick_on_gui(self):
+        if self._play_time_timer and not (
+            self._play_time_sessions or self._detailed_sessions
+        ):
             self._play_time_timer.stop()
+            self._play_time_timer.deleteLater()
             self._play_time_timer = None
 
     def _end_play_time_session(self, instance_id):
-        """End a play time session and accumulate to total"""
+        """End a play-time session without double-counting its duration."""
         session = self._play_time_sessions.pop(instance_id, None)
-        if session:
-            from modules.play_time import end_session
-            end_session(session)
         detailed = self._detailed_sessions.pop(instance_id, None)
         if detailed:
             from modules.play_time import end_detailed_session
             end_detailed_session(detailed)
             self.statisticsUpdated.emit()
+        elif session:
+            # Compatibility fallback for sessions created before detailed tracking.
+            from modules.play_time import end_session
+            end_session(session)
         if not self._play_time_sessions and not self._detailed_sessions:
             self._stop_focus_monitor()
         self._stop_play_time_tick()
@@ -2245,6 +2278,11 @@ class Backend(QObject):
         dm = DownloadManager()
         return dm.start_download(version, versionName, loader, self)
 
+    @Slot(str, str, str, result=str)
+    def retryDownload(self, loader, version, versionName):
+        """Retry a failed download using the same normalized arguments."""
+        return self.startDownload(version, versionName, loader)
+
     @Slot(str)
     def cancelDownloadTask(self, task_id):
         from modules.download_manager import DownloadManager
@@ -2295,8 +2333,8 @@ class Backend(QObject):
 
     @Slot()
     def openDownloadManager(self):
-        """打开下载管理面板（由 QML 紧凑条触发）"""
-        self.openDownloadManager.emit()
+        """打开下载管理面板（由 QML 紧凑条触发）。"""
+        self.downloadManagerOpenRequested.emit()
 
     def updateDownloadProgress(self, progress, status, speed, downloaded, total):
         self.downloadProgressUpdated.emit(progress, status, speed, downloaded, total)
@@ -2603,7 +2641,9 @@ class Backend(QObject):
 
                 self.updateProgressUpdated.emit(0.95, i18nText("正在启动安装程序..."))
                 subprocess.Popen([file_name, "--quickstart"], **hidden_process_kwargs())
-                sys.exit(0)
+                # sys.exit() in a worker only terminates that worker. Queue the
+                # application shutdown on Qt's main thread instead.
+                self.applicationQuitRequested.emit()
 
             except Exception as e:
                 print(f"Update failed: {e}")
@@ -2613,6 +2653,8 @@ class Backend(QObject):
                     send_notification(i18nText("更新失败"), str(e), category="update")
                 except Exception:
                     pass
+
+        threading.Thread(target=_inner, daemon=True, name="LauncherUpdate").start()
 
     @Slot()
     def openMinecraftDir(self):

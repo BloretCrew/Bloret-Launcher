@@ -147,6 +147,14 @@ class DownloadManager:
                 task.error_message = str(exc)
                 log(f"[DownloadManager] task {task_id} exception: {exc}", exc_info=True)
             finally:
+                if task.status == "failed" and backend:
+                    backend.downloadErrorOccurred.emit(
+                        "Minecraft 下载失败",
+                        task.error_message or "下载任务未完成",
+                        version,
+                        version_name,
+                        loader,
+                    )
                 completed_ev.set()
                 if backend:
                     backend.downloadTaskRemoved.emit(task_id)
@@ -214,9 +222,10 @@ class DownloadManager:
         task.speed = speed
         task.downloaded = downloaded
         task.total = total
-        # Forward to Backend signal for QML
+        # Forward the task-aware signal to QML without breaking the legacy
+        # five-argument downloadProgressUpdated signal.
         if task.backend:
-            task.backend.downloadProgressUpdated.emit(
+            task.backend.downloadTaskProgressUpdated.emit(
                 task_id, progress, status_text, speed, downloaded, total
             )
 

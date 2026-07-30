@@ -354,7 +354,7 @@ FluentWindow {
             // DownloadDialog 内部的 Connections 已经处理了
         }
 
-        function onOpenDownloadManager() {
+        function onDownloadManagerOpenRequested() {
             downloadDialog.open()
         }
 

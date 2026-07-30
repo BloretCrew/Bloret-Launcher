@@ -1,6 +1,8 @@
 import os, shutil
 import json
 import sys
+import tempfile
+import threading
 import modules.globals as BLglobals
 from modules.log import log
 from modules.paths import app_path
@@ -15,6 +17,27 @@ source_config_path = get_source_config_path()
 
 # config_path = %appdata%/Bloret-Launcher/config.json
 config_path = os.path.join(BLglobals.datapath, 'config.json')
+_config_lock = threading.RLock()
+
+
+def _atomic_write_json(path, data):
+    """Write JSON atomically so crashes cannot leave a partial config file."""
+    parent = os.path.dirname(path) or "."
+    os.makedirs(parent, exist_ok=True)
+    fd, temp_path = tempfile.mkstemp(prefix=".config-", suffix=".tmp", dir=parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, ensure_ascii=False, indent=4)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, path)
+    except Exception:
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+        raise
+
 
 #先检查目标配置文件是否存在
 log(f"正在检查配置文件路径: {config_path}")
@@ -66,8 +89,8 @@ else:
                 updated_config.update(config) # config 的内容会覆盖 default_config 的同名内容
                 updated_config['ver'] = default_ver
 
-                with open(config_path, 'w', encoding='utf-8') as f:
-                    json.dump(updated_config, f, ensure_ascii=False, indent=4)
+                with _config_lock:
+                    _atomic_write_json(config_path, updated_config)
                 log(f"配置文件版本已从 {current_ver} 安全升级到 {default_ver}")
             else:
                 log("配置文件版本匹配，无需更新")
@@ -111,15 +134,17 @@ def _summarize_config_for_log(config):
 
 
 def read():
-    if not os.path.exists(BLglobals.config_path):
-        log(f"读取时发现配置文件不存在: {BLglobals.config_path}，返回空配置")
-        return {}
-    try:
-        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        log(f"read() 读取配置文件失败: {str(e)}，返回空配置")
-        return {}
+    path = BLglobals.config_path
+    with _config_lock:
+        if not os.path.exists(path):
+            log(f"读取时发现配置文件不存在: {path}，返回空配置")
+            return {}
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            log(f"read() 读取配置文件失败: {str(e)}，返回空配置")
+            return {}
 
 
 def _sanitize_hook_value(key, value):
@@ -142,6 +167,20 @@ def _sanitize_hook_value(key, value):
     return value
 
 
+def _fire_config_changed(changed_keys=None):
+    """Dispatch plugin hooks after the config lock has been released."""
+    try:
+        from modules.plugin_host.hook_util import fire
+
+        if isinstance(changed_keys, dict) and changed_keys:
+            for key, value in changed_keys.items():
+                fire("config.changed", key, _sanitize_hook_value(key, value))
+        else:
+            fire("config.changed", "*", None)
+    except Exception as e:
+        log(f"write() 派发 config.changed 失败: {e}")
+
+
 def write(config, *, changed_keys=None, fire_hooks=True):
     """
     将配置写入磁盘，并（默认）派发 config.changed 钩子。
@@ -157,34 +196,29 @@ def write(config, *, changed_keys=None, fire_hooks=True):
         raise TypeError("config must be a dict")
     path = getattr(BLglobals, "config_path", None) or config_path
     try:
-        parent = os.path.dirname(path)
-        if parent:
-            os.makedirs(parent, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(config, f, ensure_ascii=False, indent=4)
+        with _config_lock:
+            _atomic_write_json(path, config)
     except Exception as e:
         log(f"write() 写入配置失败: {e}")
         return False
 
     if fire_hooks:
-        try:
-            from modules.plugin_host.hook_util import fire
-
-            if isinstance(changed_keys, dict) and changed_keys:
-                for key, value in changed_keys.items():
-                    fire("config.changed", key, _sanitize_hook_value(key, value))
-            else:
-                fire("config.changed", "*", None)
-        except Exception as e:
-            log(f"write() 派发 config.changed 失败: {e}")
+        _fire_config_changed(changed_keys)
     return True
 
 
 def update_keys(**kwargs):
-    """读取 → 更新若干键 → write（带 changed_keys）。返回更新后的完整配置。"""
-    data = read() or {}
-    data.update(kwargs)
-    write(data, changed_keys=dict(kwargs))
+    """Atomically read, update and persist several configuration keys."""
+    path = getattr(BLglobals, "config_path", None) or config_path
+    try:
+        with _config_lock:
+            data = read() or {}
+            data.update(kwargs)
+            _atomic_write_json(path, data)
+    except Exception as e:
+        log(f"update_keys() 写入配置失败: {e}")
+        return {}
+    _fire_config_changed(dict(kwargs))
     return data
 
 try:

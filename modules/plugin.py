@@ -293,6 +293,12 @@ def addPlugin(list_url, plugin_name):
             return False
             
         log(f"正在从以下位置获取插件信息: {list_url}")
+
+        from modules.plugin_install_request import validate_download_url
+        ok_url, url_error = validate_download_url(str(list_url), allow_file=False)
+        if not ok_url:
+            log(f"插件来源 URL 校验失败: {url_error}")
+            return False
         
         # 检查是否是直接的ZIP文件URL（通过文件扩展名判断）
         if list_url.endswith('.zip'):
@@ -315,14 +321,8 @@ def addPlugin(list_url, plugin_name):
             response = session.get(list_url, timeout=30)
             response.raise_for_status()
         except requests.exceptions.SSLError as ssl_error:
-            log(f"SSL错误: {str(ssl_error)}")
-            # 尝试禁用SSL验证再次请求（仅作为备选方案）
-            try:
-                response = session.get(list_url, verify=False, timeout=30)
-                response.raise_for_status()
-                log("警告: SSL验证已禁用，仅作为备选方案")
-            except Exception as fallback_error:
-                raise Exception(f"SSL连接失败，备选方案也失败: {str(fallback_error)}")
+            log(f"SSL证书验证失败，已拒绝继续下载插件: {ssl_error}")
+            raise RuntimeError(f"SSL证书验证失败: {ssl_error}") from ssl_error
         except Exception as e:
             raise Exception(f"网络请求失败: {str(e)}")
         
