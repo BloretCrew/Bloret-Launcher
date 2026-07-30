@@ -977,7 +977,8 @@ FluentPage {
                 }
             }
 
-            showAccountCombo.currentIndex = ["compact", "full", "hidden"].indexOf(Backend.getShowAccountOnHome())
+            var _showAccountIdx = ["compact", "full", "hidden"].indexOf(Backend.getShowAccountOnHome())
+            showAccountCombo.currentIndex = _showAccountIdx >= 0 ? _showAccountIdx : 0  // 默认 "简略展示"
             minimizeToTraySwitch.checked = Backend.getMinimizeToTrayOnClose()
             traySupported = Backend.isSystemTrayAvailable()
             repeatRunSwitch.checked = Backend.getRepeatRun()
@@ -1410,9 +1411,12 @@ FluentPage {
                     textRole: "text"
                     valueRole: "value"
                     Layout.preferredWidth: 150
-                    onActivated: {
-                        if (Backend)
-                            Backend.setShowAccountOnHome(currentValue)
+                    onActivated: function(index) {
+                        if (Backend) {
+                            Backend.setShowAccountOnHome(valueAt(index))
+                            // 强制同步显示，确保设置立即生效且不回落
+                            currentIndex = index
+                        }
                     }
                 }
             }
