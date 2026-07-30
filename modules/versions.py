@@ -97,7 +97,8 @@ def _gitcode_base_url(version=None):
         return None
     return f"https://raw.gitcode.com/Bloret/{v}/raw/main"
 
-# Mirror helpers: single source of truth in modules.download
+# Mirror helpers: single source of truth in modules.download. These helpers
+# dispatch the plugin hook "download.resolve_url" before returning candidates.
 from modules.download.mirrors import (  # noqa: E402
     dl_source_launcher_or_meta_get,
     dl_source_library_get,

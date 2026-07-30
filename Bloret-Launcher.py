@@ -189,6 +189,9 @@ class Backend(QObject):
     """
     modrinthResultsReceived = Signal(list)
     minecraftAccountsChanged = Signal(list, arguments=['accounts'])
+    passportAvatarChanged = Signal(str)
+    javaRuntimesReady = Signal(list)
+    gitSshCheckFinished = Signal(bool, str)
     logsCleared = Signal()
     easytierStatusChanged = Signal(str, str)
     serverInfoChanged = Signal(dict)
@@ -284,6 +287,12 @@ class Backend(QObject):
         self._launch_cancellation_event = None
         self._current_launching_version = ""  # 当前正在启动的版本
         self._screenshot_widget = None
+        self._avatar_refresh_lock = threading.Lock()
+        self._avatar_refresh_running = False
+        self._java_scan_lock = threading.Lock()
+        self._java_scan_running = False
+        self._ssh_check_lock = threading.Lock()
+        self._ssh_check_running = False
         # Play time tracking
         self._play_time_sessions = {}  # instance_id -> session dict
         self._play_time_timer = None
@@ -2710,16 +2719,38 @@ class Backend(QObject):
 
     @Slot(result=list)
     def getSystemJavas(self):
-        from modules.java_runtime import probe_java, scan_java_runtimes, invalidate_java_runtime_cache
-        invalidate_java_runtime_cache()
-        runtimes = scan_java_runtimes(force_refresh=True)
-        configured_path = self.getCurrentJavaPath()
-        if configured_path and not any(item.get('path') == configured_path for item in runtimes):
-            configured = probe_java(configured_path)
-            if configured['valid']:
-                runtimes.append(configured)
-        log(f"[Settings] 返回 {len(runtimes)} 个 Java 扫描结果")
+        """Return the cached Java list immediately; scanning is asynchronous."""
+        from modules.java_runtime import get_cached_java_runtimes
+        runtimes = get_cached_java_runtimes()
+        log(f"[Settings] 返回 {len(runtimes)} 个 Java 缓存结果")
         return runtimes
+
+    @Slot(bool)
+    def scanSystemJavasAsync(self, forceRefresh=False):
+        """Scan Java runtimes off the GUI thread and emit javaRuntimesReady."""
+        with self._java_scan_lock:
+            if self._java_scan_running:
+                return
+            self._java_scan_running = True
+
+        def _scan():
+            try:
+                from modules.java_runtime import probe_java, scan_java_runtimes
+                runtimes = scan_java_runtimes(force_refresh=bool(forceRefresh))
+                configured_path = self.getCurrentJavaPath()
+                if configured_path and not any(item.get('path') == configured_path for item in runtimes):
+                    configured = probe_java(configured_path)
+                    if configured['valid']:
+                        runtimes.append(configured)
+                self.javaRuntimesReady.emit(runtimes)
+            except Exception as error:
+                log(f"[Settings] Java 异步扫描失败: {error}", logging.WARNING)
+                self.javaRuntimesReady.emit([])
+            finally:
+                with self._java_scan_lock:
+                    self._java_scan_running = False
+
+        threading.Thread(target=_scan, daemon=True, name="JavaRuntimeScan").start()
 
     @Slot(result=str)
     def getJavaSelectionMode(self):
@@ -2855,46 +2886,45 @@ class Backend(QObject):
         self.configChanged.emit('git_protocol', protocol)
         print(f"Git protocol updated to: {protocol}")
 
-    @Slot(result=bool)
-    def checkGitSshAvailable(self):
-        """检测 SSH 协议是否可用：先检查 SSH 密钥是否存在，再尝试连接 gitcode.com"""
-        import os, subprocess
+    @Slot()
+    def checkGitSshAvailableAsync(self):
+        """Check Git SSH availability off the GUI thread."""
+        with self._ssh_check_lock:
+            if self._ssh_check_running:
+                return
+            self._ssh_check_running = True
 
-        # 1. 检查本地是否存在 SSH 密钥
-        ssh_dir = os.path.expanduser("~/.ssh")
-        has_key = False
-        if os.path.isdir(ssh_dir):
-            for name in ("id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"):
-                if os.path.isfile(os.path.join(ssh_dir, name)):
-                    has_key = True
-                    break
-        if not has_key:
-            print("[SSH check] no SSH key found in ~/.ssh")
-            BLglobals.git_ssh_available = False
-            return False
+        def _check():
+            ok = False
+            message = ""
+            try:
+                # Let OpenSSH resolve ssh-agent, IdentityFile and hardware-backed
+                # keys; checking only conventional ~/.ssh filenames rejects valid setups.
+                result = subprocess.run(
+                    [
+                        "ssh", "-T", "-o", "BatchMode=yes",
+                        "-o", "ConnectTimeout=5",
+                        "-o", "StrictHostKeyChecking=accept-new",
+                        "git@gitcode.com",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    **hidden_process_kwargs(),
+                )
+                output = "\n".join((result.stdout or "", result.stderr or ""))
+                ok = "Welcome" in output or "successfully authenticated" in output
+                message = "SSH 可用" if ok else "SSH 认证失败"
+                BLglobals.git_ssh_available = ok
+            except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as error:
+                message = str(error)
+                BLglobals.git_ssh_available = False
+            finally:
+                with self._ssh_check_lock:
+                    self._ssh_check_running = False
+                self.gitSshCheckFinished.emit(ok, message)
 
-        # 2. 尝试 SSH 连接 gitcode.com 验证认证是否通过
-        try:
-            result = subprocess.run(
-                ['ssh', '-T', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=no', 'git@gitcode.com'],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-            # 认证成功标志：stderr 含 "Welcome" 或 "successfully authenticated"
-            # 注意：OpenSSH 的 PQ 警告会使 returncode 为 128，不依赖它
-            ok = (
-                "Welcome" in result.stderr
-                or "successfully authenticated" in result.stderr
-            )
-            print(f"[SSH check] returncode={result.returncode}, ok={ok}")
-            print(f"[SSH check] stderr={result.stderr!r}")
-            BLglobals.git_ssh_available = ok
-            return ok
-        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
-            print(f"[SSH check] failed: {e}")
-            BLglobals.git_ssh_available = False
-            return False
+        threading.Thread(target=_check, daemon=True, name="GitSshCheck").start()
 
     @Slot(result=int)
     def getMaxThread(self):
@@ -3695,106 +3725,105 @@ class Backend(QObject):
     def getPassPortName(self):
         return self.getBloretPassPortUserName()
 
+    def _passport_avatar_cache_file(self, config_data=None):
+        config_data = config_data or cfg.read()
+        if not config_data.get("Bloret_PassPort_Login"):
+            return ""
+        username = str(config_data.get("Bloret_PassPort_UserName") or "").strip()
+        if not username:
+            return ""
+        safe_name = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in username)
+        cache_dir = os.path.join(BLglobals.cache_path, "avatars")
+        os.makedirs(cache_dir, exist_ok=True)
+        return os.path.join(cache_dir, f"{safe_name}_passport.png")
+
+    def _avatar_local_url(self, cache_file):
+        url = QUrl.fromLocalFile(cache_file)
+        try:
+            url.setQuery(f"v={os.stat(cache_file).st_mtime_ns}")
+        except OSError:
+            pass
+        return url.toString()
+
     @Slot(result=str)
     def getPassPortAvatar(self):
-        """获取用户头像 - 优先使用 PassPort 头像，备用使用 Minecraft 账户头像"""
-        print(f"\n[getPassPortAvatar] 方法被调用")
-        config_data = cfg.read()
-        
-        is_logged_in = config_data.get('Bloret_PassPort_Login')
-        print(f"  登录状态: {is_logged_in}")
-        if not is_logged_in:
-            print(f"  未登录，返回空字符串")
-            return ""
-        
-        username = config_data.get('Bloret_PassPort_UserName', '')
-        print(f"  PassPort 用户名: {username}")
-        if not username:
-            print(f"  用户名为空，返回空字符串")
-            return ""
-        
-        cache_dir = os.path.join(BLglobals.cache_path, 'avatars')
-        print(f"  缓存目录: {cache_dir}")
+        """Return only a local cached avatar; never perform network I/O."""
         try:
-            os.makedirs(cache_dir, exist_ok=True)
-            print(f"  缓存目录已创建")
-        except Exception as e:
-            print(f"  创建缓存目录失败: {e}")
-        
-        cache_file = os.path.join(cache_dir, f"{username}_passport.png")
-        print(f"  缓存文件路径: {cache_file}")
-        
-        # 从 config.json 读取头像 URL
-        avatar_url = config_data.get('Bloret_PassPort_Avatar', '')
-        print(f"  存储的头像 URL: {avatar_url if avatar_url else '(空)'}")
-        
-        # 如果有有效的头像 URL，尝试下载
-        if avatar_url and (avatar_url.startswith('http://') or avatar_url.startswith('https://')):
-            try:
-                print(f"  开始从 PassPort 头像 URL 下载...")
-                print(f"  请求 URL: {avatar_url}")
-                
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
-                }
-                response = requests.get(avatar_url, timeout=10, headers=headers)
-                print(f"  HTTP 响应状态码: {response.status_code}")
-                print(f"  响应内容大小: {len(response.content)} bytes")
-                
-                if response.status_code == 200 and len(response.content) > 500:
-                    # 保存到缓存
-                    with open(cache_file, 'wb') as f:
-                        f.write(response.content)
-                    print(f"  PassPort 头像已保存到缓存文件")
-                    
-                    local_url = QUrl.fromLocalFile(cache_file).toString()
-                    print(f"  返回本地文件 URL: {local_url}")
-                    print(f"[getPassPortAvatar] 方法执行完成\n")
-                    return local_url
-                else:
-                    print(f"  下载失败：HTTP {response.status_code} 或内容过小")
-            except Exception as e:
-                print(f"  下载头像异常: {type(e).__name__}: {e}")
-        
-        # 如果 PassPort 头像不可用，尝试使用 Minecraft 账户的头像
-        print(f"  PassPort 头像不可用，尝试使用 Minecraft 账户头像...")
-        mc_account_config = config_data.get("MinecraftAccount", {})
-        accounts_list = mc_account_config.get("accounts", [])
-        chosen_index = mc_account_config.get("chosen", 0)
-        
-        if accounts_list and 0 <= chosen_index < len(accounts_list):
-            chosen_account = accounts_list[chosen_index]
-            mc_uuid = chosen_account.get("uuid", "")
-            mc_username = chosen_account.get("username", "")
-            print(f"  选中的 Minecraft 账户: {mc_username}, UUID: {mc_uuid}")
-            
-            # 优先使用 UUID 获取头像
-            avatar_identifier = mc_uuid if mc_uuid else mc_username
-            if avatar_identifier:
-                try:
-                    # 使用 minotar.net 获取头像（更稳定）
-                    fallback_url = f"https://minotar.net/helm/{avatar_identifier}/64"
-                    print(f"  Minecraft 头像 URL: {fallback_url}")
-                    response = requests.get(fallback_url, timeout=10, headers={"User-Agent": "BloretLauncher/1.0"})
-                    print(f"  HTTP 响应状态码: {response.status_code}")
-                    print(f"  响应内容大小: {len(response.content)} bytes")
-                    
-                    if response.status_code == 200 and len(response.content) > 500:
-                        with open(cache_file, 'wb') as f:
-                            f.write(response.content)
-                        print(f"  Minecraft 头像已保存到缓存文件")
-                        local_url = QUrl.fromLocalFile(cache_file).toString()
-                        print(f"  返回本地文件 URL: {local_url}")
-                        print(f"[getPassPortAvatar] 方法执行完成\n")
-                        return local_url
-                    else:
-                        print(f"  Minecraft 头像下载失败：HTTP {response.status_code} 或内容过小")
-                except Exception as e:
-                    print(f"  Minecraft 头像下载异常: {type(e).__name__}: {e}")
-        
-        print(f"  所有方法都失败，返回空字符串")
-        print(f"[getPassPortAvatar] 方法执行完成\n")
+            cache_file = self._passport_avatar_cache_file()
+            if cache_file and os.path.isfile(cache_file) and os.path.getsize(cache_file) > 500:
+                return self._avatar_local_url(cache_file)
+        except Exception as error:
+            log(f"读取头像缓存失败: {error}", logging.WARNING)
         return ""
+
+    @Slot()
+    def refreshPassPortAvatarAsync(self):
+        """Refresh the Passport avatar in a worker and notify QML on success."""
+        with self._avatar_refresh_lock:
+            if self._avatar_refresh_running:
+                return
+            self._avatar_refresh_running = True
+
+        def _refresh():
+            # Keep a valid cached avatar visible if every refresh source fails.
+            local_url = self.getPassPortAvatar()
+            temp_file = ""
+            try:
+                config_data = cfg.read()
+                cache_file = self._passport_avatar_cache_file(config_data)
+                if not cache_file:
+                    return
+                candidates = []
+                avatar_url = str(config_data.get("Bloret_PassPort_Avatar") or "").strip()
+                if avatar_url.startswith(("http://", "https://")):
+                    candidates.append(avatar_url)
+                account_cfg = config_data.get("MinecraftAccount") or {}
+                accounts = account_cfg.get("accounts") or []
+                chosen = int(account_cfg.get("chosen", 0) or 0)
+                current = accounts[chosen] if accounts and 0 <= chosen < len(accounts) else {}
+                identifier = current.get("uuid") or current.get("username") if isinstance(current, dict) else ""
+                if identifier:
+                    candidates.append(f"https://minotar.net/helm/{identifier}/64")
+
+                for url in candidates:
+                    try:
+                        response = requests.get(
+                            url,
+                            timeout=(5, 10),
+                            headers={"User-Agent": "BloretLauncher/1.0"},
+                        )
+                        if response.status_code != 200 or len(response.content) <= 500:
+                            continue
+                        temp_file = cache_file + ".tmp"
+                        with open(temp_file, "wb") as handle:
+                            handle.write(response.content)
+                            handle.flush()
+                            os.fsync(handle.fileno())
+                        os.replace(temp_file, cache_file)
+                        local_url = self._avatar_local_url(cache_file)
+                        break
+                    except requests.RequestException as error:
+                        log(f"头像下载失败 {url}: {error}", logging.WARNING)
+            except Exception as error:
+                log(f"刷新头像失败: {error}", logging.WARNING)
+            finally:
+                if temp_file:
+                    try:
+                        os.unlink(temp_file)
+                    except OSError:
+                        pass
+                current_config = cfg.read()
+                current_cache = self._passport_avatar_cache_file(current_config)
+                expected_cache = os.path.normcase(os.path.abspath(current_cache)) if current_cache else ""
+                emitted_path = QUrl(local_url).toLocalFile() if local_url else ""
+                emitted_cache = os.path.normcase(os.path.abspath(emitted_path)) if emitted_path else ""
+                if not expected_cache or expected_cache != emitted_cache:
+                    local_url = self.getPassPortAvatar()
+                with self._avatar_refresh_lock:
+                    self._avatar_refresh_running = False
+                self.passportAvatarChanged.emit(local_url)
+
+        threading.Thread(target=_refresh, daemon=True, name="PassportAvatarRefresh").start()
 
     # Removed duplicate getPlayerName, getVanillaVersions, getFabricVersions, getJavaDownloadVersions, downloadJava
     # ensuring the correct implementations later in the file are used.

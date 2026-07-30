@@ -17,6 +17,7 @@ FluentPage {
         // 延迟更新确保 Backend 完全初始化
         Qt.callLater(function() {
             updatePassportData()
+            if (Backend) Backend.refreshPassPortAvatarAsync()
         })
     }
 
@@ -34,6 +35,9 @@ FluentPage {
 
     Connections {
         target: Backend
+        function onPassportAvatarChanged(url) {
+            passportAvatar.source = url && url !== "" ? url : "../../icon/Grass_Block.png"
+        }
         function onMinecraftAccountsChanged(accounts) {
             if (Backend) {
                 try {

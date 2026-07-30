@@ -22,6 +22,7 @@ FluentPage {
     property var languages: []
     property bool traySupported: true
     property string localIPAddress: ""
+    property bool sshCheckRunning: false
 
     Component.onCompleted: {
         console.log("[Settings] page loaded, showing category hub")
@@ -41,6 +42,22 @@ FluentPage {
         function onLanguageChanged() {
             refreshTranslations()
             updatePageTitle()
+        }
+        function onJavaRuntimesReady(runtimes) {
+            javaRuntimes = runtimes
+            currentJavaPath = Backend.getCurrentJavaPath()
+            refreshJavaComboSelection()
+        }
+        function onGitSshCheckFinished(available, message) {
+            if (typeof sshStatusIndicator !== "undefined" && sshStatusIndicator !== null)
+                sshStatusIndicator.color = available ? "#10b981" : "#ef4444"
+            if (typeof sshStatusLabel !== "undefined" && sshStatusLabel !== null) {
+                sshStatusLabel.text = available
+                    ? "SSH " + _gitSshAvailable
+                    : "SSH " + _gitSshUnavailable + (message ? " — " + message : "")
+                sshStatusLabel.color = available ? "#10b981" : "#ef4444"
+            }
+            sshCheckRunning = false
         }
     }
 
@@ -871,18 +888,15 @@ FluentPage {
     // ── Git SSH 可用性检测 ──
     function checkSsh() {
         if (!Backend) return
-        console.log("[Settings] checking SSH availability...")
-        var available = Backend.checkGitSshAvailable()
-        if (typeof sshStatusIndicator !== "undefined" && sshStatusIndicator !== null) {
-            sshStatusIndicator.color = available ? "#10b981" : "#ef4444"
-        }
+        console.log("[Settings] checking SSH availability asynchronously...")
+        if (typeof sshStatusIndicator !== "undefined" && sshStatusIndicator !== null)
+            sshStatusIndicator.color = "#9E9E9E"
         if (typeof sshStatusLabel !== "undefined" && sshStatusLabel !== null) {
-            sshStatusLabel.text = available
-                ? "SSH " + _gitSshAvailable
-                : "SSH " + _gitSshUnavailable
-            sshStatusLabel.color = available ? "#10b981" : "#ef4444"
+            sshStatusLabel.text = "SSH " + (Backend ? Backend.tr("检测中...") : "检测中...")
+            sshStatusLabel.color = "#9E9E9E"
         }
-        console.log("[Settings] SSH check result:", available)
+        sshCheckRunning = true
+        Backend.checkGitSshAvailableAsync()
     }
 
     function connectorStatusText(status) {
@@ -936,9 +950,8 @@ FluentPage {
 
     function rescanJavas() {
         if (!Backend) return
-        console.log("[Settings] 重新扫描 Java")
-        javaRuntimes = Backend.getSystemJavas()
-        refreshJavaComboSelection()
+        console.log("[Settings] 后台重新扫描 Java")
+        Backend.scanSystemJavasAsync(true)
     }
 
     function refreshData() {
@@ -947,6 +960,7 @@ FluentPage {
         if (Backend) {
             currentMcDir = Backend.getMinecraftDir()
             javaRuntimes = Backend.getSystemJavas()
+            Backend.scanSystemJavasAsync(false)
             javaSelectionMode = Backend.getJavaSelectionMode()
             currentJavaPath = Backend.getCurrentJavaPath()
             javaModeCombo.currentIndex = javaSelectionMode === "fixed" ? 1 : 0
@@ -1185,9 +1199,10 @@ FluentPage {
                                 var selected = Backend.browseJavaExecutable()
                                 if (!selected) return
                                 currentJavaPath = selected
-                                rescanJavas()
-                                refreshJavaComboSelection()
-                                Backend.setJavaSelection("fixed", selected)
+                                if (Backend.setJavaSelection("fixed", selected)) {
+                                    refreshJavaComboSelection()
+                                    rescanJavas()
+                                }
                             }
                         }
                     }
@@ -1357,7 +1372,7 @@ FluentPage {
                         Button {
                             id: gitSshTestBtn
                             text: _gitSshTestBtn
-                            enabled: gitProtocolCombo.currentValue === "ssh"
+                            enabled: gitProtocolCombo.currentValue === "ssh" && !settingsPage.sshCheckRunning
                             onClicked: settingsPage.checkSsh()
                         }
                     }

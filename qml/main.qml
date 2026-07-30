@@ -323,7 +323,12 @@ FluentWindow {
     Connections {
         target: Backend
         function onMinecraftAccountsChanged(accounts) {
-            // 账户信息变化时更新导航
+            // 账户信息变化时更新导航并异步刷新头像缓存
+            updatePassPortNavigation()
+            Backend.refreshPassPortAvatarAsync()
+        }
+
+        function onPassportAvatarChanged(url) {
             updatePassPortNavigation()
         }
 
@@ -550,6 +555,7 @@ FluentWindow {
         rebuildNavigation()
         applyPluginTheme()
         updatePassPortNavigation()
+        Backend.refreshPassPortAvatarAsync()
 
         // 初始化背景效果
         if (Backend) {

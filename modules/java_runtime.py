@@ -158,6 +158,12 @@ def discover_java_paths(extra_roots=None):
     return unique
 
 
+def get_cached_java_runtimes():
+    """Return the latest completed scan without walking the filesystem."""
+    with _runtime_cache_lock:
+        return list(_runtime_cache["runtimes"] or [])
+
+
 def invalidate_java_runtime_cache():
     """Clear process-local Java scan cache (call after settings change / re-scan)."""
     with _runtime_cache_lock:

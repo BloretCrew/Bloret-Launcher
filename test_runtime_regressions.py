@@ -67,6 +67,30 @@ class TestBackendDeclarations(unittest.TestCase):
         self.assertIn("downloadErrorOccurred", names)
         self.assertIn("retryDownload", methods)
 
+    def test_gui_blocking_operations_have_async_slots(self):
+        backend = _backend_class()
+        methods = {
+            node.name for node in backend.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("refreshPassPortAvatarAsync", methods)
+        self.assertIn("scanSystemJavasAsync", methods)
+        self.assertIn("checkGitSshAvailableAsync", methods)
+        self.assertNotIn("checkGitSshAvailable", methods)
+
+    def test_avatar_getter_has_no_network_calls(self):
+        backend = _backend_class()
+        method = next(
+            node for node in backend.body
+            if isinstance(node, ast.FunctionDef) and node.name == "getPassPortAvatar"
+        )
+        self.assertFalse(any(
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "requests"
+            for node in ast.walk(method)
+        ))
+
     def test_update_worker_is_started(self):
         backend = _backend_class()
         method = next(
@@ -92,6 +116,26 @@ class TestPluginSourceValidation(unittest.TestCase):
         with mock.patch.object(plugin.requests.Session, "get") as get:
             self.assertFalse(plugin.addPlugin("http://evil.example/plugin.json", "bad"))
             get.assert_not_called()
+
+
+class TestDownloadTaskCleanup(unittest.TestCase):
+    def test_finished_task_history_is_bounded(self):
+        from modules.download_manager import DownloadManager, DownloadTask
+
+        manager = DownloadManager()
+        manager._initialized = False
+        manager._init()
+        manager.tasks.clear()
+        import time
+        now = time.monotonic()
+        for index in range(manager.MAX_FINISHED_TASKS + 5):
+            task = DownloadTask(str(index), "1.21", f"test-{index}", "vanilla", object())
+            task.status = "completed"
+            task.finished_at = now + (index / 1000.0)
+            task.thread = object()
+            manager.tasks[task.task_id] = task
+        manager._prune_finished_tasks()
+        self.assertEqual(len(manager.tasks), manager.MAX_FINISHED_TASKS)
 
 
 class TestAtomicConfigWrite(unittest.TestCase):

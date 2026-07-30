@@ -1713,14 +1713,15 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
     def update_progress_ui(progress, status, speed="", downloaded="", total=""):
         if backend:
             backend.updateDownloadProgress(progress, status, speed, downloaded, total)
-        # 同步更新 DownloadManager（多任务支持）
+        # 同步更新 DownloadManager（多任务支持）。必须使用明确 task_id，
+        # 多个任务共享同一个 Backend，按 backend 查找会把进度串到首个任务。
         try:
             from modules.download_manager import DownloadManager
-            dm = DownloadManager()
-            for t in dm.get_tasks():
-                if t.backend is backend and t.status in ("downloading", "paused"):
-                    dm.update_progress(t.task_id, progress, status, speed, downloaded, total)
-                    break
+            task_id = task_state.get("task_id") if task_state else None
+            if task_id:
+                DownloadManager().update_progress(
+                    task_id, progress, status, speed, downloaded, total
+                )
         except Exception:
             pass
         # 插件 download.progress：每 5% 或 500ms 节流

@@ -70,6 +70,9 @@ FluentPage {
                 activityInfo = data
             }
         }
+        function onPassportAvatarChanged(url) {
+            avatarImage.source = url && url !== "" ? url : "../../icon/Grass_Block.png"
+        }
     }
 
     Connections {

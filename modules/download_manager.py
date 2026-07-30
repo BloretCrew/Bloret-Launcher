@@ -6,6 +6,7 @@ across all tasks.
 """
 
 import threading
+import time
 import uuid
 import modules.globals as BLglobals
 from modules.log import log
@@ -19,7 +20,7 @@ class DownloadTask:
         "status", "progress", "status_text", "speed", "eta",
         "downloaded", "total", "error_message",
         "cancel_event", "pause_event", "backend",
-        "thread", "result",
+        "thread", "result", "finished_at",
     )
 
     def __init__(self, task_id, version, version_name, loader, backend):
@@ -40,6 +41,7 @@ class DownloadTask:
         self.backend = backend
         self.thread = None
         self.result = None
+        self.finished_at = 0.0
 
 
 class DownloadManager:
@@ -48,6 +50,8 @@ class DownloadManager:
     Thread-safe: all task list mutations are guarded by a Lock.
     """
 
+    MAX_FINISHED_TASKS = 50
+    FINISHED_TASK_TTL = 30 * 60
     _instance = None
     _init_lock = threading.Lock()
 
@@ -158,6 +162,10 @@ class DownloadManager:
                 completed_ev.set()
                 if backend:
                     backend.downloadTaskRemoved.emit(task_id)
+                task.finished_at = time.monotonic()
+                task.thread = None
+                task.backend = None
+                self._prune_finished_tasks()
                 log(f"[DownloadManager] task {task_id} finished, status={task.status}")
 
         thread = threading.Thread(target=run, daemon=True, name=f"dl-{task_id}")
@@ -206,6 +214,32 @@ class DownloadManager:
             self.tasks.pop(task_id, None)
         log(f"[DownloadManager] removed task {task_id}")
 
+    def _prune_finished_tasks(self):
+        """Bound retained history and release stale completed task objects."""
+        now = time.monotonic()
+        with self.tasks_lock:
+            finished = [
+                task for task in self.tasks.values()
+                if task.status in ("completed", "failed", "cancelled")
+                and task.finished_at > 0
+            ]
+            expired_ids = {
+                task.task_id for task in finished
+                if now - task.finished_at >= self.FINISHED_TASK_TTL
+            }
+            retained = sorted(
+                (task for task in finished if task.task_id not in expired_ids),
+                key=lambda task: task.finished_at,
+                reverse=True,
+            )
+            expired_ids.update(
+                task.task_id for task in retained[self.MAX_FINISHED_TASKS:]
+            )
+            for task_id in expired_ids:
+                self.tasks.pop(task_id, None)
+        if expired_ids:
+            log(f"[DownloadManager] pruned {len(expired_ids)} finished tasks")
+
     def update_progress(self, task_id, progress, status_text, speed="", downloaded="", total=""):
         """Called from install.py's progress callback to update task state."""
         with self.tasks_lock:
@@ -234,6 +268,7 @@ class DownloadManager:
     def get_tasks(self) -> list:
         """Return snapshot of all tasks."""
         self._init()
+        self._prune_finished_tasks()
         with self.tasks_lock:
             return list(self.tasks.values())
 
