@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 import modules.globals as BLglobals
 from modules.download.session import get_session
+from modules.download.limits import get_download_limiter
 from modules.log import log
 
 
@@ -160,62 +161,71 @@ def secure_download(
                             f"安全下载{description} (尝试 {attempt}/{retries}): {url} -> {part_path}"
                         )
 
-                response = get_session().get(
-                    url,
-                    stream=True,
-                    headers=headers,
-                    proxies=BLglobals.get_proxies(),
-                    timeout=(15, 60),
-                )
-                if existing > 0 and response.status_code == 200:
-                    try:
-                        os.remove(part_path)
-                    except FileNotFoundError:
-                        pass
-                    existing = 0
-                    mode = "wb"
-                elif existing > 0 and response.status_code not in (206, 200):
-                    response.raise_for_status()
-                else:
-                    response.raise_for_status()
-
-                total = int(response.headers.get("content-length", 0) or 0)
-                if response.status_code == 206 and existing > 0:
-                    content_range = response.headers.get("content-range") or ""
-                    if "/" in content_range:
-                        try:
-                            total = int(content_range.rsplit("/", 1)[-1])
-                        except ValueError:
-                            total = existing + total
-                    else:
-                        total = existing + total
-                downloaded = existing
-                with open(part_path, mode) as stream:
-                    for chunk in response.iter_content(chunk_size=128 * 1024):
-                        if cancel_event is not None and cancel_event.is_set():
-                            raise DownloadCancelled("用户取消了下载")
-                        _wait_if_paused()
-                        if chunk:
-                            stream.write(chunk)
-                            downloaded += len(chunk)
-                            if progress_callback:
-                                progress_callback(downloaded, total if total else 0)
-                    stream.flush()
-                    try:
-                        os.fsync(stream.fileno())
-                    except OSError:
-                        pass
-                valid, reason = verify_file(
-                    part_path, expected_size, expected_sha1, fast=False
-                )
-                if not valid:
-                    raise ValueError(reason)
-                os.replace(part_path, destination)
-                if not quiet:
-                    log(
-                        f"{description}下载并校验成功: {destination} ({downloaded} bytes)"
+                limiter = get_download_limiter()
+                if not limiter.acquire(cancel_event=cancel_event):
+                    return False
+                response = None
+                try:
+                    response = get_session().get(
+                        url,
+                        stream=True,
+                        headers=headers,
+                        proxies=BLglobals.get_proxies(),
+                        timeout=(15, 60),
                     )
-                return True
+                    if existing > 0 and response.status_code == 200:
+                        try:
+                            os.remove(part_path)
+                        except FileNotFoundError:
+                            pass
+                        existing = 0
+                        mode = "wb"
+                    elif existing > 0 and response.status_code not in (206, 200):
+                        response.raise_for_status()
+                    else:
+                        response.raise_for_status()
+
+                    total = int(response.headers.get("content-length", 0) or 0)
+                    if response.status_code == 206 and existing > 0:
+                        content_range = response.headers.get("content-range") or ""
+                        if "/" in content_range:
+                            try:
+                                total = int(content_range.rsplit("/", 1)[-1])
+                            except ValueError:
+                                total = existing + total
+                        else:
+                            total = existing + total
+                    downloaded = existing
+                    with open(part_path, mode) as stream:
+                        for chunk in response.iter_content(chunk_size=128 * 1024):
+                            if cancel_event is not None and cancel_event.is_set():
+                                raise DownloadCancelled("用户取消了下载")
+                            _wait_if_paused()
+                            if chunk:
+                                stream.write(chunk)
+                                downloaded += len(chunk)
+                                if progress_callback:
+                                    progress_callback(downloaded, total if total else 0)
+                        stream.flush()
+                        try:
+                            os.fsync(stream.fileno())
+                        except OSError:
+                            pass
+                    valid, reason = verify_file(
+                        part_path, expected_size, expected_sha1, fast=False
+                    )
+                    if not valid:
+                        raise ValueError(reason)
+                    os.replace(part_path, destination)
+                    if not quiet:
+                        log(
+                            f"{description}下载并校验成功: {destination} ({downloaded} bytes)"
+                        )
+                    return True
+                finally:
+                    if response is not None:
+                        response.close()
+                    limiter.release()
             except DownloadCancelled:
                 log(f"{description}下载已取消: {destination}", logging.WARNING)
                 return False

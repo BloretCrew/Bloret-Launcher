@@ -69,14 +69,10 @@ class DownloadManager:
         self._initialized = True
         self.tasks: dict[str, DownloadTask] = {}
         self.tasks_lock = threading.Lock()
-        self._rebuild_semaphore()
-        log("[DownloadManager] initialized")
-
-    def _rebuild_semaphore(self):
-        """(Re)create the global semaphore with current MaxThread."""
+        from modules.download import set_global_download_limit
         max_thread = self._get_max_thread_config()
-        self.global_semaphore = threading.BoundedSemaphore(max_thread)
-        log(f"[DownloadManager] semaphore set to {max_thread}")
+        set_global_download_limit(max_thread)
+        log(f"[DownloadManager] initialized with global limit={max_thread}")
 
     def _get_max_thread_config(self):
         """Read MaxThread from config, clamped [1, 64]."""

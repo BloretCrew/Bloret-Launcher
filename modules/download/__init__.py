@@ -7,6 +7,11 @@ from modules.download.constants import (
     clamp_workers,
 )
 from modules.download.session import get_session
+from modules.download.limits import (
+    get_download_limiter,
+    set_global_download_limit,
+    get_global_download_limit,
+)
 from modules.download.secure import (
     DownloadCancelled,
     verify_file,
@@ -26,6 +31,9 @@ __all__ = [
     "FASTDOWNLOAD_TTL_SEC",
     "clamp_workers",
     "get_session",
+    "get_download_limiter",
+    "set_global_download_limit",
+    "get_global_download_limit",
     "DownloadCancelled",
     "verify_file",
     "strict_hash_verify_enabled",

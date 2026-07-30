@@ -217,6 +217,9 @@ class Backend(QObject):
     downloadPaused = Signal(bool)
     coreManagerRequested = Signal(str, dict)
     mrpackExportRequested = Signal(str)
+    modsLoadFinished = Signal(str, str, list, str)
+    resourcePacksLoadFinished = Signal(str, str, list, str)
+    mrpackExportFinished = Signal(str, bool, str, str)
     activityInfoChanged = Signal(dict)
     downloadNotify = Signal(str, str, bool)
     launchDialogRequested = Signal(str)
@@ -227,6 +230,7 @@ class Backend(QObject):
     updateProgressUpdated = Signal(float, str)  # progress (0-1), status_text
     updateFailed = Signal(str)                  # error_message
     applicationQuitRequested = Signal()
+    applicationRestartRequested = Signal()
 
     # BBBS signals
     bbbsSummaryReceived = Signal(dict)
@@ -293,6 +297,11 @@ class Backend(QObject):
         self._java_scan_running = False
         self._ssh_check_lock = threading.Lock()
         self._ssh_check_running = False
+        self._content_request_lock = threading.Lock()
+        self._latest_mods_request = {}
+        self._latest_resourcepacks_request = {}
+        self._export_paths_lock = threading.Lock()
+        self._active_export_paths = set()
         # Play time tracking
         self._play_time_sessions = {}  # instance_id -> session dict
         self._play_time_timer = None
@@ -323,10 +332,8 @@ class Backend(QObject):
             self._stop_play_time_tick_on_gui,
             Qt.ConnectionType.QueuedConnection,
         )
-        self.applicationQuitRequested.connect(
-            app.quit,
-            Qt.ConnectionType.QueuedConnection,
-        )
+        # Connected to LauncherV2.quit_app after the window is constructed so
+        # update-triggered exits follow the same cleanup path.
 
     # ========== 全局 AI 供应商/模型设置 ==========
 
@@ -1406,23 +1413,61 @@ class Backend(QObject):
             print(f"获取实例信息失败：{e}")
             return {}
 
+    def _export_mrpack_sync(self, versionName, packName, packVersion, outputPath):
+        from modules.mrpack_export import export_to_mrpack
+        config_data = cfg.read()
+        minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+        instance_path = os.path.join(minecraft_dir, "versions", versionName)
+        actual_path = outputPath if outputPath.lower().endswith('.mrpack') else outputPath + '.mrpack'
+        summary = f"从 {versionName} 导出的整合包"
+        temp_path = actual_path + f".{threading.get_ident()}.part"
+        try:
+            success = export_to_mrpack(instance_path, temp_path, packName, packVersion, summary)
+            if success:
+                os.replace(temp_path, actual_path)
+            return bool(success), actual_path, "" if success else "导出失败"
+        finally:
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+
     @Slot(str, str, str, str, result=bool)
     def doExportMrpack(self, versionName, packName, packVersion, outputPath):
-        """执行 Modrinth 整合包导出"""
+        """兼容同步调用；新 QML 使用 requestMrpackExport。"""
         try:
-            from modules.mrpack_export import export_to_mrpack
-            config_data = cfg.read()
-            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
-            instance_path = os.path.join(minecraft_dir, "versions", versionName)
-            if not outputPath.endswith('.mrpack'):
-                outputPath += '.mrpack'
-            summary = f"从 {versionName} 导出的整合包"
-            return export_to_mrpack(instance_path, outputPath, packName, packVersion, summary)
+            success, _, _ = self._export_mrpack_sync(versionName, packName, packVersion, outputPath)
+            return success
         except Exception as e:
             print(f"导出整合包失败：{e}")
-            import traceback
-            traceback.print_exc()
             return False
+
+    @Slot(str, str, str, str, str, result=bool)
+    def requestMrpackExport(self, versionName, packName, packVersion, outputPath, requestId):
+        actual_path = outputPath if outputPath.lower().endswith('.mrpack') else outputPath + '.mrpack'
+        path_key = os.path.normcase(os.path.abspath(actual_path))
+        with self._export_paths_lock:
+            if path_key in self._active_export_paths:
+                return False
+            self._active_export_paths.add(path_key)
+
+        def _run():
+            success = False
+            error = ""
+            try:
+                success, _, error = self._export_mrpack_sync(
+                    versionName, packName, packVersion, outputPath
+                )
+            except Exception as exc:
+                error = str(exc)
+                log(f"导出整合包失败: {exc}", logging.ERROR)
+            finally:
+                with self._export_paths_lock:
+                    self._active_export_paths.discard(path_key)
+                self.mrpackExportFinished.emit(requestId, success, actual_path, error)
+
+        threading.Thread(target=_run, daemon=True, name="MrpackExport").start()
+        return True
 
     @Slot(str, str, str, result=str)
     def selectSaveFile(self, caption, defaultName, fileFilter):
@@ -1784,75 +1829,99 @@ class Backend(QObject):
         except Exception as e:
             print(f"Error saving servers.dat: {e}")
 
+    @Slot(str, str, result=bool)
+    def requestMods(self, versionName, requestId):
+        with self._content_request_lock:
+            self._latest_mods_request[versionName] = requestId
+
+        def _run():
+            error = ""
+            items = []
+            try:
+                items = self._scan_mods(versionName)
+            except Exception as exc:
+                error = str(exc)
+                log(f"扫描 Mod 失败: {exc}", logging.ERROR)
+            with self._content_request_lock:
+                current = self._latest_mods_request.get(versionName)
+            if current == requestId:
+                self.modsLoadFinished.emit(requestId, versionName, items, error)
+
+        threading.Thread(target=_run, daemon=True, name=f"ModsScan-{versionName}").start()
+        return True
+
+    def _scan_mods(self, versionName):
+        config_data = cfg.read()
+        minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+        mods_dir = os.path.join(minecraft_dir, "versions", versionName, "mods")
+
+        if not os.path.exists(mods_dir):
+            os.makedirs(mods_dir, exist_ok=True)
+            return []
+
+        mods = []
+        import zipfile
+        import base64
+        for filename in os.listdir(mods_dir):
+            file_path = os.path.join(mods_dir, filename)
+            if os.path.isdir(file_path):
+                continue
+
+            is_disabled = filename.endswith('.disabled')
+            if not (filename.endswith('.jar') or filename.endswith('.jar.disabled')):
+                continue
+
+            mod_data = {
+                "name": filename,
+                "path": file_path,
+                "filename": filename,
+                "version": "",
+                "description": "无描述",
+                "icon": "",
+                "enabled": not is_disabled
+            }
+
+            try:
+                if zipfile.is_zipfile(file_path):
+                    with zipfile.ZipFile(file_path, 'r') as zf:
+                        if 'fabric.mod.json' in zf.namelist():
+                            with zf.open('fabric.mod.json') as f:
+                                meta = json.load(f)
+                                mod_data["name"] = meta.get("name", meta.get("id", filename))
+                                mod_data["version"] = meta.get("version", "")
+                                mod_data["description"] = meta.get("description", "")[:100]
+
+                                icon_path = meta.get("icon")
+                                if icon_path and isinstance(icon_path, str) and icon_path in zf.namelist():
+                                    icon_data = zf.read(icon_path)
+                                    mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
+                                elif f"assets/{meta.get('id')}/icon.png" in zf.namelist():
+                                    icon_data = zf.read(f"assets/{meta.get('id')}/icon.png")
+                                    mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
+                        elif 'mcmod.info' in zf.namelist():
+                            with zf.open('mcmod.info') as f:
+                                meta_list = json.load(f)
+                                if meta_list and isinstance(meta_list, list):
+                                    meta = meta_list[0]
+                                    mod_data["name"] = meta.get("name", filename)
+                                    mod_data["version"] = meta.get("version", "")
+                                    mod_data["description"] = meta.get("description", "")[:100]
+
+                                    logo = meta.get("logoFile")
+                                    if logo and logo in zf.namelist():
+                                        icon_data = zf.read(logo)
+                                        mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
+            except Exception as e:
+                print(f"Error reading mod {filename}: {e}")
+
+            mods.append(mod_data)
+
+        return mods
+
     @Slot(str, result="QVariant")
     def getMods(self, versionName):
         try:
-            config_data = cfg.read()
-            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
-            mods_dir = os.path.join(minecraft_dir, "versions", versionName, "mods")
-            
-            if not os.path.exists(mods_dir):
-                os.makedirs(mods_dir, exist_ok=True)
-                return []
-            
-            mods = []
-            import zipfile
-            import base64
-            for filename in os.listdir(mods_dir):
-                file_path = os.path.join(mods_dir, filename)
-                if os.path.isdir(file_path):
-                    continue
-                
-                is_disabled = filename.endswith('.disabled')
-                if not (filename.endswith('.jar') or filename.endswith('.jar.disabled')):
-                    continue
-                
-                mod_data = {
-                    "name": filename,
-                    "path": file_path,
-                    "filename": filename,
-                    "version": "",
-                    "description": "无描述",
-                    "icon": "",
-                    "enabled": not is_disabled
-                }
-                
-                try:
-                    if zipfile.is_zipfile(file_path):
-                        with zipfile.ZipFile(file_path, 'r') as zf:
-                            if 'fabric.mod.json' in zf.namelist():
-                                with zf.open('fabric.mod.json') as f:
-                                    meta = json.load(f)
-                                    mod_data["name"] = meta.get("name", meta.get("id", filename))
-                                    mod_data["version"] = meta.get("version", "")
-                                    mod_data["description"] = meta.get("description", "")[:100]
-                                    
-                                    icon_path = meta.get("icon")
-                                    if icon_path and isinstance(icon_path, str) and icon_path in zf.namelist():
-                                        icon_data = zf.read(icon_path)
-                                        mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
-                                    elif f"assets/{meta.get('id')}/icon.png" in zf.namelist():
-                                        icon_data = zf.read(f"assets/{meta.get('id')}/icon.png")
-                                        mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
-                            elif 'mcmod.info' in zf.namelist():
-                                with zf.open('mcmod.info') as f:
-                                    meta_list = json.load(f)
-                                    if meta_list and isinstance(meta_list, list):
-                                        meta = meta_list[0]
-                                        mod_data["name"] = meta.get("name", filename)
-                                        mod_data["version"] = meta.get("version", "")
-                                        mod_data["description"] = meta.get("description", "")[:100]
-                                        
-                                        logo = meta.get("logoFile")
-                                        if logo and logo in zf.namelist():
-                                            icon_data = zf.read(logo)
-                                            mod_data["icon"] = "data:image/png;base64," + base64.b64encode(icon_data).decode('utf-8')
-                except Exception as e:
-                    print(f"Error reading mod {filename}: {e}")
-                
-                mods.append(mod_data)
-            
-            return mods
+            return self._scan_mods(versionName)
         except Exception as e:
             print(f"Error getting mods: {e}")
             return []
@@ -1920,77 +1989,103 @@ class Backend(QObject):
             print(f"Error deleting mod: {e}")
             return False
 
-    @Slot(str, result="QVariant")
-    def getResourcePacks(self, versionName):
-        try:
-            import base64
-            config_data = cfg.read()
-            minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
-            packs_dir = os.path.join(minecraft_dir, "versions", versionName, "resourcepacks")
+    @Slot(str, str, result=bool)
+    def requestResourcePacks(self, versionName, requestId):
+        with self._content_request_lock:
+            self._latest_resourcepacks_request[versionName] = requestId
             
-            if not os.path.exists(packs_dir):
-                os.makedirs(packs_dir, exist_ok=True)
-                return []
+        def _run():
+            error = ""
+            items = []
+            try:
+                items = self._scan_resource_packs(versionName)
+            except Exception as exc:
+                error = str(exc)
+                log(f"扫描资源包失败: {exc}", logging.ERROR)
+            with self._content_request_lock:
+                current = self._latest_resourcepacks_request.get(versionName)
+            if current == requestId:
+                self.resourcePacksLoadFinished.emit(requestId, versionName, items, error)
             
-            packs = []
-            import zipfile
-            for filename in os.listdir(packs_dir):
-                file_path = os.path.join(packs_dir, filename)
+        threading.Thread(
+            target=_run, daemon=True, name=f"ResourcePacksScan-{versionName}"
+        ).start()
+        return True
                 
-                if not (os.path.isdir(file_path) or filename.endswith('.zip')):
-                    continue
+    def _scan_resource_packs(self, versionName):
+        import base64
+        config_data = cfg.read()
+        minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
+        packs_dir = os.path.join(minecraft_dir, "versions", versionName, "resourcepacks")
                 
-                pack_data = {
-                    "name": filename,
-                    "path": file_path,
-                    "description": "无描述",
-                    "icon": ""
-                }
+        if not os.path.exists(packs_dir):
+            os.makedirs(packs_dir, exist_ok=True)
+            return []
                 
-                try:
-                    if os.path.isdir(file_path):
-                        mcmeta_path = os.path.join(file_path, "pack.mcmeta")
-                        icon_path = os.path.join(file_path, "pack.png")
+        packs = []
+        import zipfile
+        for filename in os.listdir(packs_dir):
+            file_path = os.path.join(packs_dir, filename)
                         
-                        if os.path.exists(mcmeta_path):
-                            with open(mcmeta_path, 'r', encoding='utf-8') as f:
+            if not (os.path.isdir(file_path) or filename.endswith('.zip')):
+                continue
+
+            pack_data = {
+                "name": filename,
+                "path": file_path,
+                "description": "无描述",
+                "icon": ""
+            }
+
+            try:
+                if os.path.isdir(file_path):
+                    mcmeta_path = os.path.join(file_path, "pack.mcmeta")
+                    icon_path = os.path.join(file_path, "pack.png")
+
+                    if os.path.exists(mcmeta_path):
+                        with open(mcmeta_path, 'r', encoding='utf-8') as f:
+                            meta = json.load(f)
+                            desc = meta.get("pack", {}).get("description", "")
+                            if isinstance(desc, dict):
+                                desc = desc.get("translate", str(desc))
+                            pack_data["description"] = str(desc)[:100]
+
+                    if os.path.exists(icon_path):
+                        # read bytes and convert to data URI
+                        try:
+                            with open(icon_path, 'rb') as imgf:
+                                b64 = base64.b64encode(imgf.read()).decode('utf-8')
+                                pack_data["icon"] = f"data:image/png;base64,{b64}"
+                        except Exception as ee:
+                            print(f"Error reading resource pack icon {icon_path}: {ee}")
+
+                elif zipfile.is_zipfile(file_path):
+                    with zipfile.ZipFile(file_path, 'r') as zf:
+                        if "pack.mcmeta" in zf.namelist():
+                            with zf.open("pack.mcmeta") as f:
                                 meta = json.load(f)
                                 desc = meta.get("pack", {}).get("description", "")
                                 if isinstance(desc, dict):
                                     desc = desc.get("translate", str(desc))
                                 pack_data["description"] = str(desc)[:100]
-                        
-                        if os.path.exists(icon_path):
-                            # read bytes and convert to data URI
+                        if "pack.png" in zf.namelist():
                             try:
-                                with open(icon_path, 'rb') as imgf:
-                                    b64 = base64.b64encode(imgf.read()).decode('utf-8')
-                                    pack_data["icon"] = f"data:image/png;base64,{b64}"
+                                icon_bytes = zf.read("pack.png")
+                                b64 = base64.b64encode(icon_bytes).decode('utf-8')
+                                pack_data["icon"] = f"data:image/png;base64,{b64}"
                             except Exception as ee:
-                                print(f"Error reading resource pack icon {icon_path}: {ee}")
+                                print(f"Error extracting pack.png from {filename}: {ee}")
+            except Exception as e:
+                print(f"Error reading resource pack {filename}: {e}")
+
+            packs.append(pack_data)
                             
-                    elif zipfile.is_zipfile(file_path):
-                        with zipfile.ZipFile(file_path, 'r') as zf:
-                            if "pack.mcmeta" in zf.namelist():
-                                with zf.open("pack.mcmeta") as f:
-                                    meta = json.load(f)
-                                    desc = meta.get("pack", {}).get("description", "")
-                                    if isinstance(desc, dict):
-                                        desc = desc.get("translate", str(desc))
-                                    pack_data["description"] = str(desc)[:100]
-                            if "pack.png" in zf.namelist():
-                                try:
-                                    icon_bytes = zf.read("pack.png")
-                                    b64 = base64.b64encode(icon_bytes).decode('utf-8')
-                                    pack_data["icon"] = f"data:image/png;base64,{b64}"
-                                except Exception as ee:
-                                    print(f"Error extracting pack.png from {filename}: {ee}")
-                except Exception as e:
-                    print(f"Error reading resource pack {filename}: {e}")
+        return packs
                 
-                packs.append(pack_data)
-            
-            return packs
+    @Slot(str, result="QVariant")
+    def getResourcePacks(self, versionName):
+        try:
+            return self._scan_resource_packs(versionName)
         except Exception as e:
             print(f"Error getting resource packs: {e}")
             return []
@@ -2614,46 +2709,42 @@ class Backend(QObject):
 
     @Slot()
     def startUpdate(self):
-        """Download the latest installer and launch it."""
+        """Use the shared cross-platform update resolver and verified downloader."""
         def _inner():
             try:
+                from modules.platform_compat import is_windows
+                from modules.update import resolve_update_artifact, download_update_artifact, _apply_zip_update
+
                 self.updateProgressUpdated.emit(0.05, i18nText("正在获取下载地址..."))
-
-                response = requests.get(f"{BLglobals.server_ip}:3001/api/info", timeout=15)
+                response = requests.get(f"{BLglobals.server_ip}:3001/api/info", timeout=(5, 15))
                 response.raise_for_status()
-                res = response.json()
-
-                download_url = res["downloads"]["stable"]["gitcode"]
-                version = res["latestVersion"]
+                artifact = resolve_update_artifact(response.json())
+                if not artifact:
+                    raise RuntimeError("未找到适用于当前平台的更新包")
 
                 self.updateProgressUpdated.emit(0.1, i18nText("正在下载更新文件..."))
+                last_progress = 0.1
+                def _progress(downloaded, total):
+                    nonlocal last_progress
+                    if total > 0:
+                        progress = 0.1 + (downloaded / total) * 0.8
+                        if progress - last_progress >= 0.03:
+                            self.updateProgressUpdated.emit(
+                                progress, f"{downloaded // 1024} KB / {total // 1024} KB"
+                            )
+                            last_progress = progress
 
-                import tempfile
-                temp_dir = tempfile.gettempdir()
-                file_name = os.path.join(temp_dir, f"Bloret-Launcher-Setup-{version}.exe")
-
-                with requests.get(download_url, stream=True, timeout=30) as r:
-                    r.raise_for_status()
-                    total_size = int(r.headers.get('content-length', 0))
-                    downloaded_size = 0
-                    last_progress = 0.1
-                    with open(file_name, 'wb') as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk)
-                            downloaded_size += len(chunk)
-                            if total_size > 0:
-                                progress = 0.1 + (downloaded_size / total_size) * 0.8
-                                if progress - last_progress >= 0.03:
-                                    status = f"{downloaded_size // 1024} KB / {total_size // 1024} KB"
-                                    self.updateProgressUpdated.emit(progress, status)
-                                    last_progress = progress
-
-                self.updateProgressUpdated.emit(0.95, i18nText("正在启动安装程序..."))
-                subprocess.Popen([file_name, "--quickstart"], **hidden_process_kwargs())
-                # sys.exit() in a worker only terminates that worker. Queue the
-                # application shutdown on Qt's main thread instead.
-                self.applicationQuitRequested.emit()
-
+                file_name = download_update_artifact(artifact, _progress)
+                self.updateProgressUpdated.emit(0.95, i18nText("正在应用更新..."))
+                lower = file_name.lower()
+                if is_windows() and lower.endswith(".exe"):
+                    subprocess.Popen([file_name, "--quickstart"], **hidden_process_kwargs())
+                    self.applicationQuitRequested.emit()
+                elif lower.endswith(".zip"):
+                    _apply_zip_update(file_name)
+                    self.applicationRestartRequested.emit()
+                else:
+                    raise RuntimeError(f"当前更新包需要手动安装: {file_name}")
             except Exception as e:
                 print(f"Update failed: {e}")
                 self.updateFailed.emit(str(e))
@@ -2952,6 +3043,8 @@ class Backend(QObject):
         config_data = cfg.read()
         config_data["MaxThread"] = n
         cfg.write(config_data, changed_keys={"MaxThread": n})
+        from modules.download import set_global_download_limit
+        set_global_download_limit(n)
         print(f"MaxThread updated to: {n}")
 
     @Slot(result=str)
@@ -3061,13 +3154,17 @@ class Backend(QObject):
     @Slot(result=bool)
     def getWebRemoterEnabled(self):
         config_data = cfg.read()
-        return config_data.get('web_remoter_enabled', True)
+        return bool(config_data.get('web_remoter_enabled', False))
 
     @Slot(bool)
     def setWebRemoterEnabled(self, enabled):
         config_data = cfg.read()
         config_data['web_remoter_enabled'] = enabled
-        cfg.write(config_data)
+        cfg.write(config_data, changed_keys={'web_remoter_enabled': bool(enabled)})
+        try:
+            modules.web.restart_server()
+        except Exception as error:
+            log(f"重启 Web 服务失败: {error}", logging.WARNING)
         print(f"Web Remoter enabled updated to: {enabled}")
 
     @Slot(result=str)
@@ -3086,7 +3183,8 @@ class Backend(QObject):
     def getWebRemoterQRCode(self):
         try:
             ip = self.getLocalIPAddress()
-            url = f"http://{ip}:25252/"
+            token = getattr(modules.web, "_remoter_token", "")
+            url = f"http://{ip}:25252/?token={token}"
             import subprocess
             result = subprocess.run(
                 ["qrencode", "-t", "SVG", "-o", "-", "-s", "6", "-m", "1", url],
@@ -3102,7 +3200,8 @@ class Backend(QObject):
             import io
             import base64
             ip = self.getLocalIPAddress()
-            url = f"http://{ip}:25252/"
+            token = getattr(modules.web, "_remoter_token", "")
+            url = f"http://{ip}:25252/?token={token}"
             qr = qrcode.QRCode(version=1, box_size=6, border=1)
             qr.add_data(url)
             qr.make(fit=True)
@@ -5410,6 +5509,7 @@ class LauncherV2(RinUIWindow):
             return True
 
         self._force_quit = True
+        self._shutdown_runtime_services()
         if self.tray_icon:
             self.tray_icon.hide()
         return False
@@ -5483,8 +5583,27 @@ class LauncherV2(RinUIWindow):
         except Exception:
             pass
 
+    def _shutdown_runtime_services(self):
+        """Best-effort cleanup shared by quit, close and hard restart paths."""
+        try:
+            if self.backend:
+                self.backend.cancelCurrentLaunch()
+                self.backend.leaveLiveSpace()
+        except Exception as error:
+            print(f"[Shutdown] Backend cleanup failed: {error}")
+        try:
+            modules.web.stop_server()
+        except Exception as error:
+            print(f"[Shutdown] Web server cleanup failed: {error}")
+        try:
+            from modules.protocol_handler import stop_ipc_server
+            stop_ipc_server()
+        except Exception as error:
+            print(f"[Shutdown] IPC cleanup failed: {error}")
+
     def quit_app(self):
         self._force_quit = True
+        self._shutdown_runtime_services()
         if self.tray_icon:
             self.tray_icon.hide()
         try:
@@ -5513,6 +5632,8 @@ class LauncherV2(RinUIWindow):
         # 去掉可能残留的重启标记，避免叠加
         filtered = [a for a in raw_args if a != restart_flag]
         args = [sys.executable] + filtered + [restart_flag]
+
+        self._shutdown_runtime_services()
 
         # 尽量优雅清理插件宿主
         try:
@@ -5571,6 +5692,7 @@ class LauncherV2(RinUIWindow):
             return
 
         self._force_quit = True
+        self._shutdown_runtime_services()
         if self.tray_icon:
             self.tray_icon.hide()
         try:
@@ -5726,4 +5848,13 @@ if __name__ == "__main__":
             sys.exit(app.exec())
 
     launcher = LauncherV2()
+    launcher.backend.applicationQuitRequested.connect(
+        launcher.quit_app,
+        Qt.ConnectionType.QueuedConnection,
+    )
+    launcher.backend.applicationRestartRequested.connect(
+        launcher.restart_app,
+        Qt.ConnectionType.QueuedConnection,
+    )
+    app.aboutToQuit.connect(launcher._shutdown_runtime_services)
     sys.exit(app.exec())

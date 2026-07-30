@@ -11,7 +11,7 @@
 <body>
     <div class="chat-container">
         <header class="chat-header">
-            <button class="back-btn" onclick="location.href='/remoter'">
+            <button class="back-btn" onclick="navigateBack()">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                     <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
                 </svg>
@@ -44,6 +44,15 @@
     </div>
 
     <script>
+        const remoterToken = new URLSearchParams(window.location.search).get('token') || '';
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = (url, options = {}) => {
+            options.headers = Object.assign({}, options.headers || {}, {'X-Bloret-Remoter-Token': remoterToken});
+            return originalFetch(url, options);
+        };
+        function navigateBack() {
+            window.location.href = remoterToken ? `/remoter?token=${encodeURIComponent(remoterToken)}` : '/remoter';
+        }
         // ============ 状态变量 ============
         let instanceId = '';
         let instanceName = '';

@@ -64,7 +64,13 @@ def get_version_path(version_name: str) -> ServiceResult[Dict[str, Any]]:
     mc_dir = str(data.get("minecraft_dir") or "")
     if not mc_dir:
         return err("minecraft_dir not set", "no_minecraft_dir")
-    vdir = os.path.join(mc_dir, "versions", version_name)
+    versions_root = os.path.abspath(os.path.join(mc_dir, "versions"))
+    vdir = os.path.abspath(os.path.join(versions_root, version_name))
+    try:
+        if os.path.commonpath([vdir, versions_root]) != versions_root:
+            return err("invalid version path", "invalid_version")
+    except ValueError:
+        return err("invalid version path", "invalid_version")
     if not os.path.isdir(vdir):
         return err(f"version not found: {version_name}", "not_found")
     return ok({"name": version_name, "path": vdir, "minecraft_dir": mc_dir})

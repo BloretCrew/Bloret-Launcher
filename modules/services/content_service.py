@@ -9,6 +9,20 @@ import modules.config as cfg
 from modules.services.base import ServiceResult, err, ok
 
 
+def _safe_version_dir(version_name: str) -> str:
+    root = _versions_root()
+    if not root or not version_name:
+        return ""
+    root_abs = os.path.abspath(root)
+    candidate = os.path.abspath(os.path.join(root_abs, version_name))
+    try:
+        if os.path.commonpath([candidate, root_abs]) != root_abs:
+            return ""
+    except ValueError:
+        return ""
+    return candidate
+
+
 def _versions_root() -> str:
     data = cfg.read() or {}
     mc_dir = str(data.get("minecraft_dir") or "")
@@ -23,7 +37,10 @@ def list_mods(version_name: str) -> ServiceResult[List[Dict[str, Any]]]:
     root = _versions_root()
     if not root:
         return err("minecraft_dir not set", "no_minecraft_dir")
-    mods_dir = os.path.join(root, version_name, "mods")
+    version_dir = _safe_version_dir(version_name)
+    if not version_dir:
+        return err("invalid version path", "invalid_version")
+    mods_dir = os.path.join(version_dir, "mods")
     if not os.path.isdir(mods_dir):
         return ok([])
     items: List[Dict[str, Any]] = []
@@ -55,7 +72,10 @@ def list_resourcepacks(version_name: str) -> ServiceResult[List[Dict[str, Any]]]
     root = _versions_root()
     if not root:
         return err("minecraft_dir not set", "no_minecraft_dir")
-    rp_dir = os.path.join(root, version_name, "resourcepacks")
+    version_dir = _safe_version_dir(version_name)
+    if not version_dir:
+        return err("invalid version path", "invalid_version")
+    rp_dir = os.path.join(version_dir, "resourcepacks")
     if not os.path.isdir(rp_dir):
         return ok([])
     items: List[Dict[str, Any]] = []

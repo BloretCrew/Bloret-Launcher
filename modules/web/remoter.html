@@ -26,7 +26,7 @@
         </header>
 
         <main class="main-content">
-            <div id="gamepad-card" class="card gamepad-card hidden" onclick="location.href='/gamepad'">
+            <div id="gamepad-card" class="card gamepad-card hidden" onclick="navigateWithToken('/gamepad')">
                 <div class="card-icon gamepad-icon">
                     <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
                         <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
@@ -172,6 +172,18 @@
     </div>
 
     <script>
+        const remoterToken = new URLSearchParams(window.location.search).get('token') || '';
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = (url, options = {}) => {
+            options.headers = Object.assign({}, options.headers || {}, {'X-Bloret-Remoter-Token': remoterToken});
+            return originalFetch(url, options);
+        };
+        function navigateWithToken(path, params = {}) {
+            const target = new URL(path, window.location.origin);
+            Object.entries(params).forEach(([key, value]) => target.searchParams.set(key, value));
+            if (remoterToken) target.searchParams.set('token', remoterToken);
+            window.location.href = target.pathname + target.search;
+        }
         let pollTimer = null;
         let hasRunningInstances = false;
         
@@ -339,7 +351,7 @@
         // 跳转到游戏手柄编辑页面
         function goToGamepadEdit() {
             closeSettings();
-            location.href = '/gamepad?edit=1';
+            navigateWithToken('/gamepad', {edit: 1});
         }
 
         async function fetchData() {
@@ -462,7 +474,7 @@
         }
 
         function openChat(id, name) {
-            location.href = `/chat-manager?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`;
+            navigateWithToken('/chat-manager', {id, name});
         }
 
         let launchPollTimer = null;
@@ -474,7 +486,7 @@
                 showLaunchModal(name);
                 
                 // 发送启动请求
-                const res = await fetch(`/api/v1/launch/start?version=${encodeURIComponent(name)}`);
+                const res = await fetch(`/api/v1/launch/start?version=${encodeURIComponent(name)}`, { method: 'POST' });
                 const data = await res.json();
                 
                 if (data.status === 'success') {

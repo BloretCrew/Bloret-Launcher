@@ -18,6 +18,21 @@ Dialog {
     property bool exportDone: false
     property bool exportSuccess: false
     property string outputPath: ""
+    property int exportRequestSerial: 0
+    property string activeExportRequestId: ""
+    property string exportError: ""
+
+    Connections {
+        target: Backend
+        function onMrpackExportFinished(requestId, success, actualOutputPath, errorMessage) {
+            if (requestId !== activeExportRequestId) return
+            exporting = false
+            exportDone = true
+            exportSuccess = success
+            outputPath = actualOutputPath
+            exportError = errorMessage
+        }
+    }
 
     function openForVersion(name) {
         versionName = name
@@ -25,6 +40,7 @@ Dialog {
         exportDone = false
         exportSuccess = false
         outputPath = ""
+        exportError = ""
         if (Backend) {
             instanceInfo = Backend.getMrpackInstanceInfo(name)
         }
@@ -178,7 +194,7 @@ Dialog {
             Label {
                 text: exportDialog.exportSuccess
                     ? (Backend ? Backend.tr("整合包已成功导出到:") : "整合包已成功导出到:")
-                    : (Backend ? Backend.tr("导出整合包时发生错误，请查看日志。") : "导出整合包时发生错误，请查看日志。")
+                    : (exportDialog.exportError || (Backend ? Backend.tr("导出整合包时发生错误。") : "导出整合包时发生错误。"))
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
                 color: Theme.currentTheme.colors.textColor
@@ -219,31 +235,25 @@ Dialog {
                         exportDialog.close()
                     } else {
                         exportDialog.exporting = true
-                        exportTimer.start()
+                        exportDialog.exportRequestSerial++
+                        exportDialog.activeExportRequestId = "export:" + exportDialog.exportRequestSerial
+                        var submitted = Backend && Backend.requestMrpackExport(
+                            exportDialog.versionName,
+                            packNameField.text.trim(),
+                            packVersionField.text.trim(),
+                            exportDialog.outputPath,
+                            exportDialog.activeExportRequestId
+                        )
+                        if (!submitted) {
+                            exportDialog.exporting = false
+                            exportDialog.exportDone = true
+                            exportDialog.exportSuccess = false
+                            exportDialog.exportError = Backend ? Backend.tr("相同路径已有导出任务") : "An export is already running for this path"
+                        }
                     }
                 }
             }
         }
     }
 
-    Timer {
-        id: exportTimer
-        interval: 50
-        repeat: false
-        onTriggered: {
-            if (Backend) {
-                var success = Backend.doExportMrpack(
-                    exportDialog.versionName,
-                    packNameField.text.trim(),
-                    packVersionField.text.trim(),
-                    exportDialog.outputPath
-                )
-                exportDialog.exportSuccess = success
-            } else {
-                exportDialog.exportSuccess = false
-            }
-            exportDialog.exporting = false
-            exportDialog.exportDone = true
-        }
-    }
 }

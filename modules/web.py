@@ -1,6 +1,7 @@
 import threading
 import requests
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import secrets
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import urllib.parse
 import logging
 import os
@@ -24,8 +25,58 @@ logger = logging.getLogger(__name__)
 
 # 用于存储待确认的插件信息
 pending_plugins = {}
+_MAX_REQUEST_BODY = 64 * 1024
+_server = None
+_server_thread = None
+_server_lock = threading.RLock()
+_remoter_token = secrets.token_urlsafe(24)
+
+
+class LauncherHTTPServer(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
 
 class WebRequestHandler(BaseHTTPRequestHandler):
+    def _is_loopback_client(self):
+        import ipaddress
+        try:
+            return ipaddress.ip_address(self.client_address[0]).is_loopback
+        except ValueError:
+            return False
+
+    def _remoter_token_valid(self):
+        supplied = self.headers.get("X-Bloret-Remoter-Token") or ""
+        if not supplied:
+            query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            supplied = query.get("token", [""])[0]
+        return secrets.compare_digest(str(supplied), _remoter_token)
+
+    def _lan_path_allowed(self, path):
+        if not self._is_remoter_enabled():
+            return False
+        exact = {
+            "/", "/remoter", "/gamepad", "/chat-manager",
+            "/remoter.css", "/gamepad.css", "/chat-manager.css", "/dialog.js",
+            "/api/v1/running/instances", "/api/v1/recent/runs",
+            "/api/v1/launch/start", "/api/v1/launch/status",
+            "/api/v1/gamepad/config", "/api/v1/gamepad/config/save",
+            "/api/v1/chat/log", "/api/v1/chat/send",
+        }
+        allowed = path in exact or path.startswith((
+            "/api/v1/remote/", "/api/v1/running/suspend/", "/api/v1/running/terminate/"
+        ))
+        # Static Remoter pages may load without a token; every API action requires it.
+        if allowed and path.startswith("/api/"):
+            return self._remoter_token_valid()
+        return allowed
+
+    def _reject_nonlocal_route(self, path):
+        if self._is_loopback_client() or self._lan_path_allowed(path):
+            return False
+        self._send_json(403, {"status": "error", "message": "This endpoint is local-only"})
+        return True
+
     def _send_json(self, status_code, payload):
         self.send_response(status_code)
         self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -172,13 +223,20 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         return process
 
     def _read_request_body(self):
-        """解析 POST/PUT/PATCH body 为 dict（JSON 或 form）。"""
+        """Parse a bounded request body; reject malformed or oversized input."""
         body_params = {}
         try:
             length = int(self.headers.get("Content-Length") or 0)
-        except Exception:
-            length = 0
-        if length <= 0:
+        except (TypeError, ValueError):
+            self._send_json(400, {"status": "error", "message": "Invalid Content-Length"})
+            return None
+        if length < 0:
+            self._send_json(400, {"status": "error", "message": "Invalid Content-Length"})
+            return None
+        if length > _MAX_REQUEST_BODY:
+            self._send_json(413, {"status": "error", "message": "Request body too large"})
+            return None
+        if length == 0:
             return body_params
         raw = self.rfile.read(length)
         ctype = (self.headers.get("Content-Type") or "").lower()
@@ -197,6 +255,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 }
         except Exception as e:
             log(f"[Web] 解析 body 失败: {e}")
+            self._send_json(400, {"status": "error", "message": "Invalid request body"})
+            return None
         return body_params
 
     def _dispatch_plugin_web_route(self, api_path, query_params, body=None):
@@ -785,9 +845,9 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     self._send_json(405, {'status': 'error', 'message': 'Method not allowed'})
                     return
                 try:
-                    content_length = int(self.headers.get('Content-Length', 0))
-                    body = self.rfile.read(content_length).decode('utf-8')
-                    data = json.loads(body)
+                    data = self._read_request_body()
+                    if data is None:
+                        return
                     config_data = cfg.read()
                     for key, value in data.items():
                         config_data[key] = value
@@ -849,9 +909,9 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 if self.command != 'POST':
                     self._send_json(405, {'status': 'error', 'message': 'Method not allowed'})
                     return
-                content_length = int(self.headers.get('Content-Length', 0))
-                body = self.rfile.read(content_length).decode('utf-8')
-                data = json.loads(body)
+                data = self._read_request_body()
+                if data is None:
+                    return
                 message = data.get('message', '')
                 if not message:
                     self._send_json(400, {'status': 'error', 'message': 'Missing message'})
@@ -900,9 +960,9 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self._send_json(405, {'status': 'error', 'message': 'Method not allowed'})
             return
         try:
-            content_length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(content_length).decode('utf-8')
-            data = json.loads(body)
+            data = self._read_request_body()
+            if data is None:
+                return
             key_name = data.get('key', '')
             action = data.get('action', '')
             if not key_name or action not in ('down', 'up'):
@@ -931,9 +991,9 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self._send_json(405, {'status': 'error', 'message': 'Method not allowed'})
             return
         try:
-            content_length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(content_length).decode('utf-8')
-            data = json.loads(body)
+            data = self._read_request_body()
+            if data is None:
+                return
             action = data.get('action', '')
             dx = int(data.get('dx', 0))
             dy = int(data.get('dy', 0))
@@ -973,9 +1033,9 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self._send_json(405, {'status': 'error', 'message': 'Method not allowed'})
             return
         try:
-            content_length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(content_length).decode('utf-8')
-            data = json.loads(body)
+            data = self._read_request_body()
+            if data is None:
+                return
             message = data.get('message', '')
             if not message:
                 self._send_json(400, {'status': 'error', 'message': 'Missing message'})
@@ -1123,6 +1183,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         request_path = parsed_path.path
         query_params = urllib.parse.parse_qs(parsed_path.query)
         method = (getattr(self, "command", None) or "POST").upper()
+        if self._reject_nonlocal_route(request_path):
+            return
 
         # 插件商店：投递安装请求（无 OAuth）— 仅 POST
         if method == "POST" and request_path in (
@@ -1130,6 +1192,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             "/api/v1/plugin/store/propose",
         ):
             body_params = self._read_request_body()
+            if body_params is None:
+                return
             self._handle_plugin_store_propose(query_params, body_params)
             return
 
@@ -1158,11 +1222,13 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 return
             self._handle_remote_api(request_path, query_params)
             return
-        if method == "POST" and request_path == "/api/v1/gamepad/config/save":
+        if method == "POST" and request_path in (
+            "/api/v1/gamepad/config/save", "/api/v1/launch/start"
+        ):
             if not self._is_remoter_enabled():
                 self._send_json(403, {"status": "error", "message": "Web Remoter is disabled"})
                 return
-            self._handle_remote_api(request_path, {})
+            self._handle_remote_api(request_path, query_params)
             return
 
         # 插件自定义路由（需 OAuth）：支持 POST/PUT/DELETE/PATCH
@@ -1171,6 +1237,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             if not ok:
                 return
             body = self._read_request_body()
+            if body is None:
+                return
             if self._dispatch_plugin_web_route(request_path, query_params, body=body):
                 return
             self._send_json(404, {"status": "error", "message": f"Unknown API path: {request_path}"})
@@ -1182,6 +1250,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         parsed_path = urllib.parse.urlparse(self.path)
         request_path = parsed_path.path
         query_params = urllib.parse.parse_qs(parsed_path.query)
+        if self._reject_nonlocal_route(request_path):
+            return
 
         if request_path == '/' or request_path == '/remoter':
             self._serve_remoter_page()
@@ -1216,8 +1286,12 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self._handle_remote_api(request_path, query_params)
             return
 
+        if request_path == '/api/v1/launch/start':
+            self._send_json(405, {'status': 'error', 'message': 'Use POST for launch/start'})
+            return
+
         # 这些接口不需要 OAuth 认证，用于手机网页显示
-        if request_path in ['/api/v1/running/instances', '/api/v1/recent/runs', '/api/v1/launch/start', '/api/v1/launch/status', '/api/v1/gamepad/config', '/api/v1/chat/log']:
+        if request_path in ['/api/v1/running/instances', '/api/v1/recent/runs', '/api/v1/launch/status', '/api/v1/gamepad/config', '/api/v1/chat/log']:
             if not self._is_remoter_enabled():
                 self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
                 return
@@ -1226,10 +1300,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
         # 这些路径前缀的接口也不需要 OAuth 认证
         if request_path.startswith('/api/v1/running/suspend/') or request_path.startswith('/api/v1/running/terminate/'):
-            if not self._is_remoter_enabled():
-                self._send_json(403, {'status': 'error', 'message': 'Web Remoter is disabled'})
-                return
-            self._handle_remote_api(request_path, query_params)
+            self._send_json(405, {'status': 'error', 'message': 'Use POST for instance control'})
             return
 
         if request_path.startswith('/api/v1/'):
@@ -1244,11 +1315,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             # 获取 code 参数
             code = query_params.get('code', [None])[0]
             
-            print(f"\n[Bloret PassPort 登录] 接收到 OAuth 回调")
-            print(f"请求路径: {self.path}")
-            print(f"查询参数: {query_params}")
-            print(f"Authorization Code: {code if code else '(未获取)'}")
-            logger.info(f"Received OAuth callback with code: {code if code else 'None'}")
+            print("\n[Bloret PassPort 登录] 接收到 OAuth 回调")
+            logger.info("Received OAuth callback; code_present=%s", bool(code))
             
             if code:
                 # 向验证服务器发送请求
@@ -1261,14 +1329,14 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 
                 print(f"\n[Bloret PassPort 登录] 向验证服务器发送请求")
                 print(f"verify_url: {verify_url}")
-                print(f"请求参数 (脱敏): app_id=BloretLauncher&code={code[:20]}...")
+                print("请求参数: app_id=BloretLauncher&code=***")
                 logger.info(f"Sending verify request to {verify_url}")
                 
                 try:
                     # 优先使用配置的 server_ip (可能是代理地址)
                     verify_url = f"{BLglobals.server_ip}:20000/app/verify"
                     logger.info(f"Trying verify_url: {verify_url}")
-                    response = requests.get(verify_url, params=params)
+                    response = requests.get(verify_url, params=params, timeout=(5, 15))
                     
                     # 如果响应状态码不是 200 或内容为空/非 JSON，尝试直连 IP:20000
                     # 注意：这里我们通过解析 server_ip 来获取 IP 地址
@@ -1284,28 +1352,18 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                              if host:
                                  fallback_url = f"http://{host}:20000/app/verify"
                                  logger.info(f"Trying fallback_url: {fallback_url}")
-                                 response = requests.get(fallback_url, params=params)
+                                 response = requests.get(fallback_url, params=params, timeout=(5, 15))
                          except Exception as ex:
                              logger.error(f"Failed to construct fallback URL: {ex}")
 
                     response_data = response.text
                     
-                    # 输出到控制台
                     print(f"OAuth verification response status: {response.status_code}")
-                    print(f"OAuth verification response body: {response_data}")
-                    logger.info(f"OAuth verification response status: {response.status_code}")
-                    logger.info(f"OAuth verification response body: {response_data}")
+                    logger.info("OAuth verification response status: %s", response.status_code)
                     
                     # 解析响应数据并保存到 config.json
                     try:
                         user_data = json.loads(response_data)
-                        logger.info(f"OAuth response user_data: {user_data}")
-                        print(f"\n{'='*60}")
-                        print(f"[Bloret PassPort 登录] OAuth 响应解析")
-                        print(f"{'='*60}")
-                        print(f"响应数据类型: {type(user_data)}")
-                        print(f"响应数据内容: {json.dumps(user_data, ensure_ascii=False, indent=2)}")
-                        print(f"{'='*60}")
                         
                         if isinstance(user_data, dict) and 'username' in user_data and 'email' in user_data:
                             # 读取现有配置
@@ -1329,23 +1387,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             bbbs_session_sig_val = user_data.get('bbbs_session.sig', '')
                             config_data['bbbs_session_sig'] = bbbs_session_sig_val
                             
-                            # 打印调试信息
-                            print(f"\n[Bloret PassPort 登录] 用户信息提取")
-                            print(f"用户名: {user_data['username']}")
-                            print(f"邮箱: {user_data.get('email', 'N/A')}")
-                            print(f"Token: {user_data.get('apptoken', 'N/A')}")
-                            print(f"头像URL: {avatar_val if avatar_val else '(未设置)'}")
-                            
-                            print(f"\n[Bloret PassPort 登录] 保存配置到文件")
-                            print(f"配置文件路径: {BLglobals.config_path}")
-                            print(f"所有字段: {list(user_data.keys())}")
-                            print(f"{'='*60}\n")
-                            
-                            logger.info(f"Avatar value from server: '{avatar_val}'")
-                            logger.info(f"用户名: {user_data['username']}")
-                            logger.info(f"邮箱: {user_data.get('email', 'N/A')}")
-                            logger.info(f"Token: {user_data.get('apptoken', 'N/A')}")
-                            logger.info(f"头像: {avatar_val}")
+                            print("[Bloret PassPort 登录] 用户信息验证成功，正在保存")
+                            logger.info("OAuth user data validated; username_present=%s", bool(user_data.get('username')))
                             
                             # 保存配置到文件
                             cfg.write(config_data)
@@ -2030,9 +2073,9 @@ class WebRequestHandler(BaseHTTPRequestHandler):
     def _is_remoter_enabled(self):
         try:
             config_data = cfg.read()
-            return config_data.get('web_remoter_enabled', True)
+            return bool(config_data.get('web_remoter_enabled', False))
         except Exception:
-            return True
+            return False
 
     def _serve_remoter_page(self):
         if not self._is_remoter_enabled():
@@ -2101,21 +2144,66 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(f"<html><body><h1>Error loading chat manager page: {str(e)}</h1></body></html>".encode('utf-8'))
 
     def log_message(self, format, *args):
-        # 重写日志消息格式
-        logger.info("%s - - [%s] %s\n" %
-                     (self.address_string(),
-                      self.log_date_time_string(),
-                      format % args))
+        # Never log query strings: OAuth codes/secrets are transported there.
+        path = urllib.parse.urlsplit(self.path).path
+        status = args[1] if len(args) > 1 else "-"
+        logger.info("%s %s -> %s", self.command, path, status)
 
+
+
+def _server_bind_host():
+    try:
+        return "0.0.0.0" if cfg.read().get("web_remoter_enabled", False) else "127.0.0.1"
+    except Exception:
+        return "127.0.0.1"
 
 
 def start_server():
-    """启动Web服务器"""
-    server_address = ('0.0.0.0', 25252)
-    httpd = HTTPServer(server_address, WebRequestHandler)
-    logger.info("Starting web server on 0.0.0.0:25252...")
-    httpd.serve_forever()
+    """Start the local callback server; expose LAN only when Remoter is enabled."""
+    global _server, _server_thread
+    with _server_lock:
+        if _server is not None:
+            return True
+        host = _server_bind_host()
+        try:
+            httpd = LauncherHTTPServer((host, 25252), WebRequestHandler)
+        except OSError as error:
+            logger.error("Web server bind failed on %s:25252: %s", host, error)
+            return False
+        _server = httpd
+        _server_thread = threading.current_thread()
+    logger.info("Starting web server on %s:25252", host)
+    try:
+        httpd.serve_forever(poll_interval=0.2)
+    finally:
+        httpd.server_close()
+        with _server_lock:
+            if _server is httpd:
+                _server = None
+                _server_thread = None
+    return True
 
-# 当模块被导入时启动服务器
-server_thread = threading.Thread(target=start_server, daemon=True)
+
+def stop_server():
+    """Idempotently stop the HTTP server."""
+    with _server_lock:
+        httpd = _server
+        thread = _server_thread
+    if httpd is None:
+        return
+    httpd.shutdown()
+    httpd.server_close()
+    if thread is not None and thread is not threading.current_thread():
+        thread.join(timeout=2)
+
+
+def restart_server():
+    stop_server()
+    thread = threading.Thread(target=start_server, daemon=True, name="BloretWebServer")
+    thread.start()
+    return thread
+
+
+# 保持本机 OAuth 回调兼容，但默认仅监听 loopback。
+server_thread = threading.Thread(target=start_server, daemon=True, name="BloretWebServer")
 server_thread.start()
