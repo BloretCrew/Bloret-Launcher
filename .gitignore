@@ -4,3 +4,7 @@ __pycache__/
 claude-code-source-code-main/
 opencode-dev/
 hermes-agent-main/
+
+# RinUI runtime-generated config (written by RinUI's ConfigManager
+# into <cwd>/RinUI/config/ on startup; not part of the submodule)
+/RinUI/config/
