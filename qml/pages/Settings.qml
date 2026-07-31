@@ -1761,6 +1761,8 @@ FluentPage {
                 }
             }
 
+            // 我想在这里加一个 帮助我们翻译 Bloret Launcher 的按钮，链接到 https://tr.bloret.net/app/o/bloret/p/bloret-launcher
+
             SettingCard {
                 Layout.fillWidth: true
                 title: _themeTitle
