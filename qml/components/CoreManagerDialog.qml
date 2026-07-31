@@ -5,11 +5,12 @@ import RinUI
 
 Dialog {
     id: coreManagerDialog
-    
+
     title: (Backend ? Backend.tr("核心管理") : "核心管理") + (versionName ? ": " + versionName : "")
     modal: true
     width: 650
     height: 550
+    implicitHeight: 550
     standardButtons: Dialog.Close
     
     property string versionName: ""
@@ -676,6 +677,7 @@ Dialog {
         title: Backend ? Backend.tr("添加服务器") : "添加服务器"
         modal: true
         width: 350
+        implicitHeight: 320
         
         ColumnLayout {
             Layout.fillWidth: true

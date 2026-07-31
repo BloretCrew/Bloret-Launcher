@@ -10,6 +10,7 @@ Dialog {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     standardButtons: Dialog.Close
     width: 600
+    implicitHeight: 480
 
     property var instances: []
     property var recentRuns: []

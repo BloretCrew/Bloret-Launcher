@@ -16,7 +16,8 @@ Dialog {
     standardButtons: Dialog.NoButton
 
     width: _expanded ? 560 : 400
-    height: _expanded ? Math.min(520, contentHeight) : 80
+    height: _expanded ? 480 : 80
+    implicitHeight: _expanded ? 480 : 80
 
     // 定时刷新任务列表
     Timer {

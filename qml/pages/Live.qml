@@ -239,6 +239,7 @@ FluentPage {
         modal: true
         title: t("输入密码")
         width: 360
+        implicitHeight: 280
 
         property string targetSpaceId: ""
 
@@ -292,6 +293,7 @@ FluentPage {
         modal: true
         title: t("创建 Live 空间")
         width: 360
+        implicitHeight: 280
 
         ColumnLayout {
             width: parent.width

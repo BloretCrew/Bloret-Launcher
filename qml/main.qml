@@ -424,6 +424,7 @@ FluentWindow {
         title: errorTitle
         modal: true
         width: Math.min(520, window.width - 80)
+        implicitHeight: 200
         standardButtons: Dialog.NoButton
 
         ColumnLayout {

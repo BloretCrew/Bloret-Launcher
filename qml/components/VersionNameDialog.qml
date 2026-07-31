@@ -20,6 +20,7 @@ Dialog {
     modal: true
     standardButtons: Dialog.Ok | Dialog.Cancel
     width: 400
+    implicitHeight: 220
 
     ColumnLayout {
         spacing: 10

@@ -9,6 +9,7 @@ Dialog {
     title: (Backend ? Backend.tr("导出 Modrinth 整合包") : "导出 Modrinth 整合包")
     modal: true
     width: 450
+    implicitHeight: 480
     standardButtons: Dialog.NoButton
 
     property string versionName: ""

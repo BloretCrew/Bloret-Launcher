@@ -8,6 +8,7 @@ Dialog {
     title: (Backend ? Backend.tr("选择 Minecraft 版本") : "选择 Minecraft 版本")
     modal: true
     closePolicy: Dialog.CloseOnEscape | Dialog.CloseOnPressOutside
+    implicitHeight: 400
     
     signal versionSelected(string version)
     

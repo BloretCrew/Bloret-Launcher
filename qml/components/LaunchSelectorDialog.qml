@@ -5,11 +5,12 @@ import RinUI
 
 Dialog {
     id: launchSelectorDialog
-    
+
     title: Backend ? Backend.tr("选择启动项目") : "选择启动项目"
     modal: true
     width: 500
     height: 500
+    implicitHeight: 500
     standardButtons: Dialog.Close
     
     property var launchItems: []

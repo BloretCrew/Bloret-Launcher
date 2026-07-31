@@ -35,6 +35,7 @@ Dialog {
     closePolicy: (stage === "installing") ? Popup.NoAutoClose : Popup.CloseOnEscape
     standardButtons: Dialog.NoButton
     width: Math.min(480, parent ? parent.width - 80 : 480)
+    implicitHeight: 420
 
     function tr(s) {
         return Backend ? Backend.tr(s) : s

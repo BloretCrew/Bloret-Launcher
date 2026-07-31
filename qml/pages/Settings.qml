@@ -1492,6 +1492,7 @@ FluentPage {
             modal: true
             anchors.centerIn: parent
             width: 360
+            implicitHeight: 280
             closePolicy: Popup.CloseOnEscape
 
             ColumnLayout {
@@ -1530,6 +1531,7 @@ FluentPage {
             modal: true
             anchors.centerIn: parent
             width: 360
+            implicitHeight: 280
             closePolicy: Popup.CloseOnEscape
 
             ColumnLayout {
@@ -2556,6 +2558,7 @@ FluentPage {
             title: (Backend ? Backend.tr("配置") : "配置") + " " + platformName
             anchors.centerIn: parent
             width: 400
+            implicitHeight: 350
             modal: true
             property string platformId: ""
             property string platformName: ""
@@ -2650,6 +2653,7 @@ FluentPage {
         title: _notifDialogTitle
         modal: true
         width: 520
+        implicitHeight: 500
         closePolicy: Popup.CloseOnEscape
 
         Flickable {
@@ -2775,6 +2779,7 @@ FluentPage {
         title: _addProviderDialogTitle
         modal: true
         width: 520
+        implicitHeight: 480
         closePolicy: Popup.CloseOnEscape
         // mode: "catalog" | "manual"
         property string mode: "catalog"
@@ -3125,6 +3130,7 @@ FluentPage {
         title: _editProviderTitle
         modal: true
         width: 520
+        implicitHeight: 480
         closePolicy: Popup.CloseOnEscape
         property string editKey: ""
 

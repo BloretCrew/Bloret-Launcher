@@ -944,6 +944,7 @@ Item {
     Dialog {
         id: permDlg
         title: (Backend ? Backend.tr("权限请求") : "权限请求"); modal: true; width: 400; closePolicy: Popup.NoAutoClose
+        implicitHeight: 380
         property string pName: ""; property string pDesc: ""; property string pReason: ""
 
         contentItem: ColumnLayout {
@@ -982,6 +983,7 @@ Item {
     Dialog {
         id: askDlg
         title: (Backend ? Backend.tr("Blora Agent 提问") : "Blora Agent 提问"); modal: true; width: 400; closePolicy: Popup.NoAutoClose
+        implicitHeight: 450
         property string qText: ""
         property string qType: "text"
         property var qOptions: []

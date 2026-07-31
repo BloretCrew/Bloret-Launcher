@@ -5,6 +5,8 @@ and a global semaphore limiting total concurrent file downloads
 across all tasks.
 """
 
+from __future__ import annotations
+
 import threading
 import time
 import uuid
