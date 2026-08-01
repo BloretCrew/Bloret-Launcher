@@ -256,11 +256,18 @@ Item {
             return
         }
         var text = (win.pendingBlorikoMessage || "").trim()
-        if (text.length === 0)
+        var imagesJson = win.pendingBlorikoImagesJson || "[]"
+        var hasImages = false
+        try {
+            var arr = JSON.parse(imagesJson)
+            hasImages = arr && arr.length > 0
+        } catch (e) { hasImages = false }
+        if (text.length === 0 && !hasImages)
             return
 
-        console.log("[Bloriko] 收到首页待处理消息:", text.substring(0, 80))
+        console.log("[Bloriko] 收到首页待处理消息:", text.substring(0, 80), "images=", imagesJson)
         win.pendingBlorikoMessage = ""
+        win.pendingBlorikoImagesJson = "[]"
 
         if (!Bloriko) {
             console.error("[Bloriko] processPendingHomeMessage: Bloriko 后端不可用")
@@ -269,6 +276,7 @@ Item {
         if (Bloriko.busy) {
             console.warn("[Bloriko] Agent 正忙，延迟重试首页消息")
             win.pendingBlorikoMessage = text
+            win.pendingBlorikoImagesJson = imagesJson
             pendingMessageRetryTimer.restart()
             return
         }
@@ -276,7 +284,7 @@ Item {
         messageModel.append({
             role: "user",
             content: text,
-            imagesJson: "[]",
+            imagesJson: imagesJson || "[]",
             toolName: "",
             toolArgs: "",
             toolResult: "",
@@ -284,7 +292,7 @@ Item {
             expanded: false
         })
         console.log("[Bloriko] 自动发送首页消息到 Agent")
-        Bloriko.sendMessage(text)
+        Bloriko.sendMessage(text, imagesJson || "[]")
     }
 
     Component.onCompleted: {
@@ -1720,10 +1728,14 @@ Item {
         }
 
         function onTranscriptionReady(text) {
-            appendTranscription(text)
+            // 仅当前页可见时写入，避免与首页输入条抢结果
+            if (blorikoPage.visible)
+                appendTranscription(text)
         }
 
         function onTranscriptionFailed(msg) {
+            if (!blorikoPage.visible)
+                return
             messageModel.append({
                 role: "error",
                 content: msg || (Backend ? Backend.tr("语音识别失败") : "语音识别失败"),

@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import QtQuick.Window 2.15
 import Qt5Compat.GraphicalEffects
+import Qt.labs.platform 1.1 as Platform
 import RinUI
 import "../components"
 
@@ -15,6 +16,127 @@ FluentPage {
     property string currentVersion: ""
     property string showAccountOnHome: "compact"
     property var pluginHomeCards: []
+
+    property string homeModelLabel: (Backend ? Backend.tr("选择模型") : "选择模型")
+    property string homeVoiceState: "idle"
+    property int homeMaxImages: 4
+    ListModel { id: homePendingImages }
+    ListModel { id: homeProviderModel }
+    ListModel { id: homeModelModel }
+
+    function homeFileUrlFromPath(path) {
+        if (!path) return ""
+        var s = path.toString()
+        if (s.indexOf("file://") === 0) return s
+        if (Qt.platform.os === "windows")
+            return "file:///" + s.replace(/\\/g, "/")
+        return "file://" + s
+    }
+
+    function homePathFromFileUrl(url) {
+        var s = (url || "").toString()
+        if (s.indexOf("file://") === 0)
+            s = decodeURIComponent(s.substring(Qt.platform.os === "windows" ? 8 : 7))
+        return s
+    }
+
+    function homePendingImagesJson() {
+        var arr = []
+        for (var i = 0; i < homePendingImages.count; i++)
+            arr.push(homePendingImages.get(i).path)
+        return JSON.stringify(arr)
+    }
+
+    function homeAddImage(path) {
+        if (!path || path.length === 0) return
+        if (homePendingImages.count >= homeMaxImages) return
+        for (var i = 0; i < homePendingImages.count; i++) {
+            if (homePendingImages.get(i).path === path) return
+        }
+        homePendingImages.append({ path: path, previewUrl: homeFileUrlFromPath(path) })
+    }
+
+    function homeLoadProviders() {
+        homeProviderModel.clear()
+        if (!Bloriko) return
+        try {
+            var providers = JSON.parse(Bloriko.getProviders())
+            for (var i = 0; i < providers.length; i++)
+                homeProviderModel.append(providers[i])
+            if (Backend) {
+                var gp = Backend.getGlobalAIProvider()
+                for (var j = 0; j < homeProviderModel.count; j++) {
+                    if (homeProviderModel.get(j).key === gp) {
+                        homeProviderCombo.currentIndex = j
+                        break
+                    }
+                }
+            }
+            homeLoadModels()
+        } catch (e) { console.warn("[Home] loadProviders", e) }
+    }
+
+    function homeLoadModels() {
+        homeModelModel.clear()
+        if (!Bloriko) return
+        try {
+            var models = JSON.parse(Bloriko.getModels())
+            for (var i = 0; i < models.length; i++)
+                homeModelModel.append(models[i])
+            var selected = false
+            if (Backend) {
+                var gm = Backend.getGlobalAIModel()
+                for (var j = 0; j < homeModelModel.count; j++) {
+                    if (homeModelModel.get(j).id === gm) {
+                        homeModelCombo.currentIndex = j
+                        selected = true
+                        break
+                    }
+                }
+            }
+            if (!selected && homeModelModel.count > 0)
+                homeModelCombo.currentIndex = 0
+            homeUpdateModelLabel()
+        } catch (e) { console.warn("[Home] loadModels", e) }
+    }
+
+    function homeUpdateModelLabel() {
+        if (homeModelModel.count > 0 && homeModelCombo.currentIndex >= 0 && homeModelCombo.currentIndex < homeModelModel.count) {
+            homeModelLabel = homeModelModel.get(homeModelCombo.currentIndex).name || homeModelModel.get(homeModelCombo.currentIndex).id
+            return
+        }
+        if (Bloriko && typeof Bloriko.getCurrentModelName === "function") {
+            var n = Bloriko.getCurrentModelName()
+            if (n && n.length > 0) { homeModelLabel = n; return }
+        }
+        homeModelLabel = Backend ? Backend.tr("选择模型") : "选择模型"
+    }
+
+    function homeAppendTranscription(text) {
+        if (!text || text.length === 0) return
+        var cur = aiInput.text || ""
+        if (cur.length > 0 && !/\s$/.test(cur)) cur += " "
+        aiInput.text = cur + text
+        aiInput.cursorPosition = aiInput.text.length
+        aiInput.forceActiveFocus()
+    }
+
+    function homeSendToBloriko() {
+        var text = aiInput.text.trim()
+        var imagesJson = homePendingImagesJson()
+        var hasImages = homePendingImages.count > 0
+        if (text === "" && !hasImages)
+            return
+        console.log("[Home] 发送到 Blora Agent 页处理:", text.substring(0, 80), "images=", imagesJson)
+        var win = Window.window
+        if (win && typeof win.navigateToBlorikoWithMessage === "function") {
+            win.navigateToBlorikoWithMessage(text, imagesJson)
+        } else {
+            console.error("[Home] 无法获取主窗口或 navigateToBlorikoWithMessage")
+        }
+        aiInput.text = ""
+        homePendingImages.clear()
+    }
 
     function loadPluginHomeCards() {
         pluginHomeCards = []
@@ -57,6 +179,9 @@ FluentPage {
         }
 
         showAccountOnHome = Backend.getShowAccountOnHome()
+        homeLoadProviders()
+        if (Bloriko)
+            homeVoiceState = Bloriko.voiceState || "idle"
 
         // 插件卡片与远程刷新放到下一帧，让 StackView 动画/首帧先完成；
         // Backend 内还有 TTL / in-flight，短时间反复进入不会重复打网。
@@ -247,48 +372,311 @@ FluentPage {
         RowLayout {
             Layout.fillWidth: true
             spacing: 10
-            
+
             Image {
                 source: Qt.resolvedUrl("../../icon/Bloriko.jpg")
-                sourceSize { width: 35; height: 35 }
+                sourceSize { width: 40; height: 40 }
                 fillMode: Image.PreserveAspectCrop
+                Layout.alignment: Qt.AlignBottom
+                Layout.bottomMargin: 8
                 layer.enabled: true
                 layer.effect: OpacityMask {
                     maskSource: Rectangle {
-                        width: 35
-                        height: 35
-                        radius: 8
+                        width: 40
+                        height: 40
+                        radius: 10
                     }
                 }
-            }
-            
-            TextField {
-                id: aiInput
-                placeholderText: (Backend ? Backend.tr("关于 Minecraft 的任何问题，可以问 Blora Agent 哦 ~") : "关于 Minecraft 的任何问题，可以问 Blora Agent 哦 ~")
-                Layout.fillWidth: true
-                padding: 10
-                onAccepted: sendBtn.clicked()
             }
 
-            Button {
-                id: sendBtn
-                icon.name: "ic_fluent_send_20_regular"
-                text: (Backend ? Backend.tr("发送") : "发送")
-                highlighted: true
-                onClicked: {
-                    var text = aiInput.text.trim()
-                    if (text === "")
-                        return
-                    console.log("[Home] 发送到 Blora Agent 页处理:", text.substring(0, 80))
-                    // 跳转到 Blora Agent 页面并由 Blora Agent 处理
-                    var win = Window.window
-                    if (win && typeof win.navigateToBlorikoWithMessage === "function") {
-                        win.navigateToBlorikoWithMessage(text)
-                    } else {
-                        console.error("[Home] 无法获取主窗口或 navigateToBlorikoWithMessage")
+            // 一体输入卡片（与 Blora Agent 页布局对齐）
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: homeInputCol.implicitHeight + 16
+                radius: 22
+                color: Theme.currentTheme.colors.controlColor || Theme.currentTheme.colors.cardColor || "#FFFFFF"
+                border.color: aiInput.activeFocus
+                    ? (Theme.accentColor || "#0078D4")
+                    : (Theme.currentTheme.colors.controlBorderColor || "#E0E0E0")
+                border.width: 1
+
+                ColumnLayout {
+                    id: homeInputCol
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 8
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        visible: homePendingImages.count > 0
+                        Repeater {
+                            model: homePendingImages
+                            delegate: Item {
+                                width: 56; height: 56
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 10
+                                    color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
+                                    clip: true
+                                    Image {
+                                        anchors.fill: parent
+                                        source: model.previewUrl
+                                        fillMode: Image.PreserveAspectCrop
+                                        asynchronous: true
+                                    }
+                                }
+                                RoundButton {
+                                    anchors.top: parent.top
+                                    anchors.right: parent.right
+                                    anchors.margins: -4
+                                    width: 20; height: 20
+                                    flat: true
+                                    icon.name: "ic_fluent_dismiss_20_regular"
+                                    onClicked: homePendingImages.remove(index)
+                                }
+                            }
+                        }
                     }
-                    aiInput.text = ""
+
+                    TextArea {
+                        id: aiInput
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(Math.max(implicitHeight, 28), 96)
+                        placeholderText: (Backend ? Backend.tr("关于 Minecraft 的任何问题，可以问 Blora Agent 哦 ~") : "关于 Minecraft 的任何问题，可以问 Blora Agent 哦 ~")
+                        wrapMode: TextArea.Wrap
+                        font.pixelSize: 14
+                        color: Theme.currentTheme.colors.textColor
+                        background: Item {}
+                        topPadding: 2; bottomPadding: 2; leftPadding: 4; rightPadding: 4
+                        Keys.onPressed: function(event) {
+                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                if (event.modifiers & Qt.ShiftModifier) {
+                                    aiInput.insert(aiInput.cursorPosition, "\n")
+                                } else {
+                                    homeSendToBloriko()
+                                    event.accepted = true
+                                }
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        RoundButton {
+                            Layout.preferredWidth: 32
+                            Layout.preferredHeight: 32
+                            flat: true
+                            icon.name: "ic_fluent_add_20_regular"
+                            enabled: homePendingImages.count < homeMaxImages
+                            ToolTip.visible: hovered
+                            ToolTip.text: Backend ? Backend.tr("添加图片") : "添加图片"
+                            ToolTip.delay: 400
+                            onClicked: homeImageDialog.open()
+                        }
+
+                        Rectangle {
+                            Layout.preferredHeight: 32
+                            Layout.preferredWidth: Math.min(homeModelPillRow.implicitWidth + 16, 180)
+                            Layout.maximumWidth: 200
+                            radius: 16
+                            color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
+                            border.color: Theme.currentTheme.colors.controlBorderColor || "#E0E0E0"
+                            border.width: 1
+                            RowLayout {
+                                id: homeModelPillRow
+                                anchors.centerIn: parent
+                                anchors.leftMargin: 8; anchors.rightMargin: 8
+                                spacing: 4
+                                Icon { icon: "ic_fluent_lightbulb_20_regular"; size: 14; color: Theme.currentTheme.colors.textColor }
+                                Text {
+                                    text: homeModelLabel
+                                    font.pixelSize: 12
+                                    color: Theme.currentTheme.colors.textColor
+                                    elide: Text.ElideRight
+                                    Layout.maximumWidth: 140
+                                }
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    homeLoadProviders()
+                                    homeModelDlg.open()
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        RoundButton {
+                            Layout.preferredWidth: 32
+                            Layout.preferredHeight: 32
+                            flat: true
+                            highlighted: homeVoiceState === "recording"
+                            icon.name: homeVoiceState === "recording"
+                                ? "ic_fluent_mic_record_20_filled"
+                                : (homeVoiceState === "transcribing"
+                                    ? "ic_fluent_spinner_ios_20_regular"
+                                    : "ic_fluent_mic_20_regular")
+                            enabled: Bloriko && homeVoiceState !== "transcribing"
+                            ToolTip.visible: hovered
+                            ToolTip.text: homeVoiceState === "recording"
+                                ? (Backend ? Backend.tr("录音中，再次点击结束") : "录音中，再次点击结束")
+                                : (Backend ? Backend.tr("语音输入") : "语音输入")
+                            ToolTip.delay: 400
+                            onClicked: {
+                                if (!Bloriko) return
+                                if (homeVoiceState === "recording")
+                                    Bloriko.stopVoiceCaptureAndTranscribe()
+                                else if (homeVoiceState === "idle")
+                                    Bloriko.startVoiceCapture()
+                            }
+                        }
+
+                        RoundButton {
+                            id: sendBtn
+                            Layout.preferredWidth: 34
+                            Layout.preferredHeight: 34
+                            highlighted: true
+                            icon.name: "ic_fluent_arrow_up_20_filled"
+                            enabled: aiInput.text.trim().length > 0 || homePendingImages.count > 0
+                            ToolTip.visible: hovered
+                            ToolTip.text: Backend ? Backend.tr("发送") : "发送"
+                            ToolTip.delay: 400
+                            onClicked: homeSendToBloriko()
+                        }
+                    }
                 }
+            }
+
+            // 隐藏 ComboBox，供模型对话框与 loadModels 复用
+            Item {
+                width: 0; height: 0; visible: false
+                ComboBox { id: homeProviderCombo; model: homeProviderModel; textRole: "name" }
+                ComboBox { id: homeModelCombo; model: homeModelModel; textRole: "name" }
+            }
+        }
+
+        Platform.FileDialog {
+            id: homeImageDialog
+            title: Backend ? Backend.tr("选择图片") : "选择图片"
+            fileMode: Platform.FileDialog.OpenFiles
+            nameFilters: [
+                Backend ? Backend.tr("图片 (*.png *.jpg *.jpeg *.gif *.webp *.bmp)") : "图片 (*.png *.jpg *.jpeg *.gif *.webp *.bmp)",
+                Backend ? Backend.tr("所有文件 (*)") : "所有文件 (*)"
+            ]
+            onAccepted: {
+                var files = homeImageDialog.files || []
+                for (var i = 0; i < files.length; i++) {
+                    if (homePendingImages.count >= homeMaxImages) break
+                    homeAddImage(homePathFromFileUrl(files[i]))
+                }
+                if (files.length === 0 && homeImageDialog.file)
+                    homeAddImage(homePathFromFileUrl(homeImageDialog.file))
+            }
+        }
+
+        Dialog {
+            id: homeModelDlg
+            title: Backend ? Backend.tr("切换模型") : "切换模型"
+            modal: true
+            width: 360
+            standardButtons: Dialog.NoButton
+            onOpened: {
+                homeLoadProviders()
+                homeProviderComboDlg.currentIndex = homeProviderCombo.currentIndex
+                homeModelComboDlg.currentIndex = homeModelCombo.currentIndex
+            }
+            contentItem: ColumnLayout {
+                spacing: 12
+                Text {
+                    text: homeModelDlg.title
+                    font.pixelSize: 16; font.bold: true
+                    color: Theme.currentTheme.colors.textColor
+                    Layout.fillWidth: true
+                }
+                Text {
+                    text: Backend ? Backend.tr("供应商") : "供应商"
+                    font.pixelSize: 12
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    Layout.fillWidth: true
+                }
+                ComboBox {
+                    id: homeProviderComboDlg
+                    Layout.fillWidth: true
+                    model: homeProviderModel
+                    textRole: "name"
+                    onActivated: function(index) {
+                        var item = homeProviderModel.get(index)
+                        if (Backend) Backend.setGlobalAIProvider(item.key)
+                        homeProviderCombo.currentIndex = index
+                        homeLoadModels()
+                        homeModelComboDlg.currentIndex = homeModelCombo.currentIndex >= 0 ? homeModelCombo.currentIndex : 0
+                    }
+                }
+                Text {
+                    text: Backend ? Backend.tr("模型") : "模型"
+                    font.pixelSize: 12
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    Layout.fillWidth: true
+                }
+                ComboBox {
+                    id: homeModelComboDlg
+                    Layout.fillWidth: true
+                    model: homeModelModel
+                    textRole: "name"
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Button {
+                        text: Backend ? Backend.tr("取消") : "取消"
+                        flat: true
+                        Layout.fillWidth: true
+                        onClicked: homeModelDlg.close()
+                    }
+                    Button {
+                        text: Backend ? Backend.tr("确定") : "确定"
+                        highlighted: true
+                        Layout.fillWidth: true
+                        onClicked: {
+                            if (homeProviderComboDlg.currentIndex >= 0 && homeProviderComboDlg.currentIndex < homeProviderModel.count) {
+                                var p = homeProviderModel.get(homeProviderComboDlg.currentIndex)
+                                if (Backend) Backend.setGlobalAIProvider(p.key)
+                                homeProviderCombo.currentIndex = homeProviderComboDlg.currentIndex
+                            }
+                            homeLoadModels()
+                            if (homeModelComboDlg.currentIndex >= 0 && homeModelComboDlg.currentIndex < homeModelModel.count) {
+                                var m = homeModelModel.get(homeModelComboDlg.currentIndex)
+                                if (Backend) Backend.setGlobalAIModel(m.id)
+                                homeModelCombo.currentIndex = homeModelComboDlg.currentIndex
+                            }
+                            homeUpdateModelLabel()
+                            homeModelDlg.close()
+                        }
+                    }
+                }
+            }
+        }
+
+        Connections {
+            target: Bloriko
+            enabled: Bloriko !== null
+            function onVoiceStateChanged(state) { homeVoiceState = state || "idle" }
+            function onTranscriptionReady(text) {
+                // 仅当首页输入框聚焦或刚发起录音时写入，避免与 Agent 页抢结果
+                if (homePage.visible)
+                    homeAppendTranscription(text)
+            }
+            function onTranscriptionFailed(msg) {
+                if (homePage.visible)
+                    console.warn("[Home] STT failed:", msg)
+            }
+            function onProvidersChanged() {
+                if (homePage.visible) homeLoadProviders()
             }
         }
         
