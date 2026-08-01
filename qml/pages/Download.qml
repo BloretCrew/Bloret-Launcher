@@ -188,6 +188,7 @@ FluentPage {
     component DownloadCard: Frame {
         Layout.fillWidth: true
         padding: 16
+        hoverable: false
 
         background: Rectangle {
             color: downloadPage._cCard
@@ -195,6 +196,34 @@ FluentPage {
             border.color: downloadPage._cCardBorder
             border.width: 1
         }
+    }
+
+    // ── 卡片内图标 ──
+    component CardIcon: Image {
+        Layout.preferredWidth: 40
+        Layout.preferredHeight: 40
+        Layout.alignment: Qt.AlignVCenter
+        sourceSize.width: 40
+        sourceSize.height: 40
+        fillMode: Image.PreserveAspectFit
+        asynchronous: true
+    }
+
+    function _progressPct(task) {
+        if (!task) return 0
+        var p = Number(task.progress) || 0
+        if (p > 0 && p <= 1.0) return p * 100
+        return Math.max(0, Math.min(100, p))
+    }
+
+    function _activeTaskList() {
+        var active = []
+        for (var i = 0; i < _dlTasks.length; i++) {
+            var s = _dlTasks[i].status
+            if (s === "downloading" || s === "paused" || s === "queued")
+                active.push(_dlTasks[i])
+        }
+        return active
     }
 
     // ── 页面内容主体 ──
@@ -208,86 +237,127 @@ FluentPage {
         }
 
         Frame {
+            id: dlStatusCard
             visible: _dlActive > 0
             Layout.fillWidth: true
-            padding: 12
+            padding: 14
+            hoverable: false
+
             background: Rectangle {
-                color: downloadPage._cCard
+                color: statusClickArea.containsMouse
+                       ? Qt.rgba(downloadPage._cPrimary.r, downloadPage._cPrimary.g, downloadPage._cPrimary.b, 0.08)
+                       : downloadPage._cCard
                 radius: 8
-                border.color: downloadPage._cCardBorder
+                border.color: statusClickArea.containsMouse
+                              ? downloadPage._cPrimary
+                              : downloadPage._cCardBorder
                 border.width: 1
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on border.color { ColorAnimation { duration: 120 } }
             }
 
+            // 整卡可点打开下载管理
             MouseArea {
+                id: statusClickArea
                 anchors.fill: parent
+                z: 1
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     if (Backend) Backend.openDownloadManager()
                 }
             }
 
-            RowLayout {
+            ColumnLayout {
                 width: parent.width
-                spacing: 12
+                spacing: 10
 
-                // 强调竖条
-                Rectangle {
-                    width: 4
-                    height: 44
-                    radius: 2
-                    color: downloadPage._cPrimary
-                }
+                // 标题行
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
 
-                Text {
-                    text: "⬇ " + (Backend ? Backend.tr("下载中") : "下载中") + " (" + _dlActive + ")"
-                    font.weight: Font.DemiBold
-                    font.pixelSize: 13
-                    color: downloadPage._cPrimary
-                }
-
-                Repeater {
-                    model: {
-                        var active = []
-                        for (var i = 0; i < _dlTasks.length; i++) {
-                            if (_dlTasks[i].status === "downloading")
-                                active.push(_dlTasks[i])
-                        }
-                        return active.slice(0, 3)
+                    Rectangle {
+                        Layout.preferredWidth: 4
+                        Layout.preferredHeight: 28
+                        radius: 2
+                        color: downloadPage._cPrimary
                     }
+
+                    Text {
+                        text: (Backend ? Backend.tr("下载中") : "下载中") + " (" + _dlActive + ")"
+                        font.weight: Font.DemiBold
+                        font.pixelSize: 13
+                        color: downloadPage._cPrimary
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    Text {
+                        text: Backend ? Backend.tr("查看详情") : "查看详情"
+                        font.pixelSize: 12
+                        color: downloadPage._cTextSecondary
+                    }
+
+                    Text {
+                        text: "›"
+                        font.pixelSize: 18
+                        font.weight: Font.DemiBold
+                        color: downloadPage._cPrimary
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+                }
+
+                // 每个活跃任务单独一行，避免横向挤爆
+                Repeater {
+                    model: downloadPage._activeTaskList().slice(0, 3)
                     delegate: RowLayout {
-                        spacing: 6
+                        Layout.fillWidth: true
+                        spacing: 8
                         required property var modelData
 
                         Text {
-                            text: "Minecraft " + modelData.version
-                            font.pixelSize: 11
-                            color: downloadPage._cPrimary
+                            text: "Minecraft " + (modelData.version || "")
+                            font.pixelSize: 12
+                            color: downloadPage._cText
                             elide: Text.ElideRight
-                            Layout.maximumWidth: 120
+                            Layout.preferredWidth: 130
+                            Layout.maximumWidth: 180
                         }
 
                         ProgressBar {
                             from: 0
                             to: 100
-                            value: modelData.progress
-                            width: 80
-                            implicitHeight: 4
+                            value: downloadPage._progressPct(modelData)
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 4
+                            state: modelData.status === "paused" ? 1 : 0
+                            indeterminate: modelData.status === "queued"
+                                           || (modelData.status === "downloading"
+                                               && downloadPage._progressPct(modelData) <= 0)
                         }
 
                         Text {
-                            text: Math.round(modelData.progress) + "%"
-                            font.pixelSize: 10
-                            color: downloadPage._cTextSecondary
+                            text: modelData.status === "paused"
+                                  ? (Backend ? Backend.tr("已暂停") : "已暂停")
+                                  : (Math.round(downloadPage._progressPct(modelData)) + "%")
+                            font.pixelSize: 11
+                            color: modelData.status === "paused"
+                                   ? downloadPage._cCaution
+                                   : downloadPage._cTextSecondary
+                            Layout.preferredWidth: 48
+                            horizontalAlignment: Text.AlignRight
                         }
                     }
                 }
 
-                Item { Layout.fillWidth: true }
-
                 Text {
-                    text: "▶"
-                    font.pixelSize: 14
-                    color: downloadPage._cPrimary
+                    visible: downloadPage._activeTaskList().length > 3
+                    text: (Backend ? Backend.tr("另有 %1 个任务…").arg(downloadPage._activeTaskList().length - 3)
+                                   : ("另有 " + (downloadPage._activeTaskList().length - 3) + " 个任务…"))
+                    font.pixelSize: 11
+                    color: downloadPage._cTextSecondary
                 }
             }
         }
@@ -303,33 +373,38 @@ FluentPage {
                 width: parent.width
                 spacing: 16
 
-                Image {
+                CardIcon {
                     source: Qt.resolvedUrl("../../icon/Grass_Block.png")
-                    sourceSize { width: 40; height: 40 }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 120
                     spacing: 2
 
                     Label {
                         font.weight: Font.DemiBold
                         text: (Backend ? Backend.tr("Minecraft 官方版本") : "Minecraft 官方版本")
                         color: downloadPage._cText
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
 
                     Label {
                         text: (Backend ? Backend.tr("下载并安装原生 Minecraft 核心") : "下载并安装原生 Minecraft 核心")
                         color: downloadPage._cTextSecondary
                         font.pixelSize: 12
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
                     }
                 }
 
-                Item { Layout.fillWidth: true }
-
                 ComboBox {
                     id: vanillaCombo
-                    Layout.preferredWidth: 180
+                    Layout.preferredWidth: 160
+                    Layout.minimumWidth: 120
                     onCurrentIndexChanged: {
                         if (_ignoreIndexChange) return
                         if (model[currentIndex] === (Backend ? Backend.tr("其他版本...") : "其他版本...")) {
@@ -342,6 +417,7 @@ FluentPage {
                 Button {
                     text: (Backend ? Backend.tr("下载并安装") : "下载并安装")
                     highlighted: true
+                    Layout.alignment: Qt.AlignVCenter
                     onClicked: {
                         if (!Backend) return
                         let ver = vanillaCombo.currentText
@@ -365,33 +441,38 @@ FluentPage {
                 width: parent.width
                 spacing: 16
 
-                Image {
+                CardIcon {
                     source: Qt.resolvedUrl("../../icon/fabric.png")
-                    sourceSize { width: 40; height: 40 }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 120
                     spacing: 2
 
                     Label {
                         font.weight: Font.DemiBold
                         text: "Fabric Loader"
                         color: downloadPage._cText
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
 
                     Label {
                         text: (Backend ? Backend.tr("安装 Fabric 加载器以使用 modern Mod") : "安装 Fabric 加载器以使用 modern Mod")
                         color: downloadPage._cTextSecondary
                         font.pixelSize: 12
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
                     }
                 }
 
-                Item { Layout.fillWidth: true }
-
                 ComboBox {
                     id: fabricCombo
-                    Layout.preferredWidth: 180
+                    Layout.preferredWidth: 160
+                    Layout.minimumWidth: 120
                     onCurrentIndexChanged: {
                         if (_ignoreIndexChange) return
                         if (model[currentIndex] === (Backend ? Backend.tr("其他版本...") : "其他版本...")) {
@@ -404,6 +485,7 @@ FluentPage {
                 Button {
                     text: (Backend ? Backend.tr("下载并安装") : "下载并安装")
                     highlighted: true
+                    Layout.alignment: Qt.AlignVCenter
                     onClicked: {
                         if (!Backend) return
                         let ver = fabricCombo.currentText
@@ -427,33 +509,38 @@ FluentPage {
                 width: parent.width
                 spacing: 16
 
-                Image {
+                CardIcon {
                     source: Qt.resolvedUrl("../../icon/Command_Block.gif")
-                    sourceSize { width: 40; height: 40 }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 120
                     spacing: 2
 
                     Label {
                         font.weight: Font.DemiBold
                         text: "Forge Loader"
                         color: downloadPage._cText
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
 
                     Label {
                         text: (Backend ? Backend.tr("安装 Forge 加载器以使用 Forge Mod") : "安装 Forge 加载器以使用 Forge Mod")
                         color: downloadPage._cTextSecondary
                         font.pixelSize: 12
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
                     }
                 }
 
-                Item { Layout.fillWidth: true }
-
                 ComboBox {
                     id: forgeCombo
-                    Layout.preferredWidth: 180
+                    Layout.preferredWidth: 160
+                    Layout.minimumWidth: 120
                     onCurrentIndexChanged: {
                         if (_ignoreIndexChange) return
                         if (model[currentIndex] === (Backend ? Backend.tr("其他版本...") : "其他版本...")) {
@@ -466,6 +553,7 @@ FluentPage {
                 Button {
                     text: (Backend ? Backend.tr("下载并安装") : "下载并安装")
                     highlighted: true
+                    Layout.alignment: Qt.AlignVCenter
                     onClicked: {
                         if (!Backend) return
                         let ver = forgeCombo.currentText
@@ -489,33 +577,38 @@ FluentPage {
                 width: parent.width
                 spacing: 16
 
-                Image {
+                CardIcon {
                     source: Qt.resolvedUrl("../../icon/Command_Block.gif")
-                    sourceSize { width: 40; height: 40 }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 120
                     spacing: 2
 
                     Label {
                         font.weight: Font.DemiBold
                         text: "NeoForge Loader"
                         color: downloadPage._cText
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
 
                     Label {
                         text: (Backend ? Backend.tr("安装 NeoForge 加载器以使用 NeoForge Mod") : "安装 NeoForge 加载器以使用 NeoForge Mod")
                         color: downloadPage._cTextSecondary
                         font.pixelSize: 12
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
                     }
                 }
 
-                Item { Layout.fillWidth: true }
-
                 ComboBox {
                     id: neoForgeCombo
-                    Layout.preferredWidth: 180
+                    Layout.preferredWidth: 160
+                    Layout.minimumWidth: 120
                     onCurrentIndexChanged: {
                         if (_ignoreIndexChange) return
                         if (model[currentIndex] === (Backend ? Backend.tr("其他版本...") : "其他版本...")) {
@@ -528,6 +621,7 @@ FluentPage {
                 Button {
                     text: (Backend ? Backend.tr("下载并安装") : "下载并安装")
                     highlighted: true
+                    Layout.alignment: Qt.AlignVCenter
                     onClicked: {
                         if (!Backend) return
                         let ver = neoForgeCombo.currentText
@@ -555,22 +649,24 @@ FluentPage {
                 width: parent.width
                 spacing: 16
 
-                Image {
+                CardIcon {
                     source: Qt.resolvedUrl("../../icon/java.png")
-                    sourceSize { width: 40; height: 40 }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 120
                     spacing: 4
 
                     RowLayout {
+                        Layout.fillWidth: true
                         spacing: 8
 
                         Label {
                             font.weight: Font.DemiBold
                             text: (Backend ? Backend.tr("Java 运行时环境") : "Java 运行时环境")
                             color: downloadPage._cText
+                            elide: Text.ElideRight
                         }
 
                         Badge {
@@ -583,20 +679,26 @@ FluentPage {
                         text: (Backend ? Backend.tr("运行 Minecraft 所需的 Java 环境") : "运行 Minecraft 所需的 Java 环境")
                         color: downloadPage._cTextSecondary
                         font.pixelSize: 12
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
                     }
                 }
-
-                Item { Layout.fillWidth: true }
 
                 ComboBox {
                     id: javaVersionCombo
                     model: javaVersions
-                    Layout.preferredWidth: 180
+                    Layout.preferredWidth: 160
+                    Layout.minimumWidth: 120
+                    enabled: Qt.platform.os === "windows"
                 }
 
                 Button {
                     text: (Backend ? Backend.tr("下载并安装") : "下载并安装")
                     highlighted: true
+                    Layout.alignment: Qt.AlignVCenter
+                    enabled: Qt.platform.os === "windows"
                     onClicked: {
                         if (Backend) Backend.downloadJava(javaVersionCombo.currentText)
                     }
@@ -614,32 +716,37 @@ FluentPage {
                 width: parent.width
                 spacing: 16
 
-                Image {
+                CardIcon {
                     source: Qt.resolvedUrl("../../icon/exeapps.png")
-                    sourceSize { width: 40; height: 40 }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 120
                     spacing: 2
 
                     Label {
                         font.weight: Font.DemiBold
                         text: (Backend ? Backend.tr("外部程序/整合包") : "外部程序/整合包")
                         color: downloadPage._cText
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
 
                     Label {
                         text: (Backend ? Backend.tr("添加您的自定义启动项或整合包文件") : "添加您的自定义启动项或整合包文件")
                         color: downloadPage._cTextSecondary
                         font.pixelSize: 12
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
                     }
                 }
 
-                Item { Layout.fillWidth: true }
-
                 Button {
                     text: (Backend ? Backend.tr("添加自定义项目") : "添加自定义项目")
+                    Layout.alignment: Qt.AlignVCenter
                     onClicked: {
                         if (Backend) Backend.addCustomApp()
                     }
@@ -652,12 +759,10 @@ FluentPage {
                 width: parent.width
                 spacing: 16
 
-                Image {
+                CardIcon {
                     id: modrinthIcon
                     source: Qt.resolvedUrl("../../icon/modrinth.png")
-                    sourceSize { width: 40; height: 40 }
                     cache: false
-                    fillMode: Image.PreserveAspectFit
                     onStatusChanged: {
                         if (status === Image.Error)
                             console.log("[Download] Modrinth icon failed to load:", source)
@@ -666,26 +771,32 @@ FluentPage {
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 120
                     spacing: 2
 
                     Label {
                         font.weight: Font.DemiBold
                         text: (Backend ? Backend.tr("Modrinth 整合包") : "Modrinth 整合包")
                         color: downloadPage._cText
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
 
                     Label {
                         text: (Backend ? Backend.tr("导入 .mrpack 格式的 Modrinth 整合包") : "导入 .mrpack 格式的 Modrinth 整合包")
                         color: downloadPage._cTextSecondary
                         font.pixelSize: 12
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
                     }
                 }
-
-                Item { Layout.fillWidth: true }
 
                 Button {
                     text: (Backend ? Backend.tr("导入整合包") : "导入整合包")
                     highlighted: true
+                    Layout.alignment: Qt.AlignVCenter
                     onClicked: {
                         if (Backend) Backend.importMrpack()
                     }

@@ -424,18 +424,24 @@ FluentWindow {
         title: errorTitle
         modal: true
         width: Math.min(520, window.width - 80)
-        implicitHeight: 200
+        implicitHeight: Math.max(200, errorContent.implicitHeight + 96)
         standardButtons: Dialog.NoButton
+        closePolicy: Popup.CloseOnEscape
 
         ColumnLayout {
+            id: errorContent
             Layout.fillWidth: true
             spacing: 16
 
             Text {
                 text: downloadErrorDialog.errorMessage
                 Layout.fillWidth: true
+                Layout.maximumWidth: downloadErrorDialog.availableWidth
+                    ? downloadErrorDialog.availableWidth - 8
+                    : 480
                 wrapMode: Text.Wrap
                 typography: Typography.Body
+                color: Theme.currentTheme.colors.textColor
             }
 
             RowLayout {
@@ -455,7 +461,11 @@ FluentWindow {
                     onClicked: {
                         downloadErrorDialog.close()
                         if (Backend) {
-                            Backend.retryDownload(downloadErrorDialog.loaderType, downloadErrorDialog.version, downloadErrorDialog.versionName)
+                            Backend.retryDownload(
+                                downloadErrorDialog.loaderType,
+                                downloadErrorDialog.version,
+                                downloadErrorDialog.versionName
+                            )
                         }
                     }
                 }
