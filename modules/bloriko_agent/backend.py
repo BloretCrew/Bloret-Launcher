@@ -13,16 +13,20 @@
 - 多平台连接器（微信、Telegram、QQ、Discord 等）
 """
 
+import base64
+import io
 import json
 import os
+import tempfile
 import time
 import logging
 import threading
+import wave
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import requests
-from PySide6.QtCore import QObject, Signal, Slot, Property
+from PySide6.QtCore import QObject, Signal, Slot, Property, QIODevice, QByteArray, QBuffer, QTimer
 from PySide6.QtGui import QGuiApplication
 
 from .agent_loop import BlorikoAgentLoop, run_agent_async, AGENT_ROLES
@@ -45,6 +49,12 @@ from .wechat_connector import (
 )
 
 log = logging.getLogger(__name__)
+
+# 图片附件限制
+_MAX_IMAGE_COUNT = 4
+_MAX_IMAGE_FILE_BYTES = 5 * 1024 * 1024  # 5MB 原始文件
+_MAX_IMAGE_EDGE = 1280
+_MAX_VOICE_SECONDS = 60
 
 
 def _send_os_notification(title: str, body: str):
@@ -75,6 +85,90 @@ _TOOL_CN = {
     "memory": "管理记忆",
     "set_emotion": "更新情感",
 }
+
+
+def _encode_image_for_api(path: str) -> Optional[dict]:
+    """读取本地图片，压缩后返回 OpenAI image_url part；失败返回 None。"""
+    if not path or not os.path.isfile(path):
+        log.warning(f"[Bloriko] 图片不存在: {path}")
+        return None
+    try:
+        size = os.path.getsize(path)
+        if size > _MAX_IMAGE_FILE_BYTES:
+            log.warning(f"[Bloriko] 图片过大: {path} ({size} bytes)")
+            return None
+
+        from PIL import Image
+
+        with Image.open(path) as img:
+            img = img.convert("RGB") if img.mode not in ("RGB", "L") else img
+            if img.mode == "L":
+                img = img.convert("RGB")
+            w, h = img.size
+            scale = min(1.0, _MAX_IMAGE_EDGE / max(w, h))
+            if scale < 1.0:
+                img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.Resampling.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=85, optimize=True)
+            b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        return {
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+        }
+    except Exception as e:
+        log.warning(f"[Bloriko] 编码图片失败 {path}: {e}")
+        return None
+
+
+def _build_user_content(text: str, image_paths: list) -> Union[str, list]:
+    """构建 user message content：无图为 str，有图为多模态 list。"""
+    text = (text or "").strip()
+    parts = []
+    if text:
+        parts.append({"type": "text", "text": text})
+    for p in image_paths or []:
+        part = _encode_image_for_api(p)
+        if part:
+            parts.append(part)
+    if not parts:
+        return text or ""
+    if len(parts) == 1 and parts[0].get("type") == "text":
+        return parts[0]["text"]
+    if not text and any(p.get("type") == "image_url" for p in parts):
+        parts.insert(0, {"type": "text", "text": "请查看图片"})
+    return parts
+
+
+def _content_text_preview(content) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        texts = []
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "text":
+                texts.append(str(part.get("text", "")))
+        return "\n".join(texts)
+    return str(content or "")
+
+
+def _transcriptions_url_from_chat_api(api_url: str) -> Optional[str]:
+    if not api_url:
+        return None
+    if "/chat/completions" in api_url:
+        return api_url.replace("/chat/completions", "/audio/transcriptions")
+    if api_url.rstrip("/").endswith("/v1"):
+        return api_url.rstrip("/") + "/audio/transcriptions"
+    return None
+
+
+def _pcm_to_wav_bytes(pcm: bytes, sample_rate: int = 16000, channels: int = 1, sample_width: int = 2) -> bytes:
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(sample_width)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm)
+    return buf.getvalue()
 
 
 def _summarize_agent_result(text: str, tool_calls: list) -> str:
@@ -389,6 +483,11 @@ class BlorikoBackend(QObject):
     # 情感信号
     emotionChanged = Signal(str)
 
+    # 语音 STT
+    voiceStateChanged = Signal(str)          # idle | recording | transcribing
+    transcriptionReady = Signal(str)
+    transcriptionFailed = Signal(str)
+
     # ========== 连接器信号（通用） ==========
     connectorStatusChanged = Signal(str, str)       # platform_id, status
     connectorMessageReceived = Signal(str, str, str) # platform_id, sender_id, text
@@ -443,6 +542,14 @@ class BlorikoBackend(QObject):
         # 情感状态
         self._current_emotion = "neutral"
 
+        # 语音录音 / STT
+        self._voice_state = "idle"
+        self._audio_source = None
+        self._audio_buffer = None
+        self._audio_io = None
+        self._audio_sample_rate = 16000
+        self._voice_max_timer = None
+
         # ========== 多平台连接器 ==========
         self._connectors: dict[str, BaseConnector] = {}
         self._connectors_lock = threading.Lock()
@@ -476,6 +583,15 @@ class BlorikoBackend(QObject):
     @Property(bool, notify=busyChanged)
     def busy(self):
         return self._busy
+
+    @Property(str, notify=voiceStateChanged)
+    def voiceState(self):
+        return self._voice_state
+
+    def _set_voice_state(self, state: str):
+        if self._voice_state != state:
+            self._voice_state = state
+            self.voiceStateChanged.emit(state)
 
     @Property(str, notify=roleChanged)
     def agentRole(self):
@@ -666,11 +782,70 @@ class BlorikoBackend(QObject):
 
     # ========== 对话 ==========
 
+    def _resolve_auth(self, provider: dict) -> Optional[str]:
+        """返回 Authorization 头值（含 Bearer 前缀），失败时 emit 错误并返回 None。"""
+        if not provider.get("needs_auth", False):
+            log.info("[Bloriko] 无需认证（内置供应商）")
+            return ""
+        api_key = provider.get("api_key", "")
+        if not api_key:
+            if self._current_provider == "bloret_passport":
+                auth_header = _build_bloret_passport_auth()
+                if not auth_header:
+                    log.error("[Bloriko] Bloret PassPort 认证信息未配置：未找到 API Key 且用户未登录")
+                    self.errorOccurred.emit(
+                        "请先在 Bloret PassPort 的 /ai 页面创建 API Key，并在设置中配置；或确认已登录 Bloret PassPort"
+                    )
+                    return None
+                log.info("[Bloriko] 使用 Bloret PassPort 认证")
+                return auth_header
+            self.errorOccurred.emit(f"供应商 {provider.get('name', '')} 需要 API 密钥")
+            return None
+        return f"Bearer {api_key}"
+
     @Slot(str)
-    def sendMessage(self, text):
+    @Slot(str, str)
+    def sendMessage(self, text, images_json="[]"):
         log.info(f"[Bloriko] sendMessage 调用, busy={self._busy}")
         if self._busy:
             log.warning("[Bloriko] sendMessage 被拒绝: 正忙")
+            return
+
+        text = (text or "").strip()
+        try:
+            image_paths = json.loads(images_json) if images_json else []
+            if not isinstance(image_paths, list):
+                image_paths = []
+        except Exception:
+            image_paths = []
+
+        # 过滤有效路径并限制数量
+        valid_paths = []
+        for p in image_paths:
+            if not isinstance(p, str):
+                continue
+            path = p
+            if path.startswith("file://"):
+                path = path[7:] if not path.startswith("file:///") else path[7:]
+                # Windows file:///C:/... → /C:/... handled below
+                if os.name == "nt" and path.startswith("/") and len(path) > 2 and path[2] == ":":
+                    path = path[1:]
+            if os.path.isfile(path):
+                valid_paths.append(path)
+        if len(valid_paths) > _MAX_IMAGE_COUNT:
+            self.errorOccurred.emit(f"最多只能附加 {_MAX_IMAGE_COUNT} 张图片")
+            return
+        for path in valid_paths:
+            try:
+                if os.path.getsize(path) > _MAX_IMAGE_FILE_BYTES:
+                    self.errorOccurred.emit(f"图片过大（超过 5MB）: {os.path.basename(path)}")
+                    return
+            except OSError:
+                self.errorOccurred.emit(f"无法读取图片: {os.path.basename(path)}")
+                return
+
+        if not text and not valid_paths:
+            log.warning("[Bloriko] sendMessage 被拒绝: 空消息")
             return
 
         # 获取 API 配置
@@ -688,26 +863,16 @@ class BlorikoBackend(QObject):
             self.errorOccurred.emit("供应商配置不完整")
             return
 
-        # 认证
-        auth_header = ""
-        if provider.get("needs_auth", False):
-            api_key = provider.get("api_key", "")
-            if not api_key:
-                # 内置 Bloret PassPort：从 config.json 自动构建 OAuth 三段式 Token
-                if self._current_provider == "bloret_passport":
-                    auth_header = _build_bloret_passport_auth()
-                    if not auth_header:
-                        log.error("[Bloriko] Bloret PassPort 认证信息未配置：未找到 API Key 且用户未登录")
-                        self.errorOccurred.emit("请先在 Bloret PassPort 的 /ai 页面创建 API Key，并在设置中配置；或确认已登录 Bloret PassPort")
-                        return
-                    log.info("[Bloriko] 使用 Bloret PassPort 认证")
-                else:
-                    self.errorOccurred.emit(f"供应商 {provider.get('name', '')} 需要 API 密钥")
-                    return
-            else:
-                auth_header = f"Bearer {api_key}"
-        else:
-            log.info("[Bloriko] 无需认证（内置供应商）")
+        auth_header = self._resolve_auth(provider)
+        if auth_header is None:
+            return
+
+        user_content = _build_user_content(text, valid_paths)
+        if not user_content:
+            self.errorOccurred.emit("无法处理图片附件")
+            return
+
+        title_source = text or _content_text_preview(user_content) or "图片消息"
 
         # 第一条消息时自动生成对话标题
         if not self._title and len(self._history) == 0:
@@ -716,19 +881,25 @@ class BlorikoBackend(QObject):
             def _gen_title():
                 try:
                     from .agent_loop import generate_title, _sanitize_conversation_title
-                    title = generate_title(api_url, auth_header, text, model)
-                    self._title = _sanitize_conversation_title(title, fallback=text)
+                    title = generate_title(api_url, auth_header, title_source, model)
+                    self._title = _sanitize_conversation_title(title, fallback=title_source)
                     self.titleChanged.emit(self._title)
                 except Exception as e:
                     log.warning(f"[Bloriko] 标题生成失败: {e}")
                     from .agent_loop import _sanitize_conversation_title
-                    self._title = _sanitize_conversation_title(text)
+                    self._title = _sanitize_conversation_title(title_source)
                     self.titleChanged.emit(self._title)
 
             threading.Thread(target=_gen_title, daemon=True).start()
 
-        log.info(f"[Bloriko] 启动 Agent, 消息: '{text[:50]}...'")
-        self._history.append({"role": "user", "content": text})
+        preview = title_source[:50]
+        log.info(f"[Bloriko] 启动 Agent, 消息: '{preview}...', images={len(valid_paths)}")
+        history_entry = {
+            "role": "user",
+            "content": user_content,
+            "image_paths": valid_paths,
+        }
+        self._history.append(history_entry)
         self._current_text = ""
         self._current_tool_calls = []
         self._had_error = False
@@ -739,7 +910,7 @@ class BlorikoBackend(QObject):
             working_dir=self._working_dir,
             api_url=api_url,
             auth_header=auth_header,
-            user_message=text,
+            user_message=user_content,
             history=self._history[:-1],
             on_text_chunk=self._on_text_chunk,
             on_tool_call_start=self._on_tool_call_start,
@@ -754,6 +925,218 @@ class BlorikoBackend(QObject):
             memory_store=self._memory_store,
         )
         log.info("[Bloriko] Agent 线程已启动")
+
+    # ========== 语音 STT ==========
+
+    @Slot()
+    def startVoiceCapture(self):
+        """开始麦克风录音。再次调用 stopVoiceCaptureAndTranscribe 结束并转写。"""
+        if self._voice_state != "idle":
+            log.warning(f"[Bloriko] startVoiceCapture 忽略, state={self._voice_state}")
+            return
+        try:
+            from PySide6.QtMultimedia import QAudioFormat, QAudioSource, QMediaDevices
+        except Exception as e:
+            self.transcriptionFailed.emit(f"语音模块不可用: {e}")
+            return
+
+        device = QMediaDevices.defaultAudioInput()
+        if device.isNull():
+            self.transcriptionFailed.emit("未检测到麦克风设备")
+            return
+
+        fmt = QAudioFormat()
+        fmt.setSampleRate(16000)
+        fmt.setChannelCount(1)
+        fmt.setSampleFormat(QAudioFormat.SampleFormat.Int16)
+        if not device.isFormatSupported(fmt):
+            preferred = device.preferredFormat()
+            fmt = preferred
+            log.info(
+                f"[Bloriko] 使用设备首选音频格式: rate={fmt.sampleRate()}, "
+                f"ch={fmt.channelCount()}, sample={fmt.sampleFormat()}"
+            )
+
+        try:
+            self._audio_buffer = QByteArray()
+            self._audio_io = QBuffer(self._audio_buffer)
+            self._audio_io.open(QIODevice.OpenModeFlag.WriteOnly)
+            self._audio_source = QAudioSource(device, fmt, self)
+            self._audio_sample_rate = fmt.sampleRate() or 16000
+            self._audio_channels = fmt.channelCount() or 1
+            self._audio_sample_width = 2
+            if fmt.sampleFormat() == QAudioFormat.SampleFormat.UInt8:
+                self._audio_sample_width = 1
+            elif fmt.sampleFormat() == QAudioFormat.SampleFormat.Int16:
+                self._audio_sample_width = 2
+            elif fmt.sampleFormat() == QAudioFormat.SampleFormat.Int32:
+                self._audio_sample_width = 4
+            elif fmt.sampleFormat() == QAudioFormat.SampleFormat.Float:
+                self._audio_sample_width = 4
+            self._audio_source.start(self._audio_io)
+            self._set_voice_state("recording")
+            log.info("[Bloriko] 开始录音")
+
+            if self._voice_max_timer is None:
+                self._voice_max_timer = QTimer(self)
+                self._voice_max_timer.setSingleShot(True)
+                self._voice_max_timer.timeout.connect(self.stopVoiceCaptureAndTranscribe)
+            self._voice_max_timer.start(_MAX_VOICE_SECONDS * 1000)
+        except Exception as e:
+            log.error(f"[Bloriko] 启动录音失败: {e}", exc_info=True)
+            self._cleanup_audio_capture()
+            self.transcriptionFailed.emit(f"无法开始录音: {e}")
+
+    @Slot()
+    def stopVoiceCaptureAndTranscribe(self):
+        """停止录音并异步转写为文字。"""
+        if self._voice_state != "recording":
+            return
+
+        if self._voice_max_timer and self._voice_max_timer.isActive():
+            self._voice_max_timer.stop()
+
+        pcm = b""
+        sample_rate = getattr(self, "_audio_sample_rate", 16000)
+        channels = getattr(self, "_audio_channels", 1)
+        sample_width = getattr(self, "_audio_sample_width", 2)
+        try:
+            if self._audio_source:
+                self._audio_source.stop()
+            if self._audio_io:
+                self._audio_io.close()
+            if self._audio_buffer is not None:
+                pcm = bytes(self._audio_buffer.data())
+        except Exception as e:
+            log.warning(f"[Bloriko] 停止录音时出错: {e}")
+        finally:
+            self._cleanup_audio_capture(keep_state=True)
+
+        if len(pcm) < sample_rate * sample_width * channels * 0.2:
+            self._set_voice_state("idle")
+            self.transcriptionFailed.emit("录音太短，请重试")
+            return
+
+        try:
+            if sample_width in (1, 2):
+                wav_bytes = _pcm_to_wav_bytes(
+                    pcm, sample_rate=sample_rate, channels=channels, sample_width=sample_width
+                )
+            else:
+                # Int32 / Float：按 16-bit 截断重打包，避免 wave 不支持
+                import array
+                if sample_width == 4:
+                    # 优先按 little-endian int32 再缩放到 int16
+                    try:
+                        ints = array.array("i")
+                        ints.frombytes(pcm[: len(pcm) - (len(pcm) % 4)])
+                        scaled = array.array("h", (max(-32768, min(32767, v >> 16)) for v in ints))
+                        pcm16 = scaled.tobytes()
+                    except Exception:
+                        pcm16 = pcm[::2]  # 粗暴降采样字节
+                        pcm16 = pcm16[: len(pcm16) - (len(pcm16) % 2)]
+                    wav_bytes = _pcm_to_wav_bytes(pcm16, sample_rate=sample_rate, channels=channels, sample_width=2)
+                else:
+                    wav_bytes = _pcm_to_wav_bytes(pcm, sample_rate=sample_rate, channels=channels, sample_width=2)
+        except Exception as e:
+            self._set_voice_state("idle")
+            self.transcriptionFailed.emit(f"音频编码失败: {e}")
+            return
+
+        self._set_voice_state("transcribing")
+        auth_header = ""
+        provider = BUILTIN_PROVIDERS.get(self._current_provider) or self._custom_providers.get(self._current_provider)
+        api_url = (provider or {}).get("api", "")
+        stt_url = _transcriptions_url_from_chat_api(api_url)
+        if not stt_url:
+            self._set_voice_state("idle")
+            self.transcriptionFailed.emit("当前供应商不支持语音识别（无法推导 transcriptions 地址）")
+            return
+        if provider:
+            auth_header = self._resolve_auth(provider)
+            if auth_header is None:
+                self._set_voice_state("idle")
+                return
+
+        def _worker():
+            tmp_path = None
+            try:
+                fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix="bloriko_stt_")
+                os.write(fd, wav_bytes)
+                os.close(fd)
+                headers = {}
+                if auth_header:
+                    headers["Authorization"] = auth_header
+                with open(tmp_path, "rb") as f:
+                    files = {"file": ("audio.wav", f, "audio/wav")}
+                    data = {"model": "whisper-1"}
+                    resp = requests.post(stt_url, headers=headers, files=files, data=data, timeout=60)
+                if resp.status_code >= 400:
+                    detail = (resp.text or "")[:300]
+                    log.warning(f"[Bloriko] STT HTTP {resp.status_code}: {detail}")
+                    msg = (
+                        "当前供应商不支持语音识别，请配置支持 Whisper /audio/transcriptions 的供应商"
+                        if resp.status_code in (404, 405, 501)
+                        else f"语音识别失败 (HTTP {resp.status_code})"
+                    )
+                    self.transcriptionFailed.emit(msg)
+                    return
+                try:
+                    payload = resp.json()
+                    text = (payload.get("text") or "").strip()
+                except Exception:
+                    text = (resp.text or "").strip()
+                if not text:
+                    self.transcriptionFailed.emit("未识别到有效语音")
+                    return
+                self.transcriptionReady.emit(text)
+            except Exception as e:
+                log.error(f"[Bloriko] STT 失败: {e}", exc_info=True)
+                self.transcriptionFailed.emit(f"语音识别失败: {e}")
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+                self._set_voice_state("idle")
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    @Slot()
+    def cancelVoiceCapture(self):
+        """取消录音，不转写。"""
+        if self._voice_max_timer and self._voice_max_timer.isActive():
+            self._voice_max_timer.stop()
+        if self._voice_state == "recording":
+            try:
+                if self._audio_source:
+                    self._audio_source.stop()
+            except Exception:
+                pass
+            self._cleanup_audio_capture()
+            self._set_voice_state("idle")
+
+    def _cleanup_audio_capture(self, keep_state: bool = False):
+        try:
+            if self._audio_source:
+                try:
+                    self._audio_source.stop()
+                except Exception:
+                    pass
+                self._audio_source.deleteLater()
+        except Exception:
+            pass
+        self._audio_source = None
+        try:
+            if self._audio_io:
+                self._audio_io.close()
+        except Exception:
+            pass
+        self._audio_io = None
+        self._audio_buffer = None
+        if not keep_state and self._voice_state == "recording":
+            self._set_voice_state("idle")
 
     @Slot()
     def cancelAgent(self):
@@ -936,26 +1319,55 @@ class BlorikoBackend(QObject):
         for msg in self._history:
             role = msg.get("role", "")
             if role == "user":
+                content = msg.get("content", "")
+                text = _content_text_preview(content)
+                image_paths = list(msg.get("image_paths") or [])
+                # 兼容仅有多模态 content、无 image_paths 的旧/外部数据：不还原 base64 大图
+                if not image_paths and isinstance(content, list):
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") == "image_url":
+                            # 仅标记有图，UI 可用占位
+                            image_paths.append("")
                 messages.append({
                     "role": "user",
-                    "content": msg.get("content", ""),
+                    "content": text,
+                    "images": [p for p in image_paths if p],
+                    "imagesJson": json.dumps([p for p in image_paths if p], ensure_ascii=False),
                     "toolName": "", "toolArgs": "", "toolResult": "",
                 })
             elif role == "assistant":
                 messages.append({
                     "role": "assistant",
-                    "content": msg.get("content", ""),
+                    "content": msg.get("content", "") if isinstance(msg.get("content", ""), str) else _content_text_preview(msg.get("content", "")),
+                    "images": [],
+                    "imagesJson": "[]",
                     "toolName": "", "toolArgs": "", "toolResult": "",
                 })
             elif role == "tool_call":
                 messages.append({
                     "role": "tool_call",
                     "content": "",
+                    "images": [],
+                    "imagesJson": "[]",
                     "toolName": msg.get("toolName", ""),
                     "toolArgs": msg.get("toolArgs", ""),
                     "toolResult": msg.get("toolResult", ""),
                 })
         return json.dumps(messages, ensure_ascii=False)
+
+    @Slot(result=str)
+    def getCurrentModelName(self):
+        """返回当前模型显示名（供输入区胶囊使用）。"""
+        try:
+            models = json.loads(self._getModelsByKey(self._current_provider))
+            for m in models:
+                if m.get("id") == self._current_model:
+                    return m.get("name") or m.get("id") or ""
+            if models:
+                return models[0].get("name") or models[0].get("id") or ""
+        except Exception:
+            pass
+        return self._current_model or ""
 
     # ========== 记忆查看 ==========
 
