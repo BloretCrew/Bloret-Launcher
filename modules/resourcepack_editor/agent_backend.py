@@ -11,17 +11,30 @@
 - 多 Agent 角色
 """
 
+import array
 import json
 import os
+import tempfile
 import time
 import logging
 import threading
 import requests
 from modules.i18n import i18nText
-from PySide6.QtCore import QObject, Signal, Slot, Property
+from PySide6.QtCore import QObject, Signal, Slot, Property, QIODevice, QByteArray, QBuffer, QTimer
 from PySide6.QtGui import QGuiApplication
 
 from .agent_loop import AgentLoop, run_agent_async, AGENT_ROLES
+
+# 复用 Blora Agent 的图片编码 / STT 工具
+from modules.bloriko_agent.backend import (
+    _build_user_content,
+    _content_text_preview,
+    _transcriptions_url_from_chat_api,
+    _pcm_to_wav_bytes,
+    _MAX_IMAGE_COUNT,
+    _MAX_IMAGE_FILE_BYTES,
+    _MAX_VOICE_SECONDS,
+)
 
 log = logging.getLogger(__name__)
 
@@ -318,6 +331,11 @@ class AgentBackend(QObject):
     # 角色信号
     roleChanged = Signal()
 
+    # 语音 STT
+    voiceStateChanged = Signal(str)  # idle | recording | transcribing
+    transcriptionReady = Signal(str)
+    transcriptionFailed = Signal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._agent = None
@@ -327,6 +345,14 @@ class AgentBackend(QObject):
         self._current_text = ""
         self._current_tool_calls = []
         self._had_error = False
+        self._voice_state = "idle"
+        self._audio_source = None
+        self._audio_buffer = None
+        self._audio_io = None
+        self._audio_sample_rate = 16000
+        self._audio_channels = 1
+        self._audio_sample_width = 2
+        self._voice_max_timer = None
         # 从全局 config.json 读取供应商和模型设置
         self._current_provider, self._current_model = self._load_global_ai_settings()
 
@@ -387,6 +413,15 @@ class AgentBackend(QObject):
     @Property(bool, notify=busyChanged)
     def busy(self):
         return self._busy
+
+    @Property(str, notify=voiceStateChanged)
+    def voiceState(self):
+        return self._voice_state
+
+    def _set_voice_state(self, state: str):
+        if self._voice_state != state:
+            self._voice_state = state
+            self.voiceStateChanged.emit(state)
 
     @Property(str, notify=roleChanged)
     def agentRole(self):
@@ -819,8 +854,32 @@ class AgentBackend(QObject):
         except Exception as e:
             log.warning(f"保存项目设置失败: {e}")
 
+    def _resolve_auth(self, provider: dict):
+        """返回 Authorization 头；失败 emit 错误并返回 None。无需认证返回 ''。"""
+        if not provider.get("needs_auth", False):
+            log.info("[Agent] 无需认证（内置供应商）")
+            return ""
+        api_key = provider.get("api_key", "")
+        if not api_key:
+            if self._current_provider == "bloret_passport":
+                auth_header = _build_bloret_passport_auth()
+                if not auth_header:
+                    log.error("[Agent] Bloret PassPort API Key 未配置")
+                    self.errorOccurred.emit(i18nText("请先在 Bloret PassPort 的 /ai 页面创建 API Key，并在设置中配置"))
+                    return None
+                log.info("[Agent] 使用 Bloret PassPort API Key 认证")
+                return auth_header
+            log.error(f"[Agent] 供应商 {provider.get('name', '')} 需要 API 密钥但未提供")
+            self.errorOccurred.emit(
+                i18nText("供应商 {v0} 需要 API 密钥").replace("{v0}", str(provider.get("name", "")))
+            )
+            return None
+        log.info("[Agent] 使用 API 密钥认证")
+        return f"Bearer {api_key}"
+
     @Slot(str)
-    def sendMessage(self, text):
+    @Slot(str, str)
+    def sendMessage(self, text, images_json="[]"):
         log.info(f"[Agent] sendMessage 调用, busy={self._busy}, pack_path='{self._pack_path}', history_len={len(self._history)}")
         print(f"[Agent DEBUG] sendMessage 调用, busy={self._busy}, pack_path='{self._pack_path}', history_len={len(self._history)}")
         if self._busy:
@@ -830,6 +889,45 @@ class AgentBackend(QObject):
         if not self._pack_path:
             log.error("[Agent] sendMessage 被拒绝: 未设置资源包路径")
             self.errorOccurred.emit(i18nText("请先打开一个资源包"))
+            return
+
+        text = (text or "").strip()
+        try:
+            image_paths = json.loads(images_json) if images_json else []
+            if not isinstance(image_paths, list):
+                image_paths = []
+        except Exception:
+            image_paths = []
+
+        valid_paths = []
+        for p in image_paths:
+            if not isinstance(p, str):
+                continue
+            path = p
+            if path.startswith("file://"):
+                path = path[7:]
+                if os.name == "nt" and path.startswith("/") and len(path) > 2 and path[2] == ":":
+                    path = path[1:]
+            if os.path.isfile(path):
+                valid_paths.append(path)
+        if len(valid_paths) > _MAX_IMAGE_COUNT:
+            self.errorOccurred.emit(i18nText("最多只能附加 {v0} 张图片").replace("{v0}", str(_MAX_IMAGE_COUNT)))
+            return
+        for path in valid_paths:
+            try:
+                if os.path.getsize(path) > _MAX_IMAGE_FILE_BYTES:
+                    self.errorOccurred.emit(
+                        i18nText("图片过大（超过 5MB）: {v0}").replace("{v0}", os.path.basename(path))
+                    )
+                    return
+            except OSError:
+                self.errorOccurred.emit(
+                    i18nText("无法读取图片: {v0}").replace("{v0}", os.path.basename(path))
+                )
+                return
+
+        if not text and not valid_paths:
+            log.warning("[Agent] sendMessage 被拒绝: 空消息")
             return
 
         # 获取 API 配置
@@ -849,32 +947,16 @@ class AgentBackend(QObject):
             self.errorOccurred.emit(i18nText("供应商配置不完整"))
             return
 
-        # 认证
-        auth_header = ""
-        if provider.get("needs_auth", False):
-            api_key = provider.get("api_key", "")
-            if not api_key:
-                # 内置 Bloret PassPort：从 config.json 自动构建 OAuth 三段式 Token
-                if self._current_provider == "bloret_passport":
-                    auth_header = _build_bloret_passport_auth()
-                    if not auth_header:
-                        log.error("[Agent] Bloret PassPort API Key 未配置")
-                        self.errorOccurred.emit(i18nText("请先在 Bloret PassPort 的 /ai 页面创建 API Key，并在设置中配置"))
-                        return
-                    log.info("[Agent] 使用 Bloret PassPort API Key 认证")
-                else:
-                    log.error(f"[Agent] 供应商 {provider.get('name', '')} 需要 API 密钥但未提供")
-                    self.errorOccurred.emit(
-                        i18nText("供应商 {v0} 需要 API 密钥").replace(
-                            "{v0}", str(provider.get("name", ""))
-                        )
-                    )
-                    return
-            else:
-                auth_header = f"Bearer {api_key}"
-                log.info("[Agent] 使用 API 密钥认证")
-        else:
-            log.info("[Agent] 无需认证（内置供应商）")
+        auth_header = self._resolve_auth(provider)
+        if auth_header is None:
+            return
+
+        user_content = _build_user_content(text, valid_paths)
+        if not user_content:
+            self.errorOccurred.emit(i18nText("无法处理图片附件"))
+            return
+
+        title_source = text or _content_text_preview(user_content) or i18nText("图片消息")
 
         # 第一条消息时自动生成对话标题（后台线程，不阻塞主线程）
         if not self._title and len(self._history) == 0:
@@ -883,19 +965,24 @@ class AgentBackend(QObject):
             def _gen_title():
                 try:
                     from .agent_loop import generate_title
-                    title = generate_title(api_url, auth_header, text, model)
+                    title = generate_title(api_url, auth_header, title_source, model)
                     self._title = title
                     log.info(f"[Agent] 对话标题生成成功: '{title}'")
                     self.titleChanged.emit(title)
                 except Exception as e:
                     log.warning(f"[Agent] 标题生成失败: {e}，使用截断消息作为标题")
-                    self._title = text[:15]
+                    self._title = title_source[:15]
                     self.titleChanged.emit(self._title)
 
             threading.Thread(target=_gen_title, daemon=True).start()
 
-        log.info(f"[Agent] 启动 Agent, 消息: '{text[:50]}...'") if len(text) > 50 else log.info(f"[Agent] 启动 Agent, 消息: '{text}'")
-        self._history.append({"role": "user", "content": text})
+        preview = title_source[:50]
+        log.info(f"[Agent] 启动 Agent, 消息: '{preview}...', images={len(valid_paths)}")
+        self._history.append({
+            "role": "user",
+            "content": user_content,
+            "image_paths": valid_paths,
+        })
         # 注意：不在这里 emit messageAdded，因为 QML sendBtn 已经 append 了用户消息
         self._current_text = ""
         self._current_tool_calls = []
@@ -907,7 +994,7 @@ class AgentBackend(QObject):
             pack_path=self._pack_path,
             api_url=api_url,
             auth_header=auth_header,
-            user_message=text,
+            user_message=user_content,
             history=self._history[:-1],
             on_text_chunk=self._on_text_chunk,
             on_tool_call_start=self._on_tool_call_start,
@@ -920,6 +1007,192 @@ class AgentBackend(QObject):
             role=self._agent_role,
         )
         log.info("[Agent] Agent 线程已启动")
+
+    # ========== 语音 STT ==========
+
+    @Slot()
+    def startVoiceCapture(self):
+        if self._voice_state != "idle":
+            return
+        try:
+            from PySide6.QtMultimedia import QAudioFormat, QAudioSource, QMediaDevices
+        except Exception as e:
+            self.transcriptionFailed.emit(i18nText("语音模块不可用: {v0}").replace("{v0}", str(e)))
+            return
+
+        device = QMediaDevices.defaultAudioInput()
+        if device.isNull():
+            self.transcriptionFailed.emit(i18nText("未检测到麦克风设备"))
+            return
+
+        fmt = QAudioFormat()
+        fmt.setSampleRate(16000)
+        fmt.setChannelCount(1)
+        fmt.setSampleFormat(QAudioFormat.SampleFormat.Int16)
+        if not device.isFormatSupported(fmt):
+            fmt = device.preferredFormat()
+
+        try:
+            self._audio_buffer = QByteArray()
+            self._audio_io = QBuffer(self._audio_buffer)
+            self._audio_io.open(QIODevice.OpenModeFlag.WriteOnly)
+            self._audio_source = QAudioSource(device, fmt, self)
+            self._audio_sample_rate = fmt.sampleRate() or 16000
+            self._audio_channels = fmt.channelCount() or 1
+            self._audio_sample_width = 2
+            if fmt.sampleFormat() == QAudioFormat.SampleFormat.UInt8:
+                self._audio_sample_width = 1
+            elif fmt.sampleFormat() == QAudioFormat.SampleFormat.Int16:
+                self._audio_sample_width = 2
+            elif fmt.sampleFormat() in (
+                QAudioFormat.SampleFormat.Int32,
+                QAudioFormat.SampleFormat.Float,
+            ):
+                self._audio_sample_width = 4
+            self._audio_source.start(self._audio_io)
+            self._set_voice_state("recording")
+            if self._voice_max_timer is None:
+                self._voice_max_timer = QTimer(self)
+                self._voice_max_timer.setSingleShot(True)
+                self._voice_max_timer.timeout.connect(self.stopVoiceCaptureAndTranscribe)
+            self._voice_max_timer.start(_MAX_VOICE_SECONDS * 1000)
+        except Exception as e:
+            log.error(f"[Agent] 启动录音失败: {e}", exc_info=True)
+            self._cleanup_audio_capture()
+            self.transcriptionFailed.emit(i18nText("无法开始录音: {v0}").replace("{v0}", str(e)))
+
+    @Slot()
+    def stopVoiceCaptureAndTranscribe(self):
+        if self._voice_state != "recording":
+            return
+        if self._voice_max_timer and self._voice_max_timer.isActive():
+            self._voice_max_timer.stop()
+
+        pcm = b""
+        sample_rate = self._audio_sample_rate
+        channels = self._audio_channels
+        sample_width = self._audio_sample_width
+        try:
+            if self._audio_source:
+                self._audio_source.stop()
+            if self._audio_io:
+                self._audio_io.close()
+            if self._audio_buffer is not None:
+                pcm = bytes(self._audio_buffer.data())
+        except Exception as e:
+            log.warning(f"[Agent] 停止录音时出错: {e}")
+        finally:
+            self._cleanup_audio_capture(keep_state=True)
+
+        if len(pcm) < sample_rate * sample_width * channels * 0.2:
+            self._set_voice_state("idle")
+            self.transcriptionFailed.emit(i18nText("录音太短，请重试"))
+            return
+
+        try:
+            if sample_width in (1, 2):
+                wav_bytes = _pcm_to_wav_bytes(pcm, sample_rate=sample_rate, channels=channels, sample_width=sample_width)
+            else:
+                ints = array.array("i")
+                ints.frombytes(pcm[: len(pcm) - (len(pcm) % 4)])
+                scaled = array.array("h", (max(-32768, min(32767, v >> 16)) for v in ints))
+                wav_bytes = _pcm_to_wav_bytes(scaled.tobytes(), sample_rate=sample_rate, channels=channels, sample_width=2)
+        except Exception as e:
+            self._set_voice_state("idle")
+            self.transcriptionFailed.emit(i18nText("音频编码失败: {v0}").replace("{v0}", str(e)))
+            return
+
+        self._set_voice_state("transcribing")
+        provider = BUILTIN_PROVIDERS.get(self._current_provider) or self._custom_providers.get(self._current_provider)
+        api_url = (provider or {}).get("api", "")
+        stt_url = _transcriptions_url_from_chat_api(api_url)
+        if not stt_url:
+            self._set_voice_state("idle")
+            self.transcriptionFailed.emit(i18nText("当前供应商不支持语音识别（无法推导 transcriptions 地址）"))
+            return
+        auth_header = ""
+        if provider:
+            auth_header = self._resolve_auth(provider)
+            if auth_header is None:
+                self._set_voice_state("idle")
+                return
+
+        def _worker():
+            tmp_path = None
+            try:
+                fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix="rpe_stt_")
+                os.write(fd, wav_bytes)
+                os.close(fd)
+                headers = {}
+                if auth_header:
+                    headers["Authorization"] = auth_header
+                with open(tmp_path, "rb") as f:
+                    files = {"file": ("audio.wav", f, "audio/wav")}
+                    data = {"model": "whisper-1"}
+                    resp = requests.post(stt_url, headers=headers, files=files, data=data, timeout=60)
+                if resp.status_code >= 400:
+                    msg = (
+                        i18nText("当前供应商不支持语音识别，请配置支持 Whisper 的供应商")
+                        if resp.status_code in (404, 405, 501)
+                        else i18nText("语音识别失败 (HTTP {v0})").replace("{v0}", str(resp.status_code))
+                    )
+                    self.transcriptionFailed.emit(msg)
+                    return
+                try:
+                    payload = resp.json()
+                    out = (payload.get("text") or "").strip()
+                except Exception:
+                    out = (resp.text or "").strip()
+                if not out:
+                    self.transcriptionFailed.emit(i18nText("未识别到有效语音"))
+                    return
+                self.transcriptionReady.emit(out)
+            except Exception as e:
+                log.error(f"[Agent] STT 失败: {e}", exc_info=True)
+                self.transcriptionFailed.emit(i18nText("语音识别失败: {v0}").replace("{v0}", str(e)))
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+                self._set_voice_state("idle")
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    @Slot()
+    def cancelVoiceCapture(self):
+        if self._voice_max_timer and self._voice_max_timer.isActive():
+            self._voice_max_timer.stop()
+        if self._voice_state == "recording":
+            try:
+                if self._audio_source:
+                    self._audio_source.stop()
+            except Exception:
+                pass
+            self._cleanup_audio_capture()
+            self._set_voice_state("idle")
+
+    def _cleanup_audio_capture(self, keep_state: bool = False):
+        try:
+            if self._audio_source:
+                try:
+                    self._audio_source.stop()
+                except Exception:
+                    pass
+                self._audio_source.deleteLater()
+        except Exception:
+            pass
+        self._audio_source = None
+        try:
+            if self._audio_io:
+                self._audio_io.close()
+        except Exception:
+            pass
+        self._audio_io = None
+        self._audio_buffer = None
+        if not keep_state and self._voice_state == "recording":
+            self._set_voice_state("idle")
 
     @Slot()
     def cancelAgent(self):
@@ -1119,26 +1392,49 @@ class AgentBackend(QObject):
         for msg in self._history:
             role = msg.get("role", "")
             if role == "user":
+                content = msg.get("content", "")
+                text = _content_text_preview(content)
+                image_paths = [p for p in (msg.get("image_paths") or []) if p]
                 messages.append({
                     "role": "user",
-                    "content": msg.get("content", ""),
+                    "content": text,
+                    "images": image_paths,
+                    "imagesJson": json.dumps(image_paths, ensure_ascii=False),
                     "toolName": "", "toolArgs": "", "toolResult": "",
                 })
             elif role == "assistant":
+                content = msg.get("content", "")
                 messages.append({
                     "role": "assistant",
-                    "content": msg.get("content", ""),
+                    "content": content if isinstance(content, str) else _content_text_preview(content),
+                    "images": [],
+                    "imagesJson": "[]",
                     "toolName": "", "toolArgs": "", "toolResult": "",
                 })
             elif role == "tool_call":
                 messages.append({
                     "role": "tool_call",
                     "content": "",
+                    "images": [],
+                    "imagesJson": "[]",
                     "toolName": msg.get("toolName", ""),
                     "toolArgs": msg.get("toolArgs", ""),
                     "toolResult": msg.get("toolResult", ""),
                 })
         return json.dumps(messages, ensure_ascii=False)
+
+    @Slot(result=str)
+    def getCurrentModelName(self):
+        try:
+            models = json.loads(self.getModels())
+            for m in models:
+                if m.get("id") == self._current_model:
+                    return m.get("name") or m.get("id") or ""
+            if models:
+                return models[0].get("name") or models[0].get("id") or ""
+        except Exception:
+            pass
+        return self._current_model or ""
 
     # ========== 内部回调 ==========
 

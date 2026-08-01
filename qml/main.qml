@@ -20,15 +20,23 @@ FluentWindow {
 
     // 首页发送给 Blora Agent 的待处理消息（跳转到 Blora Agent 页后消费）
     property string pendingBlorikoMessage: ""
+    property string pendingBlorikoImagesJson: "[]"
 
-    function navigateToBlorikoWithMessage(message) {
+    function navigateToBlorikoWithMessage(message, imagesJson) {
         var text = (message || "").trim()
-        if (text.length === 0) {
+        var imgs = (imagesJson && imagesJson.length > 0) ? imagesJson : "[]"
+        var hasImages = false
+        try {
+            var arr = JSON.parse(imgs)
+            hasImages = arr && arr.length > 0
+        } catch (e) { hasImages = false }
+        if (text.length === 0 && !hasImages) {
             console.log("[Main] navigateToBlorikoWithMessage: 空消息，忽略")
             return
         }
-        console.log("[Main] 跳转 Blora Agent 页处理消息:", text.substring(0, 80))
+        console.log("[Main] 跳转 Blora Agent 页处理消息:", text.substring(0, 80), "images=", imgs)
         pendingBlorikoMessage = text
+        pendingBlorikoImagesJson = imgs
         // currentPage 只更新导航高亮，真正切页需 navigationView.push / safePush
         if (navItems && navItems.length > 1 && navigationView) {
             var blorikoPage = navItems[1].page

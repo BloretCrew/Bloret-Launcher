@@ -217,8 +217,51 @@ class AgentLoop:
     def cancel(self):
         self._cancelled = True
 
-    def run(self, user_message: str, history: list = None):
-        log.info(f"[AgentLoop] run 开始, 模型={self.model}, 角色={self.role}, 消息='{user_message[:50]}...'" if len(user_message) > 50 else f"[AgentLoop] run 开始, 模型={self.model}, 角色={self.role}, 消息='{user_message}'")
+    @staticmethod
+    def _content_to_text(content) -> str:
+        if content is None:
+            return ""
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts = []
+            for part in content:
+                if isinstance(part, dict):
+                    if part.get("type") == "text":
+                        parts.append(str(part.get("text", "")))
+                    elif part.get("type") == "image_url":
+                        parts.append("[图片]")
+                elif isinstance(part, str):
+                    parts.append(part)
+            return "\n".join(p for p in parts if p)
+        return str(content)
+
+    @staticmethod
+    def _content_for_token_estimate(content) -> str:
+        if content is None:
+            return ""
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts = []
+            for part in content:
+                if isinstance(part, dict):
+                    if part.get("type") == "text":
+                        parts.append(str(part.get("text", "")))
+                    elif part.get("type") == "image_url":
+                        parts.append("[image~1000tokens]")
+                elif isinstance(part, str):
+                    parts.append(part)
+            return "\n".join(parts)
+        return str(content)
+
+    def run(self, user_message, history: list = None):
+        preview = self._content_to_text(user_message)
+        log.info(
+            f"[AgentLoop] run 开始, 模型={self.model}, 角色={self.role}, 消息='{preview[:50]}...'"
+            if len(preview) > 50
+            else f"[AgentLoop] run 开始, 模型={self.model}, 角色={self.role}, 消息='{preview}'"
+        )
         print(f"[AgentLoop DEBUG] run 开始, 模型={self.model}, url={self.api_url}")
         try:
             self._run_internal(user_message, history)
@@ -342,8 +385,20 @@ class AgentLoop:
 
     @staticmethod
     def _estimate_tokens(messages: list) -> int:
-        """粗略估算消息列表的 token 数量"""
-        return len(str(messages)) // 4
+        """粗略估算消息列表的 token 数量（忽略 base64 图片）"""
+        total = 0
+        for msg in messages:
+            content = msg.get("content", "")
+            total += len(AgentLoop._content_for_token_estimate(content))
+            if msg.get("tool_calls"):
+                total += len(str(msg.get("tool_calls")))
+            if msg.get("toolName"):
+                total += (
+                    len(str(msg.get("toolName", "")))
+                    + len(str(msg.get("toolArgs", "")))
+                    + len(str(msg.get("toolResult", "")))
+                )
+        return total // 4
 
     def _compact_messages(self, messages: list) -> list:
         """压缩旧的工具结果以减少上下文大小
@@ -379,15 +434,30 @@ class AgentLoop:
                     result.append(msg)  # 保留
                 else:
                     # 压缩旧的工具结果
-                    original_len = len(msg.get("content", ""))
+                    content = msg.get("content", "")
+                    original_len = len(content) if isinstance(content, str) else len(str(content))
                     compacted = dict(msg)
                     compacted["content"] = f"[结果已压缩: 原始长度 {original_len} 字符]"
                     result.append(compacted)
             elif role == "assistant":
                 content = msg.get("content", "")
-                if len(content) > 2000:
+                if isinstance(content, str) and len(content) > 2000:
                     compacted = dict(msg)
                     compacted["content"] = content[:500] + "...[已压缩]"
+                    result.append(compacted)
+                else:
+                    result.append(msg)
+            elif role == "user":
+                content = msg.get("content", "")
+                if isinstance(content, list):
+                    compacted = dict(msg)
+                    new_parts = []
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") == "image_url":
+                            new_parts.append({"type": "text", "text": "[图片已压缩]"})
+                        else:
+                            new_parts.append(part)
+                    compacted["content"] = new_parts
                     result.append(compacted)
                 else:
                     result.append(msg)
@@ -556,14 +626,20 @@ class AgentLoop:
                     "tool_call_id": tc_id,
                     "content": tool_result
                 })
+            elif role in ("user", "assistant", "system"):
+                entry = {"role": role, "content": msg.get("content", "")}
+                if msg.get("tool_calls"):
+                    entry["tool_calls"] = msg["tool_calls"]
+                if msg.get("name"):
+                    entry["name"] = msg["name"]
+                result.append(entry)
             else:
-                # user / assistant 消息直接保留
-                result.append(msg)
+                result.append({"role": role or "user", "content": msg.get("content", "")})
 
         return result
 
-    def _run_internal(self, user_message: str, history: list = None):
-        """内部执行逻辑"""
+    def _run_internal(self, user_message, history: list = None):
+        """内部执行逻辑；user_message 可为 str 或 OpenAI 多模态 content list"""
         log.info("[AgentLoop] 构建系统提示词...")
         system_prompt = self._build_system_prompt()
         log.info(f"[AgentLoop] 系统提示词长度: {len(system_prompt)} 字符")
@@ -575,7 +651,8 @@ class AgentLoop:
             log.info(f"[AgentLoop] 历史消息数: {len(history)} (转换后 {len(converted)} 条)")
 
         messages.append({"role": "user", "content": user_message})
-        log.info(f"[AgentLoop] 总消息数: {len(messages)} (含系统提示)")
+        preview = self._content_to_text(user_message)[:80]
+        log.info(f"[AgentLoop] 总消息数: {len(messages)} (含系统提示), user_preview='{preview}'")
 
         for iteration in range(MAX_ITERATIONS):
             if self._cancelled:
@@ -984,7 +1061,7 @@ def run_agent_async(
     pack_path: str,
     api_url: str,
     auth_header: str,
-    user_message: str,
+    user_message,
     history: list = None,
     on_text_chunk: Optional[Callable[[str], None]] = None,
     on_tool_call_start: Optional[Callable[[str, str], None]] = None,
@@ -1021,8 +1098,10 @@ def run_agent_async(
     return agent
 
 
-def generate_title(api_url: str, auth_header: str, user_message: str, model: str = "Bloriko") -> str:
+def generate_title(api_url: str, auth_header: str, user_message, model: str = "Bloriko") -> str:
     """生成简短的对话标题（同步调用，单次 LLM 请求）"""
+    if not isinstance(user_message, str):
+        user_message = AgentLoop._content_to_text(user_message)
     log.info(f"[Title] 开始生成标题, model='{model}', url='{api_url}'")
     headers = {"Content-Type": "application/json"}
     if auth_header:
