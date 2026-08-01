@@ -54,33 +54,129 @@ FluentPage {
         }
     }
 
-    // ── 下载任务状态 ──
-    property var _dlTasks: []
+    // ── 下载任务状态（稳定 ListModel，避免每秒销毁重建）──
     property int _dlActive: 0
+    ListModel { id: dlStatusModel }
 
-    Timer {
-        id: dlBarTimer
-        interval: 1000
-        repeat: true
-        running: visible
-        onTriggered: {
-            if (!Backend || !Backend.getDownloadTasks) return
-            _dlTasks = Backend.getDownloadTasks()
-            _dlActive = Backend.getActiveDownloadCount()
+    // StackView 保留历史页；仅当前活动页轮询，避免切页时多实例同时刷 Backend 卡死
+    readonly property bool isActivePage: {
+        if (downloadPage.StackView.view)
+            return downloadPage.StackView.status === StackView.Active
+        return downloadPage.visible
+    }
+
+    function _progressPct(p) {
+        var v = Number(p) || 0
+        if (v > 0 && v <= 1.0) return v * 100
+        return Math.max(0, Math.min(100, v))
+    }
+
+    function _findDlStatusIndex(taskId) {
+        for (var i = 0; i < dlStatusModel.count; i++) {
+            if (dlStatusModel.get(i).task_id === taskId)
+                return i
+        }
+        return -1
+    }
+
+    function refreshDlStatusBar() {
+        if (!Backend || !Backend.getDownloadTasks) return
+        if (!isActivePage) return
+        try {
+            var tasks = Backend.getDownloadTasks() || []
+            var active = 0
+            var seen = {}
+            for (var i = 0; i < tasks.length; i++) {
+                var t = tasks[i]
+                var s = t.status || ""
+                if (s !== "downloading" && s !== "paused" && s !== "queued")
+                    continue
+                active++
+                // 状态卡最多展示 3 条
+                if (active > 3) continue
+                var prog = _progressPct(t.progress)
+                var row = {
+                    task_id: t.task_id || "",
+                    version: t.version || "",
+                    status: s,
+                    progress: prog,
+                    status_text: t.status_text || "",
+                    speed: t.speed || ""
+                }
+                seen[row.task_id] = true
+                var idx = _findDlStatusIndex(row.task_id)
+                if (idx >= 0) {
+                    var old = dlStatusModel.get(idx)
+                    if (old.progress !== row.progress
+                        || old.status !== row.status
+                        || old.status_text !== row.status_text
+                        || old.speed !== row.speed) {
+                        dlStatusModel.set(idx, row)
+                    }
+                } else if (dlStatusModel.count < 3) {
+                    dlStatusModel.append(row)
+                }
+            }
+            for (var j = dlStatusModel.count - 1; j >= 0; j--) {
+                if (!seen[dlStatusModel.get(j).task_id])
+                    dlStatusModel.remove(j)
+            }
+            _dlActive = Backend.getActiveDownloadCount
+                        ? Backend.getActiveDownloadCount()
+                        : active
+        } catch (e) {
+            console.log("[Download] status bar refresh error:", e)
         }
     }
 
-    // ── 对话框（非布局项，平铺在外层）──
+    Timer {
+        id: dlBarTimer
+        interval: 1200
+        repeat: true
+        // 仅活动页且有可见任务时跑；没有活动任务时仍低频探测一次（_dlActive 可能从 0 变 1）
+        running: downloadPage.isActivePage
+        onTriggered: refreshDlStatusBar()
+    }
+
+    onIsActivePageChanged: {
+        if (isActivePage)
+            refreshDlStatusBar()
+    }
+
+    Connections {
+        target: Backend
+        enabled: downloadPage.isActivePage
+        function onDownloadTaskAdded(taskId) { refreshDlStatusBar() }
+        function onDownloadTaskRemoved(taskId) { refreshDlStatusBar() }
+        function onDownloadTaskProgressUpdated(taskId, progress, statusText, speed, downloaded, total) {
+            var idx = _findDlStatusIndex(taskId)
+            if (idx < 0) {
+                refreshDlStatusBar()
+                return
+            }
+            var cur = dlStatusModel.get(idx)
+            dlStatusModel.set(idx, {
+                task_id: cur.task_id,
+                version: cur.version,
+                status: cur.status === "paused" || cur.status === "queued" ? cur.status : "downloading",
+                progress: downloadPage._progressPct(progress),
+                status_text: statusText || "",
+                speed: speed || ""
+            })
+        }
+    }
+
+    // ── 对话框（挂到 Overlay，避免随页面销毁/切页错位）──
     VersionNameDialog {
         id: versionDialog
         parent: Overlay.overlay
-        anchors.centerIn: parent
+        anchors.centerIn: Overlay.overlay
     }
 
     SelectVersionDialog {
         id: selectVersionDialog
         parent: Overlay.overlay
-        anchors.centerIn: parent
+        anchors.centerIn: Overlay.overlay
     }
 
     // ── 版本数据 ──
@@ -120,7 +216,6 @@ FluentPage {
     }
 
     Component.onCompleted: {
-        dlBarTimer.start()
         if (Backend) {
             updateBloretVersionLists()
             javaVersions = Backend.getJavaDownloadVersions()
@@ -139,6 +234,7 @@ FluentPage {
 
             selectVersionDialog.versionSelected.connect(onVersionSelected)
         }
+        refreshDlStatusBar()
     }
 
     function onVersionSelected(version) {
@@ -209,23 +305,6 @@ FluentPage {
         asynchronous: true
     }
 
-    function _progressPct(task) {
-        if (!task) return 0
-        var p = Number(task.progress) || 0
-        if (p > 0 && p <= 1.0) return p * 100
-        return Math.max(0, Math.min(100, p))
-    }
-
-    function _activeTaskList() {
-        var active = []
-        for (var i = 0; i < _dlTasks.length; i++) {
-            var s = _dlTasks[i].status
-            if (s === "downloading" || s === "paused" || s === "queued")
-                active.push(_dlTasks[i])
-        }
-        return active
-    }
-
     // ── 页面内容主体 ──
     content: ColumnLayout {
         spacing: 12
@@ -257,7 +336,6 @@ FluentPage {
                 Behavior on border.color { ColorAnimation { duration: 120 } }
             }
 
-            // 整卡可点打开下载管理
             MouseArea {
                 id: statusClickArea
                 anchors.fill: parent
@@ -273,7 +351,6 @@ FluentPage {
                 width: parent.width
                 spacing: 10
 
-                // 标题行
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 10
@@ -309,53 +386,86 @@ FluentPage {
                     }
                 }
 
-                // 每个活跃任务单独一行，避免横向挤爆
+                // 稳定 ListModel：版本 + 详细状态 + 进度 + 速度
                 Repeater {
-                    model: downloadPage._activeTaskList().slice(0, 3)
-                    delegate: RowLayout {
+                    model: dlStatusModel
+                    delegate: ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 8
-                        required property var modelData
+                        spacing: 4
+                        required property string task_id
+                        required property string version
+                        required property string status
+                        required property real progress
+                        required property string status_text
+                        required property string speed
 
-                        Text {
-                            text: "Minecraft " + (modelData.version || "")
-                            font.pixelSize: 12
-                            color: downloadPage._cText
-                            elide: Text.ElideRight
-                            Layout.preferredWidth: 130
-                            Layout.maximumWidth: 180
-                        }
-
-                        ProgressBar {
-                            from: 0
-                            to: 100
-                            value: downloadPage._progressPct(modelData)
+                        RowLayout {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 4
-                            state: modelData.status === "paused" ? 1 : 0
-                            indeterminate: modelData.status === "queued"
-                                           || (modelData.status === "downloading"
-                                               && downloadPage._progressPct(modelData) <= 0)
+                            spacing: 8
+
+                            Text {
+                                text: "Minecraft " + (version || "")
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                                color: downloadPage._cText
+                                elide: Text.ElideRight
+                                Layout.preferredWidth: 140
+                                Layout.maximumWidth: 180
+                            }
+
+                            ProgressBar {
+                                from: 0
+                                to: 100
+                                value: progress
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 4
+                                state: status === "paused" ? 1 : 0
+                                indeterminate: status === "queued"
+                                               || (status === "downloading" && progress <= 0)
+                            }
+
+                            Text {
+                                text: status === "paused"
+                                      ? (Backend ? Backend.tr("已暂停") : "已暂停")
+                                      : (Math.round(progress) + "%")
+                                font.pixelSize: 11
+                                color: status === "paused"
+                                       ? downloadPage._cCaution
+                                       : downloadPage._cTextSecondary
+                                Layout.preferredWidth: 48
+                                horizontalAlignment: Text.AlignRight
+                            }
                         }
 
-                        Text {
-                            text: modelData.status === "paused"
-                                  ? (Backend ? Backend.tr("已暂停") : "已暂停")
-                                  : (Math.round(downloadPage._progressPct(modelData)) + "%")
-                            font.pixelSize: 11
-                            color: modelData.status === "paused"
-                                   ? downloadPage._cCaution
-                                   : downloadPage._cTextSecondary
-                            Layout.preferredWidth: 48
-                            horizontalAlignment: Text.AlignRight
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            visible: (status_text && status_text.length > 0) || (speed && speed.length > 0)
+
+                            Text {
+                                text: status_text || ""
+                                font.pixelSize: 11
+                                color: downloadPage._cTextSecondary
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1
+                            }
+
+                            Text {
+                                text: speed || ""
+                                font.pixelSize: 11
+                                color: downloadPage._cTextSecondary
+                                visible: speed && speed.length > 0
+                            }
                         }
                     }
                 }
 
                 Text {
-                    visible: downloadPage._activeTaskList().length > 3
-                    text: (Backend ? Backend.tr("另有 %1 个任务…").arg(downloadPage._activeTaskList().length - 3)
-                                   : ("另有 " + (downloadPage._activeTaskList().length - 3) + " 个任务…"))
+                    visible: _dlActive > dlStatusModel.count && dlStatusModel.count > 0
+                    text: Backend
+                          ? Backend.tr("另有 %1 个任务…").arg(Math.max(0, _dlActive - dlStatusModel.count))
+                          : ("另有 " + Math.max(0, _dlActive - dlStatusModel.count) + " 个任务…")
                     font.pixelSize: 11
                     color: downloadPage._cTextSecondary
                 }

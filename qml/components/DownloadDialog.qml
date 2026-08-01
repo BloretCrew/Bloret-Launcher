@@ -6,7 +6,7 @@ import RinUI
 Dialog {
     id: downloadDialog
 
-    // ── 主题色（避免 Theme.accentColor 不存在）──
+    // ── 主题色 ──
     readonly property color _cPrimary: Theme.currentTheme.colors.primaryColor
     readonly property color _cText: Theme.currentTheme.colors.textColor
     readonly property color _cTextSecondary: Theme.currentTheme.colors.textSecondaryColor
@@ -18,18 +18,22 @@ Dialog {
     readonly property color _cCritical: Theme.currentTheme.colors.systemCriticalColor || "#ef4444"
 
     property bool _expanded: true
-    property var _tasks: []
     property int _activeCount: 0
     property int _completedCount: 0
+    property int _maxThreads: 16
+    property int _elapsedSeconds: 0
+    property bool _refreshing: false
 
-    // 下载管理应允许后台继续操作主界面
+    // 稳定模型：按 task_id 就地更新，避免 Repeater 每秒销毁重建导致卡顿
+    ListModel { id: taskModel }
+
+    // 关键：不挡导航/页面切换（严重卡顿根因之一是遮罩吞掉点击）
     modal: false
+    dim: false
     closePolicy: Popup.CloseOnEscape
     standardButtons: Dialog.NoButton
     title: ""
 
-    // RinUI Dialog 默认 padding:24 + footer DialogButtonBox padding:24，
-    // 会把收起态高度 80 压到几乎不可见；清空边距与空 footer。
     padding: 0
     topPadding: 0
     bottomPadding: 0
@@ -38,78 +42,87 @@ Dialog {
     header: Item { implicitHeight: 0; height: 0; visible: false }
     footer: Item { implicitHeight: 0; height: 0; visible: false }
 
-    width: _expanded
-           ? Math.min(560, (Overlay.overlay ? Overlay.overlay.width : 560) - 48)
-           : Math.min(420, (Overlay.overlay ? Overlay.overlay.width : 420) - 48)
+    // 不使用全屏 Overlay 烟幕；保持可点穿到主界面
+    Overlay.modal: Item {}
+    Overlay.modeless: Item {}
 
-    // 展开固定可视高度；收起随内容自适应（标题栏 + 摘要）
+    width: _expanded
+           ? Math.min(580, (parentWidth() - 48))
+           : Math.min(440, (parentWidth() - 48))
+
     height: _expanded
-            ? Math.min(480, (Overlay.overlay ? Overlay.overlay.height : 480) - 80)
-            : Math.max(56, contentColumn.implicitHeight)
+            ? Math.min(520, parentHeight() - 64)
+            : Math.max(64, contentColumn.implicitHeight)
+
     implicitHeight: height
 
+    function parentWidth() {
+        if (Overlay.overlay) return Overlay.overlay.width
+        if (typeof window !== "undefined" && window) return window.width
+        return 800
+    }
+    function parentHeight() {
+        if (Overlay.overlay) return Overlay.overlay.height
+        if (typeof window !== "undefined" && window) return window.height
+        return 600
+    }
+
+    // 进度轮询：仅在可见时；间隔略放宽，配合信号增量更新
     Timer {
         id: refreshTimer
-        interval: 800
+        interval: 1000
         repeat: true
-        running: visible
-        onTriggered: refreshTasks()
+        running: downloadDialog.visible
+        onTriggered: refreshTasks(false)
+    }
+
+    // 秒表：有活跃下载时计时
+    Timer {
+        id: stopwatchTimer
+        interval: 1000
+        repeat: true
+        running: downloadDialog.visible && _activeCount > 0
+        onTriggered: _elapsedSeconds++
     }
 
     onOpened: {
-        _expanded = true
-        refreshTasks()
-        refreshTimer.start()
+        if (Backend && Backend.getMaxThread) {
+            try { _maxThreads = Backend.getMaxThread() } catch (e) {}
+        }
+        refreshTasks(true)
     }
     onClosed: {
         refreshTimer.stop()
+        stopwatchTimer.stop()
     }
 
-    function refreshTasks() {
-        if (!Backend || !Backend.getDownloadTasks) return
-        try {
-            _tasks = Backend.getDownloadTasks()
-            var active = 0, completed = 0
-            for (var i = 0; i < _tasks.length; i++) {
-                var s = _tasks[i].status
-                if (s === "downloading" || s === "paused" || s === "queued")
-                    active++
-                if (s === "completed" || s === "failed" || s === "cancelled")
-                    completed++
-            }
-            _activeCount = active
-            _completedCount = completed
-        } catch (e) {
-            console.log("[DownloadDialog] refresh error:", e)
+    function _formatTime(totalSec) {
+        var h = Math.floor(totalSec / 3600)
+        var m = Math.floor((totalSec % 3600) / 60)
+        var s = totalSec % 60
+        var pad = function(n) { return n < 10 ? "0" + n : "" + n }
+        return h > 0 ? pad(h) + ":" + pad(m) + ":" + pad(s) : pad(m) + ":" + pad(s)
+    }
+
+    function _progressValue(p) {
+        var v = Number(p) || 0
+        if (v > 0 && v <= 1.0) return v * 100
+        return Math.max(0, Math.min(100, v))
+    }
+
+    function _parseSpeedEta(speedRaw) {
+        var speedText = speedRaw || ""
+        var etaText = ""
+        if (speedText.indexOf("·") >= 0) {
+            var parts = speedText.split("·")
+            speedText = parts[0].trim()
+            etaText = parts.slice(1).join("·").trim()
+        } else if (speedText.indexOf("ETA") >= 0) {
+            var idx = speedText.indexOf("ETA")
+            etaText = speedText.substring(idx).trim()
+            speedText = speedText.substring(0, idx).trim()
         }
-    }
-
-    function _statusText(task) {
-        if (!task) return ""
-        if (task.status === "queued")
-            return Backend ? Backend.tr("排队中") : "排队中"
-        if (task.status === "downloading")
-            return task.status_text || (Backend ? Backend.tr("下载中...") : "下载中...")
-        if (task.status === "paused")
-            return Backend ? Backend.tr("已暂停") : "已暂停"
-        if (task.status === "completed")
-            return Backend ? Backend.tr("已完成") : "已完成"
-        if (task.status === "failed")
-            return (Backend ? Backend.tr("失败: ") : "失败: ") + (task.error_message || "")
-        if (task.status === "cancelled")
-            return Backend ? Backend.tr("已取消") : "已取消"
-        return task.status || ""
-    }
-
-    function _statusColor(status) {
-        switch (status) {
-            case "completed": return _cSuccess
-            case "failed":
-            case "cancelled": return _cCritical
-            case "paused":
-            case "queued": return _cCaution
-            default: return _cTextSecondary
-        }
+        return { speed: speedText, eta: etaText }
     }
 
     function _loaderLabel(loader) {
@@ -121,40 +134,40 @@ Dialog {
         }
     }
 
-    function _taskTitle(task) {
-        if (!task) return ""
-        var name = "Minecraft " + (task.version || "")
-        var loader = _loaderLabel(task.loader)
+    function _taskTitleFrom(t) {
+        var name = "Minecraft " + (t.version || "")
+        var loader = _loaderLabel(t.loader)
         if (loader) name += " + " + loader
-        if (task.version_name && task.version_name !== task.version)
-            name += " (" + task.version_name + ")"
+        if (t.version_name && t.version_name !== t.version)
+            name += "  ·  " + t.version_name
         return name
     }
 
-    function _progressValue(task) {
-        if (!task) return 0
-        var p = Number(task.progress) || 0
-        // 兼容 0–1 与 0–100 两种进度尺度
-        if (p > 0 && p <= 1.0)
-            return p * 100
-        return Math.max(0, Math.min(100, p))
+    function _statusLabel(status, statusText, errorMessage) {
+        if (status === "queued")
+            return Backend ? Backend.tr("排队中") : "排队中"
+        if (status === "downloading")
+            return statusText || (Backend ? Backend.tr("下载中...") : "下载中...")
+        if (status === "paused")
+            return Backend ? Backend.tr("已暂停") : "已暂停"
+        if (status === "completed")
+            return Backend ? Backend.tr("已完成") : "已完成"
+        if (status === "failed")
+            return (Backend ? Backend.tr("失败: ") : "失败: ") + (errorMessage || "")
+        if (status === "cancelled")
+            return Backend ? Backend.tr("已取消") : "已取消"
+        return status || ""
     }
 
-    function _anyDownloading() {
-        for (var i = 0; i < _tasks.length; i++) {
-            if (_tasks[i].status === "downloading") return true
+    function _statusColor(status) {
+        switch (status) {
+            case "completed": return _cSuccess
+            case "failed":
+            case "cancelled": return _cCritical
+            case "paused":
+            case "queued": return _cCaution
+            default: return _cPrimary
         }
-        return false
-    }
-
-    function _activeTasks() {
-        var active = []
-        for (var i = 0; i < _tasks.length; i++) {
-            var s = _tasks[i].status
-            if (s === "downloading" || s === "paused" || s === "queued")
-                active.push(_tasks[i])
-        }
-        return active
     }
 
     function _isLive(status) {
@@ -163,6 +176,133 @@ Dialog {
 
     function _isTerminal(status) {
         return status === "completed" || status === "failed" || status === "cancelled"
+    }
+
+    function _rowObject(t) {
+        var se = _parseSpeedEta(t.speed || "")
+        var eta = t.eta || se.eta || ""
+        return {
+            task_id: t.task_id || "",
+            version: t.version || "",
+            version_name: t.version_name || "",
+            loader: t.loader || "",
+            status: t.status || "",
+            progress: _progressValue(t.progress),
+            status_text: t.status_text || "",
+            status_label: _statusLabel(t.status, t.status_text, t.error_message),
+            speed: se.speed,
+            eta: eta,
+            downloaded: t.downloaded || "",
+            total: t.total || "",
+            error_message: t.error_message || "",
+            title: _taskTitleFrom(t)
+        }
+    }
+
+    function _findIndexById(taskId) {
+        for (var i = 0; i < taskModel.count; i++) {
+            if (taskModel.get(i).task_id === taskId)
+                return i
+        }
+        return -1
+    }
+
+    function _applyRowAt(index, row) {
+        // set 会触发该行绑定更新，但不会销毁 delegate
+        taskModel.set(index, row)
+    }
+
+    function refreshTasks(force) {
+        if (!Backend || !Backend.getDownloadTasks) return
+        if (_refreshing) return
+        _refreshing = true
+        try {
+            var tasks = Backend.getDownloadTasks() || []
+            var active = 0, completed = 0
+            var seen = {}
+
+            for (var i = 0; i < tasks.length; i++) {
+                var row = _rowObject(tasks[i])
+                seen[row.task_id] = true
+                if (_isLive(row.status)) active++
+                if (_isTerminal(row.status)) completed++
+
+                var idx = _findIndexById(row.task_id)
+                if (idx >= 0) {
+                    var old = taskModel.get(idx)
+                    // 仅在字段变化时 set，减少绑定抖动
+                    if (force
+                        || old.status !== row.status
+                        || old.progress !== row.progress
+                        || old.status_text !== row.status_text
+                        || old.speed !== row.speed
+                        || old.eta !== row.eta
+                        || old.downloaded !== row.downloaded
+                        || old.total !== row.total
+                        || old.status_label !== row.status_label) {
+                        _applyRowAt(idx, row)
+                    }
+                } else {
+                    taskModel.append(row)
+                }
+            }
+
+            // 移除已不存在的任务
+            for (var j = taskModel.count - 1; j >= 0; j--) {
+                var id = taskModel.get(j).task_id
+                if (!seen[id])
+                    taskModel.remove(j)
+            }
+
+            var prevActive = _activeCount
+            _activeCount = active
+            _completedCount = completed
+            if (active > 0 && prevActive === 0)
+                _elapsedSeconds = 0
+
+            if (Backend && Backend.getMaxThread) {
+                try { _maxThreads = Backend.getMaxThread() } catch (e2) {}
+            }
+        } catch (e) {
+            console.log("[DownloadDialog] refresh error:", e)
+        }
+        _refreshing = false
+    }
+
+    function patchTaskProgress(taskId, progress, statusText, speed, downloaded, total) {
+        var idx = _findIndexById(taskId)
+        if (idx < 0) {
+            // 未知任务，做一次全量同步
+            refreshTasks(true)
+            return
+        }
+        var se = _parseSpeedEta(speed || "")
+        var prog = _progressValue(progress)
+        var cur = taskModel.get(idx)
+        var status = cur.status === "paused" || cur.status === "queued" ? cur.status : "downloading"
+        taskModel.set(idx, {
+            task_id: cur.task_id,
+            version: cur.version,
+            version_name: cur.version_name,
+            loader: cur.loader,
+            status: status,
+            progress: prog,
+            status_text: statusText || "",
+            status_label: _statusLabel(status, statusText, cur.error_message),
+            speed: se.speed,
+            eta: se.eta || cur.eta,
+            downloaded: downloaded || "",
+            total: total || "",
+            error_message: cur.error_message,
+            title: cur.title
+        })
+    }
+
+    function _anyDownloading() {
+        for (var i = 0; i < taskModel.count; i++) {
+            if (taskModel.get(i).status === "downloading") return true
+        }
+        return false
     }
 
     contentItem: ColumnLayout {
@@ -187,7 +327,6 @@ Dialog {
                     color: downloadDialog._cText
                 }
 
-                // 活跃数胶囊
                 Rectangle {
                     visible: _activeCount > 0
                     Layout.preferredHeight: 20
@@ -206,10 +345,18 @@ Dialog {
                     }
                 }
 
+                // 秒表
+                Text {
+                    visible: _activeCount > 0
+                    text: "⏱ " + _formatTime(_elapsedSeconds)
+                    font.pixelSize: 12
+                    font.family: "Consolas, monospace"
+                    color: downloadDialog._cTextSecondary
+                }
+
                 Item { Layout.fillWidth: true }
 
                 Button {
-                    id: bulkPauseBtn
                     flat: true
                     text: _anyDownloading()
                           ? (Backend ? Backend.tr("全部暂停") : "全部暂停")
@@ -217,14 +364,14 @@ Dialog {
                     visible: _activeCount > 0 && _expanded
                     onClicked: {
                         if (!Backend) return
-                        for (var i = 0; i < _tasks.length; i++) {
-                            var t = _tasks[i]
+                        for (var i = 0; i < taskModel.count; i++) {
+                            var t = taskModel.get(i)
                             if (t.status === "downloading")
                                 Backend.pauseDownloadTask(t.task_id)
                             else if (t.status === "paused")
                                 Backend.resumeDownloadTask(t.task_id)
                         }
-                        refreshTasks()
+                        Qt.callLater(function() { refreshTasks(true) })
                     }
                 }
 
@@ -233,18 +380,12 @@ Dialog {
                     icon.name: _expanded
                                ? "ic_fluent_chevron_down_20_regular"
                                : "ic_fluent_chevron_up_20_regular"
-                    ToolTip.visible: hovered
-                    ToolTip.text: _expanded
-                                  ? (Backend ? Backend.tr("收起") : "收起")
-                                  : (Backend ? Backend.tr("展开") : "展开")
                     onClicked: _expanded = !_expanded
                 }
 
                 Button {
                     flat: true
                     icon.name: "ic_fluent_dismiss_20_regular"
-                    ToolTip.visible: hovered
-                    ToolTip.text: Backend ? Backend.tr("关闭") : "关闭"
                     onClicked: downloadDialog.close()
                 }
             }
@@ -263,32 +404,73 @@ Dialog {
             id: taskScroll
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: _expanded ? 120 : 0
+            Layout.minimumHeight: _expanded ? 160 : 0
             visible: _expanded
             clip: true
             contentWidth: availableWidth
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             ColumnLayout {
-                // 绑定到 ScrollView.availableWidth，避免 parent.availableWidth 为 0
                 width: Math.max(0, taskScroll.availableWidth - 16)
                 x: 8
-                spacing: 8
+                spacing: 10
 
-                // 顶部内边距
-                Item { Layout.preferredHeight: 4; Layout.fillWidth: true }
+                Item { Layout.preferredHeight: 6; Layout.fillWidth: true }
+
+                // 全局摘要：线程数 / 耗时
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 4
+                    Layout.rightMargin: 4
+                    spacing: 12
+                    visible: taskModel.count > 0
+
+                    Text {
+                        text: (Backend ? Backend.tr("最大线程") : "最大线程") + ": " + _maxThreads
+                        font.pixelSize: 11
+                        color: downloadDialog._cTextSecondary
+                    }
+                    Text {
+                        text: (Backend ? Backend.tr("耗时") : "耗时") + ": " + _formatTime(_elapsedSeconds)
+                        font.pixelSize: 11
+                        color: downloadDialog._cTextSecondary
+                    }
+                    Item { Layout.fillWidth: true }
+                    Text {
+                        text: (Backend ? Backend.tr("任务") : "任务")
+                              + ": " + taskModel.count
+                              + "  ·  "
+                              + (Backend ? Backend.tr("进行中") : "进行中")
+                              + " " + _activeCount
+                        font.pixelSize: 11
+                        color: downloadDialog._cTextSecondary
+                    }
+                }
 
                 Repeater {
-                    model: _tasks
+                    model: taskModel
 
                     delegate: Rectangle {
                         id: taskCard
-                        required property var modelData
+                        // ListModel roles
+                        required property string task_id
+                        required property string version
+                        required property string version_name
+                        required property string loader
+                        required property string status
+                        required property real progress
+                        required property string status_text
+                        required property string status_label
+                        required property string speed
+                        required property string eta
+                        required property string downloaded
+                        required property string total
+                        required property string error_message
+                        required property string title
                         required property int index
 
                         Layout.fillWidth: true
-                        // 高度由内容驱动，避免 anchors.fill 与 preferredHeight 环依赖
-                        implicitHeight: taskBody.implicitHeight + 20
+                        implicitHeight: taskBody.implicitHeight + 24
                         Layout.preferredHeight: implicitHeight
                         radius: 8
                         color: downloadDialog._cCard
@@ -300,16 +482,16 @@ Dialog {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            anchors.margins: 12
+                            anchors.margins: 14
                             spacing: 8
 
-                            // 标题行
+                            // 标题 + 百分比
                             RowLayout {
                                 Layout.fillWidth: true
                                 spacing: 8
 
                                 Text {
-                                    text: downloadDialog._taskTitle(modelData)
+                                    text: title
                                     typography: Typography.Body
                                     font.weight: Font.DemiBold
                                     color: downloadDialog._cText
@@ -319,25 +501,37 @@ Dialog {
                                 }
 
                                 Text {
-                                    text: downloadDialog._statusText(modelData)
-                                    font.pixelSize: 11
-                                    color: downloadDialog._statusColor(modelData.status)
-                                    elide: Text.ElideRight
-                                    Layout.maximumWidth: 160
-                                    horizontalAlignment: Text.AlignRight
+                                    text: downloadDialog._isLive(status)
+                                          ? (Math.round(progress) + "%")
+                                          : ""
+                                    font.pixelSize: 13
+                                    font.weight: Font.DemiBold
+                                    color: downloadDialog._cPrimary
+                                    visible: downloadDialog._isLive(status)
                                 }
 
                                 Button {
                                     flat: true
                                     implicitWidth: 28
                                     implicitHeight: 28
-                                    visible: downloadDialog._isTerminal(modelData.status)
+                                    visible: downloadDialog._isTerminal(status)
                                     icon.name: "ic_fluent_dismiss_20_regular"
                                     onClicked: {
-                                        if (Backend) Backend.removeDownloadTask(modelData.task_id)
-                                        refreshTasks()
+                                        if (Backend) Backend.removeDownloadTask(task_id)
+                                        Qt.callLater(function() { refreshTasks(true) })
                                     }
                                 }
+                            }
+
+                            // 详细状态行（完整 status_text，可换行）
+                            Text {
+                                Layout.fillWidth: true
+                                text: status_label
+                                font.pixelSize: 12
+                                color: downloadDialog._statusColor(status)
+                                wrapMode: Text.Wrap
+                                maximumLineCount: 3
+                                elide: Text.ElideRight
                             }
 
                             // 进度条
@@ -345,29 +539,28 @@ Dialog {
                                 Layout.fillWidth: true
                                 from: 0
                                 to: 100
-                                value: downloadDialog._progressValue(modelData)
-                                visible: downloadDialog._isLive(modelData.status)
-                                // RinUI ProgressBar.State: 0 Running, 1 Paused, 2 Error
-                                state: modelData.status === "paused" ? 1 : 0
-                                indeterminate: modelData.status === "queued"
-                                               || (modelData.status === "downloading"
-                                                   && downloadDialog._progressValue(modelData) <= 0)
+                                value: progress
+                                visible: downloadDialog._isLive(status) || status === "completed"
+                                state: status === "paused" ? 1
+                                     : (status === "failed" || status === "cancelled") ? 2
+                                     : 0
+                                indeterminate: status === "queued"
+                                               || (status === "downloading" && progress <= 0)
                             }
 
-                            // 进度信息
+                            // 大小 / 速度 / ETA
                             RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 8
-                                visible: downloadDialog._isLive(modelData.status)
+                                spacing: 10
+                                visible: downloadDialog._isLive(status)
 
                                 Text {
                                     text: {
-                                        var d = modelData.downloaded || ""
-                                        var t = modelData.total || ""
-                                        if (d && t) return d + " / " + t
-                                        return d || t || ""
+                                        if (downloaded && total)
+                                            return downloaded + " / " + total
+                                        return downloaded || total || ""
                                     }
-                                    typography: Typography.Caption
+                                    font.pixelSize: 11
                                     color: downloadDialog._cTextSecondary
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
@@ -375,61 +568,48 @@ Dialog {
                                 }
 
                                 Text {
-                                    text: modelData.speed || ""
-                                    typography: Typography.Caption
+                                    text: speed
+                                    font.pixelSize: 11
                                     color: downloadDialog._cTextSecondary
-                                    visible: !!(modelData.speed)
+                                    visible: speed && speed.length > 0
                                 }
 
                                 Text {
-                                    text: modelData.eta || ""
-                                    typography: Typography.Caption
+                                    text: eta
+                                    font.pixelSize: 11
                                     color: downloadDialog._cTextSecondary
-                                    visible: !!(modelData.eta)
-                                }
-
-                                Text {
-                                    text: Math.round(downloadDialog._progressValue(modelData)) + "%"
-                                    typography: Typography.Caption
-                                    font.weight: Font.DemiBold
-                                    color: downloadDialog._cTextSecondary
-                                    visible: modelData.status !== "queued"
-                                             && !(modelData.status === "downloading"
-                                                  && downloadDialog._progressValue(modelData) <= 0)
+                                    visible: eta && eta.length > 0
                                 }
                             }
 
                             // 操作
                             RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 4
-                                visible: modelData.status === "downloading"
-                                      || modelData.status === "paused"
+                                spacing: 6
+                                visible: status === "downloading" || status === "paused"
 
                                 Item { Layout.fillWidth: true }
 
                                 Button {
-                                    flat: true
-                                    text: modelData.status === "paused"
+                                    text: status === "paused"
                                         ? (Backend ? Backend.tr("恢复") : "恢复")
                                         : (Backend ? Backend.tr("暂停") : "暂停")
                                     onClicked: {
                                         if (!Backend) return
-                                        if (modelData.status === "paused")
-                                            Backend.resumeDownloadTask(modelData.task_id)
+                                        if (status === "paused")
+                                            Backend.resumeDownloadTask(task_id)
                                         else
-                                            Backend.pauseDownloadTask(modelData.task_id)
-                                        refreshTasks()
+                                            Backend.pauseDownloadTask(task_id)
+                                        Qt.callLater(function() { refreshTasks(true) })
                                     }
                                 }
 
                                 Button {
-                                    flat: true
                                     text: Backend ? Backend.tr("终止") : "终止"
                                     onClicked: {
                                         if (!Backend) return
-                                        Backend.cancelDownloadTask(modelData.task_id)
-                                        refreshTasks()
+                                        Backend.cancelDownloadTask(task_id)
+                                        Qt.callLater(function() { refreshTasks(true) })
                                     }
                                 }
                             }
@@ -439,10 +619,10 @@ Dialog {
 
                 // 空态
                 ColumnLayout {
-                    visible: _tasks.length === 0
+                    visible: taskModel.count === 0
                     Layout.fillWidth: true
-                    Layout.topMargin: 48
-                    Layout.bottomMargin: 48
+                    Layout.topMargin: 56
+                    Layout.bottomMargin: 56
                     spacing: 8
 
                     Text {
@@ -452,18 +632,17 @@ Dialog {
                         color: downloadDialog._cTextSecondary
                         font.pixelSize: 14
                     }
-
                     Text {
                         Layout.fillWidth: true
                         horizontalAlignment: Text.AlignHCenter
                         text: Backend ? Backend.tr("从下载页添加版本后将显示在这里") : "从下载页添加版本后将显示在这里"
                         color: downloadDialog._cTextSecondary
                         font.pixelSize: 12
-                        opacity: 0.8
+                        opacity: 0.85
                     }
                 }
 
-                Item { Layout.preferredHeight: 8; Layout.fillWidth: true }
+                Item { Layout.preferredHeight: 10; Layout.fillWidth: true }
             }
         }
 
@@ -484,6 +663,8 @@ Dialog {
                         parts.push((Backend ? Backend.tr("下载中") : "下载中") + " (" + _activeCount + ")")
                     if (_completedCount > 0)
                         parts.push((Backend ? Backend.tr("已完成") : "已完成") + " (" + _completedCount + ")")
+                    if (_activeCount > 0)
+                        parts.push("⏱ " + _formatTime(_elapsedSeconds))
                     return parts.length > 0
                            ? parts.join(" · ")
                            : (Backend ? Backend.tr("没有下载任务") : "没有下载任务")
@@ -495,39 +676,41 @@ Dialog {
             }
 
             Repeater {
-                model: {
-                    var active = downloadDialog._activeTasks()
-                    return active.slice(0, 3)
-                }
+                model: taskModel
                 delegate: RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    required property var modelData
+                    required property string version
+                    required property string status
+                    required property real progress
+                    required property string status_text
+                    visible: status === "downloading" || status === "paused" || status === "queued"
 
                     Text {
-                        text: "Minecraft " + (modelData.version || "")
+                        text: "MC " + (version || "")
                         font.pixelSize: 11
                         color: downloadDialog._cText
                         elide: Text.ElideRight
-                        Layout.preferredWidth: 110
-                        Layout.maximumWidth: 140
+                        Layout.preferredWidth: 90
                     }
 
                     ProgressBar {
                         from: 0
                         to: 100
-                        value: downloadDialog._progressValue(modelData)
+                        value: progress
                         Layout.fillWidth: true
                         Layout.preferredHeight: 4
-                        state: modelData.status === "paused" ? 1 : 0
-                        indeterminate: modelData.status === "queued"
+                        state: status === "paused" ? 1 : 0
+                        indeterminate: status === "queued" || (status === "downloading" && progress <= 0)
                     }
 
                     Text {
-                        text: Math.round(downloadDialog._progressValue(modelData)) + "%"
+                        text: status === "paused"
+                              ? (Backend ? Backend.tr("暂停") : "暂停")
+                              : (Math.round(progress) + "%")
                         font.pixelSize: 10
                         color: downloadDialog._cTextSecondary
-                        Layout.preferredWidth: 36
+                        Layout.preferredWidth: 40
                         horizontalAlignment: Text.AlignRight
                     }
                 }
@@ -538,15 +721,28 @@ Dialog {
     Connections {
         target: Backend
         function onDownloadTaskAdded(taskId) {
-            refreshTasks()
-            if (!downloadDialog.visible)
+            refreshTasks(true)
+            if (!downloadDialog.visible) {
+                // 新任务：默认展开打开，但不遮挡主界面
+                _expanded = true
                 downloadDialog.open()
+            }
         }
         function onDownloadTaskRemoved(taskId) {
-            // 后端在任务结束时也会 emit 此信号（任务仍保留在列表中一段时间）
-            refreshTasks()
+            refreshTasks(true)
             if (_activeCount === 0 && _completedCount === 0 && downloadDialog.visible)
                 downloadDialog.close()
+        }
+        function onDownloadTaskProgressUpdated(taskId, progress, statusText, speed, downloaded, total) {
+            if (!downloadDialog.visible) return
+            // 信号增量更新，避免整表重建
+            patchTaskProgress(taskId, progress, statusText, speed, downloaded, total)
+        }
+        function onDownloadCompleted(message) {
+            refreshTasks(true)
+        }
+        function onDownloadPaused(paused) {
+            refreshTasks(true)
         }
     }
 }
