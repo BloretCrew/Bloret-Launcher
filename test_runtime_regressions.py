@@ -91,6 +91,38 @@ class TestBackendDeclarations(unittest.TestCase):
             for node in ast.walk(method)
         ))
 
+    def test_home_remote_refresh_is_throttled(self):
+        """#129: sidebar page recreate must not re-hit servers every time."""
+        source = MAIN_PATH.read_text(encoding="utf-8-sig")
+        self.assertIn("_HOME_REMOTE_TTL_SEC", source)
+        self.assertIn("_activity_refresh_inflight", source)
+        self.assertIn("_server_refresh_inflight", source)
+        self.assertIn("_launch_items_cache", source)
+        self.assertIn("invalidateLaunchItemsCache", source)
+
+        backend = _backend_class()
+        methods = {
+            node.name for node in backend.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("refreshActivityInfo", methods)
+        self.assertIn("refreshServerInfo", methods)
+        self.assertIn("invalidateLaunchItems", methods)
+        self.assertIn("getLaunchItems", methods)
+
+        home_qml = (ROOT / "qml" / "pages" / "Home.qml").read_text(encoding="utf-8")
+        # Remote refresh must be deferred, not run synchronously in onCompleted alone.
+        self.assertIn("Qt.callLater", home_qml)
+        self.assertIn("refreshActivityInfo", home_qml)
+        self.assertIn("refreshServerInfo", home_qml)
+
+    def test_info_and_server_requests_use_timeout(self):
+        blserver = (ROOT / "modules" / "BLServer.py").read_text(encoding="utf-8")
+        chafu = (ROOT / "modules" / "chafuwang.py").read_text(encoding="utf-8")
+        update = (ROOT / "modules" / "update.py").read_text(encoding="utf-8")
+        self.assertRegex(blserver, r"api/info[^\n]*timeout")
+        self.assertRegex(chafu, r"requests\.get\([^\n]*timeout")
+        self.assertRegex(update, r"api/info[^\n]*timeout")
+
     def test_update_worker_is_started(self):
         backend = _backend_class()
         method = next(

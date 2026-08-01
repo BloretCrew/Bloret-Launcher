@@ -279,10 +279,30 @@ class Backend(QObject):
     # Backdrop/acrylic effect signal
     backdropEffectChanged = Signal(str)
 
+    # Home remote refresh TTL (seconds). NavigationView recreates pages on every
+    # sidebar click; without throttling each visit re-hits the network.
+    _HOME_REMOTE_TTL_SEC = 300
+    _LAUNCH_ITEMS_CACHE_TTL_SEC = 15.0
+    _BBBS_TTL_SEC = 120
+    _LIVE_LIST_TTL_SEC = 60
+
     def __init__(self):
         super().__init__()
         self._server_info = {}
         self._activity_info = BLglobals.BL_Activity
+        self._activity_refresh_ts = 0.0
+        self._server_refresh_ts = 0.0
+        self._activity_refresh_inflight = False
+        self._server_refresh_inflight = False
+        self._launch_items_cache = None
+        self._launch_items_cache_ts = 0.0
+        self._bbbs_summary_cache = None
+        self._bbbs_summary_ts = 0.0
+        self._bbbs_leaderboard_cache = None
+        self._bbbs_leaderboard_ts = 0.0
+        self._bbbs_all_posts_cache = None
+        self._bbbs_all_posts_ts = 0.0
+        self._live_space_list_ts = 0.0
         self._last_core_manager_request_time = 0  # 防止重复请求
         self._is_launching = False
         self._launch_session_id = 0
@@ -1188,21 +1208,18 @@ class Backend(QObject):
     @Slot(result=list)
     def getLaunchItemsSortedByPlayTime(self):
         """Get launch items sorted by total play time (descending)"""
-        from modules.setup_ui import get_all_launch_items
         from modules.play_time import get_all_play_times, format_duration
-        items = get_all_launch_items()
+        # Reuse short-lived launch-item cache to avoid disk scans on every page recreate.
+        items = self.getLaunchItems()
         times = get_all_play_times()
         qml_items = []
         for item in items:
-            icon_path = "../../icon/Grass_Block.png"
-            if item.get("type") == "custom":
-                icon_path = "../../icon/exeapps.png"
             total = times.get(item["name"], 0)
             qml_items.append({
                 "name": item["name"],
                 "type": item["type"],
                 "path": item["path"],
-                "icon": icon_path,
+                "icon": item.get("icon", "../../icon/Grass_Block.png"),
                 "playTime": total,
                 "playTimeFormatted": format_duration(total),
             })
@@ -1269,12 +1286,43 @@ class Backend(QObject):
 
     @Slot(result=dict)
     def getActivityInfo(self):
+        # Prefer in-memory snapshot (may include local icon file URL after refresh).
+        if self._activity_info:
+            return self._activity_info
         return BLglobals.BL_Activity
+
+    def _is_localmod(self):
+        try:
+            return bool(cfg.read().get("localmod", False))
+        except Exception:
+            return False
 
     @Slot()
     def refreshActivityInfo(self):
-        """从 API 刷新活动信息"""
+        """从 API 刷新活动信息（后台线程；TTL 内复用缓存，避免侧边栏反复进入主页时重复打网）"""
+        import time
+
+        if self._is_localmod():
+            if self._activity_info:
+                self.activityInfoChanged.emit(self._activity_info)
+            return
+
+        now = time.time()
+        if (
+            self._activity_info
+            and self._activity_refresh_ts
+            and (now - self._activity_refresh_ts) < self._HOME_REMOTE_TTL_SEC
+        ):
+            self.activityInfoChanged.emit(self._activity_info)
+            return
+        if self._activity_refresh_inflight:
+            if self._activity_info:
+                self.activityInfoChanged.emit(self._activity_info)
+            return
+
+        self._activity_refresh_inflight = True
         from modules.BLServer import get_latest_version
+
         def update_activity():
             try:
                 _, _ = get_latest_version()
@@ -1283,83 +1331,109 @@ class Backend(QObject):
                 icon_url = BLglobals.BL_Activity.get("icon", "")
                 if icon_url.startswith("http"):
                     try:
-                        import requests, hashlib
-                        from PySide6.QtCore import QUrl
+                        import hashlib
                         resp = requests.get(icon_url, timeout=5)
                         if resp.status_code == 200:
-                            # compute hash for filename
-                            h = hashlib.md5(icon_url.encode('utf-8')).hexdigest()
+                            h = hashlib.md5(icon_url.encode("utf-8")).hexdigest()
                             cache_dir = os.path.join(SCRIPT_DIR, "cache")
                             os.makedirs(cache_dir, exist_ok=True)
                             local_path = os.path.join(cache_dir, f"activity_{h}.png")
                             with open(local_path, "wb") as imgf:
                                 imgf.write(resp.content)
-                            # convert to file URL for QML
-                            url = QUrl.fromLocalFile(local_path).toString()
-                            BLglobals.BL_Activity["icon"] = url
-                            icon_path = url
-                        else:
-                            icon_path = icon_url
+                            BLglobals.BL_Activity["icon"] = QUrl.fromLocalFile(local_path).toString()
                     except Exception as e:
                         print(f"Failed to download activity icon: {e}")
-                        icon_path = icon_url
                 else:
-                    # non-http value might be local path; convert to file URL too
-                    from PySide6.QtCore import QUrl
-                    if icon_url:
+                    if icon_url and not str(icon_url).startswith("file:"):
                         BLglobals.BL_Activity["icon"] = QUrl.fromLocalFile(icon_url).toString()
-                        icon_path = QUrl.fromLocalFile(icon_url).toString()
-                # else icon_path remains whatever returned
                 self._activity_info = BLglobals.BL_Activity
+                self._activity_refresh_ts = time.time()
                 self.activityInfoChanged.emit(self._activity_info)
             except Exception as e:
                 print(f"Error refreshing activity info: {e}")
-        
-        threading.Thread(target=update_activity, daemon=True).start()
+                # 失败不写 TTL，下次进入主页可重试
+            finally:
+                self._activity_refresh_inflight = False
+
+        threading.Thread(target=update_activity, daemon=True, name="ActivityInfoRefresh").start()
 
     @Slot()
     def refreshServerInfo(self):
+        """刷新主页服务器信息（后台线程；TTL 内复用缓存）"""
+        import time
+
+        if self._is_localmod():
+            if self._server_info:
+                self.serverInfoChanged.emit(self._server_info)
+            return
+
+        now = time.time()
+        if (
+            self._server_info
+            and self._server_refresh_ts
+            and (now - self._server_refresh_ts) < self._HOME_REMOTE_TTL_SEC
+        ):
+            self.serverInfoChanged.emit(self._server_info)
+            return
+        if self._server_refresh_inflight:
+            if self._server_info:
+                self.serverInfoChanged.emit(self._server_info)
+            return
+
+        self._server_refresh_inflight = True
+
         def update_callback(data):
-            self._server_info = data
-            self.serverInfoChanged.emit(data)
+            try:
+                self._server_info = data or {}
+                # 仅在无网络 error 时记 TTL；纯错误允许尽快重试
+                if not (isinstance(data, dict) and data.get("error")):
+                    self._server_refresh_ts = time.time()
+                self.serverInfoChanged.emit(self._server_info)
+            finally:
+                self._server_refresh_inflight = False
+
         getServerData("Bloret", callback=update_callback)
 
-    @Slot(result=list)
-    def getLaunchItems(self):
+    def invalidateLaunchItemsCache(self):
+        self._launch_items_cache = None
+        self._launch_items_cache_ts = 0.0
+
+    def _buildLaunchItemsQml(self):
         from modules.setup_ui import get_all_launch_items
         items = get_all_launch_items()
         qml_items = []
-        
-        # Log for debugging
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.debug(f"getLaunchItems: Retrieved {len(items)} items from get_all_launch_items()")
-        
         for item in items:
-            # Extract icon path from item
-            icon_path = "../../icon/Grass_Block.png"  # Default
-            
-            if item.get("type") == "minecraft":
-                # For minecraft, check if we have metadata with custom icon
-                # Default to Grass_Block for minecraft
-                icon_path = "../../icon/Grass_Block.png"
-                
-            elif item.get("type") == "custom":
-                # For custom apps, use a generic app icon
+            icon_path = "../../icon/Grass_Block.png"
+            if item.get("type") == "custom":
                 icon_path = "../../icon/exeapps.png"
-            
-            qml_item = {
+            qml_items.append({
                 "name": item["name"],
                 "type": item["type"],
                 "path": item["path"],
-                "icon": icon_path
-            }
-            
-            logger.debug(f"getLaunchItems: Added item {qml_item}")
-            qml_items.append(qml_item)
-        
-        logger.debug(f"getLaunchItems: Returning {len(qml_items)} items to QML")
+                "icon": icon_path,
+            })
         return qml_items
+
+    @Slot(result=list)
+    def getLaunchItems(self):
+        """返回启动项；短时缓存，减轻侧边栏反复重建主页时的磁盘扫描开销。"""
+        import time
+        now = time.time()
+        if (
+            self._launch_items_cache is not None
+            and (now - self._launch_items_cache_ts) < self._LAUNCH_ITEMS_CACHE_TTL_SEC
+        ):
+            return list(self._launch_items_cache)
+
+        qml_items = self._buildLaunchItemsQml()
+        self._launch_items_cache = qml_items
+        self._launch_items_cache_ts = now
+        return list(qml_items)
+
+    @Slot()
+    def invalidateLaunchItems(self):
+        """供安装/删除核心后刷新启动列表缓存。"""
+        self.invalidateLaunchItemsCache()
 
     @Slot(str)
     def selectLaunchItem(self, name):
@@ -1502,6 +1576,7 @@ class Backend(QObject):
                 config_data = cfg.read()
                 config_data['customize_list'] = BLglobals.customize_list
                 cfg.write(config_data)
+                self.invalidateLaunchItemsCache()
                 print(f"Deleted custom item: {name}")
         except Exception as e:
             print(f"Error deleting custom item: {e}")
@@ -1517,6 +1592,7 @@ class Backend(QObject):
                 if config_data.get('ChoosedRun') == oldName:
                     config_data['ChoosedRun'] = newName
                 cfg.write(config_data)
+                self.invalidateLaunchItemsCache()
                 print(f"Renamed custom item: {oldName} -> {newName}")
         except Exception as e:
             print(f"Error renaming custom item: {e}")
@@ -1602,7 +1678,8 @@ class Backend(QObject):
             
             with open(bl_json_path, "w", encoding="utf-8") as f:
                 json.dump(full_data, f, ensure_ascii=False, indent=4)
-            
+
+            self.invalidateLaunchItemsCache()
             print(f"Core data saved for: {new_name}")
             try:
                 from modules.plugin_host.hook_util import fire
@@ -1662,6 +1739,7 @@ class Backend(QObject):
                     with open(bl_json_path, "w", encoding="utf-8") as f:
                         json.dump(full_data, f, ensure_ascii=False, indent=4)
                 
+                self.invalidateLaunchItemsCache()
                 print(f"Core deleted: {versionName}")
                 try:
                     from modules.plugin_host.hook_util import fire
@@ -2447,6 +2525,8 @@ class Backend(QObject):
         self.downloadDialogClosed.emit()
 
     def notifyDownloadComplete(self, message="Minecraft 安装完成"):
+        # 安装完成会新增核心，清掉启动项短缓存
+        self.invalidateLaunchItemsCache()
         self.downloadCompleted.emit(message)
         try:
             if sys.platform == "win32":
@@ -2806,6 +2886,7 @@ class Backend(QObject):
         config_data['minecraft_dir'] = path
         cfg.write(config_data)
         BLglobals.minecraft_dir = path
+        self.invalidateLaunchItemsCache()
         print(f"Minecraft directory updated to: {path}")
 
     @Slot(result=list)
@@ -4151,40 +4232,78 @@ class Backend(QObject):
         return bool(config_data.get('bbbs_session', ''))
 
     @Slot()
-    def fetchBBBSSummary(self):
+    @Slot(bool)
+    def fetchBBBSSummary(self, forceRefresh=False):
+        """Fetch BBBS daily summary. Reuse TTL cache unless forceRefresh."""
+        now = time.time()
+        if (
+            not forceRefresh
+            and self._bbbs_summary_cache is not None
+            and (now - self._bbbs_summary_ts) < self._BBBS_TTL_SEC
+        ):
+            self.bbbsSummaryReceived.emit(self._bbbs_summary_cache)
+            return
+
         def run():
             from modules.bbbs import fetch_summary
             try:
                 data = fetch_summary()
                 if data is not None:
-                    self.bbbsSummaryReceived.emit(data if isinstance(data, dict) else {"text": str(data)})
+                    payload = data if isinstance(data, dict) else {"text": str(data)}
+                    self._bbbs_summary_cache = payload
+                    self._bbbs_summary_ts = time.time()
+                    self.bbbsSummaryReceived.emit(payload)
                 else:
                     self.bbbsErrorOccurred.emit(i18nText("无法获取每日摘要"))
             except Exception as e:
                 self.bbbsErrorOccurred.emit(str(e))
-        threading.Thread(target=run, daemon=True).start()
+        threading.Thread(target=run, daemon=True, name="BBBSSummary").start()
 
     @Slot()
-    def fetchBBBSLeaderboard(self):
+    @Slot(bool)
+    def fetchBBBSLeaderboard(self, forceRefresh=False):
+        now = time.time()
+        if (
+            not forceRefresh
+            and self._bbbs_leaderboard_cache is not None
+            and (now - self._bbbs_leaderboard_ts) < self._BBBS_TTL_SEC
+        ):
+            self.bbbsLeaderboardReceived.emit(self._bbbs_leaderboard_cache)
+            return
+
         def run():
             from modules.bbbs import fetch_leaderboard_posts
             try:
-                data = fetch_leaderboard_posts()
-                self.bbbsLeaderboardReceived.emit(data or [])
+                data = fetch_leaderboard_posts() or []
+                self._bbbs_leaderboard_cache = data
+                self._bbbs_leaderboard_ts = time.time()
+                self.bbbsLeaderboardReceived.emit(data)
             except Exception as e:
                 self.bbbsErrorOccurred.emit(str(e))
-        threading.Thread(target=run, daemon=True).start()
+        threading.Thread(target=run, daemon=True, name="BBBSLeaderboard").start()
 
     @Slot()
-    def fetchBBBSAllPosts(self):
+    @Slot(bool)
+    def fetchBBBSAllPosts(self, forceRefresh=False):
+        now = time.time()
+        if (
+            not forceRefresh
+            and self._bbbs_all_posts_cache is not None
+            and (now - self._bbbs_all_posts_ts) < self._BBBS_TTL_SEC
+        ):
+            self.bbbsAllPostsReceived.emit(self._bbbs_all_posts_cache)
+            return
+
         def run():
             from modules.bbbs import fetch_all_posts
             try:
-                data = fetch_all_posts()
-                self.bbbsAllPostsReceived.emit(data or [])
+                data = fetch_all_posts() or []
+                self._bbbs_all_posts_cache = data
+                self._bbbs_all_posts_ts = time.time()
+                self.bbbsAllPostsReceived.emit(data)
             except Exception as e:
                 self.bbbsErrorOccurred.emit(str(e))
-        threading.Thread(target=run, daemon=True).start()
+        threading.Thread(target=run, daemon=True, name="BBBSAllPosts").start()
 
     # ==================== Live ====================
 
@@ -4349,16 +4468,28 @@ class Backend(QObject):
         log(f"[EasyTier Publish] 发布循环已启动，空间 ID: {space_id}", logging.INFO)
 
     @Slot()
-    def fetchLiveSpaceList(self):
+    @Slot(bool)
+    def fetchLiveSpaceList(self, forceRefresh=False):
+        """Fetch Live space list; TTL cache avoids re-hit on every page recreate."""
+        now = time.time()
+        if (
+            not forceRefresh
+            and self._live_space_list_cache
+            and (now - self._live_space_list_ts) < self._LIVE_LIST_TTL_SEC
+        ):
+            self.liveSpaceListReceived.emit(list(self._live_space_list_cache))
+            return
+
         def run():
             from modules.bbbs_live import fetch_space_list
             try:
                 data = fetch_space_list()
                 self._live_space_list_cache = data or []
+                self._live_space_list_ts = time.time()
                 self.liveSpaceListReceived.emit(data or [])
             except Exception as e:
                 self.liveErrorOccurred.emit(str(e))
-        threading.Thread(target=run, daemon=True).start()
+        threading.Thread(target=run, daemon=True, name="LiveSpaceList").start()
 
     @Slot(result=bool)
     def isInLiveSpace(self):

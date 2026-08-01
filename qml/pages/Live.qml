@@ -429,7 +429,7 @@ FluentPage {
                     flat: true
                     onClicked: {
                         isLoading = true
-                        Backend.fetchLiveSpaceList()
+                        Backend.fetchLiveSpaceList(true)
                     }
                 }
 
