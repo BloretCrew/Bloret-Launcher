@@ -184,7 +184,8 @@ class BlorikoAgentLoop:
     def cancel(self):
         self._cancelled = True
 
-    def run(self, user_message: str, history: list = None):
+    def run(self, user_message, history: list = None):
+        """user_message 可为 str，或 OpenAI 多模态 content list。"""
         log.info(f"[AgentLoop] run 开始, 模型={self.model}, 角色={self.role}")
         try:
             self._run_internal(user_message, history)
@@ -224,12 +225,69 @@ class BlorikoAgentLoop:
         return self._cached_system_prompt
 
     # ================================================================
+    # 多模态 / content 工具
+    # ================================================================
+
+    @staticmethod
+    def _content_to_text(content) -> str:
+        """从 str 或 OpenAI 多模态 content list 提取纯文本。"""
+        if content is None:
+            return ""
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts = []
+            for part in content:
+                if isinstance(part, dict):
+                    if part.get("type") == "text":
+                        parts.append(str(part.get("text", "")))
+                    elif part.get("type") == "image_url":
+                        parts.append("[图片]")
+                elif isinstance(part, str):
+                    parts.append(part)
+            return "\n".join(p for p in parts if p)
+        return str(content)
+
+    @staticmethod
+    def _content_for_token_estimate(content) -> str:
+        """估算 token 时忽略 base64 图片数据。"""
+        if content is None:
+            return ""
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts = []
+            for part in content:
+                if isinstance(part, dict):
+                    if part.get("type") == "text":
+                        parts.append(str(part.get("text", "")))
+                    elif part.get("type") == "image_url":
+                        # 视觉 token 粗估：固定开销，不计入完整 base64
+                        parts.append("[image~1000tokens]")
+                elif isinstance(part, str):
+                    parts.append(part)
+            return "\n".join(parts)
+        return str(content)
+
+    # ================================================================
     # 上下文压缩
     # ================================================================
 
     @staticmethod
     def _estimate_tokens(messages: list) -> int:
-        return len(str(messages)) // 4
+        total = 0
+        for msg in messages:
+            content = msg.get("content", "")
+            total += len(BlorikoAgentLoop._content_for_token_estimate(content))
+            if msg.get("tool_calls"):
+                total += len(str(msg.get("tool_calls")))
+            if msg.get("toolName"):
+                total += (
+                    len(str(msg.get("toolName", "")))
+                    + len(str(msg.get("toolArgs", "")))
+                    + len(str(msg.get("toolResult", "")))
+                )
+        return total // 4
 
     def _compact_messages(self, messages: list) -> list:
         if len(messages) <= 1:
@@ -251,15 +309,31 @@ class BlorikoAgentLoop:
                 if tc_id in recent_tool_ids:
                     result.append(msg)
                 else:
-                    original_len = len(msg.get("content", ""))
+                    content = msg.get("content", "")
+                    original_len = len(content) if isinstance(content, str) else len(str(content))
                     compacted = dict(msg)
                     compacted["content"] = f"[结果已压缩: 原始长度 {original_len} 字符]"
                     result.append(compacted)
             elif role == "assistant":
                 content = msg.get("content", "")
-                if len(content) > 2000:
+                if isinstance(content, str) and len(content) > 2000:
                     compacted = dict(msg)
                     compacted["content"] = content[:500] + "...[已压缩]"
+                    result.append(compacted)
+                else:
+                    result.append(msg)
+            elif role == "user":
+                # 多模态历史：压缩时去掉 image base64，只保留文本与占位
+                content = msg.get("content", "")
+                if isinstance(content, list):
+                    compacted = dict(msg)
+                    new_parts = []
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") == "image_url":
+                            new_parts.append({"type": "text", "text": "[图片已压缩]"})
+                        else:
+                            new_parts.append(part)
+                    compacted["content"] = new_parts
                     result.append(compacted)
                 else:
                     result.append(msg)
@@ -285,7 +359,9 @@ class BlorikoAgentLoop:
             role = msg.get("role", "")
             content = msg.get("content", "")
             if content and role in ("user", "assistant"):
-                discadable.append(f"[{role}]: {content[:500]}")
+                text = self._content_to_text(content)
+                if text:
+                    discadable.append(f"[{role}]: {text[:500]}")
 
         if not discadable:
             return
@@ -503,11 +579,20 @@ class BlorikoAgentLoop:
                     "tool_call_id": tc_id,
                     "content": tool_result
                 })
+            elif role in ("user", "assistant", "system"):
+                # 仅保留 API 合法字段，去掉 image_paths 等内部字段
+                entry = {"role": role, "content": msg.get("content", "")}
+                if msg.get("tool_calls"):
+                    entry["tool_calls"] = msg["tool_calls"]
+                if msg.get("name"):
+                    entry["name"] = msg["name"]
+                result.append(entry)
             else:
-                result.append(msg)
+                # 未知角色尽量透传 content
+                result.append({"role": role or "user", "content": msg.get("content", "")})
         return result
 
-    def _run_internal(self, user_message: str, history: list = None):
+    def _run_internal(self, user_message, history: list = None):
         log.info("[AgentLoop] 构建系统提示词...")
         system_prompt = self._build_system_prompt()
         log.info(f"[AgentLoop] 系统提示词长度: {len(system_prompt)} 字符")
@@ -518,8 +603,10 @@ class BlorikoAgentLoop:
             messages.extend(converted)
             log.info(f"[AgentLoop] 历史消息数: {len(history)} (转换后 {len(converted)} 条)")
 
+        # user_message: str 或 OpenAI 多模态 content list
         messages.append({"role": "user", "content": user_message})
-        log.info(f"[AgentLoop] 总消息数: {len(messages)} (含系统提示)")
+        preview = self._content_to_text(user_message)[:80]
+        log.info(f"[AgentLoop] 总消息数: {len(messages)} (含系统提示), user_preview='{preview}'")
 
         for iteration in range(MAX_ITERATIONS):
             if self._cancelled:
@@ -902,7 +989,7 @@ def run_agent_async(
     working_dir: str,
     api_url: str,
     auth_header: str,
-    user_message: str,
+    user_message,
     history: list = None,
     on_text_chunk: Optional[Callable[[str], None]] = None,
     on_tool_call_start: Optional[Callable[[str, str], None]] = None,
@@ -963,7 +1050,9 @@ def _sanitize_conversation_title(raw: str, fallback: str = "") -> str:
     return title
 
 
-def generate_title(api_url: str, auth_header: str, user_message: str, model: str = "Bloriko") -> str:
+def generate_title(api_url: str, auth_header: str, user_message, model: str = "Bloriko") -> str:
+    if not isinstance(user_message, str):
+        user_message = BlorikoAgentLoop._content_to_text(user_message)
     """生成简短的对话标题"""
     log.info(f"[Title] 开始生成标题, model='{model}'")
     headers = {"Content-Type": "application/json"}
