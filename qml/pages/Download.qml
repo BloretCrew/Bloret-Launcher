@@ -81,49 +81,41 @@ FluentPage {
 
     function refreshDlStatusBar() {
         if (!Backend || !Backend.getDownloadTasks) return
-        if (!isActivePage) return
+        // 页面不可见时也允许同步一次（从其它页返回时 onIsActivePageChanged 会再刷）
         try {
             var tasks = Backend.getDownloadTasks() || []
-            var active = 0
-            var seen = {}
+            var live = []
             for (var i = 0; i < tasks.length; i++) {
                 var t = tasks[i]
-                var s = t.status || ""
-                if (s !== "downloading" && s !== "paused" && s !== "queued")
-                    continue
-                active++
-                // 状态卡最多展示 3 条
-                if (active > 3) continue
-                var prog = _progressPct(t.progress)
-                var row = {
-                    task_id: t.task_id || "",
-                    version: t.version || "",
-                    status: s,
-                    progress: prog,
-                    status_text: t.status_text || "",
-                    speed: t.speed || ""
-                }
-                seen[row.task_id] = true
-                var idx = _findDlStatusIndex(row.task_id)
-                if (idx >= 0) {
-                    var old = dlStatusModel.get(idx)
-                    if (old.progress !== row.progress
-                        || old.status !== row.status
-                        || old.status_text !== row.status_text
-                        || old.speed !== row.speed) {
-                        dlStatusModel.set(idx, row)
-                    }
-                } else if (dlStatusModel.count < 3) {
-                    dlStatusModel.append(row)
-                }
+                var s = (t && t.status) ? String(t.status) : ""
+                if (s === "downloading" || s === "paused" || s === "queued")
+                    live.push(t)
             }
-            for (var j = dlStatusModel.count - 1; j >= 0; j--) {
-                if (!seen[dlStatusModel.get(j).task_id])
-                    dlStatusModel.remove(j)
+            // 以任务列表为准；getActiveDownloadCount 作兜底
+            var counted = Backend.getActiveDownloadCount
+                          ? Backend.getActiveDownloadCount()
+                          : live.length
+            _dlActive = Math.max(live.length, counted)
+
+            // 全量重建最多 3 条，避免 set/append 角色不同步导致空列表
+            var next = live.slice(0, 3)
+            // 若 count 有活跃但列表过滤后为空，仍展示原始任务前几条
+            if (next.length === 0 && _dlActive > 0) {
+                next = tasks.slice(0, Math.min(3, tasks.length))
             }
-            _dlActive = Backend.getActiveDownloadCount
-                        ? Backend.getActiveDownloadCount()
-                        : active
+
+            dlStatusModel.clear()
+            for (var k = 0; k < next.length; k++) {
+                var item = next[k] || {}
+                dlStatusModel.append({
+                    task_id: item.task_id || ("tmp-" + k),
+                    version: item.version || "",
+                    status: item.status || "downloading",
+                    progress: _progressPct(item.progress),
+                    status_text: item.status_text || "",
+                    speed: item.speed || ""
+                })
+            }
         } catch (e) {
             console.log("[Download] status bar refresh error:", e)
         }
@@ -310,36 +302,38 @@ FluentPage {
         spacing: 12
 
         // ── 当前下载（仅当有任务时显示）──
+        // 注意：不要用 RinUI Frame(clip:true) + MouseArea(anchors.fill)
+        // 否则 childrenRect 高度只算到标题行，进度内容被裁成一条细带。
         SectionHeader {
             text: (Backend ? Backend.tr("当前下载") : "当前下载")
-            visible: _dlActive > 0
+            visible: _dlActive > 0 || dlStatusModel.count > 0
         }
 
-        Frame {
+        Rectangle {
             id: dlStatusCard
-            visible: _dlActive > 0
+            visible: _dlActive > 0 || dlStatusModel.count > 0
             Layout.fillWidth: true
-            padding: 14
-            hoverable: false
+            // 高度完全由内容撑开，并设下限避免再塌成细条
+            implicitHeight: statusContent.implicitHeight + 28
+            Layout.preferredHeight: Math.max(88, statusContent.implicitHeight + 28)
+            Layout.minimumHeight: 88
+            radius: 8
+            color: statusClickArea.containsMouse
+                   ? Qt.rgba(downloadPage._cPrimary.r, downloadPage._cPrimary.g, downloadPage._cPrimary.b, 0.08)
+                   : downloadPage._cCard
+            border.color: statusClickArea.containsMouse
+                          ? downloadPage._cPrimary
+                          : downloadPage._cCardBorder
+            border.width: 1
+            clip: false
 
-            background: Rectangle {
-                color: statusClickArea.containsMouse
-                       ? Qt.rgba(downloadPage._cPrimary.r, downloadPage._cPrimary.g, downloadPage._cPrimary.b, 0.08)
-                       : downloadPage._cCard
-                radius: 8
-                border.color: statusClickArea.containsMouse
-                              ? downloadPage._cPrimary
-                              : downloadPage._cCardBorder
-                border.width: 1
-
-                Behavior on color { ColorAnimation { duration: 120 } }
-                Behavior on border.color { ColorAnimation { duration: 120 } }
-            }
+            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on border.color { ColorAnimation { duration: 120 } }
 
             MouseArea {
                 id: statusClickArea
                 anchors.fill: parent
-                z: 1
+                z: 10
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
@@ -348,22 +342,28 @@ FluentPage {
             }
 
             ColumnLayout {
-                width: parent.width
-                spacing: 10
+                id: statusContent
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 14
+                spacing: 12
 
+                // 标题行
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 10
 
                     Rectangle {
                         Layout.preferredWidth: 4
-                        Layout.preferredHeight: 28
+                        Layout.preferredHeight: 22
                         radius: 2
                         color: downloadPage._cPrimary
                     }
 
                     Text {
-                        text: (Backend ? Backend.tr("下载中") : "下载中") + " (" + _dlActive + ")"
+                        text: (Backend ? Backend.tr("下载中") : "下载中")
+                              + " (" + Math.max(_dlActive, dlStatusModel.count) + ")"
                         font.weight: Font.DemiBold
                         font.pixelSize: 13
                         color: downloadPage._cPrimary
@@ -386,12 +386,15 @@ FluentPage {
                     }
                 }
 
-                // 稳定 ListModel：版本 + 详细状态 + 进度 + 速度
+                // 任务行：版本 + 进度 + 百分比 + 状态/速度
                 Repeater {
                     model: dlStatusModel
                     delegate: ColumnLayout {
+                        id: taskRow
                         Layout.fillWidth: true
-                        spacing: 4
+                        spacing: 6
+
+                        required property int index
                         required property string task_id
                         required property string version
                         required property string status
@@ -401,38 +404,40 @@ FluentPage {
 
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 8
+                            spacing: 10
 
                             Text {
-                                text: "Minecraft " + (version || "")
+                                text: "Minecraft " + (taskRow.version || "")
                                 font.pixelSize: 12
                                 font.weight: Font.DemiBold
                                 color: downloadPage._cText
                                 elide: Text.ElideRight
-                                Layout.preferredWidth: 140
-                                Layout.maximumWidth: 180
+                                Layout.preferredWidth: 150
+                                Layout.maximumWidth: 200
                             }
 
                             ProgressBar {
                                 from: 0
                                 to: 100
-                                value: progress
+                                value: taskRow.progress
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 4
-                                state: status === "paused" ? 1 : 0
-                                indeterminate: status === "queued"
-                                               || (status === "downloading" && progress <= 0)
+                                Layout.preferredHeight: 6
+                                Layout.minimumWidth: 80
+                                state: taskRow.status === "paused" ? 1 : 0
+                                indeterminate: taskRow.status === "queued"
+                                               || (taskRow.status === "downloading" && taskRow.progress <= 0)
                             }
 
                             Text {
-                                text: status === "paused"
+                                text: taskRow.status === "paused"
                                       ? (Backend ? Backend.tr("已暂停") : "已暂停")
-                                      : (Math.round(progress) + "%")
-                                font.pixelSize: 11
-                                color: status === "paused"
+                                      : (Math.round(taskRow.progress) + "%")
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                                color: taskRow.status === "paused"
                                        ? downloadPage._cCaution
-                                       : downloadPage._cTextSecondary
-                                Layout.preferredWidth: 48
+                                       : downloadPage._cPrimary
+                                Layout.preferredWidth: 52
                                 horizontalAlignment: Text.AlignRight
                             }
                         }
@@ -440,10 +445,13 @@ FluentPage {
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 8
-                            visible: (status_text && status_text.length > 0) || (speed && speed.length > 0)
 
                             Text {
-                                text: status_text || ""
+                                text: taskRow.status_text && taskRow.status_text.length > 0
+                                      ? taskRow.status_text
+                                      : (taskRow.status === "paused"
+                                         ? (Backend ? Backend.tr("已暂停") : "已暂停")
+                                         : (Backend ? Backend.tr("正在准备下载…") : "正在准备下载…"))
                                 font.pixelSize: 11
                                 color: downloadPage._cTextSecondary
                                 elide: Text.ElideRight
@@ -452,12 +460,31 @@ FluentPage {
                             }
 
                             Text {
-                                text: speed || ""
+                                text: taskRow.speed || ""
                                 font.pixelSize: 11
                                 color: downloadPage._cTextSecondary
-                                visible: speed && speed.length > 0
+                                visible: taskRow.speed && taskRow.speed.length > 0
                             }
                         }
+                    }
+                }
+
+                // 模型暂时为空时的占位进度，避免再出现“只有标题的细条”
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    visible: dlStatusModel.count === 0 && _dlActive > 0
+
+                    ProgressBar {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 6
+                        indeterminate: true
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: Backend ? Backend.tr("正在同步下载进度…") : "正在同步下载进度…"
+                        font.pixelSize: 11
+                        color: downloadPage._cTextSecondary
                     }
                 }
 
