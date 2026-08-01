@@ -8,6 +8,8 @@ FluentWindow {
     id: window
     visible: true
     title: (Backend ? Backend.tr("Bloret Launcher") : "Bloret Launcher")
+    // macOS 原生标题区依赖 TitleBar / NavigationBar leading 显示应用名；
+    // 保持 title 始终为有效字符串，避免系统栏与自定义栏同时空白。
     width: 1000
     height: 700
     minimumWidth: 800
@@ -300,8 +302,9 @@ FluentWindow {
                         list[i].title = passPortName
                         list[i].source = passPortAvatar
                         list[i].size = 22
-                        list[i].circular = true  // 圆形头像
+                        list[i].circular = true  // 圆形头像（Icon.circular + NavigationItem）
                         list[i].radius = 11
+                        list[i].cropToFit = true
                         list[i].icon = ""
                     } else {
                         list[i].title = (Backend ? Backend.tr("通行证") : "通行证")
@@ -309,6 +312,7 @@ FluentWindow {
                         list[i].size = undefined
                         list[i].circular = false
                         list[i].radius = 0
+                        list[i].cropToFit = true
                         list[i].icon = "ic_fluent_person_20_regular"
                     }
                     break
