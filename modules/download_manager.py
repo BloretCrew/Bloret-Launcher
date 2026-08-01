@@ -23,6 +23,7 @@ class DownloadTask:
         "downloaded", "total", "error_message",
         "cancel_event", "pause_event", "backend",
         "thread", "result", "finished_at",
+        "_last_emit_ts", "_last_emit_progress",
     )
 
     def __init__(self, task_id, version, version_name, loader, backend):
@@ -44,6 +45,8 @@ class DownloadTask:
         self.thread = None
         self.result = None
         self.finished_at = 0.0
+        self._last_emit_ts = 0.0
+        self._last_emit_progress = -1.0
 
 
 class DownloadManager:
@@ -239,14 +242,17 @@ class DownloadManager:
             log(f"[DownloadManager] pruned {len(expired_ids)} finished tasks")
 
     def update_progress(self, task_id, progress, status_text, speed="", downloaded="", total=""):
-        """Called from install.py's progress callback to update task state."""
+        """Called from install.py's progress callback to update task state.
+
+        UI 信号节流：最多约 5 次/秒，或进度变化 ≥1%，避免切页时主线程被进度洪水卡死。
+        任务字典字段仍每次更新，轮询 getDownloadTasks 总能读到最新值。
+        """
         with self.tasks_lock:
             task = self.tasks.get(task_id)
         if task is None:
             return
         task.progress = progress
         task.status_text = status_text
-        task.speed = speed
         # Parse speed field for ETA if present
         if speed and "·" in speed:
             parts = speed.split("·")
@@ -254,19 +260,36 @@ class DownloadManager:
         task.speed = speed
         task.downloaded = downloaded
         task.total = total
-        # Forward the task-aware signal to QML without breaking the legacy
-        # five-argument downloadProgressUpdated signal.
-        if task.backend:
-            task.backend.downloadTaskProgressUpdated.emit(
-                task_id, progress, status_text, speed, downloaded, total
-            )
+        if not task.backend:
+            return
+        now = time.monotonic()
+        try:
+            prog = float(progress or 0)
+        except (TypeError, ValueError):
+            prog = 0.0
+        if prog > 0 and prog <= 1.0:
+            prog *= 100.0
+        last_ts = task._last_emit_ts or 0.0
+        last_prog = task._last_emit_progress if task._last_emit_progress is not None else -1.0
+        if (now - last_ts) < 0.2 and abs(prog - last_prog) < 1.0:
+            return
+        task._last_emit_ts = now
+        task._last_emit_progress = prog
+        task.backend.downloadTaskProgressUpdated.emit(
+            task_id, progress, status_text, speed, downloaded, total
+        )
 
     # ── queries ──
 
     def get_tasks(self) -> list:
-        """Return snapshot of all tasks."""
+        """Return snapshot of all tasks (cheap; prune only occasionally)."""
         self._init()
-        self._prune_finished_tasks()
+        # 避免每次 UI 轮询都做 prune（持锁扫表），降低切页卡顿概率
+        now = time.monotonic()
+        last = getattr(self, "_last_prune_ts", 0.0)
+        if now - last >= 5.0:
+            self._last_prune_ts = now
+            self._prune_finished_tasks()
         with self.tasks_lock:
             return list(self.tasks.values())
 

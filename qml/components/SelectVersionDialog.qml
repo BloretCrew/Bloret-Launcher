@@ -8,18 +8,18 @@ Dialog {
     title: (Backend ? Backend.tr("选择 Minecraft 版本") : "选择 Minecraft 版本")
     modal: true
     closePolicy: Dialog.CloseOnEscape | Dialog.CloseOnPressOutside
-    implicitHeight: 400
-    
+    // 原 height:280 过矮，加载中进度条和版本下拉容易被裁切
+    width: Math.min(440, Overlay.overlay ? Overlay.overlay.width - 48 : 440)
+    height: Math.min(420, Overlay.overlay ? Overlay.overlay.height - 80 : 420)
+    implicitHeight: 420
+
     signal versionSelected(string version)
-    
+
     property var categories: ["正式版本", "快照版本", "远古版本"]
     property var currentVersions: []
     property string selectedVersion: ""
     property bool isLoading: false
     property string loadError: ""
-    
-    width: 420
-    height: 280
     
     Component.onCompleted: {
         if (Backend) {

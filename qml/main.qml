@@ -410,6 +410,9 @@ FluentWindow {
 
     DownloadDialog {
         id: downloadDialog
+        // 挂到窗口 Overlay，避免随页面销毁；非模态 + 无遮罩以便下载时切页
+        parent: Overlay.overlay
+        anchors.centerIn: Overlay.overlay
     }
 
     Dialog {
