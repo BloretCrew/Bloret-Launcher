@@ -2982,22 +2982,26 @@ class Backend(QObject):
         """Check Git SSH availability off the GUI thread."""
         with self._ssh_check_lock:
             if self._ssh_check_running:
+                log("SSH 可用性检测已在进行中，忽略本次重复请求", logging.WARNING)
                 return
             self._ssh_check_running = True
 
         def _check():
             ok = False
             message = ""
+            ssh_cmd = [
+                "ssh", "-T", "-o", "BatchMode=yes",
+                "-o", "ConnectTimeout=5",
+                "-o", "StrictHostKeyChecking=accept-new",
+                "git@gitcode.com",
+            ]
+            log("开始 SSH 可用性检测（后台线程 GitSshCheck）")
+            log(f"执行命令: {' '.join(ssh_cmd)}")
             try:
                 # Let OpenSSH resolve ssh-agent, IdentityFile and hardware-backed
                 # keys; checking only conventional ~/.ssh filenames rejects valid setups.
                 result = subprocess.run(
-                    [
-                        "ssh", "-T", "-o", "BatchMode=yes",
-                        "-o", "ConnectTimeout=5",
-                        "-o", "StrictHostKeyChecking=accept-new",
-                        "git@gitcode.com",
-                    ],
+                    ssh_cmd,
                     capture_output=True,
                     text=True,
                     timeout=10,
@@ -3007,13 +3011,28 @@ class Backend(QObject):
                 ok = "Welcome" in output or "successfully authenticated" in output
                 message = "SSH 可用" if ok else "SSH 认证失败"
                 BLglobals.git_ssh_available = ok
-            except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as error:
-                message = str(error)
+                log(
+                    f"SSH 检测完成: {'可用' if ok else '不可用'} "
+                    f"(exit code={result.returncode}, 输出: {output.strip() or '(空)'})",
+                    logging.INFO if ok else logging.WARNING,
+                )
+            except subprocess.TimeoutExpired:
+                message = "SSH 检测超时（超过 10 秒）"
                 BLglobals.git_ssh_available = False
+                log(f"SSH 检测失败: {message}", logging.ERROR)
+            except FileNotFoundError:
+                message = "未找到 ssh 命令，请确认已安装 OpenSSH 客户端"
+                BLglobals.git_ssh_available = False
+                log(f"SSH 检测失败: {message}", logging.ERROR)
+            except OSError as error:
+                message = f"SSH 检测系统错误: {error}"
+                BLglobals.git_ssh_available = False
+                log(f"SSH 检测失败: {message}", logging.ERROR)
             finally:
                 with self._ssh_check_lock:
                     self._ssh_check_running = False
                 self.gitSshCheckFinished.emit(ok, message)
+                log(f"SSH 检测结束，结果已通知界面 (ok={ok}, git_ssh_available={BLglobals.git_ssh_available})")
 
         threading.Thread(target=_check, daemon=True, name="GitSshCheck").start()
 

@@ -248,10 +248,14 @@ def bloret_git_clone_download(version, minecraft_dir, backend=None, cancel_event
     candidate_urls = []
     if BLglobals.git_protocol == "ssh":
         if BLglobals.git_ssh_available is False:
-            log("SSH 检测不可用（未配置密钥或认证失败），跳过 SSH 尝试", logging.INFO)
+            log("SSH 模式已启用，但检测结果为不可用（未配置密钥或认证失败），跳过 SSH 尝试，直接使用 HTTPS", logging.WARNING)
         else:
             ssh_url = _https_to_ssh_url(orig_url)
             candidate_urls.append(("ssh", ssh_url))
+            if BLglobals.git_ssh_available is None:
+                log("SSH 模式已启用，尚未进行 SSH 可用性检测，先尝试 SSH，失败将自动降级 HTTPS", logging.INFO)
+            else:
+                log(f"SSH 模式已启用，检测可用，优先使用 SSH 地址: {ssh_url}", logging.INFO)
     candidate_urls.append(("https", orig_url))
 
     def update_progress(progress, status):
@@ -298,6 +302,8 @@ def bloret_git_clone_download(version, minecraft_dir, backend=None, cancel_event
         except Exception as e:
             last_error = e
             log(f"{protocol_label} clone 失败: {e}", logging.WARNING)
+            if protocol_label == "ssh":
+                log("SSH clone 失败，降级使用 HTTPS 重试", logging.WARNING)
         finally:
             if tmp_dir and os.path.exists(tmp_dir):
                 shutil.rmtree(tmp_dir, ignore_errors=True)
