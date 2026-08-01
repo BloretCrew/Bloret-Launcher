@@ -166,7 +166,7 @@
     },
     "agent.blrpe": {
       "risk": "high",
-      "label": "扩展 BLRPE Copilot"
+      "label": "扩展 Blora Agent"
     },
     "agent.provider": {
       "risk": "high",

@@ -47,7 +47,7 @@ FluentWindowBase {
         }
         spacing: 0
 
-        // ========== Copilot Agent 系统通知 ==========
+        // ========== Blora Agent 系统通知 ==========
         InfoBar {
             id: agentInfoBar
             Layout.fillWidth: true
@@ -91,7 +91,7 @@ FluentWindowBase {
 
             function onMessageAdded(role, content, toolCallsJson) {
                 agentInfoBar.severity = Severity.Success
-                agentInfoBar.title = Backend ? Backend.tr("Copilot 完成") : "Copilot 完成"
+                agentInfoBar.title = Backend ? Backend.tr("Blora Agent 完成") : "Blora Agent 完成"
                 agentInfoBar.text = _summarizeAgent(content, toolCallsJson)
                 agentInfoBar.visible = true
             }
@@ -99,14 +99,14 @@ FluentWindowBase {
             function onPermissionRequested(toolName, argsJson, description, reasoning) {
                 var cn = _toolCnMap[toolName] || toolName
                 agentInfoBar.severity = Severity.Warning
-                agentInfoBar.title = Backend ? Backend.tr("Copilot 需要授权") : "Copilot 需要授权"
+                agentInfoBar.title = Backend ? Backend.tr("Blora Agent 需要授权") : "Blora Agent 需要授权"
                 agentInfoBar.text = (Backend ? Backend.tr("请求") : "请求") + cn + (description ? ": " + description : "")
                 agentInfoBar.visible = true
             }
 
             function onErrorOccurred(msg) {
                 agentInfoBar.severity = Severity.Error
-                agentInfoBar.title = Backend ? Backend.tr("Copilot 出错") : "Copilot 出错"
+                agentInfoBar.title = Backend ? Backend.tr("Blora Agent 出错") : "Blora Agent 出错"
                 agentInfoBar.text = msg
                 agentInfoBar.visible = true
             }
@@ -120,7 +120,7 @@ FluentWindowBase {
             spacing: 2
 
             Repeater {
-                model: [(Backend ? Backend.tr("概览") : "概览"), (Backend ? Backend.tr("BLRPE Copilot") : "BLRPE Copilot"), (Backend ? Backend.tr("Git") : "Git"), (Backend ? Backend.tr("pack.mcmeta") : "pack.mcmeta"), "pack.png", (Backend ? Backend.tr("语言") : "语言"), (Backend ? Backend.tr("贴图") : "贴图"), (Backend ? Backend.tr("方块状态") : "方块状态"), (Backend ? Backend.tr("模型") : "模型"), (Backend ? Backend.tr("声音") : "声音"), (Backend ? Backend.tr("字体") : "字体"), (Backend ? Backend.tr("文本") : "文本"), (Backend ? Backend.tr("粒子") : "粒子"), (Backend ? Backend.tr("特殊文件") : "特殊文件"), (Backend ? Backend.tr("OptiFine") : "OptiFine"), (Backend ? Backend.tr("文件") : "文件"), (Backend ? Backend.tr("设置") : "设置")]
+                model: [(Backend ? Backend.tr("概览") : "概览"), (Backend ? Backend.tr("Blora Agent") : "Blora Agent"), (Backend ? Backend.tr("Git") : "Git"), (Backend ? Backend.tr("pack.mcmeta") : "pack.mcmeta"), "pack.png", (Backend ? Backend.tr("语言") : "语言"), (Backend ? Backend.tr("贴图") : "贴图"), (Backend ? Backend.tr("方块状态") : "方块状态"), (Backend ? Backend.tr("模型") : "模型"), (Backend ? Backend.tr("声音") : "声音"), (Backend ? Backend.tr("字体") : "字体"), (Backend ? Backend.tr("文本") : "文本"), (Backend ? Backend.tr("粒子") : "粒子"), (Backend ? Backend.tr("特殊文件") : "特殊文件"), (Backend ? Backend.tr("OptiFine") : "OptiFine"), (Backend ? Backend.tr("文件") : "文件"), (Backend ? Backend.tr("设置") : "设置")]
 
                 Button {
                     text: modelData
