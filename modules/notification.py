@@ -14,7 +14,7 @@
 - install: Minecraft / Java / 插件安装完成及失败
 - update: 应用更新可用 / 失败
 - chat_message: Minecraft 聊天消息
-- copilot: Copilot Agent 完成 / 需授权 / 出错
+- copilot: Blora Agent 完成 / 需授权 / 出错
 - account: 登录 / 同步
 """
 

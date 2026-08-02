@@ -34,16 +34,18 @@ FluentPage {
     }
 
     Component.onCompleted: {
-        // 从后端获取活动信息（从 API https://launcher.bloret.net/api/info 获取）
-        Backend.refreshActivityInfo()
-        
+        // 同步路径只读本地缓存：先出页面骨架，再延后远程刷新，减轻侧边栏切换卡顿。
+        // NavigationView 每次切页会 replace 重建实例，故 onCompleted 会反复执行。
+        if (!Backend)
+            return
+
         let realInfo = Backend.getActivityInfo()
         if (realInfo && Object.keys(realInfo).length > 0) {
             activityInfo = realInfo
         }
-        
+
         launchItems = Backend.getLaunchItems()
-        
+
         // 优先使用配置中保存的核心选择，若不存在或无效则回退到第一项
         var saved = Backend.getSelectedLaunchItem()
         var found = launchItems.find(function(item) { return item.name === saved })
@@ -53,11 +55,20 @@ FluentPage {
         } else if (launchItems.length > 0) {
             currentVersion = launchItems[0].name
         }
-        
+
         showAccountOnHome = Backend.getShowAccountOnHome()
-        
-        Backend.refreshServerInfo()
-        loadPluginHomeCards()
+
+        // 插件卡片与远程刷新放到下一帧，让 StackView 动画/首帧先完成；
+        // Backend 内还有 TTL / in-flight，短时间反复进入不会重复打网。
+        Qt.callLater(function() {
+            if (!homePage)
+                return
+            loadPluginHomeCards()
+            if (Backend) {
+                Backend.refreshActivityInfo()
+                Backend.refreshServerInfo()
+            }
+        })
     }
 
     Connections {
@@ -452,19 +463,14 @@ Rectangle {
                             }
                             source: {
                                 let url = Backend ? Backend.getPassPortAvatar() : ""
-                                let finalUrl = url && url !== "" ? url : "../../icon/Grass_Block.png"
-                                console.log("[Home.qml] Avatar Image source:", finalUrl)
-                                return finalUrl
+                                return url && url !== "" ? url : "../../icon/Grass_Block.png"
                             }
                             asynchronous: true
                             cache: false
                             fillMode: Image.PreserveAspectCrop
                             onStatusChanged: {
-                                console.log("[Home.qml] Avatar Image status:", status)
-                                if (status === Image.Error) {
-                                    console.log("[Home.qml] Avatar Image loading failed, using default")
+                                if (status === Image.Error)
                                     source = "../../icon/Grass_Block.png"
-                                }
                             }
                         }
                     }

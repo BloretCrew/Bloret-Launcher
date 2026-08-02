@@ -419,7 +419,7 @@ class AgentBackend(QObject):
 
         # 发送系统通知
         tool_cn = _TOOL_CN.get(tool_name, tool_name)
-        _send_os_notification("Copilot 需要授权", f"请求{tool_cn}: {description or tool_cn}")
+        _send_os_notification("Blora Agent 需要授权", f"请求{tool_cn}: {description or tool_cn}")
 
         # 发送信号到 QML
         self.permissionRequested.emit(tool_name, "", description, reasoning)
@@ -1169,7 +1169,7 @@ class AgentBackend(QObject):
             last = self._current_tool_calls[-1]
             tool_cn = _TOOL_CN.get(last.get("name", ""), last.get("name", ""))
             body = f"在{tool_cn}时出错: {error}"
-        _send_os_notification("Copilot 出错", body)
+        _send_os_notification("Blora Agent 出错", body)
         self.errorOccurred.emit(error)
 
     # ========== 自动提交 ==========
@@ -1242,7 +1242,7 @@ class AgentBackend(QObject):
         log.info(f"[Agent] 完成回调触发, 文本长度={len(self._current_text)}, 工具调用数={len(self._current_tool_calls)}")
         print(f"[Agent DEBUG] 完成回调触发, 文本长度={len(self._current_text)}, 工具调用数={len(self._current_tool_calls)}")
         if not self._had_error:
-            _send_os_notification("Copilot 完成", _summarize_agent_result(self._current_text, self._current_tool_calls))
+            _send_os_notification("Blora Agent 完成", _summarize_agent_result(self._current_text, self._current_tool_calls))
         if self._current_text:
             self._history.append({"role": "assistant", "content": self._current_text})
             # 保存工具调用到历史记录

@@ -650,7 +650,7 @@ DEVELOPMENT_WORKFLOW = """
 # Agent 系统提示词模板
 # ============================================================
 
-AGENT_SYSTEM_PROMPT_TEMPLATE = """你是 Bloret Launcher 资源包编辑器的 AI 助手 BLPRE Copilot。你是 Minecraft Java 版资源包开发专家，精通资源包的结构规范、文件格式、开发流程和最佳实践。
+AGENT_SYSTEM_PROMPT_TEMPLATE = """你是 Bloret Launcher 资源包编辑器的 AI 助手 Blora Agent。你是 Minecraft Java 版资源包开发专家，精通资源包的结构规范、文件格式、开发流程和最佳实践。
 
 你当前正在编辑的资源包: {pack_path}
 
