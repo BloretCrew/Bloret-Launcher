@@ -57,6 +57,37 @@ jobs:
       with:
         submodules: true
 
+    - name: 检查和修复子模块指针
+      run: |
+        set -e
+        git submodule foreach --recursive '
+          remote_url=$(git remote get-url origin 2>/dev/null) || true
+          test -n "$remote_url" || exit 0
+          case "$remote_url" in *github.com:*@github.com:*) exit 0 ;; esac
+          commit=$(git rev-parse HEAD)
+          if ! git ls-remote origin "$commit" 2>/dev/null | grep -q .; then
+            echo "::warning::$name: commit $commit 不在远端，自动修复..."
+            default_branch=$(git ls-remote --symref origin HEAD 2>/dev/null \
+              | awk "/^ref: /{print \$2}" | sed "s|refs/heads/||")
+            test -z "$default_branch" && default_branch="main"
+            git fetch origin "$default_branch" --depth=1
+            new_commit=$(git rev-parse "origin/$default_branch")
+            git reset --hard "$new_commit"
+            echo "✅ $name: $commit → $new_commit"
+          else
+            echo "✓ $name @ $commit"
+          fi
+        '
+        if ! git diff --quiet --submodule=short; then
+          git add -u
+          git commit -m "fix: auto-repair invalid submodule pointers [skip ci]"
+          git push
+          echo "✔ 已推送子模块指针修复"
+        else
+          echo "✔ 所有子模块指针有效"
+        fi
+      shell: bash
+
     - name: 设置 Python
       uses: actions/setup-python@v5
       with:
