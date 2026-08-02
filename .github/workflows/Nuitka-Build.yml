@@ -36,15 +36,15 @@ jobs:
     - name: 检查和修复子模块指针
       run: |
         set -e
-        fixed=false
         git submodule foreach --recursive '
           remote_url=$(git remote get-url origin 2>/dev/null) || true
           test -n "$remote_url" || exit 0
           # 跳过 SSH-only 子模块（如 wiki）
           case "$remote_url" in *github.com:*@github.com:*) exit 0 ;; esac
           commit=$(git rev-parse HEAD)
-          if ! git ls-remote origin "$commit" 2>/dev/null | grep -q .; then
-            echo "::warning::$name: commit $commit 不在远端，自动修复..."
+          # 用 fetch 检测 commit 是否在远端存在（ls-remote 按 ref 名匹配，不可靠）
+          if ! git fetch origin "$commit" --depth=1 2>/dev/null; then
+            echo "::warning::$name: commit $commit 不在远端，自动修复（仅本 job 生效）..."
             default_branch=$(git ls-remote --symref origin HEAD 2>/dev/null \
               | awk "/^ref: /{print \$2}" | sed "s|refs/heads/||")
             test -z "$default_branch" && default_branch="main"
@@ -56,14 +56,7 @@ jobs:
             echo "✓ $name @ $commit"
           fi
         '
-        if ! git diff --quiet --submodule=short; then
-          git add -u
-          git commit -m "fix: auto-repair invalid submodule pointers [skip ci]"
-          git push
-          echo "✔ 已推送子模块指针修复"
-        else
-          echo "✔ 所有子模块指针有效"
-        fi
+        echo "✔ 检查完成（修复仅用于本 job 继续构建，不回写远端）"
       shell: bash
 
     - name: 设置 Python
