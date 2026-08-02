@@ -30,7 +30,7 @@ jobs:
     - name: 检出最新版本（含子模块）
       uses: actions/checkout@v4
       with:
-        ref: ${{ runner.os == 'Windows' && 'Windows' || github.ref }}
+        ref: ${{ github.ref }}
         submodules: true
 
     - name: 检查和修复子模块指针
