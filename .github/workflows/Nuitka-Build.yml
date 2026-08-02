@@ -304,7 +304,10 @@ jobs:
         if [ -d "easytier" ] && [ "$(ls -A easytier)" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
         # OpenSSL 依赖通过上面的环境变量配置处理
-        python -m nuitka --standalone --macos-create-app-bundle --macos-app-name="Bloret Launcher" $ICON_CMD --enable-plugin=pyside6 --include-qt-plugins=sensible,styles,qml --include-data-dir=qml=qml --include-data-dir=RinUI/RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no Bloret-Launcher.py
+        # macOS runner 资源有限，限制并行编译并独立输出目录，避免 OOM/磁盘/路径冲突
+        mkdir -p nuitka-output
+        df -h . | tail -1
+        python -m nuitka --standalone --macos-create-app-bundle --macos-app-name="Bloret Launcher" $ICON_CMD --enable-plugin=pyside6 --include-qt-plugins=sensible,styles,qml --include-data-dir=qml=qml --include-data-dir=RinUI/RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no --jobs=2 --output-dir=nuitka-output Bloret-Launcher.py
 
         # 生成 DMG 文件
         brew install create-dmg
@@ -321,6 +324,9 @@ jobs:
         python3 -c "from PIL import Image, ImageDraw; img = Image.new('RGB', (600, 400), (240, 240, 240)); draw = ImageDraw.Draw(img); draw.polygon([(250, 200), (350, 200), (350, 150), (450, 250), (350, 350), (350, 300), (250, 300)], fill=(100, 100, 100)); img.save('dmg_bg.png')" || true
 
         rm -f "$DMG_NAME"
+        # app bundle 生成在 nuitka-output 下
+        APP_PATH=$(find nuitka-output -maxdepth 2 -name "*.app" -type d | head -1)
+        echo "APP_PATH=$APP_PATH"
         create-dmg \
           --volname "Bloret Launcher" \
           --volicon "build_assets/icon.icns" \
@@ -331,7 +337,7 @@ jobs:
           --hide-extension "Bloret Launcher.app" \
           --app-drop-link 450 250 \
           "$DMG_NAME" \
-          "Bloret Launcher.app/"
+          "$APP_PATH"
       shell: bash
 
     - name: 收集产物
