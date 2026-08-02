@@ -49,6 +49,13 @@ jobs:
         # 确保使用最新版 Nuitka 以获得最佳兼容性
         python -m pip install --upgrade nuitka
         pip install pillow zstandard ordered-set
+        # PySide6 6.11.1 的 Linux wheel 在 QML 目录中包含静态库/目标文件。
+        # Nuitka 会误把这些文件当作共享库交给 patchelf，导致打包失败。
+        # 它们仅用于 Qt 自身构建，运行时不需要，打包前安全移除。
+        if [ "${{ runner.os }}" == "Linux" ]; then
+          PYSIDE_QML_DIR=$(python -c "from PySide6.QtCore import QLibraryInfo; print(QLibraryInfo.path(QLibraryInfo.LibraryPath.QmlImportsPath))")
+          find "$PYSIDE_QML_DIR" -type f \( -name '*.o' -o -name '*.a' -o -name '*.prl' \) -delete
+        fi
         if [ "${{ runner.os }}" == "Linux" ]; then sudo apt-get update && sudo apt-get install -y fuse libfuse2 patchelf; fi
         if [ "${{ runner.os }}" == "macOS" ]; then
           brew list openssl@3 &>/dev/null || brew install openssl@3
@@ -132,7 +139,7 @@ jobs:
           --enable-plugin=pyside6 `
           --include-qt-plugins=sensible,styles,qml `
           --include-data-dir=qml=qml `
-          --include-data-dir=RinUI=RinUI `
+          --include-data-dir=RinUI/RinUI=RinUI `
           --include-data-dir=icon=icon `
           --include-data-dir=lang=lang `
           --include-data-files=bloret.ico=bloret.ico `
@@ -149,7 +156,7 @@ jobs:
       run: |
         EASYTIER_ARG=""
         if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
-        python -m nuitka --standalone --onefile --enable-plugin=pyside6 --include-qt-plugins=sensible,qml --include-data-dir=qml=qml --include-data-dir=RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang --include-data-files=Bloret.png=Bloret.png --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
+        python -m nuitka --standalone --onefile --enable-plugin=pyside6 --include-qt-plugins=sensible,qml --include-data-dir=qml=qml --include-data-dir=RinUI/RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang --include-data-files=Bloret.png=Bloret.png --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png --include-data-files=config.json=config.json --include-data-files=LICENSE=LICENSE $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
       shell: bash
 
     - name: 修复 OpenSSL 依赖 (macOS)
@@ -271,7 +278,7 @@ jobs:
         if [ -d "easytier" ] && [ "$(ls -A easytier)" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
         # OpenSSL 依赖通过上面的环境变量配置处理
-        python -m nuitka --standalone --macos-create-app-bundle --macos-app-name="Bloret Launcher" $ICON_CMD --enable-plugin=pyside6 --include-qt-plugins=sensible,styles,qml --include-data-dir=qml=qml --include-data-dir=RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no Bloret-Launcher.py
+        python -m nuitka --standalone --macos-create-app-bundle --macos-app-name="Bloret Launcher" $ICON_CMD --enable-plugin=pyside6 --include-qt-plugins=sensible,styles,qml --include-data-dir=qml=qml --include-data-dir=RinUI/RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no Bloret-Launcher.py
 
         # 生成 DMG 文件
         brew install create-dmg
