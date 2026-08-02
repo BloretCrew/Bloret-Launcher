@@ -17,7 +17,7 @@ Wiki 同步页：[插件开发规范](https://github.com/BloretCrew/Bloret-Launc
 | 下载进度、改镜像 URL | `download.*` / `download.resolve_url` | `download.hooks` |
 | 监听登录、配置变更、切页 | `account.*` / `config.changed` / `ui.page.open` | 多为安全权限 |
 | Live / EasyTier | `live.*` / `easytier.*` 钩子 | `live.control` |
-| 扩展络可 / BLRPE | `register_agent_tool` / `prompts` | `agent.bloriko` / `agent.blrpe` |
+| 扩展络可 / Blora Agent | `register_agent_tool` / `prompts` | `agent.bloriko` / `agent.blrpe` |
 | 读版本 / Mods / 资源包 | `list_versions*` / `list_mods` / Web `/api/v1/…` | `versions.read` / `mods.read` |
 | 自定义本地 HTTP、通知渠道、`bloret://` 路径 | `register_web_route` / `register_notification_channel` / `register_protocol_handler` | `web.routes` / `notify.channel` / `protocol.handle` |
 

@@ -122,7 +122,7 @@ def get_latest_version():
     BL_latest_ver = "0.0"
     
     try:
-        response = requests.get(f"{BLglobals.server_ip}:3001/api/info")
+        response = requests.get(f"{BLglobals.server_ip}:3001/api/info", timeout=5)
         if response.status_code == 200:
             latest_release = response.json()
             BL_update_text = latest_release.get("newVersionDescription", "")

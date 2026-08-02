@@ -83,9 +83,10 @@ FluentPage {
                 visible: isAuthenticated
                 onClicked: {
                     isLoading = true
-                    Backend.fetchBBBSSummary()
-                    Backend.fetchBBBSLeaderboard()
-                    Backend.fetchBBBSAllPosts()
+                    // forceRefresh=true：绕过 TTL 缓存
+                    Backend.fetchBBBSSummary(true)
+                    Backend.fetchBBBSLeaderboard(true)
+                    Backend.fetchBBBSAllPosts(true)
                 }
             }
         }

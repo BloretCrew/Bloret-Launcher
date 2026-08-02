@@ -158,7 +158,7 @@ PERMISSION_META = {
     "accounts.write": {"label": "切换或管理账户", "risk": "high"},
     "live.control": {"label": "控制 Live / EasyTier", "risk": "high"},
     "agent.bloriko": {"label": "扩展络可 Agent", "risk": "high"},
-    "agent.blrpe": {"label": "扩展 BLRPE Copilot", "risk": "high"},
+    "agent.blrpe": {"label": "扩展 Blora Agent", "risk": "high"},
     "agent.provider": {"label": "注册自定义 AI 供应商", "risk": "high"},
     "notify.send": {"label": "发送系统通知", "risk": "safe"},
     "notify.channel": {"label": "注册通知渠道", "risk": "high"},
