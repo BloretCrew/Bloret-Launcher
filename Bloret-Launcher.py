@@ -57,51 +57,59 @@ else:
 import modules.IP  # noqa: E402
 
 # Create the QApplication early so it can be used in shims and module imports
-from PySide6.QtWidgets import QApplication, QFileDialog, QSystemTrayIcon
+from PySide6.QtWidgets import QApplication, QFileDialog, QSystemTrayIcon, QWidget
 from PySide6.QtCore import QLocale, Qt, QTranslator, QObject, Slot, Signal, Property, QUrl
 from PySide6.QtGui import QGuiApplication, QIcon, QDesktopServices, QPixmap, QPainter, QCursor
 
 QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
 app = QApplication(sys.argv)
+# 托盘应用：关闭/隐藏主窗口或托盘 QMenu 后不得自动退出；仅显式 quit_app() 退出
+app.setQuitOnLastWindowClosed(False)
 
 if log_runtime_im_status is not None:
     log_runtime_im_status()
 
 
-def _enable_fault_logging():
-    """记录 Python/原生崩溃堆栈，避免仅看到退出码。"""
+def _datapath_base() -> Path:
     try:
-        try:
-            from modules.platform_compat import datapath_default
+        from modules.platform_compat import datapath_default
 
-            base = Path(datapath_default())
-        except Exception:
-            if sys.platform == "win32":
-                base = Path(os.getenv("APPDATA", str(SCRIPT_DIR))) / "Bloret-Launcher"
-            elif sys.platform == "darwin":
-                base = Path.home() / "Library" / "Application Support" / "Bloret-Launcher"
-            else:
-                xdg = os.environ.get("XDG_DATA_HOME", "").strip()
-                base = (
-                    Path(xdg) / "Bloret-Launcher"
-                    if xdg
-                    else Path.home() / ".local" / "share" / "Bloret-Launcher"
-                )
-        log_dir = base / "logs"
+        return Path(datapath_default())
+    except Exception:
+        if sys.platform == "win32":
+            return Path(os.getenv("APPDATA", str(SCRIPT_DIR))) / "Bloret-Launcher"
+        if sys.platform == "darwin":
+            return Path.home() / "Library" / "Application Support" / "Bloret-Launcher"
+        xdg = os.environ.get("XDG_DATA_HOME", "").strip()
+        return (
+            Path(xdg) / "Bloret-Launcher"
+            if xdg
+            else Path.home() / ".local" / "share" / "Bloret-Launcher"
+        )
+
+
+def _enable_fault_logging():
+    """记录 Python/原生崩溃堆栈，避免仅看到退出码。
+
+    写入业务日志同级目录 log/，便于用户在同一处查找。
+    """
+    try:
+        base = _datapath_base()
+        log_dir = base / "log"
         log_dir.mkdir(parents=True, exist_ok=True)
         fault_path = log_dir / "python-faulthandler.log"
 
         stream = open(fault_path, "a", encoding="utf-8")
         stream.write("\n===== Bloret Launcher fault handler enabled =====\n")
         faulthandler.enable(file=stream, all_threads=True)
-        return stream
+        return stream, fault_path
     except Exception as e:
         print(f"Failed to enable faulthandler logging: {e}")
-        return None
+        return None, None
 
 
-_FAULT_LOG_STREAM = _enable_fault_logging()
+_FAULT_LOG_STREAM, _FAULT_LOG_PATH = _enable_fault_logging()
 
 # --- Finished Full PySide6 Migration ---
 # All modules have been refactored to use PySide6 and RinUI directly.
@@ -126,10 +134,44 @@ import modules.links as links
 import socket
 import send2trash
 from modules.compat_widgets import Action, RoundMenu
-from modules.log import log
+from modules.log import log, log_filename
 import time
 import logging
 from modules.process_utils import hidden_process_kwargs
+# 尽早安装全局异常钩子（safe 在 import 时设置 sys.excepthook）
+import modules.safe  # noqa: F401
+
+
+def _redirect_stdio_to_log_if_needed():
+    """无控制台 / Nuitka 打包下把 stdout/stderr 接到业务日志，避免 slot 异常被丢弃。"""
+    try:
+        is_packaged = bool(getattr(sys, "__nuitka_binary_dir", None) or getattr(sys, "frozen", False))
+        need_out = sys.stdout is None or not hasattr(sys.stdout, "write")
+        need_err = sys.stderr is None or not hasattr(sys.stderr, "write")
+        # 开发环境有真实终端时不抢占
+        if not is_packaged and not need_out and not need_err:
+            if _FAULT_LOG_PATH:
+                log(f"Faulthandler log: {_FAULT_LOG_PATH}")
+            return
+
+        log_path = log_filename if log_filename else str(_datapath_base() / "log" / "Bloret_Launcher_stdio.log")
+        stream = open(log_path, "a", encoding="utf-8", buffering=1)
+        if need_out or is_packaged:
+            sys.stdout = stream
+        if need_err or is_packaged:
+            sys.stderr = stream
+
+        if _FAULT_LOG_PATH:
+            log(f"Faulthandler log: {_FAULT_LOG_PATH}")
+        log(f"Business log file: {log_path}")
+    except Exception as e:
+        try:
+            log(f"Failed to redirect stdio to log: {e}", logging.WARNING)
+        except Exception:
+            print(f"Failed to redirect stdio to log: {e}")
+
+
+_redirect_stdio_to_log_if_needed()
 
 
 def get_app_icon_path(for_tray=False):
@@ -5317,6 +5359,8 @@ class LauncherTrayIcon(QSystemTrayIcon):
         self._is_refreshing_launch_menu = False
         self._trigger_reason = self._resolve_trigger_reason()
         self._context_reason = self._resolve_context_reason()
+        # Linux StatusNotifierItem 必须 setContextMenu；Windows/macOS 用手动 popup 更稳
+        self._use_native_context_menu = sys.platform.startswith("linux")
 
         icon_path = get_app_icon_path(for_tray=True)
         if icon_path:
@@ -5326,29 +5370,70 @@ class LauncherTrayIcon(QSystemTrayIcon):
 
         self.setToolTip("Bloret Launcher")
 
-        self.menu = RoundMenu()
+        # QML 主窗口无 QWidget 层级时，给托盘菜单一个隐藏父控件更稳妥
+        self._menu_host = QWidget()
+        self._menu_host.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
+        self._menu_host.hide()
+
+        self.menu = RoundMenu(self._menu_host)
         self.launch_menu = RoundMenu(i18nText("🔼  启动版本"), self.menu)
         self.menu.addMenu(self.launch_menu)
 
         # 初始化时填充一次，确保菜单首次显示时有内容
         self._refresh_launch_menu()
-        # 之后每次子菜单展开时刷新，保持版本列表最新
+        # 子菜单展开前同步刷新（_is_refreshing_launch_menu 防重入）
         self.launch_menu.aboutToShow.connect(self._refresh_launch_menu)
 
         self.menu.addSeparator()
-        self.menu.addAction(Action(i18nText('🔡  访问 BBS'), self.menu, triggered=links.open_BBBS_link))
-        self.menu.addAction(Action(i18nText('🔡  访问 Bloret PassPort'), self.menu, triggered=links.open_PassPort_link))
-        self.menu.addAction(Action(i18nText('🔡  访问 百络图床'), self.menu, triggered=links.open_BIMG_WEB_link))
+        self.menu.addAction(Action(
+            i18nText('🔡  访问 BBS'), self.menu,
+            triggered=self._safe_triggered(links.open_BBBS_link),
+        ))
+        self.menu.addAction(Action(
+            i18nText('🔡  访问 Bloret PassPort'), self.menu,
+            triggered=self._safe_triggered(links.open_PassPort_link),
+        ))
+        self.menu.addAction(Action(
+            i18nText('🔡  访问 百络图床'), self.menu,
+            triggered=self._safe_triggered(links.open_BIMG_WEB_link),
+        ))
 
         self.menu.addSeparator()
-        self.menu.addAction(Action(i18nText('🔄️  重启程序'), self.menu, triggered=self.main_window.restart_app))
-        self.menu.addAction(Action(i18nText('✅  显示窗口'), self.menu, triggered=self.main_window.show_main_window))
-        self.menu.addAction(Action(i18nText('❎  退出程序'), self.menu, triggered=self.main_window.quit_app))
+        self.menu.addAction(Action(
+            i18nText('🔄️  重启程序'), self.menu,
+            triggered=self._safe_triggered(self.main_window.restart_app),
+        ))
+        self.menu.addAction(Action(
+            i18nText('✅  显示窗口'), self.menu,
+            triggered=self._safe_triggered(self.main_window.show_main_window),
+        ))
+        self.menu.addAction(Action(
+            i18nText('❎  退出程序'), self.menu,
+            triggered=self._safe_triggered(self.main_window.quit_app),
+        ))
 
-        # 注册为系统托盘的上下文菜单（Linux 下必须，否则菜单内容为空）
-        self.setContextMenu(self.menu)
+        if self._use_native_context_menu:
+            # Linux：DE 通过 DBus/StatusNotifierItem 取菜单，必须注册
+            self.setContextMenu(self.menu)
+        # Windows/macOS：不 setContextMenu，在 activated(Context) 里 popup，避免静默退出/双菜单
 
         self.activated.connect(self._on_tray_activated)
+        log(
+            f"System tray ready (native_context_menu={self._use_native_context_menu}, "
+            f"platform={sys.platform})"
+        )
+
+    @staticmethod
+    def _safe_triggered(callback):
+        """包装菜单回调：吞掉 checked 参数，异常写入业务日志。"""
+        def _handler(checked=False):
+            try:
+                callback()
+            except Exception as e:
+                log(f"Tray menu action failed: {e}", logging.ERROR)
+                import traceback
+                log(traceback.format_exc(), logging.ERROR)
+        return _handler
 
     @staticmethod
     def _resolve_trigger_reason():
@@ -5384,17 +5469,25 @@ class LauncherTrayIcon(QSystemTrayIcon):
                 action = Action(
                     version,
                     self.launch_menu,
-                    triggered=lambda checked=False, v=version: self.main_window.launch_version_from_tray(v),
+                    triggered=self._make_launch_handler(version),
                 )
                 self.launch_menu.addAction(action)
 
         except Exception as e:
-            print(f"Failed to refresh tray launch menu: {e}")
+            log(f"Failed to refresh tray launch menu: {e}", logging.ERROR)
             error_action = Action(i18nText("加载启动列表失败"), self.launch_menu)
             error_action.setEnabled(False)
             self.launch_menu.addAction(error_action)
         finally:
             self._is_refreshing_launch_menu = False
+
+    def _make_launch_handler(self, version):
+        def _handler(checked=False, v=version):
+            try:
+                self.main_window.launch_version_from_tray(v)
+            except Exception as e:
+                log(f"Tray launch version failed ({v}): {e}", logging.ERROR)
+        return _handler
 
     @staticmethod
     def _get_tray_launch_versions():
@@ -5421,12 +5514,13 @@ class LauncherTrayIcon(QSystemTrayIcon):
                         if custom_name:
                             version_names.append(custom_name)
         except Exception as e:
-            print(f"Failed to collect tray launch versions: {e}")
+            log(f"Failed to collect tray launch versions: {e}", logging.ERROR)
 
         return list(dict.fromkeys(version_names))
 
     def _on_tray_activated(self, reason):
         try:
+            log(f"Tray activated: reason={reason!r}")
             is_trigger = self._reason_equals(reason, self._trigger_reason)
             if is_trigger:
                 if self._is_window_hidden_or_minimized():
@@ -5441,11 +5535,17 @@ class LauncherTrayIcon(QSystemTrayIcon):
 
             is_context = self._reason_equals(reason, self._context_reason)
             if is_context:
-                # 菜单已通过 setContextMenu(menu) 注册，由平台负责显示
-                # 无需手动 popup（Linux 下 StatusNotifierItem 通过 DBus 获取菜单）
+                if not self._use_native_context_menu:
+                    try:
+                        self.menu.popup(QCursor.pos())
+                    except Exception as e:
+                        log(f"Tray context menu popup failed: {e}", logging.ERROR)
+                # Linux：菜单已通过 setContextMenu 注册，由平台负责显示
                 return
         except Exception as e:
-            print(f"Tray activation handler failed: {e}")
+            log(f"Tray activation handler failed: {e}", logging.ERROR)
+            import traceback
+            log(traceback.format_exc(), logging.ERROR)
 
     def _is_window_hidden_or_minimized(self):
         """兼容 RinUI/QQuickWindow 的窗口状态判断，避免访问不存在的 QWidget API。"""
@@ -5691,11 +5791,17 @@ class LauncherV2(RinUIWindow):
 
     def _init_system_tray(self):
         if not QSystemTrayIcon.isSystemTrayAvailable():
-            print("System tray is not available on this platform")
+            log("System tray is not available on this platform", logging.WARNING)
             return
 
-        self.tray_icon = LauncherTrayIcon(self)
-        self.tray_icon.show()
+        try:
+            self.tray_icon = LauncherTrayIcon(self)
+            self.tray_icon.show()
+        except Exception as e:
+            log(f"Failed to initialize system tray: {e}", logging.ERROR)
+            import traceback
+            log(traceback.format_exc(), logging.ERROR)
+            self.tray_icon = None
 
     def launch_version_from_tray(self, version):
         if version and self.backend:

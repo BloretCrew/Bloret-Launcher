@@ -136,14 +136,14 @@ def log(message, level=logging.INFO):
         logger.log(level, message, stacklevel=2)
     except Exception:
         logger.log(level, message)
-    
-    # 2. 格式化控制台输出 (可选，因为 console_handler 已经处理了 stdout)
-    # 但由于之前的逻辑是手动打印，为了保持格式一致性，我们在这里优化处理。
-    # 实际上由于已经添加了 console_handler 到 logger，正常的 `logger.log` 已经会输出到 stdout。
-    # 如果要保留手动打印，也要避免频繁获取时间戳带来的开销。
-    
-    # 注意：不再强制刷新所有 handlers，让 OS 和 Python 运行时自行管理缓冲，提升性能。
-    # 如果确实需要立即写入，应该只针对 file_handler 且在 ERROR 级别才做，这里全部移除。
+
+    # ERROR 及以上强制 flush，避免 Nuitka 无控制台打包在崩溃/退出前丢日志
+    if level >= logging.ERROR:
+        for h in logger.handlers:
+            try:
+                h.flush()
+            except Exception:
+                pass
 
 def clear_log_files(self, log_clear_button):
     ''' 
