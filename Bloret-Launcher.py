@@ -5756,12 +5756,12 @@ class LauncherV2(RinUIWindow):
 
         if self._should_hide_to_tray_on_close():
             self.hide()
+            log("Window close intercepted: hide to system tray")
             return True
 
-        self._force_quit = True
-        self._shutdown_runtime_services()
-        if self.tray_icon:
-            self.tray_icon.hide()
+        # quitOnLastWindowClosed=False：关窗不会自动退出，必须显式 quit
+        log("Window close: quitting application (minimize-to-tray off)")
+        self.quit_app()
         return False
 
     @staticmethod
@@ -5945,23 +5945,19 @@ class LauncherV2(RinUIWindow):
             except Exception:
                 self._reject_close_event(event)
             self.hide()
+            log("closeEvent intercepted: hide to system tray")
             return
 
-        self._force_quit = True
-        self._shutdown_runtime_services()
-        if self.tray_icon:
-            self.tray_icon.hide()
-        try:
-            host = getattr(self, "plugin_host", None)
-            if host is not None and hasattr(host, "shutdown"):
-                print("[PluginHost] closeEvent -> shutdown")
-                host.shutdown()
-        except Exception as e:
-            print(f"[PluginHost] closeEvent shutdown 失败: {e}")
+        # 真正退出：setQuitOnLastWindowClosed(False) 后必须走 quit_app
+        log("closeEvent: quitting application")
         try:
             super().closeEvent(event)
         except Exception:
-            event.accept()
+            try:
+                event.accept()
+            except Exception:
+                pass
+        self.quit_app()
 
 # --- 单实例锁：供启动检测与「重启」时主动释放 ---
 RESTART_ARGV_FLAG = "--from-restart"
