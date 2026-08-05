@@ -2692,30 +2692,66 @@ class Backend(QObject):
         """导入 Modrinth .mrpack 整合包（内置实现，弹出文件选择）。"""
         try:
             from PySide6.QtWidgets import QFileDialog
-            from modules.mrpack_import import import_mrpack
 
             file_path, _ = QFileDialog.getOpenFileName(
                 None,
-                self.tr("选择 .mrpack 文件") if hasattr(self, "tr") else "选择 .mrpack 文件",
+                self.tr("选择 .mrpack 文件"),
                 "",
                 "Modrinth Modpack Files (*.mrpack)",
             )
             if not file_path:
-                print("Requested import Modrinth mrpack: cancelled")
+                log("Requested import Modrinth mrpack: cancelled")
                 return
-            self.requestMrpackImport(file_path, "", f"import:{int(time.time() * 1000)}")
+
+            request_id = f"import:{int(time.time() * 1000)}"
+            log(f"Requested import Modrinth mrpack: {file_path}")
+            # 立即反馈，避免「选完文件无反应」
+            try:
+                self.downloadNotify.emit(
+                    self.tr("正在导入整合包"),
+                    os.path.basename(file_path),
+                    True,
+                )
+            except Exception:
+                pass
+            try:
+                self.openDownloadManager()
+            except Exception:
+                pass
+            ok = self.requestMrpackImport(file_path, "", request_id)
+            if not ok:
+                self.downloadNotify.emit(
+                    self.tr("导入失败"),
+                    self.tr("无法启动导入任务"),
+                    False,
+                )
         except Exception as e:
-            print(f"导入 Modrinth 整合包失败: {e}")
+            log(f"导入 Modrinth 整合包失败: {e}", logging.ERROR)
             import traceback
             traceback.print_exc()
+            try:
+                self.downloadNotify.emit(self.tr("导入失败"), str(e), False)
+            except Exception:
+                pass
 
     @Slot(str, str, str, result=bool)
     def requestMrpackImport(self, filePath, instanceName, requestId):
         """异步导入 .mrpack；进度经 mrpackImportProgress，结果经 mrpackImportFinished。"""
         if not filePath:
             return False
+        if getattr(self, "_mrpack_import_busy", False):
+            try:
+                self.downloadNotify.emit(
+                    self.tr("请稍候"),
+                    self.tr("已有整合包导入任务进行中"),
+                    False,
+                )
+            except Exception:
+                pass
+            return False
 
         def _run():
+            self._mrpack_import_busy = True
             ok = False
             name = ""
             message = ""
@@ -2732,10 +2768,20 @@ class Backend(QObject):
                         )
                     except Exception:
                         pass
+                    # 内容下载阶段也刷一下通知文案（InfoBar）
+                    try:
+                        if phase in ("read", "download", "extract", "install") and msg:
+                            title = self.tr("正在导入整合包")
+                            detail = f"[{phase}] {msg}"
+                            if total:
+                                detail = f"[{phase} {current}/{total}] {msg}"
+                            self.downloadNotify.emit(title, detail[:120], True)
+                    except Exception:
+                        pass
 
                 result = import_mrpack(
                     filePath,
-                    instance_name=(instanceName or None),
+                    instance_name=(instanceName or None) or None,
                     backend=self,
                     progress=on_progress,
                 )
@@ -2747,6 +2793,7 @@ class Backend(QObject):
                 message = str(exc)
                 log(f"导入 mrpack 失败: {exc}", logging.ERROR)
             finally:
+                self._mrpack_import_busy = False
                 try:
                     self.mrpackImportFinished.emit(
                         str(requestId or ""),
@@ -2756,8 +2803,23 @@ class Backend(QObject):
                     )
                 except Exception:
                     pass
+                try:
+                    if ok:
+                        self.downloadNotify.emit(
+                            self.tr("整合包导入成功"),
+                            name or message,
+                            True,
+                        )
+                        self.invalidateLaunchItemsCache()
+                    else:
+                        self.downloadNotify.emit(
+                            self.tr("整合包导入失败"),
+                            message or self.tr("未知错误"),
+                            False,
+                        )
+                except Exception:
+                    pass
                 if ok:
-                    # 通知 UI 刷新版本列表（若存在对应信号/方法）
                     for attr in ("versionsListChanged", "localVersionsChanged", "versionsChanged"):
                         sig = getattr(self, attr, None)
                         if sig is not None and hasattr(sig, "emit"):
@@ -2766,6 +2828,15 @@ class Backend(QObject):
                             except Exception:
                                 pass
                             break
+                try:
+                    from modules.notification import send_notification
+                    send_notification(
+                        self.tr("整合包导入成功") if ok else self.tr("整合包导入失败"),
+                        name or message,
+                        category="install",
+                    )
+                except Exception:
+                    pass
 
         threading.Thread(target=_run, daemon=True, name="MrpackImport").start()
         return True

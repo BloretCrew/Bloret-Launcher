@@ -170,17 +170,21 @@ def parse_dependencies(deps: Dict[str, Any]) -> Tuple[str, str, Optional[str]]:
 def suggest_instance_name(index: Dict[str, Any], mrpack_path: str) -> str:
     name = str(index.get("name") or "").strip()
     version_id = str(index.get("versionId") or "").strip()
-    if name and version_id:
-        base = f"{name}-{version_id}"
-    elif name:
+    # 优先短名：整合包名；过长再截断。versionId 常含空格/特殊字符，仅作后缀兜底。
+    if name:
         base = name
+    elif version_id:
+        base = version_id
     else:
         base = Path(mrpack_path).stem
-    # 净化为安全目录名
-    base = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", base).strip(" .")
-    if not base:
+    # 净化为安全目录名（与 install._is_safe_version_name 对齐）
+    base = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", base)
+    base = base.replace("\\", "_").replace("/", "_").strip(" .")
+    # 空白压成下划线，避免部分平台路径问题
+    base = re.sub(r"\s+", "_", base)
+    if not base or base in (".", ".."):
         base = "ImportedModpack"
-    return base[:80]
+    return base[:64]
 
 
 def _unique_instance_name(minecraft_dir: str, desired: str) -> str:
@@ -314,14 +318,18 @@ def _install_minecraft_and_loader(
     progress: ProgressCb = None,
     timeout_sec: int = 3600,
 ) -> bool:
-    """直接调用安装管线（带正确 minecraft_dir），阻塞直到完成。"""
-    from modules.install import _install_minecraft_version_threaded
+    """通过 DownloadManager 安装游戏与加载器（会弹出下载面板），阻塞直到完成。"""
+    from modules.download_manager import DownloadManager
+    from modules.install import _is_safe_version_name
 
     loader = loader_type if loader_type in ("vanilla", "fabric", "forge", "neoforge") else (
         "fabric" if loader_type == "quilt" else "vanilla"
     )
     if loader_type == "quilt":
         log("Quilt 加载器将尝试以 fabric 兼容路径安装（若失败请手动装加载器）", logging.WARNING)
+
+    if not _is_safe_version_name(instance_name):
+        raise ValueError(f"不安全的实例名: {instance_name!r}")
 
     _emit(
         progress,
@@ -331,62 +339,68 @@ def _install_minecraft_and_loader(
         f"正在安装 Minecraft {minecraft_version} ({loader})...",
     )
 
-    completed = threading.Event()
-    task_state = {
-        "task_id": f"mrpack-{int(time.time())}",
-        "cancel_event": threading.Event(),
-        "pause_event": threading.Event(),
-        "backend": backend,
-        "cancelled": False,
-        "is_paused": False,
-        "downloader": None,
-        "completed_event": completed,
-        "result": None,
-        "cleanup_on_fail": True,
-        "version_dir": None,
-    }
-
-    def run():
+    dm = DownloadManager()
+    task_id = dm.start_download(
+        minecraft_version,
+        instance_name,
+        loader,
+        backend,
+        minecraft_dir=minecraft_dir,
+    )
+    # 打开下载管理面板，避免“选完文件无反应”
+    if backend is not None:
         try:
-            task_state["result"] = bool(
-                _install_minecraft_version_threaded(
-                    minecraft_version,
-                    minecraft_dir=minecraft_dir,
-                    Fabric_Loader=(loader == "fabric"),
-                    VersionName=instance_name,
-                    backend=backend,
-                    Loader_Type=loader,
-                    task_state=task_state,
-                )
+            if hasattr(backend, "openDownloadManager"):
+                backend.openDownloadManager()
+            elif hasattr(backend, "downloadManagerOpenRequested"):
+                backend.downloadManagerOpenRequested.emit()
+        except Exception:
+            pass
+        try:
+            backend.downloadNotify.emit(
+                i18nText("正在导入整合包"),
+                f"{instance_name} · Minecraft {minecraft_version} ({loader})",
+                True,
             )
-        except Exception as exc:
-            task_state["result"] = False
-            task_state["_fail_reason"] = str(exc)
-            log(f"mrpack 安装游戏失败: {exc}", logging.ERROR)
-        finally:
-            completed.set()
-
-    # 在当前线程跑安装会阻塞进度回调；用子线程 + 等待
-    t = threading.Thread(target=run, daemon=True, name="MrpackGameInstall")
-    t.start()
+        except Exception:
+            pass
 
     deadline = time.monotonic() + timeout_sec
+    last_status = ""
     while time.monotonic() < deadline:
-        if completed.wait(timeout=0.8):
-            break
-        _emit(progress, "install", 0, 1, i18nText("正在安装游戏与加载器..."))
+        task = dm.get_task(task_id)
+        if task is None:
+            time.sleep(0.5)
+            continue
+        status_text = task.status_text or ""
+        if status_text and status_text != last_status:
+            last_status = status_text
+            try:
+                pct = int(float(task.progress or 0))
+            except (TypeError, ValueError):
+                pct = 0
+            _emit(progress, "install", pct, 100, status_text)
+        if task.completed_event.is_set() or task.status in (
+            "completed",
+            "failed",
+            "cancelled",
+        ):
+            # 再等一下确保 result 写完
+            task.completed_event.wait(timeout=2.0)
+            if task.status == "completed" and bool(task.result):
+                _emit(progress, "install", 100, 100, i18nText("游戏与加载器安装完成"))
+                return True
+            raise RuntimeError(
+                task.error_message
+                or f"安装失败: status={task.status}"
+            )
+        time.sleep(0.8)
 
-    if not completed.is_set():
-        task_state["cancel_event"].set()
-        raise TimeoutError("安装 Minecraft 超时")
-
-    if not task_state.get("result"):
-        raise RuntimeError(
-            task_state.get("_fail_reason") or i18nText("游戏与加载器安装失败")
-        )
-
-    _emit(progress, "install", 1, 1, i18nText("游戏与加载器安装完成"))
-    return True
+    try:
+        dm.cancel_task(task_id)
+    except Exception:
+        pass
+    raise TimeoutError("安装 Minecraft 超时")
 
 
 def import_mrpack(
