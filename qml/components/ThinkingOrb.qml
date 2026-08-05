@@ -21,9 +21,10 @@ Item {
     implicitWidth: size
     implicitHeight: size
 
-    property real _t: 0
+    // 动画相位（勿用 _t：QML 无法为以下划线开头的属性生成 on_tChanged）
+    property real phase: 0
 
-    NumberAnimation on _t {
+    NumberAnimation on phase {
         id: clock
         from: 0
         to: Math.PI * 200
@@ -35,7 +36,7 @@ Item {
     onRunningChanged: if (running) canvas.requestPaint()
     onStateChanged: canvas.requestPaint()
     onInkChanged: canvas.requestPaint()
-    on_tChanged: if (running) canvas.requestPaint()
+    onPhaseChanged: if (running) canvas.requestPaint()
     onSizeChanged: canvas.requestPaint()
 
     Canvas {
@@ -54,7 +55,7 @@ Item {
             var cx = w / 2
             var cy = h / 2
             var R = Math.min(w, h) * 0.42
-            var t = root._t
+            var t = root.phase
             var ink = root.ink
             var baseA = root.inkOpacity
 
