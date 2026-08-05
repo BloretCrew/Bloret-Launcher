@@ -399,27 +399,38 @@ Item {
                         visible: conversationTitle.length > 0
                     }
 
-                    RowLayout {
-                        spacing: 6
-                        visible: Agent && Agent.busy
-                        ThinkingOrb {
-                            size: 18
-                            running: visible
-                            state: "composing"
-                            speed: 1.1
-                            ink: Theme.accentColor || Theme.currentTheme.colors.primaryColor || "#0078D4"
+                    Item {
+                        Layout.preferredWidth: Math.max(agentTopThinking.implicitWidth, agentReadyLabel.implicitWidth)
+                        Layout.preferredHeight: Math.max(agentTopThinking.implicitHeight, agentReadyLabel.implicitHeight)
+
+                        ThinkingStatus {
+                            id: agentTopThinking
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: implicitWidth
+                            active: Agent && Agent.busy
+                            orbSize: 18
+                            orbSpeed: 1.1
+                            orbInk: Theme.accentColor || Theme.currentTheme.colors.primaryColor || "#0078D4"
+                            labelColor: Theme.accentColor || "#0078D4"
+                            labelPixelSize: 11
+                            showAvatar: false
+                            showPulseDots: false
+                            fadeMs: 280
                         }
                         Text {
-                            text: Backend ? Backend.tr("正在思考") : "正在思考"
+                            id: agentReadyLabel
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: Backend ? Backend.tr("就绪") : "就绪"
                             font.pixelSize: 11
-                            color: Theme.accentColor || "#0078D4"
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            opacity: (Agent && Agent.busy) ? 0 : 1
+                            visible: opacity > 0.01
+                            Behavior on opacity {
+                                NumberAnimation { duration: 280; easing.type: Easing.InOutQuad }
+                            }
                         }
-                    }
-                    Text {
-                        visible: !(Agent && Agent.busy)
-                        text: Backend ? Backend.tr("就绪") : "就绪"
-                        font.pixelSize: 11
-                        color: Theme.currentTheme.colors.textSecondaryColor
                     }
 
                     ComboBox {
@@ -462,64 +473,27 @@ Item {
 
                 footer: Item {
                     width: msgView.width
-                    height: agentThinkingFooter.visible ? agentThinkingFooter.height + 12 : 0
-                    visible: Agent && Agent.busy
+                    height: agentThinkingStatus.active || agentThinkingStatus.opacity > 0.01
+                            ? agentThinkingStatus.implicitHeight + 16
+                            : 0
+                    Behavior on height {
+                        NumberAnimation { duration: 320; easing.type: Easing.InOutQuad }
+                    }
 
-                    RowLayout {
-                        id: agentThinkingFooter
+                    ThinkingStatus {
+                        id: agentThinkingStatus
                         anchors.left: parent.left
-                        anchors.leftMargin: 16
                         anchors.right: parent.right
-                        anchors.rightMargin: 16
                         anchors.top: parent.top
+                        anchors.leftMargin: 16
+                        anchors.rightMargin: 16
                         anchors.topMargin: 8
-                        spacing: 10
-
-                        Rectangle {
-                            width: 22; height: 22; radius: 11; clip: true; color: "transparent"
-                            Layout.alignment: Qt.AlignVCenter
-                            Image {
-                                anchors.fill: parent
-                                source: Qt.resolvedUrl("../../../icon/Bloriko.jpg")
-                                fillMode: Image.PreserveAspectCrop
-                                mipmap: true
-                            }
-                        }
-                        ThinkingOrb {
-                            size: 22
-                            running: agentThinkingFooter.visible
-                            state: "composing"
-                            speed: 1.15
-                            ink: Theme.currentTheme.colors.textColor
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-                        Text {
-                            text: Backend ? Backend.tr("正在思考") : "正在思考"
-                            font.pixelSize: 13
-                            color: Theme.currentTheme.colors.textSecondaryColor
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-                        Row {
-                            spacing: 3
-                            Layout.alignment: Qt.AlignVCenter
-                            Repeater {
-                                model: 3
-                                Rectangle {
-                                    width: 4; height: 4; radius: 2
-                                    color: Theme.currentTheme.colors.textSecondaryColor
-                                    opacity: 0.35
-                                    SequentialAnimation on opacity {
-                                        loops: Animation.Infinite
-                                        running: agentThinkingFooter.visible
-                                        PauseAnimation { duration: index * 160 }
-                                        NumberAnimation { to: 1.0; duration: 320; easing.type: Easing.InOutQuad }
-                                        NumberAnimation { to: 0.35; duration: 320; easing.type: Easing.InOutQuad }
-                                        PauseAnimation { duration: (2 - index) * 160 }
-                                    }
-                                }
-                            }
-                        }
-                        Item { Layout.fillWidth: true }
+                        active: Agent && Agent.busy
+                        orbSize: 22
+                        showAvatar: true
+                        avatarSource: Qt.resolvedUrl("../../../icon/Bloriko.jpg")
+                        showPulseDots: true
+                        fadeMs: 320
                     }
 
                     Connections {
@@ -663,36 +637,29 @@ Item {
                             Image { anchors.fill: parent; source: Qt.resolvedUrl("../../../icon/Bloriko.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
                         }
 
-                        RowLayout {
+                        ThinkingStatus {
                             Layout.fillWidth: true
-                            spacing: 8
-                            visible: streaming && (!content || content.length === 0)
-                            ThinkingOrb {
-                                size: 20
-                                running: visible
-                                state: "composing"
-                                speed: 1.1
-                                ink: Theme.currentTheme.colors.textColor
-                                Layout.alignment: Qt.AlignVCenter
-                            }
-                            Text {
-                                text: Backend ? Backend.tr("正在思考") : "正在思考"
-                                font.pixelSize: 13
-                                color: Theme.currentTheme.colors.textSecondaryColor
-                                Layout.alignment: Qt.AlignVCenter
-                            }
-                            Item { Layout.fillWidth: true }
+                            active: streaming && (!content || content.length === 0)
+                            orbSize: 20
+                            orbSpeed: 1.1
+                            showAvatar: false
+                            showPulseDots: true
+                            fadeMs: 280
                         }
 
                         Text {
                             Layout.fillWidth: true
-                            visible: !(streaming && (!content || content.length === 0))
+                            opacity: (streaming && (!content || content.length === 0)) ? 0 : 1
+                            visible: opacity > 0.01 || (content && content.length > 0)
                             text: content || ""
                             font.pixelSize: 13
                             color: Theme.currentTheme.colors.textColor
                             wrapMode: Text.Wrap
                             textFormat: Text.MarkdownText
                             onLinkActivated: function(link) { Qt.openUrlExternally(link) }
+                            Behavior on opacity {
+                                NumberAnimation { duration: 280; easing.type: Easing.InOutQuad }
+                            }
                         }
                     }
 
