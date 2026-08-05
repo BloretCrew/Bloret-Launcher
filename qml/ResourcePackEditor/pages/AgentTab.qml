@@ -4,11 +4,12 @@ import QtQuick.Layouts 2.15
 import Qt.labs.platform 1.1 as Platform
 import RinUI
 import "../../components"
+import "../../components/ToolCallGroups.js" as ToolGroups
 
 Item {
     id: agentPage
 
-    // 消息模型
+    // 消息模型：user | assistant | tool_group | error | system
     ListModel { id: messageModel }
     ListModel { id: providerModel }
     ListModel { id: modelModel }
@@ -123,6 +124,79 @@ Item {
 
     function clearPendingImages() { pendingImagesModel.clear() }
 
+    function findOpenToolGroupIndex() {
+        for (var i = messageModel.count - 1; i >= 0; i--) {
+            var item = messageModel.get(i)
+            if (item.role === "tool_group")
+                return i
+            if (item.role === "assistant" || item.role === "user" || item.role === "error" || item.role === "system")
+                break
+        }
+        return -1
+    }
+
+    function ensureToolGroup() {
+        var idx = findOpenToolGroupIndex()
+        if (idx >= 0)
+            return idx
+        messageModel.append({
+            role: "tool_group",
+            content: Backend ? Backend.tr("正在使用工具…") : "正在使用工具…",
+            imagesJson: "[]",
+            toolName: "", toolArgs: "", toolResult: "",
+            toolsJson: "[]",
+            streaming: false, expanded: false
+        })
+        return messageModel.count - 1
+    }
+
+    function refreshToolGroupSummary(idx) {
+        if (idx < 0 || idx >= messageModel.count) return
+        var tools = ToolGroups.parseToolsJson(messageModel.get(idx).toolsJson)
+        var summary = ToolGroups.summarizeTools(tools)
+        if (!summary || summary.length === 0)
+            summary = Backend ? Backend.tr("正在使用工具…") : "正在使用工具…"
+        messageModel.setProperty(idx, "content", summary)
+    }
+
+    function startToolInGroup(toolName, argsJson) {
+        var idx = ensureToolGroup()
+        var tools = ToolGroups.parseToolsJson(messageModel.get(idx).toolsJson)
+        tools.push(ToolGroups.makeToolEntry(toolName, argsJson, ""))
+        messageModel.setProperty(idx, "toolsJson", JSON.stringify(tools))
+        refreshToolGroupSummary(idx)
+        return idx
+    }
+
+    function finishToolInGroup(toolName, argsJson, result) {
+        for (var g = messageModel.count - 1; g >= 0; g--) {
+            var item = messageModel.get(g)
+            if (item.role !== "tool_group") {
+                if (item.role === "assistant" || item.role === "user")
+                    break
+                continue
+            }
+            var tools = ToolGroups.parseToolsJson(item.toolsJson)
+            for (var t = tools.length - 1; t >= 0; t--) {
+                if (tools[t].toolName === toolName && (!tools[t].toolResult || tools[t].toolResult.length === 0)) {
+                    tools[t].toolResult = result || ""
+                    if (argsJson)
+                        tools[t].toolArgs = argsJson
+                    messageModel.setProperty(g, "toolsJson", JSON.stringify(tools))
+                    refreshToolGroupSummary(g)
+                    return
+                }
+            }
+            tools.push(ToolGroups.makeToolEntry(toolName, argsJson, result))
+            messageModel.setProperty(g, "toolsJson", JSON.stringify(tools))
+            refreshToolGroupSummary(g)
+            return
+        }
+        var idx = ensureToolGroup()
+        messageModel.setProperty(idx, "toolsJson", JSON.stringify([ToolGroups.makeToolEntry(toolName, argsJson, result)]))
+        refreshToolGroupSummary(idx)
+    }
+
     function doSendMessage() {
         if (!Agent) return
         if (Agent.busy) { Agent.cancelAgent(); return }
@@ -131,7 +205,8 @@ Item {
         if (text.length === 0 && pendingImagesModel.count === 0) return
         messageModel.append({
             role: "user", content: text, imagesJson: imagesJson,
-            toolName: "", toolArgs: "", toolResult: "", streaming: false, expanded: false
+            toolName: "", toolArgs: "", toolResult: "", toolsJson: "[]",
+            streaming: false, expanded: false
         })
         beginAwaitingReply()
         Agent.sendMessage(text, imagesJson)
@@ -202,21 +277,9 @@ Item {
         if (!Agent) return
         try {
             var msgs = JSON.parse(Agent.getHistoryMessages())
-            for (var i = 0; i < msgs.length; i++) {
-                var imgs = msgs[i].imagesJson || "[]"
-                if ((!imgs || imgs === "[]") && msgs[i].images && msgs[i].images.length)
-                    imgs = JSON.stringify(msgs[i].images)
-                messageModel.append({
-                    role: msgs[i].role,
-                    content: msgs[i].content,
-                    imagesJson: imgs || "[]",
-                    toolName: msgs[i].toolName || "",
-                    toolArgs: msgs[i].toolArgs || "",
-                    toolResult: msgs[i].toolResult || "",
-                    streaming: false,
-                    expanded: false
-                })
-            }
+            var collapsed = ToolGroups.collapseHistoryMessages(msgs)
+            for (var i = 0; i < collapsed.length; i++)
+                messageModel.append(collapsed[i])
         } catch(e) {}
     }
 
@@ -565,10 +628,10 @@ Item {
                         var h = 0
                         if (role === "user") h = userCol.height + 8
                         else if (role === "assistant") h = aiCol.height + 8
-                        else if (role === "tool_call") h = tcCol.height + (toolResult && toolResult.length > 0 && expanded ? trResultCol.height + 4 : 0) + 4
+                        else if (role === "tool_group") h = tgCol.height + 6
+                        else if (role === "tool_call") h = tcCol.height + 4
                         else if (role === "error") h = errCol.height + 6
                         else if (role === "system") h = sysCol.height + 4
-                        if (role === "tool_call") console.log("[AgentTab] tool_call height: tcCol=" + tcCol.height + ", item=" + h)
                         return h
                     }
 
@@ -678,164 +741,140 @@ Item {
                         }
                     }
 
-                    // --- 工具调用（含可折叠结果） ---
+                    // --- 连续工具组（Claude Code 风格汇总） ---
                     Column {
-                        id: tcCol
-                        visible: role === "tool_call"
-                        Component.onCompleted: console.log("[AgentTab] tcCol 创建: role=" + role + ", toolName=" + toolName + ", height=" + height)
+                        id: tgCol
+                        visible: role === "tool_group"
                         anchors.left: parent.left; anchors.leftMargin: 44
                         anchors.right: parent.right; anchors.rightMargin: 16
                         anchors.top: parent.top; anchors.topMargin: 2
                         width: parent.width - 60
                         spacing: 4
+                        property var toolList: ToolGroups.parseToolsJson(toolsJson || "[]")
 
-                        // 工具调用摘要（始终显示）
                         RowLayout {
                             width: parent.width
-                            Layout.preferredHeight: 20
                             spacing: 6
-
-                            // 点击切换展开/折叠
                             MouseArea {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 20
-                                cursorShape: toolResult && toolResult.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                Layout.preferredHeight: Math.max(tgSummary.implicitHeight, 20)
+                                cursorShape: tgCol.toolList.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 onClicked: {
-                                    if (toolResult && toolResult.length > 0) {
+                                    if (tgCol.toolList.length > 0)
                                         messageModel.setProperty(index, "expanded", !expanded)
-                                    }
                                 }
-
                                 RowLayout {
                                     width: parent.width
                                     spacing: 6
-
                                     Icon {
-                                        icon: "ic_fluent_lightbulb_20_regular"
+                                        icon: "ic_fluent_wrench_20_regular"
                                         size: 14
                                         color: Theme.currentTheme.colors.textSecondaryColor
-                                        Layout.alignment: Qt.AlignTop
+                                        Layout.alignment: Qt.AlignVCenter
                                     }
-
                                     Text {
+                                        id: tgSummary
                                         Layout.fillWidth: true
-                                        text: {
-                                            var n = toolName || ""
-                                            var a = ""
-                                            try {
-                                                var obj = JSON.parse(toolArgs || "{}")
-                                                // 生成人类可读摘要
-                                                if (n === "read_file") a = obj.path || ""
-                                                else if (n === "write_file") a = obj.path || ""
-                                                else if (n === "edit_file") a = obj.path || ""
-                                                else if (n === "list_files") a = obj.pattern || "*"
-                                                else if (n === "search_text") a = obj.query || ""
-                                                else if (n === "get_pack_info") a = ""
-                                                else if (n === "analyze_pack") a = ""
-                                                else if (n === "read_language") a = obj.lang || ""
-                                                else if (n === "edit_language") a = obj.lang || ""
-                                                else if (n === "validate_json") a = obj.path || ""
-                                                else if (n === "get_file_tree") a = ""
-                                                else if (n === "ask_user") a = obj.question || ""
-                                                else if (n === "execute_command") a = obj.command || ""
-                                                else if (n === "execute_command_background") a = obj.command || ""
-                                                else if (n === "spawn_agent") a = (obj.agent_type || "general") + ": " + (obj.prompt || "").substring(0, 40)
-                                                else {
-                                                    // fallback: 显示参数摘要
-                                                    var parts = []
-                                                    for (var k in obj) {
-                                                        var v = String(obj[k])
-                                                        if (v.length > 40) v = v.substring(0, 40) + "…"
-                                                        parts.push(v)
-                                                    }
-                                                    a = parts.join(", ")
-                                                }
-                                                // 截断过长内容
-                                                if (a.length > 80) a = a.substring(0, 80) + "…"
-                                            } catch(e) { a = toolArgs || "" }
-
-                                            // 工具名中文映射
-                                            var nameMap = {
-                                                "read_file": (Backend ? Backend.tr("读取") : "读取"),
-                                                "write_file": (Backend ? Backend.tr("写入") : "写入"),
-                                                "edit_file": (Backend ? Backend.tr("编辑") : "编辑"),
-                                                "list_files": (Backend ? Backend.tr("列出文件") : "列出文件"),
-                                                "search_text": (Backend ? Backend.tr("搜索") : "搜索"),
-                                                "get_pack_info": (Backend ? Backend.tr("获取资源包信息") : "获取资源包信息"),
-                                                "analyze_pack": (Backend ? Backend.tr("分析资源包") : "分析资源包"),
-                                                "read_language": (Backend ? Backend.tr("读取语言文件") : "读取语言文件"),
-                                                "edit_language": (Backend ? Backend.tr("编辑语言文件") : "编辑语言文件"),
-                                                "validate_json": (Backend ? Backend.tr("验证 JSON") : "验证 JSON"),
-                                                "get_file_tree": (Backend ? Backend.tr("获取文件树") : "获取文件树"),
-                                                "ask_user": (Backend ? Backend.tr("向用户提问") : "向用户提问"),
-                                                "execute_command": (Backend ? Backend.tr("执行命令") : "执行命令"),
-                                                "execute_command_background": (Backend ? Backend.tr("后台执行") : "后台执行"),
-                                                "spawn_agent": (Backend ? Backend.tr("生成子 Agent") : "生成子 Agent")
-                                            }
-                                            var displayName = nameMap[n] || n
-                                            return a ? displayName + " " + a : displayName
-                                        }
+                                        text: content || (Backend ? Backend.tr("正在使用工具…") : "正在使用工具…")
                                         font.pixelSize: 12
-                                        color: Theme.currentTheme.colors.textColor
-                                        opacity: 0.7
+                                        color: Theme.currentTheme.colors.textSecondaryColor
                                         wrapMode: Text.Wrap
                                     }
-
                                     Text {
-                                        text: toolResult && toolResult.length > 0 ? (expanded ? "▼" : "▶") : ""
+                                        text: tgCol.toolList.length > 0 ? (expanded ? "▼" : "▶") : ""
                                         font.pixelSize: 11
-                                        color: Theme.currentTheme.colors.textColor
-                                        opacity: 0.5
-                                        Layout.alignment: Qt.AlignTop
+                                        color: Theme.currentTheme.colors.textSecondaryColor
+                                        opacity: 0.6
                                     }
                                 }
                             }
                         }
 
-                        // 工具结果（可折叠）
-                        RowLayout {
-                            id: trResultCol
-                            visible: toolResult && toolResult.length > 0 && expanded
+                        Column {
+                            visible: expanded && tgCol.toolList.length > 0
                             width: parent.width
-                            spacing: 6
-
-                            Text {
-                                text: "└"
-                                font.pixelSize: 11
-                                font.family: "Consolas, monospace"
-                                color: Theme.currentTheme.colors.textSecondaryColor
-                                Layout.alignment: Qt.AlignTop
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Math.min(trResultTxt.contentHeight + 12, 160)
-                                radius: 4
-                                color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F5F5F5"
-                                border.color: Theme.currentTheme.colors.controlBorderColor || "#E8E8E8"
-                                border.width: 1
-
-                                Flickable {
-                                    anchors.fill: parent; anchors.margins: 6
-                                    contentHeight: trResultTxt.contentHeight
-                                    clip: true
-                                    interactive: contentHeight > height
-
-                                    TextEdit {
-                                        id: trResultTxt
+                            spacing: 4
+                            Repeater {
+                                model: tgCol.toolList
+                                delegate: Column {
+                                    width: parent.width
+                                    spacing: 2
+                                    RowLayout {
                                         width: parent.width
-                                        text: {
-                                            var r = toolResult || ""
-                                            if (r.length > 500) r = r.substring(0, 500) + "\n" + (Backend ? Backend.tr("... (已截断)") : "... (已截断)")
-                                            return r
+                                        spacing: 6
+                                        Text {
+                                            text: "·"
+                                            font.pixelSize: 12
+                                            color: Theme.currentTheme.colors.textSecondaryColor
+                                            Layout.alignment: Qt.AlignTop
                                         }
-                                        font.pixelSize: 11
-                                        font.family: "Consolas, monospace"
-                                        color: Theme.currentTheme.colors.textSecondaryColor
-                                        wrapMode: TextEdit.Wrap
-                                        readOnly: true; selectByMouse: true
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: ToolGroups.toolLineLabel(modelData)
+                                            font.pixelSize: 11
+                                            color: Theme.currentTheme.colors.textSecondaryColor
+                                            wrapMode: Text.Wrap
+                                            opacity: 0.9
+                                        }
+                                    }
+                                    Rectangle {
+                                        visible: modelData.toolResult && String(modelData.toolResult).length > 0
+                                        width: parent.width - 12
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 12
+                                        height: Math.min(detailTxt.implicitHeight + 10, 100)
+                                        radius: 4
+                                        color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F5F5F5"
+                                        border.color: Theme.currentTheme.colors.controlBorderColor || "#E8E8E8"
+                                        border.width: 1
+                                        clip: true
+                                        Text {
+                                            id: detailTxt
+                                            anchors.fill: parent
+                                            anchors.margins: 5
+                                            text: {
+                                                var r = String(modelData.toolResult || "")
+                                                if (r.length > 300)
+                                                    r = r.substring(0, 300) + (Backend ? Backend.tr("\n... (已截断)") : "\n... (已截断)")
+                                                return r
+                                            }
+                                            font.pixelSize: 10
+                                            font.family: "Consolas, monospace"
+                                            color: Theme.currentTheme.colors.textSecondaryColor
+                                            wrapMode: Text.Wrap
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 6
+                                        }
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    // --- 兼容旧会话单条 tool_call ---
+                    Column {
+                        id: tcCol
+                        visible: role === "tool_call"
+                        anchors.left: parent.left; anchors.leftMargin: 44
+                        anchors.right: parent.right; anchors.rightMargin: 16
+                        anchors.top: parent.top; anchors.topMargin: 2
+                        width: parent.width - 60
+                        spacing: 4
+                        RowLayout {
+                            width: parent.width
+                            spacing: 6
+                            Icon {
+                                icon: "ic_fluent_lightbulb_20_regular"
+                                size: 14
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: ToolGroups.toolLineLabel({ toolName: toolName, toolArgs: toolArgs })
+                                font.pixelSize: 12
+                                color: Theme.currentTheme.colors.textColor
+                                opacity: 0.7
+                                wrapMode: Text.Wrap
                             }
                         }
                     }
@@ -1565,9 +1604,17 @@ Item {
                 markReplyStarted()
             var lastIdx = messageModel.count - 1
             if (lastIdx >= 0 && messageModel.get(lastIdx).role === "assistant" && messageModel.get(lastIdx).streaming) {
-                messageModel.set(lastIdx, {role: "assistant", content: text, toolName: "", toolArgs: "", toolResult: "", streaming: true})
+                messageModel.set(lastIdx, {
+                    role: "assistant", content: text, imagesJson: "[]",
+                    toolName: "", toolArgs: "", toolResult: "", toolsJson: "[]",
+                    streaming: true, expanded: false
+                })
             } else {
-                messageModel.append({role: "assistant", content: text, toolName: "", toolArgs: "", toolResult: "", streaming: true, expanded: false})
+                messageModel.append({
+                    role: "assistant", content: text, imagesJson: "[]",
+                    toolName: "", toolArgs: "", toolResult: "", toolsJson: "[]",
+                    streaming: true, expanded: false
+                })
             }
             Qt.callLater(function() { msgView.positionViewAtEnd() })
         }
@@ -1575,52 +1622,40 @@ Item {
         function onToolCallStarted(toolName, argsJson) {
             console.log("[AgentTab] onToolCallStarted: " + toolName)
             markReplyStarted()
-            // 找到最后一个 tool_call 之后的位置（连续的 tool_calls 应该在一起）
-            var insertIdx = messageModel.count
-            for (var i = messageModel.count - 1; i >= 0; i--) {
-                var item = messageModel.get(i)
-                if (item.role === "tool_call") {
-                    insertIdx = i + 1
-                    break
-                }
-                if (item.role === "assistant") {
-                    // 在 assistant 之后插入（tool calls 紧跟在 text 之后）
-                    insertIdx = i + 1
-                    break
-                }
-            }
-            messageModel.insert(insertIdx, {role: "tool_call", content: "", toolName: toolName, toolArgs: argsJson, toolResult: "", streaming: false, expanded: false})
+            startToolInGroup(toolName, argsJson)
+            Qt.callLater(function() { msgView.positionViewAtEnd() })
         }
 
         function onToolCallFinished(toolName, argsJson, result) {
-            // 更新最后一条 tool_call 的结果，而非新增条目
-            for (var i = messageModel.count - 1; i >= 0; i--) {
-                var item = messageModel.get(i)
-                if (item.role === "tool_call" && item.toolName === toolName && item.toolResult === "") {
-                    messageModel.set(i, {toolResult: result})
-                    return
-                }
-            }
-            // 兜底：如果没有找到匹配的 tool_call，追加一条
-            messageModel.append({role: "tool_call", content: "", toolName: toolName, toolArgs: argsJson, toolResult: result, streaming: false, expanded: false})
+            finishToolInGroup(toolName, argsJson, result)
         }
 
         function onErrorOccurred(msg) {
             endAwaitingReply()
-            messageModel.append({role: "error", content: msg, toolName: "", toolArgs: "", toolResult: "", streaming: false, expanded: false})
+            messageModel.append({
+                role: "error", content: msg, imagesJson: "[]",
+                toolName: "", toolArgs: "", toolResult: "", toolsJson: "[]",
+                streaming: false, expanded: false
+            })
         }
 
         function onMessageAdded(role, content, toolCallsJson) {
             markReplyStarted()
-            // 找到流式 assistant 消息并终结
             for (var i = messageModel.count - 1; i >= 0; i--) {
                 if (messageModel.get(i).role === "assistant" && messageModel.get(i).streaming) {
-                    messageModel.set(i, {role: "assistant", content: content, streaming: false})
+                    messageModel.set(i, {
+                        role: "assistant", content: content, imagesJson: "[]",
+                        toolName: "", toolArgs: "", toolResult: "", toolsJson: "[]",
+                        streaming: false, expanded: false
+                    })
                     return
                 }
             }
-            // 没有流式消息（历史恢复场景），直接追加
-            messageModel.append({role: role, content: content, toolName: "", toolArgs: "", toolResult: "", streaming: false, expanded: false})
+            messageModel.append({
+                role: role, content: content, imagesJson: "[]",
+                toolName: "", toolArgs: "", toolResult: "", toolsJson: "[]",
+                streaming: false, expanded: false
+            })
         }
 
         function onProvidersChanged() { loadProviders() }
