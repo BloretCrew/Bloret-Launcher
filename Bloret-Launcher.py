@@ -262,6 +262,10 @@ class Backend(QObject):
     modsLoadFinished = Signal(str, str, list, str)
     resourcePacksLoadFinished = Signal(str, str, list, str)
     mrpackExportFinished = Signal(str, bool, str, str)
+    # phase, current, total, message
+    mrpackImportProgress = Signal(str, int, int, str)
+    # requestId, ok, instanceName, message
+    mrpackImportFinished = Signal(str, bool, str, str)
     activityInfoChanged = Signal(dict)
     downloadNotify = Signal(str, str, bool)
     launchDialogRequested = Signal(str)
@@ -1529,7 +1533,7 @@ class Backend(QObject):
             print(f"获取实例信息失败：{e}")
             return {}
 
-    def _export_mrpack_sync(self, versionName, packName, packVersion, outputPath):
+    def _export_mrpack_sync(self, versionName, packName, packVersion, outputPath, selected_paths=None):
         from modules.mrpack_export import export_to_mrpack
         config_data = cfg.read()
         minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
@@ -1538,7 +1542,14 @@ class Backend(QObject):
         summary = f"从 {versionName} 导出的整合包"
         temp_path = actual_path + f".{threading.get_ident()}.part"
         try:
-            success = export_to_mrpack(instance_path, temp_path, packName, packVersion, summary)
+            success = export_to_mrpack(
+                instance_path,
+                temp_path,
+                packName,
+                packVersion,
+                summary,
+                selected_paths=selected_paths,
+            )
             if success:
                 os.replace(temp_path, actual_path)
             return bool(success), actual_path, "" if success else "导出失败"
@@ -1560,6 +1571,12 @@ class Backend(QObject):
 
     @Slot(str, str, str, str, str, result=bool)
     def requestMrpackExport(self, versionName, packName, packVersion, outputPath, requestId):
+        return self.requestMrpackExportWithSelection(
+            versionName, packName, packVersion, outputPath, requestId, []
+        )
+
+    @Slot(str, str, str, str, str, "QVariantList", result=bool)
+    def requestMrpackExportWithSelection(self, versionName, packName, packVersion, outputPath, requestId, selectedPaths):
         actual_path = outputPath if outputPath.lower().endswith('.mrpack') else outputPath + '.mrpack'
         path_key = os.path.normcase(os.path.abspath(actual_path))
         with self._export_paths_lock:
@@ -1567,12 +1584,19 @@ class Backend(QObject):
                 return False
             self._active_export_paths.add(path_key)
 
+        selected = None
+        try:
+            cleaned = [str(x) for x in (list(selectedPaths) if selectedPaths is not None else []) if x]
+            selected = cleaned if cleaned else None
+        except Exception:
+            selected = None
+
         def _run():
             success = False
             error = ""
             try:
                 success, _, error = self._export_mrpack_sync(
-                    versionName, packName, packVersion, outputPath
+                    versionName, packName, packVersion, outputPath, selected_paths=selected
                 )
             except Exception as exc:
                 error = str(exc)
@@ -1584,6 +1608,20 @@ class Backend(QObject):
 
         threading.Thread(target=_run, daemon=True, name="MrpackExport").start()
         return True
+
+    @Slot(str, result="QVariant")
+    def getMrpackExportCandidates(self, versionName):
+        """返回可导出候选文件列表（供导出对话框勾选）。"""
+        try:
+            from modules.mrpack_export import get_export_candidates
+            config_data = cfg.read()
+            mc_dir = config_data.get("minecraft_dir", BLglobals.minecraft_dir)
+            path = os.path.join(mc_dir, "versions", versionName)
+            if not os.path.isdir(path):
+                return {"ok": False, "message": "实例不存在", "data": []}
+            return {"ok": True, "data": get_export_candidates(path)}
+        except Exception as e:
+            return {"ok": False, "message": str(e), "data": []}
 
     @Slot(str, str, str, result=str)
     def selectSaveFile(self, caption, defaultName, fileFilter):
@@ -2651,15 +2689,86 @@ class Backend(QObject):
 
     @Slot()
     def importMrpack(self):
-        """导入 Modrinth .mrpack 整合包"""
+        """导入 Modrinth .mrpack 整合包（内置实现，弹出文件选择）。"""
         try:
-            from modules.modrinth import add_mrpack
-            print("Requested import Modrinth mrpack")
-            add_mrpack(None)
+            from PySide6.QtWidgets import QFileDialog
+            from modules.mrpack_import import import_mrpack
+
+            file_path, _ = QFileDialog.getOpenFileName(
+                None,
+                self.tr("选择 .mrpack 文件") if hasattr(self, "tr") else "选择 .mrpack 文件",
+                "",
+                "Modrinth Modpack Files (*.mrpack)",
+            )
+            if not file_path:
+                print("Requested import Modrinth mrpack: cancelled")
+                return
+            self.requestMrpackImport(file_path, "", f"import:{int(time.time() * 1000)}")
         except Exception as e:
             print(f"导入 Modrinth 整合包失败: {e}")
             import traceback
             traceback.print_exc()
+
+    @Slot(str, str, str, result=bool)
+    def requestMrpackImport(self, filePath, instanceName, requestId):
+        """异步导入 .mrpack；进度经 mrpackImportProgress，结果经 mrpackImportFinished。"""
+        if not filePath:
+            return False
+
+        def _run():
+            ok = False
+            name = ""
+            message = ""
+            try:
+                from modules.mrpack_import import import_mrpack
+
+                def on_progress(phase, current, total, msg):
+                    try:
+                        self.mrpackImportProgress.emit(
+                            str(phase or ""),
+                            int(current or 0),
+                            int(total or 0),
+                            str(msg or ""),
+                        )
+                    except Exception:
+                        pass
+
+                result = import_mrpack(
+                    filePath,
+                    instance_name=(instanceName or None),
+                    backend=self,
+                    progress=on_progress,
+                )
+                ok = bool(result.get("ok"))
+                name = str(result.get("instance_name") or "")
+                message = str(result.get("message") or "")
+            except Exception as exc:
+                ok = False
+                message = str(exc)
+                log(f"导入 mrpack 失败: {exc}", logging.ERROR)
+            finally:
+                try:
+                    self.mrpackImportFinished.emit(
+                        str(requestId or ""),
+                        ok,
+                        name,
+                        message,
+                    )
+                except Exception:
+                    pass
+                if ok:
+                    # 通知 UI 刷新版本列表（若存在对应信号/方法）
+                    for attr in ("versionsListChanged", "localVersionsChanged", "versionsChanged"):
+                        sig = getattr(self, attr, None)
+                        if sig is not None and hasattr(sig, "emit"):
+                            try:
+                                sig.emit()
+                            except Exception:
+                                pass
+                            break
+
+        threading.Thread(target=_run, daemon=True, name="MrpackImport").start()
+        return True
 
     @Slot(result=str)
     def getBloretVersion(self):

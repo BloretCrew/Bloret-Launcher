@@ -1,4 +1,5 @@
 import requests, logging, json
+import os
 import sys
 from modules.log import log
 from requests.adapters import HTTPAdapter
@@ -220,77 +221,67 @@ def Get_Mod_File_Download_Url(slug, loaders=None, game_versions=None):
         return None
 
 
-def add_mrpack(parent_widget: QWidget = None):
+def add_mrpack(parent_widget: QWidget = None, backend=None):
+    """导入 .mrpack（内置实现；可选 BLORET_MRPACK_INSTALL_BIN 外挂回退）。"""
     log(i18nText("添加 Modrinth Modpack"), logging.INFO)
 
-    # 弹出文件选择对话框
     file_path, _ = QFileDialog.getOpenFileName(
         parent_widget,
         i18nText("选择 .mrpack 文件"),
         "",
-        "Modrinth Modpack Files (*.mrpack)"
+        "Modrinth Modpack Files (*.mrpack)",
     )
-
-    # 如果用户选择了文件
-    if file_path:
-        # 创建信息栏
-        if parent_widget:
-            info_bar = InfoBar(parent=parent_widget)
-            info_bar.show()
-        
-        def run_install():
-            try:
-                # 运行 mrpack-install 命令
-                executable = "mrpack-install.exe" if sys.platform == "win32" else "mrpack-install"
-                process = subprocess.Popen(
-                    [executable, file_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
-                    universal_newlines=True,
-                    **hidden_process_kwargs(),
-                )
-                
-                # 实时输出日志
-                last_line = ""
-                for line in process.stdout:
-                    print(line, end='')
-                    last_line = line
-                    # 更新信息栏
-                    if parent_widget:
-                        # 这里可以根据需要更新信息栏的状态
-                        # 例如，可以根据输出内容更新信息栏的文本
-                        info_bar.setMessage(last_line.strip()[:50])  # 限制文本长度
-                
-                # 等待进程结束
-                process.wait()
-                
-                # 检查最后一条日志
-                if "Done :) Have a nice day" in last_line.strip():
-                        log(i18nText("Modpack 安装成功!"))
-                        if parent_widget:
-                            info_bar.setMessage(i18nText("安装成功!"))
-                            info_bar.setSuccess()
-                else:
-                        log(i18nText("Modpack 安装失败!"))
-                        if parent_widget:
-                            info_bar.setMessage(i18nText("安装失败!"))
-                            info_bar.setError()
-                    
-            except Exception as e:
-                    log(f"安装过程中发生错误: {str(e)}", logging.ERROR)
-                    if parent_widget:
-                        info_bar.setMessage(f"错误: {str(e)}")
-                        info_bar.setError()
-            finally:
-                    # 关闭信息栏
-                    if parent_widget:
-                        info_bar.close()
-        
-        # 在单独线程中运行安装过程
-        thread = threading.Thread(target=run_install)
-        thread.daemon = True
-        thread.start()
-    else:
+    if not file_path:
         log(i18nText("未选择文件"))
+        return
+
+    fallback_bin = os.environ.get("BLORET_MRPACK_INSTALL_BIN", "").strip()
+    if fallback_bin:
+        _add_mrpack_via_external(file_path, parent_widget, fallback_bin)
+        return
+
+    def run_install():
+        try:
+            from modules.mrpack_import import import_mrpack
+
+            def on_progress(phase, current, total, message):
+                log(f"[mrpack] {phase} {current}/{total} {message}")
+
+            result = import_mrpack(file_path, backend=backend, progress=on_progress)
+            if result.get("ok"):
+                log(i18nText("Modpack 安装成功!"))
+            else:
+                log(f"{i18nText('Modpack 安装失败!')}: {result.get('message')}", logging.ERROR)
+        except Exception as e:
+            log(f"安装过程中发生错误: {str(e)}", logging.ERROR)
+
+    thread = threading.Thread(target=run_install, daemon=True)
+    thread.start()
+
+
+def _add_mrpack_via_external(file_path, parent_widget, executable):
+    """可选外挂 mrpack-install 回退（环境变量 BLORET_MRPACK_INSTALL_BIN）。"""
+    def run_install():
+        try:
+            process = subprocess.Popen(
+                [executable, file_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                universal_newlines=True,
+                **hidden_process_kwargs(),
+            )
+            last_line = ""
+            for line in process.stdout:
+                print(line, end="")
+                last_line = line
+            process.wait()
+            if "Done :) Have a nice day" in last_line.strip() or process.returncode == 0:
+                log(i18nText("Modpack 安装成功!"))
+            else:
+                log(i18nText("Modpack 安装失败!"), logging.ERROR)
+        except Exception as e:
+            log(f"安装过程中发生错误: {str(e)}", logging.ERROR)
+
+    threading.Thread(target=run_install, daemon=True).start()
