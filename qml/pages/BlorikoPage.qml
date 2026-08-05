@@ -1335,16 +1335,18 @@ Item {
                             }
 
                             // 模型胶囊（单击打开模型切换对话框）
+                            // 文本需有明确 width 时 elide 才生效；否则长名会在胶囊内换行
                             Rectangle {
                                 id: modelPill
                                 Layout.preferredHeight: 32
-                                Layout.preferredWidth: Math.min(modelPillRow.implicitWidth + 16, 180)
-                                Layout.maximumWidth: 200
+                                Layout.preferredWidth: modelPillRow.implicitWidth + 16
+                                Layout.maximumWidth: 360
                                 radius: 16
                                 color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
                                 border.color: Theme.currentTheme.colors.controlBorderColor || "#E0E0E0"
                                 border.width: 1
                                 opacity: Bloriko && !Bloriko.busy ? 1.0 : 0.55
+                                clip: true
 
                                 RowLayout {
                                     id: modelPillRow
@@ -1356,13 +1358,21 @@ Item {
                                         icon: "ic_fluent_lightbulb_20_regular"
                                         size: 14
                                         color: Theme.currentTheme.colors.textColor
+                                        Layout.preferredWidth: 14
+                                        Layout.preferredHeight: 14
                                     }
                                     Text {
                                         text: currentModelLabel
                                         font.pixelSize: 12
                                         color: Theme.currentTheme.colors.textColor
+                                        wrapMode: Text.NoWrap
+                                        maximumLineCount: 1
                                         elide: Text.ElideRight
-                                        Layout.maximumWidth: 140
+                                        // 给 elide 一个确定宽度：自然宽度与上限取较小值
+                                        width: Math.min(implicitWidth, 320)
+                                        Layout.preferredWidth: width
+                                        Layout.maximumWidth: 320
+                                        verticalAlignment: Text.AlignVCenter
                                     }
                                 }
 

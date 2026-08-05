@@ -480,24 +480,36 @@ FluentPage {
 
                         Rectangle {
                             Layout.preferredHeight: 32
-                            Layout.preferredWidth: Math.min(homeModelPillRow.implicitWidth + 16, 180)
-                            Layout.maximumWidth: 200
+                            Layout.preferredWidth: homeModelPillRow.implicitWidth + 16
+                            Layout.maximumWidth: 360
                             radius: 16
                             color: Theme.currentTheme.colors.controlAltSecondaryColor || "#F0F0F0"
                             border.color: Theme.currentTheme.colors.controlBorderColor || "#E0E0E0"
                             border.width: 1
+                            clip: true
                             RowLayout {
                                 id: homeModelPillRow
                                 anchors.centerIn: parent
                                 anchors.leftMargin: 8; anchors.rightMargin: 8
                                 spacing: 4
-                                Icon { icon: "ic_fluent_lightbulb_20_regular"; size: 14; color: Theme.currentTheme.colors.textColor }
+                                Icon {
+                                    icon: "ic_fluent_lightbulb_20_regular"
+                                    size: 14
+                                    color: Theme.currentTheme.colors.textColor
+                                    Layout.preferredWidth: 14
+                                    Layout.preferredHeight: 14
+                                }
                                 Text {
                                     text: homeModelLabel
                                     font.pixelSize: 12
                                     color: Theme.currentTheme.colors.textColor
+                                    wrapMode: Text.NoWrap
+                                    maximumLineCount: 1
                                     elide: Text.ElideRight
-                                    Layout.maximumWidth: 140
+                                    width: Math.min(implicitWidth, 320)
+                                    Layout.preferredWidth: width
+                                    Layout.maximumWidth: 320
+                                    verticalAlignment: Text.AlignVCenter
                                 }
                             }
                             MouseArea {
