@@ -22,7 +22,6 @@ FluentPage {
     property var languages: []
     property bool traySupported: true
     property string localIPAddress: ""
-    property bool sshCheckRunning: false
 
     Component.onCompleted: {
         console.log("[Settings] page loaded, showing category hub")
@@ -47,17 +46,6 @@ FluentPage {
             javaRuntimes = runtimes
             currentJavaPath = Backend.getCurrentJavaPath()
             refreshJavaComboSelection()
-        }
-        function onGitSshCheckFinished(available, message) {
-            if (typeof sshStatusIndicator !== "undefined" && sshStatusIndicator !== null)
-                sshStatusIndicator.color = available ? "#10b981" : "#ef4444"
-            if (typeof sshStatusLabel !== "undefined" && sshStatusLabel !== null) {
-                sshStatusLabel.text = available
-                    ? "SSH " + _gitSshAvailable
-                    : "SSH " + _gitSshUnavailable + (message ? " — " + message : "")
-                sshStatusLabel.color = available ? "#10b981" : "#ef4444"
-            }
-            sshCheckRunning = false
         }
     }
 
@@ -278,11 +266,6 @@ FluentPage {
         _mcToolbarDesc = Backend ? Backend.tr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏") : "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"
         _sourceTitle = Backend ? Backend.tr("下载源") : "下载源"
         _sourceDesc = Backend ? Backend.tr("选择下载来源：BMCLAPI（优先镜像，失败回退官方）、Bloret (以非常规方式快速下载，只支持部分版本) 或 Mojang 官方直连") : "选择下载来源：BMCLAPI（优先镜像，失败回退官方）、Bloret (以非常规方式快速下载，只支持部分版本) 或 Mojang 官方直连"
-        _gitProtocolTitle = Backend ? Backend.tr("Git 连接方式") : "Git 连接方式"
-        _gitProtocolDesc = Backend ? Backend.tr("选择 Git 传输协议：HTTPS（默认，兼容性好）或 SSH（适合频繁操作，需端口 22 可达）") : "选择 Git 传输协议：HTTPS（默认，兼容性好）或 SSH（适合频繁操作，需端口 22 可达）"
-        _gitSshTestBtn = Backend ? Backend.tr("检测 SSH 可用性") : "检测 SSH 可用性"
-        _gitSshAvailable = Backend ? Backend.tr("SSH 连接 GitHub 正常 ✓") : "SSH 连接 GitHub 正常 ✓"
-        _gitSshUnavailable = Backend ? Backend.tr("SSH 连接不可用，请检查 SSH 配置") : "SSH 连接不可用，请检查 SSH 配置"
         _homeSection = Backend ? Backend.tr("首页") : "首页"
         _homeHubDesc = Backend ? Backend.tr("账户展示、托盘与多开") : "账户展示、托盘与多开"
         _systemSection = Backend ? Backend.tr("系统") : "系统"
@@ -429,11 +412,6 @@ FluentPage {
     property string _mcToolbarDesc: Backend ? Backend.tr("当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏") : "当游玩 Minecraft 时，在 Minecraft 窗口上方显示快捷小工具栏"
     property string _sourceTitle: Backend ? Backend.tr("下载源") : "下载源"
     property string _sourceDesc: Backend ? Backend.tr("选择下载来源：Bloret (以非常规方式快速下载，只支持部分版本)、Mojang 官方直连 或 BMCLAPI（优先镜像，失败回退官方）") : "选择下载来源：Bloret (以非常规方式快速下载，只支持部分版本)、Mojang 官方直连 或 BMCLAPI（优先镜像，失败回退官方）"
-    property string _gitProtocolTitle: Backend ? Backend.tr("Git 连接方式") : "Git 连接方式"
-    property string _gitProtocolDesc: Backend ? Backend.tr("选择 Git 传输协议：HTTPS（默认，兼容性好）或 SSH（适合频繁操作，需端口 22 可达）") : "选择 Git 传输协议：HTTPS（默认，兼容性好）或 SSH（适合频繁操作，需端口 22 可达）"
-    property string _gitSshTestBtn: Backend ? Backend.tr("检测 SSH 可用性") : "检测 SSH 可用性"
-    property string _gitSshAvailable: Backend ? Backend.tr("SSH 连接 GitHub 正常 ✓") : "SSH 连接 GitHub 正常 ✓"
-    property string _gitSshUnavailable: Backend ? Backend.tr("SSH 连接不可用，请检查 SSH 配置") : "SSH 连接不可用，请检查 SSH 配置"
     property string _homeSection: Backend ? Backend.tr("首页") : "首页"
     property string _homeHubDesc: Backend ? Backend.tr("账户展示、托盘与多开") : "账户展示、托盘与多开"
     property string _systemSection: Backend ? Backend.tr("系统") : "系统"
@@ -885,20 +863,6 @@ FluentPage {
         }
     }
 
-    // ── Git SSH 可用性检测 ──
-    function checkSsh() {
-        if (!Backend) return
-        console.log("[Settings] checking SSH availability asynchronously...")
-        if (typeof sshStatusIndicator !== "undefined" && sshStatusIndicator !== null)
-            sshStatusIndicator.color = "#9E9E9E"
-        if (typeof sshStatusLabel !== "undefined" && sshStatusLabel !== null) {
-            sshStatusLabel.text = "SSH " + (Backend ? Backend.tr("检测中...") : "检测中...")
-            sshStatusLabel.color = "#9E9E9E"
-        }
-        sshCheckRunning = true
-        Backend.checkGitSshAvailableAsync()
-    }
-
     function connectorStatusText(status) {
         if (status === "connected") return _wechatConnected
         if (status === "connecting") return _wechatConnecting
@@ -1144,13 +1108,6 @@ FluentPage {
             spacing: 4
             visible: currentCategory === "minecraft"
 
-            // 进入分类时自动检测 SSH 状态
-            onVisibleChanged: {
-                if (visible && gitProtocolCombo && gitProtocolCombo.currentValue === "ssh") {
-                    settingsPage.checkSsh()
-                }
-            }
-
             SettingCard {
                 Layout.fillWidth: true
                 title: _javaTitle
@@ -1320,74 +1277,6 @@ FluentPage {
                 }
             }
 
-            // ── Git 连接方式 ──
-            SettingCard {
-                Layout.fillWidth: true
-                title: _gitProtocolTitle
-                description: _gitProtocolDesc
-                icon.name: "ic_fluent_branch_20_regular"
-                ColumnLayout {
-                    spacing: 6
-                    Layout.preferredWidth: 400
-
-                    RowLayout {
-                        spacing: 8
-                        ComboBox {
-                            id: gitProtocolCombo
-                            Layout.fillWidth: true
-                            model: [
-                                { text: qsTr("HTTPS"), value: "https" },
-                                { text: qsTr("SSH"), value: "ssh" }
-                            ]
-                            textRole: "text"
-                            valueRole: "value"
-                            currentIndex: {
-                                if (!Backend) return 0
-                                var proto = Backend.getGitProtocol()
-                                for (var i = 0; i < gitProtocolCombo.model.length; i++) {
-                                    if (gitProtocolCombo.model[i].value === proto)
-                                        return i
-                                }
-                                return 0
-                            }
-                            onCurrentValueChanged: {
-                                if (!Backend) return
-                                Backend.setGitProtocol(currentValue)
-                                // 切换到 SSH 时自动检测
-                                if (currentValue === "ssh") {
-                                    settingsPage.checkSsh()
-                                }
-                            }
-                        }
-
-                        // SSH 状态指示
-                        Rectangle {
-                            id: sshStatusIndicator
-                            width: 10
-                            height: 10
-                            radius: 5
-                            visible: gitProtocolCombo.currentValue === "ssh"
-                            color: "#9E9E9E"  // 默认灰色（未检测）
-                        }
-
-                        Button {
-                            id: gitSshTestBtn
-                            text: _gitSshTestBtn
-                            enabled: gitProtocolCombo.currentValue === "ssh" && !settingsPage.sshCheckRunning
-                            onClicked: settingsPage.checkSsh()
-                        }
-                    }
-
-                    // SSH 状态提示文字
-                    Label {
-                        id: sshStatusLabel
-                        visible: gitProtocolCombo.currentValue === "ssh"
-                        font.pixelSize: 11
-                        wrapMode: Text.Wrap
-                        Layout.fillWidth: true
-                    }
-                }
-            }
         }
 
         // --- Home ---

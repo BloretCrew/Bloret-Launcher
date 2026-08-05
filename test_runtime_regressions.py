@@ -74,8 +74,6 @@ class TestBackendDeclarations(unittest.TestCase):
         }
         self.assertIn("refreshPassPortAvatarAsync", methods)
         self.assertIn("scanSystemJavasAsync", methods)
-        self.assertIn("checkGitSshAvailableAsync", methods)
-        self.assertNotIn("checkGitSshAvailable", methods)
 
     def test_avatar_getter_has_no_network_calls(self):
         backend = _backend_class()

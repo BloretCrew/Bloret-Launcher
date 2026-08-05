@@ -232,9 +232,6 @@ try:
     BLglobals.download_source = config_data.get('download_source', 'gitcode')
     log(f"下载源: {BLglobals.download_source}")
 
-    BLglobals.git_protocol = config_data.get('git_protocol', 'https')
-    log(f"Git 连接方式: {BLglobals.git_protocol}")
-
     BLglobals.proxy = config_data.get('proxy', '')
     log(f"代理: {BLglobals.proxy or '(无)'}")
 

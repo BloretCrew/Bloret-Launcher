@@ -215,48 +215,21 @@ class _GitProgressStream:
         raise OSError("GitProgressStream has no fileno")
 
 
-def _https_to_ssh_url(https_url):
-    """将 HTTPS git URL 转为 SSH 格式，如 https://gitcode.com/Bloret/1.21.8.git → git@gitcode.com:Bloret/1.21.8.git"""
-    from urllib.parse import urlparse
-    parsed = urlparse(https_url)
-    if parsed.scheme not in ("http", "https"):
-        return https_url  # 非 HTTP 链接不转换
-    host = parsed.hostname
-    path = parsed.path.lstrip("/")
-    return f"git@{host}:{path}"
-
-
 def bloret_git_clone_download(version, minecraft_dir, backend=None, cancel_event=None):
     """
-    使用 dulwich clone 从 Bloret Git 仓库下载 Minecraft 版本文件。
+    使用 dulwich clone 从 Bloret Git 仓库下载 Minecraft 版本文件（HTTPS only）。
     如果版本不在 fastdownload API 列表中，返回 False（回退正常下载）。
     成功返回 True。
-    根据 git_protocol 设置自动选择 SSH/HTTPS，SSH 失败时降级 HTTPS。
     """
     from dulwich import porcelain
     import tempfile
-    import modules.globals as BLglobals
 
     fastdownload = fetch_fastdownload_versions()
     if version not in fastdownload:
         log(f"版本 {version} 不在 fastdownload 列表中，回退正常下载")
         return False
 
-    orig_url = fastdownload[version]
-
-    # 准备候选 URL 列表：SSH 模式先试 SSH（仅当可用），失败后降级 HTTPS
-    candidate_urls = []
-    if BLglobals.git_protocol == "ssh":
-        if BLglobals.git_ssh_available is False:
-            log("SSH 模式已启用，但检测结果为不可用（未配置密钥或认证失败），跳过 SSH 尝试，直接使用 HTTPS", logging.WARNING)
-        else:
-            ssh_url = _https_to_ssh_url(orig_url)
-            candidate_urls.append(("ssh", ssh_url))
-            if BLglobals.git_ssh_available is None:
-                log("SSH 模式已启用，尚未进行 SSH 可用性检测，先尝试 SSH，失败将自动降级 HTTPS", logging.INFO)
-            else:
-                log(f"SSH 模式已启用，检测可用，优先使用 SSH 地址: {ssh_url}", logging.INFO)
-    candidate_urls.append(("https", orig_url))
+    url = fastdownload[version]
 
     def update_progress(progress, status):
         if backend:
@@ -265,51 +238,44 @@ def bloret_git_clone_download(version, minecraft_dir, backend=None, cancel_event
     parent = os.path.dirname(os.path.abspath(minecraft_dir)) or minecraft_dir
     os.makedirs(parent, exist_ok=True)
 
-    last_error = None
-    for protocol_label, url in candidate_urls:
-        tmp_dir = tempfile.mkdtemp(prefix="bloret_git_", dir=parent)
-        try:
-            update_progress(0.05, i18nText("正在从 Bloret 仓库克隆文件..."))
-            log(f"开始 git clone ({protocol_label}) {url} -> {tmp_dir}")
+    tmp_dir = tempfile.mkdtemp(prefix="bloret_git_", dir=parent)
+    try:
+        update_progress(0.05, i18nText("正在从 Bloret 仓库克隆文件..."))
+        log(f"开始 git clone (https) {url} -> {tmp_dir}")
 
-            progress_stream = _GitProgressStream(backend, cancel_event=cancel_event)
-            porcelain.clone(url, tmp_dir, depth=1, errstream=progress_stream, outstream=progress_stream)
+        progress_stream = _GitProgressStream(backend, cancel_event=cancel_event)
+        porcelain.clone(url, tmp_dir, depth=1, errstream=progress_stream, outstream=progress_stream)
+        if cancel_event is not None and cancel_event.is_set():
+            raise _DownloadCancelled("用户取消了下载")
+        log(f"git clone 完成 (https): {tmp_dir}")
+
+        # 克隆成功，复制文件到目标目录
+        update_progress(0.6, i18nText("正在复制文件到 Minecraft 目录..."))
+        os.makedirs(minecraft_dir, exist_ok=True)
+        for item in os.listdir(tmp_dir):
+            if item == ".git":
+                continue
             if cancel_event is not None and cancel_event.is_set():
                 raise _DownloadCancelled("用户取消了下载")
-            log(f"git clone 完成 ({protocol_label}): {tmp_dir}")
+            src = os.path.join(tmp_dir, item)
+            dst = os.path.join(minecraft_dir, item)
+            if os.path.isdir(src):
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+            else:
+                shutil.copy2(src, dst)
 
-            # 克隆成功，复制文件到目标目录
-            update_progress(0.6, i18nText("正在复制文件到 Minecraft 目录..."))
-            os.makedirs(minecraft_dir, exist_ok=True)
-            for item in os.listdir(tmp_dir):
-                if item == ".git":
-                    continue
-                if cancel_event is not None and cancel_event.is_set():
-                    raise _DownloadCancelled("用户取消了下载")
-                src = os.path.join(tmp_dir, item)
-                dst = os.path.join(minecraft_dir, item)
-                if os.path.isdir(src):
-                    shutil.copytree(src, dst, dirs_exist_ok=True)
-                else:
-                    shutil.copy2(src, dst)
-
-            update_progress(0.85, i18nText("文件复制完成"))
-            log(f"Bloret git clone 下载完成: {version}")
-            return True
-        except _DownloadCancelled:
-            log("Bloret git clone 下载被用户取消")
-            return False
-        except Exception as e:
-            last_error = e
-            log(f"{protocol_label} clone 失败: {e}", logging.WARNING)
-            if protocol_label == "ssh":
-                log("SSH clone 失败，降级使用 HTTPS 重试", logging.WARNING)
-        finally:
-            if tmp_dir and os.path.exists(tmp_dir):
-                shutil.rmtree(tmp_dir, ignore_errors=True)
-
-    log(f"所有 clone 方式均失败: {last_error}", logging.ERROR)
-    return False
+        update_progress(0.85, i18nText("文件复制完成"))
+        log(f"Bloret git clone 下载完成: {version}")
+        return True
+    except _DownloadCancelled:
+        log("Bloret git clone 下载被用户取消")
+        return False
+    except Exception as e:
+        log(f"https clone 失败: {e}", logging.ERROR)
+        return False
+    finally:
+        if tmp_dir and os.path.exists(tmp_dir):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def _request_json_from_urls(urls, timeout=30):
