@@ -628,6 +628,15 @@ FluentPage {
                     Layout.fillWidth: true
                     model: homeModelModel
                     textRole: "name"
+                    onActivated: function(index) {
+                        if (index < 0 || index >= homeModelModel.count) return
+                        var m = homeModelModel.get(index)
+                        if (Backend) Backend.setGlobalAIModel(m.id)
+                        if (Bloriko && typeof Bloriko.setModel === "function")
+                            Bloriko.setModel(m.id)
+                        homeModelCombo.currentIndex = index
+                        homeUpdateModelLabel()
+                    }
                 }
                 RowLayout {
                     Layout.fillWidth: true
@@ -643,16 +652,33 @@ FluentPage {
                         highlighted: true
                         Layout.fillWidth: true
                         onClicked: {
+                            // 先保存选中的模型 id，避免 loadModels clear 冲掉 ComboBox 索引
+                            var selectedModelId = ""
+                            var selectedModelIndex = homeModelComboDlg.currentIndex
+                            if (selectedModelIndex >= 0 && selectedModelIndex < homeModelModel.count)
+                                selectedModelId = homeModelModel.get(selectedModelIndex).id || ""
+
                             if (homeProviderComboDlg.currentIndex >= 0 && homeProviderComboDlg.currentIndex < homeProviderModel.count) {
                                 var p = homeProviderModel.get(homeProviderComboDlg.currentIndex)
                                 if (Backend) Backend.setGlobalAIProvider(p.key)
                                 homeProviderCombo.currentIndex = homeProviderComboDlg.currentIndex
                             }
+
+                            if (selectedModelId.length > 0) {
+                                if (Backend) Backend.setGlobalAIModel(selectedModelId)
+                                if (Bloriko && typeof Bloriko.setModel === "function")
+                                    Bloriko.setModel(selectedModelId)
+                            }
+
                             homeLoadModels()
-                            if (homeModelComboDlg.currentIndex >= 0 && homeModelComboDlg.currentIndex < homeModelModel.count) {
-                                var m = homeModelModel.get(homeModelComboDlg.currentIndex)
-                                if (Backend) Backend.setGlobalAIModel(m.id)
-                                homeModelCombo.currentIndex = homeModelComboDlg.currentIndex
+                            if (selectedModelId.length > 0) {
+                                for (var i = 0; i < homeModelModel.count; i++) {
+                                    if (homeModelModel.get(i).id === selectedModelId) {
+                                        homeModelCombo.currentIndex = i
+                                        homeModelComboDlg.currentIndex = i
+                                        break
+                                    }
+                                }
                             }
                             homeUpdateModelLabel()
                             homeModelDlg.close()
