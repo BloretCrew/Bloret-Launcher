@@ -44,7 +44,9 @@ FluentPage {
         colorType: downloadPage._sourceColor(downloadPage._currentSource)
     }
 
-    // 配置变更监听
+    // 配置变更 / 整合包导入反馈
+    property string _mrpackStatus: ""
+
     Connections {
         target: Backend
         function onConfigChanged(key, value) {
@@ -52,6 +54,50 @@ FluentPage {
                 _currentSource = Backend.getDownloadSource()
             }
         }
+        function onDownloadNotify(title, text, success) {
+            mrpackInfoBar.severity = success ? Severity.Success : Severity.Error
+            mrpackInfoBar.title = title || ""
+            mrpackInfoBar.text = text || ""
+            mrpackInfoBar.opacity = 1
+            mrpackInfoBar.visible = true
+            mrpackInfoBarTimer.restart()
+        }
+        function onMrpackImportProgress(phase, current, total, message) {
+            var label = message || phase || ""
+            if (total > 0)
+                label = "[" + phase + " " + current + "/" + total + "] " + (message || "")
+            else if (phase)
+                label = "[" + phase + "] " + (message || "")
+            downloadPage._mrpackStatus = label
+            mrpackInfoBar.severity = Severity.Info
+            mrpackInfoBar.title = Backend ? Backend.tr("正在导入整合包") : "正在导入整合包"
+            mrpackInfoBar.text = label
+            mrpackInfoBar.opacity = 1
+            mrpackInfoBar.visible = true
+            // 导入中不自动隐藏
+            mrpackInfoBarTimer.stop()
+        }
+        function onMrpackImportFinished(requestId, ok, instanceName, message) {
+            mrpackInfoBar.severity = ok ? Severity.Success : Severity.Error
+            mrpackInfoBar.title = ok
+                ? (Backend ? Backend.tr("整合包导入成功") : "整合包导入成功")
+                : (Backend ? Backend.tr("整合包导入失败") : "整合包导入失败")
+            mrpackInfoBar.text = ok
+                ? ((instanceName || "") + (message ? " · " + message : ""))
+                : (message || "")
+            mrpackInfoBar.opacity = 1
+            mrpackInfoBar.visible = true
+            downloadPage._mrpackStatus = ""
+            mrpackInfoBarTimer.restart()
+            if (ok)
+                refreshDlStatusBar()
+        }
+    }
+
+    Timer {
+        id: mrpackInfoBarTimer
+        interval: 5000
+        onTriggered: mrpackInfoBar.visible = false
     }
 
     // ── 下载任务状态（稳定 ListModel，避免每秒销毁重建）──
@@ -300,6 +346,14 @@ FluentPage {
     // ── 页面内容主体 ──
     content: ColumnLayout {
         spacing: 12
+
+        InfoBar {
+            id: mrpackInfoBar
+            Layout.fillWidth: true
+            visible: false
+            timeout: -1
+            closable: true
+        }
 
         // ── 当前下载（仅当有任务时显示）──
         // 注意：不要用 RinUI Frame(clip:true) + MouseArea(anchors.fill)

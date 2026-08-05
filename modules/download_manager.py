@@ -23,10 +23,11 @@ class DownloadTask:
         "downloaded", "total", "error_message",
         "cancel_event", "pause_event", "backend",
         "thread", "result", "finished_at",
+        "completed_event", "minecraft_dir",
         "_last_emit_ts", "_last_emit_progress",
     )
 
-    def __init__(self, task_id, version, version_name, loader, backend):
+    def __init__(self, task_id, version, version_name, loader, backend, minecraft_dir=None):
         self.task_id = task_id
         self.version = version
         self.version_name = version_name
@@ -45,6 +46,8 @@ class DownloadTask:
         self.thread = None
         self.result = None
         self.finished_at = 0.0
+        self.completed_event = threading.Event()
+        self.minecraft_dir = minecraft_dir
         self._last_emit_ts = 0.0
         self._last_emit_progress = -1.0
 
@@ -90,11 +93,16 @@ class DownloadManager:
 
     # ── task lifecycle ──
 
-    def start_download(self, version, version_name, loader, backend) -> str:
-        """Start a new download task. Returns task_id."""
+    def start_download(self, version, version_name, loader, backend, minecraft_dir=None) -> str:
+        """Start a new download task. Returns task_id.
+
+        minecraft_dir: optional override for install target root (e.g. mrpack import).
+        """
         self._init()
         task_id = uuid.uuid4().hex[:12]
-        task = DownloadTask(task_id, version, version_name, loader, backend)
+        task = DownloadTask(
+            task_id, version, version_name, loader, backend, minecraft_dir=minecraft_dir
+        )
         with self.tasks_lock:
             self.tasks[task_id] = task
 
@@ -111,8 +119,6 @@ class DownloadManager:
                 if backend:
                     backend.downloadTaskAdded.emit(task_id)
 
-                # Build task_state dict for backward compat with install.py
-                completed_ev = threading.Event()
                 task_state = {
                     "task_id": task_id,
                     "cancel_event": task.cancel_event,
@@ -121,7 +127,7 @@ class DownloadManager:
                     "cancelled": False,
                     "is_paused": False,
                     "downloader": None,
-                    "completed_event": completed_ev,
+                    "completed_event": task.completed_event,
                     "result": None,
                     "cleanup_on_fail": True,
                     "version_dir": None,
@@ -131,7 +137,7 @@ class DownloadManager:
                 result = bool(
                     _install_minecraft_version_threaded(
                         version,
-                        minecraft_dir=None,
+                        minecraft_dir=task.minecraft_dir,
                         Fabric_Loader=(loader == "fabric"),
                         VersionName=version_name,
                         backend=backend,
@@ -153,18 +159,25 @@ class DownloadManager:
                 log(f"[DownloadManager] task {task_id} exception: {exc}", exc_info=True)
             finally:
                 if task.status == "failed" and backend:
-                    backend.downloadErrorOccurred.emit(
-                        "Minecraft 下载失败",
-                        task.error_message or "下载任务未完成",
-                        version,
-                        version_name,
-                        loader,
-                    )
-                completed_ev.set()
+                    try:
+                        backend.downloadErrorOccurred.emit(
+                            "Minecraft 下载失败",
+                            task.error_message or "下载任务未完成",
+                            version,
+                            version_name,
+                            loader,
+                        )
+                    except Exception:
+                        pass
+                task.completed_event.set()
                 if backend:
-                    backend.downloadTaskRemoved.emit(task_id)
+                    try:
+                        backend.downloadTaskRemoved.emit(task_id)
+                    except Exception:
+                        pass
                 task.finished_at = time.monotonic()
                 task.thread = None
+                # 保留 backend 引用到任务被 prune 前，便于失败通知；此处清空避免泄漏
                 task.backend = None
                 self._prune_finished_tasks()
                 log(f"[DownloadManager] task {task_id} finished, status={task.status}")
@@ -174,6 +187,13 @@ class DownloadManager:
         thread.start()
         log(f"[DownloadManager] started task {task_id}: {version} ({loader})")
         return task_id
+
+    def wait_task(self, task_id, timeout: float | None = None) -> bool:
+        """Block until task finishes. Returns True if completed within timeout."""
+        task = self.get_task(task_id)
+        if task is None:
+            return False
+        return task.completed_event.wait(timeout=timeout)
 
     def cancel_task(self, task_id):
         """Cancel a task by ID."""
