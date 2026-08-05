@@ -1,29 +1,40 @@
 # Modrinth Modpack Format (.mrpack) 研究文档
 
+> 权威实现参考：`/data/modrinth-code`（Modrinth App）  
+> - 导出：`packages/app-lib/src/api/instance/export_mrpack.rs`  
+> - 导入：`packages/app-lib/src/api/pack/install_mrpack.rs`  
+> - 格式：`packages/app-lib/src/api/pack/install_from.rs`  
+>
+> Bloret 实现：`modules/mrpack_export.py`、`modules/mrpack_import.py`
+
 ## 概述
 
-`.mrpack` 是 Modrinth 平台的整合包文件格式，用于分发 Minecraft 模组整合包。
+`.mrpack` 是 Modrinth 平台的整合包文件格式，本质是 **ZIP**，用于分发 Minecraft 模组整合包。
 
-## 文件结构
-
-`.mrpack` 文件本质上是一个 **ZIP 压缩包**，包含以下结构：
+## 文件结构（官方）
 
 ```
-example.mrpack (ZIP 文件)
-├── modrinth.index.json    # 必需的索引文件（位于根目录）
-└── files/                 # 可选的文件目录
-    ├── config/            # 配置文件
-    ├── mods/              # 模组文件
-    ├── resourcepacks/     # 资源包
-    ├── shaderpacks/       # 光影包
-    └── ...                # 其他需要覆盖的文件
+example.mrpack (ZIP)
+├── modrinth.index.json       # 必需：清单
+├── overrides/                # 本地覆盖文件 → 解压到实例根目录
+│   ├── config/...
+│   ├── mods/本地未上架.jar
+│   └── ...
+├── client-overrides/         # 仅客户端覆盖
+└── server-overrides/         # 仅服务端（App 哈希会扫；客户端导入主路径用 overrides + client-overrides）
 ```
 
-## modrinth.index.json 格式
+### 重要更正
 
-这是整合包的核心配置文件，必须位于 ZIP 文件的根目录。
+| 错误（旧文档 / 旧 Bloret 导出） | 正确（Modrinth App） |
+|--------------------------------|----------------------|
+| ZIP 内使用 `files/{path}` 嵌入全部内容 | **不使用** `files/` 目录 |
+| index 中文件可不带 `downloads` | 远程内容必须有 `downloads` + 哈希；本地内容进 `overrides/` |
+| 所有文件既进 index 又进 ZIP | **有 CDN 的只进 index；无 CDN 的只进 overrides** |
 
-### 完整结构示例
+旧版 Bloret 导出的 `files/` 包与官方 App **不兼容**。新实现已改为 `overrides/` + 可选 `downloads` 分流。
+
+## modrinth.index.json（PackFormat）
 
 ```json
 {
@@ -31,317 +42,91 @@ example.mrpack (ZIP 文件)
   "game": "minecraft",
   "versionId": "1.0.0",
   "name": "我的整合包",
-  "summary": "一个很棒的整合包",
+  "summary": "简介（可选）",
   "files": [
     {
       "path": "mods/example-mod.jar",
       "hashes": {
-        "sha512": "abcdef1234567890...",
-        "sha1": "1234567890abcdef..."
+        "sha1": "...",
+        "sha512": "..."
       },
       "env": {
         "client": "required",
         "server": "required"
       },
       "downloads": [
-        "https://cdn.modrinth.com/mod/xxx/version/yyy/file.jar"
+        "https://cdn.modrinth.com/data/.../....jar"
       ],
       "fileSize": 123456
-    },
-    {
-      "path": "config/mod-config.toml",
-      "hashes": {
-        "sha512": "fedcba0987654321..."
-      }
     }
   ],
   "dependencies": {
     "minecraft": "1.20.1",
-    "fabric-loader": ">=0.14.0",
-    "quilt-loader": "*",
-    "minecraft-resourcepacks": "*"
+    "fabric-loader": "0.15.0"
   }
 }
 ```
 
-### 字段详解
+### 顶层字段
 
-#### 顶层字段
-
-| 字段名 | 类型 | 必需 | 说明 |
-|--------|------|------|------|
-| `formatVersion` | integer | ✓ | 格式版本号，当前为 `1` |
-| `game` | string | ✓ | 游戏标识，通常是 `"minecraft"` |
+| 字段 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `formatVersion` | int | ✓ | 当前为 `1` |
+| `game` | string | ✓ | 必须为 `"minecraft"`，否则官方导入失败 |
 | `versionId` | string | ✓ | 整合包版本号 |
-| `name` | string | ✓ | 整合包名称 |
-| `summary` | string | ✗ | 整合包简介 |
-| `files` | array | ✓ | 文件列表 |
-| `dependencies` | object | ✓ | 依赖项（游戏版本、加载器等） |
+| `name` | string | ✓ | 名称 |
+| `summary` | string | ✗ | 简介 |
+| `files` | array | ✓ | **可远程下载**的内容清单 |
+| `dependencies` | object | ✓ | 游戏 / 加载器依赖 |
 
-#### files 数组中的对象字段
+### files[] 字段
 
-| 字段名 | 类型 | 必需 | 说明 |
-|--------|------|------|------|
-| `path` | string | ✓ | 文件在实例目录中的相对路径 |
-| `hashes` | object | ✓ | 文件哈希值（至少包含 sha512 或 sha1） |
-| `hashes.sha512` | string | △ | SHA-512 哈希（推荐） |
-| `hashes.sha1` | string | △ | SHA-1 哈希 |
-| `env` | object | ✗ | 环境要求 |
-| `env.client` | string | ✗ | 客户端要求：`"required"`, `"optional"`, `"unsupported"`, `"enforced"` |
-| `env.server` | string | ✗ | 服务器要求：同上 |
-| `downloads` | array | ✗ | 下载 URL 列表 |
-| `fileSize` | integer | ✗ | 文件大小（字节） |
+| 字段 | 说明 |
+|------|------|
+| `path` | 相对实例根路径（如 `mods/foo.jar`） |
+| `hashes.sha1` | 官方下载校验主要用 sha1 |
+| `hashes.sha512` | 推荐一并写出 |
+| `downloads` | URL 列表（多镜像回退） |
+| `fileSize` | 字节数 |
+| `env.client` / `env.server` | `required` \| `optional` \| `unsupported` |
 
-**env 字段说明：**
-- `"required"`: 必须安装此文件
-- `"optional"`: 可选文件
-- `"unsupported"`: 不支持此环境（不会安装）
-- `"enforced"`: 强制要求（类似 required，但更严格）
+客户端安装时：`env.client == "unsupported"` 的文件会跳过。
 
-#### dependencies 对象字段
+### dependencies 常见键
 
-键值对形式，键为依赖项 ID，值为版本范围字符串。
+- `minecraft`
+- `fabric-loader` / `quilt-loader` / `forge` / `neoforge`
 
-常见依赖项：
-- `"minecraft"`: Minecraft 游戏版本（如 `"1.20.1"`, `"~1.20.1"`）
-- `"fabric-loader"`: Fabric 加载器版本
-- `"quilt-loader"`: Quilt 加载器版本
-- `"forge"`: Forge 加载器版本
-- `"neoforge"`: NeoForge 加载器版本
-- `"minecraft-resourcepacks"`: 资源包支持
-- `"minecraft-shaders"`: 光影包支持
+## 导出流程（对齐 App）
 
-**版本范围语法：**
-- `"1.20.1"`: 精确匹配
-- `">=1.20"`: 大于等于
-- `"~1.20.1"`: 兼容版本（小版本可变动）
-- `"*"`: 任意版本
+1. 扫描候选路径；默认勾选：`mods`、`datapacks`、`resourcepacks`、`shaderpacks`、`config`
+2. 黑名单跳过：日志、`.fabric`、`natives`、缓存等
+3. 对能反查到 Modrinth CDN 的文件：只写入 `files[]`（hashes + downloads），**不打进 ZIP**
+4. 其余选中文件：写入 `overrides/{相对路径}`
+5. 写入 `modrinth.index.json`
 
-## 创建 .mrpack 的步骤
+反查失败时降级为 overrides 内嵌（包可变大，但保证可装）。
 
-### Python 实现示例
+## 导入流程（对齐 App）
 
-```python
-import zipfile
-import json
-import hashlib
-from pathlib import Path
+1. 打开 ZIP，定位 `modrinth.index.json`
+2. 校验 `game == "minecraft"`
+3. 按 `dependencies` 安装 Minecraft + 加载器到目标版本目录
+4. 并发/串行下载 `files[]`（多 URL、sha1 校验；跳过 client unsupported）
+5. 解压 `overrides/` 与 `client-overrides/` 到实例根
+6. （可选）兼容旧 Bloret 错误格式：若存在 ZIP 内 `files/` 也解压
 
-def calculate_hash(file_path, algorithm='sha512'):
-    """计算文件的哈希值"""
-    hash_func = hashlib.new(algorithm)
-    with open(file_path, 'rb') as f:
-        for chunk in iter(lambda: f.read(8192), b''):
-            hash_func.update(chunk)
-    return hash_func.hexdigest()
+## Bloret 代码入口
 
-def create_mrpack(output_path, name, version, game_version, files_list, summary=""):
-    """
-    创建 .mrpack 文件
-    
-    Args:
-        output_path: 输出的 .mrpack 文件路径
-        name: 整合包名称
-        version: 整合包版本号
-        game_version: Minecraft 版本
-        files_list: 文件列表，每个元素包含：
-            - path: 文件在实例中的路径
-            - source: 源文件路径
-            - env: 环境要求（可选）
-            - downloads: 下载链接列表（可选）
-    """
-    
-    # 构建 index 文件
-    index = {
-        "formatVersion": 1,
-        "game": "minecraft",
-        "versionId": version,
-        "name": name,
-        "summary": summary,
-        "files": [],
-        "dependencies": {
-            "minecraft": game_version
-        }
-    }
-    
-    # 创建 ZIP 文件
-    with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        # 处理每个文件
-        for file_info in files_list:
-            source_path = Path(file_info['source'])
-            target_path = file_info['path']
-            
-            # 计算哈希
-            sha512_hash = calculate_hash(source_path, 'sha512')
-            sha1_hash = calculate_hash(source_path, 'sha1')
-            
-            # 构建文件条目
-            file_entry = {
-                "path": target_path,
-                "hashes": {
-                    "sha512": sha512_hash,
-                    "sha1": sha1_hash
-                },
-                "fileSize": source_path.stat().st_size
-            }
-            
-            # 添加环境要求
-            if 'env' in file_info:
-                file_entry['env'] = file_info['env']
-            
-            # 添加下载链接
-            if 'downloads' in file_info:
-                file_entry['downloads'] = file_info['downloads']
-            
-            index['files'].append(file_entry)
-            
-            # 将文件添加到 ZIP
-            zipf.write(source_path, f"files/{target_path}")
-        
-        # 写入 index 文件
-        zipf.writestr('modrinth.index.json', json.dumps(index, indent=2))
-    
-    print(f"已创建整合包：{output_path}")
+| 能力 | 模块 / 槽 |
+|------|-----------|
+| 导出 | `modules/mrpack_export.py` → `Backend.requestMrpackExport*` |
+| 导入 | `modules/mrpack_import.py` → `Backend.importMrpack` / `add_mrpack` |
+| UI | `qml/components/ExportMrpackDialog.qml`、`qml/pages/Download.qml` |
 
-# 使用示例
-if __name__ == "__main__":
-    files = [
-        {
-            "path": "mods/fabric-api.jar",
-            "source": "/path/to/fabric-api.jar",
-            "env": {"client": "required", "server": "required"},
-            "downloads": ["https://cdn.modrinth.com/..."]
-        },
-        {
-            "path": "config/my-mod.toml",
-            "source": "/path/to/config.toml"
-        }
-    ]
-    
-    create_mrpack(
-        output_path="my-pack.mrpack",
-        name="我的整合包",
-        version="1.0.0",
-        game_version="1.20.1",
-        files_list=files,
-        summary="这是一个测试整合包"
-    )
-```
+## 验收
 
-## 从现有实例导出 .mrpack
-
-如果你要从现有的 Minecraft 实例导出整合包：
-
-```python
-import os
-import json
-import zipfile
-import hashlib
-from pathlib import Path
-
-def export_instance_to_mrpack(instance_path, output_path, name, version):
-    """
-    从现有实例导出 .mrpack
-    
-    Args:
-        instance_path: 实例目录路径
-        output_path: 输出的 .mrpack 路径
-        name: 整合包名称
-        version: 整合包版本
-    """
-    
-    instance = Path(instance_path)
-    files_list = []
-    
-    # 检测游戏版本和加载器
-    game_version = detect_game_version(instance)
-    loader = detect_loader(instance)
-    
-    dependencies = {"minecraft": game_version}
-    if loader:
-        dependencies[loader['name']] = loader['version']
-    
-    # 收集 mods 目录
-    mods_dir = instance / "mods"
-    if mods_dir.exists():
-        for mod_file in mods_dir.glob("*.jar"):
-            rel_path = f"mods/{mod_file.name}"
-            files_list.append({
-                "path": rel_path,
-                "source": str(mod_file),
-                "env": {"client": "required", "server": "required"}
-            })
-    
-    # 收集 config 目录
-    config_dir = instance / "config"
-    if config_dir.exists():
-        for config_file in config_dir.rglob("*"):
-            if config_file.is_file():
-                rel_path = f"config/{config_file.relative_to(config_dir)}"
-                files_list.append({
-                    "path": rel_path,
-                    "source": str(config_file)
-                })
-    
-    # 收集 resourcepacks
-    rp_dir = instance / "resourcepacks"
-    if rp_dir.exists():
-        for rp_file in rp_dir.rglob("*"):
-            if rp_file.is_file():
-                rel_path = f"resourcepacks/{rp_file.relative_to(rp_dir)}"
-                files_list.append({
-                    "path": rel_path,
-                    "source": str(rp_file)
-                })
-    
-    # 创建 mrpack
-    create_mrpack_with_deps(
-        output_path=output_path,
-        name=name,
-        version=version,
-        game_version=game_version,
-        dependencies=dependencies,
-        files_list=files_list
-    )
-
-def detect_game_version(instance_path):
-    """检测游戏版本（从 version.json 或其他文件）"""
-    # 实现版本检测逻辑
-    version_file = instance_path / "version.json"
-    if version_file.exists():
-        with open(version_file) as f:
-            data = json.load(f)
-            return data.get('id', '1.20.1')
-    return "1.20.1"  # 默认值
-
-def detect_loader(instance_path):
-    """检测加载器类型和版本"""
-    # Fabric: 检查 fabric-loader-*.jar
-    # Forge: 检查 forge-*.jar 或 .minecraft/forgeVersion.txt
-    # 实现检测逻辑
-    return None
-```
-
-## 注意事项
-
-1. **哈希算法**: 推荐使用 SHA-512，但也应该提供 SHA-1 以兼容旧客户端
-2. **路径规范**: 使用正斜杠 `/`，即使是在 Windows 上
-3. **文件大小**: `fileSize` 字段是可选的，但建议提供以便客户端验证
-4. **环境变量**: 合理使用 `env` 字段来区分客户端专用和服务端专用的文件
-5. **下载链接**: 对于来自 Modrinth 的模组，提供官方下载链接可以让客户端直接下载而不是从包内提取
-
-## 参考资源
-
-- Modrinth API 文档: https://docs.modrinth.com/
-- Modrinth 整合包规范: https://support.modrinth.com/en/articles/8792413-modrinth-modpack-format-mrpack
-- Knossos (Modrinth 官方启动器) 源码: https://github.com/modrinth/knossos
-
-## 在 Bloret Launcher 中实现导出功能
-
-基于你现有的代码结构，建议在以下位置添加功能：
-
-1. **新增模块**: `modules/mrpack_export.py` - 导出逻辑
-2. **UI 集成**: 在实例管理界面添加"导出为 .mrpack"按钮
-3. **API 扩展**: 在 `modules/modrinth.py` 中添加相关函数
-
-这样可以保持代码的组织性和可维护性。
+1. 导出包结构：`modrinth.index.json` + `overrides/`，无错误 `files/` 根目录
+2. 带 downloads 的条目不在 ZIP 中重复嵌入
+3. Bloret 可导入标准 `.mrpack`（无需 `mrpack-install`）
+4. 往返：Bloret 导出 → Bloret 导入，关键 mods/config 一致
