@@ -21,6 +21,15 @@ Item {
     property string currentModelLabel: (Backend ? Backend.tr("选择模型") : "选择模型")
     property string voiceState: "idle"
     property int maxPendingImages: 4
+    // 仅在首段文字/工具输出出现前显示「正在思考」
+    property bool awaitingFirstToken: false
+
+    function beginAwaitingReply() { awaitingFirstToken = true }
+    function endAwaitingReply() { awaitingFirstToken = false }
+    function markReplyStarted() {
+        if (awaitingFirstToken)
+            awaitingFirstToken = false
+    }
 
     function loadProviders() {
         providerModel.clear()
@@ -124,6 +133,7 @@ Item {
             role: "user", content: text, imagesJson: imagesJson,
             toolName: "", toolArgs: "", toolResult: "", streaming: false, expanded: false
         })
+        beginAwaitingReply()
         Agent.sendMessage(text, imagesJson)
         inputField.text = ""
         clearPendingImages()
@@ -270,6 +280,7 @@ Item {
                             font.pixelSize: 14
                             onClicked: {
                                 messageModel.clear()
+                                endAwaitingReply()
                                 if (Agent) Agent.clearHistory()
                             }
                         }
@@ -408,7 +419,7 @@ Item {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             width: implicitWidth
-                            active: Agent && Agent.busy
+                            active: agentPage.awaitingFirstToken
                             orbSize: 18
                             orbSpeed: 1.1
                             orbInk: Theme.accentColor || Theme.currentTheme.colors.primaryColor || "#0078D4"
@@ -425,7 +436,7 @@ Item {
                             text: Backend ? Backend.tr("就绪") : "就绪"
                             font.pixelSize: 11
                             color: Theme.currentTheme.colors.textSecondaryColor
-                            opacity: (Agent && Agent.busy) ? 0 : 1
+                            opacity: agentPage.awaitingFirstToken ? 0 : 1
                             visible: opacity > 0.01
                             Behavior on opacity {
                                 NumberAnimation { duration: 280; easing.type: Easing.InOutQuad }
@@ -453,7 +464,11 @@ Item {
                         flat: true
                         font.pixelSize: 11
                         enabled: Agent && !Agent.busy
-                        onClicked: { messageModel.clear(); if (Agent) Agent.clearHistory() }
+                        onClicked: {
+                            messageModel.clear()
+                            endAwaitingReply()
+                            if (Agent) Agent.clearHistory()
+                        }
                     }
                 }
 
@@ -488,7 +503,7 @@ Item {
                         anchors.leftMargin: 16
                         anchors.rightMargin: 16
                         anchors.topMargin: 8
-                        active: Agent && Agent.busy
+                        active: agentPage.awaitingFirstToken
                         orbSize: 22
                         showAvatar: true
                         avatarSource: Qt.resolvedUrl("../../../icon/Bloriko.jpg")
@@ -500,7 +515,7 @@ Item {
                         target: Agent
                         enabled: Agent !== null
                         function onBusyChanged() {
-                            if (Agent && Agent.busy)
+                            if (Agent && Agent.busy && agentPage.awaitingFirstToken)
                                 Qt.callLater(function() { msgView.positionViewAtEnd() })
                         }
                     }
@@ -510,7 +525,7 @@ Item {
                 Item {
                     anchors.centerIn: parent
                     width: 280; height: emptyCol.implicitHeight
-                    visible: messageModel.count === 0 && !(Agent && Agent.busy)
+                    visible: messageModel.count === 0 && !agentPage.awaitingFirstToken
 
                     ColumnLayout {
                         id: emptyCol
@@ -639,7 +654,7 @@ Item {
 
                         ThinkingStatus {
                             Layout.fillWidth: true
-                            active: streaming && (!content || content.length === 0)
+                            active: agentPage.awaitingFirstToken && streaming && (!content || content.length === 0)
                             orbSize: 20
                             orbSpeed: 1.1
                             showAvatar: false
@@ -649,7 +664,7 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
-                            opacity: (streaming && (!content || content.length === 0)) ? 0 : 1
+                            opacity: (agentPage.awaitingFirstToken && streaming && (!content || content.length === 0)) ? 0 : 1
                             visible: opacity > 0.01 || (content && content.length > 0)
                             text: content || ""
                             font.pixelSize: 13
@@ -1535,11 +1550,19 @@ Item {
         }
 
         function onBusyChanged() {
-            if (Agent && Agent.busy)
+            if (!Agent) return
+            if (Agent.busy) {
+                if (!awaitingFirstToken)
+                    beginAwaitingReply()
                 Qt.callLater(function() { msgView.positionViewAtEnd() })
+            } else {
+                endAwaitingReply()
+            }
         }
 
         function onTextUpdated(text) {
+            if (text && String(text).length > 0)
+                markReplyStarted()
             var lastIdx = messageModel.count - 1
             if (lastIdx >= 0 && messageModel.get(lastIdx).role === "assistant" && messageModel.get(lastIdx).streaming) {
                 messageModel.set(lastIdx, {role: "assistant", content: text, toolName: "", toolArgs: "", toolResult: "", streaming: true})
@@ -1551,6 +1574,7 @@ Item {
 
         function onToolCallStarted(toolName, argsJson) {
             console.log("[AgentTab] onToolCallStarted: " + toolName)
+            markReplyStarted()
             // 找到最后一个 tool_call 之后的位置（连续的 tool_calls 应该在一起）
             var insertIdx = messageModel.count
             for (var i = messageModel.count - 1; i >= 0; i--) {
@@ -1582,10 +1606,12 @@ Item {
         }
 
         function onErrorOccurred(msg) {
+            endAwaitingReply()
             messageModel.append({role: "error", content: msg, toolName: "", toolArgs: "", toolResult: "", streaming: false, expanded: false})
         }
 
         function onMessageAdded(role, content, toolCallsJson) {
+            markReplyStarted()
             // 找到流式 assistant 消息并终结
             for (var i = messageModel.count - 1; i >= 0; i--) {
                 if (messageModel.get(i).role === "assistant" && messageModel.get(i).streaming) {

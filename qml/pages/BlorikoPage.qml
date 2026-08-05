@@ -23,6 +23,21 @@ Item {
     property string currentModelLabel: (Backend ? Backend.tr("选择模型") : "选择模型")
     property string voiceState: "idle"  // idle | recording | transcribing
     property int maxPendingImages: 4
+    // 仅在「已请求、但尚未出现任何正文/工具输出」时显示「正在思考」
+    property bool awaitingFirstToken: false
+
+    function beginAwaitingReply() {
+        awaitingFirstToken = true
+    }
+
+    function endAwaitingReply() {
+        awaitingFirstToken = false
+    }
+
+    function markReplyStarted() {
+        if (awaitingFirstToken)
+            awaitingFirstToken = false
+    }
 
     // 情感状态 → emoji 映射
     property var emotionMap: ({
@@ -163,6 +178,7 @@ Item {
             streaming: false,
             expanded: false
         })
+        beginAwaitingReply()
         Bloriko.sendMessage(text, imagesJson)
         inputField.text = ""
         clearPendingImages()
@@ -292,6 +308,7 @@ Item {
             expanded: false
         })
         console.log("[Bloriko] 自动发送首页消息到 Agent")
+        beginAwaitingReply()
         Bloriko.sendMessage(text, imagesJson || "[]")
     }
 
@@ -411,6 +428,7 @@ Item {
                             font.pixelSize: 14
                             onClicked: {
                                 messageModel.clear()
+                                endAwaitingReply()
                                 if (Bloriko) Bloriko.clearHistory()
                             }
                         }
@@ -615,7 +633,7 @@ Item {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             width: implicitWidth
-                            active: Bloriko && Bloriko.busy
+                            active: blorikoPage.awaitingFirstToken
                             orbSize: 18
                             orbSpeed: 1.1
                             orbInk: Theme.accentColor || Theme.currentTheme.colors.primaryColor || "#0078D4"
@@ -632,7 +650,7 @@ Item {
                             text: Backend ? Backend.tr("就绪") : "就绪"
                             font.pixelSize: 11
                             color: Theme.currentTheme.colors.textSecondaryColor
-                            opacity: (Bloriko && Bloriko.busy) ? 0 : 1
+                            opacity: blorikoPage.awaitingFirstToken ? 0 : 1
                             visible: opacity > 0.01
                             Behavior on opacity {
                                 NumberAnimation { duration: 280; easing.type: Easing.InOutQuad }
@@ -661,7 +679,11 @@ Item {
                         font.pixelSize: 11
                         Layout.alignment: Qt.AlignVCenter
                         enabled: Bloriko && !Bloriko.busy
-                        onClicked: { messageModel.clear(); if (Bloriko) Bloriko.clearHistory() }
+                        onClicked: {
+                            messageModel.clear()
+                            endAwaitingReply()
+                            if (Bloriko) Bloriko.clearHistory()
+                        }
                     }
                 }
 
@@ -698,7 +720,7 @@ Item {
                         anchors.leftMargin: 16
                         anchors.rightMargin: 16
                         anchors.topMargin: 8
-                        active: Bloriko && Bloriko.busy
+                        active: blorikoPage.awaitingFirstToken
                         orbSize: 22
                         showAvatar: true
                         avatarSource: Qt.resolvedUrl("../../icon/Bloriko.jpg")
@@ -710,7 +732,7 @@ Item {
                         target: Bloriko
                         enabled: Bloriko !== null
                         function onBusyChanged() {
-                            if (Bloriko && Bloriko.busy)
+                            if (Bloriko && Bloriko.busy && blorikoPage.awaitingFirstToken)
                                 Qt.callLater(function() { msgView.positionViewAtEnd() })
                         }
                     }
@@ -720,7 +742,7 @@ Item {
                 Item {
                     anchors.centerIn: parent
                     width: 280; height: emptyCol.implicitHeight
-                    visible: messageModel.count === 0 && !(Bloriko && Bloriko.busy)
+                    visible: messageModel.count === 0 && !blorikoPage.awaitingFirstToken
 
                     ColumnLayout {
                         id: emptyCol
@@ -848,10 +870,10 @@ Item {
                             Image { anchors.fill: parent; source: Qt.resolvedUrl("../../icon/Bloriko.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
                         }
 
-                        // 流式尚未产出文本时：内联思考状态（淡入淡出）
+                        // 首 token 前：内联思考状态；有正文后由 footer 已关闭、此处也不再显示
                         ThinkingStatus {
                             Layout.fillWidth: true
-                            active: streaming && (!content || content.length === 0)
+                            active: blorikoPage.awaitingFirstToken && streaming && (!content || content.length === 0)
                             orbSize: 20
                             orbSpeed: 1.1
                             showAvatar: false
@@ -861,7 +883,7 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
-                            opacity: (streaming && (!content || content.length === 0)) ? 0 : 1
+                            opacity: (blorikoPage.awaitingFirstToken && streaming && (!content || content.length === 0)) ? 0 : 1
                             visible: opacity > 0.01 || (content && content.length > 0)
                             text: content || ""
                             font.pixelSize: 13
@@ -1743,11 +1765,21 @@ Item {
         target: Bloriko; enabled: Bloriko !== null
 
         function onBusyChanged() {
-            if (Bloriko && Bloriko.busy)
+            if (!Bloriko) return
+            if (Bloriko.busy) {
+                // 发送路径已 beginAwaitingReply；若 busy 从外部拉起也补上
+                if (!awaitingFirstToken)
+                    beginAwaitingReply()
                 Qt.callLater(function() { msgView.positionViewAtEnd() })
+            } else {
+                endAwaitingReply()
+            }
         }
 
         function onTextUpdated(text) {
+            // 一旦有流式正文（含空串之后的首段），结束「正在思考」
+            if (text && String(text).length > 0)
+                markReplyStarted()
             var lastIdx = messageModel.count - 1
             if (lastIdx >= 0 && messageModel.get(lastIdx).role === "assistant" && messageModel.get(lastIdx).streaming) {
                 messageModel.set(lastIdx, {role: "assistant", content: text, toolName: "", toolArgs: "", toolResult: "", streaming: true})
@@ -1758,6 +1790,8 @@ Item {
         }
 
         function onToolCallStarted(toolName, argsJson) {
+            // 工具调用也算「已开始产出」，不再显示正在思考
+            markReplyStarted()
             var insertIdx = messageModel.count
             for (var i = messageModel.count - 1; i >= 0; i--) {
                 var item = messageModel.get(i)
@@ -1785,10 +1819,12 @@ Item {
         }
 
         function onErrorOccurred(msg) {
+            endAwaitingReply()
             messageModel.append({role: "error", content: msg, toolName: "", toolArgs: "", toolResult: "", streaming: false, expanded: false})
         }
 
         function onMessageAdded(role, content, toolCallsJson) {
+            markReplyStarted()
             for (var i = messageModel.count - 1; i >= 0; i--) {
                 if (messageModel.get(i).role === "assistant" && messageModel.get(i).streaming) {
                     messageModel.set(i, {role: "assistant", content: content, streaming: false})
