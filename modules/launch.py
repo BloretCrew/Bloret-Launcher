@@ -507,7 +507,12 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
     classpath = _rewrite_classpath_with_system_lwjgl(classpath)
 
     library_names = [lib.get("name", "").lower() for lib in version_data.get("libraries", [])]
-    is_fabric = "fabric" in mc_version.lower() or any("fabric" in name for name in library_names)
+    is_fabric = (
+        "fabric" in mc_version.lower()
+        or "quilt" in mc_version.lower()
+        or any("fabric" in name or "quilt" in name for name in library_names)
+    )
+    is_quilt = "quilt" in mc_version.lower() or any("quilt" in name for name in library_names)
     is_forge_like = (
         "forge" in mc_version.lower()
         or any("minecraftforge" in name or "neoforged" in name for name in library_names)
@@ -515,20 +520,49 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
         or "cpw.mods" in version_data.get("mainClass", "")
     )
 
-    if is_fabric:
+    if is_quilt:
+        log(f"检测到 Quilt 版本: {mc_version}")
+    elif is_fabric:
         log(f"检测到 Fabric 版本: {mc_version}")
     elif is_forge_like:
         log(f"检测到 Forge/NeoForge 版本: {mc_version}")
     else:
         log(f"检测到原版: {mc_version}")
     
-    java_min_memory = config_data.get('java_min_memory', 512)
-    java_max_memory = config_data.get('java_max_memory', 4096)
+    # 实例级 overrides（内存 / 额外 JVM / 自定义 Java）
+    try:
+        from modules.services.instance_settings import resolve_launch_overrides
+        _inst_over = resolve_launch_overrides(mc_version, config_data, minecraft_dir)
+    except Exception as _ov_err:
+        log(f"读取实例设置失败，使用全局配置: {_ov_err}", logging.WARNING)
+        _inst_over = {
+            "java_min_memory": config_data.get("java_min_memory", 512),
+            "java_max_memory": config_data.get("java_max_memory", 4096),
+            "extra_jvm_args": [],
+            "env_vars": {},
+            "hooks": {},
+            "quick_play": {},
+            "custom_game_args": "",
+            "java_path": "",
+        }
+
+    # 若实例指定了 java_path 且存在，覆盖前面选中的 Java
+    override_java = str(_inst_over.get("java_path") or "").strip()
+    if override_java and os.path.isfile(override_java):
+        java_path = override_java
+        java_arg = java_path
+        log(f"使用实例指定 Java: {java_path}")
+
+    java_min_memory = _inst_over.get("java_min_memory", config_data.get("java_min_memory", 512))
+    java_max_memory = _inst_over.get("java_max_memory", config_data.get("java_max_memory", 4096))
     
     launch_args.extend([
         f"-Xms{java_min_memory}m",
         f"-Xmx{java_max_memory}m"
     ])
+    for extra in _inst_over.get("extra_jvm_args") or []:
+        if extra and extra not in launch_args:
+            launch_args.append(str(extra))
     
     if is_fabric:
         launch_args.append("-DFabricMcEmu=net.minecraft.client.main.Main")
@@ -609,8 +643,10 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
         f'-Djava.io.tmpdir={temp_dir}',
     ])
     if is_fabric and os.path.exists(mods_dir):
-        log(f"添加 Fabric mods 目录: {mods_dir}")
+        log(f"添加 Fabric/Quilt mods 目录: {mods_dir}")
         pending_launcher_jvm_args.append(f'-Dfabric.addMods={mods_dir}')
+        if is_quilt:
+            pending_launcher_jvm_args.append(f'-Dloader.addMods={mods_dir}')
 
     seen_jvm_args = set(launch_args[1:])
     for arg in pending_launcher_jvm_args:
@@ -710,6 +746,77 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
         launch_args.extend(["--clientId", client_id])
     if login_method == 2 and "${auth_xuid}" in template_text and xuid and "--xuid" not in existing_flags:
         launch_args.extend(["--xuid", xuid])
+
+    # Quick Play + 自定义游戏参数
+    try:
+        from modules.services.worlds_service import quick_play_game_args
+        qp_args = quick_play_game_args(_inst_over.get("quick_play") or {})
+        if qp_args:
+            launch_args.extend(qp_args)
+            log(f"已注入 Quick Play 参数: {qp_args}")
+        custom_game = str(_inst_over.get("custom_game_args") or "").strip()
+        if custom_game:
+            import shlex as _shlex
+            try:
+                extra_g = _shlex.split(custom_game, posix=(os.name != "nt"))
+            except ValueError:
+                extra_g = custom_game.split()
+            launch_args.extend(extra_g)
+    except Exception as _qp_err:
+        log(f"Quick Play 参数注入失败: {_qp_err}", logging.WARNING)
+
+    # 用户 wrapper hook
+    hooks = _inst_over.get("hooks") or {}
+    wrapper = str(hooks.get("wrapper") or "").strip()
+    if wrapper:
+        try:
+            from modules.services.runtime_extras import wrap_launch_args
+            launch_args = wrap_launch_args(
+                wrapper,
+                launch_args,
+                {
+                    "INST_NAME": mc_version,
+                    "INST_ID": mc_version,
+                    "INST_DIR": versions_dir,
+                    "INST_MC_DIR": versions_dir,
+                    "INST_JAVA": java_path,
+                },
+            )
+            log(f"已应用 wrapper hook")
+        except Exception as _wh:
+            log(f"wrapper hook 失败: {_wh}", logging.WARNING)
+
+    # pre-launch hook（失败则中止启动）
+    pre = str(hooks.get("pre_launch") or "").strip()
+    if pre:
+        try:
+            from modules.services.runtime_extras import run_pre_launch_hook
+            pre_res = run_pre_launch_hook(
+                pre,
+                instance_name=mc_version,
+                instance_dir=versions_dir,
+                java_path=java_path,
+                cwd=versions_dir,
+            )
+            if not pre_res.ok:
+                raise RuntimeError(pre_res.error or "pre-launch hook failed")
+            log("pre-launch hook 完成")
+        except Exception as _ph:
+            log(f"pre-launch hook 失败: {_ph}", logging.ERROR)
+            raise
+
+    # 把 hooks / env 挂到返回值之外：调用方可通过全局读取
+    try:
+        import modules.globals as _g
+        _g._pending_launch_hooks = {
+            "post_exit": str(hooks.get("post_exit") or ""),
+            "instance_name": mc_version,
+            "instance_dir": versions_dir,
+            "java_path": java_path,
+            "env_vars": dict(_inst_over.get("env_vars") or {}),
+        }
+    except Exception:
+        pass
 
     # 返回启动参数列表和游戏目录；日志必须脱敏。
     sensitive_values = {value for value in (access_token, client_id, xuid) if value}

@@ -318,6 +318,16 @@ class Backend(QObject):
     # Resource Pack Editor signal
     resourcePackEditorRequested = Signal()
 
+    # P0–P2 feature signals
+    contentUpdatesReady = Signal(str, list)          # versionName, updates
+    contentActionFinished = Signal(str, str, bool, str)  # action, versionName, ok, message
+    instanceSettingsReady = Signal(str, "QVariant")  # versionName, settings
+    worldsListReady = Signal(str, list)
+    skinsListReady = Signal(list)
+    crashReportsReady = Signal(str, list)
+    importInstancesReady = Signal(list)
+    importInstanceFinished = Signal(bool, str, str)  # ok, name, message
+
     # Backdrop/acrylic effect signal
     backdropEffectChanged = Signal(str)
 
@@ -713,6 +723,12 @@ class Backend(QObject):
 
                 # 最终会话校验与 Popen 在同一把锁内串行化；取消操作也取得此锁，
                 # 从而消除“检查通过后、Popen 前”被取消的竞态。
+                try:
+                    from modules.services.feature_bridge import apply_pending_launch_side_effects
+                    _launch_env = apply_pending_launch_side_effects(None, _launch_env)
+                except Exception as _side_pre:
+                    print(f"[Launch] 预应用实例 env 失败: {_side_pre}")
+
                 with self._launch_start_lock:
                     if abort_if_cancelled("before_process_start"):
                         return
@@ -727,6 +743,12 @@ class Backend(QObject):
                         **hidden_process_kwargs(),
                     )
                     print(f"[Launch] Popen 已完成: session={launch_session_id}, pid={proc.pid}")
+
+                try:
+                    from modules.services.feature_bridge import apply_pending_launch_side_effects
+                    apply_pending_launch_side_effects(proc, None)
+                except Exception as _side:
+                    print(f"[Launch] post hook/discord 失败: {_side}")
 
                 import uuid as _uuid
                 instance_id = str(_uuid.uuid4())
@@ -1668,6 +1690,282 @@ class Backend(QObject):
     def showMrpackExport(self, versionName):
         self.mrpackExportRequested.emit(versionName)
 
+    # ---- P0–P2 feature slots ----
+    @Slot(str)
+    def checkContentUpdates(self, versionName):
+        def _run():
+            try:
+                from modules.services import feature_bridge as fb
+                res = fb.check_content_updates(versionName)
+                updates = res.get("data") if res.get("ok") else []
+                self.contentUpdatesReady.emit(versionName, updates or [])
+                self.contentActionFinished.emit(
+                    "check_updates",
+                    versionName,
+                    bool(res.get("ok")),
+                    res.get("message") or f"{len(updates or [])} updates",
+                )
+            except Exception as e:
+                self.contentUpdatesReady.emit(versionName, [])
+                self.contentActionFinished.emit("check_updates", versionName, False, str(e))
+        threading.Thread(target=_run, daemon=True).start()
+
+    @Slot(str)
+    def updateAllContent(self, versionName):
+        def _run():
+            try:
+                from modules.services import feature_bridge as fb
+                def progress_cb(frac, status):
+                    self.downloadProgressUpdated.emit(float(frac) * 100.0, status or "", "", "", "")
+                self.downloadDialogRequested.emit(str(self.tr("更新内容")) + f": {versionName}")
+                res = fb.update_all_content(versionName, progress_cb=progress_cb)
+                ok = bool(res.get("ok"))
+                msg = res.get("message") or json.dumps(res.get("data") or {}, ensure_ascii=False)[:200]
+                self.downloadCompleted.emit(msg)
+                self.contentActionFinished.emit("update_all", versionName, ok, msg)
+            except Exception as e:
+                self.downloadCompleted.emit(str(e))
+                self.contentActionFinished.emit("update_all", versionName, False, str(e))
+        threading.Thread(target=_run, daemon=True).start()
+
+    @Slot(str)
+    def enrichContentIndex(self, versionName):
+        def _run():
+            try:
+                from modules.services import feature_bridge as fb
+                res = fb.scan_and_enrich(versionName)
+                self.contentActionFinished.emit(
+                    "enrich",
+                    versionName,
+                    bool(res.get("ok")),
+                    res.get("message") or json.dumps(res.get("data") or {}, ensure_ascii=False)[:200],
+                )
+            except Exception as e:
+                self.contentActionFinished.emit("enrich", versionName, False, str(e))
+        threading.Thread(target=_run, daemon=True).start()
+
+    @Slot(str, result="QVariant")
+    def getInstanceSettings(self, versionName):
+        try:
+            from modules.services import feature_bridge as fb
+            res = fb.get_instance_settings(versionName)
+            return res.get("data") if res.get("ok") else {}
+        except Exception as e:
+            print(f"getInstanceSettings: {e}")
+            return {}
+
+    @Slot(str, "QVariant", result=bool)
+    def saveInstanceSettings(self, versionName, patch):
+        try:
+            from modules.services import feature_bridge as fb
+            data = dict(patch) if patch else {}
+            res = fb.save_instance_settings(versionName, data)
+            if res.get("ok"):
+                self.instanceSettingsReady.emit(versionName, res.get("data") or {})
+            return bool(res.get("ok"))
+        except Exception as e:
+            print(f"saveInstanceSettings: {e}")
+            return False
+
+    @Slot(str)
+    def requestWorlds(self, versionName):
+        def _run():
+            try:
+                from modules.services import feature_bridge as fb
+                res = fb.list_worlds(versionName)
+                self.worldsListReady.emit(versionName, res.get("data") or [])
+            except Exception:
+                self.worldsListReady.emit(versionName, [])
+        threading.Thread(target=_run, daemon=True).start()
+
+    @Slot(str, str, result=bool)
+    def setQuickPlayWorld(self, versionName, worldFolder):
+        try:
+            from modules.services import feature_bridge as fb
+            return bool(fb.set_quick_play_world(versionName, worldFolder).get("ok"))
+        except Exception:
+            return False
+
+    @Slot(str, str, int, result=bool)
+    def setQuickPlayServer(self, versionName, address, port):
+        try:
+            from modules.services import feature_bridge as fb
+            return bool(fb.set_quick_play_server(versionName, address, int(port or 0)).get("ok"))
+        except Exception:
+            return False
+
+    @Slot(str, result=bool)
+    def clearQuickPlay(self, versionName):
+        try:
+            from modules.services import feature_bridge as fb
+            return bool(fb.clear_quick_play(versionName).get("ok"))
+        except Exception:
+            return False
+
+    @Slot()
+    def requestSkins(self):
+        def _run():
+            try:
+                from modules.services import feature_bridge as fb
+                res = fb.list_skins()
+                self.skinsListReady.emit(res.get("data") or [])
+            except Exception:
+                self.skinsListReady.emit([])
+        threading.Thread(target=_run, daemon=True).start()
+
+    @Slot(str, str, str, result="QVariant")
+    def importSkinFile(self, path, name, variant):
+        try:
+            from modules.services import feature_bridge as fb
+            return fb.import_skin(path, name=name or "", variant=variant or "classic")
+        except Exception as e:
+            return {"ok": False, "message": str(e)}
+
+    @Slot(str, result=bool)
+    def deleteSkin(self, skinId):
+        try:
+            from modules.services import feature_bridge as fb
+            return bool(fb.delete_skin(skinId).get("ok"))
+        except Exception:
+            return False
+
+    @Slot(str, str, result="QVariant")
+    def equipSkin(self, skinId, variant):
+        try:
+            from modules.services import feature_bridge as fb
+            return fb.equip_skin(skinId, variant=variant or "")
+        except Exception as e:
+            return {"ok": False, "message": str(e)}
+
+    @Slot(result=str)
+    def selectSkinPng(self):
+        try:
+            from PySide6.QtWidgets import QFileDialog
+            path, _ = QFileDialog.getOpenFileName(
+                None,
+                self.tr("选择皮肤 PNG"),
+                "",
+                "PNG Images (*.png)",
+            )
+            return path or ""
+        except Exception as e:
+            print(f"selectSkinPng: {e}")
+            return ""
+
+    @Slot(result=str)
+    def selectImportLauncherFolder(self):
+        try:
+            from PySide6.QtWidgets import QFileDialog
+            path = QFileDialog.getExistingDirectory(
+                None,
+                self.tr("选择 Prism / MultiMC 目录或 instances 目录"),
+                "",
+            )
+            return path or ""
+        except Exception as e:
+            print(f"selectImportLauncherFolder: {e}")
+            return ""
+
+    @Slot(str)
+    def requestCrashReports(self, versionName):
+        def _run():
+            try:
+                from modules.services import feature_bridge as fb
+                res = fb.list_crashes(versionName)
+                self.crashReportsReady.emit(versionName, res.get("data") or [])
+            except Exception:
+                self.crashReportsReady.emit(versionName, [])
+        threading.Thread(target=_run, daemon=True).start()
+
+    @Slot(str, result="QVariant")
+    def readCrashLog(self, path):
+        try:
+            from modules.services import feature_bridge as fb
+            return fb.read_crash_log(path)
+        except Exception as e:
+            return {"ok": False, "message": str(e)}
+
+    @Slot(str)
+    def requestImportableInstances(self, basePath):
+        def _run():
+            try:
+                from modules.services import feature_bridge as fb
+                res = fb.list_importable(basePath)
+                self.importInstancesReady.emit(res.get("data") or [])
+            except Exception:
+                self.importInstancesReady.emit([])
+        threading.Thread(target=_run, daemon=True).start()
+
+    @Slot(str, str)
+    def importExternalInstance(self, path, targetName):
+        def _run():
+            try:
+                from modules.services import feature_bridge as fb
+                res = fb.import_instance(path, target_name=targetName or "")
+                ok = bool(res.get("ok"))
+                data = res.get("data") or {}
+                name = data.get("name") or targetName or ""
+                msg = res.get("message") or data.get("note") or ("ok" if ok else "failed")
+                if ok:
+                    self.invalidateLaunchItemsCache()
+                self.importInstanceFinished.emit(ok, name, str(msg))
+            except Exception as e:
+                self.importInstanceFinished.emit(False, "", str(e))
+        threading.Thread(target=_run, daemon=True).start()
+
+    @Slot(result="QVariant")
+    def getDefaultImportPaths(self):
+        try:
+            from modules.services import feature_bridge as fb
+            return fb.default_import_paths()
+        except Exception:
+            return {"ok": False, "prism": "", "multimc": ""}
+
+    @Slot(str, result="QVariant")
+    def getMrpackExportCandidates(self, versionName):
+        try:
+            config_data = cfg.read()
+            mc_dir = config_data.get("minecraft_dir", BLglobals.minecraft_dir)
+            path = os.path.join(mc_dir, "versions", versionName)
+            from modules.services import feature_bridge as fb
+            return fb.mrpack_export_candidates(path)
+        except Exception as e:
+            return {"ok": False, "message": str(e)}
+
+    @Slot(bool)
+    def setDiscordRpcEnabled(self, enabled):
+        try:
+            from modules.services import feature_bridge as fb
+            fb.set_discord_rpc(bool(enabled))
+        except Exception as e:
+            print(f"setDiscordRpcEnabled: {e}")
+
+    @Slot(result=bool)
+    def isDiscordRpcEnabled(self):
+        try:
+            from modules.services.runtime_extras import discord_is_enabled
+            return bool(discord_is_enabled())
+        except Exception:
+            return False
+
+    @Slot(str, result="QVariant")
+    def listShaderpacks(self, versionName):
+        try:
+            from modules.services.content_service import list_shaderpacks
+            res = list_shaderpacks(versionName)
+            return res.data if res.ok else []
+        except Exception:
+            return []
+
+    @Slot(str, result="QVariant")
+    def listDatapacks(self, versionName):
+        try:
+            from modules.services.content_service import list_datapacks
+            res = list_datapacks(versionName)
+            return res.data if res.ok else []
+        except Exception:
+            return []
+
     @Slot(str, result="QVariant")
     def getCoreData(self, versionName):
         try:
@@ -2481,6 +2779,13 @@ class Backend(QObject):
         print(f"Requested download NeoForge: {version} as {versionName}")
         dm = DownloadManager()
         dm.start_download(version, versionName, "neoforge", self)
+
+    @Slot(str, str)
+    def downloadQuilt(self, version, versionName):
+        from modules.download_manager import DownloadManager
+        print(f"Requested download Quilt: {version} as {versionName}")
+        dm = DownloadManager()
+        dm.start_download(version, versionName, "quilt", self)
 
     @Slot()
     def toggleDownloadPause(self):
@@ -3629,80 +3934,36 @@ class Backend(QObject):
 
     def _download_one_mod(self, mod_id, version_name, progress_cb=None):
         """
-        同步下载单个模组到 versions/{version_name}/mods。
-
-        progress_cb(frac 0-1, status_str) 可选。
-        Returns:
-            tuple: (ok: bool, message: str)
+        同步下载单个模组（含 required 依赖）到 versions/{version_name}/mods，
+        并写入 content-index。
         """
-        from modules.modrinth import Get_Mod_File_Download_Url
         from modules.log import log as _log
         import logging as _logging
-
         try:
-            config_data = cfg.read()
-            mc_dir = config_data.get("minecraft_dir", BLglobals.minecraft_dir)
-            game_version = self._resolve_game_version_for_folder(version_name, mc_dir)
-            _log(
-                f"[ModInstall] 下载 {mod_id} -> {version_name} (mc={game_version})",
-                _logging.INFO,
-            )
-            if progress_cb:
-                progress_cb(0.05, f"解析下载地址: {mod_id}")
+            from modules.services.content_lifecycle import install_project
+            from modules.services.paths_util import detect_loader
 
-            url = Get_Mod_File_Download_Url(
+            loader = detect_loader(version_name)
+            loaders = [loader] if loader not in ("", "vanilla") else None
+            res = install_project(
+                version_name,
                 mod_id,
-                loaders=["fabric"],
-                game_versions=[game_version] if game_version else None,
+                with_dependencies=True,
+                project_type="mod",
+                loaders=loaders,
+                progress_cb=progress_cb,
             )
-            if not url:
-                url = Get_Mod_File_Download_Url(
-                    mod_id,
-                    loaders=None,
-                    game_versions=[game_version] if game_version else None,
-                )
-            if not url:
-                msg = f"未找到 {mod_id} 的下载链接"
-                _log(f"[ModInstall] {msg}", _logging.WARNING)
-                return False, msg
-
-            filename = url.split("/")[-1].split("?")[0]
-            if not filename or "." not in filename:
-                filename = f"{mod_id}.jar"
-            if filename.endswith(".mrpack"):
-                return False, f"{mod_id}: 得到 mrpack 而非 jar，已跳过"
-
-            mods_dir = os.path.join(mc_dir, "versions", version_name, "mods")
-            os.makedirs(mods_dir, exist_ok=True)
-            file_path = os.path.join(mods_dir, filename)
-
-            if progress_cb:
-                progress_cb(0.1, f"下载中: {filename}")
-
-            with requests.get(url, timeout=120, stream=True) as response:
-                if response.status_code != 200:
-                    msg = f"{mod_id}: HTTP {response.status_code}"
-                    _log(f"[ModInstall] {msg}", _logging.ERROR)
-                    return False, msg
-                total = int(response.headers.get("Content-Length") or 0)
-                downloaded = 0
-                chunk_size = 64 * 1024
-                with open(file_path, "wb") as f:
-                    for chunk in response.iter_content(chunk_size=chunk_size):
-                        if not chunk:
-                            continue
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if progress_cb and total > 0:
-                            frac = 0.1 + 0.9 * min(1.0, downloaded / total)
-                            mb_d = downloaded / (1024 * 1024)
-                            mb_t = total / (1024 * 1024)
-                            progress_cb(frac, f"下载中: {filename} ({mb_d:.1f}/{mb_t:.1f} MB)")
-                        elif progress_cb and downloaded % (512 * 1024) < chunk_size:
-                            progress_cb(0.5, f"下载中: {filename} ({downloaded // 1024} KB)")
-
-            _log(f"[ModInstall] 成功: {file_path}", _logging.INFO)
-            return True, f"{filename} -> {mods_dir}"
+            if res.ok:
+                data = res.data or {}
+                n = int(data.get("count") or 0)
+                fails = data.get("failed") or []
+                msg = f"{mod_id}: 安装 {n} 个文件"
+                if fails:
+                    msg += f"（部分失败: {', '.join(fails[:2])}）"
+                _log(f"[ModInstall] 成功: {msg}", _logging.INFO)
+                return True, msg
+            _log(f"[ModInstall] 失败 {mod_id}: {res.error}", _logging.WARNING)
+            return False, res.error or "install failed"
         except Exception as e:
             _log(f"[ModInstall] 异常 {mod_id}: {e}", _logging.ERROR)
             import traceback

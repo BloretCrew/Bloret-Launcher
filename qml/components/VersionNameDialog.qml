@@ -20,6 +20,8 @@ Dialog {
             return Backend ? Backend.tr("安装 Forge 版本 %1").arg(version) : ("安装 Forge 版本 " + version)
         if (loaderType === "neoforge")
             return Backend ? Backend.tr("安装 NeoForge 版本 %1").arg(version) : ("安装 NeoForge 版本 " + version)
+        if (loaderType === "quilt")
+            return Backend ? Backend.tr("安装 Quilt 版本 %1").arg(version) : ("安装 Quilt 版本 " + version)
         return Backend ? Backend.tr("安装 Minecraft 版本 %1").arg(version) : ("安装 Minecraft 版本 " + version)
     }
 

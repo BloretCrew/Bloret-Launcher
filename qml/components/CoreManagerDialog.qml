@@ -19,13 +19,24 @@ Dialog {
     property var servers: []
     property var mods: []
     property var resourcePacks: []
+    property var worlds: []
+    property var contentUpdates: []
+    property var crashReports: []
+    property string crashLogText: ""
     property bool isOpening: false
     property bool modsLoading: false
     property bool resourcePacksLoading: false
+    property bool worldsLoading: false
     property int modsRequestSerial: 0
     property int resourcePacksRequestSerial: 0
     property string activeModsRequestId: ""
     property string activeResourcePacksRequestId: ""
+    property int minMemMb: 512
+    property int maxMemMb: 4096
+    property string extraJvmArgs: ""
+    property string preLaunchHook: ""
+    property string wrapperHook: ""
+    property string postExitHook: ""
 
     Connections {
         target: Backend
@@ -40,6 +51,23 @@ Dialog {
             resourcePacksLoading = false
             if (!errorMessage) resourcePacks = items
             else console.error("[CoreManager] resource pack scan failed:", errorMessage)
+        }
+        function onWorldsListReady(loadedVersion, items) {
+            if (loadedVersion !== versionName) return
+            worldsLoading = false
+            worlds = items || []
+        }
+        function onContentUpdatesReady(loadedVersion, items) {
+            if (loadedVersion !== versionName) return
+            contentUpdates = items || []
+        }
+        function onContentActionFinished(action, loadedVersion, ok, message) {
+            if (loadedVersion !== versionName) return
+            if (action === "update_all" || action === "enrich") loadMods()
+        }
+        function onCrashReportsReady(loadedVersion, items) {
+            if (loadedVersion !== versionName) return
+            crashReports = items || []
         }
     }
 
@@ -62,6 +90,7 @@ Dialog {
                     { key: "server", text: Backend ? Backend.tr("服务器") : "服务器" },
                     { key: "resource", text: Backend ? Backend.tr("资源包") : "资源包" },
                     { key: "mod", text: Backend ? Backend.tr("Mod") : "Mod" },
+                    { key: "worlds", text: Backend ? Backend.tr("世界") : "世界" },
                     { key: "advanced", text: Backend ? Backend.tr("高级") : "高级" }
                 ]
                 
@@ -74,6 +103,7 @@ Dialog {
                         if (index === 1) loadServers()
                         if (index === 2) loadResourcePacks()
                         if (index === 3) loadMods()
+                        if (index === 4) loadWorlds()
                     }
                 }
             }
@@ -475,15 +505,35 @@ Dialog {
                     }
                     Item { Layout.fillWidth: true }
                     Button {
+                        text: Backend ? Backend.tr("检查更新") : "检查更新"
+                        flat: true
+                        onClicked: if (Backend) Backend.checkContentUpdates(versionName)
+                    }
+                    Button {
+                        text: Backend ? Backend.tr("全部更新") : "全部更新"
+                        highlighted: contentUpdates.length > 0
+                        onClicked: if (Backend) Backend.updateAllContent(versionName)
+                    }
+                    Button {
                         icon.name: "ic_fluent_arrow_sync_20_regular"
                         flat: true
-                        onClicked: loadMods()
+                        onClicked: {
+                            if (Backend) Backend.enrichContentIndex(versionName)
+                            loadMods()
+                        }
                     }
                     Button {
                         text: Backend ? Backend.tr("打开文件夹") : "打开文件夹"
                         icon.name: "ic_fluent_folder_open_20_regular"
                         onClicked: if (Backend) Backend.openSubFolder(versionName, "mods")
                     }
+                }
+
+                Label {
+                    visible: contentUpdates.length > 0
+                    text: (Backend ? Backend.tr("可更新") : "可更新") + ": " + contentUpdates.length
+                    color: Theme.currentTheme.colors.primaryColor
+                    font.pixelSize: 12
                 }
                 
                 ScrollView {
@@ -584,6 +634,154 @@ Dialog {
                     }
                 }
             }
+
+            // Worlds + Quick Play
+            ColumnLayout {
+                spacing: 10
+                RowLayout {
+                    spacing: 10
+                    Label {
+                        text: Backend ? Backend.tr("单人世界") : "单人世界"
+                        font.weight: Font.DemiBold
+                        color: Theme.currentTheme.colors.textColor
+                    }
+                    Item { Layout.fillWidth: true }
+                    Button {
+                        text: Backend ? Backend.tr("刷新") : "刷新"
+                        flat: true
+                        onClicked: loadWorlds()
+                    }
+                    Button {
+                        text: Backend ? Backend.tr("清除 Quick Play") : "清除 Quick Play"
+                        flat: true
+                        onClicked: if (Backend) Backend.clearQuickPlay(versionName)
+                    }
+                }
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    ColumnLayout {
+                        width: parent.width - 20
+                        spacing: 8
+                        Repeater {
+                            model: worlds
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 56
+                                radius: 8
+                                color: Theme.currentTheme.colors.cardColor
+                                border.color: Theme.currentTheme.colors.cardBorderColor
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 10
+                                    spacing: 12
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 2
+                                        Label {
+                                            text: modelData.name || modelData.folder
+                                            font.weight: Font.DemiBold
+                                            color: Theme.currentTheme.colors.textColor
+                                        }
+                                        Label {
+                                            text: modelData.folder || ""
+                                            color: Theme.currentTheme.colors.textSecondaryColor
+                                            font.pixelSize: 11
+                                        }
+                                    }
+                                    Button {
+                                        text: Backend ? Backend.tr("设为直进") : "设为直进"
+                                        onClicked: {
+                                            if (Backend) Backend.setQuickPlayWorld(versionName, modelData.folder)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Label {
+                            visible: worlds.length === 0
+                            text: worldsLoading
+                                  ? (Backend ? Backend.tr("加载中...") : "加载中...")
+                                  : (Backend ? Backend.tr("暂无世界") : "暂无世界")
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+
+                        // Crash reports
+                        Label {
+                            text: Backend ? Backend.tr("崩溃 / 日志") : "崩溃 / 日志"
+                            font.weight: Font.DemiBold
+                            color: Theme.currentTheme.colors.textColor
+                            Layout.topMargin: 12
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Button {
+                                text: Backend ? Backend.tr("刷新日志列表") : "刷新日志列表"
+                                flat: true
+                                onClicked: loadCrashReports()
+                            }
+                            Item { Layout.fillWidth: true }
+                        }
+                        Repeater {
+                            model: crashReports
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 48
+                                radius: 8
+                                color: Theme.currentTheme.colors.cardColor
+                                border.color: Theme.currentTheme.colors.cardBorderColor
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 8
+                                    spacing: 8
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 1
+                                        Label {
+                                            text: modelData.name || ""
+                                            font.weight: Font.DemiBold
+                                            color: Theme.currentTheme.colors.textColor
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                        Label {
+                                            text: (modelData.type || "") + (modelData.size ? (" · " + Math.round(modelData.size / 1024) + " KB") : "")
+                                            color: Theme.currentTheme.colors.textSecondaryColor
+                                            font.pixelSize: 11
+                                        }
+                                    }
+                                    Button {
+                                        text: Backend ? Backend.tr("查看") : "查看"
+                                        onClicked: openCrashLog(modelData.path)
+                                    }
+                                }
+                            }
+                        }
+                        Label {
+                            visible: crashReports.length === 0
+                            text: Backend ? Backend.tr("暂无崩溃报告 / 日志") : "暂无崩溃报告 / 日志"
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                        ScrollView {
+                            visible: crashLogText.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 160
+                            TextArea {
+                                width: parent.width - 16
+                                readOnly: true
+                                wrapMode: TextEdit.Wrap
+                                text: crashLogText
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                font.family: "monospace"
+                                font.pixelSize: 11
+                                selectByMouse: true
+                            }
+                        }
+                    }
+                }
+            }
             
             ScrollView {
                 id: advancedScroll
@@ -622,6 +820,80 @@ Dialog {
                                 id: fabricSwitch
                                 checked: coreData.Fabric || false
                             }
+                        }
+                    }
+
+                    ColumnLayout {
+                        spacing: 10
+                        Layout.fillWidth: true
+                        Label {
+                            text: Backend ? Backend.tr("实例设置") : "实例设置"
+                            font.weight: Font.DemiBold
+                            color: Theme.currentTheme.colors.textColor
+                        }
+                        Label {
+                            text: Backend ? Backend.tr("最小内存 (MB，空=全局)") : "最小内存 (MB，空=全局)"
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                        }
+                        TextField {
+                            id: minMemEdit
+                            Layout.fillWidth: true
+                            placeholderText: "512"
+                            text: minMemMb > 0 ? String(minMemMb) : ""
+                        }
+                        Label {
+                            text: Backend ? Backend.tr("最大内存 (MB，空=全局)") : "最大内存 (MB，空=全局)"
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                        }
+                        TextField {
+                            id: maxMemEdit
+                            Layout.fillWidth: true
+                            placeholderText: "4096"
+                            text: maxMemMb > 0 ? String(maxMemMb) : ""
+                        }
+                        Label {
+                            text: Backend ? Backend.tr("额外 JVM 参数") : "额外 JVM 参数"
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                        }
+                        TextField {
+                            id: jvmArgsEdit
+                            Layout.fillWidth: true
+                            placeholderText: "-XX:+UseG1GC"
+                            text: extraJvmArgs
+                        }
+                        Label {
+                            text: Backend ? Backend.tr("Pre-launch hook") : "Pre-launch hook"
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                        }
+                        TextField {
+                            id: preHookEdit
+                            Layout.fillWidth: true
+                            placeholderText: "echo $INST_NAME"
+                            text: preLaunchHook
+                        }
+                        Label {
+                            text: Backend ? Backend.tr("Wrapper") : "Wrapper"
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                        }
+                        TextField {
+                            id: wrapperHookEdit
+                            Layout.fillWidth: true
+                            text: wrapperHook
+                        }
+                        Label {
+                            text: Backend ? Backend.tr("Post-exit hook") : "Post-exit hook"
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                        }
+                        TextField {
+                            id: postHookEdit
+                            Layout.fillWidth: true
+                            text: postExitHook
+                        }
+                        Button {
+                            text: Backend ? Backend.tr("保存实例设置") : "保存实例设置"
+                            highlighted: true
+                            Layout.fillWidth: true
+                            onClicked: saveInstanceSettings()
                         }
                     }
                     
@@ -755,6 +1027,62 @@ Dialog {
         if (!Backend.requestResourcePacks(versionName, activeResourcePacksRequestId))
             resourcePacksLoading = false
     }
+
+    function loadWorlds() {
+        if (!Backend) return
+        worldsLoading = true
+        Backend.requestWorlds(versionName)
+    }
+
+    function loadCrashReports() {
+        if (!Backend) return
+        crashLogText = ""
+        Backend.requestCrashReports(versionName)
+    }
+
+    function openCrashLog(path) {
+        if (!Backend || !path) return
+        var res = Backend.readCrashLog(path)
+        if (res && res.ok && res.data)
+            crashLogText = res.data.text || ""
+        else
+            crashLogText = (res && res.message) || "read failed"
+    }
+
+    function loadInstanceSettings() {
+        if (!Backend) return
+        var s = Backend.getInstanceSettings(versionName) || {}
+        minMemMb = s.java_min_memory || 0
+        maxMemMb = s.java_max_memory || 0
+        extraJvmArgs = s.jvm_args || ""
+        var hooks = s.hooks || {}
+        preLaunchHook = hooks.pre_launch || ""
+        wrapperHook = hooks.wrapper || ""
+        postExitHook = hooks.post_exit || ""
+        minMemEdit.text = minMemMb > 0 ? String(minMemMb) : ""
+        maxMemEdit.text = maxMemMb > 0 ? String(maxMemMb) : ""
+        jvmArgsEdit.text = extraJvmArgs
+        preHookEdit.text = preLaunchHook
+        wrapperHookEdit.text = wrapperHook
+        postHookEdit.text = postExitHook
+    }
+
+    function saveInstanceSettings() {
+        if (!Backend) return
+        var patch = {
+            jvm_args: jvmArgsEdit.text,
+            hooks: {
+                pre_launch: preHookEdit.text,
+                wrapper: wrapperHookEdit.text,
+                post_exit: postHookEdit.text
+            }
+        }
+        var minT = minMemEdit.text.trim()
+        var maxT = maxMemEdit.text.trim()
+        patch.java_min_memory = minT === "" ? null : parseInt(minT)
+        patch.java_max_memory = maxT === "" ? null : parseInt(maxT)
+        Backend.saveInstanceSettings(versionName, patch)
+    }
     
     function openWithVersion(name) {
         // 防止重复打开
@@ -776,6 +1104,11 @@ Dialog {
         servers = []
         mods = []
         resourcePacks = []
+        worlds = []
+        contentUpdates = []
+        crashReports = []
+        crashLogText = ""
+        loadInstanceSettings()
         
         stackedWidget.currentIndex = 0
         open()

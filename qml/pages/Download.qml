@@ -52,7 +52,25 @@ FluentPage {
                 _currentSource = Backend.getDownloadSource()
             }
         }
+        function onImportInstancesReady(items) {
+            importableInstances = items || []
+            importStatusText = importableInstances.length
+                ? ((Backend ? Backend.tr("找到实例") : "找到实例") + ": " + importableInstances.length)
+                : (Backend ? Backend.tr("未找到可导入实例") : "未找到可导入实例")
+        }
+        function onImportInstanceFinished(ok, name, message) {
+            importStatusText = ok
+                ? ((Backend ? Backend.tr("导入成功") : "导入成功") + ": " + name + (message ? (" — " + message) : ""))
+                : ((Backend ? Backend.tr("导入失败") : "导入失败") + ": " + (message || name || ""))
+            if (ok && Backend && Backend.invalidateLaunchItemsCache)
+                Backend.invalidateLaunchItemsCache()
+        }
     }
+
+    property var importableInstances: []
+    property string importBasePath: ""
+    property string importStatusText: ""
+    property string importTargetName: ""
 
     // ── 下载任务状态（稳定 ListModel，避免每秒销毁重建）──
     property int _dlActive: 0
@@ -182,6 +200,7 @@ FluentPage {
     property var fabricVersionList: []
     property var forgeVersionList: []
     property var neoForgeVersionList: []
+    property var quiltVersionList: []
     property string currentSelectionTarget: ""
     property bool _ignoreIndexChange: false
 
@@ -205,6 +224,11 @@ FluentPage {
         neoForgeVersionList = bloretVersions.slice()
         neoForgeVersionList.push(Backend.tr("其他版本..."))
         neoForgeCombo.model = neoForgeVersionList
+
+        quiltVersionList = bloretVersions.slice()
+        quiltVersionList.push(Backend.tr("其他版本..."))
+        if (typeof quiltCombo !== "undefined" && quiltCombo)
+            quiltCombo.model = quiltVersionList
     }
 
     Component.onCompleted: {
@@ -215,6 +239,8 @@ FluentPage {
             versionDialog.confirmed.connect(function(name) {
                 if (versionDialog.loaderType === "fabric") {
                     Backend.downloadFabric(fabricCombo.currentText, name)
+                } else if (versionDialog.loaderType === "quilt") {
+                    Backend.downloadQuilt(quiltCombo.currentText, name)
                 } else if (versionDialog.loaderType === "forge") {
                     Backend.downloadForge(forgeCombo.currentText, name)
                 } else if (versionDialog.loaderType === "neoforge") {
@@ -259,6 +285,13 @@ FluentPage {
                 neoForgeCombo.model = neoForgeVersionList
             }
             neoForgeCombo.currentIndex = neoForgeVersionList.indexOf(version)
+        } else if (currentSelectionTarget === "quilt") {
+            let index = quiltVersionList.indexOf(version)
+            if (index === -1) {
+                quiltVersionList.splice(quiltVersionList.length - 1, 0, version)
+                quiltCombo.model = quiltVersionList
+            }
+            quiltCombo.currentIndex = quiltVersionList.indexOf(version)
         }
         _ignoreIndexChange = false
     }
@@ -640,6 +673,74 @@ FluentPage {
             }
         }
 
+        // Quilt
+        DownloadCard {
+            RowLayout {
+                width: parent.width
+                spacing: 16
+
+                CardIcon {
+                    source: Qt.resolvedUrl("../../icon/fabric.png")
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 120
+                    spacing: 2
+
+                    Label {
+                        font.weight: Font.DemiBold
+                        text: "Quilt Loader"
+                        color: downloadPage._cText
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+
+                    Label {
+                        text: (Backend ? Backend.tr("安装 Quilt 加载器（Fabric 兼容生态）") : "安装 Quilt 加载器（Fabric 兼容生态）")
+                        color: downloadPage._cTextSecondary
+                        font.pixelSize: 12
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
+                    }
+                }
+
+                ComboBox {
+                    id: quiltCombo
+                    Layout.preferredWidth: 160
+                    Layout.minimumWidth: 120
+                    onCurrentIndexChanged: {
+                        if (_ignoreIndexChange) return
+                        if (model[currentIndex] === (Backend ? Backend.tr("其他版本...") : "其他版本...")) {
+                            currentSelectionTarget = "quilt"
+                            selectVersionDialog.open()
+                        }
+                    }
+                }
+
+                Button {
+                    text: (Backend ? Backend.tr("下载并安装") : "下载并安装")
+                    highlighted: true
+                    Layout.alignment: Qt.AlignVCenter
+                    onClicked: {
+                        if (!Backend) return
+                        let ver = quiltCombo.currentText
+                        if (ver === (Backend ? Backend.tr("其他版本...") : "其他版本...")) {
+                            currentSelectionTarget = "quilt"
+                            selectVersionDialog.open()
+                            return
+                        }
+                        versionDialog.version = ver
+                        versionDialog.fabric = false
+                        versionDialog.loaderType = "quilt"
+                        versionDialog.open()
+                    }
+                }
+            }
+        }
+
         // Forge
         DownloadCard {
             RowLayout {
@@ -936,6 +1037,139 @@ FluentPage {
                     Layout.alignment: Qt.AlignVCenter
                     onClicked: {
                         if (Backend) Backend.importMrpack()
+                    }
+                }
+            }
+        }
+
+        DownloadCard {
+            ColumnLayout {
+                width: parent.width
+                spacing: 12
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 16
+
+                    CardIcon {
+                        source: Qt.resolvedUrl("../../icon/exeapps.png")
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+                        Label {
+                            font.weight: Font.DemiBold
+                            text: (Backend ? Backend.tr("从 Prism / MultiMC 导入") : "从 Prism / MultiMC 导入")
+                            color: downloadPage._cText
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                        }
+                        Label {
+                            text: (Backend ? Backend.tr("选择启动器根目录或 instances 目录，导入 mods/config/saves") : "选择启动器根目录或 instances 目录，导入 mods/config/saves")
+                            color: downloadPage._cTextSecondary
+                            font.pixelSize: 12
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    TextField {
+                        id: importPathField
+                        Layout.fillWidth: true
+                        text: importBasePath
+                        placeholderText: (Backend ? Backend.tr("PrismLauncher / MultiMC 路径") : "PrismLauncher / MultiMC 路径")
+                        onTextChanged: importBasePath = text
+                    }
+                    Button {
+                        text: (Backend ? Backend.tr("浏览") : "浏览")
+                        onClicked: {
+                            if (!Backend) return
+                            var p = Backend.selectImportLauncherFolder()
+                            if (p) {
+                                importBasePath = p
+                                importPathField.text = p
+                            }
+                        }
+                    }
+                    Button {
+                        text: (Backend ? Backend.tr("自动检测") : "自动检测")
+                        onClicked: {
+                            if (!Backend) return
+                            var paths = Backend.getDefaultImportPaths() || {}
+                            var p = paths.prism || paths.multimc || ""
+                            if (p) {
+                                importBasePath = p
+                                importPathField.text = p
+                                importStatusText = (Backend.tr("已定位") + ": " + p)
+                            } else {
+                                importStatusText = Backend.tr("未找到默认路径，请手动浏览")
+                            }
+                        }
+                    }
+                    Button {
+                        text: (Backend ? Backend.tr("扫描") : "扫描")
+                        highlighted: true
+                        onClicked: {
+                            if (!Backend || !importBasePath) return
+                            importStatusText = Backend.tr("扫描中...")
+                            Backend.requestImportableInstances(importBasePath)
+                        }
+                    }
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    text: importStatusText
+                    color: downloadPage._cTextSecondary
+                    font.pixelSize: 12
+                    wrapMode: Text.WordWrap
+                }
+
+                Repeater {
+                    model: importableInstances
+                    delegate: Rectangle {
+                        Layout.fillWidth: true
+                        height: 52
+                        radius: 8
+                        color: downloadPage._cCard
+                        border.color: downloadPage._cCardBorder
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 10
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: modelData.name || modelData.folder || ""
+                                    font.weight: Font.DemiBold
+                                    color: downloadPage._cText
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    text: (modelData.minecraft_version || "") + (modelData.path ? (" · " + modelData.path) : "")
+                                    color: downloadPage._cTextSecondary
+                                    font.pixelSize: 11
+                                    elide: Text.ElideMiddle
+                                    Layout.fillWidth: true
+                                }
+                            }
+                            Button {
+                                text: (Backend ? Backend.tr("导入") : "导入")
+                                onClicked: {
+                                    if (!Backend) return
+                                    importStatusText = (Backend.tr("正在导入") + ": " + (modelData.name || modelData.folder))
+                                    Backend.importExternalInstance(modelData.path, "")
+                                }
+                            }
+                        }
                     }
                 }
             }

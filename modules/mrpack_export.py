@@ -94,63 +94,129 @@ def detect_loader(instance_path):
     return None
 
 
-def collect_files(instance_path):
-    """收集实例中的文件"""
+NEVER_EXPORT_PREFIXES = (
+    "modrinth_logs",
+    "logs",
+    "crash-reports",
+    ".fabric",
+    ".quilt",
+    "natives",
+    "versions",
+    "libraries",
+    "assets",
+    "__MACOSX",
+    "content-index.json",
+    "instance-settings.json",
+)
+DEFAULT_SELECTED_PREFIXES = ("mods", "datapacks", "resourcepacks", "shaderpacks", "config")
+
+
+def _should_skip_rel(rel: str) -> bool:
+    rel = rel.replace("\\", "/").lstrip("./")
+    lower = rel.lower()
+    if lower.endswith(".disabled") or lower.endswith(".ds_store"):
+        return True
+    for p in NEVER_EXPORT_PREFIXES:
+        if lower == p or lower.startswith(p + "/"):
+            return True
+    return False
+
+
+def get_export_candidates(instance_path):
+    """返回可导出候选文件树（供 UI 勾选）。"""
+    instance = Path(instance_path)
+    candidates = []
+    if not instance.exists():
+        return candidates
+
+    def add_file(abs_path: Path, rel: str, default_selected: bool):
+        rel = rel.replace(os.sep, "/")
+        if _should_skip_rel(rel):
+            return
+        try:
+            st = abs_path.stat()
+            size = st.st_size
+            mtime = int(st.st_mtime)
+        except OSError:
+            size, mtime = 0, 0
+        candidates.append(
+            {
+                "path": rel,
+                "type": "file",
+                "size": size,
+                "modified": mtime,
+                "disabled": abs_path.name.endswith(".disabled"),
+                "default_selected": default_selected and not abs_path.name.endswith(".disabled"),
+                "source": str(abs_path),
+            }
+        )
+
+    for prefix in ("mods", "config", "resourcepacks", "shaderpacks", "datapacks", "options.txt"):
+        target = instance / prefix
+        default_sel = any(prefix.startswith(p) or prefix == p for p in DEFAULT_SELECTED_PREFIXES)
+        if target.is_file():
+            add_file(target, prefix, default_sel)
+            continue
+        if not target.is_dir():
+            continue
+        for f in target.rglob("*"):
+            if not f.is_file():
+                continue
+            rel = f"{prefix}/{f.relative_to(target)}".replace(os.sep, "/")
+            add_file(f, rel, default_sel)
+    return candidates
+
+
+def collect_files(instance_path, selected_paths=None):
+    """收集实例中的文件。
+
+    selected_paths: 可选，相对路径列表；None 表示使用默认前缀全选。
+    """
     files_list = []
     instance = Path(instance_path)
-    
-    # 收集 mods 目录
+    selected = None
+    if selected_paths is not None:
+        selected = {str(p).replace("\\", "/") for p in selected_paths}
+
+    def want(rel: str) -> bool:
+        rel = rel.replace("\\", "/")
+        if _should_skip_rel(rel):
+            return False
+        if selected is None:
+            return any(rel == p or rel.startswith(p + "/") for p in DEFAULT_SELECTED_PREFIXES)
+        return rel in selected
+
+    # mods
     mods_dir = instance / "mods"
     if mods_dir.exists():
         for mod_file in mods_dir.glob("*.jar"):
             rel_path = f"mods/{mod_file.name}"
-            files_list.append({
-                "path": rel_path,
-                "source": str(mod_file),
-                "env": {"client": "required", "server": "required"}
-            })
-    
-    # 收集 config 目录
-    config_dir = instance / "config"
-    if config_dir.exists():
-        for config_file in config_dir.rglob("*"):
-            if config_file.is_file():
-                rel_path = f"config/{config_file.relative_to(config_dir)}"
-                # 使用正斜杠
-                rel_path = rel_path.replace(os.sep, '/')
+            if want(rel_path):
                 files_list.append({
                     "path": rel_path,
-                    "source": str(config_file)
+                    "source": str(mod_file),
+                    "env": {"client": "required", "server": "required"}
                 })
-    
-    # 收集 resourcepacks 目录
-    rp_dir = instance / "resourcepacks"
-    if rp_dir.exists():
-        for rp_file in rp_dir.rglob("*"):
-            if rp_file.is_file():
-                rel_path = f"resourcepacks/{rp_file.relative_to(rp_dir)}"
-                rel_path = rel_path.replace(os.sep, '/')
-                files_list.append({
-                    "path": rel_path,
-                    "source": str(rp_file)
-                })
-    
-    # 收集 shaderpacks 目录
-    shader_dir = instance / "shaderpacks"
-    if shader_dir.exists():
-        for shader_file in shader_dir.rglob("*"):
-            if shader_file.is_file():
-                rel_path = f"shaderpacks/{shader_file.relative_to(shader_dir)}"
-                rel_path = rel_path.replace(os.sep, '/')
-                files_list.append({
-                    "path": rel_path,
-                    "source": str(shader_file)
-                })
-    
+
+    for folder in ("config", "resourcepacks", "shaderpacks", "datapacks"):
+        d = instance / folder
+        if not d.exists():
+            continue
+        for f in d.rglob("*"):
+            if not f.is_file():
+                continue
+            rel_path = f"{folder}/{f.relative_to(d)}".replace(os.sep, "/")
+            if want(rel_path):
+                files_list.append({"path": rel_path, "source": str(f)})
+
+    options = instance / "options.txt"
+    if options.is_file() and want("options.txt"):
+        files_list.append({"path": "options.txt", "source": str(options)})
+
     return files_list
 
 
-def export_to_mrpack(instance_path, output_path, name, version, summary=""):
+def export_to_mrpack(instance_path, output_path, name, version, summary="", selected_paths=None):
     """
     导出 Minecraft 实例为 .mrpack 文件
     
@@ -160,6 +226,7 @@ def export_to_mrpack(instance_path, output_path, name, version, summary=""):
         name: 整合包名称
         version: 整合包版本号
         summary: 整合包简介
+        selected_paths: 可选，要导出的相对路径列表
     
     Returns:
         bool: 是否成功
@@ -186,7 +253,7 @@ def export_to_mrpack(instance_path, output_path, name, version, summary=""):
             dependencies[loader['name']] = loader['version']
         
         # 收集文件
-        files_list = collect_files(instance_path)
+        files_list = collect_files(instance_path, selected_paths=selected_paths)
         log(f"收集到 {len(files_list)} 个文件", logging.INFO)
         
         if not files_list:

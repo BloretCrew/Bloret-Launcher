@@ -730,6 +730,8 @@ def _install_forge_like_loader(loader_type, minecraft_version, minecraft_dir, ve
 
     os.makedirs(os.path.join(target_dir, "mods"), exist_ok=True)
     os.makedirs(os.path.join(target_dir, "resourcepacks"), exist_ok=True)
+    os.makedirs(os.path.join(target_dir, "shaderpacks"), exist_ok=True)
+    os.makedirs(os.path.join(target_dir, "datapacks"), exist_ok=True)
     return target_id
 
 # 初始化全局变量
@@ -2208,6 +2210,145 @@ def _install_minecraft_version_threaded(version, minecraft_dir=None, Fabric_Load
                         )
 
                 update_progress_ui(88, i18nText("资源文件下载完成!"), "", f"{assets_count}", f"{assets_count}")
+
+        # 如果需要安装 Quilt Loader（API 与 Fabric meta 同形）
+        if Loader_Type == "quilt":
+            log(f"开始安装 Quilt Loader 到 Minecraft {version}")
+            update_progress({
+                'status': f'正在安装 Quilt Loader...',
+                'value': 0.9,
+                'valueStringOverride': '90%'
+            })
+            try:
+                quilt_api_urls = dl_source_launcher_or_meta_get(
+                    "https://meta.quiltmc.org/v3/versions/loader/" + version
+                )
+                log(f"正在获取 Quilt Loader 版本列表: {quilt_api_urls}")
+                quilt_versions = None
+                for url in quilt_api_urls:
+                    try:
+                        qr = get_session().get(url, timeout=30)
+                        if qr.status_code == 200:
+                            quilt_versions = qr.json()
+                            break
+                        log(f"获取 Quilt Loader 版本列表失败: {url}, HTTP {qr.status_code}", logging.WARNING)
+                    except requests.exceptions.RequestException as e:
+                        log(f"请求错误: {url}, {e}", logging.WARNING)
+                if not quilt_versions:
+                    raise RuntimeError(f"未找到适用于 Minecraft {version} 的 Quilt Loader 版本")
+                latest_quilt = quilt_versions[0]
+                loader_version = latest_quilt["loader"]["version"]
+                log(f"找到最新的 Quilt Loader 版本: {loader_version}")
+                quilt_version_id = f"{VersionName}-Quilt {loader_version}"
+                quilt_version_dir = os.path.join(versions_dir, quilt_version_id)
+                os.makedirs(quilt_version_dir, exist_ok=True)
+                quilt_json_urls = dl_source_launcher_or_meta_get(
+                    f"https://meta.quiltmc.org/v3/versions/loader/{version}/{loader_version}/profile/json"
+                )
+                quilt_json_data = None
+                for url in quilt_json_urls:
+                    try:
+                        qjr = get_session().get(url, timeout=30)
+                        if qjr.status_code == 200:
+                            quilt_json_data = qjr.json()
+                            break
+                    except requests.exceptions.RequestException as e:
+                        log(f"请求错误: {url}, {e}", logging.WARNING)
+                if not quilt_json_data:
+                    raise RuntimeError("所有 Quilt 安装 JSON URL 均获取失败")
+                quilt_json_data["id"] = quilt_version_id
+                original_version_data = version_data
+                if original_version_data is None:
+                    original_version_data, _ = _load_version_json(version_dir, VersionName, version)
+                if "downloads" not in quilt_json_data and original_version_data:
+                    for key in (
+                        "assetIndex", "assets", "complianceLevel", "javaVersion",
+                        "logging", "minimumLauncherVersion", "releaseTime", "time", "type",
+                    ):
+                        if key in original_version_data:
+                            quilt_json_data[key] = original_version_data[key]
+                    original_libraries = original_version_data.get("libraries", [])
+                    quilt_libraries = quilt_json_data.get("libraries", [])
+                    existing_lib_names = {lib.get("name", "") for lib in quilt_libraries}
+                    for lib in original_libraries:
+                        name = lib.get("name", "")
+                        if name not in existing_lib_names:
+                            quilt_libraries.append(lib)
+                            existing_lib_names.add(name)
+                    quilt_json_data["libraries"] = quilt_libraries
+                quilt_json_data.pop("inheritsFrom", None)
+                quilt_json_data.pop("jar", None)
+                quilt_json_path = os.path.join(quilt_version_dir, f"{quilt_version_id}.json")
+                with open(quilt_json_path, "w", encoding="utf-8") as f:
+                    json.dump(quilt_json_data, f, ensure_ascii=False, indent=4)
+                quilt_client_jar_path = os.path.join(quilt_version_dir, f"{quilt_version_id}.jar")
+                if "downloads" in quilt_json_data and "client" in quilt_json_data["downloads"]:
+                    client_info = quilt_json_data["downloads"]["client"]
+                    client_urls = dl_source_launcher_or_meta_get(client_info["url"])
+                    if not secure_download(
+                        client_urls + [client_info["url"]],
+                        quilt_client_jar_path,
+                        client_info,
+                        "Quilt 客户端 JAR",
+                        **_dl_kwargs(task_state),
+                    ):
+                        raise RuntimeError("Quilt 客户端 JAR 下载或校验失败")
+                else:
+                    original_client_jar_path = _resolve_version_file(
+                        version_dir, VersionName, version, "jar"
+                    )
+                    if os.path.exists(original_client_jar_path):
+                        shutil.copy2(original_client_jar_path, quilt_client_jar_path)
+                    else:
+                        raise RuntimeError(f"原始版本的客户端 JAR 不存在: {original_client_jar_path}")
+                quilt_natives_dir = os.path.join(quilt_version_dir, f"{quilt_version_id}-natives")
+                os.makedirs(quilt_natives_dir, exist_ok=True)
+                processed_quilt_libraries = _library_download_items(
+                    quilt_json_data.get("libraries", []), minecraft_dir
+                )
+                if processed_quilt_libraries:
+                    library_downloader = LibraryDownloader(
+                        processed_quilt_libraries,
+                        max_workers=max_thread_value,
+                        natives_dir=quilt_natives_dir,
+                        pause_event=task_state.get("pause_event") if task_state else None,
+                    )
+                    task_state["downloader"] = library_downloader
+                    if task_state["cancel_event"].is_set():
+                        library_downloader.cancel()
+                    if not library_downloader.download_libraries():
+                        raise RuntimeError("Quilt Loader 依赖库/native 下载失败")
+                os.makedirs(os.path.join(quilt_version_dir, "mods"), exist_ok=True)
+                os.makedirs(os.path.join(quilt_version_dir, "resourcepacks"), exist_ok=True)
+                os.makedirs(os.path.join(quilt_version_dir, "shaderpacks"), exist_ok=True)
+                os.makedirs(os.path.join(quilt_version_dir, "datapacks"), exist_ok=True)
+                update_progress({
+                    "status": "Quilt Loader 安装完成!",
+                    "value": 1,
+                    "valueStringOverride": "100%",
+                })
+                update_bl_json(minecraft_dir, quilt_version_id, False, None)
+                try:
+                    bl_json_path = os.path.join(minecraft_dir, "versions", ".BL.json")
+                    if os.path.isfile(bl_json_path):
+                        with open(bl_json_path, "r", encoding="utf-8") as f:
+                            bl_data = json.load(f)
+                        entry = (bl_data.get("versions") or {}).get(quilt_version_id) or {}
+                        entry.update({
+                            "version": version,
+                            "loader": "quilt",
+                            "Quilt": True,
+                            "Fabric": False,
+                        })
+                        bl_data.setdefault("versions", {})[quilt_version_id] = entry
+                        with open(bl_json_path, "w", encoding="utf-8") as f:
+                            json.dump(bl_data, f, ensure_ascii=False, indent=4)
+                except Exception as e:
+                    log(f"写入 Quilt 标记失败: {e}", logging.WARNING)
+                log(f"Quilt Loader 安装完成到 {quilt_version_id}")
+            except Exception as e:
+                log(f"安装 Quilt Loader 失败: {e}", logging.ERROR)
+                return fail_install(f"Quilt Loader 安装失败: {e}")
 
         # 如果需要安装Fabric Loader
         if Fabric_Loader:

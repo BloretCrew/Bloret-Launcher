@@ -1482,6 +1482,20 @@ FluentPage {
                     onClicked: systemRestartDialog.open()
                 }
             }
+
+            SettingCard {
+                Layout.fillWidth: true
+                title: Backend ? Backend.tr("Discord 状态") : "Discord 状态"
+                description: Backend ? Backend.tr("启动游戏时在 Discord 显示正在游玩（需安装 pypresence）") : "启动游戏时在 Discord 显示正在游玩（需安装 pypresence）"
+                icon.name: "ic_fluent_chat_20_regular"
+                Switch {
+                    checked: Backend && Backend.isDiscordRpcEnabled ? Backend.isDiscordRpcEnabled() : false
+                    onCheckedChanged: {
+                        if (Backend && Backend.setDiscordRpcEnabled)
+                            Backend.setDiscordRpcEnabled(checked)
+                    }
+                }
+            }
         }
 
         // ── System confirmation dialogs ──

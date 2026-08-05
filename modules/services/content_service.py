@@ -67,6 +67,18 @@ def list_mods(version_name: str) -> ServiceResult[List[Dict[str, Any]]]:
 
 
 def list_resourcepacks(version_name: str) -> ServiceResult[List[Dict[str, Any]]]:
+    return _list_folder_content(version_name, "resourcepacks")
+
+
+def list_shaderpacks(version_name: str) -> ServiceResult[List[Dict[str, Any]]]:
+    return _list_folder_content(version_name, "shaderpacks")
+
+
+def list_datapacks(version_name: str) -> ServiceResult[List[Dict[str, Any]]]:
+    return _list_folder_content(version_name, "datapacks")
+
+
+def _list_folder_content(version_name: str, folder: str) -> ServiceResult[List[Dict[str, Any]]]:
     if not version_name:
         return err("version required", "invalid_version")
     root = _versions_root()
@@ -75,15 +87,24 @@ def list_resourcepacks(version_name: str) -> ServiceResult[List[Dict[str, Any]]]
     version_dir = _safe_version_dir(version_name)
     if not version_dir:
         return err("invalid version path", "invalid_version")
-    rp_dir = os.path.join(version_dir, "resourcepacks")
-    if not os.path.isdir(rp_dir):
+    d = os.path.join(version_dir, folder)
+    if not os.path.isdir(d):
         return ok([])
     items: List[Dict[str, Any]] = []
     try:
-        for name in sorted(os.listdir(rp_dir)):
-            path = os.path.join(rp_dir, name)
+        for name in sorted(os.listdir(d)):
+            path = os.path.join(d, name)
             if os.path.isfile(path) or os.path.isdir(path):
-                items.append({"name": name, "path": path, "is_dir": os.path.isdir(path)})
+                enabled = not name.endswith(".disabled")
+                items.append(
+                    {
+                        "name": name,
+                        "path": path,
+                        "is_dir": os.path.isdir(path),
+                        "enabled": enabled,
+                        "kind": folder.rstrip("s") if folder.endswith("s") else folder,
+                    }
+                )
         return ok(items)
     except Exception as e:
-        return err(str(e), "resourcepacks_list_failed")
+        return err(str(e), f"{folder}_list_failed")

@@ -8,6 +8,7 @@ FluentPage {
     title: (Backend ? Backend.tr("小工具") : "小工具")
 
     property var pluginToolCards: []
+    property var skinLibrary: []
 
     function loadPluginToolCards() {
         pluginToolCards = []
@@ -25,7 +26,14 @@ FluentPage {
         }
     }
 
-    Component.onCompleted: loadPluginToolCards()
+    function reloadSkins() {
+        if (Backend) Backend.requestSkins()
+    }
+
+    Component.onCompleted: {
+        loadPluginToolCards()
+        reloadSkins()
+    }
 
     Connections {
         target: (typeof PluginHost !== "undefined") ? PluginHost : null
@@ -60,6 +68,9 @@ FluentPage {
         function onLogsCleared() {
             logClearedInfoBar.visible = true
             logClearedTimer.start()
+        }
+        function onSkinsListReady(items) {
+            skinLibrary = items || []
         }
     }
 
@@ -421,5 +432,144 @@ FluentPage {
             }
         }
 
+        // --- 本地皮肤库 ---
+        Label {
+            font.pixelSize: 20
+            font.weight: Font.DemiBold
+            text: (Backend ? Backend.tr("皮肤库") : "皮肤库")
+            Layout.topMargin: 10
+            color: Theme.currentTheme.colors.textColor
+        }
+
+        Frame {
+            Layout.fillWidth: true
+            padding: 15
+            background: Rectangle {
+                color: Theme.currentTheme.colors.cardColor
+                radius: 8
+                border.color: Theme.currentTheme.colors.controlBorderColor
+            }
+
+            ColumnLayout {
+                width: parent.width
+                spacing: 12
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+                    Label {
+                        text: (Backend ? Backend.tr("本地保存的皮肤，可装备到已登录的微软账号") : "本地保存的皮肤，可装备到已登录的微软账号")
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+                    ComboBox {
+                        id: skinVariantCombo
+                        model: ["classic", "slim"]
+                        currentIndex: 0
+                        Layout.preferredWidth: 110
+                    }
+                    Button {
+                        text: (Backend ? Backend.tr("导入 PNG") : "导入 PNG")
+                        highlighted: true
+                        onClicked: {
+                            if (!Backend) return
+                            var path = Backend.selectSkinPng()
+                            if (!path) return
+                            var name = path.split(/[\\/]/).pop().replace(/\.png$/i, "")
+                            var res = Backend.importSkinFile(path, name, skinVariantCombo.currentText)
+                            skinLibStatus.text = res && res.ok
+                                ? (Backend.tr("已导入") + ": " + name)
+                                : (Backend.tr("导入失败") + ": " + ((res && res.message) || ""))
+                            reloadSkins()
+                        }
+                    }
+                    Button {
+                        text: (Backend ? Backend.tr("刷新") : "刷新")
+                        flat: true
+                        onClicked: reloadSkins()
+                    }
+                }
+
+                Label {
+                    id: skinLibStatus
+                    Layout.fillWidth: true
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    font.pixelSize: 12
+                    text: ""
+                }
+
+                Repeater {
+                    model: skinLibrary
+                    delegate: Rectangle {
+                        Layout.fillWidth: true
+                        height: 64
+                        radius: 8
+                        color: Theme.currentTheme.colors.cardColor
+                        border.color: Theme.currentTheme.colors.controlBorderColor
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 12
+
+                            Image {
+                                source: modelData.path ? ("file:///" + String(modelData.path).replace(/\\/g, "/")) : ""
+                                sourceSize.width: 40
+                                sourceSize.height: 40
+                                fillMode: Image.PreserveAspectFit
+                                Layout.preferredWidth: 40
+                                Layout.preferredHeight: 40
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: modelData.name || modelData.id || ""
+                                    font.weight: Font.DemiBold
+                                    color: Theme.currentTheme.colors.textColor
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    text: (modelData.variant || "classic") + (modelData.equipped_at ? " · equipped" : "")
+                                    color: Theme.currentTheme.colors.textSecondaryColor
+                                    font.pixelSize: 11
+                                }
+                            }
+                            Button {
+                                text: (Backend ? Backend.tr("装备") : "装备")
+                                onClicked: {
+                                    if (!Backend) return
+                                    var res = Backend.equipSkin(modelData.id, modelData.variant || skinVariantCombo.currentText)
+                                    skinLibStatus.text = res && res.ok
+                                        ? (Backend.tr("已装备") + ": " + (modelData.name || modelData.id))
+                                        : (Backend.tr("装备失败") + ": " + ((res && res.message) || ""))
+                                    reloadSkins()
+                                }
+                            }
+                            Button {
+                                icon.name: "ic_fluent_delete_20_regular"
+                                flat: true
+                                onClicked: {
+                                    if (!Backend) return
+                                    if (Backend.deleteSkin(modelData.id)) {
+                                        skinLibStatus.text = Backend.tr("已删除")
+                                        reloadSkins()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Label {
+                    visible: skinLibrary.length === 0
+                    text: (Backend ? Backend.tr("暂无本地皮肤，点击「导入 PNG」添加") : "暂无本地皮肤，点击「导入 PNG」添加")
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    Layout.alignment: Qt.AlignHCenter
+                }
+            }
+        }
     }
 }
