@@ -38,7 +38,9 @@ Item {
     readonly property string agentPhaseOrbState: {
         if (agentPhase === "working")
             return "working"
-        return "composing"
+        if (agentPhase === "replying")
+            return "composing"
+        return "composing"  // thinking
     }
 
     function beginAwaitingReply() { agentPhase = "thinking" }
@@ -52,6 +54,20 @@ Item {
         agentPhase = "working"
     }
     function markReplyStarted() { markReplying() }
+
+    function appendUserMessage(text, imagesJson) {
+        messageModel.append({
+            role: "user",
+            content: text || "",
+            imagesJson: imagesJson || "[]",
+            toolName: "",
+            toolArgs: "",
+            toolResult: "",
+            toolsJson: "[]",
+            streaming: false,
+            expanded: false
+        })
+    }
 
     function loadProviders() {
         providerModel.clear()
@@ -224,11 +240,7 @@ Item {
         var text = inputField.text.trim()
         var imagesJson = pendingImagesJson()
         if (text.length === 0 && pendingImagesModel.count === 0) return
-        messageModel.append({
-            role: "user", content: text, imagesJson: imagesJson,
-            toolName: "", toolArgs: "", toolResult: "", toolsJson: "[]",
-            streaming: false, expanded: false
-        })
+        appendUserMessage(text, imagesJson)
         beginAwaitingReply()
         Agent.sendMessage(text, imagesJson)
         inputField.text = ""
@@ -1610,7 +1622,7 @@ Item {
                 role: "error",
                 content: msg || (Backend ? Backend.tr("语音识别失败") : "语音识别失败"),
                 imagesJson: "[]",
-                toolName: "", toolArgs: "", toolResult: "",
+                toolName: "", toolArgs: "", toolResult: "", toolsJson: "[]",
                 streaming: false, expanded: false
             })
         }
@@ -1740,7 +1752,17 @@ Item {
         }
 
         function onStatusMessage(msg) {
-            messageModel.append({role: "system", content: msg, toolName: "", toolArgs: "", toolResult: "", streaming: false, expanded: false})
+            messageModel.append({
+                role: "system",
+                content: msg,
+                imagesJson: "[]",
+                toolName: "",
+                toolArgs: "",
+                toolResult: "",
+                toolsJson: "[]",
+                streaming: false,
+                expanded: false
+            })
         }
     }
 }
