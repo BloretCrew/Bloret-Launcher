@@ -1302,6 +1302,16 @@ Item {
                 Layout.fillWidth: true
                 model: modelModel
                 textRole: "name"
+                // 选中即写入，避免仅依赖「确定」时 loadModels 冲掉索引
+                onActivated: function(index) {
+                    if (index < 0 || index >= modelModel.count) return
+                    var m = modelModel.get(index)
+                    if (Backend) Backend.setGlobalAIModel(m.id)
+                    if (Bloriko && typeof Bloriko.setModel === "function")
+                        Bloriko.setModel(m.id)
+                    modelCombo.currentIndex = index
+                    updateCurrentModelLabel()
+                }
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -1317,16 +1327,36 @@ Item {
                     highlighted: true
                     Layout.fillWidth: true
                     onClicked: {
+                        // 先记下用户选中的模型 id，再改供应商/刷新列表。
+                        // 若先 loadModels() 会 clear ListModel，ComboBox 索引被重置，导致无法切换模型。
+                        var selectedModelId = ""
+                        var selectedModelIndex = modelComboDlg.currentIndex
+                        if (selectedModelIndex >= 0 && selectedModelIndex < modelModel.count) {
+                            selectedModelId = modelModel.get(selectedModelIndex).id || ""
+                        }
+
                         if (providerComboDlg.currentIndex >= 0 && providerComboDlg.currentIndex < providerModel.count) {
                             var p = providerModel.get(providerComboDlg.currentIndex)
                             if (Backend) Backend.setGlobalAIProvider(p.key)
                             providerCombo.currentIndex = providerComboDlg.currentIndex
                         }
+
+                        if (selectedModelId.length > 0) {
+                            if (Backend) Backend.setGlobalAIModel(selectedModelId)
+                            if (Bloriko && typeof Bloriko.setModel === "function")
+                                Bloriko.setModel(selectedModelId)
+                        }
+
                         loadModels()
-                        if (modelComboDlg.currentIndex >= 0 && modelComboDlg.currentIndex < modelModel.count) {
-                            var m = modelModel.get(modelComboDlg.currentIndex)
-                            if (Backend) Backend.setGlobalAIModel(m.id)
-                            modelCombo.currentIndex = modelComboDlg.currentIndex
+                        // loadModels 后按已写入的全局模型对齐索引与胶囊文案
+                        if (selectedModelId.length > 0) {
+                            for (var i = 0; i < modelModel.count; i++) {
+                                if (modelModel.get(i).id === selectedModelId) {
+                                    modelCombo.currentIndex = i
+                                    modelComboDlg.currentIndex = i
+                                    break
+                                }
+                            }
                         }
                         updateCurrentModelLabel()
                         modelSelectDlg.close()

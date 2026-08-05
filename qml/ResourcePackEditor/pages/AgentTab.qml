@@ -1065,6 +1065,13 @@ Item {
                 id: modelComboDlg
                 Layout.fillWidth: true
                 model: modelModel; textRole: "name"
+                onActivated: function(index) {
+                    if (index < 0 || index >= modelModel.count) return
+                    var m = modelModel.get(index)
+                    Agent.setModel(m.id)
+                    modelCombo.currentIndex = index
+                    updateCurrentModelLabel()
+                }
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -1080,16 +1087,30 @@ Item {
                     highlighted: true
                     Layout.fillWidth: true
                     onClicked: {
+                        // 先保存选中的模型 id，避免 loadModels clear 冲掉 ComboBox 索引
+                        var selectedModelId = ""
+                        var selectedModelIndex = modelComboDlg.currentIndex
+                        if (selectedModelIndex >= 0 && selectedModelIndex < modelModel.count)
+                            selectedModelId = modelModel.get(selectedModelIndex).id || ""
+
                         if (providerComboDlg.currentIndex >= 0 && providerComboDlg.currentIndex < providerModel.count) {
                             var p = providerModel.get(providerComboDlg.currentIndex)
                             Agent.setProvider(p.key)
                             providerCombo.currentIndex = providerComboDlg.currentIndex
                         }
+
+                        if (selectedModelId.length > 0)
+                            Agent.setModel(selectedModelId)
+
                         loadModels()
-                        if (modelComboDlg.currentIndex >= 0 && modelComboDlg.currentIndex < modelModel.count) {
-                            var m = modelModel.get(modelComboDlg.currentIndex)
-                            Agent.setModel(m.id)
-                            modelCombo.currentIndex = modelComboDlg.currentIndex
+                        if (selectedModelId.length > 0) {
+                            for (var i = 0; i < modelModel.count; i++) {
+                                if (modelModel.get(i).id === selectedModelId) {
+                                    modelCombo.currentIndex = i
+                                    modelComboDlg.currentIndex = i
+                                    break
+                                }
+                            }
                         }
                         updateCurrentModelLabel()
                         modelSelectDlg.close()
