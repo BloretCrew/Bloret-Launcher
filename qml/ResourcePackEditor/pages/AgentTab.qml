@@ -22,15 +22,36 @@ Item {
     property string currentModelLabel: (Backend ? Backend.tr("选择模型") : "选择模型")
     property string voiceState: "idle"
     property int maxPendingImages: 4
-    // 仅在首段文字/工具输出出现前显示「正在思考」
-    property bool awaitingFirstToken: false
-
-    function beginAwaitingReply() { awaitingFirstToken = true }
-    function endAwaitingReply() { awaitingFirstToken = false }
-    function markReplyStarted() {
-        if (awaitingFirstToken)
-            awaitingFirstToken = false
+    // Agent 活动阶段：idle | thinking | replying | working
+    property string agentPhase: "idle"
+    readonly property bool agentActive: agentPhase !== "idle"
+    readonly property bool awaitingFirstToken: agentPhase === "thinking"
+    readonly property string agentPhaseLabel: {
+        if (agentPhase === "thinking")
+            return Backend ? Backend.tr("正在思考") : "正在思考"
+        if (agentPhase === "replying")
+            return Backend ? Backend.tr("正在回复") : "正在回复"
+        if (agentPhase === "working")
+            return Backend ? Backend.tr("正在工作") : "正在工作"
+        return ""
     }
+    readonly property string agentPhaseOrbState: {
+        if (agentPhase === "working")
+            return "working"
+        return "composing"
+    }
+
+    function beginAwaitingReply() { agentPhase = "thinking" }
+    function endAwaitingReply() { agentPhase = "idle" }
+    function markReplying() {
+        if (agentPhase === "idle") return
+        agentPhase = "replying"
+    }
+    function markWorking() {
+        if (agentPhase === "idle") return
+        agentPhase = "working"
+    }
+    function markReplyStarted() { markReplying() }
 
     function loadProviders() {
         providerModel.clear()
@@ -482,7 +503,9 @@ Item {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             width: implicitWidth
-                            active: agentPage.awaitingFirstToken
+                            active: agentPage.agentActive
+                            label: agentPage.agentPhaseLabel
+                            orbState: agentPage.agentPhaseOrbState
                             orbSize: 18
                             orbSpeed: 1.1
                             orbInk: Theme.accentColor || Theme.currentTheme.colors.primaryColor || "#0078D4"
@@ -499,7 +522,7 @@ Item {
                             text: Backend ? Backend.tr("就绪") : "就绪"
                             font.pixelSize: 11
                             color: Theme.currentTheme.colors.textSecondaryColor
-                            opacity: agentPage.awaitingFirstToken ? 0 : 1
+                            opacity: agentPage.agentActive ? 0 : 1
                             visible: opacity > 0.01
                             Behavior on opacity {
                                 NumberAnimation { duration: 280; easing.type: Easing.InOutQuad }
@@ -566,7 +589,9 @@ Item {
                         anchors.leftMargin: 16
                         anchors.rightMargin: 16
                         anchors.topMargin: 8
-                        active: agentPage.awaitingFirstToken
+                        active: agentPage.agentActive
+                        label: agentPage.agentPhaseLabel
+                        orbState: agentPage.agentPhaseOrbState
                         orbSize: 22
                         showAvatar: true
                         avatarSource: Qt.resolvedUrl("../../../icon/Bloriko.jpg")
@@ -578,7 +603,7 @@ Item {
                         target: Agent
                         enabled: Agent !== null
                         function onBusyChanged() {
-                            if (Agent && Agent.busy && agentPage.awaitingFirstToken)
+                            if (Agent && Agent.busy && agentPage.agentActive)
                                 Qt.callLater(function() { msgView.positionViewAtEnd() })
                         }
                     }
@@ -588,7 +613,7 @@ Item {
                 Item {
                     anchors.centerIn: parent
                     width: 280; height: emptyCol.implicitHeight
-                    visible: messageModel.count === 0 && !agentPage.awaitingFirstToken
+                    visible: messageModel.count === 0 && !agentPage.agentActive
 
                     ColumnLayout {
                         id: emptyCol
@@ -718,6 +743,8 @@ Item {
                         ThinkingStatus {
                             Layout.fillWidth: true
                             active: agentPage.awaitingFirstToken && streaming && (!content || content.length === 0)
+                            label: agentPage.agentPhaseLabel
+                            orbState: agentPage.agentPhaseOrbState
                             orbSize: 20
                             orbSpeed: 1.1
                             showAvatar: false
@@ -1591,7 +1618,7 @@ Item {
         function onBusyChanged() {
             if (!Agent) return
             if (Agent.busy) {
-                if (!awaitingFirstToken)
+                if (agentPhase === "idle")
                     beginAwaitingReply()
                 Qt.callLater(function() { msgView.positionViewAtEnd() })
             } else {
@@ -1601,7 +1628,7 @@ Item {
 
         function onTextUpdated(text) {
             if (text && String(text).length > 0)
-                markReplyStarted()
+                markReplying()
             var lastIdx = messageModel.count - 1
             if (lastIdx >= 0 && messageModel.get(lastIdx).role === "assistant" && messageModel.get(lastIdx).streaming) {
                 messageModel.set(lastIdx, {
@@ -1621,13 +1648,15 @@ Item {
 
         function onToolCallStarted(toolName, argsJson) {
             console.log("[AgentTab] onToolCallStarted: " + toolName)
-            markReplyStarted()
+            markWorking()
             startToolInGroup(toolName, argsJson)
             Qt.callLater(function() { msgView.positionViewAtEnd() })
         }
 
         function onToolCallFinished(toolName, argsJson, result) {
             finishToolInGroup(toolName, argsJson, result)
+            if (Agent && Agent.busy && agentPhase === "working")
+                markReplying()
         }
 
         function onErrorOccurred(msg) {
@@ -1640,7 +1669,10 @@ Item {
         }
 
         function onMessageAdded(role, content, toolCallsJson) {
-            markReplyStarted()
+            if (Agent && Agent.busy)
+                markReplying()
+            else
+                endAwaitingReply()
             for (var i = messageModel.count - 1; i >= 0; i--) {
                 if (messageModel.get(i).role === "assistant" && messageModel.get(i).streaming) {
                     messageModel.set(i, {

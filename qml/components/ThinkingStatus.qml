@@ -3,13 +3,15 @@ import QtQuick.Layouts 2.15
 import RinUI
 
 /**
- * 思考状态行：点阵球 + 「正在思考」+ 可选脉冲点。
- * active 切换时淡入淡出（不 abrupt visible 跳变）。
+ * Agent 活动状态行：点阵球 + 状态文案 + 可选脉冲点。
+ * active 切换时淡入淡出；label 变化时文案可直接更新。
  */
 Item {
     id: root
 
     property bool active: false
+    /** 显示文案，如「正在思考」「正在回复」「正在工作」 */
+    property string label: Backend ? Backend.tr("正在思考") : "正在思考"
     property int orbSize: 22
     property string orbState: "composing"
     property real orbSpeed: 1.15
@@ -92,7 +94,7 @@ Item {
         }
 
         Text {
-            text: Backend ? Backend.tr("正在思考") : "正在思考"
+            text: root.label
             font.pixelSize: root.labelPixelSize
             color: root.labelColor
             Layout.alignment: Qt.AlignVCenter

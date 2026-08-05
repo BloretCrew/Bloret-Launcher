@@ -26,20 +26,58 @@ Item {
     property string currentModelLabel: (Backend ? Backend.tr("选择模型") : "选择模型")
     property string voiceState: "idle"  // idle | recording | transcribing
     property int maxPendingImages: 4
-    // 仅在「已请求、但尚未出现任何正文/工具输出」时显示「正在思考」
-    property bool awaitingFirstToken: false
+    // Agent 活动阶段：idle | thinking | replying | working
+    // thinking = 首 token 前；replying = 正在流出正文；working = 调用工具
+    property string agentPhase: "idle"
+    readonly property bool agentActive: agentPhase !== "idle"
+    readonly property bool awaitingFirstToken: agentPhase === "thinking"
+    readonly property string agentPhaseLabel: {
+        if (agentPhase === "thinking")
+            return Backend ? Backend.tr("正在思考") : "正在思考"
+        if (agentPhase === "replying")
+            return Backend ? Backend.tr("正在回复") : "正在回复"
+        if (agentPhase === "working")
+            return Backend ? Backend.tr("正在工作") : "正在工作"
+        return ""
+    }
+    readonly property string agentPhaseOrbState: {
+        if (agentPhase === "working")
+            return "working"
+        if (agentPhase === "replying")
+            return "composing"
+        return "composing"  // thinking
+    }
 
     function beginAwaitingReply() {
-        awaitingFirstToken = true
+        agentPhase = "thinking"
     }
 
     function endAwaitingReply() {
-        awaitingFirstToken = false
+        agentPhase = "idle"
     }
 
+    function setAgentPhase(phase) {
+        if (agentPhase === "idle" && phase !== "thinking" && phase !== "idle") {
+            // 允许从 thinking 进入 replying/working；busy 外不强制
+        }
+        agentPhase = phase
+    }
+
+    function markReplying() {
+        if (agentPhase === "idle")
+            return
+        agentPhase = "replying"
+    }
+
+    function markWorking() {
+        if (agentPhase === "idle")
+            return
+        agentPhase = "working"
+    }
+
+    /** @deprecated 兼容旧调用：首 token 出现后进入「正在回复」 */
     function markReplyStarted() {
-        if (awaitingFirstToken)
-            awaitingFirstToken = false
+        markReplying()
     }
 
     // 情感状态 → emoji 映射
@@ -701,7 +739,9 @@ Item {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             width: implicitWidth
-                            active: blorikoPage.awaitingFirstToken
+                            active: blorikoPage.agentActive
+                            label: blorikoPage.agentPhaseLabel
+                            orbState: blorikoPage.agentPhaseOrbState
                             orbSize: 18
                             orbSpeed: 1.1
                             orbInk: Theme.accentColor || Theme.currentTheme.colors.primaryColor || "#0078D4"
@@ -718,7 +758,7 @@ Item {
                             text: Backend ? Backend.tr("就绪") : "就绪"
                             font.pixelSize: 11
                             color: Theme.currentTheme.colors.textSecondaryColor
-                            opacity: blorikoPage.awaitingFirstToken ? 0 : 1
+                            opacity: blorikoPage.agentActive ? 0 : 1
                             visible: opacity > 0.01
                             Behavior on opacity {
                                 NumberAnimation { duration: 280; easing.type: Easing.InOutQuad }
@@ -769,7 +809,7 @@ Item {
 
                 onCountChanged: Qt.callLater(function() { msgView.positionViewAtEnd() })
 
-                // Agent 忙碌时在列表底部展示「正在思考」（淡入淡出，不写入 messageModel）
+                // 列表底部活动状态：思考 / 回复 / 工作（淡入淡出）
                 footer: Item {
                     id: thinkingFooterHost
                     width: msgView.width
@@ -788,7 +828,9 @@ Item {
                         anchors.leftMargin: 16
                         anchors.rightMargin: 16
                         anchors.topMargin: 8
-                        active: blorikoPage.awaitingFirstToken
+                        active: blorikoPage.agentActive
+                        label: blorikoPage.agentPhaseLabel
+                        orbState: blorikoPage.agentPhaseOrbState
                         orbSize: 22
                         showAvatar: true
                         avatarSource: Qt.resolvedUrl("../../icon/Bloriko.jpg")
@@ -800,7 +842,7 @@ Item {
                         target: Bloriko
                         enabled: Bloriko !== null
                         function onBusyChanged() {
-                            if (Bloriko && Bloriko.busy && blorikoPage.awaitingFirstToken)
+                            if (Bloriko && Bloriko.busy && blorikoPage.agentActive)
                                 Qt.callLater(function() { msgView.positionViewAtEnd() })
                         }
                     }
@@ -810,7 +852,7 @@ Item {
                 Item {
                     anchors.centerIn: parent
                     width: 280; height: emptyCol.implicitHeight
-                    visible: messageModel.count === 0 && !blorikoPage.awaitingFirstToken
+                    visible: messageModel.count === 0 && !blorikoPage.agentActive
 
                     ColumnLayout {
                         id: emptyCol
@@ -939,10 +981,13 @@ Item {
                             Image { anchors.fill: parent; source: Qt.resolvedUrl("../../icon/Bloriko.jpg"); fillMode: Image.PreserveAspectCrop; mipmap: true }
                         }
 
-                        // 首 token 前：内联思考状态；有正文后由 footer 已关闭、此处也不再显示
+                        // 流式气泡内：仅在「正在思考」且尚无正文时显示内联状态；
+                        // 出字后由列表 footer 显示「正在回复」，气泡只渲染正文
                         ThinkingStatus {
                             Layout.fillWidth: true
                             active: blorikoPage.awaitingFirstToken && streaming && (!content || content.length === 0)
+                            label: blorikoPage.agentPhaseLabel
+                            orbState: blorikoPage.agentPhaseOrbState
                             orbSize: 20
                             orbSpeed: 1.1
                             showAvatar: false
@@ -1844,8 +1889,8 @@ Item {
         function onBusyChanged() {
             if (!Bloriko) return
             if (Bloriko.busy) {
-                // 发送路径已 beginAwaitingReply；若 busy 从外部拉起也补上
-                if (!awaitingFirstToken)
+                // 发送路径已 beginAwaitingReply；若 busy 从外部拉起也进入 thinking
+                if (agentPhase === "idle")
                     beginAwaitingReply()
                 Qt.callLater(function() { msgView.positionViewAtEnd() })
             } else {
@@ -1854,9 +1899,9 @@ Item {
         }
 
         function onTextUpdated(text) {
-            // 一旦有流式正文（含空串之后的首段），结束「正在思考」
+            // 有正文 → 「正在回复」（不再显示「正在思考」）
             if (text && String(text).length > 0)
-                markReplyStarted()
+                markReplying()
             var lastIdx = messageModel.count - 1
             if (lastIdx >= 0 && messageModel.get(lastIdx).role === "assistant" && messageModel.get(lastIdx).streaming) {
                 messageModel.set(lastIdx, {
@@ -1873,13 +1918,16 @@ Item {
         }
 
         function onToolCallStarted(toolName, argsJson) {
-            markReplyStarted()
+            markWorking()
             startToolInGroup(toolName, argsJson)
             Qt.callLater(function() { msgView.positionViewAtEnd() })
         }
 
         function onToolCallFinished(toolName, argsJson, result) {
             finishToolInGroup(toolName, argsJson, result)
+            // 工具结束后若仍 busy，回到「正在回复」等待后续正文；若已 idle 由 onBusyChanged 清理
+            if (Bloriko && Bloriko.busy && agentPhase === "working")
+                markReplying()
         }
 
         function onErrorOccurred(msg) {
@@ -1892,7 +1940,11 @@ Item {
         }
 
         function onMessageAdded(role, content, toolCallsJson) {
-            markReplyStarted()
+            // 最终 assistant 落盘：若仍 busy 显示「正在回复」，否则结束
+            if (Bloriko && Bloriko.busy)
+                markReplying()
+            else
+                endAwaitingReply()
             for (var i = messageModel.count - 1; i >= 0; i--) {
                 if (messageModel.get(i).role === "assistant" && messageModel.get(i).streaming) {
                     messageModel.set(i, {
