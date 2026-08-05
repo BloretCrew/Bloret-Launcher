@@ -19,6 +19,8 @@ Send2Trash
 winsdk; sys_platform == 'win32'
 toml
 psutil
+# Optional: Discord Rich Presence (Settings → System). Missing package = silent no-op.
+pypresence
 dulwich
 # WeChat QR code generation (optional)
 qrcode[pil]

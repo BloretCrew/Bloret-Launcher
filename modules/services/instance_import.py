@@ -240,6 +240,25 @@ def import_mmc_instance(
         except Exception:
             pass
 
+    # 尝试从 MMC patches / 实例根复制 profile JSON
+    try:
+        patches = src / "patches"
+        if patches.is_dir():
+            for p in patches.glob("*.json"):
+                try:
+                    shutil.copy2(p, dest / p.name)
+                except Exception:
+                    pass
+        for p in src.glob("*.json"):
+            if p.name.lower() in ("mmc-pack.json",):
+                continue
+            try:
+                shutil.copy2(p, dest / p.name)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     # 扫描内容索引
     try:
         from modules.services import content_index
@@ -248,12 +267,31 @@ def import_mmc_instance(
     except Exception:
         pass
 
+    has_launch_json = any(dest.glob(f"{name}.json")) or any(
+        p.name.endswith(".json") and p.stem.lower() not in ("mmc-pack", "bloret-import-meta")
+        for p in dest.glob("*.json")
+    )
+    needs_loader = not has_launch_json
     note = ""
-    if not any(dest.glob("*.json")):
+    if needs_loader:
         note = (
-            "已导入 mods/config/saves 等内容，但未包含可启动的 version JSON。"
-            "请在下载页安装对应 MC + Loader，或把已有版本 JSON/JAR 拷入该目录后启动。"
+            f"已导入内容，但缺少可启动 version JSON。"
+            f"检测到 MC={mc_ver or '?'} loader={loader}。"
+            f"请到下载页安装对应版本，或把 JSON/JAR 放入该版本目录后再启动。"
         )
+        try:
+            marker = {
+                "needs_loader_install": True,
+                "minecraft": mc_ver,
+                "loader": loader,
+                "loader_version": components.get("loader_version") or "",
+            }
+            (dest / "bloret-import-meta.json").write_text(
+                json.dumps(marker, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
 
     return ok(
         {
@@ -263,6 +301,12 @@ def import_mmc_instance(
             "minecraft": mc_ver,
             "loader": loader,
             "loader_version": components.get("loader_version") or "",
+            "needs_loader_install": needs_loader,
+            "suggested_install": {
+                "minecraft": mc_ver,
+                "loader": loader,
+                "loader_version": components.get("loader_version") or "",
+            },
             "note": note,
         }
     )

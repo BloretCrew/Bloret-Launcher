@@ -1551,7 +1551,7 @@ class Backend(QObject):
             print(f"获取实例信息失败：{e}")
             return {}
 
-    def _export_mrpack_sync(self, versionName, packName, packVersion, outputPath):
+    def _export_mrpack_sync(self, versionName, packName, packVersion, outputPath, selected_paths=None):
         from modules.mrpack_export import export_to_mrpack
         config_data = cfg.read()
         minecraft_dir = config_data.get('minecraft_dir', BLglobals.minecraft_dir)
@@ -1560,7 +1560,14 @@ class Backend(QObject):
         summary = f"从 {versionName} 导出的整合包"
         temp_path = actual_path + f".{threading.get_ident()}.part"
         try:
-            success = export_to_mrpack(instance_path, temp_path, packName, packVersion, summary)
+            success = export_to_mrpack(
+                instance_path,
+                temp_path,
+                packName,
+                packVersion,
+                summary,
+                selected_paths=selected_paths,
+            )
             if success:
                 os.replace(temp_path, actual_path)
             return bool(success), actual_path, "" if success else "导出失败"
@@ -1582,6 +1589,12 @@ class Backend(QObject):
 
     @Slot(str, str, str, str, str, result=bool)
     def requestMrpackExport(self, versionName, packName, packVersion, outputPath, requestId):
+        return self.requestMrpackExportWithSelection(
+            versionName, packName, packVersion, outputPath, requestId, []
+        )
+
+    @Slot(str, str, str, str, str, "QVariantList", result=bool)
+    def requestMrpackExportWithSelection(self, versionName, packName, packVersion, outputPath, requestId, selectedPaths):
         actual_path = outputPath if outputPath.lower().endswith('.mrpack') else outputPath + '.mrpack'
         path_key = os.path.normcase(os.path.abspath(actual_path))
         with self._export_paths_lock:
@@ -1589,12 +1602,19 @@ class Backend(QObject):
                 return False
             self._active_export_paths.add(path_key)
 
+        selected = None
+        try:
+            cleaned = [str(x) for x in (list(selectedPaths) if selectedPaths is not None else []) if x]
+            selected = cleaned if cleaned else None
+        except Exception:
+            selected = None
+
         def _run():
             success = False
             error = ""
             try:
                 success, _, error = self._export_mrpack_sync(
-                    versionName, packName, packVersion, outputPath
+                    versionName, packName, packVersion, outputPath, selected_paths=selected
                 )
             except Exception as exc:
                 error = str(exc)
@@ -1965,6 +1985,33 @@ class Backend(QObject):
             return res.data if res.ok else []
         except Exception:
             return []
+
+    @Slot(str, bool, result=bool)
+    def toggleContentPack(self, path, enabled):
+        try:
+            from modules.services.content_service import toggle_pack_enabled
+            return bool(toggle_pack_enabled(path, bool(enabled)).ok)
+        except Exception as e:
+            print(f"toggleContentPack: {e}")
+            return False
+
+    @Slot(str, result=bool)
+    def deleteContentPack(self, path):
+        try:
+            from PySide6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                None,
+                self.tr("确认删除"),
+                f"{self.tr('将删除')}: {os.path.basename(path)}",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return False
+            from modules.services.content_service import delete_content_path
+            return bool(delete_content_path(path).ok)
+        except Exception as e:
+            print(f"deleteContentPack: {e}")
+            return False
 
     @Slot(str, result="QVariant")
     def getCoreData(self, versionName):

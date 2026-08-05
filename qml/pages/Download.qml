@@ -64,6 +64,10 @@ FluentPage {
                 : ((Backend ? Backend.tr("导入失败") : "导入失败") + ": " + (message || name || ""))
             if (ok && Backend && Backend.invalidateLaunchItemsCache)
                 Backend.invalidateLaunchItemsCache()
+            // 若提示缺 loader，引导用户到版本安装区
+            if (ok && message && (String(message).indexOf("version JSON") >= 0 || String(message).indexOf("缺少可启动") >= 0)) {
+                importStatusText += "\n" + (Backend ? Backend.tr("提示：请在上方安装对应 MC + Loader，再启动该实例。") : "请安装对应 MC+Loader 后再启动")
+            }
         }
     }
 

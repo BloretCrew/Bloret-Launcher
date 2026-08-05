@@ -19,6 +19,8 @@ Dialog {
     property var servers: []
     property var mods: []
     property var resourcePacks: []
+    property var shaderPacks: []
+    property var dataPacks: []
     property var worlds: []
     property var contentUpdates: []
     property var crashReports: []
@@ -90,6 +92,8 @@ Dialog {
                     { key: "server", text: Backend ? Backend.tr("服务器") : "服务器" },
                     { key: "resource", text: Backend ? Backend.tr("资源包") : "资源包" },
                     { key: "mod", text: Backend ? Backend.tr("Mod") : "Mod" },
+                    { key: "shader", text: Backend ? Backend.tr("光影") : "光影" },
+                    { key: "datapack", text: Backend ? Backend.tr("数据包") : "数据包" },
                     { key: "worlds", text: Backend ? Backend.tr("世界") : "世界" },
                     { key: "advanced", text: Backend ? Backend.tr("高级") : "高级" }
                 ]
@@ -103,7 +107,9 @@ Dialog {
                         if (index === 1) loadServers()
                         if (index === 2) loadResourcePacks()
                         if (index === 3) loadMods()
-                        if (index === 4) loadWorlds()
+                        if (index === 4) loadShaderPacks()
+                        if (index === 5) loadDataPacks()
+                        if (index === 6) loadWorlds()
                     }
                 }
             }
@@ -635,6 +641,160 @@ Dialog {
                 }
             }
 
+            // Shader packs
+            ColumnLayout {
+                spacing: 10
+                RowLayout {
+                    spacing: 10
+                    Label {
+                        text: Backend ? Backend.tr("光影包") : "光影包"
+                        font.weight: Font.DemiBold
+                        color: Theme.currentTheme.colors.textColor
+                    }
+                    Item { Layout.fillWidth: true }
+                    Button {
+                        icon.name: "ic_fluent_arrow_sync_20_regular"
+                        flat: true
+                        onClicked: loadShaderPacks()
+                    }
+                    Button {
+                        text: Backend ? Backend.tr("打开文件夹") : "打开文件夹"
+                        icon.name: "ic_fluent_folder_open_20_regular"
+                        onClicked: if (Backend) Backend.openSubFolder(versionName, "shaderpacks")
+                    }
+                }
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    ColumnLayout {
+                        width: parent ? parent.width - 20 : 600
+                        spacing: 8
+                        Repeater {
+                            model: shaderPacks
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 52
+                                radius: 8
+                                color: Theme.currentTheme.colors.cardColor
+                                border.color: Theme.currentTheme.colors.cardBorderColor
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 10
+                                    spacing: 10
+                                    Label {
+                                        text: modelData.name
+                                        font.weight: Font.DemiBold
+                                        color: Theme.currentTheme.colors.textColor
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
+                                    }
+                                    Switch {
+                                        checked: modelData.enabled !== false
+                                        onCheckedChanged: {
+                                            if (Backend && checked !== modelData.enabled) {
+                                                Backend.toggleContentPack(modelData.path, checked)
+                                                loadShaderPacks()
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        icon.name: "ic_fluent_delete_20_regular"
+                                        flat: true
+                                        onClicked: {
+                                            if (Backend && Backend.deleteContentPack(modelData.path))
+                                                loadShaderPacks()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Label {
+                            visible: shaderPacks.length === 0
+                            text: Backend ? Backend.tr("暂无光影包") : "暂无光影包"
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                    }
+                }
+            }
+
+            // Datapacks
+            ColumnLayout {
+                spacing: 10
+                RowLayout {
+                    spacing: 10
+                    Label {
+                        text: Backend ? Backend.tr("数据包") : "数据包"
+                        font.weight: Font.DemiBold
+                        color: Theme.currentTheme.colors.textColor
+                    }
+                    Item { Layout.fillWidth: true }
+                    Button {
+                        icon.name: "ic_fluent_arrow_sync_20_regular"
+                        flat: true
+                        onClicked: loadDataPacks()
+                    }
+                    Button {
+                        text: Backend ? Backend.tr("打开文件夹") : "打开文件夹"
+                        icon.name: "ic_fluent_folder_open_20_regular"
+                        onClicked: if (Backend) Backend.openSubFolder(versionName, "datapacks")
+                    }
+                }
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    ColumnLayout {
+                        width: parent ? parent.width - 20 : 600
+                        spacing: 8
+                        Repeater {
+                            model: dataPacks
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 52
+                                radius: 8
+                                color: Theme.currentTheme.colors.cardColor
+                                border.color: Theme.currentTheme.colors.cardBorderColor
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 10
+                                    spacing: 10
+                                    Label {
+                                        text: modelData.name
+                                        font.weight: Font.DemiBold
+                                        color: Theme.currentTheme.colors.textColor
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
+                                    }
+                                    Switch {
+                                        checked: modelData.enabled !== false
+                                        onCheckedChanged: {
+                                            if (Backend && checked !== modelData.enabled) {
+                                                Backend.toggleContentPack(modelData.path, checked)
+                                                loadDataPacks()
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        icon.name: "ic_fluent_delete_20_regular"
+                                        flat: true
+                                        onClicked: {
+                                            if (Backend && Backend.deleteContentPack(modelData.path))
+                                                loadDataPacks()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Label {
+                            visible: dataPacks.length === 0
+                            text: Backend ? Backend.tr("暂无数据包") : "暂无数据包"
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                    }
+                }
+            }
+
             // Worlds + Quick Play
             ColumnLayout {
                 spacing: 10
@@ -1034,6 +1194,24 @@ Dialog {
         Backend.requestWorlds(versionName)
     }
 
+    function loadShaderPacks() {
+        if (!Backend) return
+        try {
+            shaderPacks = Backend.listShaderpacks(versionName) || []
+        } catch (e) {
+            shaderPacks = []
+        }
+    }
+
+    function loadDataPacks() {
+        if (!Backend) return
+        try {
+            dataPacks = Backend.listDatapacks(versionName) || []
+        } catch (e) {
+            dataPacks = []
+        }
+    }
+
     function loadCrashReports() {
         if (!Backend) return
         crashLogText = ""
@@ -1104,6 +1282,8 @@ Dialog {
         servers = []
         mods = []
         resourcePacks = []
+        shaderPacks = []
+        dataPacks = []
         worlds = []
         contentUpdates = []
         crashReports = []

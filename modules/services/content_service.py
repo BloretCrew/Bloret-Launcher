@@ -108,3 +108,39 @@ def _list_folder_content(version_name: str, folder: str) -> ServiceResult[List[D
         return ok(items)
     except Exception as e:
         return err(str(e), f"{folder}_list_failed")
+
+
+def toggle_pack_enabled(path: str, enabled: bool) -> ServiceResult[Dict[str, Any]]:
+    """Enable/disable a content file via .disabled suffix."""
+    if not path or not os.path.exists(path):
+        return err("not found", "not_found")
+    dirname, filename = os.path.split(path)
+    try:
+        if enabled:
+            if filename.endswith(".disabled"):
+                new_path = os.path.join(dirname, filename[:-9])
+                os.rename(path, new_path)
+                return ok({"path": new_path, "enabled": True})
+            return ok({"path": path, "enabled": True})
+        if not filename.endswith(".disabled"):
+            new_path = os.path.join(dirname, filename + ".disabled")
+            os.rename(path, new_path)
+            return ok({"path": new_path, "enabled": False})
+        return ok({"path": path, "enabled": False})
+    except Exception as e:
+        return err(str(e), "toggle_failed")
+
+
+def delete_content_path(path: str) -> ServiceResult[bool]:
+    if not path or not os.path.exists(path):
+        return err("not found", "not_found")
+    try:
+        if os.path.isdir(path):
+            import shutil
+
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
+        return ok(True)
+    except Exception as e:
+        return err(str(e), "delete_failed")
