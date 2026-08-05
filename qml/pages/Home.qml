@@ -118,7 +118,8 @@ FluentPage {
         if (cur.length > 0 && !/\s$/.test(cur)) cur += " "
         aiInput.text = cur + text
         aiInput.cursorPosition = aiInput.text.length
-        aiInput.forceActiveFocus()
+        // 语音识别完成后直接发给 Blora Agent
+        homeSendToBloriko()
     }
 
     function homeSendToBloriko() {

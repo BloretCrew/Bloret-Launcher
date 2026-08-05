@@ -253,7 +253,11 @@ Item {
         if (cur.length > 0 && !/\s$/.test(cur)) cur += " "
         inputField.text = cur + text
         inputField.cursorPosition = inputField.text.length
-        inputField.forceActiveFocus()
+        // 语音识别完成后直接发给 AI（勿在 busy 时调用 doSendMessage，否则会取消当前任务）
+        if (Agent && !Agent.busy)
+            doSendMessage()
+        else
+            inputField.forceActiveFocus()
     }
 
     function loadRoles() {
