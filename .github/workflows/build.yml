@@ -230,13 +230,31 @@ jobs:
 
     - name: 收集产物
       run: |
+        # Windows runner 通常无 zip 命令，用 Python 做跨平台归档
+        make_zip() {
+          local src_dir="$1"
+          local zip_path="$2"
+          python - <<'PY' "$src_dir" "$zip_path"
+        import sys, zipfile
+        from pathlib import Path
+        src = Path(sys.argv[1]).resolve()
+        zip_path = Path(sys.argv[2]).resolve()
+        zip_path.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for path in src.rglob("*"):
+                if path.is_file():
+                    zf.write(path, arcname=str(Path(src.name) / path.relative_to(src)))
+        print(f"wrote {zip_path} ({zip_path.stat().st_size} bytes)")
+        PY
+        }
+
         mkdir -p ${{ env.OUTPUT_DIR }}
         if [ "${{ runner.os }}" == "Windows" ]; then
           # onedir：整目录发布（zip + 展开目录，供 Inno Setup 安装）
           test -d dist/Bloret-Launcher
           test -f dist/Bloret-Launcher/Bloret-Launcher.exe
           cp -r dist/Bloret-Launcher "${{ env.OUTPUT_DIR }}/Bloret-Launcher"
-          (cd "${{ env.OUTPUT_DIR }}" && zip -r Bloret-Launcher-Windows-onedir.zip Bloret-Launcher)
+          make_zip "${{ env.OUTPUT_DIR }}/Bloret-Launcher" "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Windows-onedir.zip"
         elif [ "${{ runner.os }}" == "macOS" ]; then
           cp *.dmg ${{ env.OUTPUT_DIR }}/
         elif [ "${{ runner.os }}" == "Linux" ]; then
@@ -283,7 +301,7 @@ jobs:
           chmod +x appimagetool
           ./appimagetool --appimage-extract-and-run AppDir "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.AppImage"
           # 同时上传 onedir zip，便于非 AppImage 场景直接解压运行
-          (cd dist && zip -r "${{ github.workspace }}/${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux-onedir.zip" Bloret-Launcher)
+          make_zip "dist/Bloret-Launcher" "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux-onedir.zip"
         fi
       shell: bash
 
