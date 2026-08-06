@@ -7,13 +7,12 @@ paths.py
  - [x] 避免各模块各自用 os.getcwd() / os.path.dirname(__file__) 定位打包资源，
        这些方式在 Nuitka onefile 下会指向错误目录。
 
-### 关键事实（Nuitka onefile 运行时）：
+### 关键事实（打包运行时）：
  - `sys.frozen` 不会被 Nuitka 设置（只有 PyInstaller 设置）。
- - `sys._MEIPASS` 不会被 Nuitka 设置（只有 PyInstaller 设置）。
- - `sys.__nuitka_binary_dir` 由 Nuitka 设置，指向临时解压目录（数据文件所在位置）。
- - `os.getcwd()` 是启动目录（用户双击 exe 的位置），不是临时解压目录。
- - 主脚本 `__file__` 在 onefile 下解析到临时目录，但被导入模块的 `__file__`
-   解析行为不可靠，不能用于定位打包数据。
+ - `sys._MEIPASS` 仅 PyInstaller **onefile** 设置；**onedir** 无此属性，资源在 exe 同目录。
+ - `sys.__nuitka_binary_dir` 由 Nuitka 设置：onefile 为临时解压目录，standalone 为 `.dist` 目录。
+ - `os.getcwd()` 是启动目录（用户双击 exe 的位置），不一定是资源目录。
+ - 被导入模块的 `__file__` 在打包后不可靠，不能用于定位打包数据。
 
 因此定位打包资源时统一使用 `get_app_dir()`，不要依赖 `__file__` 或 `os.getcwd()`。
 
@@ -42,22 +41,21 @@ def get_app_dir() -> Path:
     if _app_dir is not None:
         return _app_dir
 
-    # Nuitka 编译模式（standalone / onefile）
-    # sys.__nuitka_binary_dir 由 Nuitka 运行时设置，指向解压/二进制目录
+    # Nuitka（standalone 目录 / onefile 临时目录）
+    # sys.__nuitka_binary_dir 指向数据文件所在目录
     nuitka_binary_dir = getattr(sys, "__nuitka_binary_dir", None)
     if nuitka_binary_dir:
         _app_dir = Path(nuitka_binary_dir)
         return _app_dir
 
-    # PyInstaller onefile 模式
+    # PyInstaller onefile：临时解压目录
     meipass = getattr(sys, "_MEIPASS", None)
     if meipass:
         _app_dir = Path(meipass)
         return _app_dir
 
-    # PyInstaller / Nuitka 其它可能的 frozen 标记
+    # PyInstaller onedir / 其它 frozen：资源与可执行文件同目录
     if getattr(sys, "frozen", False):
-        # exe 所在目录
         _app_dir = Path(sys.argv[0]).resolve().parent
         return _app_dir
 

@@ -149,15 +149,16 @@ jobs:
         fi
       shell: bash
 
+    # 非 onefile：--standalone 目录分发，启动时不再整包解压到临时目录
     - name: 使用 Nuitka 打包 (Windows)
       if: runner.os == 'Windows'
       run: |
         $EASYTIER_ARG = if (Test-Path "easytier") { "--include-data-dir=easytier=easytier" } else { "" }
         python -m nuitka `
-          --standalone --onefile `
+          --standalone `
           --windows-console-mode=disable `
           --windows-icon-from-ico=bloret.ico `
-          --output-file=Bloret-Launcher.exe `
+          --output-filename=Bloret-Launcher.exe `
           --windows-company-name="Bloret" `
           --windows-product-name="Bloret Launcher" `
           --windows-file-version=1.0.0 `
@@ -184,7 +185,7 @@ jobs:
       run: |
         EASYTIER_ARG=""
         if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
-        python -m nuitka --standalone --onefile --enable-plugin=pyside6 --include-qt-plugins=sensible,qml --include-data-dir=qml=qml --include-data-dir=RinUI/RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang --include-data-files=Bloret.png=Bloret.png --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png --include-data-files=config.json=config.json --include-data-files=LICENSE=LICENSE $EASYTIER_ARG --include-data-dir=modules=modules --output-file=Bloret-Launcher Bloret-Launcher.py
+        python -m nuitka --standalone --enable-plugin=pyside6 --include-qt-plugins=sensible,qml --include-data-dir=qml=qml --include-data-dir=RinUI/RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang --include-data-files=Bloret.png=Bloret.png --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png --include-data-files=config.json=config.json --include-data-files=LICENSE=LICENSE $EASYTIER_ARG --include-data-dir=modules=modules --output-filename=Bloret-Launcher Bloret-Launcher.py
       shell: bash
 
     - name: 修复 OpenSSL 依赖 (macOS)
@@ -345,15 +346,46 @@ jobs:
     - name: 收集产物
       run: |
         mkdir -p ${{ env.OUTPUT_DIR }}
-        if [ "${{ runner.os }}" == "Windows" ]; then 
-          cp Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
+        if [ "${{ runner.os }}" == "Windows" ]; then
+          # Nuitka standalone 输出为 Bloret-Launcher.dist/
+          DIST_DIR=""
+          for d in Bloret-Launcher.dist Bloret-Launcher.dist.dist; do
+            if [ -d "$d" ]; then DIST_DIR="$d"; break; fi
+          done
+          if [ -z "$DIST_DIR" ]; then
+            DIST_DIR=$(find . -maxdepth 2 -type d -name 'Bloret-Launcher*.dist' | head -1)
+          fi
+          echo "Nuitka Windows dist: $DIST_DIR"
+          test -n "$DIST_DIR" && test -d "$DIST_DIR"
+          test -f "$DIST_DIR/Bloret-Launcher.exe"
+          mkdir -p "${{ env.OUTPUT_DIR }}/Bloret-Launcher"
+          cp -a "$DIST_DIR"/. "${{ env.OUTPUT_DIR }}/Bloret-Launcher/"
+          # 兼容旧 Inno：根目录也放一份 exe 与 LICENSE 等（安装器会装整个目录）
+          (cd "${{ env.OUTPUT_DIR }}" && zip -r Bloret-Launcher-Windows-standalone.zip Bloret-Launcher)
         fi
-        if [ "${{ runner.os }}" == "Linux" ]; then 
+        if [ "${{ runner.os }}" == "Linux" ]; then
           ARCH=$(uname -m)
-          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/bloret-launcher
-          cp Bloret-Launcher AppDir/usr/bin/bloret-launcher
-          chmod +x AppDir/usr/bin/bloret-launcher
-          cp -r qml RinUI icon lang config.json LICENSE bloret.ico Bloret.png Bloret-Fluent.png JavaWrapper.jar AppDir/usr/share/bloret-launcher/
+          DIST_DIR=""
+          for d in Bloret-Launcher.dist; do
+            if [ -d "$d" ]; then DIST_DIR="$d"; break; fi
+          done
+          if [ -z "$DIST_DIR" ]; then
+            DIST_DIR=$(find . -maxdepth 2 -type d -name 'Bloret-Launcher*.dist' | head -1)
+          fi
+          echo "Nuitka Linux dist: $DIST_DIR"
+          test -n "$DIST_DIR" && test -d "$DIST_DIR"
+          test -f "$DIST_DIR/Bloret-Launcher" || test -x "$DIST_DIR/Bloret-Launcher"
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/lib/bloret-launcher
+          cp -a "$DIST_DIR"/. AppDir/usr/lib/bloret-launcher/
+          cat > AppDir/usr/bin/bloret-launcher << 'EOF'
+        #!/bin/sh
+        DIR="$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")"
+        ROOT="$(cd "$DIR/.." && pwd)"
+        exec "$ROOT/lib/bloret-launcher/Bloret-Launcher" "$@"
+        EOF
+          chmod +x AppDir/usr/bin/bloret-launcher AppDir/usr/lib/bloret-launcher/Bloret-Launcher
+          mkdir -p AppDir/usr/share/bloret-launcher
+          cp -r qml RinUI icon lang config.json LICENSE bloret.ico Bloret.png Bloret-Fluent.png JavaWrapper.jar AppDir/usr/share/bloret-launcher/ 2>/dev/null || true
           if [ -d "easytier" ]; then cp -r easytier AppDir/usr/share/bloret-launcher/; fi
           cp servers.dat AppDir/usr/share/bloret-launcher/ || true
           cat > AppDir/bloret-launcher.desktop << EOF
@@ -379,13 +411,13 @@ jobs:
           curl -L -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage"
           chmod +x appimagetool
           ./appimagetool --appimage-extract-and-run AppDir "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.AppImage"
+          mkdir -p "${{ env.OUTPUT_DIR }}/Bloret-Launcher"
+          cp -a "$DIST_DIR"/. "${{ env.OUTPUT_DIR }}/Bloret-Launcher/"
+          (cd "${{ env.OUTPUT_DIR }}" && zip -r Bloret-Launcher-Linux-standalone.zip Bloret-Launcher)
         fi
-        if [ "${{ runner.os }}" == "macOS" ]; then 
+        if [ "${{ runner.os }}" == "macOS" ]; then
           cp *.dmg ${{ env.OUTPUT_DIR }}/
         fi
-        cp -r qml RinUI icon lang config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
-        if [ -d "easytier" ]; then cp -r easytier ${{ env.OUTPUT_DIR }}/; fi
-        cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
       shell: bash
 
     - name: 上传构建产物
@@ -433,8 +465,16 @@ jobs:
       - name: 整理发布文件
         run: |
           mkdir -p release_assets
-          cp Bloret-Launcher-Windows/Bloret-Launcher.exe release_assets/
-          cp Bloret-Launcher-Linux/*.AppImage release_assets/
+          # standalone / onedir：优先上传 zip 目录包，兼容残留的单 exe
+          if [ -f Bloret-Launcher-Windows/Bloret-Launcher-Windows-standalone.zip ]; then
+            cp Bloret-Launcher-Windows/Bloret-Launcher-Windows-standalone.zip release_assets/
+          elif [ -d Bloret-Launcher-Windows/Bloret-Launcher ]; then
+            (cd Bloret-Launcher-Windows && zip -r ../release_assets/Bloret-Launcher-Windows-standalone.zip Bloret-Launcher)
+          elif [ -f Bloret-Launcher-Windows/Bloret-Launcher.exe ]; then
+            cp Bloret-Launcher-Windows/Bloret-Launcher.exe release_assets/
+          fi
+          cp Bloret-Launcher-Linux/*.AppImage release_assets/ 2>/dev/null || true
+          cp Bloret-Launcher-Linux/*-standalone.zip release_assets/ 2>/dev/null || true
           # cp Bloret-Launcher-MacOS-Intel/*.dmg release_assets/ || true
           # cp Bloret-Launcher-MacOS-ARM/*.dmg release_assets/ || true
           cp Bloret-Launcher-Setup.exe release_assets/
@@ -502,11 +542,23 @@ jobs:
         name: Bloret-Launcher
         path: output
 
-    - name: 确保 LICENSE 文件存在
+    - name: 确保 LICENSE 与安装资源存在
       run: |
-        if (-not (Test-Path "output/LICENSE")) {
-          Write-Host "LICENSE 文件未找到"
+        if (-not (Test-Path "output\Bloret-Launcher\Bloret-Launcher.exe")) {
+          Write-Host "standalone 目录缺少 Bloret-Launcher.exe"
+          Get-ChildItem -Path "output" -Recurse -Depth 2 | Format-Table -AutoSize
           exit 1
+        }
+        # SetupIconFile 需要 bloret.ico；若 dist 内没有则从仓库拷贝
+        if (-not (Test-Path "output\Bloret-Launcher\bloret.ico")) {
+          if (Test-Path "bloret.ico") {
+            Copy-Item "bloret.ico" "output\Bloret-Launcher\bloret.ico"
+          } elseif (Test-Path "output\bloret.ico") {
+            Copy-Item "output\bloret.ico" "output\Bloret-Launcher\bloret.ico"
+          }
+        }
+        if (-not (Test-Path "output\Bloret-Launcher\LICENSE") -and (Test-Path "LICENSE")) {
+          Copy-Item "LICENSE" "output\Bloret-Launcher\LICENSE"
         }
       shell: pwsh
 

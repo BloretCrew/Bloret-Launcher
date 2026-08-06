@@ -1,12 +1,30 @@
 # -*- mode: python ; coding: utf-8 -*-
-
+# PyInstaller onedir（非 onefile）规格：产物为 dist/Bloret-Launcher/ 目录。
 
 a = Analysis(
     ['Bloret-Launcher.py'],
     pathex=['.'],
     binaries=[],
-    datas=[('bloret.ico', '.'), ('config.json', '.'), ('ui', 'ui'), ('modules', 'modules')],
-    hiddenimports=['qfluentwidgets', 'win11toast'],
+    datas=[
+        ('bloret.ico', '.'),
+        ('Bloret.png', '.'),
+        ('Bloret-Fluent.png', '.'),
+        ('config.json', '.'),
+        ('ui', 'ui'),
+        ('RinUI', 'RinUI'),
+        ('qml', 'qml'),
+        ('icon', 'icon'),
+        ('lang', 'lang'),
+        ('modules', 'modules'),
+        ('JavaWrapper.jar', '.'),
+    ],
+    hiddenimports=[
+        'sip',
+        'qfluentwidgets',
+        'win11toast',
+        'toml',
+        'winsdk',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -19,16 +37,13 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='Bloret-Launcher',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -36,4 +51,14 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=['bloret.ico'],
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name='Bloret-Launcher',
 )
