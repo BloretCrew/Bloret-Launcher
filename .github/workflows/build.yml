@@ -149,10 +149,11 @@ jobs:
         fi
       shell: bash
 
+    # 非 onefile：目录分发，启动时不再整包解压到临时目录
     - name: 使用 PyInstaller 打包 (Windows)
       if: runner.os == 'Windows'
       run: |
-        pyinstaller --onefile --noconsole --icon=bloret.ico --name=Bloret-Launcher --noupx `
+        pyinstaller --onedir --noconsole --icon=bloret.ico --name=Bloret-Launcher --noupx `
           --add-data "bloret.ico;." --add-data "Bloret.png;." --add-data "Bloret-Fluent.png;." --add-data "config.json;." --add-data "ui;ui" --add-data "RinUI;RinUI" --add-data "qml;qml" --add-data "icon;icon" --add-data "lang;lang" --add-data "easytier;easytier" --add-data "JavaWrapper.jar;." --add-data "modules;modules" `
           --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=win11toast --hidden-import=toml --hidden-import=winsdk --paths=. Bloret-Launcher.py
       shell: pwsh
@@ -160,7 +161,7 @@ jobs:
     - name: 使用 PyInstaller 打包 (Linux)
       if: runner.os == 'Linux'
       run: |
-        pyinstaller --onefile --windowed --name=Bloret-Launcher \
+        pyinstaller --onedir --windowed --name=Bloret-Launcher \
           --add-data "bloret.ico:." --add-data "Bloret.png:." --add-data "Bloret-Fluent.png:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "icon:icon" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
           --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
       shell: bash
@@ -193,8 +194,8 @@ jobs:
           fi
         fi
         
-        # 使用 --name 参数确保应用名称中间有空格
-        pyinstaller --onefile --windowed --name="Bloret Launcher" $ICON_CMD \
+        # onedir + windowed：生成 .app bundle（不再使用 onefile 启动解压）
+        pyinstaller --onedir --windowed --name="Bloret Launcher" $ICON_CMD \
           --add-data "bloret.ico:." --add-data "Bloret.png:." --add-data "Bloret-Fluent.png:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "icon:icon" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
           --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
 
@@ -231,15 +232,31 @@ jobs:
       run: |
         mkdir -p ${{ env.OUTPUT_DIR }}
         if [ "${{ runner.os }}" == "Windows" ]; then
-          cp dist/Bloret-Launcher.exe ${{ env.OUTPUT_DIR }}/
+          # onedir：整目录发布（zip + 展开目录，供 Inno Setup 安装）
+          test -d dist/Bloret-Launcher
+          test -f dist/Bloret-Launcher/Bloret-Launcher.exe
+          cp -r dist/Bloret-Launcher "${{ env.OUTPUT_DIR }}/Bloret-Launcher"
+          (cd "${{ env.OUTPUT_DIR }}" && zip -r Bloret-Launcher-Windows-onedir.zip Bloret-Launcher)
         elif [ "${{ runner.os }}" == "macOS" ]; then
           cp *.dmg ${{ env.OUTPUT_DIR }}/
         elif [ "${{ runner.os }}" == "Linux" ]; then
           ARCH=$(uname -m)
-          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/bloret-launcher
-          cp dist/Bloret-Launcher AppDir/usr/bin/bloret-launcher
-          chmod +x AppDir/usr/bin/bloret-launcher
-          cp -r RinUI qml ui icon lang config.json LICENSE bloret.ico Bloret.png Bloret-Fluent.png JavaWrapper.jar AppDir/usr/share/bloret-launcher/
+          test -d dist/Bloret-Launcher
+          test -x dist/Bloret-Launcher/Bloret-Launcher || test -f dist/Bloret-Launcher/Bloret-Launcher
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/lib/bloret-launcher
+          # 将 onedir 运行时整体放入 lib，入口脚本调用其中可执行文件
+          cp -a dist/Bloret-Launcher/. AppDir/usr/lib/bloret-launcher/
+          cat > AppDir/usr/bin/bloret-launcher << 'EOF'
+        #!/bin/sh
+        DIR="$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")"
+        ROOT="$(cd "$DIR/.." && pwd)"
+        exec "$ROOT/lib/bloret-launcher/Bloret-Launcher" "$@"
+        EOF
+          chmod +x AppDir/usr/bin/bloret-launcher AppDir/usr/lib/bloret-launcher/Bloret-Launcher
+          # 仍附带源树资源作为兜底（onedir 内已含打包数据）
+          cp -r RinUI qml ui icon lang config.json LICENSE bloret.ico Bloret.png Bloret-Fluent.png JavaWrapper.jar AppDir/usr/share/ 2>/dev/null || true
+          mkdir -p AppDir/usr/share/bloret-launcher
+          cp -r RinUI qml ui icon lang config.json LICENSE bloret.ico Bloret.png Bloret-Fluent.png JavaWrapper.jar AppDir/usr/share/bloret-launcher/ 2>/dev/null || true
           if [ -d "easytier" ]; then cp -r easytier AppDir/usr/share/bloret-launcher/; fi
           cp servers.dat AppDir/usr/share/bloret-launcher/ || true
           cat > AppDir/bloret-launcher.desktop << EOF
@@ -265,9 +282,9 @@ jobs:
           curl -L -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage"
           chmod +x appimagetool
           ./appimagetool --appimage-extract-and-run AppDir "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.AppImage"
+          # 同时上传 onedir zip，便于非 AppImage 场景直接解压运行
+          (cd dist && zip -r "${{ github.workspace }}/${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux-onedir.zip" Bloret-Launcher)
         fi
-        cp -r RinUI qml ui lang easytier config.json LICENSE bloret.ico JavaWrapper.jar ${{ env.OUTPUT_DIR }}/
-        cp servers.dat ${{ env.OUTPUT_DIR }}/ || true
       shell: bash
 
     - name: 上传构建产物

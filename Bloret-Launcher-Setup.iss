@@ -1,4 +1,5 @@
 ; MyAppVersion 的值会由 Github Actions 自动修改
+; 安装完整 onedir/standalone 目录（非单 exe）
 #define MyAppName "Bloret-Launcher"
 #define MyAppVersion "27.1-Beta"
 #define MyAppPublisher "Bloret"
@@ -40,7 +41,7 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline
 OutputDir=.\output
 OutputBaseFilename=Bloret-Launcher-Setup
-SetupIconFile=output\bloret.ico
+SetupIconFile=output\Bloret-Launcher\bloret.ico
 SolidCompression=yes
 WizardStyle=modern
 
@@ -48,17 +49,12 @@ WizardStyle=modern
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "output\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\Bloret-Launcher.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\config.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\servers.dat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\bloret.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "output\JavaWrapper.jar"; DestDir: "{app}"; Flags: ignoreversion
-; Source: "output\icons\*"; DestDir: "{app}\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "output\lang\*"; DestDir: "{app}\lang"; Flags: ignoreversion 
-Source: "output\easytier\*"; DestDir: "{app}\easytier"; Flags: ignoreversion recursesubdirs createallsubdirs
-; 注意：不要在任何共享系统文件上使用 "Flags: ignoreversion"
+; 安装完整 onedir/standalone 目录（Nuitka/PyInstaller 产物）
+Source: "output\Bloret-Launcher\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; 兼容：若产物仍把 LICENSE 等放在 output 根目录
+Source: "output\LICENSE"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "output\config.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "output\servers.dat"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocExt}\OpenWithProgids"; ValueType: string; ValueName: "{#MyAppAssocKey}"; ValueData: ""; Flags: uninsdeletevalue
@@ -73,4 +69,4 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
