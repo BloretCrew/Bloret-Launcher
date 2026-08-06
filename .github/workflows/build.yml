@@ -234,7 +234,7 @@ jobs:
         make_zip() {
           local src_dir="$1"
           local zip_path="$2"
-          python - <<'PY' "$src_dir" "$zip_path"
+          python - "$src_dir" "$zip_path" <<'PY'
         import sys, zipfile
         from pathlib import Path
         src = Path(sys.argv[1]).resolve()
@@ -254,6 +254,11 @@ jobs:
           test -d dist/Bloret-Launcher
           test -f dist/Bloret-Launcher/Bloret-Launcher.exe
           cp -r dist/Bloret-Launcher "${{ env.OUTPUT_DIR }}/Bloret-Launcher"
+          for f in LICENSE bloret.ico config.json JavaWrapper.jar Bloret.png Bloret-Fluent.png servers.dat; do
+            if [ -f "$f" ] && [ ! -f "${{ env.OUTPUT_DIR }}/Bloret-Launcher/$f" ]; then
+              cp "$f" "${{ env.OUTPUT_DIR }}/Bloret-Launcher/$f"
+            fi
+          done
           make_zip "${{ env.OUTPUT_DIR }}/Bloret-Launcher" "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Windows-onedir.zip"
         elif [ "${{ runner.os }}" == "macOS" ]; then
           cp *.dmg ${{ env.OUTPUT_DIR }}/
@@ -454,6 +459,8 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: true
+        # 使用触发分支上的 Setup.iss（onedir），不要写死 Windows 旧脚本
+        ref: ${{ github.ref }}
 
     - name: 下载构建产物
       uses: actions/download-artifact@v4
@@ -461,23 +468,58 @@ jobs:
         name: Bloret-Launcher-Windows
         path: output
 
-    # - name: 解压构建产物
-    #   run: |
-    #     Expand-Archive -Path "output/Bloret-Launcher-Windows.zip" -DestinationPath "output/"
-    #   shell: pwsh
-
-    - name: 确保 LICENSE 文件存在
+    - name: 准备 onedir 安装资源
       run: |
-        if (-not (Test-Path "output/LICENSE")) {
-          Write-Host "LICENSE 文件未找到"
+        $ErrorActionPreference = "Stop"
+        Write-Host "=== output tree (depth 2) ==="
+        Get-ChildItem -Path "output" -Recurse -Depth 2 | Format-Table -AutoSize
+
+        $appDir = "output\Bloret-Launcher"
+        if (-not (Test-Path "$appDir\Bloret-Launcher.exe")) {
+          if (Test-Path "output\Bloret-Launcher.exe") {
+            New-Item -ItemType Directory -Force -Path $appDir | Out-Null
+            Get-ChildItem "output" -Force | Where-Object { $_.Name -ne "Bloret-Launcher" } | ForEach-Object {
+              Move-Item $_.FullName -Destination $appDir -Force
+            }
+          } else {
+            Write-Host "onedir 目录缺少 Bloret-Launcher.exe"
+            Get-ChildItem -Path "output" -Recurse -Depth 3 | Format-Table -AutoSize
+            exit 1
+          }
+        }
+
+        foreach ($name in @("LICENSE", "bloret.ico", "config.json", "JavaWrapper.jar", "servers.dat")) {
+          $dest = Join-Path $appDir $name
+          if (-not (Test-Path $dest)) {
+            if (Test-Path $name) {
+              Copy-Item $name $dest -Force
+              Write-Host "Copied $name -> $dest"
+            } elseif (Test-Path "output\$name") {
+              Copy-Item "output\$name" $dest -Force
+              Write-Host "Copied output\$name -> $dest"
+            }
+          }
+        }
+
+        if (-not (Test-Path "$appDir\Bloret-Launcher.exe")) {
+          Write-Host "仍缺少 $appDir\Bloret-Launcher.exe"
           exit 1
+        }
+        if (-not (Test-Path "$appDir\bloret.ico") -and (Test-Path "bloret.ico")) {
+          Copy-Item "bloret.ico" "$appDir\bloret.ico" -Force
+        }
+        if (-not (Test-Path "output\LICENSE") -and (Test-Path "$appDir\LICENSE")) {
+          Copy-Item "$appDir\LICENSE" "output\LICENSE" -Force
+        }
+        if (-not (Test-Path "output\LICENSE") -and (Test-Path "LICENSE")) {
+          Copy-Item "LICENSE" "output\LICENSE" -Force
         }
       shell: pwsh
 
     - name: 展示完整文件夹目录
       run: |
         Write-Host "当前文件夹目录结构如下："
-        Get-ChildItem -Path "output" -Recurse | Format-Table -AutoSize
+        Get-ChildItem -Path "output" -Recurse -Depth 2 | Format-Table -AutoSize
       shell: pwsh
 
     - name: 设置系统语言为简体中文
