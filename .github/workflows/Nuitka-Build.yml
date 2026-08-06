@@ -345,6 +345,24 @@ jobs:
 
     - name: 收集产物
       run: |
+        # Windows runner 通常无 zip 命令，用 Python 做跨平台归档
+        make_zip() {
+          local src_dir="$1"
+          local zip_path="$2"
+          python - <<'PY' "$src_dir" "$zip_path"
+        import sys, zipfile
+        from pathlib import Path
+        src = Path(sys.argv[1]).resolve()
+        zip_path = Path(sys.argv[2]).resolve()
+        zip_path.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for path in src.rglob("*"):
+                if path.is_file():
+                    zf.write(path, arcname=str(Path(src.name) / path.relative_to(src)))
+        print(f"wrote {zip_path} ({zip_path.stat().st_size} bytes)")
+        PY
+        }
+
         mkdir -p ${{ env.OUTPUT_DIR }}
         if [ "${{ runner.os }}" == "Windows" ]; then
           # Nuitka standalone 输出为 Bloret-Launcher.dist/
@@ -360,8 +378,7 @@ jobs:
           test -f "$DIST_DIR/Bloret-Launcher.exe"
           mkdir -p "${{ env.OUTPUT_DIR }}/Bloret-Launcher"
           cp -a "$DIST_DIR"/. "${{ env.OUTPUT_DIR }}/Bloret-Launcher/"
-          # 兼容旧 Inno：根目录也放一份 exe 与 LICENSE 等（安装器会装整个目录）
-          (cd "${{ env.OUTPUT_DIR }}" && zip -r Bloret-Launcher-Windows-standalone.zip Bloret-Launcher)
+          make_zip "${{ env.OUTPUT_DIR }}/Bloret-Launcher" "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Windows-standalone.zip"
         fi
         if [ "${{ runner.os }}" == "Linux" ]; then
           ARCH=$(uname -m)
@@ -413,7 +430,7 @@ jobs:
           ./appimagetool --appimage-extract-and-run AppDir "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.AppImage"
           mkdir -p "${{ env.OUTPUT_DIR }}/Bloret-Launcher"
           cp -a "$DIST_DIR"/. "${{ env.OUTPUT_DIR }}/Bloret-Launcher/"
-          (cd "${{ env.OUTPUT_DIR }}" && zip -r Bloret-Launcher-Linux-standalone.zip Bloret-Launcher)
+          make_zip "${{ env.OUTPUT_DIR }}/Bloret-Launcher" "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux-standalone.zip"
         fi
         if [ "${{ runner.os }}" == "macOS" ]; then
           cp *.dmg ${{ env.OUTPUT_DIR }}/
