@@ -84,15 +84,6 @@ Item {
             }
         }
 
-        ThinkingOrb {
-            size: root.orbSize
-            running: root.active && root.visible
-            state: root.orbState
-            speed: root.orbSpeed
-            ink: root.orbInk
-            Layout.alignment: Qt.AlignVCenter
-        }
-
         Text {
             text: root.label
             font.pixelSize: root.labelPixelSize
