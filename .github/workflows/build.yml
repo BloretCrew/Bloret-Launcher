@@ -93,10 +93,16 @@ jobs:
         if [ "${{ runner.os }}" == "Windows" ]; then
           pip install -r requirements.txt
         else
-          grep -ivE '^(pywin32|win11toast|winsdk)' requirements.txt > req_unix.txt
+          # 环境标记本可跳过 win 包；再过滤一行，避免旧 pip 行为差异
+          grep -ivE '^(pywin32|win11toast|winsdk)([; =]|$)' requirements.txt > req_unix.txt
           pip install -r req_unix.txt
         fi
         pip install pillow pyinstaller
+        # AppImage 需要 FUSE；与 Nuitka-Build 对齐
+        if [ "${{ runner.os }}" == "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y fuse libfuse2
+        fi
       shell: bash
 
     - name: 下载平台专属 EasyTier
@@ -154,16 +160,21 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         pyinstaller --onedir --noconsole --icon=bloret.ico --name=Bloret-Launcher --noupx `
-          --add-data "bloret.ico;." --add-data "Bloret.png;." --add-data "Bloret-Fluent.png;." --add-data "config.json;." --add-data "ui;ui" --add-data "RinUI;RinUI" --add-data "qml;qml" --add-data "icon;icon" --add-data "lang;lang" --add-data "easytier;easytier" --add-data "JavaWrapper.jar;." --add-data "modules;modules" `
-          --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=win11toast --hidden-import=toml --hidden-import=winsdk --paths=. Bloret-Launcher.py
+          --add-data "bloret.ico;." --add-data "Bloret.png;." --add-data "Bloret-Fluent.png;." --add-data "config.json;." --add-data "ui;ui" --add-data "RinUI;RinUI" --add-data "qml;qml" --add-data "icon;icon" --add-data "lang;lang" --add-data "easytier;easytier" --add-data "JavaWrapper.jar;." --add-data "modules;modules" --add-data "LICENSE;." `
+          --hidden-import=toml --hidden-import=darkdetect --hidden-import=send2trash --hidden-import=psutil --hidden-import=dulwich --hidden-import=qrcode --hidden-import=win11toast --hidden-import=winsdk --paths=. Bloret-Launcher.py
       shell: pwsh
 
     - name: 使用 PyInstaller 打包 (Linux)
       if: runner.os == 'Linux'
       run: |
+        # 已移除 sip / qfluentwidgets（UI 已迁到 PySide6 + modules.compat_widgets）
+        EXTRA_DATA=""
+        if [ -f servers.dat ]; then EXTRA_DATA="$EXTRA_DATA --add-data servers.dat:."; fi
+        if [ -f LICENSE ]; then EXTRA_DATA="$EXTRA_DATA --add-data LICENSE:."; fi
         pyinstaller --onedir --windowed --name=Bloret-Launcher \
           --add-data "bloret.ico:." --add-data "Bloret.png:." --add-data "Bloret-Fluent.png:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "icon:icon" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
-          --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
+          $EXTRA_DATA \
+          --hidden-import=toml --hidden-import=darkdetect --hidden-import=send2trash --hidden-import=psutil --hidden-import=dulwich --hidden-import=qrcode --paths=. Bloret-Launcher.py
       shell: bash
 
     - name: 使用 PyInstaller 打包 (macOS)
@@ -196,8 +207,8 @@ jobs:
         
         # onedir + windowed：生成 .app bundle（不再使用 onefile 启动解压）
         pyinstaller --onedir --windowed --name="Bloret Launcher" $ICON_CMD \
-          --add-data "bloret.ico:." --add-data "Bloret.png:." --add-data "Bloret-Fluent.png:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "icon:icon" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." \
-          --hidden-import=sip --hidden-import=qfluentwidgets --hidden-import=toml --paths=. Bloret-Launcher.py
+          --add-data "bloret.ico:." --add-data "Bloret.png:." --add-data "Bloret-Fluent.png:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "icon:icon" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." --add-data "LICENSE:." \
+          --hidden-import=toml --hidden-import=darkdetect --hidden-import=send2trash --hidden-import=psutil --hidden-import=dulwich --hidden-import=qrcode --paths=. Bloret-Launcher.py
 
         # 生成 DMG 文件
         brew install create-dmg
@@ -305,7 +316,12 @@ jobs:
           curl -L -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage"
           chmod +x appimagetool
           ./appimagetool --appimage-extract-and-run AppDir "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.AppImage"
-          # 同时上传 onedir zip，便于非 AppImage 场景直接解压运行
+          # 兜底资源进 onedir，再打 zip
+          for f in LICENSE bloret.ico config.json JavaWrapper.jar Bloret.png Bloret-Fluent.png servers.dat; do
+            if [ -f "$f" ] && [ ! -f "dist/Bloret-Launcher/$f" ]; then
+              cp "$f" "dist/Bloret-Launcher/$f"
+            fi
+          done
           make_zip "dist/Bloret-Launcher" "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux-onedir.zip"
         fi
       shell: bash

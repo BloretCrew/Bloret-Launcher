@@ -1,107 +1,178 @@
 # Maintainer: Detritalw <detritalw@users.noreply.github.com>
 pkgname=bloret-launcher
 pkgver=318
-pkgrel=1
+pkgrel=2
 pkgdesc="A Minecraft Launcher designed by BloretValley administrator"
 arch=('x86_64' 'aarch64')
 url="https://github.com/BloretCrew/Bloret-Launcher"
 license=('GPL-3.0-or-later')
 
 # ===== 运行时依赖 =====
-# 以下为 Arch 官方仓库中可用的 Python 依赖
+# Nuitka standalone 会把多数 Python/Qt 库打进包内；系统依赖用于源码运行
+# 或与 fcitx5-qt 共用系统 Qt 的场景。打包产物本身仍建议安装下列库以兼容插件。
 depends=(
-    'python'                    # Python 运行时
-    'python-pyside6'            # PySide6 (Qt for Python) - UI 框架
-    'python-requests'           # HTTP 客户端
-    'python-psutil'             # 进程管理 (监控 Minecraft 进程)
-    'python-dulwich'            # Git 操作库
-    'python-send2trash'         # 安全删除文件 (移到回收站)
-    'python-toml'               # TOML 文件解析
-    'qt6-5compat'               # Qt5Compat.GraphicalEffects QML 模块
-    'qt6-declarative'           # QtQuick / QML 引擎
+    'python'
+    'python-pyside6'
+    'python-requests'
+    'python-psutil'
+    'python-dulwich'
+    'python-send2trash'
+    'python-toml'
+    'python-qrcode'
+    'python-pillow'
+    'python-darkdetect'
+    'qt6-5compat'               # Qt5Compat.GraphicalEffects QML
+    'qt6-declarative'           # QtQuick / QML
 )
 
 # ===== 编译时依赖 =====
-# Nuitka 编译 + git 子模块
 makedepends=(
-    'git'                       # 克隆子模块 (BLAPI, BL4CW2)
-    'python-nuitka'             # Python 编译器
-    'python-ordered-set'        # Nuitka 依赖
-    'python-zstandard'          # Nuitka 压缩依赖
-    'python-setuptools'         # Nuitka 兼容性
-    'ccache'                    # 可选: 加速重复编译
+    'git'
+    'python-nuitka'
+    'python-ordered-set'
+    'python-zstandard'
+    'python-setuptools'
+    'python-pip'
+    'ccache'
+    'patchelf'
+    'curl'
+    'unzip'
 )
 
 # ===== 可选依赖 =====
-# Minecraft 运行所需的 Java；Linux 中文输入法需要 fcitx5-qt
 optdepends=(
     'java-runtime: 运行 Minecraft 所需的 Java 环境'
-    'easytier: 局域网联机功能所需的 EasyTier 网络工具'
-    'fcitx5-qt: Qt6/Qt5 fcitx5 输入法前端（Linux 下中文输入/切换必需）'
+    'easytier: 局域网联机（也可使用打包进应用的 easytier 二进制）'
+    'fcitx5-qt: Qt fcitx5 输入法前端（源码 + 系统 PySide6 时中文输入必需）'
     'fcitx5: fcitx5 输入法框架'
+    'python-websocket-client: Bloriko QQ/Discord/Slack 等 connector'
+    'python-cryptography: 微信媒体加解密'
 )
 
 # ===== 源码 =====
-# 使用 GitHub release 源码包，需要 --recurse-submodules 获取子模块
+# release tarball 通常不含子模块；prepare 中再拉 RinUI 等
 source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/v${pkgver}.tar.gz")
-sha256sums=('SKIP')  # 后续可用 updpkgsums 生成
+sha256sums=('SKIP')
 
-# ===== 如果 GitHub 不支持自动打包子模块，改用 git 克隆 =====
-# source=("git+${url}#tag=v${pkgver}?signed")
-# sha256sums=('SKIP')
+_easytier_version=v2.6.4
 
 prepare() {
     cd "${srcdir}/Bloret-Launcher-${pkgver}"
 
-    # 初始化并更新 git 子模块 (BLAPI, BL4CW2, RinUI)
-    git submodule update --init --recursive 2>/dev/null || true
+    # 子模块（RinUI / BLAPI 等）；tarball 场景可能无 .git，失败则依赖源码树已含内容
+    if [ -f .gitmodules ]; then
+        git submodule update --init --recursive 2>/dev/null || true
+    fi
+
+    # 下载平台 EasyTier（仓库内 easytier/ 多为 Windows 二进制，不可直接用于 Linux）
+    local arch_name zip_name
+    case "$CARCH" in
+        x86_64)  arch_name=x86_64; zip_name="easytier-linux-x86_64-${_easytier_version}.zip" ;;
+        aarch64) arch_name=aarch64; zip_name="easytier-linux-aarch64-${_easytier_version}.zip" ;;
+        *)       echo "Unsupported CARCH=$CARCH for EasyTier"; return 0 ;;
+    esac
+
+    rm -rf easytier
+    mkdir -p easytier
+    if curl -fsSL --retry 3 --retry-delay 5 \
+        -o "${zip_name}" \
+        "https://github.com/EasyTier/EasyTier/releases/download/${_easytier_version}/${zip_name}"; then
+        if unzip -t "${zip_name}" &>/dev/null; then
+            mkdir -p easytier-tmp
+            unzip -o "${zip_name}" -d easytier-tmp
+            find easytier-tmp -name 'easytier-core*' -exec cp {} easytier/ \;
+            find easytier-tmp -name 'easytier-cli*' -exec cp {} easytier/ \;
+            chmod +x easytier/easytier-core* easytier/easytier-cli* 2>/dev/null || true
+            rm -rf easytier-tmp "${zip_name}"
+            echo "EasyTier ${arch_name} ready"
+        else
+            echo "warning: EasyTier zip invalid, skipping"
+            rm -f "${zip_name}"
+        fi
+    else
+        echo "warning: EasyTier download failed,联机功能可能不可用"
+    fi
 }
 
 build() {
     cd "${srcdir}/Bloret-Launcher-${pkgver}"
 
-    # 安装 RinUI 子模块，使 Nuitka 能正确解析 import RinUI
-    pip install ./RinUI --no-build-isolation --no-deps 2>/dev/null || true
+    # 安装 RinUI，使 Nuitka 能解析 import RinUI（含 darkdetect 等）
+    pip install ./RinUI --no-build-isolation 2>/dev/null \
+        || pip install ./RinUI --no-build-isolation --no-deps || true
 
-    # 使用 Nuitka 编译为独立可执行文件
-    # --standalone: 包含所有依赖
-    # --onefile: 单文件可执行
-    # --enable-plugin=pyside6: 启用 PySide6 插件
-    # --include-qt-plugins=sensible: 包含必要的 Qt 插件
-    # --include-data-dir: 打包数据文件 (QML, 图标, 语言文件等)
+    # PySide6 QML 目录中的 *.o/*.a 会误导 Nuitka+patchelf
+    if python -c "from PySide6.QtCore import QLibraryInfo" &>/dev/null; then
+        local qml_dir
+        qml_dir="$(python -c "from PySide6.QtCore import QLibraryInfo; print(QLibraryInfo.path(QLibraryInfo.LibraryPath.QmlImportsPath))")"
+        if [ -n "$qml_dir" ] && [ -d "$qml_dir" ]; then
+            find "$qml_dir" -type f \( -name '*.o' -o -name '*.a' -o -name '*.prl' \) -delete || true
+        fi
+    fi
+
+    local easytier_arg=()
+    if [ -d easytier ] && [ -n "$(ls -A easytier 2>/dev/null)" ]; then
+        easytier_arg=(--include-data-dir=easytier=easytier)
+    fi
+
+    local extra_files=()
+    [ -f bloret.ico ] && extra_files+=(--include-data-files=bloret.ico=bloret.ico)
+    [ -f servers.dat ] && extra_files+=(--include-data-files=servers.dat=servers.dat)
+    [ -f JavaWrapper.jar ] && extra_files+=(--include-data-files=JavaWrapper.jar=JavaWrapper.jar)
+    [ -f LICENSE ] && extra_files+=(--include-data-files=LICENSE=LICENSE)
+    [ -f config.json ] && extra_files+=(--include-data-files=config.json=config.json)
+
+    # 与 CI Nuitka-Build 对齐：standalone 目录分发（非 onefile）
     python -m nuitka \
         --standalone \
-        --onefile \
         --enable-plugin=pyside6 \
-        --include-qt-plugins=sensible \
+        --include-qt-plugins=sensible,styles,qml \
         --include-data-dir=qml=qml \
-        --include-data-dir=RinUI=RinUI \
+        --include-data-dir=RinUI/RinUI=RinUI \
         --include-data-dir=icon=icon \
         --include-data-dir=lang=lang \
         --include-data-dir=modules=modules \
         --include-data-files=Bloret.png=Bloret.png \
         --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png \
-        --output-file=bloret-launcher \
+        "${extra_files[@]}" \
+        "${easytier_arg[@]}" \
+        --output-filename=Bloret-Launcher \
         --assume-yes-for-downloads \
-        --remove-output \
         Bloret-Launcher.py
 }
 
 package() {
     cd "${srcdir}/Bloret-Launcher-${pkgver}"
 
-    # 安装编译后的可执行文件
-    install -Dm755 bloret-launcher "${pkgdir}/usr/bin/bloret-launcher"
+    local dist=""
+    if [ -d Bloret-Launcher.dist ]; then
+        dist=Bloret-Launcher.dist
+    else
+        dist="$(find . -maxdepth 2 -type d -name 'Bloret-Launcher*.dist' | head -1)"
+    fi
+    if [ -z "$dist" ] || [ ! -d "$dist" ]; then
+        echo "error: Nuitka dist directory not found" >&2
+        return 1
+    fi
 
-    # 安装数据文件 (config.json, JavaWrapper.jar 等)
-    install -Dm644 config.json "${pkgdir}/usr/share/bloret-launcher/config.json"
-    install -Dm644 JavaWrapper.jar "${pkgdir}/usr/share/bloret-launcher/JavaWrapper.jar"
-    install -Dm644 servers.dat "${pkgdir}/usr/share/bloret-launcher/servers.dat" 2>/dev/null || true
+    # 应用文件树 → /usr/lib/bloret-launcher
+    install -d "${pkgdir}/usr/lib/bloret-launcher"
+    cp -a "$dist"/. "${pkgdir}/usr/lib/bloret-launcher/"
 
-    # 安装图标
-    install -Dm644 Bloret-Fluent.png "${pkgdir}/usr/share/pixmaps/bloret-launcher.png"
+    # 入口脚本
+    install -Dm755 /dev/stdin "${pkgdir}/usr/bin/bloret-launcher" <<'EOF'
+#!/bin/sh
+exec /usr/lib/bloret-launcher/Bloret-Launcher "$@"
+EOF
+    chmod +x "${pkgdir}/usr/lib/bloret-launcher/Bloret-Launcher" 2>/dev/null || true
 
-    # 安装桌面文件
+    # 图标与桌面项
+    if [ -f Bloret-Fluent.png ]; then
+        install -Dm644 Bloret-Fluent.png "${pkgdir}/usr/share/pixmaps/bloret-launcher.png"
+    elif [ -f Bloret.png ]; then
+        install -Dm644 Bloret.png "${pkgdir}/usr/share/pixmaps/bloret-launcher.png"
+    fi
+
     install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/bloret-launcher.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -115,6 +186,5 @@ Categories=Game;
 Keywords=minecraft;game;launcher;
 EOF
 
-    # 安装许可证
     install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }

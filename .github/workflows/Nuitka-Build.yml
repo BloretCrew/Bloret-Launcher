@@ -184,8 +184,31 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         EASYTIER_ARG=""
-        if [ -d "easytier" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
-        python -m nuitka --standalone --enable-plugin=pyside6 --include-qt-plugins=sensible,qml --include-data-dir=qml=qml --include-data-dir=RinUI/RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang --include-data-files=Bloret.png=Bloret.png --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png --include-data-files=config.json=config.json --include-data-files=LICENSE=LICENSE $EASYTIER_ARG --include-data-dir=modules=modules --output-filename=Bloret-Launcher Bloret-Launcher.py
+        if [ -d "easytier" ] && [ "$(ls -A easytier 2>/dev/null)" ]; then
+          EASYTIER_ARG="--include-data-dir=easytier=easytier"
+        fi
+        EXTRA_FILES=""
+        if [ -f bloret.ico ]; then EXTRA_FILES="$EXTRA_FILES --include-data-files=bloret.ico=bloret.ico"; fi
+        if [ -f servers.dat ]; then EXTRA_FILES="$EXTRA_FILES --include-data-files=servers.dat=servers.dat"; fi
+        if [ -f JavaWrapper.jar ]; then EXTRA_FILES="$EXTRA_FILES --include-data-files=JavaWrapper.jar=JavaWrapper.jar"; fi
+        # 与 Windows 对齐：sensible,styles,qml；资源进 .dist，standalone zip 可直接运行
+        python -m nuitka \
+          --standalone \
+          --enable-plugin=pyside6 \
+          --include-qt-plugins=sensible,styles,qml \
+          --include-data-dir=qml=qml \
+          --include-data-dir=RinUI/RinUI=RinUI \
+          --include-data-dir=icon=icon \
+          --include-data-dir=lang=lang \
+          --include-data-files=Bloret.png=Bloret.png \
+          --include-data-files=Bloret-Fluent.png=Bloret-Fluent.png \
+          --include-data-files=config.json=config.json \
+          --include-data-files=LICENSE=LICENSE \
+          $EXTRA_FILES \
+          $EASYTIER_ARG \
+          --include-data-dir=modules=modules \
+          --output-filename=Bloret-Launcher \
+          Bloret-Launcher.py
       shell: bash
 
     - name: 修复 OpenSSL 依赖 (macOS)
@@ -435,6 +458,12 @@ jobs:
           ./appimagetool --appimage-extract-and-run AppDir "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.AppImage"
           mkdir -p "${{ env.OUTPUT_DIR }}/Bloret-Launcher"
           cp -a "$DIST_DIR"/. "${{ env.OUTPUT_DIR }}/Bloret-Launcher/"
+          # 兜底：确保 standalone zip 内也有旁路资源（与 Windows 收集逻辑一致）
+          for f in LICENSE bloret.ico config.json JavaWrapper.jar Bloret.png Bloret-Fluent.png servers.dat; do
+            if [ -f "$f" ] && [ ! -f "${{ env.OUTPUT_DIR }}/Bloret-Launcher/$f" ]; then
+              cp "$f" "${{ env.OUTPUT_DIR }}/Bloret-Launcher/$f"
+            fi
+          done
           make_zip "${{ env.OUTPUT_DIR }}/Bloret-Launcher" "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux-standalone.zip"
         fi
         if [ "${{ runner.os }}" == "macOS" ]; then

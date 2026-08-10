@@ -4,23 +4,23 @@
 # FreeBSD：请优先使用 ports/pkg 的 PySide6 / Qt6（如 py311-pyside6），
 # pip 通常没有可用的 FreeBSD PySide6 wheel。详见 docs/FreeBSD.md。
 # 运行 Minecraft 还需：pkg install lwjgl3 openjdk17（或 openjdk21）。
+#
+# 可选 IM/Bot/Live SDK 见 requirements-optional.txt。
+#
 # Pin Qt for deterministic Nuitka builds. PySide6 6.11.1 is required by the
 # current RinUI QML; newer releases must be validated before upgrading.
 PySide6==6.11.1
 shiboken6==6.11.1
 ./RinUI
 requests
-# win11toast 须在 Visual Studio 环境下安装
-win11toast; sys_platform == 'win32'
-pywin32; sys_platform == 'win32'
-configparser
-# sip is not required for PySide6
 Send2Trash
-winsdk; sys_platform == 'win32'
 toml
 psutil
 dulwich
-# WeChat QR code generation (optional)
+# WeChat / Passport QR（依赖 Pillow）
 qrcode[pil]
 darkdetect
-requests
+# win11toast 须在 Visual Studio 环境下安装
+win11toast; sys_platform == 'win32'
+pywin32; sys_platform == 'win32'
+winsdk; sys_platform == 'win32'

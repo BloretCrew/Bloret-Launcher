@@ -1,0 +1,11 @@
+# 可选功能依赖（主程序可启动；对应功能缺包时会降级或提示安装）。
+# 安装：pip install -r requirements-optional.txt
+#
+# Bloriko 多平台 connector
+websocket-client
+cryptography
+dingtalk-stream
+lark-oapi
+#
+# BBBS Live（WebRTC，体积与系统依赖较大，按需安装）
+aiortc
