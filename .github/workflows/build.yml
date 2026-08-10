@@ -18,7 +18,11 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v4
       with:
-        submodules: true
+        # 版本号脚本只改根目录文件，不需要子模块；
+        # 子模块指针若指向未推送 commit，会在这里直接失败并拖垮整条打包流水线。
+        submodules: false
+        # 需要 push 回当前分支，保留完整历史以便减少 non-fast-forward
+        fetch-depth: 0
 
     - name: 更新版本号
       run: |
@@ -30,8 +34,12 @@ jobs:
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git add Bloret-Launcher-Setup.iss
         git add config.json
-        git commit -m "更新 MyAppVersion 版本号和一些配置文件的默认值。"
-        git push
+        if (git status --porcelain -- Bloret-Launcher-Setup.iss config.json) {
+          git commit -m "更新 MyAppVersion 版本号和一些配置文件的默认值。"
+          git push
+        } else {
+          Write-Host "版本相关文件无变更，跳过提交"
+        }
       shell: pwsh
   Build-All:
     needs: Set-Version
