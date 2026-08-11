@@ -214,47 +214,16 @@ Rectangle {
                             id: languageComboBox
                             Layout.alignment: Qt.AlignHCenter
                             Layout.preferredWidth: 350
-                            model: [
-                                { text: "Afrikaans", value: "af-ZA" },
-                                { text: "العربية", value: "ar-SA" },
-                                { text: "Català", value: "ca-ES" },
-                                { text: "Čeština", value: "cs-CZ" },
-                                { text: "Dansk", value: "da-DK" },
-                                { text: "Deutsch", value: "de-DE" },
-                                { text: "Ελληνικά", value: "el-GR" },
-                                { text: "English (US)", value: "en-US" },
-                                { text: "English (UK)", value: "en-GB" },
-                                { text: "English (CN)", value: "en-CN" },
-                                { text: "Español", value: "es-ES" },
-                                { text: "Français", value: "fr-FR" },
-                                { text: "עברית", value: "he-IL" },
-                                { text: "Magyar", value: "hu-HU" },
-                                { text: "Italiano", value: "it-IT" },
-                                { text: "日本語", value: "ja-JP" },
-                                { text: "한국어", value: "ko-KR" },
-                                { text: "Nederlands", value: "nl-NL" },
-                                { text: "Norsk", value: "no-NO" },
-                                { text: "Polski", value: "pl-PL" },
-                                { text: "Português (BR)", value: "pt-BR" },
-                                { text: "Português (PT)", value: "pt-PT" },
-                                { text: "Română", value: "ro-RO" },
-                                { text: "Русский", value: "ru-RU" },
-                                { text: "Srpski", value: "sr-SP" },
-                                { text: "Suomi", value: "fi-FI" },
-                                { text: "Svenska", value: "sv-SE" },
-                                { text: "Türkçe", value: "tr-TR" },
-                                { text: "Українська", value: "uk-UA" },
-                                { text: "Tiếng Việt", value: "vi-VN" },
-                                { text: "简体中文", value: "zh-cn" },
-                                { text: "繁体中文", value: "zh-TW" },
-                                { text: "粤语", value: "zh-wy" }
+                            model: Backend ? Backend.getLanguages() : [
+                                { code: "zh-cn", name: "简体中文" },
+                                { code: "en-GB", name: "English" }
                             ]
-                            textRole: "text"
-                            valueRole: "value"
-                            currentIndex: 30  // 默认选择简体中文
+                            textRole: "name"
+                            valueRole: "code"
+                            currentIndex: 0
 
                             onActivated: function(index) {
-                                oobeOverlay.selectedLanguage = model[index].value
+                                oobeOverlay.selectedLanguage = model[index].code
                                 if (Backend) {
                                     Backend.setLanguage(oobeOverlay.selectedLanguage)
                                 }
@@ -264,7 +233,7 @@ Rectangle {
                                 // 根据当前配置的语言设置初始选择
                                 var currentLang = Backend ? Backend.getConfigLanguage() : "zh-cn"
                                 for (var i = 0; i < model.length; i++) {
-                                    if (model[i].value === currentLang) {
+                                    if (model[i].code === currentLang) {
                                         currentIndex = i
                                         break
                                     }

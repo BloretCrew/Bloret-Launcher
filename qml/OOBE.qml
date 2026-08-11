@@ -217,16 +217,16 @@ FluentWindow {
                                 id: languageComboBox
                                 Layout.alignment: Qt.AlignHCenter
                                 Layout.preferredWidth: 350
-                                model: [
-                                    { text: "简体中文", value: "zh-cn" },
-                                    { text: "English", value: "en-us" }
+                                model: Backend ? Backend.getLanguages() : [
+                                    { code: "zh-cn", name: "简体中文" },
+                                    { code: "en-GB", name: "English" }
                                 ]
-                                textRole: "text"
-                                valueRole: "value"
+                                textRole: "name"
+                                valueRole: "code"
                                 currentIndex: 0
 
                                 onActivated: function(index) {
-                                    oobeWindow.selectedLanguage = model[index].value
+                                    oobeWindow.selectedLanguage = model[index].code
                                     if (Backend) {
                                         Backend.setLanguage(oobeWindow.selectedLanguage)
                                     }

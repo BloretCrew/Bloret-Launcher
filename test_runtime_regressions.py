@@ -37,6 +37,7 @@ class TestBackendDeclarations(unittest.TestCase):
         duplicates = {name: lines for name, lines in seen.items() if len(lines) > 1}
         self.assertNotIn("downloadManagerOpenRequested", duplicates)
         self.assertNotIn("openDownloadManager", duplicates)
+        self.assertNotIn("setLanguage", duplicates)
 
     def test_task_progress_signal_has_task_id(self):
         backend = _backend_class()

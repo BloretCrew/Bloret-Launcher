@@ -125,6 +125,7 @@ import json
 import requests
 import modules.config as cfg
 import modules.globals as BLglobals
+from modules.paths import app_path_obj
 from modules.launch import Get_Run_Script
 from modules.chafuwang import getServerData
 from modules.i18n import i18nText
@@ -244,6 +245,7 @@ class Backend(QObject):
     blorikoModSuggestionFailed = Signal(str)
     syncStatusChanged = Signal(str)
     languageChanged = Signal()
+    languageSyncApplyRequested = Signal(str, int, bool)
     # 多任务下载信号（新 UI 使用）
     downloadTaskAdded = Signal(str)       # task_id
     downloadTaskRemoved = Signal(str)     # task_id
@@ -360,6 +362,10 @@ class Backend(QObject):
         self._avatar_refresh_running = False
         self._java_scan_lock = threading.Lock()
         self._java_scan_running = False
+        # Live i18n generation prevents a slow old-language request from
+        # reloading UI after the user has already switched again.
+        self._language_sync_generation = 0
+        self._language_sync_lock = threading.Lock()
         self._content_request_lock = threading.Lock()
         self._latest_mods_request = {}
         self._latest_resourcepacks_request = {}
@@ -376,6 +382,7 @@ class Backend(QObject):
         self._live_webrtc_manager = None
         self._current_live_space_id = None
         self._current_live_space = {}
+        self.languageSyncApplyRequested.connect(self._apply_live_language_result)
         self._current_live_easytier_state = {}
         self._current_live_easytier_merged_state = {}
         self._current_live_connection_state = "disconnected"
@@ -2869,85 +2876,104 @@ class Backend(QObject):
 
     @Slot(result=list)
     def getLanguages(self):
-        """从 Default.json 加载语言列表"""
+        """返回稳定 Launcher code；manifest 缓存可补充远端启用语言。"""
         try:
-            default_lang_path = "lang/Default.json"
-            if os.path.exists(default_lang_path):
-                with open(default_lang_path, "r", encoding="utf-8") as f:
-                    default_data = json.load(f)
-                    result = []
-                    # 从 Default.json 中提取语言列表
-                    if "lang" in default_data:
-                        for code, lang_info in default_data["lang"].items():
-                            # 使用 Default.json 中定义的名称
-                            name = lang_info.get("name", code)
-                            # 确保文件存在
-                            lang_file = f"lang/{lang_info.get('file', code + '.json')}"
-                            if os.path.exists(lang_file):
-                                result.append({"code": code, "name": name})
-                            else:
-                                # 如果文件不存在，跳过这个语言
-                                print(f"Warning: Language file {lang_file} not found for code {code}")
-                    if not result:
-                        result = [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
-            else:
-                # 如果 Default.json 不存在，回退到旧方法
-                lang_dir = "lang"
-                result = []
-                # 语言代码到显示名称的映射（常用语言）
-                lang_names = {
-                    "zh-cn": "简体中文", "zh-TW": "繁體中文", "en-US": "English (US)",
-                    "en-GB": "English (UK)", "ja-JP": "日本語", "ko-KR": "한국어",
-                    "fr-FR": "Français", "de-DE": "Deutsch", "es-ES": "Español",
-                    "ru-RU": "Русский", "pt-BR": "Português (Brasil)",
-                    "it-IT": "Italiano", "nl-NL": "Nederlands", "pl-PL": "Polski",
-                    "tr-TR": "Türkçe", "ar-SA": "العربية", "vi-VN": "Tiếng Việt",
-                }
-                if os.path.isdir(lang_dir):
-                    for fn in sorted(os.listdir(lang_dir)):
-                        if fn.endswith(".json") and fn != "Default.json":
-                            code = fn[:-5]  # 去掉 .json
-                            # 尝试从语言文件读取自描述名称
-                            name = lang_names.get(code, code)
-                            try:
-                                with open(os.path.join(lang_dir, fn), "r", encoding="utf-8") as f:
-                                    d = json.load(f)
-                                    # 某些语言文件里有 _meta.name 字段
-                                    if "_meta" in d and "name" in d["_meta"]:
-                                        name = d["_meta"]["name"]
-                            except Exception:
-                                pass
-                            result.append({"code": code, "name": name})
-                if not result:
-                    result = [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
-            return result
+            from modules.live_i18n import (
+                DISPLAY_NAMES,
+                LOCALE_MAP,
+                available_languages,
+                cached_language_path,
+            )
+
+            by_code = {}
+            default_path = app_path_obj("lang", "Default.json")
+            if default_path.is_file():
+                with default_path.open("r", encoding="utf-8") as handle:
+                    default_data = json.load(handle)
+                for code, info in (default_data.get("lang") or {}).items():
+                    if not isinstance(info, dict):
+                        continue
+                    bundled = app_path_obj("lang", info.get("file", f"{code}.json"))
+                    if code == "zh-cn" or bundled.is_file() or cached_language_path(code).is_file():
+                        by_code[code] = {
+                            "code": code,
+                            "name": str(info.get("name") or DISPLAY_NAMES.get(code) or code),
+                        }
+
+            # Cached manifest comes from API step 1. Include mapped locales even
+            # before their first file download; selecting one will fetch it.
+            for item in available_languages():
+                by_code.setdefault(item["code"], item)
+
+            # If no manifest has been cached yet, expose all stable API mappings.
+            # Switching them safely falls back to Chinese until a translation exists.
+            by_code.setdefault("zh-cn", {"code": "zh-cn", "name": DISPLAY_NAMES["zh-cn"]})
+            for code in LOCALE_MAP:
+                by_code.setdefault(code, {"code": code, "name": DISPLAY_NAMES.get(code, code)})
+
+            order = ["zh-cn", "en-GB", "gt-ZH", "zh-TW", "zh-wy", "ja-JP", "ru-RU"]
+            return [by_code[code] for code in order if code in by_code]
         except Exception as e:
             print(f"Error loading languages: {e}")
-            return [{"code": "zh-cn", "name": "简体中文"}, {"code": "en-US", "name": "English"}]
+            return [
+                {"code": "zh-cn", "name": "简体中文"},
+                {"code": "en-GB", "name": "English"},
+            ]
 
-    @Slot(str)
-    def setLanguage(self, lang_code):
+    @Slot(str, int, bool)
+    def _apply_live_language_result(self, language, generation, updated):
+        """Apply a worker result on Backend's Qt thread."""
         try:
-            if not isinstance(lang_code, str):
-                lang_code = "" if lang_code is None else str(lang_code)
-
-            lang_code = lang_code.strip()
-            if not lang_code:
-                print("Ignored empty language code")
+            with self._language_sync_lock:
+                if generation != self._language_sync_generation:
+                    print(f"[live-i18n] ignore stale completion language={language}")
+                    return
+            current = self.getLanguageCode()
+            if current != language:
+                print(
+                    f"[live-i18n] language changed during fetch: "
+                    f"requested={language}, current={current}"
+                )
                 return
+            if updated:
+                from modules.i18n import reload_language
 
-            config_data = cfg.read()
-            config_data['language'] = lang_code
-            # Drop legacy key to avoid ambiguity.
-            config_data.pop('Language', None)
-            cfg.write(config_data)
-            
-            from modules.i18n import reload_language
-            reload_language(lang_code)
-            print(f"Language set to: {lang_code}")
-            self.languageChanged.emit()
+                reload_language(language)
+                self.languageChanged.emit()
+                print(f"[live-i18n] UI reloaded language={language}")
+        except Exception as exc:
+            print(f"[live-i18n] apply failed language={language}: {exc}")
+
+    def _refresh_language_async(self, language, *, reason="manual"):
+        """Fetch live catalog without blocking Qt; reload only if still current."""
+        try:
+            from modules.live_i18n import refresh_language_async
+
+            with self._language_sync_lock:
+                self._language_sync_generation += 1
+                generation = self._language_sync_generation
+
+            def finished(result):
+                if not result.get("ok"):
+                    print(
+                        f"[live-i18n] {reason} refresh failed "
+                        f"language={language}: {result.get('error', '')}"
+                    )
+                    return
+
+                # Emitting from the worker thread queues delivery to Backend's
+                # Qt thread, so reload and QML notification stay thread-safe.
+                self.languageSyncApplyRequested.emit(
+                    language,
+                    generation,
+                    bool(result.get("updated")),
+                )
+
+            started = refresh_language_async(language, finished)
+            if started:
+                print(f"[live-i18n] refresh started reason={reason} language={language}")
         except Exception as e:
-            print(f"Error setting language: {e}")
+            print(f"[live-i18n] refresh setup failed language={language}: {e}")
 
     @Slot(str, result=str)
     def tr(self, key):
@@ -5416,18 +5442,31 @@ class Backend(QObject):
 
     @Slot(str)
     def setLanguage(self, language):
-        """设置界面语言"""
+        """立即切换本地语言，再后台刷新 tr.bloret.net 实时译文。"""
         try:
+            if not isinstance(language, str):
+                language = "" if language is None else str(language)
+            language = language.strip()
+            if not language:
+                print("Ignored empty language code")
+                return
+
+            from modules.live_i18n import normalize_language
+
+            language = normalize_language(language)
             config_data = cfg.read()
             config_data["language"] = language
-            cfg.write(config_data)
-            
-            # 重新加载语言数据
+            config_data.pop("Language", None)
+            if not cfg.write(config_data, changed_keys={"language": language}):
+                raise OSError("failed to persist language setting")
+
+            # Local AppData cache/bundled content applies immediately.
             from modules.i18n import reload_language
+
             reload_language(language)
-            
             self.languageChanged.emit()
-            print(f"Language set to: {language}")
+            print(f"Language set locally: {language}")
+            self._refresh_language_async(language, reason="switch")
         except Exception as e:
             print(f"Error setting language: {e}")
 
@@ -5826,7 +5865,15 @@ class LauncherV2(RinUIWindow):
 
         self._init_system_tray()
 
-        # UI 就绪后：异步刷新服务器 IP + 检查更新
+        # UI 就绪后：异步刷新语言、服务器 IP + 检查更新。
+        # 首帧始终使用 AppData 缓存/内置包，不等待网络。
+        try:
+            self.backend._refresh_language_async(
+                self.backend.getLanguageCode(),
+                reason="startup",
+            )
+        except Exception as e:
+            print(f"[Boot] 后台刷新实时语言失败: {e}")
         try:
             modules.IP.refresh_server_ip_async()
         except Exception as e:

@@ -15,20 +15,49 @@ from PySide6.QtWidgets import (
 import modules.globals as BLglobals
 from modules.compat_widgets import SearchLineEdit, SwitchButton
 from modules.paths import app_path
+from modules.live_i18n import cached_language_path
 
 
 def _lang_file_path(language):
-    # 使用统一的资源路径解析，兼容 PyInstaller / Nuitka 打包
+    """内置只读语言资源路径（兼容 PyInstaller / Nuitka）。"""
     return app_path("lang", f"{language}.json")
 
-def _read_language_file(language):
-    """读取并校验单个语言文件，失败时由调用方决定回退策略。"""
-    lang_file_path = _lang_file_path(language)
+
+def _cached_lang_file_path(language):
+    """AppData 中由实时译文 API 保存的可写语言缓存路径。"""
+    return str(cached_language_path(language))
+
+
+def _read_language_path(lang_file_path):
+    """读取并校验单个语言文件。"""
     with open(lang_file_path, 'r', encoding='utf-8') as f:
         lang = json.load(f)
     if not isinstance(lang, dict) or not isinstance(lang.get('texts'), dict):
         raise ValueError(f"语言文件缺少 texts 字典: {lang_file_path}")
+    for key, value in lang['texts'].items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            raise ValueError(f"语言文件 texts 必须为字符串映射: {lang_file_path}")
     return lang
+
+
+def _read_language_file(language):
+    return _read_language_path(_lang_file_path(language))
+
+
+def _deep_merge_nonempty(base: dict, overlay: dict) -> dict:
+    """递归合并；远程空字符串不覆盖有效的本地译文。"""
+    if not isinstance(base, dict):
+        base = {}
+    result = dict(base)
+    for key, value in (overlay or {}).items():
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = _deep_merge_nonempty(result[key], value)
+        elif isinstance(value, str) and value == "":
+            # BTC 尚无译文时 top_voted 导出空串，保留内置目标语言/中文。
+            continue
+        else:
+            result[key] = value
+    return result
 
 
 def _current_language_code(language=None):
@@ -128,26 +157,41 @@ def merge_plugin_i18n(language=None, base_data=None):
 
 
 def load_language(language=None):
-    # 如果没有指定语言，则读取配置文件获取语言设置
+    """加载中文结构 + 内置目标语言 + AppData 实时缓存。
+
+    任何缓存读取失败都不会影响内置语言；远程空串不会覆盖已有译文。
+    """
     language = _current_language_code(language)
 
     try:
-        data = _read_language_file(language)
-        return data
+        base = _read_language_file('zh-cn')
     except (OSError, json.JSONDecodeError, ValueError) as error:
-        log(f"加载语言失败: language={language}, path={_lang_file_path(language)}, error={error}")
+        log(f"默认语言 zh-cn 无法加载: path={_lang_file_path('zh-cn')}, error={error}")
+        base = {"texts": {}}
 
-    # 所选语言不是中文时，再尝试一次中文回退；避免 zh-cn 损坏后重复读取同一文件。
     if language != 'zh-cn':
         try:
-            fallback = _read_language_file('zh-cn')
-            log(f"语言 {language} 加载失败，已回退到 zh-cn")
-            return fallback
+            bundled = _read_language_file(language)
+            base = _deep_merge_nonempty(base, bundled)
         except (OSError, json.JSONDecodeError, ValueError) as error:
-            log(f"默认语言 zh-cn 也无法加载: path={_lang_file_path('zh-cn')}, error={error}")
+            log(f"内置语言加载失败，使用中文结构: language={language}, path={_lang_file_path(language)}, error={error}")
 
-    log("无可用语言文件，使用安全空翻译表")
-    return {"texts": {}}
+    # zh-cn 是源语言，不使用 translated API 缓存；其它语言允许 AppData 覆盖。
+    if language != 'zh-cn':
+        cache_path = _cached_lang_file_path(language)
+        try:
+            cached = _read_language_path(cache_path)
+            base = _deep_merge_nonempty(base, cached)
+            log(f"[i18n] 已合并 AppData 实时语言缓存: language={language}, path={cache_path}")
+        except FileNotFoundError:
+            pass
+        except (OSError, json.JSONDecodeError, ValueError) as error:
+            log(f"[i18n] AppData 语言缓存不可用，保留内置内容: language={language}, path={cache_path}, error={error}")
+
+    if not isinstance(base, dict) or not isinstance(base.get('texts'), dict):
+        log("无可用语言文件，使用安全空翻译表")
+        return {"texts": {}}
+    return base
 
 def reload_language(language=None):
     """手动重新加载语言数据，并合并插件 i18n。"""

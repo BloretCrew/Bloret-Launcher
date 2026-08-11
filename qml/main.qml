@@ -55,76 +55,41 @@ FluentWindow {
 
     navigationView.navExpandWidth: 200
 
-    property var baseNavItems: [
-        {
-            title: (Backend ? Backend.tr("主页") : "主页"),
-            page: Qt.resolvedUrl("pages/Home.qml"),
-            icon: "ic_fluent_home_20_regular",
-            position: Position.Top
-        },
-        {
-            title: (Backend ? Backend.tr("Blora Agent") : "Blora Agent"),
-            page: Qt.resolvedUrl("pages/BlorikoPage.qml"),
-            source: Qt.resolvedUrl("../icon/Bloriko.jpg"),
-            icon: "",
-            position: Position.Top
-        },
-        {
-            title: (Backend ? Backend.tr("通行证") : "通行证"),
-            page: Qt.resolvedUrl("pages/PassPort.qml"),
-            icon: "ic_fluent_person_20_regular",
-            position: Position.Bottom,
-            passportItem: true  // 标记为通行证项
-        },
-        {
-            title: (Backend ? Backend.tr("下载") : "下载"),
-            page: Qt.resolvedUrl("pages/Download.qml"),
-            icon: "ic_fluent_arrow_download_20_regular"
-        },
-        {
-            title: (Backend ? Backend.tr("核心") : "核心"),
-            page: Qt.resolvedUrl("pages/Cores.qml"),
-            icon: "ic_fluent_cube_20_regular"
-        },
-        {
-            title: (Backend ? Backend.tr("小工具") : "小工具"),
-            page: Qt.resolvedUrl("pages/Tools.qml"),
-            icon: "ic_fluent_wrench_20_regular"
-        },
-        {
-            title: (Backend ? Backend.tr("统计") : "统计"),
-            page: Qt.resolvedUrl("pages/Statistics.qml"),
-            icon: "ic_fluent_data_bar_horizontal_20_regular"
-        },
-        {
-            title: (Backend ? Backend.tr("Mods") : "Mods"),
-            page: Qt.resolvedUrl("pages/Mods.qml"),
-            icon: "ic_fluent_puzzle_piece_20_regular"
-        },
-        {
-            title: (Backend ? Backend.tr("BBBS") : "BBBS"),
-            page: Qt.resolvedUrl("pages/BBBS.qml"),
-            icon: "ic_fluent_chat_20_regular"
-        },
-        {
-            title: (Backend ? Backend.tr("Live") : "Live"),
-            page: Qt.resolvedUrl("pages/Live.qml"),
-            icon: "ic_fluent_video_person_20_regular"
-        },
-        {
-            title: (Backend ? Backend.tr("设置") : "设置"),
-            page: Qt.resolvedUrl("pages/Settings.qml"),
-            icon: "ic_fluent_settings_20_regular",
-            position: Position.Bottom
-        },
-        {
-            title: (Backend ? Backend.tr("关于") : "关于"),
-            page: Qt.resolvedUrl("pages/Info.qml"),
-            icon: "ic_fluent_info_20_regular",
-            position: Position.Bottom
-        }
-    ]
+    function createBaseNavItems() {
+        return [
+            {
+                title: (Backend ? Backend.tr("主页") : "主页"),
+                page: Qt.resolvedUrl("pages/Home.qml"),
+                icon: "ic_fluent_home_20_regular",
+                position: Position.Top
+            },
+            {
+                title: (Backend ? Backend.tr("Blora Agent") : "Blora Agent"),
+                page: Qt.resolvedUrl("pages/BlorikoPage.qml"),
+                source: Qt.resolvedUrl("../icon/Bloriko.jpg"),
+                icon: "",
+                position: Position.Top
+            },
+            {
+                title: (Backend ? Backend.tr("通行证") : "通行证"),
+                page: Qt.resolvedUrl("pages/PassPort.qml"),
+                icon: "ic_fluent_person_20_regular",
+                position: Position.Bottom,
+                passportItem: true
+            },
+            { title: (Backend ? Backend.tr("下载") : "下载"), page: Qt.resolvedUrl("pages/Download.qml"), icon: "ic_fluent_arrow_download_20_regular" },
+            { title: (Backend ? Backend.tr("核心") : "核心"), page: Qt.resolvedUrl("pages/Cores.qml"), icon: "ic_fluent_cube_20_regular" },
+            { title: (Backend ? Backend.tr("小工具") : "小工具"), page: Qt.resolvedUrl("pages/Tools.qml"), icon: "ic_fluent_wrench_20_regular" },
+            { title: (Backend ? Backend.tr("统计") : "统计"), page: Qt.resolvedUrl("pages/Statistics.qml"), icon: "ic_fluent_data_bar_horizontal_20_regular" },
+            { title: (Backend ? Backend.tr("Mods") : "Mods"), page: Qt.resolvedUrl("pages/Mods.qml"), icon: "ic_fluent_puzzle_piece_20_regular" },
+            { title: (Backend ? Backend.tr("BBBS") : "BBBS"), page: Qt.resolvedUrl("pages/BBBS.qml"), icon: "ic_fluent_chat_20_regular" },
+            { title: (Backend ? Backend.tr("Live") : "Live"), page: Qt.resolvedUrl("pages/Live.qml"), icon: "ic_fluent_video_person_20_regular" },
+            { title: (Backend ? Backend.tr("设置") : "设置"), page: Qt.resolvedUrl("pages/Settings.qml"), icon: "ic_fluent_settings_20_regular", position: Position.Bottom },
+            { title: (Backend ? Backend.tr("关于") : "关于"), page: Qt.resolvedUrl("pages/Info.qml"), icon: "ic_fluent_info_20_regular", position: Position.Bottom }
+        ]
+    }
 
+    property var baseNavItems: createBaseNavItems()
     property var navItems: baseNavItems
     navigationItems: navItems
 
@@ -342,6 +307,21 @@ FluentWindow {
 
         function onPassportAvatarChanged(url) {
             updatePassPortNavigation()
+        }
+
+        function onLanguageChanged() {
+            // Recreate translated navigation values; active pages that bind to
+            // Backend.tr also receive this signal through their own Connections.
+            baseNavItems = createBaseNavItems()
+            rebuildNavigation()
+            updatePassPortNavigation()
+            title = (Backend ? Backend.tr("Bloret Launcher") : "Bloret Launcher")
+            // Most pages evaluate Backend.tr while being created. Reload only
+            // the active page so live updates become visible without restarting
+            // the whole QML engine or disturbing background tasks.
+            var current = String(navigationView.currentPage || "")
+            if (current.length > 0)
+                navigationView.safePush(current, true, false)
         }
 
         function onBackdropEffectChanged(effect) {
