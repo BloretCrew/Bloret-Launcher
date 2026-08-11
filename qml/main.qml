@@ -324,6 +324,16 @@ FluentWindow {
                 navigationView.safePush(current, true, false)
         }
 
+        function onLanguageSyncStarted(language) {
+            languageSyncDialog.languageCode = language
+            languageSyncDialog.open()
+        }
+
+        function onLanguageSyncFinished(language, ok, error) {
+            if (languageSyncDialog.languageCode === language)
+                languageSyncDialog.close()
+        }
+
         function onBackdropEffectChanged(effect) {
             Utils.backdropEnabled = (effect === "acrylic")
         }
@@ -396,6 +406,57 @@ FluentWindow {
                 editorWindow.show()
             } else {
                 console.error("Failed to create ResourcePackEditor window:", component.errorString())
+            }
+        }
+    }
+
+    Dialog {
+        id: languageSyncDialog
+
+        property string languageCode: ""
+
+        parent: Overlay.overlay
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        dim: true
+        width: Math.min(440, window.width - 64)
+        implicitHeight: languageSyncContent.implicitHeight + 72
+        standardButtons: Dialog.NoButton
+        closePolicy: Popup.NoAutoClose
+        padding: 24
+
+        ColumnLayout {
+            id: languageSyncContent
+            width: parent.width
+            spacing: 16
+
+            ProgressRing {
+                Layout.alignment: Qt.AlignHCenter
+                size: 44
+                indeterminate: true
+                state: ProgressRing.Running
+            }
+
+            Text {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                typography: Typography.Title
+                color: Theme.currentTheme.colors.textColor
+                text: Backend
+                    ? Backend.tr("Bloret Launcher 正在下载语言并应用")
+                    : "Bloret Launcher is downloading and applying the language"
+            }
+
+            Text {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                typography: Typography.Body
+                color: Theme.currentTheme.colors.textSecondaryColor
+                text: Backend
+                    ? Backend.tr("请稍候，完成后将自动应用。")
+                    : "Please wait. It will be applied automatically when ready."
             }
         }
     }

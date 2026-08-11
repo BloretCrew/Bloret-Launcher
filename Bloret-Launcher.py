@@ -245,6 +245,8 @@ class Backend(QObject):
     blorikoModSuggestionFailed = Signal(str)
     syncStatusChanged = Signal(str)
     languageChanged = Signal()
+    languageSyncStarted = Signal(str)
+    languageSyncFinished = Signal(str, bool, str)
     languageSyncApplyRequested = Signal(str, int, bool)
     # 多任务下载信号（新 UI 使用）
     downloadTaskAdded = Signal(str)       # task_id
@@ -2935,14 +2937,18 @@ class Backend(QObject):
                     f"requested={language}, current={current}"
                 )
                 return
-            if updated:
-                from modules.i18n import reload_language
+            # A successful switch refresh must always re-read AppData: the
+            # downloaded file may equal an existing cache (`updated=False`) but
+            # the current in-memory UI may still be using bundled fallback.
+            from modules.i18n import reload_language
 
-                reload_language(language)
-                self.languageChanged.emit()
-                print(f"[live-i18n] UI reloaded language={language}")
+            reload_language(language)
+            self.languageChanged.emit()
+            print(f"[live-i18n] UI reloaded language={language}, changed={updated}")
+            self.languageSyncFinished.emit(language, True, "")
         except Exception as exc:
             print(f"[live-i18n] apply failed language={language}: {exc}")
+            self.languageSyncFinished.emit(language, False, str(exc))
 
     def _refresh_language_async(self, language, *, reason="manual"):
         """Fetch live catalog without blocking Qt; reload only if still current."""
@@ -2955,10 +2961,13 @@ class Backend(QObject):
 
             def finished(result):
                 if not result.get("ok"):
+                    error = str(result.get("error", ""))
                     print(
                         f"[live-i18n] {reason} refresh failed "
-                        f"language={language}: {result.get('error', '')}"
+                        f"language={language}: {error}"
                     )
+                    # Qt queues cross-thread signal delivery to the QML thread.
+                    self.languageSyncFinished.emit(language, False, error)
                     return
 
                 # Emitting from the worker thread queues delivery to Backend's
@@ -2969,9 +2978,13 @@ class Backend(QObject):
                     bool(result.get("updated")),
                 )
 
+            if reason == "switch":
+                self.languageSyncStarted.emit(language)
             started = refresh_language_async(language, finished)
             if started:
                 print(f"[live-i18n] refresh started reason={reason} language={language}")
+            else:
+                print(f"[live-i18n] joined existing refresh reason={reason} language={language}")
         except Exception as e:
             print(f"[live-i18n] refresh setup failed language={language}: {e}")
 
