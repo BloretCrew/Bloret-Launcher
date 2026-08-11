@@ -247,7 +247,8 @@ class Backend(QObject):
     languageChanged = Signal()
     languageSyncStarted = Signal(str)
     languageSyncFinished = Signal(str, bool, str)
-    languageSyncApplyRequested = Signal(str, int, bool)
+    # language, generation, network_ok, error_message
+    languageSyncApplyRequested = Signal(str, int, bool, str)
     # 多任务下载信号（新 UI 使用）
     downloadTaskAdded = Signal(str)       # task_id
     downloadTaskRemoved = Signal(str)     # task_id
@@ -2938,8 +2939,8 @@ class Backend(QObject):
                 {"code": "en-GB", "name": "English"},
             ]
 
-    @Slot(str, int, bool)
-    def _apply_live_language_result(self, language, generation, updated):
+    @Slot(str, int, bool, str)
+    def _apply_live_language_result(self, language, generation, network_ok, error):
         """Apply a worker result on Backend's Qt thread."""
         try:
             with self._language_sync_lock:
@@ -2953,56 +2954,81 @@ class Backend(QObject):
                     f"requested={language}, current={current}"
                 )
                 return
-            # A successful switch refresh must always re-read AppData: the
-            # downloaded file may equal an existing cache (`updated=False`) but
-            # the current in-memory UI may still be using bundled fallback.
+            # Always re-read AppData/bundled catalogs after a switch completes
+            # (even if the network failed or the file was unchanged).
             from modules.i18n import reload_language
 
             reload_language(language)
             self.languageChanged.emit()
-            print(f"[live-i18n] UI reloaded language={language}, changed={updated}")
-            self.languageSyncFinished.emit(language, True, "")
+            print(
+                f"[live-i18n] UI reloaded language={language}, "
+                f"network_ok={network_ok}, error={error or ''}"
+            )
+            self.languageSyncFinished.emit(language, bool(network_ok), str(error or ""))
         except Exception as exc:
             print(f"[live-i18n] apply failed language={language}: {exc}")
             self.languageSyncFinished.emit(language, False, str(exc))
 
-    def _refresh_language_async(self, language, *, reason="manual"):
-        """Fetch live catalog without blocking Qt; reload only if still current."""
+    def _begin_language_network(self, language, generation, reason):
+        """Start the network fetch after the loading dialog has a chance to paint."""
         try:
+            with self._language_sync_lock:
+                if generation != self._language_sync_generation:
+                    print(f"[live-i18n] skip stale network start language={language}")
+                    return
             from modules.live_i18n import refresh_language_async
 
-            with self._language_sync_lock:
-                self._language_sync_generation += 1
-                generation = self._language_sync_generation
-
             def finished(result):
-                if not result.get("ok"):
-                    error = str(result.get("error", ""))
+                network_ok = bool(result.get("ok"))
+                error = str(result.get("error") or "")
+                if not network_ok:
                     print(
                         f"[live-i18n] {reason} refresh failed "
                         f"language={language}: {error}"
                     )
-                    # Qt queues cross-thread signal delivery to the QML thread.
-                    self.languageSyncFinished.emit(language, False, error)
-                    return
-
-                # Emitting from the worker thread queues delivery to Backend's
-                # Qt thread, so reload and QML notification stay thread-safe.
+                # Always apply on the Qt thread so config language matches UI,
+                # then close the loading dialog. Cross-thread signal is queued.
                 self.languageSyncApplyRequested.emit(
                     language,
                     generation,
-                    bool(result.get("updated")),
+                    network_ok,
+                    error,
                 )
 
-            if reason == "switch":
-                self.languageSyncStarted.emit(language)
             started = refresh_language_async(language, finished)
             if started:
                 print(f"[live-i18n] refresh started reason={reason} language={language}")
             else:
                 print(f"[live-i18n] joined existing refresh reason={reason} language={language}")
         except Exception as e:
+            print(f"[live-i18n] network start failed language={language}: {e}")
+            self.languageSyncApplyRequested.emit(language, generation, False, str(e))
+
+    def _refresh_language_async(self, language, *, reason="manual"):
+        """Fetch live catalog without blocking Qt; reload only if still current."""
+        try:
+            with self._language_sync_lock:
+                self._language_sync_generation += 1
+                generation = self._language_sync_generation
+
+            if reason == "switch":
+                # Open the loading dialog first; defer the HTTP work so the
+                # ProgressRing can paint before the event loop is busy again.
+                self.languageSyncStarted.emit(language)
+                from PySide6.QtCore import QTimer
+
+                QTimer.singleShot(
+                    0,
+                    lambda lang=language, gen=generation, why=reason: self._begin_language_network(
+                        lang, gen, why
+                    ),
+                )
+            else:
+                self._begin_language_network(language, generation, reason)
+        except Exception as e:
             print(f"[live-i18n] refresh setup failed language={language}: {e}")
+            if reason == "switch":
+                self.languageSyncFinished.emit(str(language or ""), False, str(e))
 
     @Slot(str, result=str)
     def tr(self, key):
@@ -5471,7 +5497,7 @@ class Backend(QObject):
 
     @Slot(str)
     def setLanguage(self, language):
-        """立即切换本地语言，再后台刷新 tr.bloret.net 实时译文。"""
+        """保存语言选择，先弹出加载对话框，后台下载完成后再应用。"""
         try:
             if not isinstance(language, str):
                 language = "" if language is None else str(language)
@@ -5489,12 +5515,10 @@ class Backend(QObject):
             if not cfg.write(config_data, changed_keys={"language": language}):
                 raise OSError("failed to persist language setting")
 
-            # Local AppData cache/bundled content applies immediately.
-            from modules.i18n import reload_language
-
-            reload_language(language)
-            self.languageChanged.emit()
-            print(f"Language set locally: {language}")
+            # Do not reload UI here: that rebuilds navigation/pages on the same
+            # call stack and delays the loading dialog until the download is
+            # already finished. Dialog opens first; apply happens on completion.
+            print(f"Language switch requested: {language}")
             self._refresh_language_async(language, reason="switch")
         except Exception as e:
             print(f"Error setting language: {e}")

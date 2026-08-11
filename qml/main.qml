@@ -312,6 +312,7 @@ FluentWindow {
         function onLanguageChanged() {
             // Recreate translated navigation values; active pages that bind to
             // Backend.tr also receive this signal through their own Connections.
+            var keepLanguageDialog = languageSyncDialog.visible
             baseNavItems = createBaseNavItems()
             rebuildNavigation()
             updatePassPortNavigation()
@@ -322,11 +323,20 @@ FluentWindow {
             var current = String(navigationView.currentPage || "")
             if (current.length > 0)
                 navigationView.safePush(current, true, false)
+            // Page reloads can steal focus; keep the download dialog on top
+            // until languageSyncFinished closes it.
+            if (keepLanguageDialog) {
+                languageSyncDialog.open()
+                languageSyncDialog.raise()
+            }
         }
 
         function onLanguageSyncStarted(language) {
+            // Open immediately when the user switches language, before any
+            // heavy page reload or network work runs on the UI thread.
             languageSyncDialog.languageCode = language
             languageSyncDialog.open()
+            languageSyncDialog.raise()
         }
 
         function onLanguageSyncFinished(language, ok, error) {
