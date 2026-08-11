@@ -2876,6 +2876,22 @@ class Backend(QObject):
         lang_code = lang_code.strip()
         return lang_code if lang_code else "zh-cn"
 
+    @Slot(str, result=dict)
+    def getLanguageMetadata(self, language):
+        """Return translator/update metadata cached from the public manifest."""
+        try:
+            from modules.live_i18n import language_metadata
+
+            return language_metadata(language)
+        except Exception as e:
+            print(f"Error loading language metadata: {e}")
+            return {
+                "code": str(language or ""),
+                "contributors": [],
+                "updatedAt": "",
+                "source": False,
+            }
+
     @Slot(result=list)
     def getLanguages(self):
         """返回稳定 Launcher code；manifest 缓存可补充远端启用语言。"""

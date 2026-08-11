@@ -20,6 +20,7 @@ FluentPage {
     property string currentJavaPath: ""
     property string themeMode: ""
     property var languages: []
+    property var languageMetadata: ({ contributors: [], updatedAt: "", source: false })
     property bool traySupported: true
     property string localIPAddress: ""
 
@@ -41,6 +42,11 @@ FluentPage {
         function onLanguageChanged() {
             refreshTranslations()
             updatePageTitle()
+            refreshLanguageMetadata()
+        }
+        function onLanguageSyncFinished(language, ok, error) {
+            if (ok)
+                refreshLanguageMetadata()
         }
         function onJavaRuntimesReady(runtimes) {
             javaRuntimes = runtimes
@@ -918,8 +924,41 @@ FluentPage {
         Backend.scanSystemJavasAsync(true)
     }
 
+    function refreshLanguageMetadata() {
+        if (!Backend) {
+            languageMetadata = ({ contributors: [], updatedAt: "", source: false })
+            return
+        }
+        languageMetadata = Backend.getLanguageMetadata(Backend.getLanguageCode())
+    }
+
+    function languageMetadataText() {
+        if (!languageMetadata || languageMetadata.source)
+            return Backend ? Backend.tr("源语言 · 内置语言文件") : "Source language · bundled catalog"
+
+        var contributors = languageMetadata.contributors || []
+        var contributorText = contributors.length > 0
+            ? contributors.join(", ")
+            : (Backend ? Backend.tr("暂无翻译者") : "No translators yet")
+
+        var updatedText = Backend ? Backend.tr("暂无更新时间") : "No update time"
+        var raw = String(languageMetadata.updatedAt || "")
+        if (raw.length > 0) {
+            var parsed = new Date(raw)
+            if (!isNaN(parsed.getTime()))
+                updatedText = Qt.formatDateTime(parsed, "yyyy-MM-dd HH:mm")
+            else
+                updatedText = raw
+        }
+
+        var translatorLabel = Backend ? Backend.tr("翻译者") : "Translators"
+        var updatedLabel = Backend ? Backend.tr("更新时间") : "Updated"
+        return translatorLabel + ": " + contributorText + "  ·  " + updatedLabel + ": " + updatedText
+    }
+
     function refreshData() {
         refreshTranslations()
+        refreshLanguageMetadata()
         loadSettingsProviders()
         if (Backend) {
             currentMcDir = Backend.getMinecraftDir()
@@ -1630,23 +1669,38 @@ FluentPage {
             spacing: 4
             visible: currentCategory === "appearance"
 
-            SettingCard {
+            ColumnLayout {
                 Layout.fillWidth: true
-                title: _langTitle
-                description: _langDesc
-                icon.name: "ic_fluent_local_language_20_regular"
-                ComboBox {
-                    id: langCombo
-                    model: languages
-                    textRole: "name"
-                    Layout.preferredWidth: 150
-                    onActivated: function(index) {
-                        if (!Backend)
-                            return
-                        var selected = (languages && index >= 0 && index < languages.length) ? languages[index] : null
-                        if (selected && selected.code)
-                            Backend.setLanguage(selected.code)
+                spacing: 4
+
+                SettingCard {
+                    Layout.fillWidth: true
+                    title: _langTitle
+                    description: _langDesc
+                    icon.name: "ic_fluent_local_language_20_regular"
+                    ComboBox {
+                        id: langCombo
+                        model: languages
+                        textRole: "name"
+                        Layout.preferredWidth: 150
+                        onActivated: function(index) {
+                            if (!Backend)
+                                return
+                            var selected = (languages && index >= 0 && index < languages.length) ? languages[index] : null
+                            if (selected && selected.code)
+                                Backend.setLanguage(selected.code)
+                        }
                     }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 58
+                    Layout.rightMargin: 16
+                    typography: Typography.Caption
+                    color: Theme.currentTheme.colors.textSecondaryColor
+                    wrapMode: Text.Wrap
+                    text: languageMetadataText()
                 }
             }
 

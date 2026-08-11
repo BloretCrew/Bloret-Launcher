@@ -1493,6 +1493,11 @@
     "此插件将获得以下权限": "This plugin will receive these permissions",
     "橙色为高风险权限，安装前请仔细确认": "Orange chips are high-risk permissions — review carefully before install",
     "Bloret Launcher 正在下载语言并应用": "Bloret Launcher is downloading and applying the language",
-    "请稍候，完成后将自动应用。": "Please wait. It will be applied automatically when ready."
+    "请稍候，完成后将自动应用。": "Please wait. It will be applied automatically when ready.",
+    "源语言 · 内置语言文件": "Source language · bundled catalog",
+    "暂无翻译者": "No translators yet",
+    "暂无更新时间": "No update time",
+    "翻译者": "Translators",
+    "更新时间": "Updated"
   }
 }

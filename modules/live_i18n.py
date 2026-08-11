@@ -237,6 +237,40 @@ def available_languages(data_path: Optional[str] = None) -> list[dict]:
     return result
 
 
+def language_metadata(language: str, data_path: Optional[str] = None) -> dict:
+    """Return cached API metadata for one stable Launcher language code."""
+    try:
+        code = normalize_language(language)
+    except ValueError:
+        return {"code": str(language or ""), "contributors": [], "updatedAt": ""}
+
+    if code == "zh-cn":
+        return {
+            "code": code,
+            "contributors": [],
+            "updatedAt": "",
+            "source": True,
+        }
+
+    api_locale = LOCALE_MAP.get(code)
+    manifest = load_cached_manifest(data_path)
+    info = manifest.get("lang", {}).get(api_locale, {}) if manifest else {}
+    if not isinstance(info, dict):
+        info = {}
+    contributors = [
+        str(value).strip()
+        for value in (info.get("contributor") or [])
+        if str(value).strip()
+    ]
+    return {
+        "code": code,
+        "locale": api_locale or "",
+        "contributors": contributors,
+        "updatedAt": str(info.get("updatedAt") or ""),
+        "source": False,
+    }
+
+
 def sync_language(language: str, *, session: Optional[requests.Session] = None) -> dict:
     """Synchronously refresh manifest and one translated catalog.
 

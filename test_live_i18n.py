@@ -105,6 +105,29 @@ class LiveI18nTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertEqual(json.loads(path.read_text(encoding="utf-8")), old)
 
+    def test_language_metadata_maps_manifest_contributors_and_update_time(self):
+        manifest = {
+            "lang": {
+                "gt": {
+                    "name": "梗体中文",
+                    "contributor": ["Detrital", "Rhedar"],
+                    "updatedAt": "2026-08-10T12:34:56.000Z",
+                }
+            },
+            "project": {},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            live_i18n.atomic_write_json(live_i18n.manifest_cache_path(tmp), manifest)
+            metadata = live_i18n.language_metadata("gt-ZH", tmp)
+            self.assertEqual(metadata["contributors"], ["Detrital", "Rhedar"])
+            self.assertEqual(metadata["updatedAt"], "2026-08-10T12:34:56.000Z")
+            self.assertEqual(metadata["locale"], "gt")
+
+    def test_source_language_metadata_is_marked_source(self):
+        metadata = live_i18n.language_metadata("zh-cn")
+        self.assertTrue(metadata["source"])
+        self.assertEqual(metadata["contributors"], [])
+
     def test_manifest_failure_still_attempts_stable_translated_url(self):
         catalog = {"texts": {"设置": "Settings"}}
         session = FakeSession([RuntimeError("manifest down"), FakeResponse(catalog)])
