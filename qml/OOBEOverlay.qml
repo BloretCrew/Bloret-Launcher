@@ -21,6 +21,7 @@ Rectangle {
     property int currentPage: 0
     property int totalPages: 7
     property var selectedLanguage: "zh-cn"
+    property bool languageSyncing: false
     property string selectedJavaPath: ""
     property string minecraftDirPath: ""
     property bool javaInstalled: false
@@ -221,6 +222,7 @@ Rectangle {
                             textRole: "name"
                             valueRole: "code"
                             currentIndex: 0
+                            enabled: !oobeOverlay.languageSyncing
 
                             onActivated: function(index) {
                                 oobeOverlay.selectedLanguage = model[index].code
@@ -778,6 +780,36 @@ Rectangle {
         }
     }
 
+    Connections {
+        target: Backend
+
+        function onLanguageSyncStarted(language) {
+            oobeOverlay.languageSyncing = true
+            oobeOverlay.selectedLanguage = language
+        }
+
+        function onLanguageSyncFinished(language, ok, error) {
+            if (oobeOverlay.selectedLanguage === language)
+                oobeOverlay.languageSyncing = false
+        }
+
+        function onJavaEnvironmentChecked(installed, javaPath) {
+            oobeOverlay.isCheckingJava = false
+            oobeOverlay.javaInstalled = installed
+            if (installed) {
+                oobeOverlay.selectedJavaPath = javaPath
+            }
+        }
+
+        function onJavaInstallationComplete(javaPath) {
+            oobeOverlay.isInstallingJava = false
+            if (javaPath && javaPath !== "") {
+                oobeOverlay.javaInstalled = true
+                oobeOverlay.selectedJavaPath = javaPath
+            }
+        }
+    }
+
     // 底部按钮栏
     Rectangle {
         id: footerBar
@@ -847,25 +879,6 @@ Rectangle {
         oobeOverlay.visible = false
     }
 
-    Connections {
-        target: Backend
-
-        function onJavaEnvironmentChecked(installed, javaPath) {
-            oobeOverlay.isCheckingJava = false
-            oobeOverlay.javaInstalled = installed
-            if (installed) {
-                oobeOverlay.selectedJavaPath = javaPath
-            }
-        }
-
-        function onJavaInstallationComplete(javaPath) {
-            oobeOverlay.isInstallingJava = false
-            if (javaPath && javaPath !== "") {
-                oobeOverlay.javaInstalled = true
-                oobeOverlay.selectedJavaPath = javaPath
-            }
-        }
-    }
 
     Connections {
         target: Theme

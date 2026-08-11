@@ -18,6 +18,7 @@ FluentWindow {
     property int currentPage: 0
     property int totalPages: 6
     property var selectedLanguage: "zh-cn"
+    property bool languageSyncing: false
     property string selectedJavaPath: ""
     property string minecraftDirPath: ""
     property bool javaInstalled: false
@@ -224,6 +225,7 @@ FluentWindow {
                                 textRole: "name"
                                 valueRole: "code"
                                 currentIndex: 0
+                                enabled: !oobeWindow.languageSyncing
 
                                 onActivated: function(index) {
                                     oobeWindow.selectedLanguage = model[index].code
@@ -699,52 +701,82 @@ FluentWindow {
             }
         }
 
-        // 底部按钮栏
-        Rectangle {
-            id: footerBar
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
+    Connections {
+        target: Backend
+
+        function onLanguageSyncStarted(language) {
+            oobeWindow.languageSyncing = true
+            oobeWindow.selectedLanguage = language
+        }
+
+        function onLanguageSyncFinished(language, ok, error) {
+            if (oobeWindow.selectedLanguage === language)
+                oobeWindow.languageSyncing = false
+        }
+
+        function onJavaEnvironmentChecked(installed, javaPath) {
+            oobeWindow.isCheckingJava = false
+            oobeWindow.javaInstalled = installed
+            if (installed) {
+                oobeWindow.selectedJavaPath = javaPath
+            }
+        }
+
+        function onJavaInstallationComplete(javaPath) {
+            oobeWindow.isInstallingJava = false
+            if (javaPath && javaPath !== "") {
+                oobeWindow.javaInstalled = true
+                oobeWindow.selectedJavaPath = javaPath
+            }
+        }
+    }
+
+    // 底部按钮栏
+    Rectangle {
+        id: footerBar
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 70
+        color: "#F9F9F9"
+
+        RowLayout {
             anchors.right: parent.right
-            height: 70
-            color: "#F9F9F9"
+            anchors.rightMargin: 24
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 12
 
-            RowLayout {
-                anchors.right: parent.right
-                anchors.rightMargin: 24
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 12
-
-                Button {
-                    id: backButton
-                    text: Backend ? Backend.tr("返回") : "Back"
-                    visible: oobeWindow.currentPage > 0
-                    onClicked: {
-                        if (oobeWindow.currentPage > 0) {
-                            oobeWindow.currentPage--
-                        }
+            Button {
+                id: backButton
+                text: Backend ? Backend.tr("返回") : "Back"
+                visible: oobeWindow.currentPage > 0
+                onClicked: {
+                    if (oobeWindow.currentPage > 0) {
+                        oobeWindow.currentPage--
                     }
                 }
+            }
 
-                Button {
-                    id: nextButton
-                    text: {
-                        if (oobeWindow.currentPage === oobeWindow.totalPages - 1) {
-                            return Backend ? Backend.tr("完成") : "Finish"
-                        }
-                        return Backend ? Backend.tr("下一步") : "Next"
+            Button {
+                id: nextButton
+                text: {
+                    if (oobeWindow.currentPage === oobeWindow.totalPages - 1) {
+                        return Backend ? Backend.tr("完成") : "Finish"
                     }
-                    highlighted: true
-                    enabled: canProceed()
-                    onClicked: {
-                        if (oobeWindow.currentPage === oobeWindow.totalPages - 1) {
-                            finishOOBE()
-                        } else {
-                            oobeWindow.currentPage++
-                        }
+                    return Backend ? Backend.tr("下一步") : "Next"
+                }
+                highlighted: true
+                enabled: canProceed()
+                onClicked: {
+                    if (oobeWindow.currentPage === oobeWindow.totalPages - 1) {
+                        finishOOBE()
+                    } else {
+                        oobeWindow.currentPage++
                     }
                 }
             }
         }
+    }
     }
 
     function canProceed() {
@@ -767,23 +799,4 @@ FluentWindow {
         oobeWindow.close()
     }
 
-    Connections {
-        target: Backend
-
-        function onJavaEnvironmentChecked(installed, javaPath) {
-            oobeWindow.isCheckingJava = false
-            oobeWindow.javaInstalled = installed
-            if (installed) {
-                oobeWindow.selectedJavaPath = javaPath
-            }
-        }
-
-        function onJavaInstallationComplete(javaPath) {
-            oobeWindow.isInstallingJava = false
-            if (javaPath && javaPath !== "") {
-                oobeWindow.javaInstalled = true
-                oobeWindow.selectedJavaPath = javaPath
-            }
-        }
-    }
 }

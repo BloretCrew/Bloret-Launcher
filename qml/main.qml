@@ -323,6 +323,15 @@ FluentWindow {
             var current = String(navigationView.currentPage || "")
             if (current.length > 0)
                 navigationView.safePush(current, true, false)
+            // OOBE is loaded separately from the main page stack, so recreate
+            // it explicitly after a live language catalog has been applied.
+            if (oobeLoader.visible && oobeLoader.source === "OOBEOverlay.qml") {
+                oobeLoader.source = ""
+                Qt.callLater(function() {
+                    if (oobeLoader.visible)
+                        oobeLoader.source = "OOBEOverlay.qml"
+                })
+            }
             // Page reloads can steal focus; keep the download dialog on top
             // until languageSyncFinished closes it.
             if (keepLanguageDialog) {
@@ -422,6 +431,7 @@ FluentWindow {
 
     Dialog {
         id: languageSyncDialog
+        z: 2000
 
         property string languageCode: ""
 
