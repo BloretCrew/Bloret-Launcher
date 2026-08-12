@@ -172,6 +172,25 @@ jobs:
           --hidden-import=toml --hidden-import=darkdetect --hidden-import=send2trash --hidden-import=psutil --hidden-import=dulwich --hidden-import=qrcode --hidden-import=win11toast --hidden-import=winsdk --paths=. Bloret-Launcher.py
       shell: pwsh
 
+    - name: 代码签名 (Windows 主程序)
+      if: runner.os == 'Windows'
+      env:
+        WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+        WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        $exe = "dist\Bloret-Launcher\Bloret-Launcher.exe"
+        if (-not (Test-Path $exe)) {
+          Write-Host "::error::Missing $exe for signing"
+          Get-ChildItem -Path dist -Recurse -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 20 FullName
+          exit 1
+        }
+        & powershell -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
+          -Path $exe `
+          -Description "Bloret Launcher" `
+          -SkipIfMissingCert
+      shell: pwsh
+
     - name: 使用 PyInstaller 打包 (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -557,9 +576,43 @@ jobs:
         choco install innosetup --yes
       shell: pwsh
 
+    - name: 代码签名 (安装目录内 exe)
+      env:
+        WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+        WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        $exe = "output\Bloret-Launcher\Bloret-Launcher.exe"
+        if (-not (Test-Path $exe)) {
+          Write-Host "::error::Missing $exe before setup build"
+          exit 1
+        }
+        & powershell -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
+          -Path $exe `
+          -Description "Bloret Launcher" `
+          -SkipIfMissingCert
+      shell: pwsh
+
     - name: 运行 Inno Setup 构建安装程序
       run: |
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
+      shell: pwsh
+
+    - name: 代码签名 (安装程序)
+      env:
+        WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+        WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        $setup = "output\Bloret-Launcher-Setup.exe"
+        if (-not (Test-Path $setup)) {
+          Write-Host "::error::Missing $setup after Inno Setup"
+          exit 1
+        }
+        & powershell -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
+          -Path $setup `
+          -Description "Bloret Launcher Setup" `
+          -SkipIfMissingCert
       shell: pwsh
 
     - name: 上传安装程序

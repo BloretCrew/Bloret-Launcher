@@ -180,6 +180,36 @@ jobs:
           Bloret-Launcher.py
       shell: pwsh
 
+    - name: 代码签名 (Windows 主程序)
+      if: runner.os == 'Windows'
+      env:
+        WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+        WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        $dist = $null
+        foreach ($d in @("Bloret-Launcher.dist", "Bloret-Launcher.dist.dist")) {
+          if (Test-Path (Join-Path $d "Bloret-Launcher.exe")) { $dist = $d; break }
+        }
+        if (-not $dist) {
+          $hit = Get-ChildItem -Path . -Directory -Filter "Bloret-Launcher*.dist" -ErrorAction SilentlyContinue |
+            Where-Object { Test-Path (Join-Path $_.FullName "Bloret-Launcher.exe") } |
+            Select-Object -First 1
+          if ($hit) { $dist = $hit.FullName }
+        }
+        if (-not $dist) {
+          Write-Host "::error::Nuitka dist with Bloret-Launcher.exe not found for signing"
+          Get-ChildItem -Recurse -Depth 2 -Filter "*.exe" | Select-Object -First 20 FullName
+          exit 1
+        }
+        $exe = Join-Path $dist "Bloret-Launcher.exe"
+        Write-Host "Signing $exe"
+        & powershell -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
+          -Path $exe `
+          -Description "Bloret Launcher" `
+          -SkipIfMissingCert
+      shell: pwsh
+
     - name: 使用 Nuitka 打包 (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -667,9 +697,43 @@ jobs:
         choco install innosetup --yes
       shell: pwsh
 
+    - name: 代码签名 (安装目录内 exe)
+      env:
+        WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+        WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        $exe = "output\Bloret-Launcher\Bloret-Launcher.exe"
+        if (-not (Test-Path $exe)) {
+          Write-Host "::error::Missing $exe before setup build"
+          exit 1
+        }
+        & powershell -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
+          -Path $exe `
+          -Description "Bloret Launcher" `
+          -SkipIfMissingCert
+      shell: pwsh
+
     - name: 运行 Inno Setup 构建安装程序
       run: |
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
+      shell: pwsh
+
+    - name: 代码签名 (安装程序)
+      env:
+        WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+        WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        $setup = "output\Bloret-Launcher-Setup.exe"
+        if (-not (Test-Path $setup)) {
+          Write-Host "::error::Missing $setup after Inno Setup"
+          exit 1
+        }
+        & powershell -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
+          -Path $setup `
+          -Description "Bloret Launcher Setup" `
+          -SkipIfMissingCert
       shell: pwsh
 
     - name: 上传安装程序

@@ -8,3 +8,12 @@ hermes-agent-main/
 # RinUI runtime-generated config (written by RinUI's ConfigManager
 # into <cwd>/RinUI/config/ on startup; not part of the submodule)
 /RinUI/config/
+
+# Code signing material (never commit private key exports)
+*.pfx
+*.p12
+sign/*.pfx
+sign/*.p12
+sign/root.generated.spc
+代码签名证书制作工具/
+代码签名证书制作工具.zip
