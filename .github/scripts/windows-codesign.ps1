@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Sign Windows PE files (exe/dll/msi) with Authenticode for CI or local use.
@@ -85,15 +85,21 @@ function Find-SdkTool([string] $Name) {
         }
     }
 
-    # Bundled legacy tool folder (local / optional checkout)
-    $bundled = @(
-        Join-Path $PSScriptRoot "..\..\代码签名证书制作工具\$Name"
-        Join-Path (Get-Location) "代码签名证书制作工具\$Name"
-    )
-    foreach ($candidate in $bundled) {
+    # Optional local toolkit folder (name may be Chinese on disk)
+    $repoRoot = Get-RepoRoot
+    $bundledDirs = Get-ChildItem -Path $repoRoot -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like '*signtool*' -or $_.Name -match 'code.?sign' -or (Test-Path (Join-Path $_.FullName 'signtool.exe')) }
+    foreach ($dir in $bundledDirs) {
+        $candidate = Join-Path $dir.FullName $Name
         if (Test-Path $candidate) {
             return (Resolve-Path $candidate).Path
         }
+    }
+
+    $legacyName = Join-Path $repoRoot ([string]([char]0x4EE3) + [string]([char]0x7801) + [string]([char]0x7B7E) + [string]([char]0x540D) + [string]([char]0x8BC1) + [string]([char]0x4E66) + [string]([char]0x5236) + [string]([char]0x4F5C) + [string]([char]0x5DE5) + [string]([char]0x5177))
+    $legacy = Join-Path $legacyName $Name
+    if (Test-Path $legacy) {
+        return (Resolve-Path $legacy).Path
     }
 
     return $null
@@ -114,7 +120,8 @@ function New-TempDir {
 }
 
 function ConvertFrom-Base64File([string] $Base64, [string] $Destination) {
-    $bytes = [Convert]::FromBase64String(($Base64 -replace '\s', ''))
+    $clean = ($Base64 -replace '\s', '')
+    $bytes = [Convert]::FromBase64String($clean)
     [System.IO.File]::WriteAllBytes($Destination, $bytes)
 }
 
@@ -140,12 +147,57 @@ function Resolve-SigningPfx {
 
     if ($env:WINDOWS_CODESIGN_PFX_BASE64) {
         $pfxOut = Join-Path $WorkDir "codesign.pfx"
-        ConvertFrom-Base64File -Base64 $env:WINDOWS_CODESIGN_PFX_BASE64 -Destination $pfxOut
-        Write-Info "Loaded PFX from WINDOWS_CODESIGN_PFX_BASE64"
-        return @{
-            Path     = $pfxOut
-            Password = $resolvedPassword
-            Source   = "Secret"
+        try {
+            ConvertFrom-Base64File -Base64 $env:WINDOWS_CODESIGN_PFX_BASE64 -Destination $pfxOut
+        }
+        catch {
+            Write-WarnLine "Failed to decode WINDOWS_CODESIGN_PFX_BASE64: $($_.Exception.Message)"
+            Write-WarnLine "Will try repository sign/root.pvk fallback if available."
+            $pfxOut = $null
+        }
+        if ($pfxOut -and (Test-Path $pfxOut) -and ((Get-Item $pfxOut).Length -ge 64)) {
+            # Probe whether .NET can open the PFX with the given password
+            $probeOk = $false
+            try {
+                $flags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable -bor `
+                         [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
+                if ($resolvedPassword) {
+                    $null = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfxOut, $resolvedPassword, $flags)
+                }
+                else {
+                    $null = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfxOut, "", $flags)
+                }
+                $probeOk = $true
+            }
+            catch {
+                try {
+                    # Older runtimes may not support EphemeralKeySet
+                    $flags2 = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable -bor `
+                              [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::MachineKeySet
+                    if ($resolvedPassword) {
+                        $null = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfxOut, $resolvedPassword, $flags2)
+                    }
+                    else {
+                        $null = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfxOut, "", $flags2)
+                    }
+                    $probeOk = $true
+                }
+                catch {
+                    Write-WarnLine "PFX from secret could not be opened: $($_.Exception.Message)"
+                    Write-WarnLine "Check WINDOWS_CODESIGN_PASSWORD or re-export the PFX. Falling back to sign/root.pvk if present."
+                }
+            }
+            if ($probeOk) {
+                Write-Info "Loaded PFX from WINDOWS_CODESIGN_PFX_BASE64 ($((Get-Item $pfxOut).Length) bytes)"
+                return @{
+                    Path     = $pfxOut
+                    Password = $resolvedPassword
+                    Source   = "Secret"
+                }
+            }
+        }
+        else {
+            Write-WarnLine "WINDOWS_CODESIGN_PFX_BASE64 missing or too small after decode; trying PVK fallback."
         }
     }
 
@@ -160,7 +212,7 @@ function Resolve-SigningPfx {
 
     $pvk2pfx = Find-SdkTool "pvk2pfx.exe"
     if (-not $pvk2pfx) {
-        throw "pvk2pfx.exe not found. Install Windows SDK or place 代码签名证书制作工具 in the repo."
+        throw "pvk2pfx.exe not found. Install Windows SDK Signing Tools."
     }
 
     $pfxOut = Join-Path $WorkDir "root-from-pvk.pfx"
@@ -169,7 +221,6 @@ function Resolve-SigningPfx {
         $spcArg = $spc
     }
     elseif (Test-Path $cer) {
-        # cert2spc can build SPC from CER when SPC is missing
         $cert2spc = Find-SdkTool "cert2spc.exe"
         if (-not $cert2spc) {
             throw "root.spc missing and cert2spc.exe not found"
@@ -192,7 +243,6 @@ function Resolve-SigningPfx {
 
     & $pvk2pfx @pvkArgs
     if ($LASTEXITCODE -ne 0) {
-        # Retry with empty password (common for self-signed toolkits)
         Write-WarnLine "pvk2pfx failed (exit $LASTEXITCODE); retrying with empty password"
         $pvkArgs = @("-pvk", $pvk, "-spc", $spcArg, "-pfx", $pfxOut, "-pi", "", "-po", "")
         & $pvk2pfx @pvkArgs
@@ -254,8 +304,8 @@ function Invoke-SignFile {
     if ($null -ne $PfxPassword -and $PfxPassword -ne "") {
         $common += @("/p", $PfxPassword)
     }
-    # Empty password still needs /p "" for some PFX exports
     elseif ($null -ne $PfxPassword) {
+        # Empty password: some PFX exports still need /p ""
         $common += @("/p", "")
     }
 
@@ -290,7 +340,7 @@ try {
         $msg = "No signing certificate found (set WINDOWS_CODESIGN_PFX_BASE64 or provide sign/root.pvk)."
         if ($SkipIfMissingCert) {
             Write-WarnLine $msg
-            Write-WarnLine "SkipIfMissingCert set — leaving binaries unsigned."
+            Write-WarnLine "SkipIfMissingCert set - leaving binaries unsigned."
             exit 0
         }
         throw $msg

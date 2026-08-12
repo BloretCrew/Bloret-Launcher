@@ -204,7 +204,7 @@ jobs:
         }
         $exe = Join-Path $dist "Bloret-Launcher.exe"
         Write-Host "Signing $exe"
-        & powershell -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
           -Path $exe `
           -Description "Bloret Launcher" `
           -SkipIfMissingCert
@@ -708,7 +708,7 @@ jobs:
           Write-Host "::error::Missing $exe before setup build"
           exit 1
         }
-        & powershell -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
           -Path $exe `
           -Description "Bloret Launcher" `
           -SkipIfMissingCert
@@ -730,7 +730,7 @@ jobs:
           Write-Host "::error::Missing $setup after Inno Setup"
           exit 1
         }
-        & powershell -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
           -Path $setup `
           -Description "Bloret Launcher Setup" `
           -SkipIfMissingCert
