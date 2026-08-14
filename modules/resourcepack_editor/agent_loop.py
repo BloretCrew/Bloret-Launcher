@@ -23,6 +23,7 @@ from typing import Callable, Optional, List, Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from modules.i18n import i18nText
+import modules.config as cfg
 
 from .agent_tools import (
     TOOL_DEFINITIONS, TOOL_EXECUTORS, execute_tool,
@@ -35,6 +36,44 @@ from .knowledge_base import (
 )
 
 log = logging.getLogger(__name__)
+
+
+_LANGUAGE_INSTRUCTIONS = {
+    "zh-cn": "Simplified Chinese (简体中文)",
+    "zh-tw": "Traditional Chinese (繁體中文)",
+    "zh-wy": "Classical Chinese (文言文)",
+    "gt-zh": "Humorous meme-style Simplified Chinese (梗体中文), keep it playful but clear",
+    "en": "English",
+    "en-gb": "British English",
+}
+
+
+def _resolve_language_instruction() -> str:
+    """Resolve the current UI language for the Agent's response instruction."""
+    try:
+        config = cfg.read()
+        language = config.get("language") or config.get("Language") or "zh-cn"
+    except Exception as exc:
+        log.warning("读取 Agent 语言设置失败，回退 zh-cn: %s", exc)
+        language = "zh-cn"
+    if not isinstance(language, str):
+        language = "zh-cn"
+    code = language.strip() or "zh-cn"
+    normalized_code = code.lower().replace("_", "-")
+    label = _LANGUAGE_INSTRUCTIONS.get(normalized_code)
+    if not label and normalized_code.startswith("en-"):
+        label = "English"
+    if not label and normalized_code.startswith("zh-cn"):
+        label = _LANGUAGE_INSTRUCTIONS["zh-cn"]
+    if not label and normalized_code.startswith("zh-tw"):
+        label = _LANGUAGE_INSTRUCTIONS["zh-tw"]
+    if label:
+        return f"Use {label} for all human-readable replies and explanations."
+    return (
+        f"Use the language corresponding to UI locale code '{code}' for all "
+        "human-readable replies and explanations."
+    )
+
 
 # 最大迭代次数，防止无限循环
 MAX_ITERATIONS = 30
@@ -365,6 +404,7 @@ class AgentLoop:
         prompt = AGENT_SYSTEM_PROMPT_TEMPLATE.format(
             pack_path=pack_path,
             dynamic_context=dynamic_context,
+            language_requirement=_resolve_language_instruction(),
         )
 
         try:
@@ -375,6 +415,15 @@ class AgentLoop:
                 log.info(f"[AgentLoop] 已合并 {len(appends)} 段 BLRPE 插件提示词")
         except Exception as e:
             log.warning(f"[AgentLoop] 合并插件提示词失败: {e}")
+
+        # Keep the locale directive last so the Chinese knowledge base or plugin
+        # appendices cannot accidentally override the user's language preference.
+        prompt += (
+            "\n\n## FINAL RESPONSE LANGUAGE (HIGHEST PRIORITY)\n"
+            f"{_resolve_language_instruction()} Do not answer in Chinese unless the configured UI locale is Chinese. "
+            "This applies to every human-readable response, question, explanation, error, and tool summary. "
+            "Keep file paths, JSON keys, code, and Minecraft identifiers unchanged."
+        )
 
         log.info(f"[AgentLoop] 系统提示词构建完成, 长度={len(prompt)}字符")
         return prompt
@@ -642,8 +691,17 @@ class AgentLoop:
         """内部执行逻辑；user_message 可为 str 或 OpenAI 多模态 content list"""
         log.info("[AgentLoop] 构建系统提示词...")
         system_prompt = self._build_system_prompt()
+        language_directive = _resolve_language_instruction() + (
+            " Reply only in that language. This instruction overrides the language of the"
+            " surrounding documentation and previous messages."
+        )
         log.info(f"[AgentLoop] 系统提示词长度: {len(system_prompt)} 字符")
-        messages = [{"role": "system", "content": system_prompt}]
+        # Keep the locale directive as a separate, final system message so the
+        # Chinese knowledge base cannot outweigh the user's configured language.
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": language_directive},
+        ]
 
         if history:
             converted = self._convert_history_for_api(history)

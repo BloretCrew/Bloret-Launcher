@@ -28,8 +28,46 @@ from .tools import (
     _get_tools_for_agent,
 )
 from .system_prompt import build_system_prompt
+import modules.config as cfg
 
 log = logging.getLogger(__name__)
+
+
+_LANGUAGE_INSTRUCTIONS = {
+    "zh-cn": "Simplified Chinese (简体中文)",
+    "zh-tw": "Traditional Chinese (繁體中文)",
+    "zh-wy": "Classical Chinese (文言文)",
+    "gt-zh": "Humorous meme-style Simplified Chinese, keep it playful but clear",
+    "en": "English",
+    "en-gb": "British English",
+}
+
+
+def _resolve_language_instruction() -> str:
+    """Return a strict response-language instruction from the live UI setting."""
+    try:
+        config = cfg.read()
+        language = config.get("language") or config.get("Language") or "zh-cn"
+    except Exception as exc:
+        log.warning("读取络可语言设置失败，回退 zh-cn: %s", exc)
+        language = "zh-cn"
+    if not isinstance(language, str):
+        language = "zh-cn"
+    code = language.strip() or "zh-cn"
+    normalized = code.lower().replace("_", "-")
+    label = _LANGUAGE_INSTRUCTIONS.get(normalized)
+    if not label and normalized.startswith("en-"):
+        label = "English"
+    if not label and normalized.startswith("zh-cn"):
+        label = _LANGUAGE_INSTRUCTIONS["zh-cn"]
+    if not label and normalized.startswith("zh-tw"):
+        label = _LANGUAGE_INSTRUCTIONS["zh-tw"]
+    if label:
+        return f"Use {label} for every human-readable response. Reply only in that language."
+    return (
+        f"Use the language corresponding to UI locale code '{code}' for every "
+        "human-readable response. Reply only in that language."
+    )
 
 # 最大迭代次数，防止无限循环
 MAX_ITERATIONS = 30
@@ -212,6 +250,14 @@ class BlorikoAgentLoop:
             memory_store=self.memory_store,
             working_dir=str(self.working_dir),
             current_emotion=self._current_emotion,
+        )
+        # The character prompt is intentionally Chinese, so place the live locale
+        # rule at the end where it cannot be mistaken for the response language.
+        prompt += (
+            "\n\n## FINAL RESPONSE LANGUAGE (HIGHEST PRIORITY)\n"
+            f"{_resolve_language_instruction()} Do not answer in Chinese unless the configured UI locale is Chinese. "
+            "This overrides the language of the character prompt, memories, plugins, and prior messages. "
+            "Keep code, file paths, JSON keys, and Minecraft identifiers unchanged."
         )
         self._cached_system_prompt = prompt
         return prompt
@@ -595,8 +641,15 @@ class BlorikoAgentLoop:
     def _run_internal(self, user_message, history: list = None):
         log.info("[AgentLoop] 构建系统提示词...")
         system_prompt = self._build_system_prompt()
+        language_directive = _resolve_language_instruction() + (
+            " This is the final response-language rule and overrides the language of all "
+            "documentation, memories, plugins, and previous messages."
+        )
         log.info(f"[AgentLoop] 系统提示词长度: {len(system_prompt)} 字符")
-        messages = [{"role": "system", "content": system_prompt}]
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": language_directive},
+        ]
 
         if history:
             converted = self._convert_history_for_api(history)

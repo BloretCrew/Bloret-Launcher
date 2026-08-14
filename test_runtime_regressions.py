@@ -139,6 +139,54 @@ class TestBackendDeclarations(unittest.TestCase):
         ))
 
 
+class TestResourcePackAgentLanguage(unittest.TestCase):
+    def test_agent_prompt_uses_configured_language(self):
+        from unittest import mock
+        from modules.resourcepack_editor import agent_loop
+
+        with mock.patch.object(agent_loop.cfg, "read", return_value={"language": "en-GB"}):
+            self.assertIn("British English", agent_loop._resolve_language_instruction())
+            with tempfile.TemporaryDirectory() as tmp:
+                agent = agent_loop.AgentLoop(tmp, "https://example.invalid", "")
+                prompt = agent._build_system_prompt()
+                self.assertIn("FINAL RESPONSE LANGUAGE (HIGHEST PRIORITY)", prompt)
+                self.assertIn("Do not answer in Chinese", prompt)
+                with mock.patch.object(agent_loop.cfg, "read", return_value={"language": "en-GB"}):
+                    system_messages = []
+                    original_build = agent._build_system_prompt
+                    agent._build_system_prompt = original_build
+                    directive = agent_loop._resolve_language_instruction() + " Reply only in that language."
+                    system_messages.append(directive)
+                    self.assertIn("British English", system_messages[-1])
+
+    def test_agent_prompt_does_not_hardcode_chinese_reply_rule(self):
+        from modules.resourcepack_editor.knowledge_base import AGENT_SYSTEM_PROMPT_TEMPLATE
+
+        prompt = AGENT_SYSTEM_PROMPT_TEMPLATE.format(
+            pack_path="/tmp/pack",
+            dynamic_context="",
+            language_requirement="Use English for all human-readable replies.",
+        )
+        self.assertIn("Use English", prompt)
+        self.assertNotIn("回复使用中文", prompt)
+
+
+class TestBlorikoAgentLanguage(unittest.TestCase):
+    def test_bloriko_uses_configured_language(self):
+        from unittest import mock
+        from modules.bloriko_agent import agent_loop
+
+        with mock.patch.object(agent_loop.cfg, "read", return_value={"language": "en-GB"}):
+            instruction = agent_loop._resolve_language_instruction()
+            self.assertIn("British English", instruction)
+            self.assertIn("Reply only in that language", instruction)
+
+    def test_bloriko_loop_keeps_final_language_message(self):
+        source = (ROOT / "modules" / "bloriko_agent" / "agent_loop.py").read_text(encoding="utf-8")
+        self.assertIn('\"role\": \"system\", \"content\": language_directive', source)
+        self.assertIn("FINAL RESPONSE LANGUAGE (HIGHEST PRIORITY)", source)
+
+
 class TestPluginSourceValidation(unittest.TestCase):
     def test_add_plugin_rejects_plain_http_before_network(self):
         from unittest import mock
