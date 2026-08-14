@@ -34,7 +34,7 @@
         "connectTimeout": 5,
         "readTimeout": 12
     },
-    "plugin_store_api": "https://store.bloret.com/api/v1/plugins",
+    "plugin_store_api": "",
     "plugin_store_trusted_hosts": [],
     "plugin_store_cache_seconds": 300,
     "screen_cut_shortcut": "Ctrl+Alt+A",

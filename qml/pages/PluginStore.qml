@@ -14,6 +14,7 @@ FluentPage {
     property string errorText: ""
     property bool loading: false
     property var selectedPlugin: null
+    property var storeBackend: (typeof StoreBackend !== "undefined") ? StoreBackend : null
 
     function tr(text) { return Backend ? Backend.tr(text) : text }
 
@@ -48,9 +49,9 @@ FluentPage {
     }
 
     function propose(item) {
-        if (!item || typeof PluginStore === "undefined" || !PluginStore)
+        if (!item || !storeBackend)
             return
-        var raw = PluginStore.proposeInstall(JSON.stringify({
+        var raw = storeBackend.proposeInstall(JSON.stringify({
             id: item.id, name: item.name, version: item.version,
             author: item.author, description: item.description,
             download: item.download, sha256: item.sha256,
@@ -66,13 +67,13 @@ FluentPage {
     }
 
     Component.onCompleted: {
-        reloadFromJson(PluginStore ? PluginStore.getPluginsJson() : "[]")
-        if (PluginStore) PluginStore.refresh()
+        reloadFromJson(storeBackend ? storeBackend.getPluginsJson() : "[]")
+        if (storeBackend) storeBackend.refresh()
     }
 
     Connections {
-        target: (typeof PluginStore !== "undefined") ? PluginStore : null
-        enabled: (typeof PluginStore !== "undefined") && PluginStore !== null
+        target: storeBackend
+        enabled: storeBackend !== null
         function onPluginsChanged(raw) { reloadFromJson(raw) }
         function onLoadingChanged(value) { loading = value }
         function onErrorChanged(message) { errorText = message || "" }
@@ -82,7 +83,7 @@ FluentPage {
         target: (typeof PluginHost !== "undefined") ? PluginHost : null
         enabled: (typeof PluginHost !== "undefined") && PluginHost !== null
         function onPluginsChanged() {
-            if (PluginStore) PluginStore.refreshInstallState()
+            if (storeBackend) storeBackend.refreshInstallState()
         }
     }
 
@@ -104,14 +105,14 @@ FluentPage {
             Item { Layout.fillWidth: true }
             Button {
                 text: loading ? tr("加载中…") : tr("刷新")
-                enabled: !loading && PluginStore
-                onClicked: { errorText = ""; PluginStore.refresh() }
+                enabled: !loading && storeBackend !== null
+                onClicked: { errorText = ""; if (storeBackend) storeBackend.refresh() }
             }
         }
 
         Label {
             Layout.fillWidth: true
-            text: PluginStore ? tr("来源") + ": " + PluginStore.getApiBase() : ""
+            text: storeBackend && storeBackend.getApiBase() ? tr("来源") + ": " + storeBackend.getApiBase() : tr("尚未配置商店接口，请在设置中填写 HTTPS 列表地址")
             color: Theme.currentTheme.colors.textSecondaryColor
             elide: Text.ElideMiddle
         }
@@ -149,11 +150,17 @@ FluentPage {
             color: Theme.currentTheme.colors.textSecondaryColor
         }
 
-        ScrollView {
+        GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            GridLayout {
+            columns: 1
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                GridLayout {
                 id: storeGrid
                 width: Math.max(implicitWidth, parent.width)
                 columns: width >= 760 ? 2 : 1
@@ -259,7 +266,10 @@ FluentPage {
                 Button {
                     visible: selectedPlugin && selectedPlugin.homepage
                     text: tr("打开项目主页")
-                    onClicked: if (Backend) Backend.openUrl(selectedPlugin.homepage)
+                    onClicked: {
+                        if (Backend)
+                            Backend.openUrl(selectedPlugin.homepage)
+                    }
                 }
                 Button {
                     highlighted: true
@@ -270,4 +280,5 @@ FluentPage {
             }
         }
     }
+}
 }

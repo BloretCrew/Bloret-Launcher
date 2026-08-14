@@ -26,6 +26,8 @@
     "ID": "ID",
     "作者": "Author",
     "权限": "Permissions",
-    "最低启动器版本": "Minimum launcher version"
+    "最低启动器版本": "Minimum launcher version",
+    "尚未配置商店接口，请在设置中填写 HTTPS 列表地址": "The store endpoint is not configured. Enter an HTTPS listing URL in Settings.",
+    "填写插件商店 HTTPS 列表接口地址": "Enter the plugin store HTTPS listing URL"
   }
 }

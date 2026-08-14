@@ -17,7 +17,9 @@ import modules.config as cfg
 from modules.log import log
 from modules.plugin_install_request import validate_download_url
 
-DEFAULT_STORE_API = "https://store.bloret.com/api/v1/plugins"
+# The repository documents the listing shape but does not publish a working
+# production listing endpoint; keep the client disabled until one is configured.
+DEFAULT_STORE_API = ""
 _DEFAULT_TIMEOUT = (8, 20)
 _VERSION_PART = re.compile(r"\d+")
 
@@ -126,8 +128,10 @@ class PluginStore(QObject):
     def _api_base(self) -> str:
         data = cfg.read() or {}
         value = str(data.get("plugin_store_api") or DEFAULT_STORE_API).strip().rstrip("/")
+        if not value:
+            return ""
         if not value.startswith("https://"):
-            return DEFAULT_STORE_API
+            return ""
         return value
 
     def _installed(self) -> list:
@@ -162,14 +166,18 @@ class PluginStore(QObject):
 
         def worker() -> None:
             try:
+                api_base = self._api_base()
+                if not api_base:
+                    self.errorChanged.emit("未配置插件商店列表接口，请在设置中填写 HTTPS 地址")
+                    return
                 session = requests.Session()
                 retry = Retry(total=2, backoff_factor=0.4, status_forcelist=[429, 500, 502, 503, 504])
                 adapter = HTTPAdapter(max_retries=retry)
                 session.mount("https://", adapter)
-                response = session.get(self._api_base(), timeout=_DEFAULT_TIMEOUT, headers={"Accept": "application/json"})
+                response = session.get(api_base, timeout=_DEFAULT_TIMEOUT, headers={"Accept": "application/json"})
                 response.raise_for_status()
                 payload = response.json()
-                parsed = [normalize_listing(item, self._api_base()) for item in _as_list(payload)]
+                parsed = [normalize_listing(item, api_base) for item in _as_list(payload)]
                 merged = merge_install_state(parsed, self._installed())
                 with self._lock:
                     if generation == self._generation:

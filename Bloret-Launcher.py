@@ -5839,8 +5839,8 @@ class LauncherV2(RinUIWindow):
             self.plugin_host = bootstrap_plugins()
             self.engine.rootContext().setContextProperty("PluginHost", self.plugin_host)
             from modules.plugin_store import PluginStore
-            self.plugin_store = PluginStore(self.plugin_host, self)
-            self.engine.rootContext().setContextProperty("PluginStore", self.plugin_store)
+            self.plugin_store = PluginStore(self.plugin_host)
+            self.engine.rootContext().setContextProperty("StoreBackend", self.plugin_store)
             print(f"[PluginHost] 已注入 QML，插件数={len(self.plugin_host.list_plugins_info())}")
         except Exception as e:
             import traceback
@@ -5851,8 +5851,8 @@ class LauncherV2(RinUIWindow):
                 self.plugin_host = get_plugin_host()
                 self.engine.rootContext().setContextProperty("PluginHost", self.plugin_host)
                 from modules.plugin_store import PluginStore
-                self.plugin_store = PluginStore(self.plugin_host, self)
-                self.engine.rootContext().setContextProperty("PluginStore", self.plugin_store)
+                self.plugin_store = PluginStore(self.plugin_host)
+                self.engine.rootContext().setContextProperty("StoreBackend", self.plugin_store)
             except Exception:
                 self.engine.rootContext().setContextProperty("PluginHost", None)
                 self.engine.rootContext().setContextProperty("PluginStore", None)
