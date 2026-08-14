@@ -6,6 +6,7 @@ remain compatible with the original launcher integration.
 """
 
 import json
+import logging
 import os
 from urllib.parse import urlencode
 
@@ -17,8 +18,10 @@ from modules.log import log
 
 
 DEFAULT_TIMEOUT = 15
+IMAGE_HOST_BASE_URL = "https://img.bloret.net"
 MAX_IMAGE_SIZE = 10 * 1024 * 1024
 MAX_IMAGE_COUNT = 9
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 
 def _get_base_url():
@@ -60,6 +63,7 @@ def _request(method, path, *, params=None, body=None, files=None,
     if body is not None and files is None:
         headers["Content-Type"] = "application/json"
     try:
+        log(f"[BBBS] request {method.upper()} {path} params={params or {}} auth={bool(cookies)}")
         response = requests.request(
             method.upper(), url, params=params, json=body, files=files,
             cookies=cookies, headers=headers, timeout=timeout,
@@ -69,7 +73,10 @@ def _request(method, path, *, params=None, body=None, files=None,
         except (ValueError, json.JSONDecodeError):
             payload = response.text[:2000]
         if response.ok:
+            size = len(payload) if isinstance(payload, (list, dict, str)) else type(payload).__name__
+            log(f"[BBBS] response {method.upper()} {path} status={response.status_code} payload={size}")
             return {"success": True, "status": response.status_code, "data": payload}
+        log(f"[BBBS] response {method.upper()} {path} status={response.status_code} error={_error_message(payload, response.status_code)}", logging.WARNING)
         return {
             "success": False,
             "status": response.status_code,
@@ -111,34 +118,125 @@ def fetch_all_posts(force_refresh=False):
 
 # Read APIs used by the full BBBS workspace
 
+def _section_nodes(nodes, parent="", board=""):
+    """Flatten the documented sectionsTree while retaining chat/image types."""
+    result = []
+    for node in nodes or []:
+        if not isinstance(node, dict):
+            continue
+        name = str(node.get("name") or "")
+        if not name:
+            continue
+        full_name = name if not parent or "/" in name else f"{parent}/{name}"
+        result.append({
+            "name": name,
+            "fullName": full_name,
+            "section": full_name,
+            "type": node.get("type", "text"),
+            "board": board,
+            "children": _section_nodes(node.get("children", []), full_name, board),
+        })
+    return result
+
+
 def fetch_boards():
-    return _data(_request("GET", "/api/boards"), [])
+    return _data(_request("GET", "/api/boards/list"), [])
 
 
 def fetch_board(board_id):
-    return _data(_request("GET", f"/api/boards/{board_id}"), {})
+    boards = fetch_boards()
+    for board in boards:
+        if board.get("name") == board_id or board.get("alias") == board_id:
+            return board
+    return {}
 
 
 def fetch_sections(board_id=None):
-    return _data(_request("GET", _with_query("/api/sections", {"boardId": board_id})), [])
+    boards = fetch_boards()
+    if board_id:
+        boards = [board for board in boards if board.get("name") == board_id or board.get("alias") == board_id]
+    sections = []
+    for board in boards:
+        sections.extend(_section_nodes(board.get("sectionsTree", []), "", board.get("name", "")))
+    return sections
 
 
 def fetch_posts(section_id=None, board_id=None, page=1, limit=20, search=""):
-    result = _request("GET", _with_query("/api/posts", {
-        "sectionId": section_id, "boardId": board_id, "page": page,
-        "limit": limit, "search": search,
-    }))
-    return _data(result, {"items": [], "page": page, "hasMore": False})
+    # The public API requires board and section names.  The old client used
+    # sectionId/boardId, which returns HTTP 400 and was displayed as an empty list.
+    if board_id and section_id:
+        # Child sections are represented as "parent/child" in the API.
+        result = _request("GET", _with_query("/api/posts", {
+            "board": board_id, "section": section_id,
+            "sort": "time", "order": "desc",
+        }))
+    else:
+        result = _request("GET", _with_query("/api/all-posts", {
+            "limit": min(max(int(limit or 20), 1), 200),
+            "board": board_id, "section": section_id,
+        }))
+    payload = _data(result, [])
+    if isinstance(payload, list):
+        if search:
+            needle = search.casefold()
+            payload = [post for post in payload if needle in str(post.get("title", "")).casefold() or needle in str(post.get("content", "")).casefold()]
+        return payload
+    if isinstance(payload, dict):
+        return payload.get("items") or payload.get("posts") or []
+    return []
 
 
 def fetch_post(post_id):
-    return _data(_request("GET", f"/api/posts/{post_id}"), {})
+    # The documented detail payload is returned by /api/posts with board and
+    # section names; resolve the filename from the lightweight global list first.
+    posts = fetch_all_posts()
+    target = str(post_id)
+    match = next((post for post in posts if str(post.get("id", "")) == target or str(post.get("filename", "")) == target), None)
+    if not match:
+        return {}
+    result = _request("GET", _with_query("/api/posts", {
+        "board": match.get("board") or match.get("board_name"),
+        "section": match.get("section") or match.get("section_name"),
+        "sort": "time", "order": "desc",
+    }))
+    detailed = _data(result, [])
+    if isinstance(detailed, list):
+        for post in detailed:
+            if str(post.get("filename", "")) == str(match.get("filename", "")) or str(post.get("id", "")) == target:
+                return post
+    return match
 
 
 def fetch_comments(post_id, page=1, limit=50):
-    return _data(_request("GET", _with_query(f"/api/posts/{post_id}/comments", {
-        "page": page, "limit": limit,
-    })), [])
+    post = fetch_post(post_id)
+    comments = post.get("comments", []) if isinstance(post, dict) else []
+    return comments if isinstance(comments, list) else []
+
+
+def fetch_chat_messages(section_id, before=None, limit=100):
+    """Return chat messages when the server exposes a documented read route.
+
+    The current BBBS API document exposes chat writes through the Live-style
+    signal API but does not expose a public section-message GET route.  Keep
+    this read operation explicit instead of turning a 404 into fake empty data.
+    """
+    result = _request("GET", _with_query(f"/api/section/chat", {
+        "section": section_id, "before": before, "limit": limit,
+    }))
+    if result.get("status") == 404:
+        return []
+    return _data(result, [])
+
+
+def send_chat_message(section_id, content, reply_to=None):
+    body = {"content": content}
+    if reply_to:
+        body["replyTo"] = reply_to
+    return _request("POST", f"/api/sections/{section_id}/messages", body=body)
+
+
+def delete_chat_message(message_id):
+    return _request("DELETE", f"/api/messages/{message_id}")
 
 
 def fetch_notifications(page=1, limit=30):
@@ -258,21 +356,53 @@ def save_user_settings(settings):
 
 
 def upload_images(paths):
+    """Upload images to img.bloret.net and return BBBS-ready image records.
+
+    The image host accepts one multipart field named ``image`` per request and
+    does not require BBBS session cookies.  The returned URLs are absolute so
+    they can be inserted directly into Markdown or sent to BBBS.
+    """
     if not paths or len(paths) > MAX_IMAGE_COUNT:
         return {"success": False, "status": 0, "error": "图片数量必须为 1–9 张", "data": None}
-    handles = []
-    files = []
-    try:
-        for path in paths:
+
+    uploaded = []
+    for path in paths:
+        extension = os.path.splitext(path)[1].lower()
+        if extension not in ALLOWED_IMAGE_EXTENSIONS:
+            return {"success": False, "status": 0, "error": "仅支持 JPG、PNG、GIF 和 WebP 图片", "data": None}
+        try:
             size = os.path.getsize(path)
             if size > MAX_IMAGE_SIZE:
                 return {"success": False, "status": 0, "error": "单张图片不能超过 10 MB", "data": None}
-            handle = open(path, "rb")
-            handles.append(handle)
-            files.append(("images", (os.path.basename(path), handle, "application/octet-stream")))
-        return _request("POST", "/api/uploads/images", files=files)
-    except (OSError, TypeError) as exc:
-        return {"success": False, "status": 0, "error": str(exc), "data": None}
-    finally:
-        for handle in handles:
-            handle.close()
+            with open(path, "rb") as handle:
+                response = requests.post(
+                    f"{IMAGE_HOST_BASE_URL}/api/upload",
+                    files={"image": (os.path.basename(path), handle, "application/octet-stream")},
+                    headers={"Accept": "application/json"},
+                    timeout=DEFAULT_TIMEOUT,
+                )
+            try:
+                payload = response.json()
+            except (ValueError, json.JSONDecodeError):
+                payload = {"message": response.text[:500]}
+            if not response.ok or not payload.get("success"):
+                return {
+                    "success": False,
+                    "status": response.status_code,
+                    "error": _error_message(payload, response.status_code),
+                    "data": payload,
+                }
+            data = payload.get("data") or {}
+            original_url = data.get("url", "")
+            preview_url = data.get("webpUrl", "")
+            uploaded.append({
+                "url": original_url if original_url.startswith("http") else f"{IMAGE_HOST_BASE_URL}{original_url}",
+                "webpUrl": preview_url if preview_url.startswith("http") else f"{IMAGE_HOST_BASE_URL}{preview_url}",
+                "timestamp": data.get("timestamp"),
+                "md5": data.get("md5"),
+                "filename": data.get("filename") or os.path.basename(path),
+            })
+        except (OSError, requests.exceptions.RequestException) as exc:
+            log(f"[BBBS] image upload failed: {exc}")
+            return {"success": False, "status": 0, "error": str(exc), "data": None}
+    return {"success": True, "status": 200, "data": uploaded}

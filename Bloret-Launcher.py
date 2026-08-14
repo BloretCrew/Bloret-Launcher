@@ -286,11 +286,13 @@ class Backend(QObject):
     bbbsSummaryReceived = Signal(dict)
     bbbsLeaderboardReceived = Signal(list)
     bbbsAllPostsReceived = Signal(list)
-    bbbsBoardsReceived = Signal(object)
-    bbbsSectionsReceived = Signal(object)
-    bbbsPostsReceived = Signal(object)
+    bbbsBoardsReceived = Signal(str)
+    bbbsSectionsReceived = Signal(str)
+    bbbsPostsReceived = Signal(str)
     bbbsPostReceived = Signal(object)
     bbbsCommentsReceived = Signal(object)
+    bbbsChatMessagesReceived = Signal(object)
+    bbbsImagesUploaded = Signal(object)
     bbbsNotificationsReceived = Signal(object)
     bbbsTasksReceived = Signal(object)
     bbbsSettingsReceived = Signal(object)
@@ -4550,14 +4552,21 @@ class Backend(QObject):
 
     # Full BBBS workspace API
     def _bbbs_async(self, operation, worker, signal, *, fallback=None):
+        log(f"[BBBS] async start operation={operation}")
         def run():
             try:
                 from modules import bbbs
                 result = worker(bbbs)
                 if result is None:
                     result = fallback
-                signal.emit(result)
+                size = len(result) if isinstance(result, (list, dict, str)) else type(result).__name__
+                log(f"[BBBS] async finish operation={operation} result={size}")
+                if operation in {"Boards", "Sections", "Posts"}:
+                    signal.emit(json.dumps(result if isinstance(result, (list, dict)) else [], ensure_ascii=False))
+                else:
+                    signal.emit(result)
             except Exception as exc:
+                log(f"[BBBS] async error operation={operation}: {exc}", logging.ERROR)
                 self.bbbsErrorOccurred.emit(str(exc))
         threading.Thread(target=run, daemon=True, name=f"BBBS{operation}").start()
 
@@ -4587,6 +4596,7 @@ class Backend(QObject):
 
     @Slot(str, str, str, int, int, bool)
     def fetchBBBSPosts(self, sectionId="", boardId="", search="", page=1, limit=20, forceRefresh=False):
+        log(f"[BBBS] fetch posts called section={sectionId!r} board={boardId!r} search_len={len(search or '')} page={page} limit={limit} force={forceRefresh}")
         key = json.dumps([sectionId, boardId, search, page, limit], ensure_ascii=False)
         if not forceRefresh and key in self._bbbs_posts_cache:
             self.bbbsPostsReceived.emit(self._bbbs_posts_cache[key])
@@ -4595,7 +4605,7 @@ class Backend(QObject):
             data = api.fetch_posts(sectionId or None, boardId or None, page, limit, search)
             self._bbbs_posts_cache[key] = data
             return data
-        self._bbbs_async("Posts", worker, self.bbbsPostsReceived, fallback={"items": []})
+        self._bbbs_async("Posts", worker, self.bbbsPostsReceived, fallback=[])
 
     @Slot(str)
     def fetchBBBSPost(self, postId):
@@ -4604,6 +4614,33 @@ class Backend(QObject):
     @Slot(str)
     def fetchBBBSComments(self, postId):
         self._bbbs_async("Comments", lambda api: api.fetch_comments(postId), self.bbbsCommentsReceived, fallback=[])
+
+    @Slot(str)
+    @Slot(str, str)
+    def fetchBBBSChatMessages(self, sectionId, before=""):
+        self._bbbs_async("ChatMessages", lambda api: api.fetch_chat_messages(sectionId, before or None), self.bbbsChatMessagesReceived, fallback=[])
+
+    @Slot(str, str)
+    def sendBBBSChatMessage(self, sectionId, content):
+        self._bbbs_operation_async("chat_message", lambda api: api.send_chat_message(sectionId, content))
+
+    @Slot("QVariantList")
+    def uploadBBBSImages(self, paths):
+        def run():
+            try:
+                from modules import bbbs
+                result = bbbs.upload_images([str(path) for path in paths])
+                if result and result.get("success"):
+                    self.bbbsImagesUploaded.emit(result.get("data") or [])
+                else:
+                    self.bbbsErrorOccurred.emit((result or {}).get("error", i18nText("图片上传失败")))
+            except Exception as exc:
+                self.bbbsErrorOccurred.emit(str(exc))
+        threading.Thread(target=run, daemon=True, name="BBBSImageUpload").start()
+
+    @Slot(str)
+    def deleteBBBSChatMessage(self, messageId):
+        self._bbbs_operation_async("delete_chat_message", lambda api: api.delete_chat_message(messageId))
 
     @Slot()
     def fetchBBBSNotifications(self):

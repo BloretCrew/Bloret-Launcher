@@ -9,88 +9,120 @@ FluentPage {
 
     property bool authenticated: false
     property bool loading: false
-    property int view: 0
+    property int view: 0 // 0 browse, 1 post
     property var boards: []
     property var sections: []
     property var posts: []
-    property var selectedPost: ({})
     property var comments: []
+    property var chatMessages: []
+    property var selectedPost: ({})
+    property var selectedSection: ({})
     property string selectedBoardId: ""
     property string selectedSectionId: ""
     property string searchText: ""
     property string errorText: ""
+    property bool chatMode: false
     property bool liked: false
 
     function tr(text) { return Backend ? Backend.tr(text) : text }
-    function resultItems(value) {
+    function idOf(value, fallback) { return String(value.id || value._id || value[fallback] || value.filename || value.fullName || value.section || "") }
+    function items(value) {
+        if (typeof value === "string") {
+            try { value = JSON.parse(value) } catch (error) { return [] }
+        }
         if (Array.isArray(value)) return value
         if (!value) return []
-        var nested = value.items || value.posts || value.data || []
-        return Array.isArray(nested) ? nested : []
+        var result = value.items || value.posts || value.messages || value.data || []
+        return Array.isArray(result) ? result : []
     }
-    function postId(post) { return String(post.id || post._id || post.postId || "") }
-    function postTitle(post) { return post.title || post.name || tr("无标题") }
-    function postContent(post) { return post.content || post.body || post.excerpt || "" }
-    function refresh() {
-        if (!authenticated || !Backend) return
+    function postId(post) { return idOf(post, "postId") }
+    function titleOf(post) { return post.title || post.name || tr("无标题") }
+    function bodyOf(post) { return post.content || post.body || post.excerpt || "" }
+    function sectionType(section) { return String(section.type || section.kind || section.sectionType || "text").toLowerCase() }
+    function isChatSection(section) { return ["chat", "group", "chatroom", "络聊"].indexOf(sectionType(section)) >= 0 }
+    function refreshPosts(force) {
+        if (!Backend || !authenticated) return
         loading = true
-        Backend.fetchBBBSBoards(true)
-        if (selectedBoardId) Backend.fetchBBBSSections(selectedBoardId, true)
-        Backend.fetchBBBSPosts(selectedSectionId, selectedBoardId, searchText, 1, 20, true)
+        Backend.fetchBBBSPosts(selectedSectionId, selectedBoardId, searchText, 1, 30, !!force)
+    }
+    function openSection(section) {
+        selectedSection = section || {}
+        if (selectedSection.board)
+            selectedBoardId = String(selectedSection.board)
+        selectedSectionId = String(selectedSection.section || selectedSection.fullName || selectedSection.name || "")
+        chatMode = isChatSection(selectedSection)
+        view = 0
+        if (chatMode) {
+            loading = true
+            chatMessages = []
+            Backend.fetchBBBSChatMessages(selectedSectionId)
+        } else {
+            refreshPosts(true)
+        }
     }
     function openPost(post) {
-        var id = postId(post)
-        if (!id) return
+        if (!postId(post)) return
         selectedPost = post
         view = 1
         loading = true
-        Backend.fetchBBBSPost(id)
-        Backend.fetchBBBSComments(id)
+        Backend.fetchBBBSPost(post.filename || postId(post))
+        Backend.fetchBBBSComments(post.filename || postId(post))
+    }
+    function reloadWorkspace() {
+        if (!Backend || !authenticated) return
+        loading = true
+        Backend.fetchBBBSBoards(true)
+        Backend.fetchBBBSSections(selectedBoardId, true)
+        if (chatMode && selectedSectionId)
+            Backend.fetchBBBSChatMessages(selectedSectionId)
+        else
+            refreshPosts(true)
     }
 
     Component.onCompleted: {
-        if (!Backend) return
-        authenticated = Backend.isBBBSAuthenticated()
+        console.log("[BBBS] page completed, backend=" + (!!Backend))
+        authenticated = Backend && Backend.isBBBSAuthenticated()
+        console.log("[BBBS] authenticated=" + authenticated)
         if (authenticated) {
             loading = true
+            console.log("[BBBS] requesting boards, sections and all posts")
             Backend.fetchBBBSBoards()
-            Backend.fetchBBBSSummary()
-            Backend.fetchBBBSPosts("", "", "", 1, 20, false)
+            Backend.fetchBBBSSections("")
+            Backend.fetchBBBSPosts("", "", "", 1, 30, false)
         }
+    }
+
+    Timer {
+        interval: 8000
+        repeat: true
+        running: authenticated && chatMode && view === 0 && selectedSectionId.length > 0
+        onTriggered: Backend.fetchBBBSChatMessages(selectedSectionId)
     }
 
     Connections {
         target: Backend
         function onBbbsBoardsReceived(value) {
-            boards = resultItems(value)
+            boards = items(value)
+            console.log("[BBBS] boards received count=" + boards.length)
             loading = false
         }
-        function onBbbsSectionsReceived(value) { sections = resultItems(value) }
+        function onBbbsSectionsReceived(value) {
+            sections = items(value)
+            console.log("[BBBS] sections received count=" + sections.length)
+        }
         function onBbbsPostsReceived(value) {
-            posts = resultItems(value)
+            posts = items(value)
+            console.log("[BBBS] posts received count=" + posts.length)
             loading = false
         }
-        function onBbbsPostReceived(value) {
-            selectedPost = value || selectedPost
-            loading = false
-        }
-        function onBbbsCommentsReceived(value) { comments = resultItems(value) }
+        function onBbbsPostReceived(value) { selectedPost = value || selectedPost; loading = false }
+        function onBbbsCommentsReceived(value) { comments = items(value) }
+        function onBbbsChatMessagesReceived(value) { chatMessages = items(value); loading = false }
         function onBbbsOperationFinished(operation, ok, result) {
             loading = false
             if (!ok) {
-                errorText = result && (result.error || result.message) ? (result.error || result.message) : tr("操作失败")
+                errorText = result && (result.error || result.message) ? (result.error || result.message) : tr("读取失败")
                 errorDialog.open()
-                return
-            }
-            if (operation === "comment" || operation === "like") {
-                if (operation === "comment") commentField.text = ""
-                openPost(selectedPost)
-            } else if (operation === "create_post" || operation === "create_board" || operation === "create_section") {
-                view = 0
-                refresh()
-            } else if (operation === "delete_post") {
-                view = 0
-                refresh()
             }
         }
         function onBbbsErrorOccurred(message) {
@@ -101,32 +133,20 @@ FluentPage {
     }
 
     content: ColumnLayout {
-        spacing: 12
+        spacing: 0
 
         PluginPanelHost { area: "bbbs"; Layout.fillWidth: true }
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.preferredHeight: 62
+            spacing: 10
             Label { text: "BBBS"; font.pixelSize: 30; font.weight: Font.Bold; color: Theme.currentTheme.colors.textColor }
-            Label { text: tr("百络论坛"); color: Theme.currentTheme.colors.textSecondaryColor; Layout.alignment: Qt.AlignBottom; Layout.bottomMargin: 4 }
+            Label { text: tr("百络论坛"); color: Theme.currentTheme.colors.textSecondaryColor }
             Badge { text: "Bloret BBS"; colorType: "Success" }
             Item { Layout.fillWidth: true }
-            Button {
-                text: tr("通知")
-                visible: authenticated
-                onClicked: { Backend.fetchBBBSNotifications(); noticeDialog.open() }
-            }
-            Button {
-                text: tr("任务")
-                visible: authenticated
-                onClicked: { Backend.fetchBBBSTasks(); taskDialog.open() }
-            }
-            Button {
-                text: tr("刷新")
-                visible: authenticated
-                icon.name: "ic_fluent_arrow_sync_20_regular"
-                onClicked: refresh()
-            }
+            Button { text: tr("通知"); visible: authenticated; onClicked: { Backend.fetchBBBSNotifications(); infoDialog.title = tr("通知"); infoDialog.message = tr("通知列表已刷新。"); infoDialog.open() } }
+            Button { text: tr("刷新"); visible: authenticated; icon.name: "ic_fluent_arrow_sync_20_regular"; onClicked: reloadWorkspace() }
         }
 
         Frame {
@@ -135,8 +155,9 @@ FluentPage {
             padding: 24
             ColumnLayout {
                 anchors.fill: parent
+                spacing: 10
                 Label { text: tr("请先登录 Bloret PassPort"); font.pixelSize: 18; font.weight: Font.DemiBold; Layout.alignment: Qt.AlignHCenter }
-                Label { text: tr("登录后即可浏览、发布和管理 BBBS 内容"); color: Theme.currentTheme.colors.textSecondaryColor; Layout.alignment: Qt.AlignHCenter }
+                Label { text: tr("登录后即可浏览 BBBS 内容"); color: Theme.currentTheme.colors.textSecondaryColor; Layout.alignment: Qt.AlignHCenter }
                 Button { text: tr("前往登录"); highlighted: true; Layout.alignment: Qt.AlignHCenter; onClicked: Backend.loginBloretPassPort() }
             }
         }
@@ -144,58 +165,44 @@ FluentPage {
         RowLayout {
             visible: authenticated
             Layout.fillWidth: true
-            spacing: 8
-            Button { text: tr("浏览"); highlighted: view === 0; onClicked: view = 0 }
-            Button { text: tr("发布主题"); highlighted: view === 2; onClicked: view = 2 }
-            Button { text: tr("统计与设置"); onClicked: { Backend.fetchBBBSStatistics(); Backend.fetchBBBSSettings(); settingsDialog.open() } }
-            Item { Layout.fillWidth: true }
-            TextField { id: searchField; Layout.preferredWidth: 220; placeholderText: tr("搜索帖子"); onAccepted: { searchText = text; refresh() } }
-            Button { text: tr("搜索"); onClicked: { searchText = searchField.text; refresh() } }
-        }
-
-        ProgressBar { visible: loading && authenticated; indeterminate: true; Layout.fillWidth: true }
-
-        RowLayout {
-            visible: authenticated && view === 0
-            Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 12
+
             Frame {
-                Layout.preferredWidth: 220
+                Layout.preferredWidth: 235
                 Layout.fillHeight: true
+                padding: 10
                 ColumnLayout {
                     anchors.fill: parent
-                    Label { text: tr("板块"); font.weight: Font.DemiBold }
+                    spacing: 8
+                    Label { text: tr("社区导航"); font.pixelSize: 17; font.weight: Font.DemiBold; Layout.leftMargin: 4 }
                     Button {
                         text: tr("全部帖子")
                         Layout.fillWidth: true
-                        onClicked: { selectedBoardId = ""; selectedSectionId = ""; refresh() }
+                        highlighted: selectedBoardId === "" && selectedSectionId === ""
+                        onClicked: { selectedBoardId = ""; selectedSectionId = ""; selectedSection = {}; chatMode = false; refreshPosts(true) }
                     }
+                    Label { text: tr("板块"); color: Theme.currentTheme.colors.textSecondaryColor; Layout.leftMargin: 4; Layout.topMargin: 8 }
                     ListView {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        Layout.preferredHeight: Math.min(150, contentHeight)
                         clip: true
                         model: boards
                         delegate: ItemDelegate {
                             width: ListView.view.width
                             text: modelData.name || modelData.title || ""
+                            highlighted: selectedBoardId === String(modelData.name || modelData.alias || "")
                             onClicked: {
-                                selectedBoardId = String(modelData.id || modelData._id || modelData.boardId || "")
+                                selectedBoardId = String(modelData.name || modelData.alias || "")
                                 selectedSectionId = ""
-                                Backend.fetchBBBSSections(selectedBoardId)
-                                Backend.fetchBBBSPosts("", selectedBoardId, searchText, 1, 20, false)
+                                selectedSection = {}
+                                chatMode = false
+                                Backend.fetchBBBSSections(selectedBoardId, true)
+                                refreshPosts(true)
                             }
                         }
                     }
-                    Button { text: tr("新建板块"); Layout.fillWidth: true; onClicked: boardDialog.open() }
-                }
-            }
-            Frame {
-                Layout.preferredWidth: 220
-                Layout.fillHeight: true
-                ColumnLayout {
-                    anchors.fill: parent
-                    Label { text: tr("分区"); font.weight: Font.DemiBold }
+                    Label { text: tr("分区"); color: Theme.currentTheme.colors.textSecondaryColor; Layout.leftMargin: 4; Layout.topMargin: 8 }
                     ListView {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -203,197 +210,167 @@ FluentPage {
                         model: sections
                         delegate: ItemDelegate {
                             width: ListView.view.width
-                            text: modelData.name || modelData.title || ""
-                            onClicked: {
-                                selectedSectionId = String(modelData.id || modelData._id || modelData.sectionId || "")
-                                Backend.fetchBBBSPosts(selectedSectionId, selectedBoardId, searchText, 1, 20, true)
-                            }
+                            text: (isChatSection(modelData) ? "💬  " : "") + (modelData.name || modelData.title || "")
+                            highlighted: selectedSectionId === String(modelData.section || modelData.fullName || modelData.name || "")
+                            onClicked: openSection(modelData)
                         }
                     }
-                    Button { text: tr("新建分区"); Layout.fillWidth: true; enabled: !!selectedBoardId; onClicked: sectionDialog.open() }
                 }
             }
-            ScrollView {
+
+            ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                ColumnLayout {
-                    width: Math.max(parent.width, 420)
-                    spacing: 8
-                    Label { visible: posts.length === 0 && !loading; text: tr("暂无帖子"); color: Theme.currentTheme.colors.textSecondaryColor }
-                    Repeater {
-                        model: posts
-                        Frame {
-                            Layout.fillWidth: true
-                            padding: 14
-                            background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 8; border.color: Theme.currentTheme.colors.cardBorderColor }
-                            ColumnLayout {
-                                width: parent.width
-                                spacing: 6
-                                Label { text: postTitle(modelData); font.pixelSize: 17; font.weight: Font.DemiBold; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: postContent(modelData).substring(0, 220); visible: text.length > 0; Layout.fillWidth: true; maximumLineCount: 3; elide: Text.ElideRight; wrapMode: Text.Wrap; color: Theme.currentTheme.colors.textSecondaryColor }
-                                RowLayout {
-                                    Label { text: modelData.author || modelData.username || ""; color: Theme.currentTheme.colors.textSecondaryColor }
-                                    Label { text: "❤ " + (modelData.likesCount || modelData.likes || 0); color: Theme.currentTheme.colors.textSecondaryColor }
-                                    Label { text: "💬 " + (modelData.commentsCount || modelData.comments || 0); color: Theme.currentTheme.colors.textSecondaryColor }
-                                    Item { Layout.fillWidth: true }
-                                    Button { text: tr("查看"); onClicked: openPost(modelData) }
+                spacing: 10
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label {
+                        text: chatMode ? (selectedSection.name || tr("络聊")) : (selectedSection.name || tr("帖子列表"))
+                        font.pixelSize: 22
+                        font.weight: Font.DemiBold
+                        Layout.fillWidth: true
+                    }
+                    TextField { id: searchInput; visible: !chatMode; Layout.preferredWidth: 200; placeholderText: tr("搜索帖子"); onAccepted: { searchText = text; refreshPosts(true) } }
+                    Button { text: tr("搜索"); visible: !chatMode; onClicked: { searchText = searchInput.text; refreshPosts(true) } }
+                }
+
+                ProgressBar { visible: loading; indeterminate: true; Layout.fillWidth: true }
+
+                // Regular post list
+                ScrollView {
+                    visible: view === 0 && !chatMode
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    ColumnLayout {
+                        width: Math.max(parent.width, 520)
+                        spacing: 8
+                        Label { visible: posts.length === 0 && !loading; text: tr("这个位置还没有帖子"); color: Theme.currentTheme.colors.textSecondaryColor; Layout.topMargin: 20 }
+                        Repeater {
+                            model: posts
+                            Frame {
+                                Layout.fillWidth: true
+                                padding: 16
+                                background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 8; border.color: Theme.currentTheme.colors.cardBorderColor }
+                                ColumnLayout {
+                                    width: parent.width
+                                    spacing: 6
+                                    Label { text: titleOf(modelData); font.pixelSize: 17; font.weight: Font.DemiBold; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                    Label { text: bodyOf(modelData).substring(0, 220); visible: text.length > 0; maximumLineCount: 3; elide: Text.ElideRight; wrapMode: Text.Wrap; Layout.fillWidth: true; color: Theme.currentTheme.colors.textSecondaryColor }
+                                    RowLayout {
+                                        Label { text: modelData.author || modelData.username || tr("匿名"); color: Theme.currentTheme.colors.textSecondaryColor }
+                                        Label { text: "❤ " + (modelData.likesCount || modelData.likes || 0); color: Theme.currentTheme.colors.textSecondaryColor }
+                                        Label { text: "💬 " + (modelData.commentsCount || modelData.comments || 0); color: Theme.currentTheme.colors.textSecondaryColor }
+                                        Item { Layout.fillWidth: true }
+                                        Button { text: tr("查看详情"); onClicked: openPost(modelData) }
+                                    }
                                 }
                             }
                         }
                     }
-                    Item { height: 20 }
                 }
-            }
-        }
 
-        ScrollView {
-            visible: authenticated && view === 1
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            ColumnLayout {
-                width: Math.max(parent.width, 420)
-                spacing: 12
-                Button { text: tr("返回帖子列表"); onClicked: view = 0 }
+                // Real 络聊 view
                 Frame {
+                    visible: view === 0 && chatMode
                     Layout.fillWidth: true
-                    padding: 18
+                    Layout.fillHeight: true
+                    padding: 0
                     ColumnLayout {
-                        width: parent.width
-                        Label { text: postTitle(selectedPost); font.pixelSize: 24; font.weight: Font.Bold; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                        Label { text: (selectedPost.author || selectedPost.username || "") + "  " + (selectedPost.time || selectedPost.created_at || ""); color: Theme.currentTheme.colors.textSecondaryColor }
-                        Label { text: postContent(selectedPost); textFormat: Text.MarkdownText; Layout.fillWidth: true; wrapMode: Text.Wrap; color: Theme.currentTheme.colors.textColor }
-                        RowLayout {
-                            Button { text: liked ? tr("取消点赞") : tr("点赞"); onClicked: { liked = !liked; Backend.toggleBBBSLike(postId(selectedPost)) } }
-                            Button { text: tr("举报"); onClicked: reportDialog.open() }
-                            Button { text: tr("删除"); visible: !!selectedPost.canDelete; onClicked: deleteDialog.open() }
-                            Item { Layout.fillWidth: true }
+                        anchors.fill: parent
+                        spacing: 0
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 42
+                            color: Theme.currentTheme.colors.controlColor
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 14
+                                anchors.rightMargin: 14
+                                Label { text: tr("络聊分区"); font.weight: Font.DemiBold }
+                                Item { Layout.fillWidth: true }
+                                Label { text: tr("自动刷新"); color: Theme.currentTheme.colors.textSecondaryColor }
+                            }
+                        }
+                        ListView {
+                            id: chatList
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Layout.margins: 12
+                            clip: true
+                            spacing: 8
+                            model: chatMessages
+                            delegate: Frame {
+                                width: chatList.width
+                                padding: 10
+                                background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 7 }
+                                RowLayout {
+                                    width: parent.width
+                                    Label { text: modelData.author || modelData.username || modelData.from || "?"; font.weight: Font.DemiBold; Layout.preferredWidth: 110; elide: Text.ElideRight }
+                                    Label { text: modelData.content || modelData.message || modelData.msg || (modelData.payload ? modelData.payload.msg : ""); wrapMode: Text.Wrap; Layout.fillWidth: true }
+                                    Label { text: modelData.time || modelData.createdAt || ""; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 11 }
+                                }
+                            }
+                            Label { anchors.centerIn: parent; visible: chatMessages.length === 0 && !loading; text: tr("暂无消息，发送第一条吧"); color: Theme.currentTheme.colors.textSecondaryColor }
+                        }
+                        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.currentTheme.colors.cardBorderColor }
+                        Label {
+                            text: tr("络聊内容当前为只读浏览")
+                            color: Theme.currentTheme.colors.textSecondaryColor
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.margins: 10
                         }
                     }
                 }
-                Label { text: tr("评论"); font.pixelSize: 18; font.weight: Font.DemiBold }
-                Repeater {
-                    model: comments
-                    Frame {
-                        Layout.fillWidth: true
-                        padding: 10
-                        Label { text: (modelData.author || modelData.username || "") + ": " + (modelData.content || modelData.body || ""); wrapMode: Text.Wrap; width: parent.width }
-                    }
-                }
-                RowLayout {
+
+                // Post detail
+                ScrollView {
+                    visible: view === 1
                     Layout.fillWidth: true
-                    TextField { id: commentField; Layout.fillWidth: true; placeholderText: tr("写下评论") }
-                    Button { text: tr("发送"); enabled: commentField.text.length > 0; onClicked: Backend.createBBBSComment(postId(selectedPost), commentField.text) }
-                }
-            }
-        }
-
-        ScrollView {
-            visible: authenticated && view === 2
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            ColumnLayout {
-                width: Math.max(parent.width, 420)
-                spacing: 10
-                Label { text: tr("发布新主题"); font.pixelSize: 22; font.weight: Font.Bold }
-                ComboBox { id: sectionCombo; Layout.fillWidth: true; model: sections; textRole: "name"; enabled: sections.length > 0 }
-                TextField { id: titleField; Layout.fillWidth: true; placeholderText: tr("标题") }
-                TextArea { id: contentField; Layout.fillWidth: true; Layout.preferredHeight: 260; placeholderText: tr("内容（支持 Markdown）"); wrapMode: TextArea.Wrap }
-                Label { text: tr("发布前请确认内容、分区和标题正确。图片上传将在后续接口确认后启用。"); color: Theme.currentTheme.colors.textSecondaryColor; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                RowLayout {
-                    Button { text: tr("取消"); onClicked: view = 0 }
-                    Item { Layout.fillWidth: true }
-                    Button {
-                        text: tr("发布")
-                        highlighted: true
-                        enabled: titleField.text.length > 0 && contentField.text.length > 0 && sectionCombo.currentIndex >= 0
-                        onClicked: {
-                            var section = sections[sectionCombo.currentIndex]
-                            var id = section ? (section.id || section._id || section.sectionId || "") : ""
-                            loading = true
-                            Backend.createBBBSPost(String(id), titleField.text, contentField.text, "text", "", "")
+                    Layout.fillHeight: true
+                    ColumnLayout {
+                        width: Math.max(parent.width, 520)
+                        spacing: 10
+                        Button { text: tr("返回列表"); onClicked: view = 0 }
+                        Frame {
+                            Layout.fillWidth: true
+                            padding: 18
+                            ColumnLayout {
+                                width: parent.width
+                                Label { text: titleOf(selectedPost); font.pixelSize: 25; font.weight: Font.Bold; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                Label { text: (selectedPost.author || selectedPost.username || tr("匿名")) + "  " + (selectedPost.time || selectedPost.created_at || ""); color: Theme.currentTheme.colors.textSecondaryColor }
+                                Label { text: bodyOf(selectedPost); textFormat: Text.MarkdownText; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                            }
+                        }
+                        Label { text: tr("评论（只读）"); font.pixelSize: 18; font.weight: Font.DemiBold }
+                        Repeater {
+                            model: comments
+                            Frame {
+                                Layout.fillWidth: true
+                                Label { text: (modelData.author || modelData.username || tr("匿名")) + ":  " + (modelData.content || modelData.body || ""); wrapMode: Text.Wrap; width: parent.width }
+                            }
                         }
                     }
                 }
+
             }
         }
     }
 
     Dialog {
-        id: boardDialog
+        id: infoDialog
         modal: true
-        title: tr("新建板块")
-        standardButtons: Dialog.Cancel
-        contentItem: ColumnLayout {
-            width: 360
-            TextField { id: boardName; placeholderText: tr("板块名称") }
-            Button { text: tr("创建"); onClicked: { Backend.createBBBSBoard(boardName.text); boardDialog.close() } }
-        }
-    }
-    Dialog {
-        id: sectionDialog
-        modal: true
-        title: tr("新建分区")
-        standardButtons: Dialog.Cancel
-        contentItem: ColumnLayout {
-            width: 360
-            TextField { id: sectionName; placeholderText: tr("分区名称") }
-            ComboBox { id: sectionType; model: [tr("文字分区"), tr("图片分区"), tr("络聊分区")] }
-            Button { text: tr("创建"); onClicked: { Backend.createBBBSSection(selectedBoardId, sectionName.text, ["text", "image", "chat"][sectionType.currentIndex], ""); sectionDialog.close() } }
-        }
+        property string message: ""
+        title: tr("BBBS")
+        standardButtons: Dialog.Close
+        contentItem: Label { text: infoDialog.message; padding: 20; wrapMode: Text.Wrap; width: 380 }
     }
     Dialog {
         id: errorDialog
         modal: true
         title: tr("BBBS 提示")
         standardButtons: Dialog.Ok
-        contentItem: Label { text: errorText; wrapMode: Text.Wrap; padding: 20; width: 360 }
-    }
-    Dialog {
-        id: deleteDialog
-        modal: true
-        title: tr("确认删除")
-        standardButtons: Dialog.Cancel
-        contentItem: ColumnLayout {
-            width: 360
-            Label { text: tr("删除后无法恢复，确定继续吗？"); wrapMode: Text.Wrap }
-            Button { text: tr("确认删除"); onClicked: { Backend.deleteBBBSPost(postId(selectedPost)); deleteDialog.close() } }
-        }
-    }
-    Dialog {
-        id: reportDialog
-        modal: true
-        title: tr("举报")
-        standardButtons: Dialog.Cancel
-        contentItem: ColumnLayout {
-            width: 360
-            TextField { id: reportReason; placeholderText: tr("举报原因") }
-            TextArea { id: reportDetail; placeholderText: tr("详细说明（选填）") }
-            Button { text: tr("提交"); onClicked: reportDialog.close() }
-        }
-    }
-    Dialog {
-        id: noticeDialog
-        modal: true
-        title: tr("通知")
-        standardButtons: Dialog.Close
-        contentItem: Label { text: tr("通知已请求，当前版本将通过后续数据回调展示。"); padding: 20; wrapMode: Text.Wrap; width: 360 }
-    }
-    Dialog {
-        id: taskDialog
-        modal: true
-        title: tr("定时任务")
-        standardButtons: Dialog.Close
-        contentItem: Label { text: tr("任务已请求，当前版本将通过后续数据回调展示。"); padding: 20; wrapMode: Text.Wrap; width: 360 }
-    }
-    Dialog {
-        id: settingsDialog
-        modal: true
-        title: tr("统计与设置")
-        standardButtons: Dialog.Close
-        contentItem: ColumnLayout {
-            width: 420
-            Label { text: tr("统计、用户设置和权限数据已请求。敏感信息不会在此页面显示。"); wrapMode: Text.Wrap }
-            Button { text: tr("打开 BBBS 网页版"); onClicked: { Qt.openUrlExternally("https://bbs.bloret.net/"); settingsDialog.close() } }
-        }
+        contentItem: Label { text: errorText; padding: 20; wrapMode: Text.Wrap; width: 380 }
     }
 }
