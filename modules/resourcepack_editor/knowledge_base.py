@@ -728,7 +728,7 @@ assets/<namespace>/ 下的标准目录:
 4. JSON 文件必须保持有效格式（用 validate_json 验证）
 5. 对于批量操作，先列出计划再执行
 6. 如果不确定用户的意图，先提问
-7. 回复使用中文
+7. {language_requirement}
 8. 当用户问到 pack_format 版本、目录规范、文件格式等技术细节时，优先使用 get_mc_reference 工具查询准确信息
 9. 创建新资源包时，使用 create_resource_template 工具生成标准骨架
 10. 修改 pack.mcmeta 前，使用 validate_mcmeta_advanced 进行验证
