@@ -23,6 +23,7 @@ FluentPage {
     property string errorText: ""
     property bool chatMode: false
     property bool liked: false
+    property bool sidebarCollapsed: false
 
     function tr(text) { return Backend ? Backend.tr(text) : text }
     function idOf(value, fallback) { return String(value.id || value._id || value[fallback] || value.filename || value.fullName || value.section || "") }
@@ -146,6 +147,7 @@ FluentPage {
             Badge { text: "Bloret BBS"; colorType: "Success" }
             Item { Layout.fillWidth: true }
             Button { text: tr("通知"); visible: authenticated; onClicked: { Backend.fetchBBBSNotifications(); infoDialog.title = tr("通知"); infoDialog.message = tr("通知列表已刷新。"); infoDialog.open() } }
+            Button { text: sidebarCollapsed ? tr("显示导航") : tr("隐藏导航"); visible: authenticated; icon.name: sidebarCollapsed ? "ic_fluent_panel_left_20_regular" : "ic_fluent_panel_left_contract_20_regular"; onClicked: sidebarCollapsed = !sidebarCollapsed }
             Button { text: tr("刷新"); visible: authenticated; icon.name: "ic_fluent_arrow_sync_20_regular"; onClicked: reloadWorkspace() }
         }
 
@@ -169,13 +171,19 @@ FluentPage {
             spacing: 12
 
             Frame {
+                visible: !sidebarCollapsed
                 Layout.preferredWidth: 235
+                Layout.minimumWidth: 180
                 Layout.fillHeight: true
                 padding: 10
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 8
-                    Label { text: tr("社区导航"); font.pixelSize: 17; font.weight: Font.DemiBold; Layout.leftMargin: 4 }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label { text: tr("社区导航"); font.pixelSize: 17; font.weight: Font.DemiBold; Layout.fillWidth: true }
+                        ToolButton { text: "‹"; onClicked: sidebarCollapsed = true; ToolTip.visible: hovered; ToolTip.text: tr("收起导航") }
+                    }
                     Button {
                         text: tr("全部帖子")
                         Layout.fillWidth: true
@@ -217,6 +225,15 @@ FluentPage {
                     }
                 }
             }
+            ToolButton {
+                visible: sidebarCollapsed
+                Layout.preferredWidth: 38
+                Layout.alignment: Qt.AlignTop
+                text: "☰"
+                onClicked: sidebarCollapsed = false
+                ToolTip.visible: hovered
+                ToolTip.text: tr("展开导航")
+            }
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -244,17 +261,18 @@ FluentPage {
                     Layout.fillHeight: true
                     clip: true
                     ColumnLayout {
-                        width: Math.max(parent.width, 520)
+                        width: Math.max(0, parent.width - 12)
                         spacing: 8
                         Label { visible: posts.length === 0 && !loading; text: tr("这个位置还没有帖子"); color: Theme.currentTheme.colors.textSecondaryColor; Layout.topMargin: 20 }
                         Repeater {
                             model: posts
                             Frame {
+                                width: Math.max(0, parent.width)
                                 Layout.fillWidth: true
                                 padding: 16
                                 background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 8; border.color: Theme.currentTheme.colors.cardBorderColor }
                                 ColumnLayout {
-                                    width: parent.width
+                                    width: Math.max(0, parent.width - 32)
                                     spacing: 6
                                     Label { text: titleOf(modelData); font.pixelSize: 17; font.weight: Font.DemiBold; Layout.fillWidth: true; wrapMode: Text.Wrap }
                                     Label { text: bodyOf(modelData).substring(0, 220); visible: text.length > 0; maximumLineCount: 3; elide: Text.ElideRight; wrapMode: Text.Wrap; Layout.fillWidth: true; color: Theme.currentTheme.colors.textSecondaryColor }
@@ -330,7 +348,7 @@ FluentPage {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     ColumnLayout {
-                        width: Math.max(parent.width, 520)
+                        width: parent.width
                         spacing: 10
                         Button { text: tr("返回列表"); onClicked: view = 0 }
                         Frame {
