@@ -289,8 +289,8 @@ class Backend(QObject):
     bbbsBoardsReceived = Signal(str)
     bbbsSectionsReceived = Signal(str)
     bbbsPostsReceived = Signal(str)
-    bbbsPostReceived = Signal(object)
-    bbbsCommentsReceived = Signal(object)
+    bbbsPostReceived = Signal(str)
+    bbbsCommentsReceived = Signal(str)
     bbbsChatMessagesReceived = Signal(object)
     bbbsImagesUploaded = Signal(object)
     bbbsNotificationsReceived = Signal(object)
@@ -4552,8 +4552,15 @@ class Backend(QObject):
 
     # Full BBBS workspace API
     @staticmethod
+    def _bbbs_emit_json(signal, value, fallback):
+        payload = value if isinstance(value, type(fallback)) else fallback
+        size = len(payload) if isinstance(payload, (list, dict)) else 0
+        log(f"[BBBS] emit JSON items={size}")
+        signal.emit(json.dumps(payload, ensure_ascii=False))
+
+    @staticmethod
     def _bbbs_emit_list(signal, value):
-        signal.emit(json.dumps(value if isinstance(value, list) else [], ensure_ascii=False))
+        Backend._bbbs_emit_json(signal, value, [])
 
     def _bbbs_async(self, operation, worker, signal, *, fallback=None):
         log(f"[BBBS] async start operation={operation}")
@@ -4565,8 +4572,10 @@ class Backend(QObject):
                     result = fallback
                 size = len(result) if isinstance(result, (list, dict, str)) else type(result).__name__
                 log(f"[BBBS] async finish operation={operation} result={size}")
-                if operation in {"Boards", "Sections", "Posts"}:
+                if operation in {"Boards", "Sections", "Posts", "Comments"}:
                     self._bbbs_emit_list(signal, result)
+                elif operation == "Post":
+                    self._bbbs_emit_json(signal, result, {})
                 else:
                     signal.emit(result)
             except Exception as exc:
@@ -4607,6 +4616,7 @@ class Backend(QObject):
             return
         def worker(api):
             data = api.fetch_posts(sectionId or None, boardId or None, page, limit, search)
+            data = [post for post in data if isinstance(post, dict) and (post.get("title") or post.get("name") or post.get("filename"))]
             self._bbbs_posts_cache[key] = data
             return data
         self._bbbs_async("Posts", worker, self.bbbsPostsReceived, fallback=[])

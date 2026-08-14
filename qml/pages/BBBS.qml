@@ -37,7 +37,20 @@ FluentPage {
         return Array.isArray(result) ? result : []
     }
     function postId(post) { return idOf(post, "postId") }
-    function titleOf(post) { return post.title || post.name || tr("无标题") }
+    function titleOf(post) {
+        if (!post || typeof post !== "object") return tr("无标题")
+        return post.title || post.name || post.filename || tr("无标题")
+    }
+    function normalizePosts(value) {
+        var result = items(value)
+        var normalized = []
+        for (var i = 0; i < result.length; ++i) {
+            var post = result[i]
+            if (post && typeof post === "object" && (post.title || post.name || post.filename))
+                normalized.push(post)
+        }
+        return normalized
+    }
     function bodyOf(post) { return post.content || post.body || post.excerpt || "" }
     function sectionType(section) { return String(section.type || section.kind || section.sectionType || "text").toLowerCase() }
     function isChatSection(section) { return ["chat", "group", "chatroom", "络聊"].indexOf(sectionType(section)) >= 0 }
@@ -112,11 +125,22 @@ FluentPage {
             console.log("[BBBS] sections received count=" + sections.length)
         }
         function onBbbsPostsReceived(value) {
-            posts = items(value)
-            console.log("[BBBS] posts received count=" + posts.length)
+            var nextPosts = normalizePosts(value)
+            if (nextPosts.length > 0 || posts.length === 0)
+                posts = nextPosts
+            console.log("[BBBS] posts received raw=" + items(value).length + " valid=" + nextPosts.length + " displayed=" + posts.length)
             loading = false
         }
-        function onBbbsPostReceived(value) { selectedPost = value || selectedPost; loading = false }
+        function onBbbsPostReceived(value) {
+            var post = value
+            if (typeof post === "string") {
+                try { post = JSON.parse(post) } catch (error) { post = null }
+            }
+            if (post && typeof post === "object" && (post.title || post.name || post.filename))
+                selectedPost = post
+            console.log("[BBBS] post received title=" + titleOf(selectedPost))
+            loading = false
+        }
         function onBbbsCommentsReceived(value) { comments = items(value) }
         function onBbbsChatMessagesReceived(value) { chatMessages = items(value); loading = false }
         function onBbbsOperationFinished(operation, ok, result) {
@@ -274,9 +298,11 @@ FluentPage {
                     }
                     delegate: Frame {
                         width: postList.width
+                        implicitHeight: postCardContent.implicitHeight + topPadding + bottomPadding
                         padding: 16
                         background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 8; border.color: Theme.currentTheme.colors.cardBorderColor }
                         ColumnLayout {
+                            id: postCardContent
                             width: parent.width - parent.leftPadding - parent.rightPadding
                             spacing: 6
                             Label { text: titleOf(modelData); font.pixelSize: 17; font.weight: Font.DemiBold; Layout.fillWidth: true; wrapMode: Text.Wrap }
@@ -348,29 +374,35 @@ FluentPage {
 
                 // Post detail
                 ScrollView {
+                    id: detailScroll
                     visible: view === 1
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    ColumnLayout {
-                        width: parent.width
+                    Layout.minimumWidth: 0
+                    clip: true
+                    Column {
+                        width: detailScroll.availableWidth
                         spacing: 10
                         Button { text: tr("返回列表"); onClicked: view = 0 }
                         Frame {
-                            Layout.fillWidth: true
+                            width: parent.width
                             padding: 18
-                            ColumnLayout {
-                                width: parent.width
-                                Label { text: titleOf(selectedPost); font.pixelSize: 25; font.weight: Font.Bold; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: (selectedPost.author || selectedPost.username || tr("匿名")) + "  " + (selectedPost.time || selectedPost.created_at || ""); color: Theme.currentTheme.colors.textSecondaryColor }
-                                Label { text: bodyOf(selectedPost); textFormat: Text.MarkdownText; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                            background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 8; border.color: Theme.currentTheme.colors.cardBorderColor }
+                            Column {
+                                width: parent.width - parent.leftPadding - parent.rightPadding
+                                spacing: 10
+                                Label { width: parent.width; text: titleOf(selectedPost); font.pixelSize: 25; font.weight: Font.Bold; wrapMode: Text.Wrap }
+                                Label { width: parent.width; text: (selectedPost.author || selectedPost.username || tr("匿名")) + "  " + (selectedPost.time || selectedPost.created_at || ""); color: Theme.currentTheme.colors.textSecondaryColor; wrapMode: Text.Wrap }
+                                Label { width: parent.width; text: bodyOf(selectedPost); textFormat: Text.MarkdownText; wrapMode: Text.Wrap }
                             }
                         }
                         Label { text: tr("评论（只读）"); font.pixelSize: 18; font.weight: Font.DemiBold }
                         Repeater {
                             model: comments
                             Frame {
-                                Layout.fillWidth: true
-                                Label { text: (modelData.author || modelData.username || tr("匿名")) + ":  " + (modelData.content || modelData.body || ""); wrapMode: Text.Wrap; width: parent.width }
+                                width: parent.width
+                                padding: 12
+                                Label { text: (modelData.author || modelData.username || tr("匿名")) + ":  " + (modelData.content || modelData.body || ""); wrapMode: Text.Wrap; width: parent.width - parent.leftPadding - parent.rightPadding }
                             }
                         }
                     }
