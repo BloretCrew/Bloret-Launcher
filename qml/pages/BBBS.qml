@@ -373,26 +373,32 @@ FluentPage {
                 }
 
                 // Post detail
-                ScrollView {
+                Flickable {
                     id: detailScroll
                     visible: view === 1
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.minimumWidth: 0
                     clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    contentWidth: width
+                    contentHeight: detailContentColumn.height
+                    flickableDirection: Flickable.VerticalFlick
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                     Column {
-                        width: detailScroll.availableWidth
+                        id: detailContentColumn
+                        width: detailScroll.width
                         spacing: 10
                         Button { text: tr("返回列表"); onClicked: view = 0 }
                         Rectangle {
                             id: detailCard
                             width: parent.width
-                            implicitHeight: detailContent.implicitHeight + 36
+                            implicitHeight: detailCardContent.implicitHeight + 36
                             color: Theme.currentTheme.colors.cardColor
                             radius: 8
                             border.color: Theme.currentTheme.colors.cardBorderColor
                             Column {
-                                id: detailContent
+                                id: detailCardContent
                                 x: 18
                                 y: 18
                                 width: detailCard.width - 36
@@ -407,8 +413,9 @@ FluentPage {
                             model: comments
                             Frame {
                                 width: parent.width
+                                implicitHeight: commentText.implicitHeight + topPadding + bottomPadding
                                 padding: 12
-                                Label { text: (modelData.author || modelData.username || tr("匿名")) + ":  " + (modelData.content || modelData.body || ""); wrapMode: Text.Wrap; width: parent.width - parent.leftPadding - parent.rightPadding }
+                                Label { id: commentText; text: (modelData.author || modelData.username || tr("匿名")) + ":  " + (modelData.content || modelData.body || ""); wrapMode: Text.Wrap; width: parent.width - parent.leftPadding - parent.rightPadding }
                             }
                         }
                     }
