@@ -5486,6 +5486,22 @@ class Backend(QObject):
 
         threading.Thread(target=sync_account, daemon=True).start()
 
+    @Slot(str, result=bool)
+    def setPluginStoreApi(self, value):
+        """Save the HTTPS plugin store listing endpoint."""
+        try:
+            from urllib.parse import urlparse
+            url = str(value or "").strip().rstrip("/")
+            parsed = urlparse(url)
+            if parsed.scheme != "https" or not parsed.netloc:
+                return False
+            data = cfg.read() or {}
+            data["plugin_store_api"] = url
+            return bool(cfg.write(data, changed_keys={"plugin_store_api": url}))
+        except Exception as e:
+            print(f"[PluginStore] 保存商店地址失败: {e}")
+            return False
+
     @Slot(result=str)
     def getConfigLanguage(self):
         """获取当前配置的语言"""
@@ -5822,6 +5838,9 @@ class LauncherV2(RinUIWindow):
             from modules.plugin_host import bootstrap_plugins, get_plugin_host
             self.plugin_host = bootstrap_plugins()
             self.engine.rootContext().setContextProperty("PluginHost", self.plugin_host)
+            from modules.plugin_store import PluginStore
+            self.plugin_store = PluginStore(self.plugin_host, self)
+            self.engine.rootContext().setContextProperty("PluginStore", self.plugin_store)
             print(f"[PluginHost] 已注入 QML，插件数={len(self.plugin_host.list_plugins_info())}")
         except Exception as e:
             import traceback
@@ -5831,8 +5850,12 @@ class LauncherV2(RinUIWindow):
                 from modules.plugin_host import get_plugin_host
                 self.plugin_host = get_plugin_host()
                 self.engine.rootContext().setContextProperty("PluginHost", self.plugin_host)
+                from modules.plugin_store import PluginStore
+                self.plugin_store = PluginStore(self.plugin_host, self)
+                self.engine.rootContext().setContextProperty("PluginStore", self.plugin_store)
             except Exception:
                 self.engine.rootContext().setContextProperty("PluginHost", None)
+                self.engine.rootContext().setContextProperty("PluginStore", None)
 
         # 协议 / 商店 deep link：IPC 服务 + 冷启动 argv
         try:

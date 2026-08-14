@@ -596,6 +596,11 @@ FluentPage {
     property string _pluginsThemeNone: Backend ? Backend.tr("默认主题") : "默认主题"
     property string _pluginsUnnamed: Backend ? Backend.tr("未命名插件") : "未命名插件"
     property string _pluginsInstallHint: Backend ? Backend.tr("选择 BLAPI 打包的插件 ZIP（plugin.json 在压缩包根目录）") : "选择 BLAPI 打包的插件 ZIP（plugin.json 在压缩包根目录）"
+    property string _pluginStoreTitle: Backend ? Backend.tr("插件商店") : "插件商店"
+    property string _pluginStoreDesc: Backend ? Backend.tr("浏览可信来源的插件；安装前仍需确认权限") : "浏览可信来源的插件；安装前仍需确认权限"
+    property string _pluginStoreApi: Backend ? Backend.tr("商店接口地址") : "商店接口地址"
+    property string _pluginStoreApiPlaceholder: Backend ? Backend.tr("https://store.bloret.com/api/v1/plugins") : "https://store.bloret.com/api/v1/plugins"
+    property string _pluginStoreSave: Backend ? Backend.tr("保存") : "保存"
     property string _pluginsInstallOk: Backend ? Backend.tr("插件安装成功") : "插件安装成功"
     property string _pluginsInstallFail: Backend ? Backend.tr("插件安装失败") : "插件安装失败"
     property string lastPluginInstallMessage: ""
@@ -1796,6 +1801,41 @@ FluentPage {
             Layout.fillWidth: true
             spacing: 4
             visible: currentCategory === "plugins"
+
+            SettingCard {
+                Layout.fillWidth: true
+                title: _pluginStoreTitle
+                description: _pluginStoreDesc
+                icon.name: "ic_fluent_store_microsoft_20_regular"
+                RowLayout {
+                    spacing: 8
+                    TextField {
+                        id: pluginStoreApiField
+                        Layout.fillWidth: true
+                        placeholderText: _pluginStoreApiPlaceholder
+                        text: PluginStore ? PluginStore.getApiBase() : ""
+                    }
+                    Button {
+                        flat: true
+                        text: _pluginStoreSave
+                        onClicked: {
+                            if (Backend && pluginStoreApiField.text.trim().length > 0) {
+                                Backend.setPluginStoreApi(pluginStoreApiField.text.trim())
+                                lastPluginInstallMessage = _pluginStoreTitle + ": " + Backend.tr("已保存")
+                            }
+                        }
+                    }
+                    Button {
+                        flat: true
+                        text: Backend ? Backend.tr("打开商店") : "打开商店"
+                        onClicked: {
+                            currentCategory = ""
+                            if (typeof navigationView !== "undefined" && navigationView)
+                                navigationView.push(Qt.resolvedUrl("PluginStore.qml"))
+                        }
+                    }
+                }
+            }
 
             SettingCard {
                 Layout.fillWidth: true
