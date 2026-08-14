@@ -4551,6 +4551,10 @@ class Backend(QObject):
         threading.Thread(target=run, daemon=True, name="BBBSAllPosts").start()
 
     # Full BBBS workspace API
+    @staticmethod
+    def _bbbs_emit_list(signal, value):
+        signal.emit(json.dumps(value if isinstance(value, list) else [], ensure_ascii=False))
+
     def _bbbs_async(self, operation, worker, signal, *, fallback=None):
         log(f"[BBBS] async start operation={operation}")
         def run():
@@ -4562,7 +4566,7 @@ class Backend(QObject):
                 size = len(result) if isinstance(result, (list, dict, str)) else type(result).__name__
                 log(f"[BBBS] async finish operation={operation} result={size}")
                 if operation in {"Boards", "Sections", "Posts"}:
-                    signal.emit(json.dumps(result if isinstance(result, (list, dict)) else [], ensure_ascii=False))
+                    self._bbbs_emit_list(signal, result)
                 else:
                     signal.emit(result)
             except Exception as exc:
@@ -4574,7 +4578,7 @@ class Backend(QObject):
     @Slot(bool)
     def fetchBBBSBoards(self, forceRefresh=False):
         if not forceRefresh and self._bbbs_boards_cache is not None:
-            self.bbbsBoardsReceived.emit(self._bbbs_boards_cache)
+            self._bbbs_emit_list(self.bbbsBoardsReceived, self._bbbs_boards_cache)
             return
         def worker(api):
             data = api.fetch_boards()
@@ -4586,7 +4590,7 @@ class Backend(QObject):
     @Slot(str, bool)
     def fetchBBBSSections(self, boardId="", forceRefresh=False):
         if not forceRefresh and boardId in self._bbbs_sections_cache:
-            self.bbbsSectionsReceived.emit(self._bbbs_sections_cache[boardId])
+            self._bbbs_emit_list(self.bbbsSectionsReceived, self._bbbs_sections_cache[boardId])
             return
         def worker(api):
             data = api.fetch_sections(boardId or None)
@@ -4599,7 +4603,7 @@ class Backend(QObject):
         log(f"[BBBS] fetch posts called section={sectionId!r} board={boardId!r} search_len={len(search or '')} page={page} limit={limit} force={forceRefresh}")
         key = json.dumps([sectionId, boardId, search, page, limit], ensure_ascii=False)
         if not forceRefresh and key in self._bbbs_posts_cache:
-            self.bbbsPostsReceived.emit(self._bbbs_posts_cache[key])
+            self._bbbs_emit_list(self.bbbsPostsReceived, self._bbbs_posts_cache[key])
             return
         def worker(api):
             data = api.fetch_posts(sectionId or None, boardId or None, page, limit, search)

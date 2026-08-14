@@ -238,6 +238,7 @@ FluentPage {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.minimumWidth: 0
                 spacing: 10
 
                 RowLayout {
@@ -255,35 +256,38 @@ FluentPage {
                 ProgressBar { visible: loading; indeterminate: true; Layout.fillWidth: true }
 
                 // Regular post list
-                ScrollView {
+                ListView {
+                    id: postList
                     visible: view === 0 && !chatMode
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.minimumWidth: 0
                     clip: true
-                    ColumnLayout {
-                        width: Math.max(0, parent.width - 12)
-                        spacing: 8
-                        Label { visible: posts.length === 0 && !loading; text: tr("这个位置还没有帖子"); color: Theme.currentTheme.colors.textSecondaryColor; Layout.topMargin: 20 }
-                        Repeater {
-                            model: posts
-                            Frame {
-                                width: Math.max(0, parent.width)
+                    spacing: 8
+                    model: posts
+                    header: Label {
+                        width: postList.width
+                        visible: posts.length === 0 && !loading
+                        text: tr("这个位置还没有帖子")
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                        topPadding: 20
+                    }
+                    delegate: Frame {
+                        width: postList.width
+                        padding: 16
+                        background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 8; border.color: Theme.currentTheme.colors.cardBorderColor }
+                        ColumnLayout {
+                            width: parent.width - parent.leftPadding - parent.rightPadding
+                            spacing: 6
+                            Label { text: titleOf(modelData); font.pixelSize: 17; font.weight: Font.DemiBold; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                            Label { text: bodyOf(modelData).substring(0, 220); visible: text.length > 0; maximumLineCount: 3; elide: Text.ElideRight; wrapMode: Text.Wrap; Layout.fillWidth: true; color: Theme.currentTheme.colors.textSecondaryColor }
+                            RowLayout {
                                 Layout.fillWidth: true
-                                padding: 16
-                                background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 8; border.color: Theme.currentTheme.colors.cardBorderColor }
-                                ColumnLayout {
-                                    width: Math.max(0, parent.width - 32)
-                                    spacing: 6
-                                    Label { text: titleOf(modelData); font.pixelSize: 17; font.weight: Font.DemiBold; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                    Label { text: bodyOf(modelData).substring(0, 220); visible: text.length > 0; maximumLineCount: 3; elide: Text.ElideRight; wrapMode: Text.Wrap; Layout.fillWidth: true; color: Theme.currentTheme.colors.textSecondaryColor }
-                                    RowLayout {
-                                        Label { text: modelData.author || modelData.username || tr("匿名"); color: Theme.currentTheme.colors.textSecondaryColor }
-                                        Label { text: "❤ " + (modelData.likesCount || modelData.likes || 0); color: Theme.currentTheme.colors.textSecondaryColor }
-                                        Label { text: "💬 " + (modelData.commentsCount || modelData.comments || 0); color: Theme.currentTheme.colors.textSecondaryColor }
-                                        Item { Layout.fillWidth: true }
-                                        Button { text: tr("查看详情"); onClicked: openPost(modelData) }
-                                    }
-                                }
+                                Label { text: modelData.author || modelData.username || tr("匿名"); color: Theme.currentTheme.colors.textSecondaryColor; elide: Text.ElideRight; Layout.maximumWidth: 160 }
+                                Label { text: "❤ " + (modelData.likesCount || modelData.likes || 0); color: Theme.currentTheme.colors.textSecondaryColor }
+                                Label { text: "💬 " + (modelData.commentsCount || modelData.comments || 0); color: Theme.currentTheme.colors.textSecondaryColor }
+                                Item { Layout.fillWidth: true }
+                                Button { text: tr("查看详情"); onClicked: openPost(modelData) }
                             }
                         }
                     }
