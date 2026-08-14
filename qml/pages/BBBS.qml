@@ -6,6 +6,8 @@ import "../components"
 
 FluentPage {
     id: page
+    wrapperWidth: 100000
+    horizontalPadding: 28
 
     property bool authenticated: false
     property bool loading: false
@@ -82,6 +84,19 @@ FluentPage {
         Backend.fetchBBBSPost(post.filename || postId(post))
         Backend.fetchBBBSComments(post.filename || postId(post))
     }
+    function sendComment() {
+        var content = commentInput.text.trim()
+        var filename = String(selectedPost.filename || postId(selectedPost) || "")
+        if (!content || !filename) return
+        Backend.createBBBSComment(filename, content)
+        commentInput.text = ""
+    }
+    function sendChat() {
+        var content = chatInput.text.trim()
+        if (!content || !selectedSectionId) return
+        Backend.sendBBBSChatMessage(selectedSectionId, content)
+        chatInput.text = ""
+    }
     function reloadWorkspace() {
         if (!Backend || !authenticated) return
         loading = true
@@ -146,8 +161,15 @@ FluentPage {
         function onBbbsOperationFinished(operation, ok, result) {
             loading = false
             if (!ok) {
-                errorText = result && (result.error || result.message) ? (result.error || result.message) : tr("读取失败")
+                errorText = result && (result.error || result.message) ? (result.error || result.message) : tr("操作失败")
                 errorDialog.open()
+                return
+            }
+            if (operation === "comment") {
+                var filename = String(selectedPost.filename || postId(selectedPost) || "")
+                if (filename) Backend.fetchBBBSComments(filename)
+            } else if (operation === "chat_message") {
+                Backend.fetchBBBSChatMessages(selectedSectionId)
             }
         }
         function onBbbsErrorOccurred(message) {
@@ -188,11 +210,16 @@ FluentPage {
             }
         }
 
-        RowLayout {
+        Item {
+            id: workspace
             visible: authenticated
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 12
+            Layout.preferredHeight: Math.max(620, page.height - 150)
+            Layout.minimumHeight: 620
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: 12
 
             Frame {
                 visible: !sidebarCollapsed
@@ -363,11 +390,21 @@ FluentPage {
                             Label { anchors.centerIn: parent; visible: chatMessages.length === 0 && !loading; text: tr("暂无消息，发送第一条吧"); color: Theme.currentTheme.colors.textSecondaryColor }
                         }
                         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.currentTheme.colors.cardBorderColor }
-                        Label {
-                            text: tr("络聊内容当前为只读浏览")
-                            color: Theme.currentTheme.colors.textSecondaryColor
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.margins: 10
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.margins: 12
+                            TextField {
+                                id: chatInput
+                                Layout.fillWidth: true
+                                placeholderText: tr("说点什么…")
+                                onAccepted: sendChat()
+                            }
+                            Button {
+                                text: tr("发送")
+                                highlighted: true
+                                enabled: chatInput.text.trim().length > 0
+                                onClicked: sendChat()
+                            }
                         }
                     }
                 }
@@ -408,7 +445,32 @@ FluentPage {
                                 Label { width: parent.width; text: bodyOf(selectedPost); textFormat: Text.MarkdownText; wrapMode: Text.Wrap }
                             }
                         }
-                        Label { text: tr("评论（只读）"); font.pixelSize: 18; font.weight: Font.DemiBold }
+                        Label { text: tr("评论"); font.pixelSize: 18; font.weight: Font.DemiBold }
+                        Frame {
+                            width: parent.width
+                            padding: 12
+                            ColumnLayout {
+                                width: parent.width - parent.leftPadding - parent.rightPadding
+                                spacing: 8
+                                TextArea {
+                                    id: commentInput
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 90
+                                    placeholderText: tr("写下你的评论…")
+                                    wrapMode: TextEdit.Wrap
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Item { Layout.fillWidth: true }
+                                    Button {
+                                        text: tr("发表评论")
+                                        highlighted: true
+                                        enabled: commentInput.text.trim().length > 0
+                                        onClicked: sendComment()
+                                    }
+                                }
+                            }
+                        }
                         Repeater {
                             model: comments
                             Frame {
@@ -421,6 +483,7 @@ FluentPage {
                     }
                 }
 
+            }
             }
         }
     }

@@ -305,7 +305,10 @@ def delete_post(post_id):
 
 
 def create_comment(post_id, content):
-    return _request("POST", f"/api/posts/{post_id}/comments", body={"content": content})
+    return _request("POST", "/api/comment/add", body={
+        "filename": post_id,
+        "content": content,
+    })
 
 
 def delete_comment(comment_id):
