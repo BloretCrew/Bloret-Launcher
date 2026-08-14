@@ -384,12 +384,18 @@ FluentPage {
                         width: detailScroll.availableWidth
                         spacing: 10
                         Button { text: tr("返回列表"); onClicked: view = 0 }
-                        Frame {
+                        Rectangle {
+                            id: detailCard
                             width: parent.width
-                            padding: 18
-                            background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 8; border.color: Theme.currentTheme.colors.cardBorderColor }
+                            implicitHeight: detailContent.implicitHeight + 36
+                            color: Theme.currentTheme.colors.cardColor
+                            radius: 8
+                            border.color: Theme.currentTheme.colors.cardBorderColor
                             Column {
-                                width: parent.width - parent.leftPadding - parent.rightPadding
+                                id: detailContent
+                                x: 18
+                                y: 18
+                                width: detailCard.width - 36
                                 spacing: 10
                                 Label { width: parent.width; text: titleOf(selectedPost); font.pixelSize: 25; font.weight: Font.Bold; wrapMode: Text.Wrap }
                                 Label { width: parent.width; text: (selectedPost.author || selectedPost.username || tr("匿名")) + "  " + (selectedPost.time || selectedPost.created_at || ""); color: Theme.currentTheme.colors.textSecondaryColor; wrapMode: Text.Wrap }
