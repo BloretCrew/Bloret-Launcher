@@ -6,7 +6,28 @@ import "../components"
 
 FluentPage {
     id: storePage
-    title: Backend ? Backend.tr("插件商店") : "插件商店"
+    title: Backend ? Backend.tr("商店") : "商店"
+
+    extraHeaderItems: Row {
+        spacing: 8
+
+        Button {
+            text: tr("打开网页")
+            onClicked: {
+                if (Backend)
+                    Backend.openUrl("https://launcher.bloret.net/apps")
+            }
+        }
+        Button {
+            text: loading ? tr("加载中…") : tr("刷新")
+            enabled: !loading && storeBackend !== null
+            onClicked: {
+                errorText = ""
+                if (storeBackend)
+                    storeBackend.refresh()
+            }
+        }
+    }
 
     property var plugins: []
     property string searchText: ""
@@ -92,30 +113,6 @@ FluentPage {
         Layout.fillHeight: true
         Layout.margins: 20
         spacing: 14
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 10
-            Label {
-                text: tr("插件商店")
-                font.pixelSize: 24
-                font.weight: Font.DemiBold
-                color: Theme.currentTheme.colors.textColor
-            }
-            Item { Layout.fillWidth: true }
-            Button {
-                text: loading ? tr("加载中…") : tr("刷新")
-                enabled: !loading && storeBackend !== null
-                onClicked: { errorText = ""; if (storeBackend) storeBackend.refresh() }
-            }
-        }
-
-        Label {
-            Layout.fillWidth: true
-            text: storeBackend && storeBackend.getApiBase() ? tr("来源") + ": " + storeBackend.getApiBase() : tr("尚未配置商店接口，请在设置中填写 HTTPS 列表地址")
-            color: Theme.currentTheme.colors.textSecondaryColor
-            elide: Text.ElideMiddle
-        }
 
         RowLayout {
             Layout.fillWidth: true
@@ -432,14 +429,24 @@ FluentPage {
                         }
                     }
 
-                    Image {
+                    Item {
                         Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(280, detailDialog.height * 0.36)
+                        Layout.maximumHeight: 280
                         visible: selectedPlugin && selectedPlugin.screenshots && selectedPlugin.screenshots.length > 0
-                        source: selectedPlugin && selectedPlugin.screenshots && selectedPlugin.screenshots.length > 0
-                                ? (selectedPlugin.screenshots[0].webpUrl || selectedPlugin.screenshots[0].url || "") : ""
-                        fillMode: Image.PreserveAspectFit
-                        sourceSize.width: 1100
-                        asynchronous: true
+                        clip: true
+
+                        Image {
+                            anchors.fill: parent
+                            source: selectedPlugin && selectedPlugin.screenshots && selectedPlugin.screenshots.length > 0
+                                    ? (selectedPlugin.screenshots[0].webpUrl || selectedPlugin.screenshots[0].url || "") : ""
+                            fillMode: Image.PreserveAspectFit
+                            horizontalAlignment: Image.AlignHCenter
+                            verticalAlignment: Image.AlignVCenter
+                            sourceSize.width: Math.max(1, Math.round(parent.width))
+                            sourceSize.height: Math.max(1, Math.round(parent.height))
+                            asynchronous: true
+                        }
                     }
 
                     ColumnLayout {

@@ -596,7 +596,7 @@ FluentPage {
     property string _pluginsThemeNone: Backend ? Backend.tr("默认主题") : "默认主题"
     property string _pluginsUnnamed: Backend ? Backend.tr("未命名插件") : "未命名插件"
     property string _pluginsInstallHint: Backend ? Backend.tr("选择 BLAPI 打包的插件 ZIP（plugin.json 在压缩包根目录）") : "选择 BLAPI 打包的插件 ZIP（plugin.json 在压缩包根目录）"
-    property string _pluginStoreTitle: Backend ? Backend.tr("插件商店") : "插件商店"
+    property string _pluginStoreTitle: Backend ? Backend.tr("商店") : "商店"
     property string _pluginStoreDesc: Backend ? Backend.tr("浏览可信来源的插件；安装前仍需确认权限") : "浏览可信来源的插件；安装前仍需确认权限"
     property string _pluginStoreApi: Backend ? Backend.tr("商店接口地址") : "商店接口地址"
     property string _pluginStoreApiPlaceholder: Backend ? Backend.tr("插件商店 HTTPS 接口地址") : "插件商店 HTTPS 接口地址"

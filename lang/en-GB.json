@@ -1,12 +1,13 @@
 {
   "texts": {
-    "插件商店": "Plugin Store",
+    "商店": "Plugin Store",
     "打开商店": "Open Store",
     "商店接口地址": "Store API URL",
     "浏览可信来源的插件；安装前仍需确认权限": "Browse plugins from trusted sources; permissions still require confirmation before installation.",
     "保存": "Save",
     "已保存": "Saved",
     "刷新": "Refresh",
+    "打开网页": "Open website",
     "加载中…": "Loading…",
     "搜索插件名称、作者或标签": "Search plugin name, author, or tag",
     "全部标签": "All tags",
@@ -18,7 +19,7 @@
     "已安装": "Installed",
     "插件详情": "Plugin details",
     "打开项目主页": "Open project homepage",
-    "加载插件商店失败": "Failed to load plugin store",
+    "加载商店失败": "Failed to load plugin store",
     "商店返回的数据格式无效": "The store returned an invalid data format",
     "无法提出安装请求": "Unable to submit installation request",
     "未知作者": "Unknown author",
@@ -37,6 +38,6 @@
     "创建时间": "Created",
     "更新时间": "Updated",
     "尚未配置商店接口，请在设置中填写 HTTPS 列表地址": "The store endpoint is not configured. Enter an HTTPS listing URL in Settings.",
-    "填写插件商店 HTTPS 列表接口地址": "Enter the plugin store HTTPS listing URL"
+    "填写商店 HTTPS 列表接口地址": "Enter the plugin store HTTPS listing URL"
   }
 }
