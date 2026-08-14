@@ -599,7 +599,7 @@ FluentPage {
     property string _pluginStoreTitle: Backend ? Backend.tr("插件商店") : "插件商店"
     property string _pluginStoreDesc: Backend ? Backend.tr("浏览可信来源的插件；安装前仍需确认权限") : "浏览可信来源的插件；安装前仍需确认权限"
     property string _pluginStoreApi: Backend ? Backend.tr("商店接口地址") : "商店接口地址"
-    property string _pluginStoreApiPlaceholder: Backend ? Backend.tr("填写插件商店 HTTPS 列表接口地址") : "填写插件商店 HTTPS 列表接口地址"
+    property string _pluginStoreApiPlaceholder: Backend ? Backend.tr("插件商店 HTTPS 接口地址") : "插件商店 HTTPS 接口地址"
     property string _pluginStoreSave: Backend ? Backend.tr("保存") : "保存"
     property string _pluginsInstallOk: Backend ? Backend.tr("插件安装成功") : "插件安装成功"
     property string _pluginsInstallFail: Backend ? Backend.tr("插件安装失败") : "插件安装失败"
@@ -1813,7 +1813,7 @@ FluentPage {
                         id: pluginStoreApiField
                         Layout.fillWidth: true
                         placeholderText: _pluginStoreApiPlaceholder
-                        text: PluginStore ? PluginStore.getApiBase() : ""
+                        text: (typeof StoreBackend !== "undefined" && StoreBackend) ? StoreBackend.getApiBase() : ""
                     }
                     Button {
                         flat: true

@@ -5495,7 +5495,7 @@ class Backend(QObject):
 
     @Slot(str, result=bool)
     def setPluginStoreApi(self, value):
-        """Save the HTTPS plugin store listing endpoint."""
+        """Save an optional plugin store listing endpoint override."""
         try:
             from urllib.parse import urlparse
             url = str(value or "").strip().rstrip("/")

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin, urlparse
 
 import requests
+
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from PySide6.QtCore import QObject, Signal, Slot
@@ -17,9 +18,8 @@ import modules.config as cfg
 from modules.log import log
 from modules.plugin_install_request import validate_download_url
 
-# The repository documents the listing shape but does not publish a working
-# production listing endpoint; keep the client disabled until one is configured.
-DEFAULT_STORE_API = ""
+# Public plugin-store endpoint.
+DEFAULT_STORE_API = "https://launcher.bloret.net/apps/api/plugins"
 _DEFAULT_TIMEOUT = (8, 20)
 _VERSION_PART = re.compile(r"\d+")
 
@@ -127,12 +127,10 @@ class PluginStore(QObject):
 
     def _api_base(self) -> str:
         data = cfg.read() or {}
-        value = str(data.get("plugin_store_api") or DEFAULT_STORE_API).strip().rstrip("/")
-        if not value:
-            return ""
-        if not value.startswith("https://"):
-            return ""
-        return value
+        configured = str(data.get("plugin_store_api") or "").strip().rstrip("/")
+        if configured:
+            return configured
+        return DEFAULT_STORE_API
 
     def _installed(self) -> list:
         try:
@@ -173,6 +171,7 @@ class PluginStore(QObject):
                 session = requests.Session()
                 retry = Retry(total=2, backoff_factor=0.4, status_forcelist=[429, 500, 502, 503, 504])
                 adapter = HTTPAdapter(max_retries=retry)
+                session.mount("http://", adapter)
                 session.mount("https://", adapter)
                 response = session.get(api_base, timeout=_DEFAULT_TIMEOUT, headers={"Accept": "application/json"})
                 response.raise_for_status()

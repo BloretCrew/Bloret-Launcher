@@ -248,22 +248,149 @@ FluentPage {
     Dialog {
         id: detailDialog
         modal: true
-        width: Math.min(560, storePage.width - 40)
-        title: selectedPlugin ? selectedPlugin.name : tr("插件详情")
-        standardButtons: Dialog.Close
-        contentItem: ScrollView {
-            implicitHeight: Math.min(520, storePage.height - 120)
-            ColumnLayout {
-                width: parent.width
-                spacing: 10
-                Label { Layout.fillWidth: true; text: selectedPlugin ? (selectedPlugin.description || tr("暂无插件描述")) : ""; wrapMode: Text.Wrap }
-                Label { Layout.fillWidth: true; text: selectedPlugin ? tr("ID") + ": " + selectedPlugin.id : ""; wrapMode: Text.WrapAnywhere }
-                Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.version ? tr("版本") + ": " + selectedPlugin.version : "" }
-                Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.author ? tr("作者") + ": " + selectedPlugin.author : "" }
-                Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.permissions.length ? tr("权限") + ": " + selectedPlugin.permissions.join(", ") : ""; wrapMode: Text.Wrap }
-                Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.sha256 ? "SHA256: " + selectedPlugin.sha256 : ""; wrapMode: Text.WrapAnywhere }
-                Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.min_launcher ? tr("最低启动器版本") + ": " + selectedPlugin.min_launcher : "" }
+        width: Math.min(640, storePage.width - 32)
+        height: Math.min(680, storePage.height - 48)
+        title: tr("插件详情")
+        standardButtons: Dialog.NoButton
+        closePolicy: Popup.CloseOnEscape
+
+        contentItem: ColumnLayout {
+            spacing: 16
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+
+                ColumnLayout {
+                    width: detailDialog.width - 48
+                    spacing: 16
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        Image {
+                            Layout.preferredWidth: 72
+                            Layout.preferredHeight: 72
+                            source: selectedPlugin && selectedPlugin.icon ? selectedPlugin.icon : Qt.resolvedUrl("../../icon/Bloret.png")
+                            fillMode: Image.PreserveAspectFit
+                            sourceSize.width: 144
+                            sourceSize.height: 144
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: selectedPlugin ? (selectedPlugin.name || selectedPlugin.id) : ""
+                                font.pixelSize: 22
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideRight
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                text: selectedPlugin && selectedPlugin.author ? selectedPlugin.author : tr("未知作者")
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                elide: Text.ElideRight
+                            }
+                            Label {
+                                visible: selectedPlugin && selectedPlugin.version
+                                text: selectedPlugin ? "v" + selectedPlugin.version : ""
+                                color: Theme.currentTheme.colors.primaryColor
+                                font.weight: Font.DemiBold
+                            }
+                        }
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: selectedPlugin ? (selectedPlugin.description || tr("暂无插件描述")) : ""
+                        wrapMode: Text.Wrap
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: metadataColumn.implicitHeight + 24
+                        radius: 10
+                        color: Theme.currentTheme.colors.cardColor
+                        border.color: Theme.currentTheme.colors.controlBorderColor
+
+                        ColumnLayout {
+                            id: metadataColumn
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+
+                            Label {
+                                text: tr("插件信息")
+                                font.weight: Font.DemiBold
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                text: selectedPlugin ? tr("ID") + ": " + selectedPlugin.id : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                wrapMode: Text.WrapAnywhere
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.min_launcher
+                                text: selectedPlugin ? tr("最低启动器版本") + ": " + selectedPlugin.min_launcher : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.sha256
+                                text: selectedPlugin ? "SHA256: " + selectedPlugin.sha256 : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                wrapMode: Text.WrapAnywhere
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        visible: selectedPlugin && selectedPlugin.permissions && selectedPlugin.permissions.length > 0
+
+                        Label {
+                            text: tr("所需权限")
+                            font.weight: Font.DemiBold
+                        }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            Repeater {
+                                model: selectedPlugin && selectedPlugin.permissions ? selectedPlugin.permissions : []
+                                delegate: Rectangle {
+                                    width: permissionLabel.implicitWidth + 18
+                                    height: 28
+                                    radius: 14
+                                    color: Theme.currentTheme.colors.controlFillColor
+                                    border.color: Theme.currentTheme.colors.controlBorderColor
+                                    Label {
+                                        id: permissionLabel
+                                        anchors.centerIn: parent
+                                        text: modelData
+                                        color: Theme.currentTheme.colors.textSecondaryColor
+                                        font.pixelSize: 12
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
                 Button {
+                    Layout.fillWidth: true
                     visible: selectedPlugin && selectedPlugin.homepage
                     text: tr("打开项目主页")
                     onClicked: {
@@ -272,6 +399,7 @@ FluentPage {
                     }
                 }
                 Button {
+                    Layout.fillWidth: true
                     highlighted: true
                     text: selectedPlugin && selectedPlugin.update_available ? tr("更新") : tr("安装")
                     enabled: selectedPlugin && (!selectedPlugin.installed || selectedPlugin.update_available)
