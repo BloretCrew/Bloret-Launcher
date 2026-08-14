@@ -27,6 +27,15 @@
     "作者": "Author",
     "权限": "Permissions",
     "最低启动器版本": "Minimum launcher version",
+    "在浏览器中打开": "Open in browser",
+    "状态": "Status",
+    "所需权限": "Required permissions",
+    "下载地址": "Download URL",
+    "文件大小": "File size",
+    "安装次数": "Installations",
+    "评分": "Rating",
+    "创建时间": "Created",
+    "更新时间": "Updated",
     "尚未配置商店接口，请在设置中填写 HTTPS 列表地址": "The store endpoint is not configured. Enter an HTTPS listing URL in Settings.",
     "填写插件商店 HTTPS 列表接口地址": "Enter the plugin store HTTPS listing URL"
   }

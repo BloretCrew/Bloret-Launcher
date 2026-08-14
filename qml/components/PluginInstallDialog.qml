@@ -34,8 +34,9 @@ Dialog {
     modal: true
     closePolicy: (stage === "installing") ? Popup.NoAutoClose : Popup.CloseOnEscape
     standardButtons: Dialog.NoButton
-    width: Math.min(480, parent ? parent.width - 80 : 480)
-    implicitHeight: 420
+    width: Math.min(520, parent ? parent.width - 80 : 520)
+    height: Math.min(700, parent ? parent.height - 40 : 700)
+    implicitHeight: 560
 
     function tr(s) {
         return Backend ? Backend.tr(s) : s
@@ -132,15 +133,22 @@ Dialog {
         }
     }
 
-    ColumnLayout {
+    contentItem: ColumnLayout {
         spacing: 14
         Layout.fillWidth: true
 
         // 确认信息
-        ColumnLayout {
+        ScrollView {
             visible: stage === "pending"
-            spacing: 10
             Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AlwaysOff }
+
+            ColumnLayout {
+                width: parent.width
+                spacing: 10
+                Layout.fillWidth: true
 
             Text {
                 text: tr("即将安装以下插件。请确认来源与信息后再继续。")
@@ -297,6 +305,7 @@ Dialog {
                         }
                     }
                 }
+            }
             }
         }
 

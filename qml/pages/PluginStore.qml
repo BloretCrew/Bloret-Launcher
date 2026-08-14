@@ -261,9 +261,11 @@ FluentPage {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
+                ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AlwaysOff }
 
                 ColumnLayout {
-                    width: detailDialog.width - 48
+                    width: parent.width
+                    Layout.fillWidth: true
                     spacing: 16
 
                     RowLayout {
@@ -297,10 +299,21 @@ FluentPage {
                                 elide: Text.ElideRight
                             }
                             Label {
+                                visible: selectedPlugin && selectedPlugin.author_username
+                                text: selectedPlugin ? "@" + selectedPlugin.author_username : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                elide: Text.ElideRight
+                            }
+                            Label {
                                 visible: selectedPlugin && selectedPlugin.version
                                 text: selectedPlugin ? "v" + selectedPlugin.version : ""
                                 color: Theme.currentTheme.colors.primaryColor
                                 font.weight: Font.DemiBold
+                            }
+                            Label {
+                                visible: selectedPlugin && selectedPlugin.status
+                                text: selectedPlugin ? tr("状态") + ": " + selectedPlugin.status : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
                             }
                         }
                     }
@@ -310,6 +323,37 @@ FluentPage {
                         text: selectedPlugin ? (selectedPlugin.description || tr("暂无插件描述")) : ""
                         wrapMode: Text.Wrap
                         color: Theme.currentTheme.colors.textSecondaryColor
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: selectedPlugin && selectedPlugin.long_description
+                        text: selectedPlugin ? selectedPlugin.long_description : ""
+                        wrapMode: Text.Wrap
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        visible: selectedPlugin && selectedPlugin.tags && selectedPlugin.tags.length > 0
+                        Repeater {
+                            model: selectedPlugin && selectedPlugin.tags ? selectedPlugin.tags : []
+                            delegate: Rectangle {
+                                width: tagLabel.implicitWidth + 18
+                                height: 26
+                                radius: 13
+                                color: Theme.currentTheme.colors.controlFillColor
+                                border.color: Theme.currentTheme.colors.controlBorderColor
+                                Label {
+                                    id: tagLabel
+                                    anchors.centerIn: parent
+                                    text: "#" + modelData
+                                    color: Theme.currentTheme.colors.primaryColor
+                                    font.pixelSize: 12
+                                }
+                            }
+                        }
                     }
 
                     Rectangle {
@@ -348,7 +392,54 @@ FluentPage {
                                 color: Theme.currentTheme.colors.textSecondaryColor
                                 wrapMode: Text.WrapAnywhere
                             }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.download
+                                text: selectedPlugin ? tr("下载地址") + ": " + selectedPlugin.download : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                wrapMode: Text.WrapAnywhere
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.size
+                                text: selectedPlugin ? tr("文件大小") + ": " + selectedPlugin.size : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.install_count
+                                text: selectedPlugin ? tr("安装次数") + ": " + selectedPlugin.install_count : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.rating_count
+                                text: selectedPlugin ? tr("评分") + ": " + selectedPlugin.rating_average + " (" + selectedPlugin.rating_count + ")" : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.created_at
+                                text: selectedPlugin ? tr("创建时间") + ": " + selectedPlugin.created_at : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.updated_at
+                                text: selectedPlugin ? tr("更新时间") + ": " + selectedPlugin.updated_at : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
                         }
+                    }
+
+                    Image {
+                        Layout.fillWidth: true
+                        visible: selectedPlugin && selectedPlugin.screenshots && selectedPlugin.screenshots.length > 0
+                        source: selectedPlugin && selectedPlugin.screenshots && selectedPlugin.screenshots.length > 0
+                                ? (selectedPlugin.screenshots[0].webpUrl || selectedPlugin.screenshots[0].url || "") : ""
+                        fillMode: Image.PreserveAspectFit
+                        sourceSize.width: 1100
+                        asynchronous: true
                     }
 
                     ColumnLayout {
@@ -391,12 +482,17 @@ FluentPage {
 
                 Button {
                     Layout.fillWidth: true
-                    visible: selectedPlugin && selectedPlugin.homepage
-                    text: tr("打开项目主页")
+                    visible: selectedPlugin && selectedPlugin.detail_url
+                    text: tr("在浏览器中打开")
                     onClicked: {
                         if (Backend)
-                            Backend.openUrl(selectedPlugin.homepage)
+                            Backend.openUrl(selectedPlugin.detail_url)
                     }
+                }
+                Button {
+                    Layout.fillWidth: true
+                    text: tr("取消")
+                    onClicked: detailDialog.close()
                 }
                 Button {
                     Layout.fillWidth: true

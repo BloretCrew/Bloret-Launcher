@@ -28,10 +28,24 @@ def test_response_shapes():
 
 
 def test_normalize_listing():
-    item = normalize_listing(VALID, "https://store.bloret.com/api/v1/plugins")
+    item = normalize_listing({
+        **VALID,
+        "url": "https://launcher.bloret.net/apps/plugin/com.example.demo",
+        "longDescription": "Long description",
+        "authorUsername": "demo",
+        "screenshots": [{"url": "https://example.com/shot.png"}],
+        "installCount": 3,
+        "ratingAvg": 4.5,
+        "ratingCount": 2,
+        "createdAt": "2026-07-01T00:00:00Z",
+    }, "https://store.bloret.com/api/v1/plugins")
     assert item["id"] == "com.example.demo"
     assert item["tags"] == ["home", "tools"]
     assert item["permissions"] == ["ui.home", "ui.tools"]
+    assert item["detail_url"].endswith("/com.example.demo")
+    assert item["long_description"] == "Long description"
+    assert item["install_count"] == 3
+    assert item["rating_count"] == 2
 
 
 def test_invalid_listing_rejected():
