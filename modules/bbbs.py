@@ -253,6 +253,40 @@ def send_chat_message(board, section, content, reply_to=None):
     return _request("POST", f"/api/chat/rooms/{room_id}/messages", body=body)
 
 
+def fetch_chat_rooms(query=""):
+    result = _request("GET", _with_query("/api/chat/rooms", {"q": query}))
+    payload = _data(result, {})
+    if isinstance(payload, dict):
+        return payload
+    return {"rooms": [], "users": []}
+
+
+def fetch_chat_room(room_id):
+    result = _request("GET", f"/api/chat/rooms/{room_id}")
+    return _data(result, {})
+
+
+def fetch_room_messages(room_id, before=None, after=None, limit=100):
+    result = _request("GET", _with_query(f"/api/chat/rooms/{room_id}/messages", {
+        "before": before,
+        "after": after,
+        "limit": min(max(int(limit or 100), 1), 100),
+    }))
+    payload = _data(result, {})
+    return payload if isinstance(payload, dict) else {"messages": []}
+
+
+def send_room_message(room_id, content, reply_to=None):
+    body = {"content": content}
+    if reply_to:
+        body["reply_to_id"] = reply_to
+    return _request("POST", f"/api/chat/rooms/{room_id}/messages", body=body)
+
+
+def create_direct_message(peer):
+    return _request("POST", "/api/chat/dm", body={"peer": peer})
+
+
 def delete_chat_message(message_id):
     return _request("DELETE", f"/api/messages/{message_id}")
 

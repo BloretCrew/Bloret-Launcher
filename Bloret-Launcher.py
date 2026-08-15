@@ -292,6 +292,8 @@ class Backend(QObject):
     bbbsPostReceived = Signal(str)
     bbbsCommentsReceived = Signal(str)
     bbbsChatMessagesReceived = Signal(str)
+    bbbsChatRoomsReceived = Signal(str)
+    bbbsChatRoomReceived = Signal(str)
     bbbsImagesUploaded = Signal(object)
     bbbsNotificationsReceived = Signal(object)
     bbbsTasksReceived = Signal(object)
@@ -4572,8 +4574,10 @@ class Backend(QObject):
                     result = fallback
                 size = len(result) if isinstance(result, (list, dict, str)) else type(result).__name__
                 log(f"[BBBS] async finish operation={operation} result={size}")
-                if operation in {"Boards", "Sections", "Posts", "Comments", "ChatMessages"}:
+                if operation in {"Boards", "Sections", "Posts", "Comments"}:
                     self._bbbs_emit_list(signal, result)
+                elif operation in {"ChatMessages", "ChatRooms", "ChatRoom"}:
+                    self._bbbs_emit_json(signal, result, {})
                 elif operation == "Post":
                     self._bbbs_emit_json(signal, result, {})
                 else:
@@ -4637,6 +4641,28 @@ class Backend(QObject):
     @Slot(str, str, str)
     def sendBBBSChatMessage(self, boardId, sectionId, content):
         self._bbbs_operation_async("chat_message", lambda api: api.send_chat_message(boardId, sectionId, content))
+
+    @Slot()
+    @Slot(str)
+    def fetchBBBSChatRooms(self, query=""):
+        self._bbbs_async("ChatRooms", lambda api: api.fetch_chat_rooms(query or ""), self.bbbsChatRoomsReceived, fallback={"rooms": [], "users": []})
+
+    @Slot(str)
+    def fetchBBBSChatRoom(self, roomId):
+        self._bbbs_async("ChatRoom", lambda api: api.fetch_chat_room(roomId), self.bbbsChatRoomReceived, fallback={})
+
+    @Slot(str, str, str)
+    def fetchBBBSRoomMessages(self, roomId, before, after):
+        self._bbbs_async("ChatMessages", lambda api: api.fetch_room_messages(roomId, before or None, after or None), self.bbbsChatMessagesReceived, fallback={"messages": []})
+
+    @Slot(str, str)
+    @Slot(str, str, str)
+    def sendBBBSRoomMessage(self, roomId, content, replyTo=""):
+        self._bbbs_operation_async("room_message", lambda api: api.send_room_message(roomId, content, replyTo or None))
+
+    @Slot(str)
+    def createBBBSDirectMessage(self, peer):
+        self._bbbs_operation_async("create_dm", lambda api: api.create_direct_message(peer))
 
     @Slot("QVariantList")
     def uploadBBBSImages(self, paths):
