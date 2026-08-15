@@ -83,6 +83,7 @@ FluentWindow {
             { title: (Backend ? Backend.tr("统计") : "统计"), page: Qt.resolvedUrl("pages/Statistics.qml"), icon: "ic_fluent_data_bar_horizontal_20_regular" },
             { title: (Backend ? Backend.tr("Mods") : "Mods"), page: Qt.resolvedUrl("pages/Mods.qml"), icon: "ic_fluent_puzzle_piece_20_regular" },
             { title: (Backend ? Backend.tr("BBBS") : "BBBS"), page: Qt.resolvedUrl("pages/BBBS.qml"), icon: "ic_fluent_chat_20_regular" },
+            { title: (Backend ? Backend.tr("络聊") : "络聊"), page: Qt.resolvedUrl("pages/Chat.qml"), icon: "ic_fluent_people_community_20_regular" },
             { title: (Backend ? Backend.tr("Live") : "Live"), page: Qt.resolvedUrl("pages/Live.qml"), icon: "ic_fluent_video_person_20_regular" },
             { title: (Backend ? Backend.tr("商店") : "商店"), page: Qt.resolvedUrl("pages/PluginStore.qml"), icon: "ic_fluent_store_microsoft_20_regular" },
             { title: (Backend ? Backend.tr("设置") : "设置"), page: Qt.resolvedUrl("pages/Settings.qml"), icon: "ic_fluent_settings_20_regular", position: Position.Bottom },

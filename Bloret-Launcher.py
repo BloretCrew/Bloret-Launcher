@@ -291,7 +291,7 @@ class Backend(QObject):
     bbbsPostsReceived = Signal(str)
     bbbsPostReceived = Signal(str)
     bbbsCommentsReceived = Signal(str)
-    bbbsChatMessagesReceived = Signal(object)
+    bbbsChatMessagesReceived = Signal(str)
     bbbsImagesUploaded = Signal(object)
     bbbsNotificationsReceived = Signal(object)
     bbbsTasksReceived = Signal(object)
@@ -4572,7 +4572,7 @@ class Backend(QObject):
                     result = fallback
                 size = len(result) if isinstance(result, (list, dict, str)) else type(result).__name__
                 log(f"[BBBS] async finish operation={operation} result={size}")
-                if operation in {"Boards", "Sections", "Posts", "Comments"}:
+                if operation in {"Boards", "Sections", "Posts", "Comments", "ChatMessages"}:
                     self._bbbs_emit_list(signal, result)
                 elif operation == "Post":
                     self._bbbs_emit_json(signal, result, {})
@@ -4629,14 +4629,14 @@ class Backend(QObject):
     def fetchBBBSComments(self, postId):
         self._bbbs_async("Comments", lambda api: api.fetch_comments(postId), self.bbbsCommentsReceived, fallback=[])
 
-    @Slot(str)
     @Slot(str, str)
-    def fetchBBBSChatMessages(self, sectionId, before=""):
-        self._bbbs_async("ChatMessages", lambda api: api.fetch_chat_messages(sectionId, before or None), self.bbbsChatMessagesReceived, fallback=[])
+    @Slot(str, str, str)
+    def fetchBBBSChatMessages(self, boardId, sectionId, before=""):
+        self._bbbs_async("ChatMessages", lambda api: api.fetch_chat_messages(boardId, sectionId, before or None), self.bbbsChatMessagesReceived, fallback=[])
 
-    @Slot(str, str)
-    def sendBBBSChatMessage(self, sectionId, content):
-        self._bbbs_operation_async("chat_message", lambda api: api.send_chat_message(sectionId, content))
+    @Slot(str, str, str)
+    def sendBBBSChatMessage(self, boardId, sectionId, content):
+        self._bbbs_operation_async("chat_message", lambda api: api.send_chat_message(boardId, sectionId, content))
 
     @Slot("QVariantList")
     def uploadBBBSImages(self, paths):

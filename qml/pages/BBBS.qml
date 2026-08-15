@@ -56,6 +56,14 @@ FluentPage {
     function bodyOf(post) { return post.content || post.body || post.excerpt || "" }
     function sectionType(section) { return String(section.type || section.kind || section.sectionType || "text").toLowerCase() }
     function isChatSection(section) { return ["chat", "group", "chatroom", "络聊"].indexOf(sectionType(section)) >= 0 }
+    function forumSections(value) {
+        var source = items(value)
+        var result = []
+        for (var i = 0; i < source.length; ++i) {
+            if (!isChatSection(source[i])) result.push(source[i])
+        }
+        return result
+    }
     function refreshPosts(force) {
         if (!Backend || !authenticated) return
         loading = true
@@ -69,9 +77,13 @@ FluentPage {
         chatMode = isChatSection(selectedSection)
         view = 0
         if (chatMode) {
-            loading = true
-            chatMessages = []
-            Backend.fetchBBBSChatMessages(selectedSectionId)
+            console.log("[BBBS] chat section moved to standalone 络聊 page", selectedBoardId, selectedSectionId)
+            chatMode = false
+            selectedBoardId = ""
+            selectedSectionId = ""
+            selectedSection = {}
+            refreshPosts(true)
+            return
         } else {
             refreshPosts(true)
         }
@@ -94,7 +106,7 @@ FluentPage {
     function sendChat() {
         var content = chatInput.text.trim()
         if (!content || !selectedSectionId) return
-        Backend.sendBBBSChatMessage(selectedSectionId, content)
+        Backend.sendBBBSChatMessage(selectedBoardId, selectedSectionId, content)
         chatInput.text = ""
     }
     function reloadWorkspace() {
@@ -103,7 +115,7 @@ FluentPage {
         Backend.fetchBBBSBoards(true)
         Backend.fetchBBBSSections(selectedBoardId, true)
         if (chatMode && selectedSectionId)
-            Backend.fetchBBBSChatMessages(selectedSectionId)
+            Backend.fetchBBBSChatMessages(selectedBoardId, selectedSectionId)
         else
             refreshPosts(true)
     }
@@ -125,7 +137,7 @@ FluentPage {
         interval: 8000
         repeat: true
         running: authenticated && chatMode && view === 0 && selectedSectionId.length > 0
-        onTriggered: Backend.fetchBBBSChatMessages(selectedSectionId)
+        onTriggered: Backend.fetchBBBSChatMessages(selectedBoardId, selectedSectionId)
     }
 
     Connections {
@@ -136,7 +148,7 @@ FluentPage {
             loading = false
         }
         function onBbbsSectionsReceived(value) {
-            sections = items(value)
+            sections = forumSections(value)
             console.log("[BBBS] sections received count=" + sections.length)
         }
         function onBbbsPostsReceived(value) {
@@ -169,7 +181,7 @@ FluentPage {
                 var filename = String(selectedPost.filename || postId(selectedPost) || "")
                 if (filename) Backend.fetchBBBSComments(filename)
             } else if (operation === "chat_message") {
-                Backend.fetchBBBSChatMessages(selectedSectionId)
+                Backend.fetchBBBSChatMessages(selectedBoardId, selectedSectionId)
             }
         }
         function onBbbsErrorOccurred(message) {
@@ -269,7 +281,7 @@ FluentPage {
                         model: sections
                         delegate: ItemDelegate {
                             width: ListView.view.width
-                            text: (isChatSection(modelData) ? "💬  " : "") + (modelData.name || modelData.title || "")
+                            text: modelData.name || modelData.title || ""
                             highlighted: selectedSectionId === String(modelData.section || modelData.fullName || modelData.name || "")
                             onClicked: openSection(modelData)
                         }
@@ -382,9 +394,9 @@ FluentPage {
                                 background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 7 }
                                 RowLayout {
                                     width: parent.width
-                                    Label { text: modelData.author || modelData.username || modelData.from || "?"; font.weight: Font.DemiBold; Layout.preferredWidth: 110; elide: Text.ElideRight }
+                                    Label { text: modelData.author || modelData.sender || modelData.username || modelData.from || "?"; font.weight: Font.DemiBold; Layout.preferredWidth: 110; elide: Text.ElideRight }
                                     Label { text: modelData.content || modelData.message || modelData.msg || (modelData.payload ? modelData.payload.msg : ""); wrapMode: Text.Wrap; Layout.fillWidth: true }
-                                    Label { text: modelData.time || modelData.createdAt || ""; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 11 }
+                                    Label { text: modelData.time || modelData.createdAt || modelData.created_at || ""; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 11 }
                                 }
                             }
                             Label { anchors.centerIn: parent; visible: chatMessages.length === 0 && !loading; text: tr("暂无消息，发送第一条吧"); color: Theme.currentTheme.colors.textSecondaryColor }

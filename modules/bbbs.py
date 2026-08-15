@@ -213,26 +213,44 @@ def fetch_comments(post_id, page=1, limit=50):
     return comments if isinstance(comments, list) else []
 
 
-def fetch_chat_messages(section_id, before=None, limit=100):
-    """Return chat messages when the server exposes a documented read route.
-
-    The current BBBS API document exposes chat writes through the Live-style
-    signal API but does not expose a public section-message GET route.  Keep
-    this read operation explicit instead of turning a 404 into fake empty data.
-    """
-    result = _request("GET", _with_query(f"/api/section/chat", {
-        "section": section_id, "before": before, "limit": limit,
+def resolve_chat_room(board, section):
+    """Resolve a BBBS chat section to its server-managed room."""
+    result = _request("GET", _with_query("/api/chat/by-section", {
+        "board": board,
+        "section": section,
     }))
-    if result.get("status") == 404:
+    payload = _data(result, {})
+    if isinstance(payload, dict):
+        room = payload.get("room", payload)
+        if isinstance(room, dict):
+            return room
+    return {}
+
+
+def fetch_chat_messages(board, section, before=None, limit=100):
+    room = resolve_chat_room(board, section)
+    room_id = room.get("id")
+    if not room_id:
         return []
-    return _data(result, [])
+    result = _request("GET", _with_query(f"/api/chat/rooms/{room_id}/messages", {
+        "before": before,
+        "limit": min(max(int(limit or 100), 1), 100),
+    }))
+    payload = _data(result, {})
+    if isinstance(payload, dict):
+        return payload.get("messages") or []
+    return payload if isinstance(payload, list) else []
 
 
-def send_chat_message(section_id, content, reply_to=None):
+def send_chat_message(board, section, content, reply_to=None):
+    room = resolve_chat_room(board, section)
+    room_id = room.get("id")
+    if not room_id:
+        return {"success": False, "status": 404, "error": "无法打开络聊分区"}
     body = {"content": content}
     if reply_to:
-        body["replyTo"] = reply_to
-    return _request("POST", f"/api/sections/{section_id}/messages", body=body)
+        body["reply_to_id"] = reply_to
+    return _request("POST", f"/api/chat/rooms/{room_id}/messages", body=body)
 
 
 def delete_chat_message(message_id):
