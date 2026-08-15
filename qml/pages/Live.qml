@@ -529,6 +529,16 @@ FluentPage {
                         }
 
                         Button {
+                            text: t("在浏览器打开")
+                            icon.name: "ic_fluent_open_20_regular"
+                            enabled: String(modelData.id || "").length > 0
+                            onClicked: Backend.openUrl(
+                                "https://bbs.bloret.net/#live-space/"
+                                + encodeURIComponent(String(modelData.id || ""))
+                            )
+                        }
+
+                        Button {
                             text: t("加入")
                             highlighted: true
                             onClicked: {

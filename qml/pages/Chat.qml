@@ -73,6 +73,10 @@ FluentPage {
     function hasActiveConversation() {
         return selectedRoomId.length > 0 || (!!selectedSection.board && sectionName(selectedSection).length > 0)
     }
+    function roomWebUrl() {
+        if (!selectedRoomId) return ""
+        return "https://bbs.bloret.net/#chat/" + encodeURIComponent(String(selectedRoomId))
+    }
     function openSection(section) {
         selectedSection = section || ({})
         selectedRoom = ({})
@@ -190,6 +194,12 @@ FluentPage {
                 text: sidebarCollapsed ? tr("显示侧边栏") : tr("隐藏侧边栏")
                 icon.name: sidebarCollapsed ? "ic_fluent_panel_left_expand_20_regular" : "ic_fluent_panel_left_contract_20_regular"
                 onClicked: sidebarCollapsed = !sidebarCollapsed
+            }
+            Button {
+                text: tr("在浏览器打开")
+                icon.name: "ic_fluent_open_20_regular"
+                visible: roomWebUrl().length > 0
+                onClicked: Backend.openUrl(roomWebUrl())
             }
             Button { text: tr("刷新"); onClicked: { reloadRooms(); Backend.fetchBBBSSections(""); if (selectedRoomId) openRoom(selectedRoom); else if (selectedSection.board) openSection(selectedSection) } }
         }

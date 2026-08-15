@@ -39,6 +39,20 @@ FluentPage {
         return Array.isArray(result) ? result : []
     }
     function postId(post) { return idOf(post, "postId") }
+    function postWebUrl(post) {
+        if (!post || typeof post !== "object") return ""
+        var board = post.board || post.board_name || post.boardName || selectedBoardId || ""
+        var section = post.section || post.section_name || post.sectionName || selectedSectionId || ""
+        var filename = post.filename || post.fileName || postId(post) || ""
+        if (!board || !section || !filename) return ""
+        return "https://bbs.bloret.net/#post/"
+            + encodeURIComponent(String(board))
+            + "/"
+            + encodeURIComponent(String(section))
+            + "/"
+            + encodeURIComponent(String(filename))
+            + ".json"
+    }
     function titleOf(post) {
         if (!post || typeof post !== "object") return tr("无标题")
         return post.title || post.name || post.filename || tr("无标题")
@@ -54,6 +68,14 @@ FluentPage {
         return normalized
     }
     function bodyOf(post) { return post.content || post.body || post.excerpt || "" }
+    function postAuthor(post) { return String(post.author || post.username || post.user || tr("匿名")) }
+    function postTime(post) {
+        var value = post.created_at || post.createdAt || post.time || post.updated_at || ""
+        if (typeof value === "number") {
+            try { return Qt.formatDateTime(new Date(value), "yyyy-MM-dd HH:mm") } catch (error) {}
+        }
+        return String(value)
+    }
     function sectionType(section) { return String(section.type || section.kind || section.sectionType || "text").toLowerCase() }
     function isChatSection(section) { return ["chat", "group", "chatroom", "络聊"].indexOf(sectionType(section)) >= 0 }
     function forumSections(value) {
@@ -259,10 +281,16 @@ FluentPage {
                         Layout.preferredHeight: Math.min(150, contentHeight)
                         clip: true
                         model: boards
-                        delegate: ItemDelegate {
-                            width: ListView.view.width
-                            text: modelData.name || modelData.title || ""
-                            highlighted: selectedBoardId === String(modelData.name || modelData.alias || "")
+                        delegate: Rectangle {
+                        width: ListView.view.width
+                        height: 58
+                        radius: 9
+                        color: selectedBoardId === String(modelData.name || modelData.alias || "") ? Theme.currentTheme.colors.controlAltSecondaryColor : "transparent"
+                        border.width: selectedBoardId === String(modelData.name || modelData.alias || "") ? 1 : 0
+                        border.color: Theme.currentTheme.colors.primaryColor
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
                             onClicked: {
                                 selectedBoardId = String(modelData.name || modelData.alias || "")
                                 selectedSectionId = ""
@@ -272,6 +300,13 @@ FluentPage {
                                 refreshPosts(true)
                             }
                         }
+                        Rectangle { x: 10; y: 9; width: 38; height: 38; radius: 19; color: Theme.currentTheme.colors.controlColor; Label { anchors.centerIn: parent; text: String(modelData.name || modelData.title || "?").charAt(0).toUpperCase(); font.weight: Font.DemiBold } }
+                        Column {
+                            x: 58; y: 9; width: parent.width - 68; spacing: 2
+                            Label { text: modelData.name || modelData.title || ""; width: parent.width; elide: Text.ElideRight; font.weight: Font.DemiBold }
+                            Label { text: String(modelData.description || tr("社区板块")); width: parent.width; elide: Text.ElideRight; color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 11 }
+                        }
+                    }
                     }
                     Label { text: tr("分区"); color: Theme.currentTheme.colors.textSecondaryColor; Layout.leftMargin: 4; Layout.topMargin: 8 }
                     ListView {
@@ -279,11 +314,14 @@ FluentPage {
                         Layout.fillHeight: true
                         clip: true
                         model: sections
-                        delegate: ItemDelegate {
+                        delegate: Rectangle {
                             width: ListView.view.width
-                            text: modelData.name || modelData.title || ""
-                            highlighted: selectedSectionId === String(modelData.section || modelData.fullName || modelData.name || "")
-                            onClicked: openSection(modelData)
+                            height: 46
+                            radius: 8
+                            color: selectedSectionId === String(modelData.section || modelData.fullName || modelData.name || "") ? Theme.currentTheme.colors.controlAltSecondaryColor : "transparent"
+                            MouseArea { anchors.fill: parent; onClicked: openSection(modelData) }
+                            Rectangle { x: 10; y: 12; width: 8; height: 22; radius: 4; color: sectionType(modelData) === "chat" ? Theme.currentTheme.colors.primaryColor : Theme.currentTheme.colors.controlBorderColor }
+                            Label { anchors.left: parent.left; anchors.leftMargin: 28; anchors.verticalCenter: parent.verticalCenter; text: modelData.name || modelData.title || ""; elide: Text.ElideRight; width: parent.width - 40; color: Theme.currentTheme.colors.textColor }
                         }
                     }
                 }
@@ -337,22 +375,38 @@ FluentPage {
                     }
                     delegate: Frame {
                         width: postList.width
-                        implicitHeight: postCardContent.implicitHeight + topPadding + bottomPadding
-                        padding: 16
-                        background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 8; border.color: Theme.currentTheme.colors.cardBorderColor }
+                        padding: 18
+                        implicitHeight: postCard.implicitHeight + topPadding + bottomPadding
+                        background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 12; border.color: Theme.currentTheme.colors.cardBorderColor; border.width: 1 }
                         ColumnLayout {
-                            id: postCardContent
+                            id: postCard
                             width: parent.width - parent.leftPadding - parent.rightPadding
-                            spacing: 6
-                            Label { text: titleOf(modelData); font.pixelSize: 17; font.weight: Font.DemiBold; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                            Label { text: bodyOf(modelData).substring(0, 220); visible: text.length > 0; maximumLineCount: 3; elide: Text.ElideRight; wrapMode: Text.Wrap; Layout.fillWidth: true; color: Theme.currentTheme.colors.textSecondaryColor }
+                            spacing: 10
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: modelData.author || modelData.username || tr("匿名"); color: Theme.currentTheme.colors.textSecondaryColor; elide: Text.ElideRight; Layout.maximumWidth: 160 }
-                                Label { text: "❤ " + (modelData.likesCount || modelData.likes || 0); color: Theme.currentTheme.colors.textSecondaryColor }
-                                Label { text: "💬 " + (modelData.commentsCount || modelData.comments || 0); color: Theme.currentTheme.colors.textSecondaryColor }
+                                Rectangle { Layout.preferredWidth: 42; Layout.preferredHeight: 42; radius: 21; color: Theme.currentTheme.colors.controlColor; Label { anchors.centerIn: parent; text: postAuthor(modelData).charAt(0).toUpperCase(); font.weight: Font.DemiBold } }
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+                                    Label { text: titleOf(modelData); font.pixelSize: 19; font.weight: Font.DemiBold; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                    Label { text: postAuthor(modelData) + (postTime(modelData).length > 0 ? "  ·  " + postTime(modelData) : ""); color: Theme.currentTheme.colors.textSecondaryColor; font.pixelSize: 12; Layout.fillWidth: true; elide: Text.ElideRight }
+                                }
+                            }
+                            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.currentTheme.colors.cardBorderColor }
+                            Label { text: bodyOf(modelData).substring(0, 320); visible: text.length > 0; maximumLineCount: 5; elide: Text.ElideRight; wrapMode: Text.Wrap; Layout.fillWidth: true; color: Theme.currentTheme.colors.textColor; lineHeight: 1.15 }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 14
+                                Label { text: "❤  " + (modelData.likesCount || modelData.likes || 0); color: Theme.currentTheme.colors.textSecondaryColor }
+                                Label { text: "💬  " + (modelData.commentsCount || modelData.comments || 0); color: Theme.currentTheme.colors.textSecondaryColor }
                                 Item { Layout.fillWidth: true }
-                                Button { text: tr("查看详情"); onClicked: openPost(modelData) }
+                                Button {
+                                    text: tr("在浏览器打开")
+                                    icon.name: "ic_fluent_open_20_regular"
+                                    enabled: postWebUrl(modelData).length > 0
+                                    onClicked: Backend.openUrl(postWebUrl(modelData))
+                                }
+                                Button { text: tr("查看详情"); icon.name: "ic_fluent_arrow_right_20_regular"; onClicked: openPost(modelData) }
                             }
                         }
                     }
@@ -438,7 +492,17 @@ FluentPage {
                         id: detailContentColumn
                         width: detailScroll.width
                         spacing: 10
-                        Button { text: tr("返回列表"); onClicked: view = 0 }
+                        RowLayout {
+                            width: parent.width
+                            Button { text: tr("返回列表"); onClicked: view = 0 }
+                            Item { Layout.fillWidth: true }
+                            Button {
+                                text: tr("在浏览器打开")
+                                icon.name: "ic_fluent_open_20_regular"
+                                enabled: postWebUrl(selectedPost).length > 0
+                                onClicked: Backend.openUrl(postWebUrl(selectedPost))
+                            }
+                        }
                         Rectangle {
                             id: detailCard
                             width: parent.width
