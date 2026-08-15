@@ -316,24 +316,25 @@ FluentPage {
                             delegate: Frame {
                                 width: chatList.width
                                 padding: 10
-                                implicitHeight: messageColumn.implicitHeight + topPadding + bottomPadding
-                                ColumnLayout {
+                                implicitHeight: messageColumn.height + topPadding + bottomPadding
+                                Column {
                                     id: messageColumn
-                                    width: parent.width - parent.leftPadding - parent.rightPadding
+                                    x: leftPadding
+                                    y: topPadding
+                                    width: Math.max(1, parent.width - leftPadding - rightPadding)
                                     spacing: 5
                                     Label {
+                                        width: parent.width
                                         text: senderOf(modelData)
                                         font.weight: Font.DemiBold
-                                        Layout.fillWidth: true
                                         elide: Text.ElideRight
                                     }
                                     Label {
                                         id: messageContent
+                                        width: parent.width
                                         text: contentOf(modelData)
                                         color: Theme.currentTheme.colors.textColor
                                         wrapMode: Text.WrapAnywhere
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 1
                                         horizontalAlignment: Text.AlignLeft
                                         verticalAlignment: Text.AlignTop
                                     }

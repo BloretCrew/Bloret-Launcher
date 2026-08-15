@@ -462,7 +462,7 @@ FluentPage {
                             width: parent.width
                             padding: 12
                             ColumnLayout {
-                                width: parent.width - parent.leftPadding - parent.rightPadding
+                                anchors.fill: parent
                                 spacing: 8
                                 TextArea {
                                     id: commentInput
