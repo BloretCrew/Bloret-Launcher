@@ -382,6 +382,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     'data': {
                         'logined': bool(config_data.get('Bloret_PassPort_Login', False)),
                         'username': config_data.get('Bloret_PassPort_UserName', ''),
+                        'nickname': config_data.get('Bloret_PassPort_NickName') or config_data.get('Bloret_PassPort_UserName', ''),
                         'avatar': config_data.get('Bloret_PassPort_Avatar', ''),
                     }
                 })
@@ -1376,6 +1377,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             # 更新Bloret Passport用户信息
                             config_data['Bloret_PassPort_Login'] = True
                             config_data['Bloret_PassPort_UserName'] = user_data['username']
+                            config_data['Bloret_PassPort_NickName'] = user_data.get('nickname') or user_data['username']
                             config_data['Bloret_PassPort_PassWord'] = user_data.get('apptoken', '')
                             # avatar field may not exist; still write key even if empty
                             avatar_val = user_data.get('avatar', '')
@@ -1416,7 +1418,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                             html_content = self.generate_success_page()
                             self.wfile.write(html_content.encode('utf-8'))
                             
-                            send_notification(f'您已以 {user_data["username"]} 登录', f'登录后可使用 Bloret PassPort 服务，例如同步 Minecraft 登录信息到云端等功能', category="account")
+                            send_notification(f'您已以 {user_data.get("nickname") or user_data["username"]} 登录', f'登录后可使用 Bloret PassPort 服务，例如同步 Minecraft 登录信息到云端等功能', category="account")
                         else:
                             raise ValueError("Invalid user data format")
 

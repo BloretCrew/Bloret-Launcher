@@ -25,7 +25,7 @@ FluentPage {
         if (Backend) {
             try {
                 passportLoggedIn = Backend.getBloretPassPortLoginStatus()
-                passportUser = Backend.getBloretPassPortUserName()
+                passportUser = Backend.getPassPortName()
                 accountList = Backend.getMinecraftAccounts()
             } catch(e) {
                 console.log("Error updating passport data:", e)
@@ -47,7 +47,7 @@ FluentPage {
                         accountList = Backend.getMinecraftAccounts()
                     }
                     passportLoggedIn = Backend.getBloretPassPortLoginStatus()
-                    passportUser = Backend.getBloretPassPortUserName()
+                    passportUser = Backend.getPassPortName()
                 } catch(e) {
                     console.log("Error in onMinecraftAccountsChanged:", e)
                 }

@@ -4144,7 +4144,10 @@ class Backend(QObject):
 
     @Slot(result=str)
     def getPassPortName(self):
-        return self.getBloretPassPortUserName()
+        config_data = cfg.read()
+        if config_data.get('Bloret_PassPort_Login'):
+            return config_data.get('Bloret_PassPort_NickName') or config_data.get('Bloret_PassPort_UserName', 'Unknown')
+        return i18nText("未登录")
 
     def _passport_avatar_cache_file(self, config_data=None):
         config_data = config_data or cfg.read()
@@ -4263,6 +4266,7 @@ class Backend(QObject):
         prev_user = config_data.get("Bloret_PassPort_UserName") or ""
         config_data['Bloret_PassPort_Login'] = False
         config_data['Bloret_PassPort_UserName'] = ""
+        config_data['Bloret_PassPort_NickName'] = ""
         config_data['Bloret_PassPort_PassWord'] = ""
         cfg.write(config_data)
         print("Logged out from Bloret PassPort")
@@ -5191,6 +5195,7 @@ class Backend(QObject):
             existing_language = existing_config.get("language", "zh-cn")
             existing_passport_login = existing_config.get("Bloret_PassPort_Login", False)
             existing_passport_username = existing_config.get("Bloret_PassPort_UserName", "")
+            existing_passport_nickname = existing_config.get("Bloret_PassPort_NickName", "")
             existing_passport_admin = existing_config.get("Bloret_PassPort_Admin", False)
             existing_passport_avatar = existing_config.get("Bloret_PassPort_Avatar", "")
             existing_passport_password = existing_config.get("Bloret_PassPort_PassWord", "")
@@ -5224,6 +5229,7 @@ class Backend(QObject):
                 if existing_passport_login:
                     config_data["Bloret_PassPort_Login"] = existing_passport_login
                     config_data["Bloret_PassPort_UserName"] = existing_passport_username
+                    config_data["Bloret_PassPort_NickName"] = existing_passport_nickname
                     config_data["Bloret_PassPort_Admin"] = existing_passport_admin
                     if existing_passport_avatar:
                         config_data["Bloret_PassPort_Avatar"] = existing_passport_avatar
@@ -5249,6 +5255,7 @@ class Backend(QObject):
                     "MinecraftAccount": existing_mc_account,
                     "Bloret_PassPort_Login": existing_passport_login,
                     "Bloret_PassPort_UserName": existing_passport_username,
+                    "Bloret_PassPort_NickName": existing_passport_nickname,
                     "Bloret_PassPort_Admin": existing_passport_admin,
                     "Bloret_PassPort_Avatar": existing_passport_avatar,
                     "Bloret_PassPort_PassWord": existing_passport_password

@@ -108,7 +108,7 @@ def readdata(key, public=False):
         # 构建请求URL
         if public:
             log("使用公共模式读取数据")
-            url = (f"{BLglobals.server_ip}:20000/app/data/get?"
+            url = (f"{BLglobals.server_ip}:20000/app/data/read?"
                     f"app_id=BloretLauncher&"
                     f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user=public&"
@@ -117,14 +117,14 @@ def readdata(key, public=False):
             log(f"请求URL: {url}")
         else:
             log(f"使用用户模式读取数据，用户: {user}")
-            url = (f"{BLglobals.server_ip}:20000/app/data/get?"
+            url = (f"{BLglobals.server_ip}:20000/app/data/read?"
                     f"app_id=BloretLauncher&"
                     f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user={user}&"
                     f"usertoken={usertoken}&"
                     f"key={key}")
             # 用户模式下 URL 包含 usertoken，这里记录脱敏后的 URL 信息
-            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/get?user={user}&key={key}")
+            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/read?user={user}&key={key}")
         
         response = requests.get(url, timeout=10)
         log(f"HTTP 响应状态码: {response.status_code}")

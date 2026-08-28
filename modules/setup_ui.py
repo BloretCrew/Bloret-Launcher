@@ -825,7 +825,7 @@ def setup_home_ui(self, widget):
     self.show_text = widget.findChild(QLabel, "show")
     Bloret_PassPort_Name = widget.findChild(QLabel, "Bloret_PassPort_Name")
     if Bloret_PassPort_Name:
-        Bloret_PassPort_Name.setText(f"{self.config.get('Bloret_PassPort_UserName', '未登录')}")
+        Bloret_PassPort_Name.setText(f"{self.config.get('Bloret_PassPort_NickName') or self.config.get('Bloret_PassPort_UserName', '未登录')}")
     Minecraft_account = widget.findChild(QLabel, "Minecraft_account")
     if Minecraft_account:
         if self.config.get('home_show_login_mod', False):
@@ -1173,7 +1173,7 @@ def setup_passport_ui(self, widget, homeInterface):
     # Bloret PassPort 账户状态
     Bloret_PassPort_UserName = widget.findChild(QLabel, "Bloret_PassPort_UserName")
     if Bloret_PassPort_UserName:
-        Bloret_PassPort_UserName.setText(self.config.get('Bloret_PassPort_UserName', i18nText('未登录')))
+        Bloret_PassPort_UserName.setText(self.config.get('Bloret_PassPort_NickName') or self.config.get('Bloret_PassPort_UserName', i18nText('未登录')))
 
     Bloret_PassPort_login = widget.findChild(QPushButton, "Bloret_PassPort_login")
     if Bloret_PassPort_login:
