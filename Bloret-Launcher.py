@@ -383,6 +383,7 @@ class Backend(QObject):
         # Live state
         self._live_sse_client = None
         self._live_webrtc_manager = None
+        self._live_join_generation = 0
         self._current_live_space_id = None
         self._current_live_space = {}
         self.languageSyncApplyRequested.connect(self._apply_live_language_result)
@@ -4735,16 +4736,25 @@ class Backend(QObject):
 
     @Slot(str, str)
     def joinLiveSpace(self, spaceId, password):
+        if self._current_live_space_id and self._current_live_space_id != spaceId:
+            self.leaveLiveSpace()
+        self._live_join_generation += 1
+        generation = self._live_join_generation
+
+        def is_current_join():
+            return generation == self._live_join_generation
+
         def run():
             from modules.bbbs_live import check_access, verify_password, LiveSSEClient, get_space_easytier_info
             try:
-                if self._current_live_space_id and self._current_live_space_id != spaceId:
-                    self.leaveLiveSpace()
-
                 access = check_access(spaceId)
+                if not is_current_join():
+                    return
                 if access and access.get('needsPassword'):
                     if password:
                         result = verify_password(spaceId, password)
+                        if not is_current_join():
+                            return
                         if not result or not result.get('success'):
                             self.liveErrorOccurred.emit(i18nText("密码验证失败"))
                             return
@@ -4752,11 +4762,21 @@ class Backend(QObject):
                         self.liveErrorOccurred.emit(i18nText("需要密码才能加入"))
                         return
 
+                previous_client = self._live_sse_client
+                if previous_client:
+                    previous_client.stop()
+                if not is_current_join():
+                    return
+
                 self._current_live_space_id = spaceId
                 self._current_live_space = {}
                 self._current_live_easytier_state = {}
-                self._live_sse_client = LiveSSEClient(spaceId, self._handle_live_event)
-                self._live_sse_client.start()
+                client = LiveSSEClient(
+                    spaceId,
+                    lambda event: self._handle_live_event(event, spaceId, generation, client),
+                )
+                self._live_sse_client = client
+                client.start()
                 self._current_live_connection_state = "connecting"
                 self.liveConnectionStateChanged.emit("connecting")
                 try:
@@ -4765,17 +4785,14 @@ class Backend(QObject):
                 except Exception as _pe:
                     log(f"[PluginHost] live.join 失败: {_pe}", logging.WARNING)
 
-                # 立即用已有的空间信息发射 joinedSpace 信号，不等待服务器 init 事件
-                space_name = access.get('spaceName', '') if access else ''
+                space_name = access.get('spaceName', '') if isinstance(access, dict) else ''
                 username = self.getBloretPassPortUserName()
-
-                # 从缓存的空间列表判断 isOwner
-                is_owner = False
-                for sp in self._live_space_list_cache:
-                    if sp.get("id") == spaceId and sp.get("owner") == username:
-                        is_owner = True
-                        break
-
+                is_owner = any(
+                    isinstance(sp, dict)
+                    and sp.get("id") == spaceId
+                    and sp.get("owner") == username
+                    for sp in self._live_space_list_cache
+                )
                 initial_space = {
                     "id": spaceId,
                     "name": space_name,
@@ -4785,25 +4802,34 @@ class Backend(QObject):
                     "easytier": {},
                     "isOwner": is_owner,
                 }
+                if not is_current_join() or self._live_sse_client is not client:
+                    client.stop()
+                    return
                 self._current_live_space = initial_space
                 self.liveJoinedSpace.emit(initial_space)
                 self._emit_live_easytier_state({})
                 self._current_live_connection_state = "connected"
                 self.liveConnectionStateChanged.emit("connected")
 
-                # 用户进入房间后立即检测是否已有进行中的 EasyTier 网络
                 try:
                     easytier_result = get_space_easytier_info(spaceId)
-                    if easytier_result and easytier_result.get("success"):
+                    if (
+                        is_current_join()
+                        and self._live_sse_client is client
+                        and easytier_result
+                        and easytier_result.get("success")
+                    ):
                         self._emit_live_easytier_state(easytier_result.get("easytier", {}))
                 except Exception as e:
                     log(f"加入 Live 后检测 EasyTier 状态失败: {e}", logging.DEBUG)
             except Exception as e:
-                self.liveErrorOccurred.emit(str(e))
-        threading.Thread(target=run, daemon=True).start()
+                if is_current_join():
+                    self.liveErrorOccurred.emit(str(e))
+        threading.Thread(target=run, daemon=True, name=f"LiveJoin-{spaceId}").start()
 
     @Slot()
     def leaveLiveSpace(self):
+        self._live_join_generation += 1
         current_space_id = self._current_live_space_id
         if self._live_sse_client:
             self._live_sse_client.stop()
@@ -4832,54 +4858,60 @@ class Backend(QObject):
 
     @Slot(str)
     def sendLiveChatMessage(self, message):
+        from modules.bbbs_live import validate_chat_message
+
+        space_id = self._current_live_space_id
+        valid, error_message, normalized_message = validate_chat_message(space_id, message)
+        if not valid:
+            self.liveErrorOccurred.emit(i18nText(error_message))
+            return
+        generation = self._live_join_generation
+
         def run():
             from modules.bbbs_live import send_signal
             import time
             import uuid
             try:
-                # 生成唯一消息ID
                 username = self.getBloretPassPortUserName()
                 msg_id = f"{username}_{int(time.time()*1000)}_{str(uuid.uuid4())[:8]}"
                 payload = {
-                    "msg": message,
+                    "msg": normalized_message,
                     "msgId": msg_id
                 }
-                result = send_signal(self._current_live_space_id, {
+                result = send_signal(space_id, {
                     "type": "chat",
                     "payload": payload
                 })
+                if generation != self._live_join_generation or self._current_live_space_id != space_id:
+                    return
                 if result is None:
                     self.liveErrorOccurred.emit(i18nText("发送消息失败，请检查网络连接或服务器状态"))
                 else:
-                    # 在本地显示自己发送的消息(服务器不会广播给自己)
                     chat_history = list(self._current_live_space.get("chatHistory") or [])
-                    chat_history.append({
+                    event = {
                         "type": "chat",
                         "from": username,
                         "payload": payload
-                    })
+                    }
+                    chat_history.append(event)
                     self._current_live_space["chatHistory"] = chat_history
-                    self.liveChatMessageReceived.emit({
-                        "type": "chat",
-                        "from": username,
-                        "payload": payload
-                    })
+                    self.liveChatMessageReceived.emit(event)
                     try:
                         from modules.plugin_host.hook_util import fire
                         fire(
                             "live.chat",
                             {
-                                "space_id": self._current_live_space_id,
+                                "space_id": space_id,
                                 "from": username,
                                 "msg_id": msg_id,
-                                # 不向插件暴露完整聊天内容以外的敏感字段
                             },
                         )
                     except Exception:
                         pass
             except Exception as e:
-                self.liveErrorOccurred.emit(i18nText("发送消息失败: {error}").replace("{error}", str(e)))
-        threading.Thread(target=run, daemon=True).start()
+                if generation == self._live_join_generation and self._current_live_space_id == space_id:
+                    self.liveErrorOccurred.emit(i18nText("发送消息失败: {error}").replace("{error}", str(e)))
+        threading.Thread(target=run, daemon=True, name=f"LiveChat-{space_id}").start()
 
     @Slot(str)
     def createLiveSpace(self, name):
@@ -5101,8 +5133,16 @@ class Backend(QObject):
         if self._live_webrtc_manager:
             self._live_webrtc_manager.toggle_video(enabled)
 
-    def _handle_live_event(self, event):
-        """分发 SSE 事件到对应的 Signal"""
+    def _handle_live_event(self, event, space_id=None, generation=None, client=None):
+        """分发当前 Live 空间的 SSE 事件到对应 Signal。"""
+        if space_id is not None and space_id != self._current_live_space_id:
+            return
+        if generation is not None and generation != self._live_join_generation:
+            return
+        if client is not None and client is not self._live_sse_client:
+            return
+        if not isinstance(event, dict):
+            return
         event_type = event.get("type", "")
         if event_type == "init":
             normalized_event = dict(event)

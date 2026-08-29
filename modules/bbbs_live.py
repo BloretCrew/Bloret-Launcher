@@ -1,35 +1,97 @@
 import requests
 import json
 import threading
-import time
 import logging
 import modules.globals as BLglobals
-import modules.config as cfg
-from modules.log import log
+
+
+def log(message, level=None):
+    try:
+        from modules.log import log as app_log
+        return app_log(message, level) if level is not None else app_log(message)
+    except ImportError:
+        logging.getLogger(__name__).log(level or logging.INFO, message)
+
+
+def _read_config():
+    try:
+        import modules.config as cfg
+        return cfg.read()
+    except ImportError:
+        return {}
 
 
 def _get_base_url():
     return BLglobals.server_ip + ':21111'
 
 
+_LOG_BODY_LIMIT = 500
+_SENSITIVE_COOKIE_NAMES = {"session", "session.sig"}
+_MAX_CHAT_MESSAGE_LENGTH = 2000
+
+
+def _redact_cookies(cookies):
+    return {
+        key: "<redacted>" if key.lower() in _SENSITIVE_COOKIE_NAMES else value
+        for key, value in (cookies or {}).items()
+    }
+
+
 def _log_request(method, url, cookies, body=None):
-    """调试用：打印请求完整信息"""
-    log(f"[Live DEBUG] ===== 请求 =====")
+    """记录请求诊断信息，同时隐藏认证 cookie。"""
+    log("[Live DEBUG] ===== 请求 =====")
     log(f"[Live DEBUG] {method} {url}")
-    log(f"[Live DEBUG] Cookies: {json.dumps(cookies, ensure_ascii=False)}")
+    log(f"[Live DEBUG] Cookies: {json.dumps(_redact_cookies(cookies), ensure_ascii=False)}")
     if body is not None:
-        log(f"[Live DEBUG] Body: {json.dumps(body, ensure_ascii=False)}")
+        try:
+            body_text = json.dumps(body, ensure_ascii=False)
+        except (TypeError, ValueError):
+            body_text = repr(body)
+        log(f"[Live DEBUG] Body: {body_text[:_LOG_BODY_LIMIT]}")
+
+
+def _redact_response_headers(headers):
+    redacted = {}
+    for key, value in dict(headers or {}).items():
+        if key.lower() in {"set-cookie", "cookie", "authorization"}:
+            redacted[key] = "<redacted>"
+        else:
+            redacted[key] = value
+    return redacted
 
 
 def _log_response(response):
-    """调试用：打印响应完整信息"""
-    log(f"[Live DEBUG] ===== 响应 =====")
+    """记录有界的响应诊断信息。"""
+    log("[Live DEBUG] ===== 响应 =====")
     log(f"[Live DEBUG] Status: {response.status_code}")
-    log(f"[Live DEBUG] Headers: {dict(response.headers)}")
+    log(f"[Live DEBUG] Headers: {_redact_response_headers(response.headers)}")
     try:
-        log(f"[Live DEBUG] Body: {response.text[:500]}")
+        log(f"[Live DEBUG] Body: {response.text[:_LOG_BODY_LIMIT]}")
     except Exception:
         pass
+
+
+def _parse_json_response(response, default=None, expected_types=(dict, list)):
+    try:
+        payload = response.json()
+    except (ValueError, TypeError) as e:
+        log(f"[Live] 响应 JSON 解析失败: {e}", logging.WARNING)
+        return default
+    if not isinstance(payload, expected_types):
+        log(f"[Live] 响应数据类型异常: {type(payload).__name__}", logging.WARNING)
+        return default
+    return payload
+
+
+def validate_chat_message(space_id, message, max_length=_MAX_CHAT_MESSAGE_LENGTH):
+    if not space_id:
+        return False, "请先加入 Live 空间", ""
+    if not isinstance(message, str) or not message.strip():
+        return False, "消息不能为空", ""
+    normalized = message.strip()
+    if len(normalized) > max_length:
+        return False, f"消息不能超过 {max_length} 个字符", ""
+    return True, "", normalized
 
 
 def _request_json(method, path, timeout=10, body=None):
@@ -47,14 +109,13 @@ def _request_json(method, path, timeout=10, body=None):
             timeout=timeout,
         )
         _log_response(response)
-        try:
-            payload = response.json()
-        except json.JSONDecodeError:
-            payload = {"success": response.ok, "raw": response.text[:500]}
+        payload = _parse_json_response(response)
         if response.ok:
             return payload
         log(f"[Live] 请求失败: {method} {path} -> {response.status_code}", logging.WARNING)
-        return payload
+        if isinstance(payload, dict):
+            return payload
+        return {"success": False, "error": f"HTTP {response.status_code}"}
     except requests.exceptions.RequestException as e:
         log(f"[Live] 请求网络错误: {method} {path} -> {e}")
         return None
@@ -62,7 +123,7 @@ def _request_json(method, path, timeout=10, body=None):
 
 def _get_session_cookie():
     """从 config.json 读取 bbbs_session 和 bbbs_session_sig，返回 cookies dict"""
-    config_data = cfg.read()
+    config_data = _read_config()
     cookies = {}
     session = config_data.get('bbbs_session', '')
     if session:
@@ -84,10 +145,9 @@ def fetch_space_list():
         response = requests.get(url, cookies=cookies, timeout=15)
         _log_response(response)
         if response.status_code == 200:
-            return response.json()
-        else:
-            log(f"[Live] 获取空间列表失败，状态码: {response.status_code}")
-            return []
+            return _parse_json_response(response, default=[], expected_types=(list,))
+        log(f"[Live] 获取空间列表失败，状态码: {response.status_code}")
+        return []
     except requests.exceptions.RequestException as e:
         log(f"[Live] 获取空间列表网络错误: {e}")
         return []
@@ -114,16 +174,13 @@ def send_signal(space_id, signal_data):
         response = requests.post(url, json=signal_data, cookies=cookies, headers=headers, timeout=10)
         _log_response(response)
         if response.status_code == 200:
-            try:
-                return response.json()
-            except json.JSONDecodeError:
-                log(f"[Live] 响应解析失败,但状态码为 200")
-                return {"success": True}
-        else:
-            # 尝试解析错误响应
-            error_detail = response.text[:200]
-            log(f"[Live] 发送信号失败，状态码: {response.status_code}, 详情: {error_detail}")
-            return None
+            payload = _parse_json_response(response, default=None, expected_types=(dict,))
+            if payload is None:
+                log("[Live] 发送信号响应无效")
+            return payload
+        error_detail = response.text[:200]
+        log(f"[Live] 发送信号失败，状态码: {response.status_code}, 详情: {error_detail}")
+        return None
     except requests.exceptions.RequestException as e:
         log(f"[Live] 发送信号网络错误: {e}")
         return None
@@ -164,119 +221,147 @@ def get_space_easytier_info(space_id):
 # ==================== SSE Client ====================
 
 class LiveSSEClient:
-    """SSE 长连接客户端，接收 Live 空间实时事件"""
+    """SSE 长连接客户端，接收 Live 空间实时事件。"""
 
     def __init__(self, space_id, on_event_callback):
         self._space_id = space_id
         self._callback = on_event_callback
-        self._running = False
+        self._stop_event = threading.Event()
         self._thread = None
+        self._response = None
+        self._lock = threading.Lock()
 
     def start(self):
-        self._running = True
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._thread.start()
+        with self._lock:
+            if self._thread and self._thread.is_alive():
+                return
+            self._stop_event.clear()
+            self._thread = threading.Thread(
+                target=self._run,
+                daemon=True,
+                name=f"LiveSSE-{self._space_id}",
+            )
+            self._thread.start()
 
-    def stop(self):
-        self._running = False
+    def stop(self, timeout=2.0):
+        self._stop_event.set()
+        with self._lock:
+            response = self._response
+            thread = self._thread
+        if response is not None:
+            try:
+                response.close()
+            except Exception:
+                pass
+        if thread and thread is not threading.current_thread():
+            thread.join(timeout=timeout)
+        return not thread or not thread.is_alive()
+
+    def _emit_event(self, event_type, data_lines):
+        if not data_lines or self._stop_event.is_set():
+            return
+        data_str = "\n".join(data_lines)
+        try:
+            payload = json.loads(data_str)
+        except (ValueError, TypeError) as e:
+            log(f"[Live SSE] JSON 解析失败: {data_str[:100]}, 错误: {e}")
+            return
+        if not isinstance(payload, dict):
+            log(f"[Live SSE] 忽略非对象事件: {type(payload).__name__}")
+            return
+        if event_type:
+            payload["type"] = event_type
+        if not self._stop_event.is_set():
+            self._callback(payload)
+
+    def _consume_response(self, response):
+        event_type = None
+        data_lines = []
+        for raw_line in response.iter_lines(decode_unicode=True):
+            if self._stop_event.is_set():
+                break
+            if isinstance(raw_line, bytes):
+                line = raw_line.decode("utf-8", errors="replace")
+            else:
+                line = raw_line or ""
+            line = line.rstrip("\r")
+            if line == "":
+                self._emit_event(event_type, data_lines)
+                event_type = None
+                data_lines = []
+                continue
+            if line.startswith(":"):
+                continue
+            field, separator, value = line.partition(":")
+            if not separator:
+                continue
+            if value.startswith(" "):
+                value = value[1:]
+            if field == "event":
+                event_type = value
+            elif field == "data":
+                data_lines.append(value)
+        self._emit_event(event_type, data_lines)
+
+    def _wait_to_reconnect(self, delay):
+        return self._stop_event.wait(delay)
 
     def _run(self):
         url = f"{_get_base_url()}/api/live/events/{self._space_id}"
-        cookies = _get_session_cookie()
         reconnect_delay = 1
-
-        while self._running:
+        while not self._stop_event.is_set():
             try:
                 log(f"[Live SSE] 正在连接 SSE: {url}")
-                with requests.get(url, stream=True, cookies=cookies, timeout=(10, None)) as resp:
-                    log(f"[Live SSE] 连接响应状态码: {resp.status_code}, Headers Content-Type: {resp.headers.get('Content-Type', 'N/A')}")
-                    if resp.status_code != 200:
-                        log(f"[Live SSE] 连接失败，状态码: {resp.status_code}")
-                        self._callback({"type": "error", "message": f"SSE 连接失败: {resp.status_code}"})
-                        time.sleep(reconnect_delay)
+                response = requests.get(
+                    url,
+                    stream=True,
+                    cookies=_get_session_cookie(),
+                    timeout=(10, 30),
+                )
+                with self._lock:
+                    self._response = response
+                try:
+                    log(
+                        f"[Live SSE] 连接响应状态码: {response.status_code}, "
+                        f"Headers Content-Type: {response.headers.get('Content-Type', 'N/A')}"
+                    )
+                    if response.status_code != 200:
+                        log(f"[Live SSE] 连接失败，状态码: {response.status_code}")
+                        if not self._stop_event.is_set():
+                            self._callback({"type": "error", "message": f"SSE 连接失败: {response.status_code}"})
+                        if self._wait_to_reconnect(reconnect_delay):
+                            break
                         reconnect_delay = min(reconnect_delay * 2, 30)
                         continue
-
-                    # 确保使用 UTF-8 编码
-                    resp.encoding = 'utf-8'
+                    response.encoding = "utf-8"
                     reconnect_delay = 1
-                    event_type = None
-                    data_lines = []
-
-                    # 手动读取并解码 UTF-8
-                    buffer = ""
-                    while self._running:
-                        try:
-                            # 读取原始字节并解码为 UTF-8
-                            chunk = resp.raw.read(4096)
-                            if not chunk:
-                                log(f"[Live SSE] 流结束 (chunk 为空)")
-                                break
-                            
-                            # 尝试 UTF-8 解码
-                            if isinstance(chunk, bytes):
-                                text = chunk.decode('utf-8', errors='replace')
-                            else:
-                                text = chunk
-                            
-                            log(f"[Live SSE] 收到原始数据 ({len(text)} 字节): {repr(text[:200])}")
-                            
-                            buffer += text
-                            
-                            # 按行处理
-                            while '\n' in buffer:
-                                line, buffer = buffer.split('\n', 1)
-                                original_line = line
-                                line = line.strip()
-                                
-                                log(f"[Live SSE] 解析行: {repr(original_line)[:100]}")
-                                
-                                if line == "":
-                                    # 空行表示事件结束（SSE 事件分隔符）
-                                    if data_lines:
-                                        data_str = "\n".join(data_lines)
-                                        log(f"[Live SSE] 事件完成! type={event_type}, data={data_str[:200]}")
-                                        try:
-                                            payload = json.loads(data_str)
-                                            if event_type:
-                                                payload["type"] = event_type
-                                            log(f"[Live SSE] 回调事件: type={payload.get('type', 'unknown')}")
-                                            self._callback(payload)
-                                        except json.JSONDecodeError as e:
-                                            log(f"[Live SSE] JSON 解析失败: {data_str[:100]}, 错误: {e}")
-                                        event_type = None
-                                        data_lines = []
-                                    else:
-                                        log(f"[Live SSE] 空行但无数据，跳过")
-                                elif line.startswith("event: "):
-                                    event_type = line[7:].strip()
-                                    log(f"[Live SSE] 事件类型: {event_type}")
-                                elif line.startswith("data: "):
-                                    data_lines.append(line[6:])
-                                elif line.startswith("data:"):
-                                    data_lines.append(line[5:])
-                                else:
-                                    log(f"[Live SSE] 忽略未知行: {repr(line)[:80]}")
-                        except UnicodeDecodeError as e:
-                            log(f"[Live SSE] UTF-8 解码错误: {e}")
-                            buffer = ""
-                        except Exception as e:
-                            if self._running:
-                                log(f"[Live SSE] 读取数据错误: {e}")
-                            break
-
-            except requests.exceptions.RequestException as e:
-                if self._running:
-                    log(f"[Live SSE] 连接断开: {e}，{reconnect_delay}秒后重连...")
-                    time.sleep(reconnect_delay)
-                    reconnect_delay = min(reconnect_delay * 2, 30)
-            except Exception as e:
-                if self._running:
-                    log(f"[Live SSE] 未知错误: {e}")
-                    import traceback
-                    log(f"[Live SSE] 错误详情: {traceback.format_exc()}")
-                    self._callback({"type": "error", "message": str(e)})
+                    self._consume_response(response)
+                finally:
+                    try:
+                        response.close()
+                    finally:
+                        with self._lock:
+                            if self._response is response:
+                                self._response = None
+                if not self._stop_event.is_set() and self._wait_to_reconnect(reconnect_delay):
                     break
+            except requests.exceptions.RequestException as e:
+                if self._stop_event.is_set():
+                    break
+                log(f"[Live SSE] 连接断开: {e}，{reconnect_delay}秒后重连...")
+                if self._wait_to_reconnect(reconnect_delay):
+                    break
+                reconnect_delay = min(reconnect_delay * 2, 30)
+            except Exception as e:
+                if self._stop_event.is_set():
+                    break
+                log(f"[Live SSE] 未知错误: {e}")
+                self._callback({"type": "error", "message": str(e)})
+                if self._wait_to_reconnect(reconnect_delay):
+                    break
+                reconnect_delay = min(reconnect_delay * 2, 30)
+        with self._lock:
+            self._response = None
 
 
 # ==================== WebRTC Manager ====================
