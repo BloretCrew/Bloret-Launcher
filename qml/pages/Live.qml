@@ -208,9 +208,8 @@ FluentPage {
         }
 
         function onLiveChatMessageReceived(data) {
-            var msgs = chatMessages.slice()
-            msgs.push(data)
-            chatMessages = msgs
+            var msgs = Backend ? normalizeChatHistory((Backend.getCurrentLiveSpace() || {}).chatHistory) : chatMessages.slice()
+            chatMessages = msgs.slice(Math.max(0, msgs.length - 500))
             Qt.callLater(function() {
                 if (chatListView)
                     chatListView.positionViewAtEnd()

@@ -1,14 +1,24 @@
 """启动器业务服务门面。
 
 PluginAPI 与 Web API 应优先调用本包，避免在 Backend / web 中重复实现。
-Phase 0 仅提供薄封装；后续 Phase 逐步把业务逻辑迁入。
+服务模块按需导入，保证纯逻辑 helper 可脱离 GUI 依赖使用。
 """
 
-from modules.services import config_service, content_service, launch_service, versions_service
+from importlib import import_module
+
 
 __all__ = [
     "config_service",
     "content_service",
     "launch_service",
+    "live_chat",
     "versions_service",
 ]
+
+
+def __getattr__(name):
+    if name in __all__:
+        module = import_module(f"modules.services.{name}")
+        globals()[name] = module
+        return module
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -386,6 +386,9 @@ class Backend(QObject):
         self._live_join_generation = 0
         self._current_live_space_id = None
         self._current_live_space = {}
+        from modules.services.live_chat import LiveChatHistory
+        self._live_chat_history = LiveChatHistory()
+        self._live_chat_state_lock = threading.Lock()
         self.languageSyncApplyRequested.connect(self._apply_live_language_result)
         self._current_live_easytier_state = {}
         self._current_live_easytier_merged_state = {}
@@ -4554,24 +4557,15 @@ class Backend(QObject):
         return users
 
     def _normalize_live_chat_history(self, chat_history):
-        if not isinstance(chat_history, list):
-            return []
+        with self._live_chat_state_lock:
+            self._live_chat_history.reconcile_initial(chat_history)
+            return self._live_chat_history.snapshot()
 
-        normalized = []
-        for item in chat_history:
-            if not isinstance(item, dict):
-                continue
-            normalized.append({
-                "type": "chat",
-                "from": item.get("from", ""),
-                "payload": {
-                    "msg": item.get("msg", ""),
-                    "msgId": item.get("msgId"),
-                    "recalled": item.get("recalled", False),
-                    "time": item.get("time"),
-                }
-            })
-        return normalized
+    def _append_live_chat_event(self, event):
+        with self._live_chat_state_lock:
+            added, normalized_event = self._live_chat_history.append(event)
+            self._current_live_space["chatHistory"] = self._live_chat_history.snapshot()
+            return added, normalized_event
 
     def _emit_live_easytier_state(self, remote_state=None):
         try:
@@ -4770,6 +4764,7 @@ class Backend(QObject):
 
                 self._current_live_space_id = spaceId
                 self._current_live_space = {}
+                self._live_chat_history.clear()
                 self._current_live_easytier_state = {}
                 client = LiveSSEClient(
                     spaceId,
@@ -4845,6 +4840,7 @@ class Backend(QObject):
             log(f"离开 Live 时停止 EasyTier 失败: {e}", logging.WARNING)
         self._current_live_space_id = None
         self._current_live_space = {}
+        self._live_chat_history.clear()
         self._current_live_easytier_state = {}
         self._current_live_connection_state = "disconnected"
         self.liveLeftSpace.emit()
@@ -4887,15 +4883,14 @@ class Backend(QObject):
                 if result is None:
                     self.liveErrorOccurred.emit(i18nText("发送消息失败，请检查网络连接或服务器状态"))
                 else:
-                    chat_history = list(self._current_live_space.get("chatHistory") or [])
                     event = {
                         "type": "chat",
                         "from": username,
                         "payload": payload
                     }
-                    chat_history.append(event)
-                    self._current_live_space["chatHistory"] = chat_history
-                    self.liveChatMessageReceived.emit(event)
+                    added, normalized_event = self._append_live_chat_event(event)
+                    if added:
+                        self.liveChatMessageReceived.emit(normalized_event)
                     try:
                         from modules.plugin_host.hook_util import fire
                         fire(
@@ -5147,7 +5142,6 @@ class Backend(QObject):
         if event_type == "init":
             normalized_event = dict(event)
             normalized_event["users"] = self._normalize_live_users(event.get("users"))
-            normalized_event["chatHistory"] = self._normalize_live_chat_history(event.get("chatHistory"))
             # 确保 isOwner 有值：服务端不返回时从缓存列表推算
             if "isOwner" not in normalized_event:
                 username = self.getBloretPassPortUserName()
@@ -5157,8 +5151,11 @@ class Backend(QObject):
                     for sp in self._live_space_list_cache
                 )
                 normalized_event["isOwner"] = is_owner
-            self._current_live_space = normalized_event
-            self.liveJoinedSpace.emit(normalized_event)
+            with self._live_chat_state_lock:
+                self._live_chat_history.reconcile_initial(event.get("chatHistory"))
+                normalized_event["chatHistory"] = self._live_chat_history.snapshot()
+                self._current_live_space = normalized_event
+                self.liveJoinedSpace.emit(normalized_event)
 
             # 部分服务端 init 事件不会携带 easytier（或返回空对象），
             # 这里避免用空对象覆盖 join 阶段已拉取到的 EasyTier 状态。
@@ -5187,13 +5184,9 @@ class Backend(QObject):
                 ]
             self.liveUserEvent.emit(normalized_event)
         elif event_type == "chat":
-            normalized_event = dict(event)
-            if not isinstance(normalized_event.get("payload"), dict):
-                normalized_event["payload"] = {"msg": normalized_event.get("payload", "")}
-            chat_history = list(self._current_live_space.get("chatHistory") or [])
-            chat_history.append(normalized_event)
-            self._current_live_space["chatHistory"] = chat_history
-            self.liveChatMessageReceived.emit(normalized_event)
+            added, normalized_event = self._append_live_chat_event(event)
+            if added:
+                self.liveChatMessageReceived.emit(normalized_event)
         elif event_type == "easytier-state":
             remote_state = {k: v for k, v in event.items() if k != "type"}
             self._emit_live_easytier_state(remote_state)
