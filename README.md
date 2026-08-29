@@ -179,11 +179,13 @@ FreeBSD 安装与 Minecraft 运行说明见 **[docs/FreeBSD.md](docs/FreeBSD.md)
 
 ## 星标历史
 
+<a href="https://www.star-history.com/?repos=BloretCrew%2FBloret-Launcher&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=BloretCrew/Bloret-Launcher&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=BloretCrew/Bloret-Launcher&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=BloretCrew/Bloret-Launcher&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=BloretCrew/Bloret-Launcher&type=date&theme=dark&legend=top-left&sealed_token=I-RgMFUYDE01MKNYihURki9gORl3bk-X3FElwLPRukS2a238SDOdy-l-3IAFmmXMVHMb5GVTOKVE5Bu6rHXjXBCCXJUgck8t59CdjfaHchtvpWsvwy-vJfHoAAa7gWFHmhMqQN4uKxN4iBZ7Y5J0tkKLNyeAcmuAKYkkjXqXwLPVqY6BrborM9hKmnna" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=BloretCrew/Bloret-Launcher&type=date&legend=top-left&sealed_token=I-RgMFUYDE01MKNYihURki9gORl3bk-X3FElwLPRukS2a238SDOdy-l-3IAFmmXMVHMb5GVTOKVE5Bu6rHXjXBCCXJUgck8t59CdjfaHchtvpWsvwy-vJfHoAAa7gWFHmhMqQN4uKxN4iBZ7Y5J0tkKLNyeAcmuAKYkkjXqXwLPVqY6BrborM9hKmnna" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=BloretCrew/Bloret-Launcher&type=date&legend=top-left&sealed_token=I-RgMFUYDE01MKNYihURki9gORl3bk-X3FElwLPRukS2a238SDOdy-l-3IAFmmXMVHMb5GVTOKVE5Bu6rHXjXBCCXJUgck8t59CdjfaHchtvpWsvwy-vJfHoAAa7gWFHmhMqQN4uKxN4iBZ7Y5J0tkKLNyeAcmuAKYkkjXqXwLPVqY6BrborM9hKmnna" />
  </picture>
+</a>
 
 ## 相关链接
 [Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
