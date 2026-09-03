@@ -18,6 +18,11 @@ class PassportR2Tests(unittest.TestCase):
         sync = backend.split("def syncAccountFromPassPort", 1)[1].split("def getIpv6Address", 1)[0]
         self.assertIn("minecraftAccountSyncFailed.emit", sync)
         self.assertIn("if success:", sync)
+        account_sync = backend.split("def syncMinecraftAccount", 1)[1].split("def setPluginStoreApi", 1)[0]
+        self.assertIn("if not sync_bloret_passport_account_to_mc(parent_window=None):", account_sync)
+        self.assertIn("self.minecraftAccountSyncFailed.emit", account_sync)
+        self.assertIn("return", account_sync)
+        self.assertIn("except Exception as e:", account_sync)
         overlay = Path("qml/OOBEOverlay.qml").read_text(encoding="utf-8")
         self.assertIn("onPassportLoginStatusChanged", overlay)
         self.assertIn('category === "started"', overlay)
@@ -72,6 +77,12 @@ class PassportR2Tests(unittest.TestCase):
         sync = source.split("def sync_bloret_passport_account_to_mc", 1)[1].split("def refresh_minecraft_token", 1)[0]
         self.assertLess(sync.index("if not cfg.write(config_data)"), sync.index("parent_window.config"))
         self.assertLess(sync.index("parent_window.config"), sync.index('invoke_hook(\n                "passport.sync"'))
+
+    def test_old_launcher_is_not_packaged_or_active_entrypoint(self):
+        spec = Path("Bloret-Launcher.spec").read_text(encoding="utf-8")
+        iss = Path("Bloret-Launcher-Setup.iss").read_text(encoding="utf-8")
+        self.assertIn("['Bloret-Launcher.py']", spec)
+        self.assertNotIn("Bloret-Launcher-Old.py", spec + iss)
 
     def test_callback_failure_consumes_transaction(self):
         coordinator = PassportOAuthCoordinator(authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _: True)

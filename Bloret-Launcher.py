@@ -5530,7 +5530,9 @@ class Backend(QObject):
         def sync_account():
             try:
                 from modules.Bloret_PassPort import sync_bloret_passport_account_to_mc
-                sync_bloret_passport_account_to_mc(parent_window=None)
+                if not sync_bloret_passport_account_to_mc(parent_window=None):
+                    self.minecraftAccountSyncFailed.emit("Passport account synchronization failed")
+                    return
                 accounts = self.getMinecraftAccounts()
                 self.minecraftAccountsChanged.emit(accounts)
             except Exception as e:
