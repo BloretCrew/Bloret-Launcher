@@ -42,9 +42,14 @@ class TestAuditRemediation(unittest.TestCase):
         source = (ROOT / "modules" / "web.py").read_text(encoding="utf-8")
         self.assertNotIn("app_secret", source)
         self.assertNotIn('fallback_url = f"http://', source)
-        self.assertIn("缺少 OAuth code", source)
-        self.assertIn("Passport 账户服务必须使用 HTTPS", source)
-        self.assertIn("timeout=(5, 15)", source)
+        self.assertNotIn("/app/verify", source)
+        self.assertIn("Legacy Passport callback disabled", source)
+        self.assertIn("/login/Bloret-PassPort", source)
+        coordinator = (ROOT / "modules" / "passport_oauth.py").read_text(encoding="utf-8")
+        self.assertIn("Passport endpoints must use HTTPS", coordinator)
+        self.assertIn("/oauth/authorize", coordinator)
+        self.assertIn("/oauth/token", coordinator)
+        self.assertIn("/oauth/userinfo", coordinator)
 
     def test_qml_regressions_are_fixed(self):
         main = (ROOT / "qml" / "main.qml").read_text(encoding="utf-8")

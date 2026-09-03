@@ -4347,7 +4347,8 @@ class Backend(QObject):
                     self.minecraftAccountsChanged.emit([])
                     self.syncStatusChanged.emit("success")
                 else:
-                    self.syncStatusChanged.emit("error: " + i18nText("同步失败，请检查是否已登录 Bloret PassPort"))
+                    self.minecraftAccountSyncFailed.emit(i18nText("同步失败，请重新登录 Bloret PassPort"))
+                    self.syncStatusChanged.emit("error: " + i18nText("同步失败，请重新登录 Bloret PassPort"))
             except Exception as e:
                 print(f"Error syncing accounts: {e}")
                 self.syncStatusChanged.emit(f"error: {str(e)}")

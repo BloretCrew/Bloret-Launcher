@@ -335,10 +335,11 @@ Rectangle {
                                         oobeOverlay.currentPage++
                                     }
                                 } else {
-                                    // 未登录，打开浏览器并开始等待
+                                    // 未登录，打开浏览器；started 信号负责进入等待状态
+                                    oobeOverlay.isWaitingForLogin = false
+                                    loginCheckTimer.stop()
+                                    oobeOverlay.loginError = ""
                                     Backend.loginBloretPassPort()
-                                    oobeOverlay.isWaitingForLogin = true
-                                    loginCheckTimer.start()
                                 }
                             }
                         }

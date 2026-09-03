@@ -326,10 +326,11 @@ FluentWindow {
                                             oobeWindow.currentPage++
                                         }
                                     } else {
-                                        // 未登录，打开浏览器并开始等待
+                                        // 未登录，打开浏览器；started 信号负责进入等待状态
+                                        oobeWindow.isWaitingForLogin = false
+                                        loginCheckTimer.stop()
+                                        oobeWindow.loginError = ""
                                         Backend.loginBloretPassPort()
-                                        oobeWindow.isWaitingForLogin = true
-                                        loginCheckTimer.start()
                                     }
                                 }
                             }
