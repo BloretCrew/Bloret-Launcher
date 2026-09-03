@@ -13,6 +13,8 @@ __all__ = [
     "launch_service",
     "live_chat",
     "versions_service",
+    "runtime_state",
+    "recent_runs",
 ]
 
 

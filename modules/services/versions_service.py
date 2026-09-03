@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any, Dict, List
 
 import modules.config as cfg
@@ -57,6 +58,11 @@ def list_versions_detail() -> ServiceResult[List[Dict[str, Any]]]:
         return err(str(e), "versions_list_failed")
 
 
+def resolve_version_directory(version_name: str) -> ServiceResult[Dict[str, Any]]:
+    """Compatibility name for the single validated version-directory resolver."""
+    return get_version_path(version_name)
+
+
 def get_version_path(version_name: str) -> ServiceResult[Dict[str, Any]]:
     if not version_name:
         return err("version required", "invalid_version")
@@ -64,13 +70,17 @@ def get_version_path(version_name: str) -> ServiceResult[Dict[str, Any]]:
     mc_dir = str(data.get("minecraft_dir") or "")
     if not mc_dir:
         return err("minecraft_dir not set", "no_minecraft_dir")
-    versions_root = os.path.abspath(os.path.join(mc_dir, "versions"))
-    vdir = os.path.abspath(os.path.join(versions_root, version_name))
-    try:
-        if os.path.commonpath([vdir, versions_root]) != versions_root:
-            return err("invalid version path", "invalid_version")
-    except ValueError:
+    if not isinstance(version_name, str) or not version_name.strip():
         return err("invalid version path", "invalid_version")
-    if not os.path.isdir(vdir):
-        return err(f"version not found: {version_name}", "not_found")
-    return ok({"name": version_name, "path": vdir, "minecraft_dir": mc_dir})
+    if version_name != os.path.basename(version_name) or "/" in version_name or "\\" in version_name:
+        return err("invalid version path", "invalid_version")
+    versions_root = Path(mc_dir, "versions").resolve()
+    candidate = versions_root / version_name
+    try:
+        vdir = candidate.resolve(strict=True)
+        vdir.relative_to(versions_root)
+    except (FileNotFoundError, OSError, ValueError):
+        return err("invalid version path", "invalid_version")
+    if not vdir.is_dir() or candidate.is_symlink():
+        return err("invalid version path", "invalid_version")
+    return ok({"name": version_name, "path": str(vdir), "minecraft_dir": mc_dir})

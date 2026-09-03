@@ -54,7 +54,14 @@ optdepends=(
 source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/v${pkgver}.tar.gz")
 sha256sums=('SKIP')
 
+# Refuse to build when the maintainer has not supplied release metadata.
+if [[ "${sha256sums[0]}" == 'SKIP' ]]; then
+    error 'PKGBUILD requires a real source tarball SHA-256 (sha256sums must not be SKIP)'
+    return 1
+fi
+
 _easytier_version=v2.6.4
+: "${EASYTIER_SHA256:?EASYTIER_SHA256 must pin the EasyTier release asset}"
 
 prepare() {
     cd "${srcdir}/Bloret-Launcher-${pkgver}"
@@ -77,6 +84,10 @@ prepare() {
     if curl -fsSL --retry 3 --retry-delay 5 \
         -o "${zip_name}" \
         "https://github.com/EasyTier/EasyTier/releases/download/${_easytier_version}/${zip_name}"; then
+        if ! printf '%s  %s\\n' "${EASYTIER_SHA256}" "${zip_name}" | sha256sum -c -; then
+            error "EasyTier SHA-256 mismatch"
+            return 1
+        fi
         if unzip -t "${zip_name}" &>/dev/null; then
             mkdir -p easytier-tmp
             unzip -o "${zip_name}" -d easytier-tmp
@@ -86,11 +97,12 @@ prepare() {
             rm -rf easytier-tmp "${zip_name}"
             echo "EasyTier ${arch_name} ready"
         else
-            echo "warning: EasyTier zip invalid, skipping"
-            rm -f "${zip_name}"
+            error "EasyTier zip invalid"
+            return 1
         fi
     else
-        echo "warning: EasyTier download failed,联机功能可能不可用"
+        error "EasyTier download failed"
+        return 1
     fi
 }
 

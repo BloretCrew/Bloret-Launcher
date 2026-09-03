@@ -130,7 +130,7 @@ from modules.launch import Get_Run_Script
 from modules.chafuwang import getServerData
 from modules.i18n import i18nText
 from modules.Bloriko import AskBloriko
-import modules.web  # 保持 import 即启动 0.0.0.0:25252（本轮不改 Web 行为）
+import modules.web
 import modules.links as links
 import socket
 import send2trash
@@ -232,6 +232,7 @@ class Backend(QObject):
     """
     modrinthResultsReceived = Signal(list)
     minecraftAccountsChanged = Signal(list, arguments=['accounts'])
+    minecraftAccountSyncFailed = Signal(str)
     passportAvatarChanged = Signal(str)
     javaRuntimesReady = Signal(list)
     logsCleared = Signal()
@@ -745,10 +746,11 @@ class Backend(QObject):
 
                 import uuid as _uuid
                 instance_id = str(_uuid.uuid4())
-                BLglobals.running_instances[instance_id] = {
+                from modules.services import runtime_state
+                runtime_state.register_instance(instance_id, {
                     "name": version, "type": "minecraft",
                     "pid": proc.pid, "suspended": False
-                }
+                })
                 try:
                     from modules.plugin_host.dispatch import invoke_hook
                     invoke_hook("launch.post", version, proc.pid)
@@ -1195,9 +1197,10 @@ class Backend(QObject):
 
             from modules.window_focus import is_minecraft_foreground
             if root_pids is None:
-                root_pids = [
+                from modules.services import runtime_state
+            root_pids = [
                     instance.get("pid")
-                    for instance in BLglobals.running_instances.values()
+                    for instance in runtime_state.instances_snapshot().values()
                     if instance.get("type") == "minecraft" and instance.get("pid")
                 ]
             return is_minecraft_foreground(root_pids)
@@ -1286,16 +1289,15 @@ class Backend(QObject):
     @Slot(result=list)
     def getRunningInstances(self):
         import psutil
-        dead = [k for k, v in BLglobals.running_instances.items() if not psutil.pid_exists(v["pid"])]
-        for k in dead:
-            self._end_play_time_session(k)
-            del BLglobals.running_instances[k]
-        return [{"id": k, **v} for k, v in BLglobals.running_instances.items()]
+        from modules.services import runtime_state
+        runtime_state.clear_dead_instances(psutil.pid_exists)
+        return [{"id": k, **v} for k, v in runtime_state.instances_snapshot().items()]
 
     @Slot(str)
     def suspendInstance(self, instance_id):
         import psutil
-        entry = BLglobals.running_instances.get(instance_id)
+        from modules.services import runtime_state
+        entry = runtime_state.get_instance(instance_id)
         if not entry or not psutil.pid_exists(entry["pid"]):
             return
         pid = entry["pid"]
@@ -1321,7 +1323,8 @@ class Backend(QObject):
     @Slot(str)
     def terminateInstance(self, instance_id):
         import psutil
-        entry = BLglobals.running_instances.pop(instance_id, None)
+        from modules.services import runtime_state
+        entry = runtime_state.remove_instance(instance_id)
         self._end_play_time_session(instance_id)
         if entry and psutil.pid_exists(entry["pid"]):
             try:
@@ -5520,9 +5523,11 @@ class Backend(QObject):
             try:
                 from modules.Bloret_PassPort import sync_bloret_passport_account_to_mc
                 sync_bloret_passport_account_to_mc(parent_window=None)
-                self.minecraftAccountsChanged.emit([])
+                accounts = self.getMinecraftAccounts()
+                self.minecraftAccountsChanged.emit(accounts)
             except Exception as e:
                 print(f"Error syncing Minecraft account: {e}")
+                self.minecraftAccountSyncFailed.emit(str(e))
 
         threading.Thread(target=sync_account, daemon=True).start()
 
@@ -6361,6 +6366,8 @@ if __name__ == "__main__":
             box.finished.connect(lambda _: sys.exit(0))
             sys.exit(app.exec())
 
+    web_server_thread = threading.Thread(target=modules.web.start_server, daemon=True, name="BloretWebServer")
+    web_server_thread.start()
     launcher = LauncherV2()
     launcher.backend.applicationQuitRequested.connect(
         launcher.quit_app,

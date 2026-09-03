@@ -260,7 +260,7 @@ FluentPage {
                 Label { Layout.fillWidth: true; text: selectedPlugin ? tr("ID") + ": " + selectedPlugin.id : ""; wrapMode: Text.WrapAnywhere }
                 Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.version ? tr("版本") + ": " + selectedPlugin.version : "" }
                 Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.author ? tr("作者") + ": " + selectedPlugin.author : "" }
-                Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.permissions.length ? tr("权限") + ": " + selectedPlugin.permissions.join(", ") : ""; wrapMode: Text.Wrap }
+                Label { Layout.fillWidth: true; text: selectedPlugin && (selectedPlugin.permissions || []).length ? tr("权限") + ": " + (selectedPlugin.permissions || []).join(", ") : ""; wrapMode: Text.Wrap }
                 Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.sha256 ? "SHA256: " + selectedPlugin.sha256 : ""; wrapMode: Text.WrapAnywhere }
                 Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.min_launcher ? tr("最低启动器版本") + ": " + selectedPlugin.min_launcher : "" }
                 Button {

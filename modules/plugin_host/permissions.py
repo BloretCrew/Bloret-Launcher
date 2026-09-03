@@ -263,16 +263,10 @@ def has_permission(granted: Iterable[str], required: str) -> bool:
     return prefix in granted_set
 
 
-def auto_grant_for_manifest(requested: Iterable[str], auto_high_risk: bool = True) -> List[str]:
-    """
-    首次安装时的授权策略。
-    auto_high_risk=True：按 manifest 请求全部授权（用户可在 UI 中改；便于开发体验）。
-    """
+def auto_grant_for_manifest(requested: Iterable[str], auto_high_risk: bool = False) -> List[str]:
+    """Grant only known low-risk permissions until the user explicitly approves more."""
     requested_list = normalize_permissions(requested)
-    if auto_high_risk:
-        return list(requested_list)
-    granted = []
-    for p in requested_list:
-        if p in DEFAULT_SAFE_PERMISSIONS or p not in HIGH_RISK_PERMISSIONS:
-            granted.append(p)
-    return granted
+    return [
+        permission for permission in requested_list
+        if permission in DEFAULT_SAFE_PERMISSIONS and permission in ALL_PERMISSIONS
+    ]

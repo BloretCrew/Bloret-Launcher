@@ -607,9 +607,12 @@ FluentWindow {
             if (oobeLoader.item) {
                 oobeLoader.item.requestNavigateToPassPort.connect(function() {
                     console.log("OOBE requested navigation to PassPort page")
-                    // 导航到通行证页面
-                    if (window.navItems && window.navItems.length > 1) {
-                        window.currentPage = window.navItems[1].page
+                    // Navigate by stable page identity rather than list position.
+                    var passportItem = window.navItems ? window.navItems.find(function(item) {
+                        return item.id === "passport" || item.page === "PassPort.qml"
+                    }) : null
+                    if (passportItem && window.navigationView) {
+                        window.navigationView.push(passportItem.page)
                     }
                 })
             }

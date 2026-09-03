@@ -554,7 +554,7 @@ def update_version_combo_by_category(self, version_combo, category):
             # 从网络获取版本列表
             try:
                 # 发送HTTP GET请求获取Minecraft版本清单
-                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
+                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json", timeout=(5, 20))
                 # 检查HTTP响应是否成功（会抛出异常处理非2xx状态码）
                 response.raise_for_status()
                 # 解析JSON响应数据
@@ -585,7 +585,7 @@ def update_version_combo_by_category(self, version_combo, category):
             # 从网络获取版本列表
             try:
                 # 发送HTTP GET请求获取Minecraft版本清单
-                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
+                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json", timeout=(5, 20))
                 # 检查HTTP响应是否成功（会抛出异常处理非2xx状态码）
                 response.raise_for_status()
                 # 解析JSON响应数据
@@ -616,7 +616,7 @@ def update_version_combo_by_category(self, version_combo, category):
             # 从网络获取版本列表
             try:
                 # 发送HTTP GET请求获取Minecraft版本清单
-                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json")
+                response = requests.get("https://bmclapi2.bangbang93.com/mc/game/version_manifest.json", timeout=(5, 20))
                 # 检查HTTP响应是否成功（会抛出异常处理非2xx状态码）
                 response.raise_for_status()
                 # 解析JSON响应数据

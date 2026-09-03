@@ -18,6 +18,17 @@ def read(key: Optional[str] = None, default: Any = None) -> ServiceResult[Any]:
         return err(str(e), "config_read_failed")
 
 
+def update_keys(values: dict) -> ServiceResult[dict]:
+    if not isinstance(values, dict) or not values:
+        return err("values required", "invalid_values")
+    try:
+        import modules.config as config_module
+        data = config_module.update_keys(**values)
+        return ok({key: data.get(key) for key in values})
+    except Exception as e:
+        return err(str(e), "config_write_failed")
+
+
 def write_key(key: str, value: Any) -> ServiceResult[Any]:
     if not key:
         return err("key required", "invalid_key")

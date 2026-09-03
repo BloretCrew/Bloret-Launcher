@@ -140,7 +140,7 @@ class PluginHost(QObject):
                 plugin_id = manifest["id"]
                 found_ids.add(plugin_id)
                 enabled = plugin_state.is_enabled(plugin_id, default=True)
-                perms = plugin_state.ensure_permissions(plugin_id, manifest.get("permissions") or [])
+                perms = plugin_state.ensure_permissions(plugin_id, manifest.get("permissions") or [], auto_grant=False)
                 info = {
                     "manifest": manifest,
                     "enabled": enabled,

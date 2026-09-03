@@ -11,6 +11,7 @@ FluentPage {
     property var leaderboardData: []
     property var allPostsData: []
     property bool isLoading: true
+    property string errorText: ""
     property bool isAuthenticated: false
     property int currentTab: 0
 
@@ -30,6 +31,7 @@ FluentPage {
         target: Backend
         function onBbbsSummaryReceived(data) {
             summaryData = data
+            errorText = ""
             isLoading = false
         }
         function onBbbsLeaderboardReceived(data) {
@@ -40,12 +42,33 @@ FluentPage {
         }
         function onBbbsErrorOccurred(msg) {
             isLoading = false
-            console.log("[BBBS] Error:", msg)
+            errorText = msg || (Backend ? Backend.tr("加载失败") : "Load failed")
+            console.warn("[BBBS] Error:", errorText)
         }
     }
 
     content: ColumnLayout {
         spacing: 18
+
+        Frame {
+            Layout.fillWidth: true
+            visible: errorText.length > 0
+            background: Rectangle { color: Theme.currentTheme.colors.cardColor; radius: 8 }
+            RowLayout {
+                anchors.fill: parent
+                Label { Layout.fillWidth: true; text: errorText; wrapMode: Text.Wrap; color: Theme.currentTheme.colors.textColor }
+                Button {
+                    text: Backend ? Backend.tr("重试") : "Retry"
+                    onClicked: {
+                        errorText = ""
+                        isLoading = true
+                        Backend.fetchBBBSSummary(true)
+                        Backend.fetchBBBSLeaderboard(true)
+                        Backend.fetchBBBSAllPosts(true)
+                    }
+                }
+            }
+        }
 
         PluginPanelHost {
             area: "bbbs"

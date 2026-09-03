@@ -24,8 +24,10 @@ FluentWindow {
     property bool javaInstalled: false
     property bool isCheckingJava: false
     property bool isInstallingJava: false
+    property string javaError: ""
     property bool isWaitingForLogin: false  // 等待登录状态
     property bool isSyncingAccounts: false  // 同步账户中
+    property string syncError: ""
     property var minecraftAccounts: []      // Minecraft 账户列表
 
     Component.onCompleted: {
@@ -537,10 +539,9 @@ FluentWindow {
                                 enabled: !oobeWindow.isSyncingAccounts
                                 onClicked: {
                                     if (Backend) {
+                                        oobeWindow.syncError = ""
                                         oobeWindow.isSyncingAccounts = true
                                         Backend.syncMinecraftAccount()
-                                        // 延迟刷新账户列表
-                                        syncRefreshTimer.start()
                                     }
                                 }
                             }
@@ -561,6 +562,24 @@ FluentWindow {
                                 text: Backend ? Backend.tr("Java 运行环境") : "Java Runtime Environment"
                                 Layout.alignment: Qt.AlignHCenter
                                 typography: Typography.Title
+                            }
+
+                            Text {
+                                visible: oobeWindow.javaError.length > 0
+                                text: oobeWindow.javaError
+                                color: "#E74C3C"
+                                wrapMode: Text.Wrap
+                                Layout.preferredWidth: 550
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+
+                            Text {
+                                visible: oobeWindow.syncError.length > 0
+                                text: oobeWindow.syncError
+                                color: "#E74C3C"
+                                wrapMode: Text.Wrap
+                                Layout.preferredWidth: 550
+                                horizontalAlignment: Text.AlignHCenter
                             }
 
                             Text {
@@ -726,8 +745,20 @@ FluentWindow {
             oobeWindow.isInstallingJava = false
             if (javaPath && javaPath !== "") {
                 oobeWindow.javaInstalled = true
+                oobeWindow.javaError = ""
                 oobeWindow.selectedJavaPath = javaPath
+            } else {
+                oobeWindow.javaError = Backend ? Backend.tr("Java 安装失败，请重试。") : "Java installation failed. Please retry."
             }
+        }
+        function onMinecraftAccountsChanged(accounts) {
+            oobeWindow.minecraftAccounts = accounts || []
+            oobeWindow.isSyncingAccounts = false
+            oobeWindow.syncError = ""
+        }
+        function onMinecraftAccountSyncFailed(message) {
+            oobeWindow.isSyncingAccounts = false
+            oobeWindow.syncError = message || "同步账户失败"
         }
     }
 

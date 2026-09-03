@@ -147,7 +147,9 @@ jobs:
           else
             curl -L --retry 3 --retry-delay 5 -o "$EASYTIER_ZIP" "https://github.com/EasyTier/EasyTier/releases/download/${EASYTIER_VERSION}/${EASYTIER_ZIP}"
           fi
-          # 验证下载的文件是有效的 zip
+          # Verify the pinned release asset digest before extracting it.
+          if [ -z "${EASYTIER_SHA256:-}" ]; then echo "::error::Missing EasyTier SHA-256"; exit 1; fi
+          if ! echo "$EASYTIER_SHA256  $EASYTIER_ZIP" | sha256sum -c -; then exit 1; fi
           if ! unzip -t "$EASYTIER_ZIP" &>/dev/null; then
             echo "::error::EasyTier download failed: invalid zip file"
             exit 1
@@ -188,7 +190,7 @@ jobs:
         & pwsh -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
           -Path $exe `
           -Description "Bloret Launcher" `
-          -SkipIfMissingCert
+
       shell: pwsh
 
     - name: 使用 PyInstaller 打包 (Linux)
@@ -590,7 +592,7 @@ jobs:
         & pwsh -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
           -Path $exe `
           -Description "Bloret Launcher" `
-          -SkipIfMissingCert
+
       shell: pwsh
 
     - name: 运行 Inno Setup 构建安装程序
@@ -612,7 +614,7 @@ jobs:
         & pwsh -NoProfile -ExecutionPolicy Bypass -File ".github/scripts/windows-codesign.ps1" `
           -Path $setup `
           -Description "Bloret Launcher Setup" `
-          -SkipIfMissingCert
+
       shell: pwsh
 
     - name: 上传安装程序

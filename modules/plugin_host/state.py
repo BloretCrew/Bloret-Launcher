@@ -102,13 +102,16 @@ def set_granted_permissions(plugin_id: str, perms: List[str]) -> None:
     update_plugins_state(mut)
 
 
-def ensure_permissions(plugin_id: str, requested: List[str], auto_grant: bool = True) -> List[str]:
-    """若尚未授权，按策略写入授权并返回 granted。"""
-    existing = get_granted_permissions(plugin_id)
-    if existing:
-        return existing
-    from modules.plugin_host.permissions import auto_grant_for_manifest
+def ensure_permissions(plugin_id: str, requested: List[str], auto_grant: bool = False) -> List[str]:
+    """Return only known, still-requested grants; first scan grants safe permissions only."""
+    from modules.plugin_host.permissions import ALL_PERMISSIONS, auto_grant_for_manifest
 
+    requested_set = set(requested or [])
+    existing = [p for p in get_granted_permissions(plugin_id) if p in requested_set and p in ALL_PERMISSIONS]
+    if existing:
+        if existing != get_granted_permissions(plugin_id):
+            set_granted_permissions(plugin_id, existing)
+        return existing
     granted = auto_grant_for_manifest(requested, auto_high_risk=auto_grant)
     set_granted_permissions(plugin_id, granted)
     return granted

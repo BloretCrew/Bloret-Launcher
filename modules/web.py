@@ -141,8 +141,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 parsed_uri = urllib.parse.urlparse(BLglobals.server_ip)
                 host = parsed_uri.hostname
                 if host:
-                    fallback_url = f"http://{host}:20000/app/oauthapp/validate"
-                    response = requests.get(fallback_url, params=params, timeout=15)
+                    return False, "OAuth 校验失败：HTTPS 服务不可用"
 
             if response.status_code != 200:
                 return False, f"OAuth 校验请求失败: HTTP {response.status_code}"
@@ -670,11 +669,10 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         try:
             if api_path == '/api/v1/running/instances':
                 import psutil
-                dead = [k for k, v in BLglobals.running_instances.items() if not psutil.pid_exists(v["pid"])]
-                for k in dead:
-                    del BLglobals.running_instances[k]
+                from modules.services import runtime_state
+                runtime_state.clear_dead_instances(psutil.pid_exists)
                 instances = []
-                for k, v in BLglobals.running_instances.items():
+                for k, v in runtime_state.instances_snapshot().items():
                     instances.append({
                         "id": k,
                         "name": v["name"],
@@ -699,7 +697,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
             if api_path.startswith('/api/v1/running/suspend/'):
                 instance_id = api_path.split('/')[-1]
-                entry = BLglobals.running_instances.get(instance_id)
+                from modules.services import runtime_state
+                entry = runtime_state.get_instance(instance_id)
                 if not entry:
                     self._send_json(404, {'status': 'error', 'message': 'Instance not found'})
                     return
@@ -729,7 +728,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
             if api_path.startswith('/api/v1/running/terminate/'):
                 instance_id = api_path.split('/')[-1]
-                entry = BLglobals.running_instances.pop(instance_id, None)
+                from modules.services import runtime_state
+                entry = runtime_state.remove_instance(instance_id)
                 if entry:
                     import psutil
                     if psutil.pid_exists(entry["pid"]):
@@ -742,60 +742,42 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
             if api_path == '/api/v1/launch/start':
                 version = query_params.get('version', [None])[0]
-                if not version:
-                    self._send_json(400, {'status': 'error', 'message': '缺少必填参数 version'})
+                from modules.services.versions_service import get_version_path
+                if not version or not get_version_path(version).ok:
+                    self._send_json(400, {'status': 'error', 'message': '版本路径无效'})
                     return
 
                 import uuid
                 session_id = str(uuid.uuid4())
                 
                 # 重置启动状态
-                BLglobals.launch_status = {
-                    "session_id": session_id,
-                    "progress": 0,
-                    "status": "准备启动...",
-                    "detail": "",
-                    "finished": False
-                }
+                from modules.services import runtime_state
+                runtime_state.set_launch_status(
+                    session_id=session_id, progress=0, status="准备启动...", detail="", finished=False
+                )
 
                 try:
                     process = self._launch_game_with_plugin_hooks(version)
                 except PermissionError as error:
-                    BLglobals.launch_status.update({"finished": True, "status": "启动已取消", "detail": str(error)})
+                    runtime_state.set_launch_status(finished=True, status="启动已取消", detail=str(error))
                     self._send_json(409, {'status': 'error', 'message': f'启动被插件取消: {error}'})
                     return
 
                 # 将实例添加到运行列表
                 instance_id = str(uuid.uuid4())
-                BLglobals.running_instances[instance_id] = {
+                runtime_state.register_instance(instance_id, {
                     "name": version, "type": "minecraft",
                     "pid": process.pid, "suspended": False
-                }
+                })
                 
                 # 记录最近运行
                 try:
-                    recent_path = os.path.join(BLglobals.datapath, 'recent_runs.json')
-                    recent = []
-                    if os.path.exists(recent_path):
-                        with open(recent_path, 'r', encoding='utf-8') as f:
-                            recent = json.load(f)
-                    
-                    # 移除已存在的相同版本记录
-                    recent = [r for r in recent if r.get('name') != version]
-                    
-                    # 添加新记录到开头
                     from datetime import datetime
-                    recent.insert(0, {
-                        "name": version,
-                        "type": "minecraft",
-                        "lastRun": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    })
-                    
-                    # 只保留最近20条记录
-                    recent = recent[:20]
-                    
-                    with open(recent_path, 'w', encoding='utf-8') as f:
-                        json.dump(recent, f, ensure_ascii=False, indent=2)
+                    from modules.services.recent_runs import record, read
+                    recent = [r for r in read(BLglobals.datapath) if r.get('name') != version]
+                    recent.insert(0, {"name": version, "type": "minecraft", "lastRun": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+                    from modules.services.recent_runs import replace
+                    replace(BLglobals.datapath, recent[:20])
                 except Exception as e:
                     logger.error(f"Failed to save recent run: {e}")
 
@@ -808,10 +790,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     logger.error(f"Failed to start Minecraft window monitor: {e}")
 
                 # 更新启动状态
-                BLglobals.launch_status["progress"] = 100
-                BLglobals.launch_status["status"] = "启动完成"
-                BLglobals.launch_status["detail"] = f"PID: {process.pid}"
-                BLglobals.launch_status["finished"] = True
+                runtime_state.set_launch_status(progress=100, status="启动完成", detail=f"PID: {process.pid}", finished=True)
 
                 self._send_json(200, {
                     'status': 'success',
@@ -821,9 +800,10 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 return
 
             if api_path == '/api/v1/launch/status':
+                from modules.services import runtime_state
                 self._send_json(200, {
                     'status': 'success',
-                    'data': BLglobals.launch_status
+                    'data': runtime_state.launch_status_snapshot()
                 })
                 return
 
@@ -865,7 +845,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                 if not instance_id:
                     self._send_json(400, {'status': 'error', 'message': 'Missing instance_id'})
                     return
-                entry = BLglobals.running_instances.get(instance_id)
+                from modules.services import runtime_state
+                entry = runtime_state.get_instance(instance_id)
                 if not entry:
                     self._send_json(404, {'status': 'error', 'message': 'Instance not found'})
                     return
@@ -1320,13 +1301,15 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             logger.info("Received OAuth callback; code_present=%s", bool(code))
             
             if code:
-                # 向验证服务器发送请求
+                # 向 HTTPS 验证服务发送一次性 code；客户端不携带应用密钥。
                 verify_url = f"{BLglobals.server_ip}:20000/app/verify"
-                params = {
-                    'app_id': 'BloretLauncher',
-                    'app_secret': 's4d56f4a68sd46g54asd46f54a5dsf654asdf546',
-                    'code': code
-                }
+                params = {'app_id': 'BloretLauncher', 'code': code}
+                if urllib.parse.urlparse(verify_url).scheme.lower() != "https":
+                    self.send_response(400)
+                    self.send_header('Content-type', 'text/html; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(self.generate_error_page("Passport 验证服务必须使用 HTTPS").encode('utf-8'))
+                    return
                 
                 print(f"\n[Bloret PassPort 登录] 向验证服务器发送请求")
                 print(f"verify_url: {verify_url}")
@@ -1339,23 +1322,10 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     logger.info(f"Trying verify_url: {verify_url}")
                     response = requests.get(verify_url, params=params, timeout=(5, 15))
                     
-                    # 如果响应状态码不是 200 或内容为空/非 JSON，尝试直连 IP:20000
-                    # 注意：这里我们通过解析 server_ip 来获取 IP 地址
                     if response.status_code != 200 or not response.text.strip().startswith('{'):
-                         logger.warning(f"Primary verify failed. Status: {response.status_code}, Body: {response.text[:100]}...")
-                         
-                         # 尝试提取 IP 地址并构建直连 URL
-                         # 假设 BLglobals.server_ip 格式为 http://IP:PORT/ 或 http://DOMAIN:PORT/
-                         try:
-                             from urllib.parse import urlparse
-                             parsed_uri = urlparse(BLglobals.server_ip)
-                             host = parsed_uri.hostname
-                             if host:
-                                 fallback_url = f"http://{host}:20000/app/verify"
-                                 logger.info(f"Trying fallback_url: {fallback_url}")
-                                 response = requests.get(fallback_url, params=params, timeout=(5, 15))
-                         except Exception as ex:
-                             logger.error(f"Failed to construct fallback URL: {ex}")
+                        raise RuntimeError(f"Passport 验证失败: HTTP {response.status_code}")
+                    if urllib.parse.urlparse(response.url).scheme.lower() != "https":
+                        raise RuntimeError("Passport 验证被重定向到非 HTTPS 地址")
 
                     response_data = response.text
                     
@@ -1435,13 +1405,11 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     html_content = self.generate_error_page(f"Error during OAuth verification: {str(e)}")
                     self.wfile.write(html_content.encode('utf-8'))
             else:
-                # code 参数缺失，但仍然显示成功页面
-                self.send_response(200)
+                error_message = query_params.get('error_description', query_params.get('error', ['缺少 OAuth code']))[0]
+                self.send_response(400)
                 self.send_header('Content-type', 'text/html; charset=utf-8')
                 self.end_headers()
-                
-                html_content = self.generate_success_page()
-                self.wfile.write(html_content.encode('utf-8'))
+                self.wfile.write(self.generate_error_page(f"Passport 登录失败: {error_message}").encode('utf-8'))
         elif self.path == '/sync/Minecraft_Account':
             # 处理 /sync/Minecraft_Account 路径
             try:
@@ -1464,16 +1432,17 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
                 # 2. 向验证服务器发送请求获取 Minecraft 账户列表
                 verify_url = f"{BLglobals.server_ip}:20000/app/MinecraftAccounts"
+                if urllib.parse.urlparse(verify_url).scheme.lower() != "https":
+                    raise RuntimeError("Passport 账户服务必须使用 HTTPS")
                 params = {
                     'app_id': 'BloretLauncher',
-                    'app_secret': 's4d56f4a68sd46g54asd46f54a5dsf654asdf546',
                     'user': username,
                     'usertoken': user_token
                 }
                 
                 print(f"向服务器请求 Minecraft 账户列表...")
                 print(f"服务器地址: {verify_url}")
-                response = requests.get(verify_url, params=params)
+                response = requests.get(verify_url, params=params, timeout=(5, 15))
                 
                 print(f"服务器响应状态码: {response.status_code}")
                 logger.info(f"Server response status: {response.status_code}")
@@ -2206,6 +2175,4 @@ def restart_server():
     return thread
 
 
-# 保持本机 OAuth 回调兼容，但默认仅监听 loopback。
-server_thread = threading.Thread(target=start_server, daemon=True, name="BloretWebServer")
-server_thread.start()
+# The application entry point owns the server lifecycle.

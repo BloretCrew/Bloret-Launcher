@@ -254,11 +254,11 @@ def Get_Run_Script(mc_version, skip_completion=False, cancellation_event=None):
         # 如果配置中没有指定，则使用默认路径
         minecraft_dir = os.path.join(BLglobals.datapath, '.minecraft')
     
-    versions_dir = os.path.join(minecraft_dir, "versions", mc_version)
-    
-    # 检查版本目录是否存在
-    if not os.path.exists(versions_dir):
-        raise FileNotFoundError(f"版本 {mc_version} 不存在于 {versions_dir}")
+    from modules.services.versions_service import get_version_path
+    version_result = get_version_path(str(mc_version))
+    if not version_result.ok:
+        raise FileNotFoundError(version_result.error or f"版本 {mc_version} 路径无效")
+    versions_dir = version_result.data["path"]
     
     # 读取并合并 inheritsFrom 父版本 JSON
     version_data = load_merged_version_json(minecraft_dir, mc_version)

@@ -2,7 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 2.15
 import RinUI
-import "../components"
+import QtQuick.Dialogs 1.3
 import "../components"
 
 FluentPage {
@@ -172,7 +172,9 @@ FluentPage {
                                 icon.name: "ic_fluent_edit_20_regular"
                                 visible: itemData.type === "custom"
                                 onTriggered: {
-                                    console.log("Rename item: " + itemData.name)
+                                    renameDialog.oldName = itemData.name
+                                    renameDialog.newName = itemData.name
+                                    renameDialog.open()
                                 }
                             }
 
@@ -189,6 +191,28 @@ FluentPage {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    Dialog {
+        id: renameDialog
+        property string oldName: ""
+        property string newName: ""
+        modal: true
+        title: Backend ? Backend.tr("重命名启动项") : "Rename launch item"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        contentItem: TextField {
+            text: renameDialog.newName
+            placeholderText: Backend ? Backend.tr("输入新名称") : "Enter a new name"
+            onTextChanged: renameDialog.newName = text
+            Component.onCompleted: selectAll()
+        }
+        onAccepted: {
+            var value = newName.trim()
+            if (value.length > 0 && value !== oldName && Backend) {
+                Backend.renameCustomItem(oldName, value)
+                refreshLaunchItems()
             }
         }
     }

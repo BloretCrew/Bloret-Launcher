@@ -208,7 +208,7 @@ class DownloadDialog(MessageBoxBase):
         """获取模组支持的游戏版本"""
         try:
             url = f"https://api.modrinth.com/v2/project/{self.slug}"
-            response = requests.get(url)
+            response = requests.get(url, timeout=(5, 20))
             if response.status_code == 200:
                 data = response.json()
                 self.game_versions = data.get("game_versions", [])
@@ -269,7 +269,7 @@ class DownloadDialog(MessageBoxBase):
         try:
             log(f"开始下载 {self.mod_title} (版本: {actual_version}) 到 {file_path}")
             log(f"Minecraft目录: {minecraft_dir}")
-            response = requests.get(url, stream=True)
+            response = requests.get(url, stream=True, timeout=(5, 60))
             response.raise_for_status()
             
             with open(file_path, "wb") as f:
@@ -1048,7 +1048,7 @@ def setup_download_old_ui(self,widget,LM_Download_Way_list,ver_id_bloret,homeInt
 
     fabric_ver = [i18nText("不安装")]
     if not self.config.get('localmod', False):
-        response = requests.get("https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader")
+        response = requests.get("https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader", timeout=(5, 20))
         if response.status_code == 200:
             data = response.json()
             for item in data:
@@ -3514,7 +3514,7 @@ class ModBatchDownloadThread(QThread):
                     # 记录详细日志以便调试
                     log(f"开始下载 Mod: {slug} -> {file_path} (URL: {url})")
 
-                    response = requests.get(url, stream=True)
+                    response = requests.get(url, stream=True, timeout=(5, 60))
                     response.raise_for_status()
                     
                     with open(file_path, "wb") as f:

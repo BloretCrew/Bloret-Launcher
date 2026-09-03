@@ -27,8 +27,10 @@ Rectangle {
     property bool javaInstalled: false
     property bool isCheckingJava: false
     property bool isInstallingJava: false
+    property string javaError: ""
     property bool isWaitingForLogin: false  // 等待登录状态
     property bool isSyncingAccounts: false  // 同步账户中
+    property string syncError: ""
     property var minecraftAccounts: []      // Minecraft 账户列表
 
     Component.onCompleted: {
@@ -547,10 +549,9 @@ Rectangle {
                             enabled: !oobeOverlay.isSyncingAccounts
                             onClicked: {
                                 if (Backend) {
+                                    oobeOverlay.syncError = ""
                                     oobeOverlay.isSyncingAccounts = true
                                     Backend.syncMinecraftAccount()
-                                    // 延迟刷新账户列表
-                                    syncRefreshTimer.start()
                                 }
                             }
                         }
@@ -805,8 +806,20 @@ Rectangle {
             oobeOverlay.isInstallingJava = false
             if (javaPath && javaPath !== "") {
                 oobeOverlay.javaInstalled = true
+                oobeOverlay.javaError = ""
                 oobeOverlay.selectedJavaPath = javaPath
+            } else {
+                oobeOverlay.javaError = Backend ? Backend.tr("Java 安装失败，请重试。") : "Java installation failed. Please retry."
             }
+        }
+        function onMinecraftAccountsChanged(accounts) {
+            oobeOverlay.minecraftAccounts = accounts || []
+            oobeOverlay.isSyncingAccounts = false
+            oobeOverlay.syncError = ""
+        }
+        function onMinecraftAccountSyncFailed(message) {
+            oobeOverlay.isSyncingAccounts = false
+            oobeOverlay.syncError = message || "同步账户失败"
         }
     }
 
