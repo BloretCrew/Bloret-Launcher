@@ -228,13 +228,18 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
 
         username = config_data.get('Bloret_PassPort_UserName')
         oauth = config_data.get('Bloret_PassPort_OAuth') or {}
+        from modules.passport_oauth import PassportOAuthCoordinator
+        coordinator = PassportOAuthCoordinator()
+        if coordinator.access_token_status(oauth) in {"expired", "reauthorization_required"}:
+            log("Passport OAuth token expired; reauthorization required")
+            return False
         access_token = oauth.get('access_token')
         if not access_token:
             log("错误: 缺少 Passport OAuth access token")
             return False
 
         # 2. Passport account synchronization uses the OAuth bearer token.
-        verify_url = "https://passport.bloret.net/oauth/userinfo"
+        verify_url = coordinator.userinfo_endpoint
         log("正在请求 Passport OAuth userinfo")
         response = requests.get(verify_url, headers={"Authorization": "Bearer " + access_token}, timeout=30)
         if response.status_code == 401:
@@ -328,32 +333,29 @@ def refresh_minecraft_token():
             return False
 
         oauth = config_data.get('Bloret_PassPort_OAuth') or {}
-        access_token = oauth.get('access_token')
-        if not access_token:
-            log("缺少 Passport OAuth access token，跳过 Token 刷新")
-            return False
-
-        url = "https://passport.bloret.net/oauth/userinfo"
-        headers = {"Authorization": "Bearer " + access_token}
-        log("正在使用 Passport OAuth bearer token 检查令牌")
-        response = requests.get(url, headers=headers, timeout=10)
-        
-        if response.status_code == 200:
-            if response.status_code == 401:
-                log("Passport OAuth access token 无效")
+        from modules.passport_oauth import PassportOAuthCoordinator
+        coordinator = PassportOAuthCoordinator()
+        status = coordinator.access_token_status(oauth)
+        if status == "expired":
+            refresh_token = oauth.get("refresh_token")
+            if not refresh_token:
+                log("Passport OAuth token expired; reauthorization required")
                 return False
-            result = response.json()
-            if isinstance(result, dict):
-                log("Passport OAuth access token 有效")
-                return True
-            return False
-        else:
-            log(f"Token 刷新请求失败，状态码: {response.status_code}")
             try:
-                log(f"响应内容: {response.text}")
-            except:
-                pass
+                refreshed = coordinator.refresh_access_token(oauth)
+            except PermissionError:
+                log("Passport refresh rejected; reauthorization required")
+                return False
+            config_data["Bloret_PassPort_OAuth"] = refreshed
+            cfg.write(config_data)
+            return True
+        if status == "reauthorization_required":
+            log("缺少 Passport OAuth access token，需重新授权")
             return False
+        if status == "unknown_expiry":
+            log("Passport OAuth token expiry metadata unavailable; reauthorization required")
+            return False
+        return True
             
     except Exception as e:
         log(f"刷新 Minecraft Token 时发生异常: {e}")

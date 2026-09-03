@@ -15,12 +15,12 @@ from typing import Callable, Optional
 
 import requests
 
-
 CALLBACK_PATH = "/login/Bloret-PassPort"
 DEFAULT_AUTHORIZE_ENDPOINT = "https://passport.bloret.net/oauth/authorize"
 DEFAULT_TOKEN_ENDPOINT = "https://passport.bloret.net/oauth/token"
 DEFAULT_USERINFO_ENDPOINT = "https://passport.bloret.net/oauth/userinfo"
 TRANSACTION_TIMEOUT = 300
+CLOCK_SKEW = 60
 
 
 def generate_code_verifier() -> str:
@@ -44,7 +44,7 @@ class PassportOAuthCoordinator:
                  token_endpoint=DEFAULT_TOKEN_ENDPOINT,
                  userinfo_endpoint=DEFAULT_USERINFO_ENDPOINT,
                  client_id="BloretLauncher", browser_opener=None,
-                 timeout=TRANSACTION_TIMEOUT, on_complete=None):
+                 timeout=TRANSACTION_TIMEOUT, on_complete=None, on_status=None):
         self.authorize_endpoint = self._passport_endpoint(authorize_endpoint)
         self.token_endpoint = self._passport_endpoint(token_endpoint)
         self.userinfo_endpoint = self._passport_endpoint(userinfo_endpoint)
@@ -52,34 +52,49 @@ class PassportOAuthCoordinator:
         self.browser_opener = browser_opener or webbrowser.open
         self.timeout = timeout
         self.on_complete = on_complete
+        self.on_status = on_status
         self._pending: Optional[PendingTransaction] = None
+        self._reserved = False
         self._lock = threading.RLock()
         self._server = None
+        self._completed_result = None
 
     @staticmethod
     def _passport_endpoint(url):
         parsed = urllib.parse.urlparse(url)
-        if parsed.scheme != "https":
-            # Local HTTP endpoints are useful only for isolated tests.
-            if not (parsed.hostname in {"127.0.0.1", "::1"}):
-                raise ValueError("Passport endpoints must use HTTPS")
+        if parsed.scheme != "https" and parsed.hostname not in {"127.0.0.1", "::1"}:
+            raise ValueError("Passport endpoints must use HTTPS")
         if parsed.username or parsed.password or parsed.query or parsed.fragment:
             raise ValueError("Invalid Passport endpoint")
         return url.rstrip("/")
 
+    def _status(self, category, detail=""):
+        if self.on_status:
+            try:
+                self.on_status(category, detail)
+            except Exception:
+                pass
+
     def _expire_pending(self):
+        expired = False
         with self._lock:
             if self._pending and time.monotonic() - self._pending.created_at > self.timeout:
                 self._pending = None
+                self._reserved = False
+                expired = True
+        if expired:
+            self._stop_server()
+            self._status("expired", "Passport login expired; please retry")
 
     def begin(self):
         self._expire_pending()
         with self._lock:
-            if self._pending:
+            if self._pending or self._reserved:
                 raise RuntimeError("A Passport login is already pending")
-            self._server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), self._handler())
-            redirect_uri = "http://127.0.0.1:%d%s" % (self._server.server_port, CALLBACK_PATH)
+            server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), self._handler())
+            redirect_uri = "http://127.0.0.1:%d%s" % (server.server_port, CALLBACK_PATH)
             transaction = PendingTransaction(secrets.token_urlsafe(32), generate_code_verifier(), redirect_uri, time.monotonic())
+            self._server = server
             self._pending = transaction
             query = urllib.parse.urlencode({
                 "client_id": self.client_id, "redirect_uri": redirect_uri,
@@ -88,28 +103,50 @@ class PassportOAuthCoordinator:
                 "code_challenge_method": "S256",
             })
             url = self.authorize_endpoint + "?" + query
-            threading.Thread(target=self._server.serve_forever, daemon=True, name="PassportOAuthCallback").start()
-        self.browser_opener(url)
+            threading.Thread(target=server.serve_forever, daemon=True, name="PassportOAuthCallback").start()
+        try:
+            if not self.browser_opener(url):
+                raise OSError("Unable to open browser")
+        except Exception:
+            self.cancel()
+            self._status("failure", "Unable to open browser")
+            raise
+        self._status("started", "Passport login started")
         return transaction
 
-    def validate_callback(self, callback_url):
+    def _reserve_callback(self, callback_url):
         self._expire_pending()
         parsed = urllib.parse.urlparse(callback_url)
         with self._lock:
             transaction = self._pending
-        if not transaction:
-            raise ValueError("No pending Passport login")
-        if (parsed.scheme, parsed.hostname, parsed.port, parsed.path) != ("http", "127.0.0.1", urllib.parse.urlparse(transaction.redirect_uri).port, CALLBACK_PATH):
-            raise ValueError("Invalid Passport callback")
-        params = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
-        if params.get("state", [None])[0] != transaction.state:
-            raise ValueError("Invalid Passport state")
-        if params.get("error"):
-            raise ValueError("Passport authorization failed")
-        code = params.get("code", [None])[0]
-        if not code or len(params.get("code", [])) != 1:
-            raise ValueError("Missing Passport authorization code")
-        return code, transaction
+            if not transaction or self._reserved:
+                raise ValueError("No pending Passport login")
+            expected = urllib.parse.urlparse(transaction.redirect_uri)
+            if (parsed.scheme, parsed.hostname, parsed.port, parsed.path) != ("http", "127.0.0.1", expected.port, CALLBACK_PATH):
+                raise ValueError("Invalid Passport callback")
+            try:
+                pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True, strict_parsing=True)
+            except ValueError as error:
+                raise ValueError("Malformed Passport callback") from error
+            params = {}
+            for key, value in pairs:
+                params.setdefault(key, []).append(value)
+            allowed = {"code", "state", "error", "error_description", "error_uri"}
+            if any(key not in allowed for key in params):
+                raise ValueError("Unexpected Passport callback parameter")
+            if len(params.get("state", [])) != 1 or params["state"][0] != transaction.state:
+                raise ValueError("Invalid Passport state")
+            if "error" in params:
+                if len(params["error"]) != 1 or "code" in params:
+                    raise ValueError("Invalid Passport authorization response")
+                raise PermissionError("Passport authorization denied")
+            if len(params.get("code", [])) != 1 or not params["code"][0]:
+                raise ValueError("Missing Passport authorization code")
+            self._reserved = True
+            return params["code"][0], transaction
+
+    def validate_callback(self, callback_url):
+        return self._reserve_callback(callback_url)
 
     def exchange_code(self, code, transaction):
         response = requests.post(self.token_endpoint, data={
@@ -119,7 +156,7 @@ class PassportOAuthCoordinator:
         }, timeout=15)
         response.raise_for_status()
         result = response.json()
-        if not result.get("access_token"):
+        if not isinstance(result, dict) or not result.get("access_token"):
             raise ValueError("Passport token response did not contain an access token")
         return result
 
@@ -128,28 +165,41 @@ class PassportOAuthCoordinator:
         if response.status_code == 401:
             raise PermissionError("Passport access token is invalid")
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        if not isinstance(result, dict):
+            raise ValueError("Invalid Passport userinfo response")
+        return result
 
     def complete_callback(self, callback_url):
-        code, transaction = self.validate_callback(callback_url)
-        result = self.exchange_code(code, transaction)
-        userinfo = self.fetch_userinfo(result["access_token"])
-        with self._lock:
-            self._completed_result = (result, userinfo)
-            self._pending = None
-        self._stop_server()
-        if self.on_complete:
-            self.on_complete(result, userinfo)
-        return result, userinfo
+        try:
+            code, transaction = self._reserve_callback(callback_url)
+            result = self.exchange_code(code, transaction)
+            userinfo = self.fetch_userinfo(result["access_token"])
+            with self._lock:
+                self._completed_result = (result, userinfo)
+                self._pending = None
+                self._reserved = False
+            self._stop_server()
+            if self.on_complete:
+                self.on_complete(result, userinfo)
+            self._status("success", "Passport login succeeded")
+            return result, userinfo
+        except Exception as error:
+            with self._lock:
+                self._pending = None
+                self._reserved = False
+            self._stop_server()
+            category = "reauthorization_required" if isinstance(error, PermissionError) else "failure"
+            self._status(category, category.replace("_", " "))
+            raise
 
     def wait_for_result(self):
         deadline = time.monotonic() + self.timeout
         while time.monotonic() < deadline:
             with self._lock:
                 if not self._pending:
-                    result = getattr(self, "_completed_result", None)
-                    if result:
-                        return result
+                    if self._completed_result:
+                        return self._completed_result
                     break
             time.sleep(0.1)
         self.cancel()
@@ -157,22 +207,55 @@ class PassportOAuthCoordinator:
 
     def handle_callback(self, callback_url):
         try:
-            self.validate_callback(callback_url)
-        except ValueError:
+            self.complete_callback(callback_url)
+            return True
+        except Exception:
             return False
-        with self._lock:
-            self._pending = None
-        self._stop_server()
-        return True
+
+    def access_token_status(self, oauth, now=None):
+        oauth = oauth if isinstance(oauth, dict) else {}
+        token = oauth.get("access_token")
+        if not token:
+            return "reauthorization_required"
+        expires_in = oauth.get("expires_in")
+        obtained_at = oauth.get("obtained_at")
+        if expires_in is None or obtained_at is None:
+            return "unknown_expiry"
+        try:
+            return "expired" if (now or time.time()) >= float(obtained_at) + float(expires_in) - CLOCK_SKEW else "valid"
+        except (TypeError, ValueError):
+            return "unknown_expiry"
+
+    def refresh_access_token(self, oauth):
+        refresh_token = (oauth or {}).get("refresh_token")
+        if not refresh_token:
+            raise PermissionError("Passport reauthorization required")
+        response = requests.post(self.token_endpoint, data={
+            "grant_type": "refresh_token", "client_id": self.client_id,
+            "refresh_token": refresh_token,
+        }, timeout=15)
+        if response.status_code in (400, 401):
+            raise PermissionError("Passport reauthorization required")
+        response.raise_for_status()
+        result = response.json()
+        if not isinstance(result, dict) or not result.get("access_token"):
+            raise ValueError("Invalid Passport refresh response")
+        refreshed = dict(oauth)
+        refreshed.update({"access_token": result["access_token"], "obtained_at": int(time.time())})
+        for key in ("refresh_token", "expires_in", "token_type"):
+            if key in result:
+                refreshed[key] = result[key]
+        return refreshed
 
     def cancel(self):
         with self._lock:
             self._pending = None
+            self._reserved = False
         self._stop_server()
 
     def _stop_server(self):
-        server = self._server
-        self._server = None
+        with self._lock:
+            server, self._server = self._server, None
         if server:
             server.shutdown()
             server.server_close()
@@ -182,9 +265,12 @@ class PassportOAuthCoordinator:
         class CallbackHandler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
                 try:
-                    result, userinfo = coordinator.complete_callback("http://127.0.0.1:%d%s" % (self.server.server_port, self.path))
+                    coordinator.complete_callback("http://127.0.0.1:%d%s" % (self.server.server_port, self.path))
                     self.send_response(200)
                     body = b"Login complete. You may close this window."
+                except PermissionError:
+                    self.send_response(400)
+                    body = b"Login was denied or requires reauthorization. You may close this window."
                 except Exception:
                     self.send_response(400)
                     body = b"Login failed. You may close this window."
@@ -198,38 +284,16 @@ class PassportOAuthCoordinator:
 
 
 def login_with_passport(*, save_config: Callable[[dict], None], config: dict, status_callback=None):
-    coordinator = PassportOAuthCoordinator()
+    coordinator = PassportOAuthCoordinator(on_status=status_callback)
     try:
-        if status_callback:
-            status_callback("started", "Passport login started")
-        result, userinfo = coordinator.begin_and_wait(save_config, config)
-        if status_callback:
-            status_callback("success", "Passport login succeeded")
+        coordinator.begin()
+        result, userinfo = coordinator.wait_for_result()
+        updated = dict(config or {})
+        updated.update({"Bloret_PassPort_Login": True, "Bloret_PassPort_UserName": str(userinfo.get("username") or userinfo.get("name") or ""), "Bloret_PassPort_NickName": str(userinfo.get("nickname") or userinfo.get("name") or "")})
+        updated["Bloret_PassPort_OAuth"] = {"access_token": result["access_token"], "refresh_token": result.get("refresh_token", ""), "expires_in": result.get("expires_in"), "token_type": result.get("token_type", "Bearer"), "obtained_at": int(time.time())}
+        updated["Bloret_PassPort_PassWord"] = ""
+        save_config(updated)
         return True
-    except Exception as error:
+    except Exception:
         coordinator.cancel()
-        if status_callback:
-            status_callback("failure", "Passport login failed")
         return False
-
-
-def _begin_and_wait(self, save_config, config):
-    self._completed_result = None
-    self.begin()
-    result, userinfo = self.wait_for_result()
-    updated = dict(config or {})
-    updated["Bloret_PassPort_Login"] = True
-    updated["Bloret_PassPort_UserName"] = str(userinfo.get("username") or userinfo.get("name") or "")
-    updated["Bloret_PassPort_NickName"] = str(userinfo.get("nickname") or userinfo.get("name") or updated["Bloret_PassPort_UserName"])
-    updated["Bloret_PassPort_OAuth"] = {
-        "access_token": result["access_token"],
-        "refresh_token": result.get("refresh_token", ""),
-        "expires_in": result.get("expires_in"),
-        "token_type": result.get("token_type", "Bearer"),
-        "obtained_at": int(time.time()),
-    }
-    updated["Bloret_PassPort_PassWord"] = ""
-    save_config(updated)
-    return result, userinfo
-
-PassportOAuthCoordinator.begin_and_wait = _begin_and_wait

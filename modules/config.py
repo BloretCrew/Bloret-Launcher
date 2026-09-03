@@ -198,6 +198,11 @@ def write(config, *, changed_keys=None, fire_hooks=True):
     try:
         with _config_lock:
             _atomic_write_json(path, config)
+            try:
+                if os.name != "nt":
+                    os.chmod(path, 0o600)
+            except OSError:
+                pass
     except Exception as e:
         log(f"write() 写入配置失败: {e}")
         return False

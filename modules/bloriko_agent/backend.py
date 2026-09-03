@@ -256,15 +256,12 @@ def _build_bloret_passport_auth() -> str:
             with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
 
-        # 优先：已登录用户使用 OAuth 三段式 Key（文档方式二）
+        # OAuth access token is the only logged-in Passport credential.
         if config_data.get('Bloret_PassPort_Login'):
-            user_token = config_data.get('Bloret_PassPort_PassWord', '')
+            oauth = config_data.get('Bloret_PassPort_OAuth') or {}
+            user_token = oauth.get('access_token', '')
             if user_token:
-                masked = user_token[:8] + "..." + user_token[-4:]
-                auth = f"Bearer {user_token}"
-                # 完整脱敏打印 Auth 头，方便核对三段式格式是否正确
-                log.info(f"[BloretPassPort] 构建用户令牌认证头: 长度={len(auth)}, UserToken={masked}")
-                return auth
+                return f"Bearer {user_token}"
 
         # 回退：自注册专用 AI API Key（文档方式一，sk- 前缀）
         api_key = config_data.get('Bloret_PassPort_AI_API_Key', '')

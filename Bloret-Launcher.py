@@ -234,7 +234,7 @@ class Backend(QObject):
     minecraftAccountsChanged = Signal(list, arguments=['accounts'])
     minecraftAccountSyncFailed = Signal(str)
     passportAvatarChanged = Signal(str)
-    passportLoginStatusChanged = Signal(str)
+    passportLoginStatusChanged = Signal(str, str)
     javaRuntimesReady = Signal(list)
     logsCleared = Signal()
     easytierStatusChanged = Signal(str, str)
@@ -5225,6 +5225,7 @@ class Backend(QObject):
             existing_passport_admin = existing_config.get("Bloret_PassPort_Admin", False)
             existing_passport_avatar = existing_config.get("Bloret_PassPort_Avatar", "")
             existing_passport_password = existing_config.get("Bloret_PassPort_PassWord", "")
+            existing_passport_oauth = existing_config.get("Bloret_PassPort_OAuth")
             
             if os.path.exists(source_config):
                 # 复制默认配置文件
@@ -5261,6 +5262,11 @@ class Backend(QObject):
                         config_data["Bloret_PassPort_Avatar"] = existing_passport_avatar
                     if existing_passport_password:
                         config_data["Bloret_PassPort_PassWord"] = existing_passport_password
+                    if isinstance(existing_passport_oauth, dict) and existing_passport_oauth.get("access_token"):
+                        config_data["Bloret_PassPort_OAuth"] = existing_passport_oauth
+                    else:
+                        config_data["Bloret_PassPort_Login"] = False
+                        config_data.pop("Bloret_PassPort_OAuth", None)
                     print(f"Preserved PassPort login: {existing_passport_username}")
                 
                 # 标记首次运行完成
@@ -5284,7 +5290,8 @@ class Backend(QObject):
                     "Bloret_PassPort_NickName": existing_passport_nickname,
                     "Bloret_PassPort_Admin": existing_passport_admin,
                     "Bloret_PassPort_Avatar": existing_passport_avatar,
-                    "Bloret_PassPort_PassWord": existing_passport_password
+                    "Bloret_PassPort_PassWord": existing_passport_password,
+                    "Bloret_PassPort_OAuth": existing_passport_oauth if isinstance(existing_passport_oauth, dict) else {}
                 }
                 with open(target_config, 'w', encoding='utf-8') as f:
                     json.dump(config_data, f, indent=4, ensure_ascii=False)

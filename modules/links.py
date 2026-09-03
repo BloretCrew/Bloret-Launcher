@@ -59,6 +59,10 @@ def Bloret_PassPort_Account_login(backend=None):
     from modules.passport_oauth import PassportOAuthCoordinator
     import modules.config as cfg
 
+    def status(category, detail):
+        if backend is not None:
+            backend.passportLoginStatusChanged.emit(category, detail)
+
     def complete(result, userinfo):
         config = cfg.read()
         config.update({
@@ -74,9 +78,9 @@ def Bloret_PassPort_Account_login(backend=None):
         })
         cfg.write(config)
         if backend is not None:
-            backend.passportLoginStatusChanged.emit("success")
+            backend.passportLoginStatusChanged.emit("success", "Passport login succeeded")
 
-    coordinator = PassportOAuthCoordinator(on_complete=complete)
+    coordinator = PassportOAuthCoordinator(on_complete=complete, on_status=status)
     if backend is not None:
         backend._passport_oauth = coordinator
     try:
@@ -84,6 +88,8 @@ def Bloret_PassPort_Account_login(backend=None):
         log(i18nText("打开 Bloret PassPort 登录页面"))
         return coordinator
     except Exception as error:
+        coordinator.cancel()
+        status("failure", "Unable to open Passport login")
         log(i18nText("打开 Bloret PassPort 登录页面失败"))
         return None
 
