@@ -76,7 +76,8 @@ def Bloret_PassPort_Account_login(backend=None):
             },
             "Bloret_PassPort_PassWord": "",
         })
-        cfg.write(config)
+        if not cfg.write(config):
+            raise OSError("Unable to persist Passport OAuth configuration")
         if backend is not None:
             backend.passportLoginStatusChanged.emit("success", "Passport login succeeded")
 

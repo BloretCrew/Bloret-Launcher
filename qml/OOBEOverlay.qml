@@ -31,7 +31,29 @@ Rectangle {
     property bool isWaitingForLogin: false  // 等待登录状态
     property bool isSyncingAccounts: false  // 同步账户中
     property string syncError: ""
+    property string loginError: ""
     property var minecraftAccounts: []      // Minecraft 账户列表
+
+    Connections {
+        target: Backend
+        function onPassportLoginStatusChanged(category, detail) {
+            if (category === "started") {
+                oobeOverlay.loginError = ""
+                oobeOverlay.isWaitingForLogin = true
+                loginCheckTimer.start()
+            } else if (category === "success") {
+                oobeOverlay.loginError = ""
+                oobeOverlay.isWaitingForLogin = false
+                loginCheckTimer.stop()
+                if (oobeOverlay.currentPage < oobeOverlay.totalPages - 1)
+                    oobeOverlay.currentPage++
+            } else {
+                oobeOverlay.isWaitingForLogin = false
+                loginCheckTimer.stop()
+                oobeOverlay.loginError = detail || "Passport login failed"
+            }
+        }
+    }
 
     Component.onCompleted: {
         minecraftDirPath = Backend.getDefaultMinecraftDir()
@@ -319,6 +341,16 @@ Rectangle {
                                     loginCheckTimer.start()
                                 }
                             }
+                        }
+
+                        Text {
+                            text: oobeOverlay.loginError
+                            color: "#C42B1C"
+                            visible: !!oobeOverlay.loginError
+                            Layout.alignment: Qt.AlignHCenter
+                            wrapMode: Text.Wrap
+                            Layout.preferredWidth: 550
+                            horizontalAlignment: Text.AlignHCenter
                         }
 
                         Text {

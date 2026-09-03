@@ -7,154 +7,51 @@ from modules.i18n import i18nText
 import modules.globals as BLglobals
 import modules.config as cfg
 
+def _public_data_url(operation):
+    return f"{BLglobals.server_ip}:20000/app/data/{operation}"
+
+
+def _oauth_headers():
+    config_data = cfg.read()
+    oauth = config_data.get("Bloret_PassPort_OAuth") or {}
+    token = oauth.get("access_token")
+    if not token:
+        raise PermissionError("Passport OAuth authorization required")
+    return {"Authorization": "Bearer " + token}
+
+
 def savedata(key, data, public=False):
-    '''
-    存储信息到 Bloret PassPort 服务器
-    '''
-    log(f"=== savedata 函数开始执行 ===")
-    log(f"参数: key='{key}', public={public}")
-    log(f"数据类型: {type(data)}")
-
+    """Save public data, or authenticated data with an OAuth bearer token."""
+    data_str = json.dumps(data, ensure_ascii=False) if isinstance(data, (dict, list)) else str(data)
+    params = {"app_id": "BloretLauncher", "user": "public", "key": key, "data": data_str}
+    headers = {} if public else _oauth_headers()
+    if not public:
+        params.pop("app_id", None)
+        params.pop("user", None)
     try:
-        # 读取config.json获取用户信息
-        log("正在读取 config.json 文件...")
-        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-            config_data = json.load(f)
-        log(f"成功读取 config.json，包含用户: {config_data.get('Bloret_PassPort_UserName', '未设置')}")
-
-        user = config_data.get('Bloret_PassPort_UserName', '')
-        usertoken = config_data.get('Bloret_PassPort_PassWord', '')
-
-        # 如果 data 是字典或列表，转换为 JSON 字符串
-        if isinstance(data, (dict, list)):
-            log("数据是字典或列表类型，正在转换为 JSON 字符串...")
-            data_str = json.dumps(data, ensure_ascii=False)
-            log(f"JSON 转换完成，数据长度: {len(data_str)} 字符")
-        elif isinstance(data, str):
-            log("数据已经是字符串类型")
-            data_str = data
-        else:
-            log(f"数据类型为 {type(data)}，强制转换为字符串")
-            data_str = str(data)
-
-        # 构建请求URL
-        if public:
-            log("使用公共模式存储数据")
-            url = (f"{BLglobals.server_ip}:20000/app/data/save?"
-                    f"app_id=BloretLauncher&"
-                    f"user=public&"
-                    f"key={key}&"
-                    f"data={data_str}")
-            # 公共模式下 URL 不包含用户密码，直接记录部分信息
-            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/save?user=public&key={key}&data_length={len(data_str)}")
-        else:
-            log(f"使用用户模式存储数据，用户: {user}")
-            url = (f"{BLglobals.server_ip}:20000/app/data/save?"
-                    f"app_id=BloretLauncher&"
-                    f"user={user}&"
-                    f"usertoken={usertoken}&"
-                    f"key={key}&"
-                    f"data={data_str}")
-            # 用户模式下 URL 包含 usertoken，这里记录脱敏后的 URL 信息，避免泄露密码
-            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/save?user={user}&key={key}&data_length={len(data_str)}")
-
-        response = requests.get(url, timeout=10)
-        log(f"HTTP 响应状态码: {response.status_code}")
-        log(f"HTTP 响应内容: {response.text}")
-
-        if response.status_code == 200:
-            log(i18nText("成功存储数据到 Bloret PassPort 服务器"))
-            log(f"存储的 key: {key}")
-            return True
-        else:
-            log(f"存储数据到 Bloret PassPort 服务器失败，状态码: {response.status_code}")
-            return False
-
-    except FileNotFoundError as e:
-        log(f"savedata 错误: 找不到配置文件 - {str(e)}")
+        response = requests.get(_public_data_url("save"), params=params, headers=headers, timeout=10)
+        return response.status_code == 200
+    except (PermissionError, requests.exceptions.RequestException, ValueError, TypeError):
         return False
-    except json.JSONDecodeError as e:
-        log(f"savedata 错误: JSON 解析失败 - {str(e)}")
-        return False
-    except requests.exceptions.RequestException as e:
-        log(f"savedata 错误: HTTP 请求失败 - {str(e)}")
-        return False
-    except Exception as e:
-        log(f"savedata 错误: 未知异常 - {str(e)}")
-        log(f"异常类型: {type(e)}")
-        return False
-    finally:
-        log("=== savedata 函数执行结束 ===")
+
 
 def readdata(key, public=False):
-    '''
-    从 Bloret PassPort 服务器读取信息
-    '''
-    log(f"=== readdata 函数开始执行 ===")
-    log(f"参数: key='{key}', public={public}")
-
+    """Read public data, or authenticated data with an OAuth bearer token."""
+    params = {"app_id": "BloretLauncher", "user": "public", "key": key}
+    headers = {} if public else _oauth_headers()
+    if not public:
+        params.pop("app_id", None)
+        params.pop("user", None)
     try:
-        # 读取config.json获取用户信息
-        log("正在读取 config.json 文件...")
-        with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
-            config_data = json.load(f)
-        log(f"成功读取 config.json，包含用户: {config_data.get('Bloret_PassPort_UserName', '未设置')}")
-
-        user = config_data.get('Bloret_PassPort_UserName', '')
-        usertoken = config_data.get('Bloret_PassPort_PassWord', '')
-
-        # 构建请求URL
-        if public:
-            log("使用公共模式读取数据")
-            url = (f"{BLglobals.server_ip}:20000/app/data/read?"
-                    f"app_id=BloretLauncher&"
-                    f"user=public&"
-                    f"key={key}")
-            # 公共模式下 URL 不包含用户密码
-            log(f"请求URL: {url}")
-        else:
-            log(f"使用用户模式读取数据，用户: {user}")
-            url = (f"{BLglobals.server_ip}:20000/app/data/read?"
-                    f"app_id=BloretLauncher&"
-                    f"user={user}&"
-                    f"usertoken={usertoken}&"
-                    f"key={key}")
-            # 用户模式下 URL 包含 usertoken，这里记录脱敏后的 URL 信息
-            log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/read?user={user}&key={key}")
-
-        response = requests.get(url, timeout=10)
-        log(f"HTTP 响应状态码: {response.status_code}")
-
-        if response.status_code == 200:
-            log(i18nText("成功从 Bloret PassPort 服务器读取数据"))
-            result = response.text
-            # 尝试解析 JSON，如果不是 JSON 则直接返回字符串
-            try:
-                # 检查是否看起来像 JSON
-                if (result.startswith('{') and result.endswith('}')) or (result.startswith('[') and result.endswith(']')):
-                    json_result = json.loads(result)
-                    log("数据已解析为 JSON 对象")
-                    return json_result
-            except json.JSONDecodeError:
-                pass
-
-            log("数据作为字符串返回")
-            return result
-        else:
-            log(f"从 Bloret PassPort 服务器读取数据失败，状态码: {response.status_code}")
+        response = requests.get(_public_data_url("read"), params=params, headers=headers, timeout=10)
+        if response.status_code != 200:
             return None
-
-    except FileNotFoundError as e:
-        log(f"readdata 错误: 找不到配置文件 - {str(e)}")
+        try:
+            return response.json()
+        except ValueError:
+            return response.text
+    except (PermissionError, requests.exceptions.RequestException, ValueError, TypeError):
         return None
-    except requests.exceptions.RequestException as e:
-        log(f"readdata 错误: HTTP 请求失败 - {str(e)}")
-        return None
-    except Exception as e:
-        log(f"readdata 错误: 未知异常 - {str(e)}")
-        return None
-    finally:
-        log("=== readdata 函数执行结束 ===")
 
 def process_2fa_request(token, request_id, action):
     """
@@ -291,35 +188,35 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
             log("Passport account sync persistence failed")
             return False
 
-            # 关键补充：如果传入了 parent_window (MainWindow)，同步更新其内存中的 config
-            if parent_window and hasattr(parent_window, 'config'):
-                parent_window.config['MinecraftAccount'] = new_account_data
-                log("已同步更新 MainWindow 内存配置")
-            log(f"成功同步 {len(accounts)} 个账户到 config.json")
-            try:
-                from modules.plugin_host.dispatch import invoke_hook
+        # 关键补充：如果传入了 parent_window (MainWindow)，同步更新其内存中的 config
+        if parent_window and hasattr(parent_window, 'config'):
+            parent_window.config['MinecraftAccount'] = new_account_data
+            log("已同步更新 MainWindow 内存配置")
+        log(f"成功同步 {len(accounts)} 个账户到 config.json")
+        try:
+            from modules.plugin_host.dispatch import invoke_hook
+            invoke_hook(
+                "passport.sync",
+                {
+                    "username": username,
+                    "account_count": len(accounts),
+                    "source": "passport",
+                },
+            )
+            # 仅在 Minecraft 账户从未登录变为已登录时广播生命周期转换。
+            if accounts and not bool(old_minecraft_account.get("logined")):
                 invoke_hook(
-                    "passport.sync",
+                    "account.login",
                     {
                         "username": username,
                         "account_count": len(accounts),
                         "source": "passport",
                     },
                 )
-                # 仅在 Minecraft 账户从未登录变为已登录时广播生命周期转换。
-                if accounts and not bool(old_minecraft_account.get("logined")):
-                    invoke_hook(
-                        "account.login",
-                        {
-                            "username": username,
-                            "account_count": len(accounts),
-                            "source": "passport",
-                        },
-                    )
-                    log(f"[PluginHost] account.login user={username} n={len(accounts)}")
-                log(f"[PluginHost] passport.sync user={username} n={len(accounts)}")
-            except Exception as plugin_err:
-                log(f"[PluginHost] passport.sync 失败: {plugin_err}")
+                log(f"[PluginHost] account.login user={username} n={len(accounts)}")
+            log(f"[PluginHost] passport.sync user={username} n={len(accounts)}")
+        except Exception as plugin_err:
+            log(f"[PluginHost] passport.sync 失败: {plugin_err}")
 
         return True
 
