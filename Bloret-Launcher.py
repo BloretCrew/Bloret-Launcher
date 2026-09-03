@@ -4259,7 +4259,6 @@ class Backend(QObject):
             self.passportLoginStatusChanged.emit("failure", "Unable to open Passport login")
 
     @Slot()
-    @Slot()
     def cancelBloretPassPortLogin(self):
         coordinator = getattr(self, "_passport_oauth", None)
         if coordinator is not None:

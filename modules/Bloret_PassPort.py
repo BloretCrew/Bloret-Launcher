@@ -14,17 +14,17 @@ def savedata(key, data, public=False):
     log(f"=== savedata 函数开始执行 ===")
     log(f"参数: key='{key}', public={public}")
     log(f"数据类型: {type(data)}")
-    
+
     try:
         # 读取config.json获取用户信息
         log("正在读取 config.json 文件...")
         with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
         log(f"成功读取 config.json，包含用户: {config_data.get('Bloret_PassPort_UserName', '未设置')}")
-        
+
         user = config_data.get('Bloret_PassPort_UserName', '')
         usertoken = config_data.get('Bloret_PassPort_PassWord', '')
-        
+
         # 如果 data 是字典或列表，转换为 JSON 字符串
         if isinstance(data, (dict, list)):
             log("数据是字典或列表类型，正在转换为 JSON 字符串...")
@@ -36,7 +36,7 @@ def savedata(key, data, public=False):
         else:
             log(f"数据类型为 {type(data)}，强制转换为字符串")
             data_str = str(data)
-        
+
         # 构建请求URL
         if public:
             log("使用公共模式存储数据")
@@ -57,11 +57,11 @@ def savedata(key, data, public=False):
                     f"data={data_str}")
             # 用户模式下 URL 包含 usertoken，这里记录脱敏后的 URL 信息，避免泄露密码
             log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/save?user={user}&key={key}&data_length={len(data_str)}")
-        
+
         response = requests.get(url, timeout=10)
         log(f"HTTP 响应状态码: {response.status_code}")
         log(f"HTTP 响应内容: {response.text}")
-        
+
         if response.status_code == 200:
             log(i18nText("成功存储数据到 Bloret PassPort 服务器"))
             log(f"存储的 key: {key}")
@@ -69,7 +69,7 @@ def savedata(key, data, public=False):
         else:
             log(f"存储数据到 Bloret PassPort 服务器失败，状态码: {response.status_code}")
             return False
-            
+
     except FileNotFoundError as e:
         log(f"savedata 错误: 找不到配置文件 - {str(e)}")
         return False
@@ -92,17 +92,17 @@ def readdata(key, public=False):
     '''
     log(f"=== readdata 函数开始执行 ===")
     log(f"参数: key='{key}', public={public}")
-    
+
     try:
         # 读取config.json获取用户信息
         log("正在读取 config.json 文件...")
         with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
         log(f"成功读取 config.json，包含用户: {config_data.get('Bloret_PassPort_UserName', '未设置')}")
-        
+
         user = config_data.get('Bloret_PassPort_UserName', '')
         usertoken = config_data.get('Bloret_PassPort_PassWord', '')
-        
+
         # 构建请求URL
         if public:
             log("使用公共模式读取数据")
@@ -121,10 +121,10 @@ def readdata(key, public=False):
                     f"key={key}")
             # 用户模式下 URL 包含 usertoken，这里记录脱敏后的 URL 信息
             log(f"请求URL(已脱敏): {BLglobals.server_ip}:20000/app/data/read?user={user}&key={key}")
-        
+
         response = requests.get(url, timeout=10)
         log(f"HTTP 响应状态码: {response.status_code}")
-        
+
         if response.status_code == 200:
             log(i18nText("成功从 Bloret PassPort 服务器读取数据"))
             result = response.text
@@ -137,13 +137,13 @@ def readdata(key, public=False):
                     return json_result
             except json.JSONDecodeError:
                 pass
-            
+
             log("数据作为字符串返回")
             return result
         else:
             log(f"从 Bloret PassPort 服务器读取数据失败，状态码: {response.status_code}")
             return None
-            
+
     except FileNotFoundError as e:
         log(f"readdata 错误: 找不到配置文件 - {str(e)}")
         return None
@@ -182,7 +182,7 @@ def Bloret_PassPort_Account_logout(self, homeInterface):
     self.config.update(Bloret_PassPort_UserName=i18nText(''))
     self.config.update(Bloret_PassPort_PassWord='')
     self.config.update(Bloret_PassPort_Admin=False)
-    
+
     cfg.write(self.config)
     # 更新界面显示
     Bloret_PassPort_User_UserName = homeInterface.findChild(QLabel, "Bloret_PassPort_UserName")
@@ -190,7 +190,7 @@ def Bloret_PassPort_Account_logout(self, homeInterface):
         Bloret_PassPort_User_UserName.setText(i18nText("未登录"))
     else:
         log("警告: 未找到 Bloret_PassPort_UserName 控件")
-        
+
     InfoBar.success(
         title=i18nText('⏫ 已退出登录'),
         content="",
@@ -205,19 +205,34 @@ def Bloret_PassPort_Account_logout(self, homeInterface):
     else:
         log("警告: 未找到 Bloret_PassPort_Name 控件")
     log(i18nText("已退出登录"))
-    
+
+def normalize_minecraft_accounts(userinfo):
+    """Accept only an explicit list under the agreed local OAuth fixture keys."""
+    if not isinstance(userinfo, dict):
+        raise ValueError("Invalid Passport userinfo response")
+    if "accounts" in userinfo:
+        accounts = userinfo["accounts"]
+    elif "minecraft_accounts" in userinfo:
+        accounts = userinfo["minecraft_accounts"]
+    else:
+        raise ValueError("Passport userinfo omitted Minecraft account data")
+    if not isinstance(accounts, list) or not all(isinstance(account, dict) for account in accounts):
+        raise ValueError("Invalid Passport Minecraft account data")
+    return accounts
+
+
 def sync_bloret_passport_account_to_mc(parent_window=None):
     log("=== sync_bloret_passport_account_to_mc 函数开始执行 (同步逻辑已对齐 web.py) ===")
-    
+
     # 兼容处理传入的参数
     if isinstance(parent_window, str):
         parent_window = None
-    
+
     try:
         log("正在读取 config.json 获取用户信息...")
         # 1. 读取 config.json
         config_data = cfg.read()
-        
+
         # 检查是否已登录 Passport
         if not config_data.get('Bloret_PassPort_Login'):
             log("错误: 用户未登录 Bloret PassPort")
@@ -248,36 +263,34 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
         response.raise_for_status()
         api_result = response.json()
         log("Passport userinfo 请求成功")
-        
-        if isinstance(api_result, dict):
-            # 3. Preserve existing account selection while applying returned accounts.
-            accounts = api_result.get('accounts', []) or api_result.get('minecraft_accounts', [])
-        else:
-            accounts = []
-        if isinstance(accounts, list):
-            
-            # 获取旧的 chosen 值，如果不存在或越界，则默认为 0
-            old_minecraft_account = config_data.get('MinecraftAccount', {})
-            old_chosen = old_minecraft_account.get('chosen', 0)
-            
-            # 如果之前的 chosen 索引在新列表中仍然有效，则保持不变；否则重置为 0
-            new_chosen = old_chosen if 0 <= old_chosen < len(accounts) else (0 if accounts else -1)
 
-            new_account_data = {
-                "logined": True if accounts else False,
-                "chosen": new_chosen,
-                "accounts": accounts
-            }
-            config_data['MinecraftAccount'] = new_account_data
-            
-            # 同时更新头像信息（如果服务器返回了 avatar 字段）
-            if 'avatar' in api_result:
-                config_data['Bloret_PassPort_Avatar'] = api_result['avatar']
-                log(f"已更新用户头像: {api_result['avatar']}")
-            
-            # 保存配置到 config.json
-            cfg.write(config_data)
-            
+        # 3. Preserve existing account selection while applying returned accounts.
+        accounts = normalize_minecraft_accounts(api_result)
+
+        # 获取旧的 chosen 值，如果不存在或越界，则默认为 0
+        old_minecraft_account = config_data.get('MinecraftAccount', {})
+        old_chosen = old_minecraft_account.get('chosen', 0)
+
+        # 如果之前的 chosen 索引在新列表中仍然有效，则保持不变；否则重置为 0
+        new_chosen = old_chosen if 0 <= old_chosen < len(accounts) else (0 if accounts else -1)
+
+        new_account_data = {
+            "logined": True if accounts else False,
+            "chosen": new_chosen,
+            "accounts": accounts
+        }
+        config_data['MinecraftAccount'] = new_account_data
+
+        # 同时更新头像信息（如果服务器返回了 avatar 字段）
+        if 'avatar' in api_result:
+            config_data['Bloret_PassPort_Avatar'] = api_result['avatar']
+            log(f"已更新用户头像: {api_result['avatar']}" )
+
+        # 保存配置到 config.json
+        if not cfg.write(config_data):
+            log("Passport account sync persistence failed")
+            return False
+
             # 关键补充：如果传入了 parent_window (MainWindow)，同步更新其内存中的 config
             if parent_window and hasattr(parent_window, 'config'):
                 parent_window.config['MinecraftAccount'] = new_account_data
@@ -308,10 +321,7 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
             except Exception as plugin_err:
                 log(f"[PluginHost] passport.sync 失败: {plugin_err}")
 
-            return True
-        else:
-            message = api_result.get('message', '未知错误')
-            raise Exception(f"服务器返回错误: {message}")
+        return True
 
     except Exception as e:
         log(f"从 Bloret Passport 同步账户时出错: {str(e)}")
@@ -347,7 +357,9 @@ def refresh_minecraft_token():
                 log("Passport refresh rejected; reauthorization required")
                 return False
             config_data["Bloret_PassPort_OAuth"] = refreshed
-            cfg.write(config_data)
+            if not cfg.write(config_data):
+                log("Passport token refresh persistence failed")
+                return False
             return True
         if status == "reauthorization_required":
             log("缺少 Passport OAuth access token，需重新授权")
@@ -356,7 +368,7 @@ def refresh_minecraft_token():
             log("Passport OAuth token expiry metadata unavailable; reauthorization required")
             return False
         return True
-            
+
     except Exception as e:
         log(f"刷新 Minecraft Token 时发生异常: {e}")
         return False
@@ -370,19 +382,19 @@ def prepare_minecraft_launch_account():
     2. 同步最新的账户信息
     """
     log("正在准备 Minecraft 启动账户...")
-    
+
     # 1. 刷新 Token
     refresh_result = refresh_minecraft_token()
     if not refresh_result:
         log("Minecraft Token 刷新失败或不需要刷新，尝试继续同步...", logging.WARNING)
-    
+
     # 2. 同步账户信息 (不显示弹窗)
     # 注意：sync_bloret_passport_account_to_mc 会更新 config.json
     # 后续的 Get_Run_Script 会读取最新的 config.json
     sync_result = sync_bloret_passport_account_to_mc(parent_window=None)
     if not sync_result:
         log("Minecraft 账户同步失败，将使用本地缓存的账户信息启动", logging.WARNING)
-    
+
     log("Minecraft 启动账户准备完成")
 
 def get_pending_2fa_requests(username, token):

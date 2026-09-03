@@ -17,6 +17,8 @@ class PassportR2Tests(unittest.TestCase):
         web = Path("modules/web.py").read_text(encoding="utf-8")
         self.assertIn("Legacy Passport sync disabled", web)
         self.assertNotIn("/app/verify", web)
+        self.assertNotIn("/app/MinecraftAccounts", web)
+        self.assertNotIn("usertoken", web)
 
     def test_launch_requires_reauthorization_after_refresh_failure(self):
         source = Path("Bloret-Launcher.py").read_text(encoding="utf-8")
@@ -37,6 +39,13 @@ class PassportR2Tests(unittest.TestCase):
         source = Path("modules/resourcepack_editor/agent_backend.py").read_text(encoding="utf-8")
         self.assertIn("Bloret_PassPort_OAuth", source)
         self.assertNotIn("s4d56f4a", source)
+
+    def test_account_normalization_requires_explicit_list_contract(self):
+        source = Path("modules/Bloret_PassPort.py").read_text(encoding="utf-8")
+        self.assertIn("def normalize_minecraft_accounts(userinfo):", source)
+        self.assertIn('raise ValueError("Passport userinfo omitted Minecraft account data")', source)
+        self.assertIn('if "accounts" in userinfo:', source)
+        self.assertIn('elif "minecraft_accounts" in userinfo:', source)
 
     def test_callback_failure_consumes_transaction(self):
         coordinator = PassportOAuthCoordinator(authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _: True)

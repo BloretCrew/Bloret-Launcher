@@ -34,7 +34,11 @@ FluentWindow {
     Connections {
         target: Backend
         function onPassportLoginStatusChanged(category, detail) {
-            if (category === "success") {
+            if (category === "started") {
+                oobeWindow.loginError = ""
+                oobeWindow.isWaitingForLogin = true
+                loginCheckTimer.start()
+            } else if (category === "success") {
                 oobeWindow.loginError = ""
                 oobeWindow.isWaitingForLogin = false
                 loginCheckTimer.stop()
