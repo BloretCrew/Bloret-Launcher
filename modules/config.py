@@ -83,6 +83,11 @@ else:
                 log(f"配置文件版本不匹配（当前: {current_ver}, 目标: {default_ver}），正在执行增量更新...")
                 # 备份
                 shutil.copyfile(config_path, config_path + ".back")
+                try:
+                    if os.name != "nt":
+                        os.chmod(config_path + ".back", 0o600)
+                except OSError:
+                    pass
 
                 # 增量合并：以旧配置(config)为主，补全缺少的默认项(default_config)
                 updated_config = default_config.copy()

@@ -12,6 +12,9 @@ FluentPage {
     property var accountList: []
     property string passportUser: ""
     property bool passportLoggedIn: false
+    property bool passportLoginPending: false
+    property string passportLoginStatus: ""
+    property string passportLoginError: ""
 
     Component.onCompleted: {
         // 延迟更新确保 Backend 完全初始化
@@ -35,6 +38,15 @@ FluentPage {
 
     Connections {
         target: Backend
+        function onPassportLoginStatusChanged(category, detail) {
+            passportLoginPending = category === "started"
+            passportLoginStatus = category
+            passportLoginError = category === "success" ? "" : (detail || "Passport login failed")
+            if (category === "success") {
+                passportLoggedIn = true
+                updatePassportData()
+            }
+        }
         function onPassportAvatarChanged(url) {
             passportAvatar.source = url && url !== "" ? url : "../../icon/Grass_Block.png"
         }
@@ -155,9 +167,15 @@ FluentPage {
                 }
 
                 Button {
-                    text: (Backend ? Backend.tr("登录") : "登录")
+                    text: passportLoginPending ? (Backend ? Backend.tr("登录中…") : "Logging in…") : (passportLoginError ? (Backend ? Backend.tr("重试登录") : "Retry login") : (Backend ? Backend.tr("登录") : "登录"))
                     visible: !passportLoggedIn
+                    enabled: !passportLoginPending
                     onClicked: { if (Backend) Backend.loginBloretPassPort() }
+                }
+                Button {
+                    text: Backend ? Backend.tr("取消") : "Cancel"
+                    visible: passportLoginPending
+                    onClicked: { if (Backend && Backend.cancelBloretPassPortLogin) Backend.cancelBloretPassPortLogin() }
                 }
 
                 Button {
@@ -166,6 +184,14 @@ FluentPage {
                     onClicked: { if (Backend) Backend.logoutBloretPassPort() }
                 }
             }
+        }
+
+        Label {
+            text: passportLoginError
+            visible: !!passportLoginError
+            color: "#C42B1C"
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
         }
 
         Label {

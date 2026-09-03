@@ -1291,6 +1291,11 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(b'Legacy Passport callback disabled; use the launcher PKCE coordinator.')
             return
         elif self.path == '/sync/Minecraft_Account':
+            self.send_response(410)
+            self.send_header('Content-type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(b'Legacy Passport sync disabled; use the launcher OAuth sync.')
+            return
             # 处理 /sync/Minecraft_Account 路径
             try:
                 print(f"\n[Bloret PassPort MinecraftAccount 同步] 接收到同步请求")

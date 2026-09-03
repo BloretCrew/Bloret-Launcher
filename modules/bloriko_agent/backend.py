@@ -243,7 +243,7 @@ def _build_bloret_passport_auth() -> str:
     """构建 Bloret PassPort 认证头。
 
     认证优先级（见 docs/BloretPassPort-AIAPI.md）：
-    1. 优先：已登录用户的 OAuth 三段式 Key（Bearer {AppID};{AppSecret};{UserToken}）
+    1. 优先：已登录用户的 OAuth access token（Bearer access-token；需服务端支持）
     2. 回退：自注册专用 AI API Key（sk- 前缀，存于 Bloret_PassPort_AI_API_Key）
     返回空字符串表示无法认证（未登录且无专用Key）。
     """

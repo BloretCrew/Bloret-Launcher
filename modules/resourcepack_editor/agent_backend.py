@@ -140,7 +140,7 @@ def _build_bloret_passport_auth() -> str:
     """构建 Bloret PassPort 认证头。
 
     认证优先级（见 docs/BloretPassPort-AIAPI.md）：
-    1. 优先：已登录用户的 OAuth 三段式 Key（Bearer {AppID};{AppSecret};{UserToken}）
+    1. 优先：已登录用户的 OAuth access token（Bearer access-token；需服务端支持）
     2. 回退：自注册专用 AI API Key（sk- 前缀，存于 Bloret_PassPort_AI_API_Key）
     返回空字符串表示无法认证（未登录且无专用Key）。
     """
@@ -153,18 +153,12 @@ def _build_bloret_passport_auth() -> str:
             with open(BLglobals.config_path, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
 
-        # 优先：已登录用户使用 OAuth 三段式 Key（文档方式二）
+        # OAuth access token is used when Passport login is active.
         if config_data.get('Bloret_PassPort_Login'):
-            user_token = config_data.get('Bloret_PassPort_PassWord', '')
-            if user_token:
-                masked = user_token[:8] + "..." + user_token[-4:]
-                auth = f"Bearer {user_token}"
-                head = auth[:40]
-                tail = auth[-12:]
-                log.info(f"[BloretPassPort] 构建认证头: 长度={len(auth)}, 格式=Bearer{{AppID}};{{AppSecret}};{{UserToken}}")
-                log.info(f"[BloretPassPort] AppID=BloretLauncher, AppSecret=s4d56f4a...546, UserToken={masked}")
-                log.info(f"[BloretPassPort] 完整Auth头(脱敏): {head}...{tail}")
-                return auth
+            oauth = config_data.get('Bloret_PassPort_OAuth') or {}
+            access_token = oauth.get('access_token', '')
+            if access_token:
+                return f"Bearer {access_token}"
 
         # 回退：自注册专用 AI API Key（文档方式一，sk- 前缀）
         api_key = config_data.get('Bloret_PassPort_AI_API_Key', '')

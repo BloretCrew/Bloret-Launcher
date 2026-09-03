@@ -673,7 +673,9 @@ class Backend(QObject):
                     if refresh_ok:
                         emit_progress(35, "令牌刷新完成", "")
                     else:
-                        emit_progress(35, "令牌刷新未完成，继续同步档案...", "")
+                        self.passportLoginStatusChanged.emit("reauthorization_required", "Passport reauthorization required")
+                        emit_progress(35, "需要重新登录 Bloret PassPort", "")
+                        return
 
                     emit_progress(50, "正在重新获取 Minecraft 档案数据...", "")
                     sync_ok = sync_bloret_passport_account_to_mc(parent_window=None)
@@ -683,7 +685,9 @@ class Backend(QObject):
                         self.minecraftAccountsChanged.emit([])
                         emit_progress(65, "档案数据更新完成", "")
                     else:
-                        emit_progress(65, "档案同步失败，将使用本地缓存档案", "")
+                        self.passportLoginStatusChanged.emit("reauthorization_required", "Passport account synchronization requires reauthorization")
+                        emit_progress(65, "Passport 档案同步失败，需要重新登录", "")
+                        return
                 else:
                     emit_progress(65, "跳过在线账户同步（离线/未登录）", "")
 
@@ -4252,9 +4256,16 @@ class Backend(QObject):
     def loginBloretPassPort(self):
         from modules.links import Bloret_PassPort_Account_login
         if not Bloret_PassPort_Account_login(self):
-            self.passportLoginStatusChanged.emit("failure")
+            self.passportLoginStatusChanged.emit("failure", "Unable to open Passport login")
 
     @Slot()
+    @Slot()
+    def cancelBloretPassPortLogin(self):
+        coordinator = getattr(self, "_passport_oauth", None)
+        if coordinator is not None:
+            coordinator.cancel()
+            self.passportLoginStatusChanged.emit("cancelled", "Passport login cancelled")
+
     def logoutBloretPassPort(self):
         from modules.Bloret_PassPort import Bloret_PassPort_Account_logout
         # We need to pass the main window or a mock for homeInterface
@@ -5272,8 +5283,8 @@ class Backend(QObject):
                 # 标记首次运行完成
                 config_data["first-run"] = False
                 
-                with open(target_config, 'w', encoding='utf-8') as f:
-                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                if not cfg.write(config_data):
+                    raise OSError("Unable to persist OOBE configuration")
                 print("OOBE completed: User data preserved")
             else:
                 # 如果没有源配置文件，创建一个基本的，并保留用户数据
@@ -5293,8 +5304,8 @@ class Backend(QObject):
                     "Bloret_PassPort_PassWord": existing_passport_password,
                     "Bloret_PassPort_OAuth": existing_passport_oauth if isinstance(existing_passport_oauth, dict) else {}
                 }
-                with open(target_config, 'w', encoding='utf-8') as f:
-                    json.dump(config_data, f, indent=4, ensure_ascii=False)
+                if not cfg.write(config_data):
+                    raise OSError("Unable to persist OOBE configuration")
                 print("OOBE completed: Created config with user data")
         
             # OOBE 完成后检查并修复 .BL.json
