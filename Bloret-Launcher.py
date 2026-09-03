@@ -234,6 +234,7 @@ class Backend(QObject):
     minecraftAccountsChanged = Signal(list, arguments=['accounts'])
     minecraftAccountSyncFailed = Signal(str)
     passportAvatarChanged = Signal(str)
+    passportLoginStatusChanged = Signal(str)
     javaRuntimesReady = Signal(list)
     logsCleared = Signal()
     easytierStatusChanged = Signal(str, str)
@@ -4250,7 +4251,8 @@ class Backend(QObject):
     @Slot()
     def loginBloretPassPort(self):
         from modules.links import Bloret_PassPort_Account_login
-        Bloret_PassPort_Account_login()
+        if not Bloret_PassPort_Account_login(self):
+            self.passportLoginStatusChanged.emit("failure")
 
     @Slot()
     def logoutBloretPassPort(self):
@@ -4262,6 +4264,7 @@ class Backend(QObject):
         config_data['Bloret_PassPort_UserName'] = ""
         config_data['Bloret_PassPort_NickName'] = ""
         config_data['Bloret_PassPort_PassWord'] = ""
+        config_data.pop('Bloret_PassPort_OAuth', None)
         cfg.write(config_data)
         print("Logged out from Bloret PassPort")
         try:

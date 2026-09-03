@@ -55,9 +55,37 @@ def copy_name_to_clipboard(self):
     clipboard.setText(self.player_name)
     log(f"名称 {self.player_name} 已复制到剪贴板")
 
-def Bloret_PassPort_Account_login():
-    QDesktopServices.openUrl(QUrl("https://passport.bloret.net/app/oauth?app_id=BloretLauncher&redirect_uri=http://localhost:25252/login/Bloret-PassPort"))
-    log(i18nText("打开 Bloret PassPort 登录页面"))
+def Bloret_PassPort_Account_login(backend=None):
+    from modules.passport_oauth import PassportOAuthCoordinator
+    import modules.config as cfg
+
+    def complete(result, userinfo):
+        config = cfg.read()
+        config.update({
+            "Bloret_PassPort_Login": True,
+            "Bloret_PassPort_UserName": str(userinfo.get("username") or userinfo.get("name") or ""),
+            "Bloret_PassPort_NickName": str(userinfo.get("nickname") or userinfo.get("name") or ""),
+            "Bloret_PassPort_OAuth": {
+                "access_token": result["access_token"], "refresh_token": result.get("refresh_token", ""),
+                "expires_in": result.get("expires_in"), "token_type": result.get("token_type", "Bearer"),
+                "obtained_at": int(__import__("time").time()),
+            },
+            "Bloret_PassPort_PassWord": "",
+        })
+        cfg.write(config)
+        if backend is not None:
+            backend.passportLoginStatusChanged.emit("success")
+
+    coordinator = PassportOAuthCoordinator(on_complete=complete)
+    if backend is not None:
+        backend._passport_oauth = coordinator
+    try:
+        coordinator.begin()
+        log(i18nText("打开 Bloret PassPort 登录页面"))
+        return coordinator
+    except Exception as error:
+        log(i18nText("打开 Bloret PassPort 登录页面失败"))
+        return None
 
 def openLink(url):
     QDesktopServices.openUrl(QUrl(url))

@@ -227,24 +227,29 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
             return False
 
         username = config_data.get('Bloret_PassPort_UserName')
-        user_token = config_data.get('Bloret_PassPort_PassWord')
-        
-        # 2. 向验证服务器发送请求获取 Minecraft 账户列表 (对齐 web.py 逻辑)
-        verify_url = f"{BLglobals.server_ip}:20000/app/MinecraftAccounts"
-        params = {
-            'app_id': 'BloretLauncher',
-            'user': username,
-            'usertoken': user_token
-        }
-        
-        log(f"正在请求接口: {verify_url}")
-        response = requests.get(verify_url, params=params, timeout=30)
+        oauth = config_data.get('Bloret_PassPort_OAuth') or {}
+        access_token = oauth.get('access_token')
+        if not access_token:
+            log("错误: 缺少 Passport OAuth access token")
+            return False
+
+        # 2. Passport account synchronization uses the OAuth bearer token.
+        verify_url = "https://passport.bloret.net/oauth/userinfo"
+        log("正在请求 Passport OAuth userinfo")
+        response = requests.get(verify_url, headers={"Authorization": "Bearer " + access_token}, timeout=30)
+        if response.status_code == 401:
+            log("Passport access token 无效或已过期")
+            return False
+        response.raise_for_status()
         api_result = response.json()
-        log(f"接口返回状态: {api_result.get('status')}")
+        log("Passport userinfo 请求成功")
         
-        if api_result.get('status') == 'success':
-            # 3. 更新 config.json 中的 MinecraftAccount 字段
-            accounts = api_result.get('accounts', [])
+        if isinstance(api_result, dict):
+            # 3. Preserve existing account selection while applying returned accounts.
+            accounts = api_result.get('accounts', []) or api_result.get('minecraft_accounts', [])
+        else:
+            accounts = []
+        if isinstance(accounts, list):
             
             # 获取旧的 chosen 值，如果不存在或越界，则默认为 0
             old_minecraft_account = config_data.get('MinecraftAccount', {})
@@ -322,28 +327,26 @@ def refresh_minecraft_token():
             log("用户未登录 Bloret PassPort，跳过 Token 刷新")
             return False
 
-        username = config_data.get('Bloret_PassPort_UserName')
-        if not username:
-            log("未找到用户名，跳过 Token 刷新")
+        oauth = config_data.get('Bloret_PassPort_OAuth') or {}
+        access_token = oauth.get('access_token')
+        if not access_token:
+            log("缺少 Passport OAuth access token，跳过 Token 刷新")
             return False
 
-        url = f"{BLglobals.server_ip}:20000/api/login/Minecraft/Refresh"
-        headers = {
-            'Cookie': f'username={username}'
-        }
-
-        log(f"正在请求刷新 Token 接口: {url}")
-        # 注意：这里不需要 json 数据，参数通过 Cookie 传递
-        response = requests.post(url, headers=headers, timeout=10)
+        url = "https://passport.bloret.net/oauth/userinfo"
+        headers = {"Authorization": "Bearer " + access_token}
+        log("正在使用 Passport OAuth bearer token 检查令牌")
+        response = requests.get(url, headers=headers, timeout=10)
         
         if response.status_code == 200:
-            result = response.json()
-            if result.get('success'):
-                log(f"Token 刷新成功: {result.get('message')}")
-                return True
-            else:
-                log(f"Token 刷新失败: {result.get('message')}")
+            if response.status_code == 401:
+                log("Passport OAuth access token 无效")
                 return False
+            result = response.json()
+            if isinstance(result, dict):
+                log("Passport OAuth access token 有效")
+                return True
+            return False
         else:
             log(f"Token 刷新请求失败，状态码: {response.status_code}")
             try:
