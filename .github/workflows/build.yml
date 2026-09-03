@@ -59,6 +59,8 @@ jobs:
     env:
       PYTHON_VERSION: '3.10'
       OUTPUT_DIR: 'output'
+      APPIMAGETOOL_SHA256_X86_64: ${{ secrets.APPIMAGETOOL_SHA256_X86_64 }}
+      APPIMAGETOOL_SHA256_AARCH64: ${{ secrets.APPIMAGETOOL_SHA256_AARCH64 }}
     steps:
     - name: 检出最新版本
       uses: actions/checkout@v4
@@ -342,7 +344,12 @@ jobs:
             python -c "from PIL import Image; Image.open('bloret.ico').save('AppDir/bloret-launcher.png')"
           fi
           cp AppDir/bloret-launcher.png AppDir/.DirIcon
-          curl -L -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage"
+          APPIMAGETOOL_VERSION="continuous"
+          APPIMAGETOOL_SHA256_VAR="APPIMAGETOOL_SHA256_${ARCH^^}"
+          APPIMAGETOOL_SHA256="${!APPIMAGETOOL_SHA256_VAR:-}"
+          if [ -z "$APPIMAGETOOL_SHA256" ]; then echo "::error::Missing appimagetool SHA-256"; exit 1; fi
+          curl --fail --location --retry 3 -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/${APPIMAGETOOL_VERSION}/appimagetool-${ARCH}.AppImage"
+          printf '%s  %s\n' "$APPIMAGETOOL_SHA256" appimagetool | sha256sum -c -
           chmod +x appimagetool
           ./appimagetool --appimage-extract-and-run AppDir "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.AppImage"
           # 兜底资源进 onedir，再打 zip
@@ -368,6 +375,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EASYTIER_VERSION: v2.6.4
+      EASYTIER_SHA256: ${{ secrets.EASYTIER_SHA256_FREEBSD_X86_64 }}
       OUTPUT_DIR: output
     steps:
     - name: 检出最新版本
@@ -380,8 +388,10 @@ jobs:
         EASYTIER_ZIP="easytier-freebsd-13.2-x86_64-${EASYTIER_VERSION}.zip"
         rm -rf easytier
         mkdir -p easytier
-        curl -L --retry 3 --retry-delay 5 -o "$EASYTIER_ZIP" \
+        curl --fail --location --retry 3 --retry-delay 5 -o "$EASYTIER_ZIP" \
           "https://github.com/EasyTier/EasyTier/releases/download/${EASYTIER_VERSION}/${EASYTIER_ZIP}"
+        if [ -z "${EASYTIER_SHA256:-}" ]; then echo "::error::Missing EasyTier SHA-256"; exit 1; fi
+        if ! printf '%s  %s\n' "$EASYTIER_SHA256" "$EASYTIER_ZIP" | sha256sum -c -; then exit 1; fi
         if ! unzip -t "$EASYTIER_ZIP" &>/dev/null; then
           echo "::error::EasyTier FreeBSD download failed: invalid zip"
           exit 1

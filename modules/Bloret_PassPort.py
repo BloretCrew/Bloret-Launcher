@@ -42,7 +42,6 @@ def savedata(key, data, public=False):
             log("使用公共模式存储数据")
             url = (f"{BLglobals.server_ip}:20000/app/data/save?"
                     f"app_id=BloretLauncher&"
-                    f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user=public&"
                     f"key={key}&"
                     f"data={data_str}")
@@ -52,7 +51,6 @@ def savedata(key, data, public=False):
             log(f"使用用户模式存储数据，用户: {user}")
             url = (f"{BLglobals.server_ip}:20000/app/data/save?"
                     f"app_id=BloretLauncher&"
-                    f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user={user}&"
                     f"usertoken={usertoken}&"
                     f"key={key}&"
@@ -110,7 +108,6 @@ def readdata(key, public=False):
             log("使用公共模式读取数据")
             url = (f"{BLglobals.server_ip}:20000/app/data/read?"
                     f"app_id=BloretLauncher&"
-                    f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user=public&"
                     f"key={key}")
             # 公共模式下 URL 不包含用户密码
@@ -119,7 +116,6 @@ def readdata(key, public=False):
             log(f"使用用户模式读取数据，用户: {user}")
             url = (f"{BLglobals.server_ip}:20000/app/data/read?"
                     f"app_id=BloretLauncher&"
-                    f"app_secret=s4d56f4a68sd46g54asd46f54a5dsf654asdf546&"
                     f"user={user}&"
                     f"usertoken={usertoken}&"
                     f"key={key}")
@@ -237,7 +233,6 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
         verify_url = f"{BLglobals.server_ip}:20000/app/MinecraftAccounts"
         params = {
             'app_id': 'BloretLauncher',
-            'app_secret': 's4d56f4a68sd46g54asd46f54a5dsf654asdf546',
             'user': username,
             'usertoken': user_token
         }

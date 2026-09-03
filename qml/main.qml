@@ -73,6 +73,7 @@ FluentWindow {
             {
                 title: (Backend ? Backend.tr("通行证") : "通行证"),
                 page: Qt.resolvedUrl("pages/PassPort.qml"),
+                id: "passport",
                 icon: "ic_fluent_person_20_regular",
                 position: Position.Bottom,
                 passportItem: true
@@ -82,6 +83,7 @@ FluentWindow {
             { title: (Backend ? Backend.tr("小工具") : "小工具"), page: Qt.resolvedUrl("pages/Tools.qml"), icon: "ic_fluent_wrench_20_regular" },
             { title: (Backend ? Backend.tr("统计") : "统计"), page: Qt.resolvedUrl("pages/Statistics.qml"), icon: "ic_fluent_data_bar_horizontal_20_regular" },
             { title: (Backend ? Backend.tr("Mods") : "Mods"), page: Qt.resolvedUrl("pages/Mods.qml"), icon: "ic_fluent_puzzle_piece_20_regular" },
+            { title: (Backend ? Backend.tr("多人游戏") : "多人游戏"), page: Qt.resolvedUrl("pages/Multiplayer.qml"), icon: "ic_fluent_people_20_regular" },
             { title: (Backend ? Backend.tr("BBBS") : "BBBS"), page: Qt.resolvedUrl("pages/BBBS.qml"), icon: "ic_fluent_chat_20_regular" },
             { title: (Backend ? Backend.tr("Live") : "Live"), page: Qt.resolvedUrl("pages/Live.qml"), icon: "ic_fluent_video_person_20_regular" },
             { title: (Backend ? Backend.tr("插件商店") : "插件商店"), page: Qt.resolvedUrl("pages/PluginStore.qml"), icon: "ic_fluent_store_microsoft_20_regular" },

@@ -18,6 +18,8 @@ FluentPage {
     property int totalSessions: 0
     property string selectedDateFilter: ""
     property string selectedVersionFilter: ""
+    property bool loading: false
+    property string errorText: ""
 
     Component.onCompleted: {
         refreshAll()
@@ -32,12 +34,19 @@ FluentPage {
 
     function refreshAll() {
         if (!Backend) return
-        overview = Backend.getPlayStatisticsOverview()
-        versionStats = Backend.getPlayStatisticsVersions()
-        dateList = Backend.getPlayStatisticsDates()
-        allVersions = Backend.getPlayStatisticsAllVersions()
-        currentPage = 1
-        loadSessions()
+        loading = true
+        errorText = ""
+        try {
+            overview = Backend.getPlayStatisticsOverview() || ({})
+            versionStats = Backend.getPlayStatisticsVersions() || []
+            dateList = Backend.getPlayStatisticsDates() || []
+            allVersions = Backend.getPlayStatisticsAllVersions() || []
+            currentPage = 1
+            loadSessions()
+        } catch (error) {
+            errorText = String(error)
+        }
+        loading = false
     }
 
     function loadSessions() {
@@ -59,6 +68,21 @@ FluentPage {
     content: ColumnLayout {
             id: contentColumn
             spacing: 20
+
+            InfoBar {
+                Layout.fillWidth: true
+                visible: statsPage.errorText.length > 0
+                severity: Severity.Error
+                title: Backend ? Backend.tr("统计加载失败") : "统计加载失败"
+                text: statsPage.errorText
+            }
+
+            Button {
+                Layout.alignment: Qt.AlignRight
+                text: Backend ? Backend.tr("重试") : "重试"
+                visible: statsPage.errorText.length > 0 && !statsPage.loading
+                onClicked: statsPage.refreshAll()
+            }
 
             PluginPanelHost {
                 area: "stats"

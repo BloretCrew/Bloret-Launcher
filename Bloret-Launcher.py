@@ -1040,23 +1040,12 @@ class Backend(QObject):
         """记录最近运行的项目"""
         from datetime import datetime
         try:
-            recent = []
-            if os.path.exists(self._recent_runs_path):
-                with open(self._recent_runs_path, 'r', encoding='utf-8') as f:
-                    recent = json.load(f)
-            # 移除同名旧记录
-            recent = [r for r in recent if r.get("name") != name]
-            # 插入到最前面
-            recent.insert(0, {
+            from modules.services.recent_runs import record
+            record(BLglobals.datapath, {
                 "name": name,
                 "type": run_type,
                 "lastRun": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
-            # 最多保留 20 条
-            recent = recent[:20]
-            os.makedirs(os.path.dirname(self._recent_runs_path), exist_ok=True)
-            with open(self._recent_runs_path, 'w', encoding='utf-8') as f:
-                json.dump(recent, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"记录最近运行失败: {e}")
 
@@ -1064,9 +1053,8 @@ class Backend(QObject):
     def getRecentRuns(self):
         """获取最近运行的项目列表"""
         try:
-            if os.path.exists(self._recent_runs_path):
-                with open(self._recent_runs_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+            from modules.services.recent_runs import read
+            return read(BLglobals.datapath)
         except Exception as e:
             print(f"读取最近运行失败: {e}")
         return []
@@ -1324,13 +1312,12 @@ class Backend(QObject):
     def terminateInstance(self, instance_id):
         import psutil
         from modules.services import runtime_state
-        entry = runtime_state.remove_instance(instance_id)
+        from modules.process_utils import terminate_process_tree
+        entry = runtime_state.get_instance(instance_id)
         self._end_play_time_session(instance_id)
-        if entry and psutil.pid_exists(entry["pid"]):
-            try:
-                psutil.Process(entry["pid"]).kill()
-            except Exception as e:
-                print(f"terminateInstance failed: {e}")
+        if entry:
+            terminate_process_tree(entry["pid"])
+            runtime_state.remove_instance(instance_id)
         self.runningInstancesChanged.emit(self.getRunningInstances())
 
     @Slot(result=bool)

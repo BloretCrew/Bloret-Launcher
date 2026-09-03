@@ -150,6 +150,13 @@ FluentPage {
             color: Theme.currentTheme.colors.textSecondaryColor
         }
 
+        Label {
+            Layout.fillWidth: true
+            visible: !loading && plugins.length > 0 && visiblePlugins().length === 0 && errorText.length === 0
+            text: tr("没有符合筛选条件的插件")
+            color: Theme.currentTheme.colors.textSecondaryColor
+        }
+
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true

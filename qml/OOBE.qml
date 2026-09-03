@@ -58,19 +58,6 @@ FluentWindow {
         }
     }
 
-    // 同步账户刷新定时器
-    Timer {
-        id: syncRefreshTimer
-        interval: 2000  // 2秒后刷新
-        repeat: false
-        onTriggered: {
-            if (Backend) {
-                oobeWindow.minecraftAccounts = Backend.getMinecraftAccounts()
-                oobeWindow.isSyncingAccounts = false
-            }
-        }
-    }
-
     // 使用 FluentPage 作为内容容器
     navigationItems: []
 

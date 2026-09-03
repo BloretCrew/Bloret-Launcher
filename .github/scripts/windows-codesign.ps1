@@ -7,10 +7,9 @@
   Certificate resolution order:
     1. WINDOWS_CODESIGN_PFX_BASE64 (+ optional WINDOWS_CODESIGN_PASSWORD)
     2. Explicit -PfxPath
-    3. Convert sign/root.pvk + sign/root.spc (or root.cer) via pvk2pfx
+    3. No repository certificate fallback; missing certificate fails unless explicitly skipped by a non-release caller.
 
-  Secrets are preferred. The repo currently ships a self-signed PVK under sign/
-  for continuity; commercial certs should only live in GitHub Secrets / local PFX.
+  Official builds must provide the signing certificate through GitHub Secrets or an explicit local PFX.
 
 .PARAMETER Path
   File or directory to sign. Directories recurse for *.exe by default.
@@ -152,7 +151,7 @@ function Resolve-SigningPfx {
         }
         catch {
             Write-WarnLine "Failed to decode WINDOWS_CODESIGN_PFX_BASE64: $($_.Exception.Message)"
-            Write-WarnLine "Will try repository sign/root.pvk fallback if available."
+            Write-WarnLine "No usable signing secret was decoded."
             $pfxOut = $null
         }
         if ($pfxOut -and (Test-Path $pfxOut) -and ((Get-Item $pfxOut).Length -ge 64)) {
@@ -184,7 +183,7 @@ function Resolve-SigningPfx {
                 }
                 catch {
                     Write-WarnLine "PFX from secret could not be opened: $($_.Exception.Message)"
-                    Write-WarnLine "Check WINDOWS_CODESIGN_PASSWORD or re-export the PFX. Falling back to sign/root.pvk if present."
+                    Write-WarnLine "Check WINDOWS_CODESIGN_PASSWORD or re-export the PFX."
                 }
             }
             if ($probeOk) {
@@ -197,66 +196,11 @@ function Resolve-SigningPfx {
             }
         }
         else {
-            Write-WarnLine "WINDOWS_CODESIGN_PFX_BASE64 missing or too small after decode; trying PVK fallback."
+            Write-WarnLine "WINDOWS_CODESIGN_PFX_BASE64 missing or too small after decode."
         }
     }
 
-    $repoRoot = Get-RepoRoot
-    $pvk = Join-Path $repoRoot "sign\root.pvk"
-    $spc = Join-Path $repoRoot "sign\root.spc"
-    $cer = Join-Path $repoRoot "sign\root.cer"
-
-    if (-not (Test-Path $pvk)) {
-        return $null
-    }
-
-    $pvk2pfx = Find-SdkTool "pvk2pfx.exe"
-    if (-not $pvk2pfx) {
-        throw "pvk2pfx.exe not found. Install Windows SDK Signing Tools."
-    }
-
-    $pfxOut = Join-Path $WorkDir "root-from-pvk.pfx"
-    $spcArg = $null
-    if (Test-Path $spc) {
-        $spcArg = $spc
-    }
-    elseif (Test-Path $cer) {
-        $cert2spc = Find-SdkTool "cert2spc.exe"
-        if (-not $cert2spc) {
-            throw "root.spc missing and cert2spc.exe not found"
-        }
-        $spcArg = Join-Path $WorkDir "root.spc"
-        & $cert2spc $cer $spcArg
-        if ($LASTEXITCODE -ne 0) {
-            throw "cert2spc failed with exit code $LASTEXITCODE"
-        }
-    }
-    else {
-        throw "Neither sign/root.spc nor sign/root.cer found next to root.pvk"
-    }
-
-    Write-Info "Converting PVK/SPC -> PFX via $pvk2pfx"
-    $pvkArgs = @("-pvk", $pvk, "-spc", $spcArg, "-pfx", $pfxOut)
-    if ($resolvedPassword) {
-        $pvkArgs += @("-pi", $resolvedPassword, "-po", $resolvedPassword)
-    }
-
-    & $pvk2pfx @pvkArgs
-    if ($LASTEXITCODE -ne 0) {
-        Write-WarnLine "pvk2pfx failed (exit $LASTEXITCODE); retrying with empty password"
-        $pvkArgs = @("-pvk", $pvk, "-spc", $spcArg, "-pfx", $pfxOut, "-pi", "", "-po", "")
-        & $pvk2pfx @pvkArgs
-        if ($LASTEXITCODE -ne 0) {
-            throw "pvk2pfx failed with exit code $LASTEXITCODE"
-        }
-        $resolvedPassword = ""
-    }
-
-    return @{
-        Path     = $pfxOut
-        Password = $resolvedPassword
-        Source   = "RepoPvk"
-    }
+    return $null
 }
 
 function Get-Targets([string[]] $Inputs, [switch] $Dlls) {
@@ -354,7 +298,7 @@ try {
     $workDir = New-TempDir
     $cert = Resolve-SigningPfx -ExplicitPfx $PfxPath -PlainPassword $Password -WorkDir $workDir
     if (-not $cert) {
-        $msg = "No signing certificate found (set WINDOWS_CODESIGN_PFX_BASE64 or provide sign/root.pvk)."
+        $msg = "No signing certificate found (set WINDOWS_CODESIGN_PFX_BASE64 or provide an explicit PFX path)."
         if ($SkipIfMissingCert) {
             Write-WarnLine $msg
             Write-WarnLine "SkipIfMissingCert set - leaving binaries unsigned."

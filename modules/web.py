@@ -439,10 +439,8 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     self._send_json(400, {'status': 'error', 'message': '缺少必填参数 key 或 value'})
                     return
 
-                config_data = cfg.read()
                 parsed = self._parse_value(value_raw)
-                config_data[key] = parsed
-                cfg.write(config_data, changed_keys={key: parsed})
+                config_data = cfg.update_keys(**{key: parsed})
 
                 self._redirect_or_json_success(query_params, {
                     'status': 'success',
@@ -729,14 +727,11 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             if api_path.startswith('/api/v1/running/terminate/'):
                 instance_id = api_path.split('/')[-1]
                 from modules.services import runtime_state
-                entry = runtime_state.remove_instance(instance_id)
+                from modules.process_utils import terminate_process_tree
+                entry = runtime_state.get_instance(instance_id)
                 if entry:
-                    import psutil
-                    if psutil.pid_exists(entry["pid"]):
-                        try:
-                            psutil.Process(entry["pid"]).kill()
-                        except Exception:
-                            pass
+                    terminate_process_tree(entry["pid"])
+                    runtime_state.remove_instance(instance_id)
                 self._send_json(200, {'status': 'success', 'message': f'Instance {instance_id} terminated'})
                 return
 
@@ -1615,7 +1610,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     # 显示插件安装确认页面
                     if list_url:
                         # 从list_url获取插件信息
-                        response = requests.get(list_url)
+                        response = requests.get(list_url, timeout=(5, 15))
                         response.raise_for_status()
                         plugin = response.json()
                     else:

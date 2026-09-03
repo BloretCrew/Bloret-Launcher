@@ -79,6 +79,11 @@ FluentPage {
             modResults = results
             searchBusyIndicator.visible = false
         }
+
+        function onModrinthSearchFailed(message) {
+            searchBusyIndicator.visible = false
+            console.log("Modrinth search failed:", message)
+        }
         function onBlorikoModSuggestionStatus(msg) {
             console.log("[Mods] status:", (msg || "").substring(0, 120))
             appendThinking(msg)
@@ -266,6 +271,13 @@ FluentPage {
         }
 
         // Mod List
+        Label {
+            Layout.fillWidth: true
+            visible: !searchBusyIndicator.visible && modResults.length === 0
+            text: tr("没有找到匹配的 Mod")
+            color: Theme.currentTheme.colors.textSecondaryColor
+        }
+
         ListView {
             id: modListView
             Layout.fillWidth: true

@@ -28,6 +28,8 @@ jobs:
     env:
       PYTHON_VERSION: '3.10'
       OUTPUT_DIR: 'output'
+      APPIMAGETOOL_SHA256_X86_64: ${{ secrets.APPIMAGETOOL_SHA256_X86_64 }}
+      APPIMAGETOOL_SHA256_AARCH64: ${{ secrets.APPIMAGETOOL_SHA256_AARCH64 }}
     steps:
     - name: 检出最新版本（含子模块）
       uses: actions/checkout@v4
@@ -485,7 +487,12 @@ jobs:
             python -c "from PIL import Image; Image.open('bloret.ico').save('AppDir/bloret-launcher.png')"
           fi
           cp AppDir/bloret-launcher.png AppDir/.DirIcon
-          curl -L -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage"
+          APPIMAGETOOL_VERSION="continuous"
+          APPIMAGETOOL_SHA256_VAR="APPIMAGETOOL_SHA256_${ARCH^^}"
+          APPIMAGETOOL_SHA256="${!APPIMAGETOOL_SHA256_VAR:-}"
+          if [ -z "$APPIMAGETOOL_SHA256" ]; then echo "::error::Missing appimagetool SHA-256"; exit 1; fi
+          curl --fail --location --retry 3 -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/${APPIMAGETOOL_VERSION}/appimagetool-${ARCH}.AppImage"
+          printf '%s  %s\n' "$APPIMAGETOOL_SHA256" appimagetool | sha256sum -c -
           chmod +x appimagetool
           ./appimagetool --appimage-extract-and-run AppDir "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.AppImage"
           mkdir -p "${{ env.OUTPUT_DIR }}/Bloret-Launcher"

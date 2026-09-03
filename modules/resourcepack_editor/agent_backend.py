@@ -158,7 +158,7 @@ def _build_bloret_passport_auth() -> str:
             user_token = config_data.get('Bloret_PassPort_PassWord', '')
             if user_token:
                 masked = user_token[:8] + "..." + user_token[-4:]
-                auth = f"Bearer BloretLauncher;s4d56f4a68sd46g54asd46f54a5dsf654asdf546;{user_token}"
+                auth = f"Bearer {user_token}"
                 head = auth[:40]
                 tail = auth[-12:]
                 log.info(f"[BloretPassPort] 构建认证头: 长度={len(auth)}, 格式=Bearer{{AppID}};{{AppSecret}};{{UserToken}}")

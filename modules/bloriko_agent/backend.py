@@ -261,13 +261,9 @@ def _build_bloret_passport_auth() -> str:
             user_token = config_data.get('Bloret_PassPort_PassWord', '')
             if user_token:
                 masked = user_token[:8] + "..." + user_token[-4:]
-                auth = f"Bearer BloretLauncher;s4d56f4a68sd46g54asd46f54a5dsf654asdf546;{user_token}"
+                auth = f"Bearer {user_token}"
                 # 完整脱敏打印 Auth 头，方便核对三段式格式是否正确
-                head = auth[:40]
-                tail = auth[-12:]
-                log.info(f"[BloretPassPort] 构建认证头: 长度={len(auth)}, 格式=Bearer{{AppID}};{{AppSecret}};{{UserToken}}")
-                log.info(f"[BloretPassPort] AppID=BloretLauncher, AppSecret=s4d56f4a...546, UserToken={masked}")
-                log.info(f"[BloretPassPort] 完整Auth头(脱敏): {head}...{tail}")
+                log.info(f"[BloretPassPort] 构建用户令牌认证头: 长度={len(auth)}, UserToken={masked}")
                 return auth
 
         # 回退：自注册专用 AI API Key（文档方式一，sk- 前缀）

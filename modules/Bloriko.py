@@ -16,7 +16,6 @@ import modules.globals as BLglobals
 timeout = 600 # second
 
 OAUTH_APP_ID = "BloretLauncher"
-OAUTH_APP_SECRET = "s4d56f4a68sd46g54asd46f54a5dsf654asdf546"
 # 旧端点已废弃；实际请求走 resolve_global_ai_config()（Bloret PassPort / OpenCode Zen / 自定义供应商）
 AI_API_URL_LEGACY = f"{BLglobals.server_ip}:20000/v1/chat/completions"
 
@@ -53,8 +52,8 @@ class UIUpdater(QObject):
 
 
 def _build_auth_header(user_token):
-    """构建 OpenAI 兼容的 Bearer Token 认证头（旧路径兼容，优先使用 resolve_global_ai_config）"""
-    return f"Bearer {OAUTH_APP_ID};{OAUTH_APP_SECRET};{user_token}"
+    """构建仅使用用户令牌的兼容认证头。"""
+    return f"Bearer {user_token}" if user_token else ""
 
 
 def _resolve_ai_endpoint():

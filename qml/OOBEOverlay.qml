@@ -61,19 +61,6 @@ Rectangle {
         }
     }
 
-    // 同步账户刷新定时器
-    Timer {
-        id: syncRefreshTimer
-        interval: 2000  // 2秒后刷新
-        repeat: false
-        onTriggered: {
-            if (Backend) {
-                oobeOverlay.minecraftAccounts = Backend.getMinecraftAccounts()
-                oobeOverlay.isSyncingAccounts = false
-            }
-        }
-    }
-
     // 顶部进度指示器
     Rectangle {
         id: headerBar

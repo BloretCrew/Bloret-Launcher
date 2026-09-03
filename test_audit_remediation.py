@@ -40,7 +40,7 @@ class TestAuditRemediation(unittest.TestCase):
 
     def test_oauth_source_has_no_static_secret_or_http_fallback(self):
         source = (ROOT / "modules" / "web.py").read_text(encoding="utf-8")
-        self.assertNotIn("s4d56f4a68sd46g54asd46f54a5dsf654asdf546", source)
+        self.assertNotIn("app_secret", source)
         self.assertNotIn('fallback_url = f"http://', source)
         self.assertIn("缺少 OAuth code", source)
         self.assertIn("Passport 账户服务必须使用 HTTPS", source)
@@ -48,6 +48,7 @@ class TestAuditRemediation(unittest.TestCase):
 
     def test_qml_regressions_are_fixed(self):
         main = (ROOT / "qml" / "main.qml").read_text(encoding="utf-8")
+        self.assertIn('id: "passport"', main)
         self.assertIn('item.id === "passport"', main)
         cores = (ROOT / "qml" / "pages" / "Cores.qml").read_text(encoding="utf-8")
         self.assertIn("Backend.renameCustomItem", cores)
