@@ -6,7 +6,28 @@ import "../components"
 
 FluentPage {
     id: storePage
-    title: Backend ? Backend.tr("插件商店") : "插件商店"
+    title: Backend ? Backend.tr("商店") : "商店"
+
+    extraHeaderItems: Row {
+        spacing: 8
+
+        Button {
+            text: tr("打开网页")
+            onClicked: {
+                if (Backend)
+                    Backend.openUrl("https://launcher.bloret.net/apps")
+            }
+        }
+        Button {
+            text: loading ? tr("加载中…") : tr("刷新")
+            enabled: !loading && storeBackend !== null
+            onClicked: {
+                errorText = ""
+                if (storeBackend)
+                    storeBackend.refresh()
+            }
+        }
+    }
 
     property var plugins: []
     property string searchText: ""
@@ -92,30 +113,6 @@ FluentPage {
         Layout.fillHeight: true
         Layout.margins: 20
         spacing: 14
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 10
-            Label {
-                text: tr("插件商店")
-                font.pixelSize: 24
-                font.weight: Font.DemiBold
-                color: Theme.currentTheme.colors.textColor
-            }
-            Item { Layout.fillWidth: true }
-            Button {
-                text: loading ? tr("加载中…") : tr("刷新")
-                enabled: !loading && storeBackend !== null
-                onClicked: { errorText = ""; if (storeBackend) storeBackend.refresh() }
-            }
-        }
-
-        Label {
-            Layout.fillWidth: true
-            text: storeBackend && storeBackend.getApiBase() ? tr("来源") + ": " + storeBackend.getApiBase() : tr("尚未配置商店接口，请在设置中填写 HTTPS 列表地址")
-            color: Theme.currentTheme.colors.textSecondaryColor
-            elide: Text.ElideMiddle
-        }
 
         RowLayout {
             Layout.fillWidth: true
@@ -255,30 +252,264 @@ FluentPage {
     Dialog {
         id: detailDialog
         modal: true
-        width: Math.min(560, storePage.width - 40)
-        title: selectedPlugin ? selectedPlugin.name : tr("插件详情")
-        standardButtons: Dialog.Close
-        contentItem: ScrollView {
-            implicitHeight: Math.min(520, storePage.height - 120)
-            ColumnLayout {
-                width: parent.width
-                spacing: 10
-                Label { Layout.fillWidth: true; text: selectedPlugin ? (selectedPlugin.description || tr("暂无插件描述")) : ""; wrapMode: Text.Wrap }
-                Label { Layout.fillWidth: true; text: selectedPlugin ? tr("ID") + ": " + selectedPlugin.id : ""; wrapMode: Text.WrapAnywhere }
-                Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.version ? tr("版本") + ": " + selectedPlugin.version : "" }
-                Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.author ? tr("作者") + ": " + selectedPlugin.author : "" }
-                Label { Layout.fillWidth: true; text: selectedPlugin && (selectedPlugin.permissions || []).length ? tr("权限") + ": " + (selectedPlugin.permissions || []).join(", ") : ""; wrapMode: Text.Wrap }
-                Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.sha256 ? "SHA256: " + selectedPlugin.sha256 : ""; wrapMode: Text.WrapAnywhere }
-                Label { Layout.fillWidth: true; text: selectedPlugin && selectedPlugin.min_launcher ? tr("最低启动器版本") + ": " + selectedPlugin.min_launcher : "" }
+        width: Math.min(640, storePage.width - 32)
+        height: Math.min(680, storePage.height - 48)
+        title: tr("插件详情")
+        standardButtons: Dialog.NoButton
+        closePolicy: Popup.CloseOnEscape
+
+        contentItem: ColumnLayout {
+            spacing: 16
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AlwaysOff }
+
+                ColumnLayout {
+                    width: parent.width
+                    Layout.fillWidth: true
+                    spacing: 16
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        Image {
+                            Layout.preferredWidth: 72
+                            Layout.preferredHeight: 72
+                            source: selectedPlugin && selectedPlugin.icon ? selectedPlugin.icon : Qt.resolvedUrl("../../icon/Bloret.png")
+                            fillMode: Image.PreserveAspectFit
+                            sourceSize.width: 144
+                            sourceSize.height: 144
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: selectedPlugin ? (selectedPlugin.name || selectedPlugin.id) : ""
+                                font.pixelSize: 22
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideRight
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                text: selectedPlugin && selectedPlugin.author ? selectedPlugin.author : tr("未知作者")
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                elide: Text.ElideRight
+                            }
+                            Label {
+                                visible: selectedPlugin && selectedPlugin.author_username
+                                text: selectedPlugin ? "@" + selectedPlugin.author_username : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                elide: Text.ElideRight
+                            }
+                            Label {
+                                visible: selectedPlugin && selectedPlugin.version
+                                text: selectedPlugin ? "v" + selectedPlugin.version : ""
+                                color: Theme.currentTheme.colors.primaryColor
+                                font.weight: Font.DemiBold
+                            }
+                            Label {
+                                visible: selectedPlugin && selectedPlugin.status
+                                text: selectedPlugin ? tr("状态") + ": " + selectedPlugin.status : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                        }
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: selectedPlugin ? (selectedPlugin.description || tr("暂无插件描述")) : ""
+                        wrapMode: Text.Wrap
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: selectedPlugin && selectedPlugin.long_description
+                        text: selectedPlugin ? selectedPlugin.long_description : ""
+                        wrapMode: Text.Wrap
+                        color: Theme.currentTheme.colors.textSecondaryColor
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        visible: selectedPlugin && selectedPlugin.tags && selectedPlugin.tags.length > 0
+                        Repeater {
+                            model: selectedPlugin && selectedPlugin.tags ? selectedPlugin.tags : []
+                            delegate: Rectangle {
+                                width: tagLabel.implicitWidth + 18
+                                height: 26
+                                radius: 13
+                                color: Theme.currentTheme.colors.controlFillColor
+                                border.color: Theme.currentTheme.colors.controlBorderColor
+                                Label {
+                                    id: tagLabel
+                                    anchors.centerIn: parent
+                                    text: "#" + modelData
+                                    color: Theme.currentTheme.colors.primaryColor
+                                    font.pixelSize: 12
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: metadataColumn.implicitHeight + 24
+                        radius: 10
+                        color: Theme.currentTheme.colors.cardColor
+                        border.color: Theme.currentTheme.colors.controlBorderColor
+
+                        ColumnLayout {
+                            id: metadataColumn
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+
+                            Label {
+                                text: tr("插件信息")
+                                font.weight: Font.DemiBold
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                text: selectedPlugin ? tr("ID") + ": " + selectedPlugin.id : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                wrapMode: Text.WrapAnywhere
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.min_launcher
+                                text: selectedPlugin ? tr("最低启动器版本") + ": " + selectedPlugin.min_launcher : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.sha256
+                                text: selectedPlugin ? "SHA256: " + selectedPlugin.sha256 : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                wrapMode: Text.WrapAnywhere
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.download
+                                text: selectedPlugin ? tr("下载地址") + ": " + selectedPlugin.download : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                                wrapMode: Text.WrapAnywhere
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.size
+                                text: selectedPlugin ? tr("文件大小") + ": " + selectedPlugin.size : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.install_count
+                                text: selectedPlugin ? tr("安装次数") + ": " + selectedPlugin.install_count : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.rating_count
+                                text: selectedPlugin ? tr("评分") + ": " + selectedPlugin.rating_average + " (" + selectedPlugin.rating_count + ")" : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.created_at
+                                text: selectedPlugin ? tr("创建时间") + ": " + selectedPlugin.created_at : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: selectedPlugin && selectedPlugin.updated_at
+                                text: selectedPlugin ? tr("更新时间") + ": " + selectedPlugin.updated_at : ""
+                                color: Theme.currentTheme.colors.textSecondaryColor
+                            }
+                        }
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(280, detailDialog.height * 0.36)
+                        Layout.maximumHeight: 280
+                        visible: selectedPlugin && selectedPlugin.screenshots && selectedPlugin.screenshots.length > 0
+                        clip: true
+
+                        Image {
+                            anchors.fill: parent
+                            source: selectedPlugin && selectedPlugin.screenshots && selectedPlugin.screenshots.length > 0
+                                    ? (selectedPlugin.screenshots[0].webpUrl || selectedPlugin.screenshots[0].url || "") : ""
+                            fillMode: Image.PreserveAspectFit
+                            horizontalAlignment: Image.AlignHCenter
+                            verticalAlignment: Image.AlignVCenter
+                            sourceSize.width: Math.max(1, Math.round(parent.width))
+                            sourceSize.height: Math.max(1, Math.round(parent.height))
+                            asynchronous: true
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        visible: selectedPlugin && selectedPlugin.permissions && selectedPlugin.permissions.length > 0
+
+                        Label {
+                            text: tr("所需权限")
+                            font.weight: Font.DemiBold
+                        }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            Repeater {
+                                model: selectedPlugin ? (selectedPlugin.permissions || []) : []
+                                delegate: Rectangle {
+                                    width: permissionLabel.implicitWidth + 18
+                                    height: 28
+                                    radius: 14
+                                    color: Theme.currentTheme.colors.controlFillColor
+                                    border.color: Theme.currentTheme.colors.controlBorderColor
+                                    Label {
+                                        id: permissionLabel
+                                        anchors.centerIn: parent
+                                        text: modelData
+                                        color: Theme.currentTheme.colors.textSecondaryColor
+                                        font.pixelSize: 12
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
                 Button {
-                    visible: selectedPlugin && selectedPlugin.homepage
-                    text: tr("打开项目主页")
+                    Layout.fillWidth: true
+                    visible: selectedPlugin && selectedPlugin.detail_url
+                    text: tr("在浏览器中打开")
                     onClicked: {
                         if (Backend)
-                            Backend.openUrl(selectedPlugin.homepage)
+                            Backend.openUrl(selectedPlugin.detail_url)
                     }
                 }
                 Button {
+                    Layout.fillWidth: true
+                    text: tr("取消")
+                    onClicked: detailDialog.close()
+                }
+                Button {
+                    Layout.fillWidth: true
                     highlighted: true
                     text: selectedPlugin && selectedPlugin.update_available ? tr("更新") : tr("安装")
                     enabled: selectedPlugin && (!selectedPlugin.installed || selectedPlugin.update_available)

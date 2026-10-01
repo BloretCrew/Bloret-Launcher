@@ -288,6 +288,23 @@ class Backend(QObject):
     bbbsSummaryReceived = Signal(dict)
     bbbsLeaderboardReceived = Signal(list)
     bbbsAllPostsReceived = Signal(list)
+    bbbsBoardsReceived = Signal(str)
+    bbbsSectionsReceived = Signal(str)
+    bbbsPostsReceived = Signal(str)
+    bbbsPostReceived = Signal(str)
+    bbbsCommentsReceived = Signal(str)
+    bbbsChatMessagesReceived = Signal(str)
+    bbbsChatRoomsReceived = Signal(str)
+    bbbsChatRoomReceived = Signal(str)
+    bbbsImagesUploaded = Signal(object)
+    bbbsNotificationsReceived = Signal(object)
+    bbbsTasksReceived = Signal(object)
+    bbbsSettingsReceived = Signal(object)
+    bbbsStatisticsReceived = Signal(object)
+    bbbsPermissionsReceived = Signal(object)
+    bbbsHistoryReceived = Signal(object)
+    bbbsDraftsReceived = Signal(object)
+    bbbsOperationFinished = Signal(str, bool, object)
     bbbsErrorOccurred = Signal(str)
 
     # Live signals
@@ -354,6 +371,10 @@ class Backend(QObject):
         self._bbbs_leaderboard_ts = 0.0
         self._bbbs_all_posts_cache = None
         self._bbbs_all_posts_ts = 0.0
+        self._bbbs_boards_cache = None
+        self._bbbs_sections_cache = {}
+        self._bbbs_posts_cache = {}
+        self._bbbs_live_space_list_ts = 0.0
         self._live_space_list_ts = 0.0
         self._last_core_manager_request_time = 0  # 防止重复请求
         self._is_launching = False
@@ -4539,6 +4560,199 @@ class Backend(QObject):
                 self.bbbsErrorOccurred.emit(str(e))
         threading.Thread(target=run, daemon=True, name="BBBSAllPosts").start()
 
+    # Full BBBS workspace API
+    @staticmethod
+    def _bbbs_emit_json(signal, value, fallback):
+        payload = value if isinstance(value, type(fallback)) else fallback
+        size = len(payload) if isinstance(payload, (list, dict)) else 0
+        log(f"[BBBS] emit JSON items={size}")
+        signal.emit(json.dumps(payload, ensure_ascii=False))
+
+    @staticmethod
+    def _bbbs_emit_list(signal, value):
+        Backend._bbbs_emit_json(signal, value, [])
+
+    def _bbbs_async(self, operation, worker, signal, *, fallback=None):
+        log(f"[BBBS] async start operation={operation}")
+        def run():
+            try:
+                from modules import bbbs
+                result = worker(bbbs)
+                if result is None:
+                    result = fallback
+                size = len(result) if isinstance(result, (list, dict, str)) else type(result).__name__
+                log(f"[BBBS] async finish operation={operation} result={size}")
+                if operation in {"Boards", "Sections", "Posts", "Comments"}:
+                    self._bbbs_emit_list(signal, result)
+                elif operation in {"ChatMessages", "ChatRooms", "ChatRoom"}:
+                    self._bbbs_emit_json(signal, result, {})
+                elif operation == "Post":
+                    self._bbbs_emit_json(signal, result, {})
+                else:
+                    signal.emit(result)
+            except Exception as exc:
+                log(f"[BBBS] async error operation={operation}: {exc}", logging.ERROR)
+                self.bbbsErrorOccurred.emit(str(exc))
+        threading.Thread(target=run, daemon=True, name=f"BBBS{operation}").start()
+
+    @Slot()
+    @Slot(bool)
+    def fetchBBBSBoards(self, forceRefresh=False):
+        if not forceRefresh and self._bbbs_boards_cache is not None:
+            self._bbbs_emit_list(self.bbbsBoardsReceived, self._bbbs_boards_cache)
+            return
+        def worker(api):
+            data = api.fetch_boards()
+            self._bbbs_boards_cache = data
+            return data
+        self._bbbs_async("Boards", worker, self.bbbsBoardsReceived, fallback=[])
+
+    @Slot(str)
+    @Slot(str, bool)
+    def fetchBBBSSections(self, boardId="", forceRefresh=False):
+        if not forceRefresh and boardId in self._bbbs_sections_cache:
+            self._bbbs_emit_list(self.bbbsSectionsReceived, self._bbbs_sections_cache[boardId])
+            return
+        def worker(api):
+            data = api.fetch_sections(boardId or None)
+            self._bbbs_sections_cache[boardId] = data
+            return data
+        self._bbbs_async("Sections", worker, self.bbbsSectionsReceived, fallback=[])
+
+    @Slot(str, str, str, int, int, bool)
+    def fetchBBBSPosts(self, sectionId="", boardId="", search="", page=1, limit=20, forceRefresh=False):
+        log(f"[BBBS] fetch posts called section={sectionId!r} board={boardId!r} search_len={len(search or '')} page={page} limit={limit} force={forceRefresh}")
+        key = json.dumps([sectionId, boardId, search, page, limit], ensure_ascii=False)
+        if not forceRefresh and key in self._bbbs_posts_cache:
+            self._bbbs_emit_list(self.bbbsPostsReceived, self._bbbs_posts_cache[key])
+            return
+        def worker(api):
+            data = api.fetch_posts(sectionId or None, boardId or None, page, limit, search)
+            data = [post for post in data if isinstance(post, dict) and (post.get("title") or post.get("name") or post.get("filename"))]
+            self._bbbs_posts_cache[key] = data
+            return data
+        self._bbbs_async("Posts", worker, self.bbbsPostsReceived, fallback=[])
+
+    @Slot(str)
+    def fetchBBBSPost(self, postId):
+        self._bbbs_async("Post", lambda api: api.fetch_post(postId), self.bbbsPostReceived, fallback={})
+
+    @Slot(str)
+    def fetchBBBSComments(self, postId):
+        self._bbbs_async("Comments", lambda api: api.fetch_comments(postId), self.bbbsCommentsReceived, fallback=[])
+
+    @Slot(str, str)
+    @Slot(str, str, str)
+    def fetchBBBSChatMessages(self, boardId, sectionId, before=""):
+        self._bbbs_async("ChatMessages", lambda api: api.fetch_chat_messages(boardId, sectionId, before or None), self.bbbsChatMessagesReceived, fallback=[])
+
+    @Slot(str, str, str)
+    def sendBBBSChatMessage(self, boardId, sectionId, content):
+        self._bbbs_operation_async("chat_message", lambda api: api.send_chat_message(boardId, sectionId, content))
+
+    @Slot()
+    @Slot(str)
+    def fetchBBBSChatRooms(self, query=""):
+        self._bbbs_async("ChatRooms", lambda api: api.fetch_chat_rooms(query or ""), self.bbbsChatRoomsReceived, fallback={"rooms": [], "users": []})
+
+    @Slot(str)
+    def fetchBBBSChatRoom(self, roomId):
+        self._bbbs_async("ChatRoom", lambda api: api.fetch_chat_room(roomId), self.bbbsChatRoomReceived, fallback={})
+
+    @Slot(str, str, str)
+    def fetchBBBSRoomMessages(self, roomId, before, after):
+        self._bbbs_async("ChatMessages", lambda api: api.fetch_room_messages(roomId, before or None, after or None), self.bbbsChatMessagesReceived, fallback={"messages": []})
+
+    @Slot(str, str)
+    @Slot(str, str, str)
+    def sendBBBSRoomMessage(self, roomId, content, replyTo=""):
+        self._bbbs_operation_async("room_message", lambda api: api.send_room_message(roomId, content, replyTo or None))
+
+    @Slot(str)
+    def createBBBSDirectMessage(self, peer):
+        self._bbbs_operation_async("create_dm", lambda api: api.create_direct_message(peer))
+
+    @Slot("QVariantList")
+    def uploadBBBSImages(self, paths):
+        def run():
+            try:
+                from modules import bbbs
+                result = bbbs.upload_images([str(path) for path in paths])
+                if result and result.get("success"):
+                    self.bbbsImagesUploaded.emit(result.get("data") or [])
+                else:
+                    self.bbbsErrorOccurred.emit((result or {}).get("error", i18nText("图片上传失败")))
+            except Exception as exc:
+                self.bbbsErrorOccurred.emit(str(exc))
+        threading.Thread(target=run, daemon=True, name="BBBSImageUpload").start()
+
+    @Slot(str)
+    def deleteBBBSChatMessage(self, messageId):
+        self._bbbs_operation_async("delete_chat_message", lambda api: api.delete_chat_message(messageId))
+
+    @Slot()
+    def fetchBBBSNotifications(self):
+        self._bbbs_async("Notifications", lambda api: api.fetch_notifications(), self.bbbsNotificationsReceived, fallback=[])
+
+    @Slot()
+    def fetchBBBSTasks(self):
+        self._bbbs_async("Tasks", lambda api: api.fetch_tasks(), self.bbbsTasksReceived, fallback=[])
+
+    @Slot()
+    def fetchBBBSSettings(self):
+        self._bbbs_async("Settings", lambda api: api.fetch_user_settings(), self.bbbsSettingsReceived, fallback={})
+
+    @Slot()
+    def fetchBBBSStatistics(self):
+        self._bbbs_async("Statistics", lambda api: api.fetch_statistics(), self.bbbsStatisticsReceived, fallback={})
+
+    @Slot()
+    def fetchBBBSPermissions(self):
+        self._bbbs_async("Permissions", lambda api: api.fetch_permissions(), self.bbbsPermissionsReceived, fallback={})
+
+    @Slot(str)
+    def fetchBBBSHistory(self, postId):
+        self._bbbs_async("History", lambda api: api.fetch_post_history(postId), self.bbbsHistoryReceived, fallback=[])
+
+    @Slot()
+    def fetchBBBSDrafts(self):
+        self._bbbs_async("Drafts", lambda api: api.fetch_drafts(), self.bbbsDraftsReceived, fallback=[])
+
+    def _bbbs_operation_async(self, operation, worker):
+        def run():
+            try:
+                from modules import bbbs
+                result = worker(bbbs)
+                ok = bool(result and result.get("success"))
+                self.bbbsOperationFinished.emit(operation, ok, result or {})
+            except Exception as exc:
+                self.bbbsOperationFinished.emit(operation, False, {"error": str(exc)})
+        threading.Thread(target=run, daemon=True, name=f"BBBS{operation}").start()
+
+    @Slot(str, str, str, str, str, str)
+    def createBBBSPost(self, sectionId, title, content, postType="text", imageCaption="", publishAt=""):
+        self._bbbs_operation_async("create_post", lambda api: api.create_post(sectionId, title, content, postType, None, imageCaption, publishAt or None))
+
+    @Slot(str)
+    def createBBBSBoard(self, name):
+        self._bbbs_operation_async("create_board", lambda api: api.create_board(name))
+
+    @Slot(str, str, str, str)
+    def createBBBSSection(self, boardId, name, sectionType="text", parentId=""):
+        self._bbbs_operation_async("create_section", lambda api: api.create_section(boardId, name, sectionType, parentId or None))
+
+    @Slot(str, str)
+    def createBBBSComment(self, postId, content):
+        self._bbbs_operation_async("comment", lambda api: api.create_comment(postId, content))
+
+    @Slot(str)
+    def toggleBBBSLike(self, postId):
+        self._bbbs_operation_async("like", lambda api: api.toggle_like(postId))
+
+    @Slot(str)
+    def deleteBBBSPost(self, postId):
+        self._bbbs_operation_async("delete_post", lambda api: api.delete_post(postId))
+
     # ==================== Live ====================
 
     def _normalize_live_users(self, users_payload):
@@ -5543,7 +5757,7 @@ class Backend(QObject):
 
     @Slot(str, result=bool)
     def setPluginStoreApi(self, value):
-        """Save the HTTPS plugin store listing endpoint."""
+        """Save an optional plugin store listing endpoint override."""
         try:
             from urllib.parse import urlparse
             url = str(value or "").strip().rstrip("/")

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin, urlparse
 
 import requests
+
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from PySide6.QtCore import QObject, Signal, Slot
@@ -17,9 +18,8 @@ import modules.config as cfg
 from modules.log import log
 from modules.plugin_install_request import validate_download_url
 
-# The repository documents the listing shape but does not publish a working
-# production listing endpoint; keep the client disabled until one is configured.
-DEFAULT_STORE_API = ""
+# Public plugin-store endpoint.
+DEFAULT_STORE_API = "https://launcher.bloret.net/apps/api/plugins"
 _DEFAULT_TIMEOUT = (8, 20)
 _VERSION_PART = re.compile(r"\d+")
 
@@ -77,21 +77,32 @@ def normalize_listing(item: dict, api_base: str = "") -> dict:
     icon = str(item.get("icon") or "").strip()
     if icon and not urlparse(icon).scheme:
         icon = urljoin(api_base.rstrip("/") + "/", icon.lstrip("/"))
+    homepage = str(item.get("homepage") or item.get("url") or "").strip()
     return {
         "id": plugin_id,
         "name": str(item.get("name") or plugin_id),
         "version": str(item.get("version") or ""),
         "author": str(item.get("author") or ""),
+        "author_username": str(item.get("authorUsername") or item.get("author_username") or ""),
         "description": str(item.get("description") or ""),
+        "long_description": str(item.get("longDescription") or item.get("long_description") or ""),
         "icon": icon,
-        "homepage": str(item.get("homepage") or ""),
+        "homepage": homepage,
+        "detail_url": str(item.get("detail_url") or f"https://launcher.bloret.net/apps/plugin/{plugin_id}"),
         "download": download,
         "sha256": str(item.get("sha256") or "").strip(),
         "size": item.get("size") or 0,
         "permissions": permissions,
         "min_launcher": str(item.get("min_launcher") or ""),
         "tags": tags,
-        "updated_at": str(item.get("updated_at") or item.get("updatedAt") or ""),
+        "screenshots": item.get("screenshots") if isinstance(item.get("screenshots"), list) else [],
+        "status": str(item.get("status") or ""),
+        "featured": bool(item.get("featured", False)),
+        "install_count": item.get("installCount") or item.get("install_count") or 0,
+        "rating_average": item.get("ratingAvg") or item.get("rating_average") or 0,
+        "rating_count": item.get("ratingCount") or item.get("rating_count") or 0,
+        "created_at": str(item.get("createdAt") or item.get("created_at") or ""),
+        "updated_at": str(item.get("updatedAt") or item.get("updated_at") or ""),
     }
 
 
@@ -127,12 +138,10 @@ class PluginStore(QObject):
 
     def _api_base(self) -> str:
         data = cfg.read() or {}
-        value = str(data.get("plugin_store_api") or DEFAULT_STORE_API).strip().rstrip("/")
-        if not value:
-            return ""
-        if not value.startswith("https://"):
-            return ""
-        return value
+        configured = str(data.get("plugin_store_api") or "").strip().rstrip("/")
+        if configured:
+            return configured
+        return DEFAULT_STORE_API
 
     def _installed(self) -> list:
         try:
@@ -173,6 +182,7 @@ class PluginStore(QObject):
                 session = requests.Session()
                 retry = Retry(total=2, backoff_factor=0.4, status_forcelist=[429, 500, 502, 503, 504])
                 adapter = HTTPAdapter(max_retries=retry)
+                session.mount("http://", adapter)
                 session.mount("https://", adapter)
                 response = session.get(api_base, timeout=_DEFAULT_TIMEOUT, headers={"Accept": "application/json"})
                 response.raise_for_status()
