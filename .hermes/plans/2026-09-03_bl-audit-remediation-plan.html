@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>Bloret Launcher 审计修复计划</title></head><body>
+<h1>Bloret Launcher 审计修复计划</h1>
+<p><strong>目标：</strong>根据 <code>.hermes/reports/2026-09-03_bloret-launcher-full-audit-report.html</code> 完成除“代码签名证书私钥 sign/root.pvk”之外的全部已确认问题修复，并用隔离测试验证。</p>
+<h2>明确排除项</h2>
+<ul><li>不处理、不读取、不删除、不轮换 <code>sign/root.pvk</code>。</li><li>不修改签名证书文件、生产发布配置或真实发布链。</li><li>不得因其他改动把该密钥或任何凭据带入新提交。</li></ul>
+<h2>修复范围</h2>
+<ol>
+<li><strong>Passport/OAuth：</strong>移除客户端硬编码 app secret；采用 PKCE/短期挑战或现有安全服务端流程；禁止远程 HTTPS 降级到 HTTP；缺少/拒绝/过期 code 必须显示失败，不得伪装成功。</li>
+<li><strong>路径与进程：</strong>统一版本目录解析，拒绝绝对路径、<code>..</code>、符号链接和越界；完善启动/终止的进程树清理和 Windows Job Object 边界。</li>
+<li><strong>OOBE：</strong>修复 Passport 稳定 ID 导航；Java 下载失败/取消/超时显示可恢复错误；账号同步使用真实 started/succeeded/failed/cancelled 信号，不用固定计时器；BBBS 失败显示可见错误并可重试。</li>
+<li><strong>插件权限：</strong>高风险权限默认拒绝，未知权限 fail-closed；明确插件是信任代码还是隔离子进程，不把普通权限提示冒充沙箱。</li>
+<li><strong>下载和发布：</strong>EasyTier、AppImage 等可执行下载固定版本并校验 SHA-256/签名；release 构建缺证书必须失败，fork/PR 才可跳过；不处理被明确排除的证书私钥本体。</li>
+<li><strong>生命周期与并发：</strong>导入 web 模块不启动监听；Web 服务显式 start/stop；running_instances、launch_status、配置 read-modify-write、recent_runs 使用统一锁/原子替换；请求增加 timeout、取消和错误状态。</li>
+<li><strong>UI/体验：</strong>PluginStore 缺字段安全归一化；Mods/PluginStore/Statistics/Tools 增加加载、空、错误、重试状态；修复自定义启动项重命名或移除误导入口；补 QML 路由可达性、主题、国际化、窄屏和可访问性。</li>
+<li><strong>架构维护：</strong>新逻辑优先 <code>modules/services/</code>；legacy 入口统一调用服务层；补文档、schema、部署说明、测试发现和运行产物治理。</li>
+</ol>
+<h2>执行要求</h2>
+<ul><li>先审查报告和当前工作树，先写能失败的回归测试，再按根因修复；禁止大范围无依据重构。</li><li>保留旧代码备份分支和用户数据兼容；不要 reset RinUI 子模块。</li><li>每项使用临时目录、伪造下载源、隔离进程和脱敏 fixture；不得访问生产数据或真实发布服务。</li><li>Linux 只能验证可移植逻辑；Windows/QML 专属行为必须在 Windows CI/测试机真实验证，不能虚报。</li><li>修复配置凭据以外的安全问题时，不要输出任何真实密钥值。</li></ul>
+<h2>验收</h2>
+<ul><li>运行 Python 编译、项目全部单元测试、必要的 pytest/QML 检查和新增安全回归。</li><li>验证 OAuth 失败/降级、路径穿越、插件权限、OOBE 失败/取消、并发配置、超时、进程树、下载 hash 和 release 签名策略。</li><li>Windows workflow 必须真实执行 smoke test；缺少 Windows 环境的项目明确列为未验证。</li><li>生成 HTML 修复报告，列出每个发现的状态：fixed / verified / blocked / deferred，明确 P0 私钥问题为 deferred。</li></ul>
+<h2>提交</h2>
+<p>只 commit 不 push。不得提交 <code>sign/root.pvk</code>、凭据、构建缓存、用户数据或日志。若单轮未完成，保留工作树和真实测试证据，继续下一轮，不得宣称完成。</p>
+</body></html>

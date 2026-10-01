@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>Bloret Launcher Passport OAuth PKCE 迁移计划</title></head><body>
+<h1>Bloret Launcher Passport OAuth PKCE 迁移计划</h1>
+<p><strong>目标：</strong>将 Launcher 的 Passport 登录从旧的自定义 app_secret/app/verify 流程迁移到 Passport 已支持的标准 OAuth 2.0 Authorization Code + PKCE（S256）流程。</p>
+<h2>范围</h2>
+<ul><li>Launcher 客户端：<code>/data/Bloret-Launcher</code>。</li><li>Passport 服务端只做只读协议确认；除非发现标准 PKCE 缺口，不直接修改生产 Passport。</li><li>不处理 <code>sign/root.pvk</code>，不提交任何凭据。</li></ul>
+<h2>目标流程</h2>
+<pre>Launcher 生成 code_verifier/state
+→ 打开 Passport /oauth/authorize?client_id=...&amp;redirect_uri=...&amp;response_type=code&amp;code_challenge=...&amp;code_challenge_method=S256
+→ 用户在 Passport 登录并授权
+→ Passport 回调本地 redirect_uri，带 code/state
+→ Launcher 校验 state
+→ POST Passport /oauth/token（code、redirect_uri、code_verifier）
+→ GET /oauth/userinfo（Bearer access_token）
+→ 保存短期 token/用户资料并完成同步</pre>
+<h2>必须完成</h2>
+<ol>
+<li>盘点当前 Launcher OAuth 回调、配置字段、登录状态保存和 Minecraft 账号同步调用链。</li>
+<li>移除 Launcher 生产代码中的静态 <code>app_secret</code> 和旧 <code>/app/verify</code> 依赖。</li>
+<li>实现 PKCE：高熵 verifier、S256 challenge、不可预测 state、回调一次性消费和超时。</li>
+<li>redirect_uri 必须是本机 loopback 随机端口或项目现有安全回调地址，严格校验来源和 state；不得把 verifier/token 放 URL。</li>
+<li>使用 Passport 标准 <code>/oauth/authorize</code>、<code>/oauth/token</code>、<code>/oauth/userinfo</code>。</li>
+<li>token 只存本地安全配置，不写日志；用户取消、拒绝、code 缺失、state 不匹配、code 过期、PKCE 失败和 HTTP 非 2xx 都显示明确错误。</li>
+<li>兼容现有用户配置：不要破坏已有用户资料；旧 token 失效时要求重新授权，不回退到明文 app_secret。</li>
+<li>确认 Passport OAuth App 的 client_id、redirect_uri 和 PKCE 配置来自安全配置/服务端注册信息，不在客户端放 client_secret。</li>
+</ol>
+<h2>测试</h2>
+<ul><li>先增加失败回归测试，再实现。</li><li>覆盖 verifier/challenge、state、防重放、回调校验、token 换取、userinfo、拒绝/过期/非 HTTPS、凭据不进 URL/日志。</li><li>使用本地 mock Passport 或隔离临时服务，不访问生产 Passport 和生产数据库。</li><li>运行 Python 编译、项目现有测试和新增 OAuth 测试。</li><li>如果当前 Linux 无 GUI，只做协议/服务测试，并明确 Windows GUI 未验证。</li></ul>
+<h2>验收</h2>
+<ul><li>源码扫描确认生产代码不再包含旧 Passport app_secret。</li><li>源码扫描确认远程 OAuth 不允许 HTTPS 降级到 HTTP。</li><li>隔离 mock 完成完整 PKCE 流程。</li><li>真实 Passport 只做只读 well-known/endpoint 确认，不登录、不修改生产。</li><li>只 commit 不 push，输出协议证据、测试结果和未验证项。</li></ul>
+</body></html>

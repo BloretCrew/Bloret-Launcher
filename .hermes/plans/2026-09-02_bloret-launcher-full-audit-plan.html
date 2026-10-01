@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>Bloret Launcher 全面审计计划</title></head><body>
+<h1>Bloret Launcher 全面审计与优化计划</h1>
+<p><strong>目标：</strong>覆盖 Bloret Launcher 的每一个页面、每一个功能和每一个文件，建立可验证的优化清单；首轮先审计，不直接修改生产或发布版本。</p>
+<h2>范围</h2>
+<ul>
+<li><code>Bloret-Launcher.py</code>、<code>modules/</code>、<code>modules/services/</code>、启动脚本、配置、迁移和测试；</li>
+<li><code>qml/pages/</code>、<code>qml/components/</code>、RinUI 接入、主题、国际化、资源和窗口状态；</li>
+<li>安装、启动、版本管理、Modrinth、内容生命周期、mrpack、光影/资源包/数据包、EasyTier/Live、Bloriko、Passport、插件宿主、设置、统计、崩溃恢复和导入导出；</li>
+<li>requirements、打包文件、CI、AUR/Windows 发布相关脚本和全部测试。</li>
+</ul>
+<h2>阶段 1：完整盘点</h2>
+<ol>
+<li>建立逐文件矩阵：路径、职责、入口、依赖、调用方、测试、风险、是否建议废弃。</li>
+<li>建立逐页面矩阵：页面入口、组件、后端 Slot/Signal、网络请求、加载/空/错误状态、权限、主题、响应式、键盘可达性。</li>
+<li>建立逐功能矩阵：输入、输出、文件副作用、进程副作用、网络、异常恢复、数据格式和测试证据。</li>
+<li>绘制当前架构图和数据流：UI → Backend → services → filesystem/network/process；标出违反分层的路径。</li>
+</ol>
+<h2>阶段 2：问题审计</h2>
+<ul>
+<li><strong>正确性：</strong>版本/实例目录、依赖解析、内容索引、更新、导入、启动参数、进程退出、崩溃恢复、并发和取消。</li>
+<li><strong>安全：</strong>路径穿越、Zip Slip、下载校验、URL、凭据日志、插件权限、脚本执行、命令注入、文件覆盖和权限提升。</li>
+<li><strong>性能：</strong>启动耗时、重复请求、阻塞 UI、线程生命周期、缓存、并发下载、QML 重复渲染和大文件处理。</li>
+<li><strong>可维护性：</strong>大文件耦合、重复逻辑、服务层边界、导入链、配置 schema、错误模型、日志和测试夹具。</li>
+<li><strong>UI/UX：</strong>流程复杂度、空/加载/失败状态、反馈、可访问性、深浅主题、窗口尺寸、中文文案和交互一致性。</li>
+<li><strong>兼容性：</strong>Windows 版本、架构、路径、权限、Java/运行时、RinUI 子模块、现有用户目录迁移。</li>
+</ul>
+<h2>阶段 3：分级与修复计划</h2>
+<p>每项问题必须包含现象、<code>file:line</code> 证据、复现步骤、根因、影响、建议修复、回归测试和风险。分为 P0（安全/数据损坏）、P1（核心功能）、P2（体验/性能）、P3（清理）。</p>
+<h2>阶段 4：修复纪律</h2>
+<ul>
+<li>先写失败回归测试，再修根因；</li>
+<li>新业务进入 <code>modules/services/</code>，Backend 只做薄封装，避免继续堆 <code>Bloret-Launcher.py</code>；</li>
+<li>内容安装必须维护 <code>content-index.json</code>，实例设置使用 <code>instance-settings.json</code>；</li>
+<li>测试使用临时目录、伪造清单、隔离下载源和独立进程，不覆盖真实用户目录；</li>
+<li>不擅自 reset RinUI 子模块，不触碰生产数据，不修改发布配置；</li>
+<li>每阶段独立 commit，只 commit 不 push。</li>
+</ul>
+<h2>阶段 5：验证</h2>
+<ul>
+<li>无 GUI 单元测试、集成测试、Windows smoke test；</li>
+<li>真实页面逐页运行，覆盖首次启动、空状态、失败、取消、重试、升级和恢复；</li>
+<li>不同窗口尺寸、深浅主题、键盘操作和高 DPI 检查；</li>
+<li>依赖、打包产物和路径扫描；</li>
+<li>最终报告使用 HTML，逐文件列出已验证、未验证和建议下一步。</li>
+</ul>
+<h2>首轮交付</h2>
+<p>首轮只交付完整审计报告和修复优先级，不直接做大规模修改。报告必须覆盖每一个实际存在的页面、功能和文件；无法在当前 Linux 环境验证的 Windows/QML 行为必须明确标记，不能假设通过。</p>
+</body></html>
