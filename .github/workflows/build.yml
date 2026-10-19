@@ -149,7 +149,8 @@ jobs:
           else
             curl -L --retry 3 --retry-delay 5 -o "$EASYTIER_ZIP" "https://github.com/EasyTier/EasyTier/releases/download/${EASYTIER_VERSION}/${EASYTIER_ZIP}"
           fi
-          # Verify the pinned release asset digest before extracting it.
+          # Select the public digest pinned to this release and platform.
+          EASYTIER_SHA256=$(awk -v asset="$EASYTIER_ZIP" '$2 == asset {print $1}' ".github/checksums/easytier-${EASYTIER_VERSION}.sha256")
           if [ -z "${EASYTIER_SHA256:-}" ]; then echo "::error::Missing EasyTier SHA-256"; exit 1; fi
           if ! echo "$EASYTIER_SHA256  $EASYTIER_ZIP" | sha256sum -c -; then exit 1; fi
           if ! unzip -t "$EASYTIER_ZIP" &>/dev/null; then
@@ -384,7 +385,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EASYTIER_VERSION: v2.6.4
-      EASYTIER_SHA256: ${{ secrets.EASYTIER_SHA256_FREEBSD_X86_64 }}
       OUTPUT_DIR: output
     steps:
     - name: 检出最新版本
@@ -399,6 +399,7 @@ jobs:
         mkdir -p easytier
         curl --fail --location --retry 3 --retry-delay 5 -o "$EASYTIER_ZIP" \
           "https://github.com/EasyTier/EasyTier/releases/download/${EASYTIER_VERSION}/${EASYTIER_ZIP}"
+        EASYTIER_SHA256=$(awk -v asset="$EASYTIER_ZIP" '$2 == asset {print $1}' ".github/checksums/easytier-${EASYTIER_VERSION}.sha256")
         if [ -z "${EASYTIER_SHA256:-}" ]; then echo "::error::Missing EasyTier SHA-256"; exit 1; fi
         if ! printf '%s  %s\n' "$EASYTIER_SHA256" "$EASYTIER_ZIP" | sha256sum -c -; then exit 1; fi
         if ! unzip -t "$EASYTIER_ZIP" &>/dev/null; then
