@@ -28,8 +28,6 @@ jobs:
     env:
       PYTHON_VERSION: '3.10'
       OUTPUT_DIR: 'output'
-      APPIMAGETOOL_SHA256_X86_64: ${{ secrets.APPIMAGETOOL_SHA256_X86_64 }}
-      APPIMAGETOOL_SHA256_AARCH64: ${{ secrets.APPIMAGETOOL_SHA256_AARCH64 }}
     steps:
     - name: 检出最新版本（含子模块）
       uses: actions/checkout@v4
@@ -489,8 +487,7 @@ jobs:
           fi
           cp AppDir/bloret-launcher.png AppDir/.DirIcon
           APPIMAGETOOL_VERSION="continuous"
-          APPIMAGETOOL_SHA256_VAR="APPIMAGETOOL_SHA256_${ARCH^^}"
-          APPIMAGETOOL_SHA256="${!APPIMAGETOOL_SHA256_VAR:-}"
+          APPIMAGETOOL_SHA256=$(awk -v asset="appimagetool-${ARCH}.AppImage" '$2 == asset {print $1}' ".github/checksums/appimagetool-${APPIMAGETOOL_VERSION}.sha256")
           if [ -z "$APPIMAGETOOL_SHA256" ]; then echo "::error::Missing appimagetool SHA-256"; exit 1; fi
           curl --fail --location --retry 3 -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/${APPIMAGETOOL_VERSION}/appimagetool-${ARCH}.AppImage"
           printf '%s  %s\n' "$APPIMAGETOOL_SHA256" appimagetool | sha256sum -c -

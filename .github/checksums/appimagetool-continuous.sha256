@@ -1,0 +1,5 @@
+# Source: https://github.com/AppImage/AppImageKit/releases/tag/continuous
+# Downloaded over HTTPS and hashed on 2026-10-19.
+# Review these digests when updating the upstream tool.
+b90f4a8b18967545fda78a445b27680a1642f1ef9488ced28b65398f2be7add2  appimagetool-x86_64.AppImage
+a48972e5ae91c944c5a7c80214e7e0a42dd6aa3ae979d8756203512a74ff574d  appimagetool-aarch64.AppImage
