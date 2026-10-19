@@ -462,6 +462,15 @@ jobs:
         exec "$ROOT/lib/bloret-launcher/Bloret-Launcher" "$@"
         EOF
           chmod +x AppDir/usr/bin/bloret-launcher AppDir/usr/lib/bloret-launcher/Bloret-Launcher
+          # appimagetool needs an explicit entrypoint; without it the generated
+          # AppImage starts with "execv error: No such file or directory".
+          cat > AppDir/AppRun << 'EOF'
+        #!/bin/sh
+        APPDIR="${APPDIR:-$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")}"
+        exec "$APPDIR/usr/bin/bloret-launcher" "$@"
+        EOF
+          chmod +x AppDir/AppRun
+          test -x AppDir/AppRun
           mkdir -p AppDir/usr/share/bloret-launcher
           cp -r qml RinUI icon lang config.json LICENSE bloret.ico Bloret.png Bloret-Fluent.png JavaWrapper.jar AppDir/usr/share/bloret-launcher/ 2>/dev/null || true
           if [ -d "easytier" ]; then cp -r easytier AppDir/usr/share/bloret-launcher/; fi
