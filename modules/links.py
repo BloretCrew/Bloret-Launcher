@@ -72,6 +72,9 @@ def Bloret_PassPort_Account_login(backend=None):
             "Bloret_PassPort_Login": True,
             "Bloret_PassPort_UserName": username,
             "Bloret_PassPort_NickName": str(userinfo.get("nickname") or userinfo.get("name") or ""),
+            "Bloret_PassPort_Avatar": str(userinfo.get("avatar") or ""),
+            "bbbs_session": str(userinfo.get("bbbs_session") or ""),
+            "bbbs_session_sig": str(userinfo.get("bbbs_session.sig") or ""),
             "Bloret_PassPort_OAuth": {
                 "access_token": result["access_token"], "refresh_token": result.get("refresh_token", ""),
                 "expires_in": result.get("expires_in"), "token_type": result.get("token_type", "Bearer"),

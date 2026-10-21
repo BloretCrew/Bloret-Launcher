@@ -41,10 +41,14 @@ FluentPage {
         function onPassportLoginStatusChanged(category, detail) {
             passportLoginPending = category === "started"
             passportLoginStatus = category
-            passportLoginError = (category === "success" || category === "started" || category === "cancelled")
+            passportLoginError = (category === "success" || category === "started" || category === "cancelled" || category === "logged_out")
                 ? "" : (detail || "Passport login failed")
             if (category === "success") {
                 passportLoggedIn = true
+                updatePassportData()
+            } else if (category === "logged_out") {
+                passportLoggedIn = false
+                passportUser = ""
                 updatePassportData()
             }
         }

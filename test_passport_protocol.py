@@ -29,7 +29,7 @@ class PassportProtocolTests(unittest.TestCase):
         self.assertEqual(query['redirect_uri'], [PROTOCOL_CALLBACK_URI])
         self.assertEqual(query['code_challenge_method'], ['S256'])
         self.assertNotIn('code_verifier', query)
-        self.assertEqual(query['scope'], ['user:name user:head minecraft:accounts'])
+        self.assertEqual(query['scope'], ['user:name user:head minecraft:accounts bbbs:session'])
 
     def test_protocol_dispatch_completes_original_login_and_rejects_replay(self):
         done = threading.Event()

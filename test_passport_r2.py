@@ -38,6 +38,27 @@ class PassportR2Tests(unittest.TestCase):
         self.assertNotIn("Bloret_PassPort_PassWord", passport.split("def savedata", 1)[1].split("def process_2fa_request", 1)[0])
         self.assertIn("headers", passport.split("def savedata", 1)[1].split("def process_2fa_request", 1)[0])
 
+    def test_oauth_login_persists_avatar_and_accepts_small_avatar_cache(self):
+        links = Path("modules/links.py").read_text(encoding="utf-8")
+        self.assertIn('"Bloret_PassPort_Avatar": str(userinfo.get("avatar") or "")', links)
+        self.assertIn('"bbbs_session": str(userinfo.get("bbbs_session") or "")', links)
+        self.assertIn('"bbbs_session_sig": str(userinfo.get("bbbs_session.sig") or "")', links)
+        oauth = Path("modules/passport_oauth.py").read_text(encoding="utf-8")
+        self.assertIn('"Bloret_PassPort_Avatar": str(userinfo.get("avatar") or "")', oauth)
+        self.assertIn('updated["bbbs_session"] = str(userinfo.get("bbbs_session") or "")', oauth)
+        self.assertIn('bbbs:session', oauth)
+        backend = Path("Bloret-Launcher.py").read_text(encoding="utf-8")
+        self.assertIn("os.path.getsize(cache_file) > 100", backend)
+        self.assertIn("len(response.content) <= 100", backend)
+        self.assertIn('content_type.startswith("image/")', backend)
+
+    def test_logout_is_a_qml_callable_slot(self):
+        backend = Path("Bloret-Launcher.py").read_text(encoding="utf-8")
+        self.assertIn("@Slot()\n    def logoutBloretPassPort(self):", backend)
+        page = Path("qml/pages/PassPort.qml").read_text(encoding="utf-8")
+        self.assertIn("Backend.logoutBloretPassPort()", page)
+        self.assertIn('category === "logged_out"', page)
+
     def test_launch_requires_reauthorization_after_refresh_failure(self):
         source = Path("Bloret-Launcher.py").read_text(encoding="utf-8")
         marker = 'refresh_ok = refresh_minecraft_token()'

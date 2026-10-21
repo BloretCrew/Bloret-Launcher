@@ -131,7 +131,7 @@ class PassportOAuthCoordinator:
             query = urllib.parse.urlencode({
                 "client_id": self.client_id, "redirect_uri": redirect_uri,
                 "response_type": "code",
-                "scope": "user:name user:head minecraft:accounts",
+                "scope": "user:name user:head minecraft:accounts bbbs:session",
                 "state": transaction.state, "code_challenge": build_code_challenge(transaction.verifier),
                 "code_challenge_method": "S256",
             })
@@ -371,7 +371,9 @@ def login_with_passport(*, save_config: Callable[[dict], None], config: dict, st
         coordinator.begin()
         result, userinfo = coordinator.wait_for_result()
         updated = dict(config or {})
-        updated.update({"Bloret_PassPort_Login": True, "Bloret_PassPort_UserName": str(userinfo.get("username") or userinfo.get("name") or ""), "Bloret_PassPort_NickName": str(userinfo.get("nickname") or userinfo.get("name") or "")})
+        updated.update({"Bloret_PassPort_Login": True, "Bloret_PassPort_UserName": str(userinfo.get("username") or userinfo.get("name") or ""), "Bloret_PassPort_NickName": str(userinfo.get("nickname") or userinfo.get("name") or ""), "Bloret_PassPort_Avatar": str(userinfo.get("avatar") or "")})
+        updated["bbbs_session"] = str(userinfo.get("bbbs_session") or "")
+        updated["bbbs_session_sig"] = str(userinfo.get("bbbs_session.sig") or "")
         updated["Bloret_PassPort_OAuth"] = {"access_token": result["access_token"], "refresh_token": result.get("refresh_token", ""), "expires_in": result.get("expires_in"), "token_type": result.get("token_type", "Bearer"), "obtained_at": int(time.time())}
         if not str(userinfo.get("username") or userinfo.get("name") or "").strip():
             raise PermissionError("PassPort userinfo did not identify an account")

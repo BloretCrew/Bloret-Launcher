@@ -4197,7 +4197,7 @@ class Backend(QObject):
         """Return only a local cached avatar; never perform network I/O."""
         try:
             cache_file = self._passport_avatar_cache_file()
-            if cache_file and os.path.isfile(cache_file) and os.path.getsize(cache_file) > 500:
+            if cache_file and os.path.isfile(cache_file) and os.path.getsize(cache_file) > 100:
                 return self._avatar_local_url(cache_file)
         except Exception as error:
             log(f"读取头像缓存失败: {error}", logging.WARNING)
@@ -4239,7 +4239,10 @@ class Backend(QObject):
                             timeout=(5, 10),
                             headers={"User-Agent": "BloretLauncher/1.0"},
                         )
-                        if response.status_code != 200 or len(response.content) <= 500:
+                        content_type = str(response.headers.get("Content-Type") or "")
+                        if (response.status_code != 200
+                                or len(response.content) <= 100
+                                or not content_type.startswith("image/")):
                             continue
                         temp_file = cache_file + ".tmp"
                         with open(temp_file, "wb") as handle:
@@ -4289,16 +4292,18 @@ class Backend(QObject):
             coordinator.cancel()
             self.passportLoginStatusChanged.emit("cancelled", "Passport login cancelled")
 
+    @Slot()
     def logoutBloretPassPort(self):
-        from modules.Bloret_PassPort import Bloret_PassPort_Account_logout
-        # We need to pass the main window or a mock for homeInterface
         config_data = cfg.read()
         prev_user = config_data.get("Bloret_PassPort_UserName") or ""
         config_data['Bloret_PassPort_Login'] = False
         config_data['Bloret_PassPort_UserName'] = ""
         config_data['Bloret_PassPort_NickName'] = ""
         config_data['Bloret_PassPort_PassWord'] = ""
+        config_data['Bloret_PassPort_Admin'] = False
+        config_data['Bloret_PassPort_Avatar'] = ""
         config_data.pop('Bloret_PassPort_OAuth', None)
+        config_data.pop('Bloret_PassPort_UserInfo', None)
         cfg.write(config_data)
         print("Logged out from Bloret PassPort")
         try:
@@ -4307,6 +4312,8 @@ class Backend(QObject):
             print(f"[PluginHost] account.logout user={prev_user}")
         except Exception as e:
             print(f"[PluginHost] account.logout 失败: {e}")
+        self.passportLoginStatusChanged.emit("logged_out", "Passport logged out")
+        self.passportAvatarChanged.emit("")
         # 发出信号以刷新 UI（不传递参数，让 QML 主动查询）
         self.minecraftAccountsChanged.emit([])
 
