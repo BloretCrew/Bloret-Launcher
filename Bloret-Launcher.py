@@ -5429,6 +5429,39 @@ class Backend(QObject):
         except Exception:
             return True
 
+    @Slot(result=list)
+    def getCountries(self):
+        """返回全部 ISO 3166-1 国家/地区及当前语言的名称。"""
+        try:
+            from modules.countries import country_options
+
+            return country_options(self.getLanguageCode())
+        except Exception as e:
+            print(f"Error loading countries: {e}")
+            return []
+
+    @Slot(result=str)
+    def getSystemCountryCode(self):
+        """返回系统国家/地区代码，无法识别时回退到 US。"""
+        try:
+            from modules.countries import system_country_code
+
+            return system_country_code()
+        except Exception as e:
+            print(f"Error detecting system country: {e}")
+            return "US"
+
+    @Slot(str, result=bool)
+    def isRegionUnavailable(self, country_code):
+        """判断 OOBE 是否应在该国家/地区阻止继续。"""
+        try:
+            from modules.countries import is_region_unavailable
+
+            return is_region_unavailable(country_code)
+        except Exception as e:
+            print(f"Error checking region availability: {e}")
+            return False
+
     @Slot()
     def completeOOBE(self):
         """标记 OOBE 已完成 - 从源配置文件复制默认配置，但保留用户已保存的数据"""

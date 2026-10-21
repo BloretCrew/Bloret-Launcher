@@ -19,7 +19,10 @@ Rectangle {
     color: bgColor
 
     property int currentPage: 0
-    property int totalPages: 7
+    property int totalPages: 8
+    property var countryModel: []
+    property string selectedRegion: ""
+    property bool regionUnavailable: false
     property var selectedLanguage: "zh-cn"
     property bool languageSyncing: false
     property string selectedJavaPath: ""
@@ -33,6 +36,11 @@ Rectangle {
     property string syncError: ""
     property string loginError: ""
     property var minecraftAccounts: []      // Minecraft 账户列表
+
+    onCurrentPageChanged: {
+        if (currentPage === 2)
+            loadCountries()
+    }
 
     Connections {
         target: Backend
@@ -57,6 +65,7 @@ Rectangle {
 
     Component.onCompleted: {
         minecraftDirPath = Backend.getDefaultMinecraftDir()
+        selectedRegion = Backend ? Backend.getSystemCountryCode() : "US"
         // 自动检查 Java 环境
         if (Backend) {
             Backend.checkJavaEnvironment()
@@ -128,11 +137,12 @@ Rectangle {
                             switch (index) {
                                 case 0: return Backend ? Backend.tr("欢迎") : "Welcome"
                                 case 1: return Backend ? Backend.tr("语言") : "Language"
-                                case 2: return Backend ? Backend.tr("登录") : "Login"
-                                case 3: return Backend ? Backend.tr("同步") : "Sync"
-                                case 4: return "Java"
-                                case 5: return Backend ? Backend.tr("目录") : "Folder"
-                                case 6: return Backend ? Backend.tr("遥控") : "Remote"
+                                case 2: return Backend ? Backend.tr("地区") : "Region"
+                                case 3: return Backend ? Backend.tr("登录") : "Login"
+                                case 4: return Backend ? Backend.tr("同步") : "Sync"
+                                case 5: return "Java"
+                                case 6: return Backend ? Backend.tr("目录") : "Folder"
+                                case 7: return Backend ? Backend.tr("遥控") : "Remote"
                                 default: return ""
                             }
                         }
@@ -256,11 +266,84 @@ Rectangle {
                     }
                 }
 
-                // 第 2 页：登录 Bloret PassPort
+                // 第 2 页：选择国家或地区
                 Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     visible: oobeOverlay.currentPage === 2
+
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: 24
+
+                        Text {
+                            text: Backend ? Backend.tr("选择国家或地区") : "Select Country or Region"
+                            Layout.alignment: Qt.AlignHCenter
+                            typography: Typography.Title
+                        }
+
+                        Text {
+                            text: Backend ? Backend.tr("请选择您所在的国家或地区。") : "Please select your country or region."
+                            Layout.alignment: Qt.AlignHCenter
+                            typography: Typography.Body
+                            color: textColor
+                        }
+
+                        ComboBox {
+                            id: countryComboBox
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.preferredWidth: 350
+                            model: oobeOverlay.countryModel
+                            textRole: "name"
+                            valueRole: "code"
+
+                            onActivated: function(index) {
+                                oobeOverlay.selectedRegion = model[index].code
+                                oobeOverlay.regionUnavailable = false
+                            }
+                        }
+
+                        Rectangle {
+                            visible: oobeOverlay.regionUnavailable
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.preferredWidth: 500
+                            implicitHeight: regionWarningColumn.implicitHeight + 28
+                            radius: 8
+                            color: Theme.currentTheme && Theme.currentTheme.colors ? Theme.currentTheme.colors.systemCriticalBackgroundColor : "#FDE7E9"
+                            border.width: 1
+                            border.color: Theme.currentTheme && Theme.currentTheme.colors ? Theme.currentTheme.colors.systemCriticalColor : "#C42B1C"
+
+                            ColumnLayout {
+                                id: regionWarningColumn
+                                anchors.fill: parent
+                                anchors.margins: 14
+                                spacing: 6
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: Backend ? Backend.tr("Bloret Launcher 在你的国家或地区不可用") : "Bloret Launcher is not available in your country or region"
+                                    typography: Typography.BodyStrong
+                                    color: Theme.currentTheme && Theme.currentTheme.colors ? Theme.currentTheme.colors.systemCriticalColor : "#C42B1C"
+                                    wrapMode: Text.Wrap
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: Backend ? Backend.tr("请选择其他国家或地区后重试。") : "Please select another country or region and try again."
+                                    typography: Typography.Caption
+                                    color: textColor
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 第 3 页：登录 Bloret PassPort
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: oobeOverlay.currentPage === 3
 
                     ColumnLayout {
                         anchors.centerIn: parent
@@ -367,11 +450,11 @@ Rectangle {
                     }
                 }
 
-                // 第 3 页：同步 Minecraft 账户
+                // 第 4 页：同步 Minecraft 账户
                 Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    visible: oobeOverlay.currentPage === 3
+                    visible: oobeOverlay.currentPage === 4
 
                     ColumnLayout {
                         anchors.centerIn: parent
@@ -578,11 +661,11 @@ Rectangle {
                     }
                 }
 
-                // 第 4 页：Java 环境检测
+                // 第 5 页：Java 环境检测
                 Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    visible: oobeOverlay.currentPage === 4
+                    visible: oobeOverlay.currentPage === 5
 
                     ColumnLayout {
                         anchors.centerIn: parent
@@ -656,11 +739,11 @@ Rectangle {
                     }
                 }
 
-                // 第 5 页：Minecraft 目录设置
+                // 第 6 页：Minecraft 目录设置
                 Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    visible: oobeOverlay.currentPage === 5
+                    visible: oobeOverlay.currentPage === 6
 
                     ColumnLayout {
                         anchors.centerIn: parent
@@ -729,11 +812,11 @@ Rectangle {
                     }
                 }
 
-                // 第 6 页：手机遥控手柄
+                // 第 7 页：手机遥控手柄
                 Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    visible: oobeOverlay.currentPage === 6
+                    visible: oobeOverlay.currentPage === 7
 
                     ColumnLayout {
                         anchors.centerIn: parent
@@ -812,6 +895,8 @@ Rectangle {
         function onLanguageSyncFinished(language, ok, error) {
             if (oobeOverlay.selectedLanguage === language)
                 oobeOverlay.languageSyncing = false
+            if (oobeOverlay.currentPage === 2)
+                oobeOverlay.loadCountries()
         }
 
         function onJavaEnvironmentChecked(installed, javaPath) {
@@ -879,14 +964,48 @@ Rectangle {
                 }
                 highlighted: true
                 enabled: canProceed()
-                onClicked: {
-                    if (oobeOverlay.currentPage === oobeOverlay.totalPages - 1) {
-                        finishOOBE()
-                    } else {
-                        oobeOverlay.currentPage++
-                    }
-                }
+                onClicked: goNext()
             }
+        }
+    }
+
+    function loadCountries() {
+        if (!Backend)
+            return
+
+        var options = Backend.getCountries()
+        oobeOverlay.countryModel = options
+
+        var target = oobeOverlay.selectedRegion
+        if (!target)
+            target = Backend.getSystemCountryCode()
+
+        var targetIndex = -1
+        for (var i = 0; i < options.length; i++) {
+            if (options[i].code === target) {
+                targetIndex = i
+                break
+            }
+        }
+        if (targetIndex < 0 && options.length > 0) {
+            targetIndex = 0
+            target = options[0].code
+        }
+        countryComboBox.currentIndex = targetIndex
+        oobeOverlay.selectedRegion = target
+    }
+
+    function goNext() {
+        if (oobeOverlay.currentPage === 2
+                && Backend && Backend.isRegionUnavailable(oobeOverlay.selectedRegion)) {
+            oobeOverlay.regionUnavailable = true
+            return
+        }
+
+        if (oobeOverlay.currentPage === oobeOverlay.totalPages - 1) {
+            finishOOBE()
+        } else {
+            oobeOverlay.currentPage++
         }
     }
 
@@ -894,11 +1013,12 @@ Rectangle {
         switch (oobeOverlay.currentPage) {
             case 0: return true
             case 1: return true
-            case 2: return Backend && Backend.getBloretPassPortLoginStatus()
-            case 3: return oobeOverlay.minecraftAccounts.length > 0
-            case 4: return oobeOverlay.javaInstalled
-            case 5: return true
+            case 2: return !!oobeOverlay.selectedRegion && !oobeOverlay.regionUnavailable
+            case 3: return Backend && Backend.getBloretPassPortLoginStatus()
+            case 4: return oobeOverlay.minecraftAccounts.length > 0
+            case 5: return oobeOverlay.javaInstalled
             case 6: return true
+            case 7: return true
             default: return false
         }
     }
