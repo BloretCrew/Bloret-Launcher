@@ -78,13 +78,20 @@ jobs:
           esac
           EOF
           chmod +x "$RUNNER_TEMP/gitcode-askpass.sh"
-          SHA="$(git rev-list -n 1 "$TAG")"
+          CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
           git remote remove gitcode 2>/dev/null || true
           git remote add gitcode "https://gitcode.com/${GITCODE_REPO}.git"
           export GIT_ASKPASS="$RUNNER_TEMP/gitcode-askpass.sh"
           export GIT_TERMINAL_PROMPT=0
-          if ! git push gitcode "${SHA}:refs/heads/${GITCODE_BRANCH}" "refs/tags/${TAG}:refs/tags/${TAG}"; then
-            echo "::warning::Could not push to GitCode. The repository may still be a mirror, or the token may lack write access. The release sync continues."
+          if [ "$CURRENT_BRANCH" = "$GITCODE_BRANCH" ]; then
+            if ! git push gitcode "HEAD:refs/heads/${GITCODE_BRANCH}"; then
+              echo "::warning::Could not push the ${GITCODE_BRANCH} branch to GitCode. The repository may still be a mirror, or the token may lack write access."
+            fi
+          else
+            echo "::notice::The default branch is ${CURRENT_BRANCH}, not ${GITCODE_BRANCH}. Only the tag is pushed."
+          fi
+          if ! git push gitcode "refs/tags/${TAG}:refs/tags/${TAG}"; then
+            echo "::warning::Could not push the tag ${TAG} to GitCode. The release sync continues."
           fi
 
       - name: Sync the release and its assets
