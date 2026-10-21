@@ -4281,6 +4281,23 @@ class Backend(QObject):
 
     @Slot()
     def loginBloretPassPort(self):
+        if sys.platform == "win32":
+            try:
+                from modules.protocol_handler import register_protocol_windows
+
+                if not register_protocol_windows():
+                    self.passportLoginStatusChanged.emit(
+                        "failure",
+                        i18nText("无法注册 bloret:// 协议，请检查系统权限或安装位置"),
+                    )
+                    return
+            except Exception as error:
+                log(f"[Passport] 协议注册检查失败: {error}", logging.WARNING)
+                self.passportLoginStatusChanged.emit(
+                    "failure",
+                    i18nText("无法注册 bloret:// 协议，请检查系统权限或安装位置"),
+                )
+                return
         from modules.links import Bloret_PassPort_Account_login
         if not Bloret_PassPort_Account_login(self):
             self.passportLoginStatusChanged.emit("failure", "Unable to open Passport login")
@@ -6521,7 +6538,7 @@ class LauncherV2(RinUIWindow):
 RESTART_ARGV_FLAG = "--from-restart"
 _single_instance_mutex = None  # Windows HANDLE
 _single_instance_lock_file = None  # Linux/macOS 锁文件对象
-_SINGLE_INSTANCE_MUTEX_NAME = "Global\\BloretLauncherMutex"
+_SINGLE_INSTANCE_MUTEX_NAME = "Local\\BloretLauncherMutex"
 
 
 def release_single_instance_lock():
@@ -6573,6 +6590,11 @@ def _acquire_single_instance_lock():
         )
         # ERROR_ALREADY_EXISTS = 183
         already = bool(handle) and ctypes.windll.kernel32.GetLastError() == 183
+        if not handle:
+            print(
+                "[SingleInstance] CreateMutexW failed: "
+                f"{ctypes.windll.kernel32.GetLastError()}"
+            )
         _single_instance_mutex = handle
         return already
 

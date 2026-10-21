@@ -42,6 +42,25 @@ class PassportProtocolTests(unittest.TestCase):
         self.assertTrue(done.wait(2))
         self.assertFalse(self.coordinator.handle_callback(url))
 
+    def test_windows_source_protocol_command_includes_script(self):
+        from modules.protocol_handler import _windows_protocol_command
+        import os
+
+        script = os.path.abspath('Bloret-Launcher.py')
+        cmd = _windows_protocol_command('python.exe', 'Bloret-Launcher.py', is_frozen=False)
+        self.assertEqual(cmd, f'"python.exe" "{script}" "%1"')
+        self.assertEqual(
+            _windows_protocol_command('Bloret-Launcher.exe', 'Bloret-Launcher.exe', is_frozen=True),
+            '"Bloret-Launcher.exe" "%1"',
+        )
+
+    def test_callback_accepts_trailing_slash_added_by_browser(self):
+        tx = self.coordinator.begin()
+        self.coordinator.exchange_code = lambda code, transaction: {'access_token': 'token'}
+        self.coordinator.fetch_userinfo = lambda token: {'username': 'tester'}
+        self.assertTrue(self.coordinator.handle_callback(
+            PROTOCOL_CALLBACK_URI + '/?code=one-time-code&state=' + tx.state))
+
     def test_invalid_callback_does_not_cancel_pending_login(self):
         tx = self.coordinator.begin()
         for url in (

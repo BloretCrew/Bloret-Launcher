@@ -16,8 +16,15 @@ from typing import Callable, Optional
 
 import requests
 
+from modules.log import log
+
 CALLBACK_PATH = "/login/Bloret-PassPort"
 PROTOCOL_CALLBACK_URI = "bloret://oauth/passport"
+
+
+def _normalized_callback_path(parsed) -> str:
+    """Accept a trailing slash added by some Windows browser handlers."""
+    return (parsed.path or "/").rstrip("/") or "/"
 _active_coordinator = None
 _active_lock = threading.RLock()
 DEFAULT_AUTHORIZE_ENDPOINT = "https://passport.bloret.net/oauth/authorize"
@@ -156,7 +163,12 @@ class PassportOAuthCoordinator:
             if not transaction or self._reserved:
                 raise ValueError("No pending Passport login")
             expected = urllib.parse.urlparse(transaction.redirect_uri)
-            if (parsed.scheme, parsed.netloc, parsed.path) != (expected.scheme, expected.netloc, expected.path) or parsed.fragment or parsed.params:
+            if (
+                (parsed.scheme, parsed.netloc, _normalized_callback_path(parsed))
+                != (expected.scheme, expected.netloc, _normalized_callback_path(expected))
+                or parsed.fragment
+                or parsed.params
+            ):
                 raise ValueError("Invalid Passport callback")
             try:
                 pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True, strict_parsing=True)
@@ -355,11 +367,13 @@ def is_passport_session_authenticated(config, now=None):
 def dispatch_passport_callback(url):
     """Reserve the login protocol route before any plugin sees OAuth credentials."""
     parsed = urllib.parse.urlparse(url)
-    if (parsed.scheme, parsed.netloc, parsed.path) != ("bloret", "oauth", "/passport"):
+    if (parsed.scheme, parsed.netloc, _normalized_callback_path(parsed)) != ("bloret", "oauth", "/passport"):
         return False
     with _active_lock:
         coordinator = _active_coordinator
-    if coordinator is not None:
+    if coordinator is None:
+        log("[Passport] OAuth callback received without a pending login")
+    else:
         threading.Thread(target=coordinator.handle_callback, args=(url,),
                          daemon=True, name="PassportProtocolCallback").start()
     return True

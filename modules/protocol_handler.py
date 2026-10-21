@@ -163,7 +163,8 @@ def set_deep_link_handler(callback: Callable[[str], None]) -> None:
 def _dispatch_url(url: str) -> None:
     log(f"[Protocol] 分发 deep link: {_url_for_log(url)}")
     parsed = urlsplit(url)
-    if (parsed.scheme, parsed.netloc, parsed.path) == ("bloret", "oauth", "/passport"):
+    callback_path = (parsed.path or "/").rstrip("/") or "/"
+    if (parsed.scheme, parsed.netloc, callback_path) == ("bloret", "oauth", "/passport"):
         if _on_deep_link:
             _on_deep_link(url)
         else:
@@ -302,6 +303,19 @@ def stop_ipc_server() -> None:
         pass
 
 
+def _windows_protocol_command(executable: str, argv0: str, *, is_frozen: Optional[bool] = None) -> str:
+    """Build the shell command used to reopen a bloret:// link on Windows."""
+    if is_frozen is None:
+        is_frozen = bool(getattr(sys, "frozen", False))
+    script = os.path.abspath(argv0) if argv0 else ""
+    # 打包后 sys.argv[0] 是可执行文件；源码运行时是 .py/.pyw 脚本。
+    # 不能只看 sys.executable 是否以 .exe 结尾：源码运行时的 python.exe 也满足。
+    runs_script = script.lower().endswith((".py", ".pyw"))
+    if is_frozen or not runs_script:
+        return f'"{executable}" "%1"'
+    return f'"{executable}" "{script}" "%1"'
+
+
 def register_protocol_windows(executable: Optional[str] = None) -> bool:
     """注册 HKCU bloret URL protocol（当前用户，无需管理员）。"""
     if sys.platform != "win32":
@@ -310,12 +324,10 @@ def register_protocol_windows(executable: Optional[str] = None) -> bool:
         import winreg
 
         exe = executable or sys.executable
-        # 打包后 sys.executable 即启动器；开发时用 python + 脚本
-        if getattr(sys, "frozen", False) or exe.lower().endswith(".exe"):
-            cmd = f'"{exe}" "%1"'
-        else:
-            script = os.path.abspath(sys.argv[0]) if sys.argv else ""
-            cmd = f'"{exe}" "{script}" "%1"'
+        cmd = _windows_protocol_command(
+            exe,
+            sys.argv[0] if sys.argv and sys.argv[0] else "",
+        )
 
         key_path = r"Software\Classes\bloret"
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:

@@ -43,6 +43,7 @@
     "选择国家或地区": "Select Country or Region",
     "请选择您所在的国家或地区。": "Please select your country or region.",
     "Bloret Launcher 在你的国家或地区不可用": "Bloret Launcher is not available in your country or region",
-    "请选择其他国家或地区后重试。": "Please select another country or region and try again."
+    "请选择其他国家或地区后重试。": "Please select another country or region and try again.",
+    "无法注册 bloret:// 协议，请检查系统权限或安装位置": "Unable to register the bloret:// protocol. Check system permissions or the install location."
   }
 }
