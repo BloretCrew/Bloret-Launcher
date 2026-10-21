@@ -1,11 +1,11 @@
 blank_issues_enabled: true
 contact_links:
-  - name: 讨论区
+  - name: Discussions
     url: https://github.com/BloretCrew/Bloret-Launcher/discussions
-    about: 不确定的问题或建议，可以在这里进行讨论
-  - name: Bloret QQ 群
+    about: Ask questions or discuss uncertain topics here.
+  - name: Bloret QQ Group
     url: https://qm.qq.com/q/Q07CSpcP6i
-    about: 欢迎加入 百络谷 QQ群
+    about: Welcome to join the Bloret QQ group.
   - name: Bloret Launcher Community
     url: https://qm.qq.com/q/XSGZi9jd8C
-    about: Bloret Launcher 专用讨论群
+    about: Dedicated discussion group for Bloret Launcher.

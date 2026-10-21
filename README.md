@@ -10,19 +10,19 @@
 
 <div align="center">
 
-[![应用程序打包](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml)
-[![应用程序打包 - Nuitka](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/Nuitka-Build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/Nuitka-Build.yml)
-[![Crowdin 翻译进度](https://badges.crowdin.net/Bloret-Launcher/localized.svg)](https://launcher.bloret.net/go/translate)
-[![讨论数](https://img.shields.io/github/discussions/BloretCrew/Bloret-Launcher?style=social&label=%E8%AE%A8%E8%AE%BA)](https://github.com/BloretCrew/Bloret-Launcher/discussions)
-![仓库大小](https://img.shields.io/github/repo-size/BloretCrew/Bloret-Launcher?style=social&label=%E4%BB%93%E5%BA%93%E5%A4%A7%E5%B0%8F)
-![星标数](https://img.shields.io/github/stars/BloretCrew/Bloret-Launcher?style=social&label=%E6%98%9F%E6%A0%87)
-[![wakatime](https://wakatime.com/badge/user/38dee536-8d34-42c1-925d-43b79e143e83/project/4f5bb74a-2298-419e-8ba8-dee40e51d08b.svg)](https://wakatime.com/badge/user/38dee536-8d34-42c1-925d-43b79e143e83/project/4f5bb74a-2298-419e-8ba8-dee40e51d08b)  
+[![Build](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/build.yml)
+[![Build - Nuitka](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/Nuitka-Build.yml/badge.svg)](https://github.com/BloretCrew/Bloret-Launcher/actions/workflows/Nuitka-Build.yml)
+[![Crowdin translation progress](https://badges.crowdin.net/Bloret-Launcher/localized.svg)](https://launcher.bloret.net/go/translate)
+[![Discussions](https://img.shields.io/github/discussions/BloretCrew/Bloret-Launcher?style=social&label=Discussions)](https://github.com/BloretCrew/Bloret-Launcher/discussions)
+![Repository size](https://img.shields.io/github/repo-size/BloretCrew/Bloret-Launcher?style=social&label=Repository%20size)
+![Stars](https://img.shields.io/github/stars/BloretCrew/Bloret-Launcher?style=social&label=Stars)
+[![wakatime](https://wakatime.com/badge/user/38dee536-8d34-42c1-925d-43b79e143e83/project/4f5bb74a-2298-419e-8ba8-dee40e51d08b.svg)](https://wakatime.com/badge/user/38dee536-8d34-42c1-925d-43b79e143e83/project/4f5bb74a-2298-419e-8ba8-dee40e51d08b)
 
-[![下载量](https://img.shields.io/github/downloads/BloretCrew/Bloret-Launcher/total?style=social&label=%E4%B8%8B%E8%BD%BD%E9%87%8F)](https://github.com/BloretCrew/Bloret-Launcher/releases)
-![最新正式版](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?label=%E6%9C%80%E6%96%B0%E6%AD%A3%E5%BC%8F%E7%89%88)
-![最新版（包括测试版）](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?include_prereleases&style=social&label=%E6%9C%80%E6%96%B0%E7%89%88)
-![WinGet 包版本](https://img.shields.io/winget/v/Bloret.Launcher?label=WinGet%20%E5%8C%85%E7%89%88%E6%9C%AC)
-![WinGet 包名](https://img.shields.io/badge/WinGet_%E5%8C%85%E5%90%8D-Bloret.Launcher-blue&style=social)
+[![Downloads](https://img.shields.io/github/downloads/BloretCrew/Bloret-Launcher/total?style=social&label=Downloads)](https://github.com/BloretCrew/Bloret-Launcher/releases)
+![Latest stable release](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?label=Latest%20stable%20release)
+![Latest release (including pre-releases)](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?include_prereleases&style=social&label=Latest%20release)
+![WinGet package version](https://img.shields.io/winget/v/Bloret.Launcher?label=WinGet%20version)
+![WinGet package name](https://img.shields.io/badge/WinGet_package-Bloret.Launcher-blue&style=social)
 
 </div>
 
@@ -30,154 +30,153 @@
 ![Home](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Home-Long.PNG?raw=true)
 
 
-## 联机使用指南
-![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/ui/icon/OnlineClient.gif)  
-然后将获取到的端口输入至 Bloret Launcher 中。您将获得一个地址，让您的好友像进入服务器一样加入您的世界。
+## Multiplayer Guide
+![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/ui/icon/OnlineClient.gif)<br>
+Then enter the port you received into Bloret Launcher. You will get an address that lets your friends join your world as if they were joining a server.
 
 > [!NOTE]
-> 您可以以三种方式打开百络谷启动器
-> 1. 下载 `Bloret-Launcher-Setup.exe` ，运行安装。
-> 2. 下载 `Bloret-Launcher-Windows.zip` ，解压后打开其中的 `Bloret-Launcher.exe`
-> 3. 下载软件源代码压缩包 `Source code (zip)` ，解压后在所在目录下运行 `python main.py`
->    （使用步骤二前请先安装 Python ， 运行 `winget install python` 即可）
+> You can open Bloret Launcher in three ways:
+> 1. Download `Bloret-Launcher-Setup.exe` and run the installer.
+> 2. Download `Bloret-Launcher-Windows.zip`, extract it, and open `Bloret-Launcher.exe`.
+> 3. Download the source code archive `Source code (zip)`, extract it, and run `python Bloret-Launcher.py` in that directory.
+>    (Install Python before step 3 with `winget install python`.)
 
 > [!WARNING]
-> 百络谷启动器已证书签名，一般不会被拦截了
-> Windows 安全中心可能会拦截此软件，本软件不是任何病毒  
-> 百络谷启动器是开源项目，您可以查阅源代码。  
-> 请按照下方操作打开软件
+> Bloret Launcher is code-signed and should generally not be blocked.
+> Windows Security may still flag this software. It is not a virus.
+> Bloret Launcher is open source, so you can inspect the source code.
+> Follow the steps below to open the app.
 > <details>
->
-> **<summary>单击此处展开，查看操作方法 (2 张图片)</summary>**
+> <summary>Click here to expand and view the instructions (2 images)</summary>
 >
 > ![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/Windows1.jpg)
 > ![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/Windows2.jpg)
 >
 > </details>
 
-## 托开发组要求，特添加此图 👇
+## Added at the development team's request 👇
 <details>
-  
-**<summary>单击此处展开，查看宣传图 (1 张图片)</summary>**
+
+<summary>Click here to expand and view the promotional image (1 image)</summary>
+
 ![](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/if-not-use-jiedi-will.jpg)
 
 </details>
 
-## 平台支持
+## Platform Support
 
-| 平台 | 说明 |
+| Platform | Notes |
 |------|------|
-| Windows | 完整支持（安装包 / zip / WinGet） |
-| Linux | 源码 / AppImage / Arch `PKGBUILD` |
-| macOS | CI 产物（Intel / ARM） |
-| **FreeBSD** | **amd64 源码运行**；系统 `lwjgl3` 启动游戏；CI 产物 `Bloret-Launcher-FreeBSD-amd64` |
+| Windows | Full support (installer / zip / WinGet) |
+| Linux | Source / AppImage / Arch `PKGBUILD` |
+| macOS | CI artifacts (Intel / ARM) |
+| **FreeBSD** | **Runs from source on amd64**; uses system `lwjgl3` to launch the game; CI artifact `Bloret-Launcher-FreeBSD-amd64` |
 
-FreeBSD 安装与 Minecraft 运行说明见 **[docs/FreeBSD.md](docs/FreeBSD.md)**。
+See **[docs/FreeBSD.md](docs/FreeBSD.md)** for FreeBSD installation and Minecraft instructions.
 
-## 功能与计划
+## Features and Roadmap
 
-- [x] 托盘与托盘菜单
-- [x] 自定义启动
-- [x] 下载 Minecraft
-- [x] 启动 Minecraft
-- [x] Minecraft 数据查询
-- [x] 日志
-- [x] 支持深浅色
-- [x] 微软账户登录
-- [x] 离线登录
-- [x] 百络谷通行证登录
-- [x] 自动更新
-- [x] 屏幕截图
-- [x] EasyTier 联机
+- [x] Tray icon and tray menu
+- [x] Custom launch
+- [x] Download Minecraft
+- [x] Launch Minecraft
+- [x] Minecraft data lookup
+- [x] Logs
+- [x] Light and dark themes
+- [x] Microsoft account login
+- [x] Offline login
+- [x] Bloret PassPort login
+- [x] Auto-update
+- [x] Screenshots
+- [x] EasyTier multiplayer
 - [x] Bloriko
-- [x] Bloriko With Modrinth
-- [x] 全新 Minecraft 安装
-- [x] 全新 Minecraft with Fabric 安装
-- [x] 全新启动过程
-- [x] 版本管理
-- [x] 版本选择
-- [x] 服务器管理
-- [x] Mod 管理
-- [x] 资源包管理
-- [x] Minecraft 进程管理器
-- [x] Minecraft 进程结束
-- [x] Bloret Server 服务器信息
-- [x] 微软登录与离线登录，Bloret PassPort 深度融合
-- [x] Bloret PassPort 辅助验证
-- [x] 多 Minecraft 账户 #38 
-- [x] 浮动小工具栏
-- [x] 配置文件迁移 Appdata
-- [x] 全新安装程序
+- [x] Bloriko with Modrinth
+- [x] Fresh Minecraft installation
+- [x] Fresh Minecraft with Fabric installation
+- [x] New launch process
+- [x] Version management
+- [x] Version selection
+- [x] Server management
+- [x] Mod management
+- [x] Resource pack management
+- [x] Minecraft process manager
+- [x] Terminate Minecraft processes
+- [x] Bloret Server server information
+- [x] Deep integration of Microsoft/offline login with Bloret PassPort
+- [x] Bloret PassPort auxiliary verification
+- [x] Multiple Minecraft accounts #38
+- [x] Floating toolbar
+- [x] Config migration to AppData
+- [x] New installer
 - [x] Bloriko DeepThink
 - [x] NewIcon
-- [x] FreeBSD 支持（系统 LWJGL / EasyTier / CI 产物）
-- [x] 等....
+- [x] FreeBSD support (system LWJGL / EasyTier / CI artifacts)
+- [x] And more...
 
-## 软件截图
+## Screenshots
 <details>
 
-**<summary>单击此处展开，查看软件截图 (11 张图片)</summary>**
+<summary>Click here to expand and view the screenshots (11 images)</summary>
 
-#### 主界面
+#### Main UI
 ![Home](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Home-Long.PNG?raw=true)
-#### 下载
+#### Download
 ![Download](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Download.jpg?raw=true)
-#### 小工具
+#### Tools
 ![tools](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Tools.jpg?raw=true)
-#### 通行证
+#### PassPort
 ![passport](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/PassPort.jpg?raw=true)
-#### 设置
+#### Settings
 ![settings](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Settings.jpg?raw=true)
-#### 关于
+#### About
 ![info](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/About.jpg?raw=true)
 #### Modrinth
 ![Modrinth](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Mods-toast.jpg?raw=true)
 ![Modrinth](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Mods-Dialog.jpg?raw=true)
-#### 联机
+#### Multiplayer
 ![Client](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Client.jpg?raw=true)
 ![Client-Easytier-Server](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Client-Easytier-Server.jpg?raw=true)
 ![Client-Easytier-Client](https://github.com/BloretCrew/Bloret-Launcher/blob/Windows/img/New-Images/cropped/Client-Easytier-Client.jpg?raw=true)
 
-
 </details>
 
-## 贡献者
+## Contributors
 ![contributors](http://contrib.nn.ci/api?repo=BloretCrew/Bloret-Launcher)
 
 ![Alt](https://repobeats.axiom.co/api/embed/a5638ffaed2d2ba6776999fafc10b5e1513c53a9.svg "Repobeats analytics image")
 
-## 致谢以下存储库或项目
+## Acknowledgements
 
 - [RinUI](https://github.com/Detritalw/Rin-UI)
 
-**RinUI 是 Bloret Launcher 的核心组件库。**
-
+**RinUI is the core component library of Bloret Launcher.**
 
 - [SF Symbols](https://developer.apple.com/cn/sf-symbols/)
 <details>
 
-**<summary>[Console Minecraft Launcher](https://github.com/MrShieh-X/console-minecraft-launcher)</summary>**
+<summary><a href="https://github.com/MrShieh-X/console-minecraft-launcher">Console Minecraft Launcher</a></summary>
 
-**Bloret Launcher 现已移除 CMCL 由于曾经借助过 CMCL 实现某些模块，再次仍然致谢 CMCL**
+**Bloret Launcher has removed CMCL. CMCL was once used to implement some modules, and we thank CMCL for that.**
 
-> 本软件已取得 CMCL 作者许可，请不要像 [不符合 Console Minecraft Launcher (CMCL) 的使用协议 #12](https://github.com/BloretCrew/Bloret-Launcher/issues/12) 一样来问关于 CMCL 的版权问题
+> This software has obtained permission from the CMCL author. Please do not ask about CMCL copyright issues in the same way as [Non-compliance with the Console Minecraft Launcher (CMCL) usage agreement #12](https://github.com/BloretCrew/Bloret-Launcher/issues/12).
 > ![CMCLLICENSE](https://raw.githubusercontent.com/BloretCrew/Bloret-Launcher/refs/heads/Windows/img/CMCLLICENSE.png)
 
 </details>
 
 <details>
 
-**<summary>[Class Widgets](https://github.com/Class-Widgets)</summary>**
-关于为什么会致谢 [Class Widgets](https://github.com/Class-Widgets)：  
-[Class Widgets](https://github.com/Class-Widgets) 为 Bloret Launcher 有以下值得我们致谢的点：
- - 为 Bloret Launcher 的 UI 提供了想法
- - Bloret Launcher 已加入 Class Widgets 插件广场
- - [@RinLit](https://github.com/RinLit-233-shiroko) 为本作品有写法指导
- - [[not cw] 求助为什么崩溃 #392](https://github.com/orgs/Class-Widgets/discussions/392)
- - [求教如何往下拉选择框做东西进去 #338](https://github.com/orgs/Class-Widgets/discussions/338)
+<summary><a href="https://github.com/Class-Widgets">Class Widgets</a></summary>
+
+Why we thank [Class Widgets](https://github.com/Class-Widgets):
+[Class Widgets](https://github.com/Class-Widgets) deserves our thanks for the following:
+ - It provided ideas for Bloret Launcher's UI.
+ - Bloret Launcher has been added to the Class Widgets plugin marketplace.
+ - [@RinLit](https://github.com/RinLit-233-shiroko) provided coding guidance for this project.
+ - [[not cw] Help: why does it crash? #392](https://github.com/orgs/Class-Widgets/discussions/392)
+ - [How to make a dropdown selector? #338](https://github.com/orgs/Class-Widgets/discussions/338)
 </details>
 
-## 星标历史
+## Star History
 
 <a href="https://www.star-history.com/?repos=BloretCrew%2FBloret-Launcher&type=date&legend=top-left">
  <picture>
@@ -187,8 +186,8 @@ FreeBSD 安装与 Minecraft 运行说明见 **[docs/FreeBSD.md](docs/FreeBSD.md)
  </picture>
 </a>
 
-## 相关链接
-[Bloret QQ 群](https://qm.qq.com/q/clE5KHaVDG)
+## Related Links
+[Bloret QQ Group](https://qm.qq.com/q/clE5KHaVDG)
 [Bloret Launcher Website](https://launcher.bloret.net/)
 [Bloret PassPort](https://passport.bloret.net/)
 [Bloret Software Community (599419775)](https://qm.qq.com/q/Z2QxjXejCy)

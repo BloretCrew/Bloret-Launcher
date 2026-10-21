@@ -1,4 +1,4 @@
-name: 应用程序打包 - Nuitka
+name: Build - Nuitka
 
 permissions:
   contents: write
@@ -18,8 +18,8 @@ jobs:
             artifact: Bloret-Launcher
           - os: ubuntu-latest
             artifact: Bloret-Launcher-Linux
-          # macOS 由 build.yml (PyInstaller) 负责打包；
-          # Nuitka 在 macOS runner 上存在资源耗尽导致静默失败的问题，暂不启用。
+          # macOS builds are handled by build.yml (PyInstaller);
+          # Nuitka can exhaust resources on macOS runners and fail silently, so it is disabled for now.
           # - os: macos-15-intel
           #   artifact: Bloret-Launcher-MacOS-Intel
           # - os: macos-latest
@@ -29,13 +29,13 @@ jobs:
       PYTHON_VERSION: '3.10'
       OUTPUT_DIR: 'output'
     steps:
-    - name: 检出最新版本（含子模块）
+    - name: Check out latest version（含子模块）
       uses: actions/checkout@v4
       with:
         ref: ${{ github.ref }}
         submodules: true
 
-    - name: 检查和修复子模块指针
+    - name: Check and repair submodule pointers
       run: |
         set -e
         git submodule foreach --recursive '
@@ -44,7 +44,7 @@ jobs:
           # 跳过 SSH-only 子模块（如 wiki）
           case "$remote_url" in *github.com:*@github.com:*) exit 0 ;; esac
           commit=$(git rev-parse HEAD)
-          # 用 fetch 检测 commit 是否在远端存在（ls-remote 按 ref 名匹配，不可靠）
+          # Use fetch to check whether the commit exists remotely (ls-remote matches by ref name and is unreliable)
           if ! git fetch origin "$commit" --depth=1 2>/dev/null; then
             echo "::warning::$name: commit $commit 不在远端，自动修复（仅本 job 生效）..."
             default_branch=$(git ls-remote --symref origin HEAD 2>/dev/null \
@@ -58,28 +58,28 @@ jobs:
             echo "✓ $name @ $commit"
           fi
         '
-        echo "✔ 检查完成（修复仅用于本 job 继续构建，不回写远端）"
+        echo "✔ Check complete (fixes are local to this job and are not pushed back)"
       shell: bash
 
-    - name: 设置 Python
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: 安装依赖
+    - name: Install dependencies
       run: |
         python -m pip install --upgrade pip wheel
         pip install -r requirements.txt
-        # 安装兼容版本的 setuptools，避免与 Nuitka 内部 jinja2 的冲突
+        # Install a compatible setuptools version to avoid conflicts with Nuitka's bundled jinja2
         # setuptools >= 75.8.1 required for sip 6.15.1
         # setuptools < 80 recommended for Nuitka compatibility
         python -m pip install "setuptools>=75.8.1,<80"
-        # 确保使用最新版 Nuitka 以获得最佳兼容性
+        # Ensure the latest Nuitka is used for best compatibility
         python -m pip install --upgrade nuitka
         pip install pillow zstandard ordered-set
         # PySide6 6.11.1 的 Linux wheel 在 QML 目录中包含静态库/目标文件。
         # Nuitka 会误把这些文件当作共享库交给 patchelf，导致打包失败。
-        # 它们仅用于 Qt 自身构建，运行时不需要，打包前安全移除。
+        # They are only needed to build Qt itself, not at runtime, so remove them safely before packaging.
         if [ "${{ runner.os }}" == "Linux" ]; then
           PYSIDE_QML_DIR=$(python -c "from PySide6.QtCore import QLibraryInfo; print(QLibraryInfo.path(QLibraryInfo.LibraryPath.QmlImportsPath))")
           find "$PYSIDE_QML_DIR" -type f \( -name '*.o' -o -name '*.a' -o -name '*.prl' \) -delete
@@ -91,7 +91,7 @@ jobs:
         fi
       shell: bash
 
-    - name: 下载平台专属 EasyTier
+    - name: Download platform-specific EasyTier
       run: |
         EASYTIER_VERSION="v2.6.4"
         ARCH=$(uname -m)
@@ -126,7 +126,7 @@ jobs:
         if [ -n "$EASYTIER_ZIP" ]; then
           rm -rf easytier
           mkdir -p easytier
-          # 优先使用 gh CLI 下载（自带重试），失败则回退到 curl
+          # Prefer the gh CLI (built-in retries); fall back to curl on failure
           if command -v gh &>/dev/null; then
             gh release download "$EASYTIER_VERSION" -R "EasyTier/EasyTier" -p "$EASYTIER_ZIP" || \
               curl -L --retry 3 --retry-delay 5 -o "$EASYTIER_ZIP" "https://github.com/EasyTier/EasyTier/releases/download/${EASYTIER_VERSION}/${EASYTIER_ZIP}"
@@ -153,7 +153,7 @@ jobs:
       shell: bash
 
     # 非 onefile：--standalone 目录分发，启动时不再整包解压到临时目录
-    - name: 使用 Nuitka 打包 (Windows)
+    - name: Package with Nuitka (Windows)
       if: runner.os == 'Windows'
       run: |
         $EASYTIER_ARG = if (Test-Path "easytier") { "--include-data-dir=easytier=easytier" } else { "" }
@@ -183,7 +183,7 @@ jobs:
           Bloret-Launcher.py
       shell: pwsh
 
-    - name: 代码签名 (Windows 主程序)
+    - name: Code sign (Windows main executable)
       if: runner.os == 'Windows'
       env:
         WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
@@ -213,7 +213,7 @@ jobs:
 
       shell: pwsh
 
-    - name: 使用 Nuitka 打包 (Linux)
+    - name: Package with Nuitka (Linux)
       if: runner.os == 'Linux'
       run: |
         EASYTIER_ARG=""
@@ -224,7 +224,7 @@ jobs:
         if [ -f bloret.ico ]; then EXTRA_FILES="$EXTRA_FILES --include-data-files=bloret.ico=bloret.ico"; fi
         if [ -f servers.dat ]; then EXTRA_FILES="$EXTRA_FILES --include-data-files=servers.dat=servers.dat"; fi
         if [ -f JavaWrapper.jar ]; then EXTRA_FILES="$EXTRA_FILES --include-data-files=JavaWrapper.jar=JavaWrapper.jar"; fi
-        # Linux 的 PySide6 不提供 styles 插件族；sensible 会选择平台所需插件，qml 用于 QML UI。
+        # PySide6 on Linux does not provide the styles plugin family; sensible selects the plugins the platform needs, and qml is for the QML UI.
         python -m nuitka \
           --standalone \
           --enable-plugin=pyside6 \
@@ -244,7 +244,7 @@ jobs:
           Bloret-Launcher.py
       shell: bash
 
-    - name: 修复 OpenSSL 依赖 (macOS)
+    - name: Fix OpenSSL dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
         # 定位 Python 的 lib-dynload 目录
@@ -268,10 +268,10 @@ jobs:
         cp "$LIBSSL" "$DYNLOAD_PATH/"
         cp "$LIBCRYPTO" "$DYNLOAD_PATH/"
         
-        # 修改库的权限以便修改（默认可能是只读）
+        # Make the library writable (it may be read-only by default)
         chmod u+w "$DYNLOAD_PATH/libssl.3.dylib" "$DYNLOAD_PATH/libcrypto.3.dylib"
         
-        # 定义 patch 函数
+        # Define the patch function
         patch_lib() {
             local target=$1
             local libssl_name="libssl.3.dylib"
@@ -282,11 +282,11 @@ jobs:
                 # 修改权限
                 sudo chmod u+w "$target"
                 
-                # 修改依赖路径为 @loader_path (即当前目录)
-                # 注意：原始路径可能是 /usr/local/opt/openssl@3/lib/libssl.3.dylib 或类似
-                # 我们尝试查找并替换所有指向 Homebrew OpenSSL 的引用
+                # Change the dependency path to @loader_path (the current directory)
+                # Note: the original path may be /usr/local/opt/openssl@3/lib/libssl.3.dylib or similar
+                # Try to find and replace all references to Homebrew OpenSSL
                 
-                # 获取当前依赖
+                # Get the current dependency
                 otool -L "$target"
                 
                 sudo install_name_tool -change "$LIBSSL" "@loader_path/$libssl_name" "$target"
@@ -307,17 +307,17 @@ jobs:
         SSL_MOD=$(find "$DYNLOAD_PATH" -name "_ssl*.so" | head -n 1)
         patch_lib "$SSL_MOD"
         
-        # Patch libssl.3.dylib 本身可能依赖 libcrypto.3.dylib
+        # Patch libssl.3.dylib, which may itself depend on libcrypto.3.dylib
         TARGET_LIBSSL="$DYNLOAD_PATH/libssl.3.dylib"
         patch_lib "$TARGET_LIBSSL"
         
         echo "Dependency patch completed."
       shell: bash
 
-    - name: 使用 Nuitka 打包 (macOS)
+    - name: Package with Nuitka (macOS)
       if: runner.os == 'macOS'
       run: |
-        # 避免使用 Homebrew 的 OpenSSL，使用 Python 内建或系统库
+        # Avoid Homebrew OpenSSL; use Python's built-in or system libraries
         unset OPENSSL_DIR
         unset LDFLAGS
         unset CPPFLAGS
@@ -342,7 +342,7 @@ jobs:
         if [ ! -z "$ICON_SOURCE" ]; then
           mkdir -p build_assets/Bloret.iconset
           for size in 16 32 128 256 512; do
-            # 计算 80% 的尺寸用于内容，其余为留白
+            # Use 80% of the size for content and leave the rest as padding
             content_size=$(python3 -c "print(int($size * 0.8))")
             sips -z $content_size $content_size $ICON_SOURCE --out temp_content.png
             # 正常尺寸
@@ -362,8 +362,8 @@ jobs:
         EASYTIER_ARG=""
         if [ -d "easytier" ] && [ "$(ls -A easytier)" ]; then EASYTIER_ARG="--include-data-dir=easytier=easytier"; fi
 
-        # OpenSSL 依赖通过上面的环境变量配置处理
-        # macOS runner 资源有限，限制并行编译并独立输出目录，避免 OOM/磁盘/路径冲突
+        # OpenSSL dependencies are handled by the environment variables above
+        # macOS runners have limited resources; limit parallel compilation and use a separate output directory to avoid OOM, disk, and path conflicts
         mkdir -p nuitka-output
         df -h . | tail -1
         python -m nuitka --standalone --macos-create-app-bundle --macos-app-name="Bloret Launcher" $ICON_CMD --enable-plugin=pyside6 --include-qt-plugins=sensible,styles,qml --include-data-dir=qml=qml --include-data-dir=RinUI/RinUI=RinUI --include-data-dir=icon=icon --include-data-dir=lang=lang $EASYTIER_ARG --include-data-dir=modules=modules --noinclude-dlls='libssl*' --noinclude-dlls='libcrypto*' --noinclude-dlls='*/libssl.*' --noinclude-dlls='*/libcrypto.*' --static-libpython=no --jobs=2 --output-dir=nuitka-output Bloret-Launcher.py
@@ -379,7 +379,7 @@ jobs:
           DMG_NAME="Bloret-Launcher-macOS-arm.dmg"
         fi
 
-        # 创建简单的背景图 (可选，如果 Pillow 可用)
+        # Create a simple background image (optional, if Pillow is available)
         python3 -c "from PIL import Image, ImageDraw; img = Image.new('RGB', (600, 400), (240, 240, 240)); draw = ImageDraw.Draw(img); draw.polygon([(250, 200), (350, 200), (350, 150), (450, 250), (350, 350), (350, 300), (250, 300)], fill=(100, 100, 100)); img.save('dmg_bg.png')" || true
 
         rm -f "$DMG_NAME"
@@ -399,9 +399,9 @@ jobs:
           "$APP_PATH"
       shell: bash
 
-    - name: 收集产物
+    - name: Collect artifacts
       run: |
-        # Windows runner 通常无 zip 命令，用 Python 做跨平台归档
+        # Windows runners usually lack the zip command, so use Python for cross-platform archiving
         make_zip() {
           local src_dir="$1"
           local zip_path="$2"
@@ -504,7 +504,7 @@ jobs:
           ./appimagetool --appimage-extract-and-run AppDir "${{ env.OUTPUT_DIR }}/Bloret-Launcher-Linux.AppImage"
           mkdir -p "${{ env.OUTPUT_DIR }}/Bloret-Launcher"
           cp -a "$DIST_DIR"/. "${{ env.OUTPUT_DIR }}/Bloret-Launcher/"
-          # 兜底：确保 standalone zip 内也有旁路资源（与 Windows 收集逻辑一致）
+          # Fallback: ensure the standalone zip also contains bypass resources (consistent with the Windows collection logic)
           for f in LICENSE bloret.ico config.json JavaWrapper.jar Bloret.png Bloret-Fluent.png servers.dat; do
             if [ -f "$f" ] && [ ! -f "${{ env.OUTPUT_DIR }}/Bloret-Launcher/$f" ]; then
               cp "$f" "${{ env.OUTPUT_DIR }}/Bloret-Launcher/$f"
@@ -517,7 +517,7 @@ jobs:
         fi
       shell: bash
 
-    - name: 上传构建产物
+    - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact }}
@@ -529,13 +529,13 @@ jobs:
     needs: [Build-All, Build-Setup]
     runs-on: ubuntu-latest
     steps:
-      - name: 下载 Windows 构建产物
+      - name: Download Windows build artifacts
         uses: actions/download-artifact@v4
         with:
           name: Bloret-Launcher
           path: Bloret-Launcher-Windows
 
-      - name: 下载 Linux 构建产物
+      - name: Download Linux build artifacts
         uses: actions/download-artifact@v4
         with:
           name: Bloret-Launcher-Linux
@@ -547,22 +547,22 @@ jobs:
       #     name: Bloret-Launcher-MacOS-Intel
       #     path: Bloret-Launcher-MacOS-Intel
 
-      # macOS 产物由 build.yml (PyInstaller) 提供，这里不再下载 Nuitka macOS 产物
+      # macOS artifacts are provided by build.yml (PyInstaller); do not download Nuitka macOS artifacts here
       # - name: 下载 MacOS ARM 构建产物
       #   uses: actions/download-artifact@v4
       #   with:
       #     name: Bloret-Launcher-MacOS-ARM
       #     path: Bloret-Launcher-MacOS-ARM
 
-      - name: 下载安装程序
+      - name: Download installer
         uses: actions/download-artifact@v4
         with:
           name: Bloret-Launcher-Setup
 
-      - name: 整理发布文件
+      - name: Organize release files
         run: |
           mkdir -p release_assets
-          # standalone / onedir：优先上传 zip 目录包，兼容残留的单 exe
+          # standalone / onedir: prefer the zip directory package and remain compatible with leftover single executables
           if [ -f Bloret-Launcher-Windows/Bloret-Launcher-Windows-standalone.zip ]; then
             cp Bloret-Launcher-Windows/Bloret-Launcher-Windows-standalone.zip release_assets/
           elif [ -d Bloret-Launcher-Windows/Bloret-Launcher ]; then
@@ -586,7 +586,7 @@ jobs:
           # cp Bloret-Launcher-MacOS-ARM/*.dmg release_assets/ || true
           cp Bloret-Launcher-Setup.exe release_assets/
 
-      - name: 上传到 Release
+      - name: Upload to Release
         uses: softprops/action-gh-release@v1
         with:
           files: release_assets/*
@@ -597,21 +597,21 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: 检出最新版本
+    - name: Check out latest version
       uses: actions/checkout@v4
       with:
         ref: ${{ github.ref }}
 
-    - name: 创建输出目录并清理
+    - name: Create output directory and clean
       run: |
         # 强制创建目录并清理旧内容
         New-Item -ItemType Directory -Force -Path "output"
         Remove-Item -Path "output/*" -Recurse -ErrorAction Ignore
       shell: pwsh
 
-    - name: 复制所有文件（排除 .git 和 output）
+    - name: Copy all files (excluding .git and output)
       run: |
-        # 递归复制所有文件到 output 目录，排除 .git 和 output 目录
+        # Recursively copy all files to output, excluding .git and output
         Copy-Item -Path "*" -Destination "output" -Recurse -Exclude @(".git", "output")
         # 确保 LICENSE 文件被复制
         if (Test-Path "LICENSE") {
@@ -622,13 +622,13 @@ jobs:
         }
       shell: pwsh
 
-    - name: 创建压缩包
+    - name: Create archive
       run: |
         # 直接压缩 output 目录内容为 Code-Package.zip
         Compress-Archive -Path "output/*" -DestinationPath "output/Code-Package.zip" -Force
       shell: pwsh
 
-    - name: 上传压缩包
+    - name: Upload archive
       uses: actions/upload-artifact@v4
       with:
         name: Code-Package
@@ -638,19 +638,19 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: 检出最新版本
+    - name: Check out latest version
       uses: actions/checkout@v4
       with:
-        # 使用触发分支上的 Setup.iss，不要写死 Windows 旧单 exe 脚本
+        # Use Setup.iss from the triggering branch; do not hard-code the old Windows single-exe script
         ref: ${{ github.ref }}
 
-    - name: 下载构建产物
+    - name: Download build artifacts
       uses: actions/download-artifact@v4
       with:
         name: Bloret-Launcher
         path: output
 
-    - name: 准备 standalone 安装资源
+    - name: Prepare standalone installer resources
       run: |
         $ErrorActionPreference = "Stop"
         Write-Host "=== output tree (depth 2) ==="
@@ -696,24 +696,24 @@ jobs:
         }
       shell: pwsh
 
-    - name: 展示完整文件夹目录
+    - name: Show full folder contents
       run: |
         Write-Host "当前文件夹目录结构如下："
         Get-ChildItem -Path "output" -Recurse -Depth 2 | Format-Table -AutoSize
       shell: pwsh
 
-    - name: 设置系统语言为简体中文
+    - name: Set system language to Simplified Chinese
       run: |
         Set-WinSystemLocale -SystemLocale zh-CN
-        Write-Host "系统语言已设置为简体中文"
+        Write-Host "System language set to Simplified Chinese"
       shell: pwsh
 
-    - name: 安装 Inno Setup
+    - name: Install Inno Setup
       run: |
         choco install innosetup --yes
       shell: pwsh
 
-    - name: 代码签名 (安装目录内 exe)
+    - name: Code sign (executables in install directory)
       env:
         WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
         WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
@@ -730,12 +730,12 @@ jobs:
 
       shell: pwsh
 
-    - name: 运行 Inno Setup 构建安装程序
+    - name: Run Inno Setup to build installer
       run: |
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
       shell: pwsh
 
-    - name: 代码签名 (安装程序)
+    - name: Code sign (installer)
       env:
         WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
         WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
@@ -752,7 +752,7 @@ jobs:
 
       shell: pwsh
 
-    - name: 上传安装程序
+    - name: Upload installer
       uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher-Setup
@@ -765,7 +765,7 @@ jobs:
     #     VERSION_NAME="${{ github.event.release.name }}"
     #     DESCRIPTION=${{ toJSON(github.event.release.body) }}
     #     
-    #     # 调用API更新为测试版
+    #     # Call the API to update to a test release
     #     curl -X POST https://launcher.bloret.net/api/newversion/github \
     #       -H "Content-Type: application/json" \
     #       -d "{\"key\":\"${{ secrets.BLORET_LAUNCHER_WEBSITE }}\",\"beta\":true,\"version\":\"$VERSION\",\"versionName\":\"$VERSION_NAME\",\"description\":$DESCRIPTION}"

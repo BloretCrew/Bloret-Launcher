@@ -1,95 +1,95 @@
-# Bloret 开源项目行为准则
+# Bloret Open Source Project Code of Conduct
 
-我们遵循 [百络管理条例](https://wiki.bloret.net/zh/rules) 和 [百络玩家守则](https://wiki.bloret.net/zh/rules/play)
+We follow the [Bloret Management Rules](https://wiki.bloret.net/zh/rules) and the [Bloret Player Code](https://wiki.bloret.net/zh/rules/play).
 
-## 管理条例
+## Management Rules
 
-在此了解百络谷各方面的管理条例。
-在一般情况下，您需要在百络谷服务器中遵守这些社区守则，否则可能会受到相应的惩罚，包括但不限于临时禁言、临时封禁或永久封禁等。
+Learn about the management rules for all aspects of Bloret here.
+In general, you must follow these community rules on the Bloret server. Otherwise, you may receive penalties including, but not limited to, temporary mutes, temporary bans, or permanent bans.
 
-您可以在此快速了解管理条例中重要的几部分。通常情况下，您只需要注意这几点重要的规则，就可以在百络谷中尽情游玩，无需考虑过多。
+This section gives you a quick overview of the most important parts of the rules. In most cases, you only need to follow these key rules to enjoy Bloret without worrying about the rest.
 
-以下内容仅供玩家便捷地大致了解管理条例的内容，请以管理条例原文为准。
+The following summary is provided only to help players understand the rules. The original rules take precedence.
 
-1. 文明聊天，不要发布违法违规等不健康内容以及传播谣言，反对服务器或服务器管理组的内容；  
-2. 与其他玩家保持友善态度，不要破坏他人财产或干扰他人游玩，如遇冲突，切勿冲动扩大事态，立即向管理员私信求助；  
-3. 请勿使用任何破坏游戏公平即有作弊性质的模组或客户端进入游戏；  
-4. 注意保护好自己的账号，建议设置安全邮箱来提升账号的安全性；  
-5. 请勿利用服务器漏洞违规获取物资，发现漏洞请及时私信上报管理员，切勿告知他人；  
-6. 不要在服务器的任何交流渠道发送其他服务器的截屏或 IP 等存在宣传性质的内容，也不要打服务器外的小广告；  
-7. 如需赞助，请联系 Xupipi 或 Rhedar ，当心被骗；  
-8. 不要创建过多小号进入服务器，也不要利用小号刷取奖励和资源。
+1. Chat respectfully. Do not post illegal, unhealthy, or otherwise inappropriate content, spread rumors, or oppose the server or its administration team.
+2. Be friendly to other players. Do not damage others' property or interfere with their gameplay. If a conflict arises, do not escalate it; contact an administrator privately for help.
+3. Do not use any mods or clients that break game fairness or amount to cheating.
+4. Protect your account. We recommend setting a security email to improve account security.
+5. Do not exploit server vulnerabilities to obtain items improperly. If you find a vulnerability, report it to an administrator privately and do not tell others.
+6. Do not post screenshots, IP addresses, or other promotional content about other servers in any server communication channel, and do not post advertisements for outside services.
+7. If you wish to sponsor the server, contact Xupipi or Rhedar, and beware of scams.
+8. Do not create excessive alt accounts to join the server, and do not use alt accounts to farm rewards or resources.
 
-## 玩家守则
+## Player Code
 
-在此了解作为百络谷的玩家及用户，您所需要遵守的规则
+Learn about the rules you must follow as a Bloret player and user.
 
 > [!WARNING]
-> 在您使用百络谷服务器提供的任何游戏服务之前，请确保您已详细阅读并接受本协议。注册百络谷服务器账号表示您已详细阅读并接受本协议。若您不同意该协议中的任何内容，请勿游玩百络谷服务器或接受其提供的相关服务。
+> Before using any game service provided by the Bloret server, make sure you have read and accepted this agreement in detail. Registering a Bloret server account means that you have read and accepted this agreement. If you do not agree with any part of this agreement, do not play on the Bloret server or use its related services.
 
-### 一. 发言与行为规范
+### 1. Speech and Conduct
 
-1. 注意游戏内用语，自觉不做出或发布涉及政治、反国家、反党、反社会、涉黄赌毒、政治敏感、违法犯罪等行为与言论，经查属实后处以 永久封禁 ，情节严重的 上报有关部门 。  
-2. 玩家见应友好和谐，不发布人身攻击言论，不恶意辱骂、故意挑起争端、挑动玩家群体对立等。经查属实后处以 1小时以上24小时以下禁言或12小时及以上封禁 。
-3. 如果您与其他玩家发生冲突，请在事端变大前向管理员寻求帮助。
-4. 任何情况下避免暴力纠纷。这可能会给双方带来不好的影响，您也可能会因过激行为受到处罚。
-5. 不在游戏内刷屏、发布大量无意义、不健康或令人不适的内容，不散播服务器内容相关谣言、误导其他玩家等。经查属实后处以 24小时以上禁言或3天及以上封禁 。
-6. 不发布与游戏内容无关的商业广告/宣传内容，不发布损害服务器利益的内容等内容。经查属实后依情况处以 7天或以上封禁 ，严重者或二次违反者处以 永久封禁。
-    包括但不限于：恶意通过服务器内聊天，告示牌，交流群，交流频道内宣传其他服务器、公然恶意抹黑服务器，冒充、辱骂服务器服主，管理员等维护、开发人员等。
-7. 注重他人游戏体验，不破坏、偷盗、恶意占有其他玩家所有财产，不破坏玩家建筑。经查属实后处以 3天或以上封禁 。
-8. 禁止尝试危害服务器系统安全、社区稳定、市场稳定等。经查属实后处以 14天或以上封禁 。
-    包括但不限于：恶意建造可能导致卡服的结构、使用任意方式创建Ban 人塔、Ban 人书、搜寻服务器机制、规则漏洞且蛮不上报。
+1. Be mindful of your in-game language. Do not engage in or publish content involving politics, opposition to the state or the Party, anti-social content, pornography, gambling, drugs, politically sensitive topics, or illegal activities. Verified violations will result in a **permanent ban**; serious cases will be reported to **the relevant authorities**.
+2. Players should be friendly and harmonious. Do not make personal attacks, insult others maliciously, deliberately start disputes, or incite divisions among players. Verified violations will result in a **mute of 1 to 24 hours or a ban of 12 hours or more**.
+3. If you have a conflict with another player, ask an administrator for help before the situation escalates.
+4. Avoid violent disputes under all circumstances. They may have a negative impact on both sides, and you may be penalized for aggressive behavior.
+5. Do not spam in-game, post large amounts of meaningless, unhealthy, or uncomfortable content, spread rumors about the server, or mislead other players. Verified violations will result in a **mute of 24 hours or more or a ban of 3 days or more**.
+6. Do not post commercial advertisements or promotional content unrelated to the game, and do not post content that harms the server's interests. Verified violations will result in a **ban of 7 days or more depending on the circumstances**; serious or repeat violations will result in a **permanent ban**.
+    This includes, but is not limited to: maliciously promoting other servers through server chat, signs, community groups, or communication channels; publicly and maliciously defaming the server; impersonating or insulting the server owner, administrators, or other maintenance and development staff.
+7. Respect other players' experience. Do not destroy, steal, or maliciously take possession of other players' property, and do not damage their buildings. Verified violations will result in a **ban of 3 days or more**.
+8. Do not attempt to endanger the server's system security, community stability, or market stability. Verified violations will result in a **ban of 14 days or more**.
+    This includes, but is not limited to: maliciously building structures that may lag the server, creating ban towers or ban books by any means, or discovering server mechanics or rule loopholes and deliberately failing to report them.
 
-### 二. 公平游戏规范
+### 2. Fair Play
 
-1. 严禁使用第三方作弊客户端等恶性外挂、脚本及任何破坏游戏平衡的功能。首次经查属实后依情况处以 7天以上30天以下封禁 ，严重者或二次触犯者处以 永久封禁。
-2. 可以添加部分合理的游戏辅助性辅助模组，例如 Litematica 等，如果不知道某辅助模组是否可使用，建议询问服务器管理员。
-3. 严禁利用服务器漏洞获利。发现服务器漏洞后应及时报告给服务器管理员。经查属实后处以 14天或以上封禁 ，严重者处以 永久封禁。
-    包括但不限于：利用漏洞刷取服务器金币、大厅积分、创悦谷金币、络琅和利用破坏游戏平衡方式获取的游戏内物品、财产。
-4. 禁止通过任何形式向其他玩家传播服务器漏洞和作弊软件等。严禁在服务器交流群、游戏公平等位置讨论外挂、作弊和漏洞等。经查属实后酌情惩罚，严重者处以 1个月或以上封禁 。
-5. 不在游戏内进行商业欺诈，游玩时应履行与其他玩家的交易合约等。经查属实后 10倍扣除所得财产 ，并处以 14天或以上封禁 。
-6. 参与服务器内由管理层举办的活动、比赛时，违法公平竞争原则且未违反其他条例者，举办方有权取消选手比赛成绩、资格，并实施禁赛、限制游戏等处罚，严重者酌情处以 封禁或限制游戏 。
-7. 严禁通过开小号等特殊手段多次领取服务器礼包、补偿、在竞争中取得优势等。一经发现处以 10倍扣除所得财产 ，并处以 7天或以上封禁 。
+1. Third-party cheating clients, malicious cheats, scripts, and any features that break game balance are strictly prohibited. First verified violations will result in a **ban of 7 to 30 days depending on the circumstances**; serious or repeat violations will result in a **permanent ban**.
+2. Reasonable gameplay-assistance mods such as Litematica are allowed. If you are unsure whether an assistance mod is allowed, ask a server administrator.
+3. Exploiting server vulnerabilities for profit is strictly prohibited. Report server vulnerabilities to the server administration promptly after discovering them. Verified violations will result in a **ban of 14 days or more**; serious cases will result in a **permanent ban**.
+    This includes, but is not limited to: using vulnerabilities to farm server coins, lobby points, Chuangyue Valley coins, or Luolang, or obtaining in-game items or property in ways that break game balance.
+4. Do not spread server vulnerabilities or cheating software to other players in any form. Discussing cheats, cheating, or vulnerabilities in server community groups, in-game fairness channels, or similar places is strictly prohibited. Verified violations will be penalized as appropriate; serious cases will result in a **ban of 1 month or more**.
+5. Do not engage in commercial fraud in-game. Fulfill trade agreements with other players. Verified violations will result in **deduction of 10 times the property obtained** and a **ban of 14 days or more**.
+6. When participating in activities or competitions organized by the management team, violating the principle of fair competition without violating other rules may result in the organizer canceling the player's results or eligibility and imposing competition bans or game restrictions. Serious cases will result in a **ban or game restriction as appropriate**.
+7. Using alt accounts or other special means to repeatedly claim server gift packs, compensation, or gain an advantage in competitions is strictly prohibited. Verified violations will result in **deduction of 10 times the property obtained** and a **ban of 7 days or more**.
 
-### 三. 个人账户与财产安全
+### 3. Personal Accounts and Property Security
 
-1. 玩家间互相交易时，请擦亮眼睛，提防诈骗。
-2. 不与其他玩家私下使用现实货币、虚拟货币（如人民币、美元、比特币等）交易，一旦被骗后后果自行承担。一经发现此类行为处以 3个月或以上封禁 ，严重者处以 永久封禁。
-3. 请使用安全性较强的密码，正版玩家可使用 /premium 指令开启正版验证。
-    强烈建议您使用 /setemail 命令为您的账户绑定一个安全邮箱，方便您找回密码。
-4. 严禁通过任何方式尝试非法占有、使用他人的百络谷服务器账户、骗取其他玩家的正版账户等。一经发现此类行为处以 6个月或以上封禁 。
-5. 由于擅自通过转让、外借等方式将账户供他人使用导致的账户和财产丢失，后果自行承担。
-6. 严禁通过特殊方式绕过服务器限制，创建大量账户进入服务器。
-7. 由于存在加密措施，我们无法获取您注册时填写的密码等信息。我们会妥善保管您提供的安全邮箱等其他信息，除您的要求外，我们不会利用、转让、公开披露您输入的个人信息。如果您想要注销账户并删除个人信息，可以联系服务器管理员。
+1. Be careful when trading with other players, and guard against scams.
+2. Do not trade with other players privately using real currency or virtual currency (such as RMB, USD, or Bitcoin). If you are scammed, you bear the consequences. Verified violations will result in a **ban of 3 months or more**; serious cases will result in a **permanent ban**.
+3. Use a strong password. Premium players can use the `/premium` command to enable premium verification.
+    We strongly recommend using the `/setemail` command to bind a security email to your account so you can recover your password.
+4. Attempting to illegally take possession of or use another player's Bloret server account, or defrauding other players of their premium accounts, is strictly prohibited. Verified violations will result in a **ban of 6 months or more**.
+5. If you lose your account or property because you transferred or lent your account to others, you bear the consequences.
+6. Do not bypass server restrictions by special means or create large numbers of accounts to join the server.
+7. Because of encryption, we cannot obtain information such as the password you entered during registration. We will properly protect other information you provide, such as your security email. We will not use, transfer, or publicly disclose the personal information you enter except at your request. If you want to delete your account and personal information, contact a server administrator.
 
-### 四. 违规处罚与举报奖励
+### 4. Penalties and Reporting Rewards
 
-1. 对于违反服务器管理条例的玩家，管理员将根据违规情节轻重，同时参考本管理条例，实施相应处罚。
-2. 若玩家对处罚结果有异议，可通过 QQ 等向管理员提交你的申诉。封禁代号（若处罚为封禁）、申诉理由、证据等需报告明晰。
+1. Administrators will impose penalties based on the severity of the violation and these rules.
+2. If you disagree with a penalty, you may submit an appeal to an administrator via QQ or another channel. Include the ban ID (if the penalty is a ban), the reason for the appeal, and evidence.
 
-### 五. 关于赞助
+### 5. Sponsorship
 
-**赞助相关内容将在 2025 年暑假的新周目大幅变更，以下内容仅对当前周目有效，但您不会因此受到损失。**
+**Sponsorship-related content will change significantly in the new season in summer 2025. The following content applies only to the current season, and you will not suffer any loss because of the change.**
 
-1. 您赞助的资金我们会全部投入于服务器开发、运营，赞助者有权申请监督。
-2. 赞助应当完全出于您的自愿。如需赞助，请联系服务器 QQ 群内的 Rhedar 或 Xupipi，获取赞助方式。除此之外暂无其他赞助途径，谨防上当受骗。
-3. 严禁冒充服务器管理员等骗取其他玩家的赞助。一经发现此类行为处以 永久封禁，严重者上报有关部门。
-4. 未成年人赞助请得到家长的许可。
-5. 关于本周目赞助者等级的特殊权益请在游戏内查看。
+1. All sponsorship funds will be invested in server development and operations. Sponsors have the right to request oversight.
+2. Sponsorship is entirely voluntary. If you wish to sponsor, contact Rhedar or Xupipi in the server QQ group to learn how. There are no other sponsorship channels; beware of scams.
+3. Impersonating server administrators or others to obtain sponsorship from other players is strictly prohibited. Verified violations will result in a **permanent ban**; serious cases will be reported to **the relevant authorities**.
+4. Minors must obtain parental permission before sponsoring.
+5. For special benefits related to this season's sponsor tiers, see the in-game information.
 
 > [!NOTE]
-> 注释项  
-> **文中所有词句，应按照此条目及此条目下辖条目理解。未有标明而存有争议之词句，依一般方向理解；若存在理解分歧，应公开投票解决歧义并修正条文。**
+> Notes
+> **All terms in this document should be understood according to this section and the sections below it. Terms that are not specified but are disputed should be understood in their ordinary sense. If a disagreement in interpretation arises, resolve the ambiguity by public vote and amend the text.**
 >
-> 文中所提及之“处以”指对犯下该款项玩家的处罚；“......或以上封禁”指对该玩家所处封禁时间，无特殊情况下指封禁该账户和该账户所在IP。“或以上”代表所处条款所规定的处罚范围并非定量，具体处罚时间由管理层在依据条款规范下，根据用户行为进行适度量刑。若玩家同时违反多项条例，其处罚可按所有违反的条例叠加。  
-> 文中所提及之“广告”、“商业广告”指带有利益性质的宣传行为或任何引流行为；需要特别指出的是：不单指代对其他服务器的宣传。  
-> 文中所提及之“外挂、脚本”本文中指一切可以干涉玩家正常游戏行为并有可能对其他玩家产生负面影响/不当竞争的模组、软件、脚本等，包括但不限于 Killaura、Xray、Bot 等。  
-> 文中所提及之“扣除......财产”所扣除的皆为游戏内虚拟财产，当财产余额不足以抵扣时，酌情加重原条款所提之封禁处罚，原条款无封禁者，额外处以封禁。  
-> 文中所提及之“大量账户”，指2个及以上的游戏帐户。  
-> 文中所提及之“相应处罚”，包括但不限于警告、禁言、临时封禁或永久封禁（IP）、限制创悦谷游戏、QQ 群禁言、踢出群聊、上报有关部门等。需要特别指出的是：处罚最终解释权归服务器管理团队所有。  
-> 文中所提及之“后果自行承担”，指该条款所提及的行为均为“自甘风险”行为，做出该行为（条款所表述的行为）即代表认同该行为可能导致的危险后果。  
-> 本文所提及之“服务器”“游戏内”“服务器qq群”等相关词汇除非另外说明，否则均指 Bloret·百络谷 服务器。  
+> "Impose" refers to the penalty imposed on the player who committed the violation. "A ban of ... or more" refers to the ban duration imposed on the player; unless otherwise specified, it means banning the account and the IP address associated with the account. "Or more" means the penalty range specified in the clause is not fixed; the management team will determine the specific duration based on the user's behavior and these rules. If a player violates multiple rules at the same time, the penalties may be combined.
+> "Advertisement" and "commercial advertisement" refer to promotional behavior with a profit motive or any traffic-diversion behavior. In particular, they do not refer only to promoting other servers.
+> "Cheats" and "scripts" refer to all mods, software, scripts, and similar tools that can interfere with normal gameplay and may negatively affect other players or create unfair competition, including but not limited to Killaura, Xray, and bots.
+> "Deduct ... property" refers to deducting in-game virtual property. If the property balance is insufficient, the ban penalty in the original clause may be increased as appropriate. If the original clause has no ban penalty, an additional ban will be imposed.
+> "Large numbers of accounts" means two or more game accounts.
+> "Corresponding penalties" include, but are not limited to, warnings, mutes, temporary bans, permanent bans (including IP bans), restrictions on Chuangyue Valley games, QQ group mutes, removal from group chats, and reports to the relevant authorities. The server management team has the final right to interpret penalties.
+> "Bear the consequences" means that the behavior described in the clause is undertaken at your own risk, and performing that behavior means accepting the possible dangerous consequences.
+> "Server", "in-game", "server QQ group", and similar terms refer to the Bloret server unless otherwise specified.
 
 ***
 
-这些项目在百络谷开源项目及服务中同样适用。
+These rules also apply to Bloret open source projects and services.

@@ -1,4 +1,4 @@
-name: 应用程序打包 - Pyinstaller
+name: Build - PyInstaller
 
 permissions:
   contents: write
@@ -6,36 +6,36 @@ permissions:
 on:
   push:
     branches:
-      - '**'        # 匹配所有分支
+      - '**'        # Match all branches
     tags-ignore:
-      - '*'         # 忽略所有 tag 推送
+      - '*'         # Ignore all tag pushes
 
 jobs:
   Set-Version:
     runs-on: windows-latest
 
     steps:
-    - name: 检出代码
+    - name: Check out code
       uses: actions/checkout@v4
       with:
         # 版本号脚本只改根目录文件，不需要子模块；
         # 子模块指针若指向未推送 commit，会在这里直接失败并拖垮整条打包流水线。
         submodules: false
-        # 需要 push 回当前分支，保留完整历史以便减少 non-fast-forward
+        # Push back to the current branch; keep full history to reduce non-fast-forward issues
         fetch-depth: 0
 
-    - name: 更新版本号
+    - name: Update version number
       run: |
         python .github/workflows/refresh-version.py
 
-    - name: 提交版本号更新到仓库
+    - name: Commit version update to repository
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git add Bloret-Launcher-Setup.iss
         git add config.json
         if (git status --porcelain -- Bloret-Launcher-Setup.iss config.json) {
-          git commit -m "更新 MyAppVersion 版本号和一些配置文件的默认值。"
+          git commit -m "Update MyAppVersion version and default values in configuration files."
           git push
         } else {
           Write-Host "版本相关文件无变更，跳过提交"
@@ -60,12 +60,12 @@ jobs:
       PYTHON_VERSION: '3.10'
       OUTPUT_DIR: 'output'
     steps:
-    - name: 检出最新版本
+    - name: Check out latest version
       uses: actions/checkout@v4
       with:
         submodules: true
 
-    - name: 检查和修复子模块指针
+    - name: Check and repair submodule pointers
       run: |
         set -e
         git submodule foreach --recursive '
@@ -73,7 +73,7 @@ jobs:
           test -n "$remote_url" || exit 0
           case "$remote_url" in *github.com:*@github.com:*) exit 0 ;; esac
           commit=$(git rev-parse HEAD)
-          # 用 fetch 检测 commit 是否在远端存在（ls-remote 按 ref 名匹配，不可靠）
+          # Use fetch to check whether the commit exists remotely (ls-remote matches by ref name and is unreliable)
           if ! git fetch origin "$commit" --depth=1 2>/dev/null; then
             echo "::warning::$name: commit $commit 不在远端，自动修复（仅本 job 生效）..."
             default_branch=$(git ls-remote --symref origin HEAD 2>/dev/null \
@@ -87,33 +87,33 @@ jobs:
             echo "✓ $name @ $commit"
           fi
         '
-        echo "✔ 检查完成（修复仅用于本 job 继续构建，不回写远端）"
+        echo "✔ Check complete (fixes are local to this job and are not pushed back)"
       shell: bash
 
-    - name: 设置 Python
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: 安装依赖
+    - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         if [ "${{ runner.os }}" == "Windows" ]; then
           pip install -r requirements.txt
         else
-          # 环境标记本可跳过 win 包；再过滤一行，避免旧 pip 行为差异
+          # Environment markers should skip Windows packages; filter one more line to avoid differences in older pip behavior
           grep -ivE '^(pywin32|win11toast|winsdk)([; =]|$)' requirements.txt > req_unix.txt
           pip install -r req_unix.txt
         fi
         pip install pillow pyinstaller
-        # AppImage 需要 FUSE；与 Nuitka-Build 对齐
+        # AppImage requires FUSE; keep this aligned with Nuitka-Build
         if [ "${{ runner.os }}" == "Linux" ]; then
           sudo apt-get update
           sudo apt-get install -y fuse libfuse2
         fi
       shell: bash
 
-    - name: 下载平台专属 EasyTier
+    - name: Download platform-specific EasyTier
       run: |
         EASYTIER_VERSION="v2.6.4"
         ARCH=$(uname -m)
@@ -140,7 +140,7 @@ jobs:
         if [ -n "$EASYTIER_ZIP" ]; then
           rm -rf easytier
           mkdir -p easytier
-          # 优先使用 gh CLI 下载（自带重试），失败则回退到 curl
+          # Prefer the gh CLI (built-in retries); fall back to curl on failure
           if command -v gh &>/dev/null; then
             gh release download "$EASYTIER_VERSION" -R "EasyTier/EasyTier" -p "$EASYTIER_ZIP" || \
               curl -L --retry 3 --retry-delay 5 -o "$EASYTIER_ZIP" "https://github.com/EasyTier/EasyTier/releases/download/${EASYTIER_VERSION}/${EASYTIER_ZIP}"
@@ -167,7 +167,7 @@ jobs:
       shell: bash
 
     # 非 onefile：目录分发，启动时不再整包解压到临时目录
-    - name: 使用 PyInstaller 打包 (Windows)
+    - name: Package with PyInstaller (Windows)
       if: runner.os == 'Windows'
       run: |
         pyinstaller --onedir --noconsole --icon=bloret.ico --name=Bloret-Launcher --noupx `
@@ -175,7 +175,7 @@ jobs:
           --hidden-import=toml --hidden-import=darkdetect --hidden-import=send2trash --hidden-import=psutil --hidden-import=dulwich --hidden-import=qrcode --hidden-import=win11toast --hidden-import=winsdk --paths=. Bloret-Launcher.py
       shell: pwsh
 
-    - name: 代码签名 (Windows 主程序)
+    - name: Code sign (Windows main executable)
       if: runner.os == 'Windows'
       env:
         WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
@@ -194,10 +194,10 @@ jobs:
 
       shell: pwsh
 
-    - name: 使用 PyInstaller 打包 (Linux)
+    - name: Package with PyInstaller (Linux)
       if: runner.os == 'Linux'
       run: |
-        # 已移除 sip / qfluentwidgets（UI 已迁到 PySide6 + modules.compat_widgets）
+        # sip / qfluentwidgets have been removed (the UI now uses PySide6 + modules.compat_widgets)
         EXTRA_DATA=""
         if [ -f servers.dat ]; then EXTRA_DATA="$EXTRA_DATA --add-data servers.dat:."; fi
         if [ -f LICENSE ]; then EXTRA_DATA="$EXTRA_DATA --add-data LICENSE:."; fi
@@ -207,16 +207,16 @@ jobs:
           --hidden-import=toml --hidden-import=darkdetect --hidden-import=send2trash --hidden-import=psutil --hidden-import=dulwich --hidden-import=qrcode --paths=. Bloret-Launcher.py
       shell: bash
 
-    - name: 使用 PyInstaller 打包 (macOS)
+    - name: Package with PyInstaller (macOS)
       if: runner.os == 'macOS'
       run: |
-        # 尝试转换图标格式 (png -> icns) 使用 iconutil
+        # Try converting the icon format (png -> icns) with iconutil
         ICON_CMD=""
         if [ -f "Bloret-Fluent.png" ]; then
           mkdir -p build_assets/Bloret.iconset
           # 生成不同尺寸的图标
           for size in 16 32 128 256 512; do
-            # 计算 80% 的尺寸用于内容，其余为留白
+            # Use 80% of the size for content and leave the rest as padding
             content_size=$(python3 -c "print(int($size * 0.8))")
             sips -z $content_size $content_size Bloret-Fluent.png --out temp_content.png
             # 正常尺寸
@@ -235,7 +235,7 @@ jobs:
           fi
         fi
         
-        # onedir + windowed：生成 .app bundle（不再使用 onefile 启动解压）
+        # onedir + windowed: build an .app bundle (no onefile extraction at startup)
         pyinstaller --onedir --windowed --name="Bloret Launcher" $ICON_CMD \
           --add-data "bloret.ico:." --add-data "Bloret.png:." --add-data "Bloret-Fluent.png:." --add-data "config.json:." --add-data "ui:ui" --add-data "RinUI:RinUI" --add-data "qml:qml" --add-data "icon:icon" --add-data "lang:lang" --add-data "easytier:easytier" --add-data "modules:modules" --add-data "JavaWrapper.jar:." --add-data "LICENSE:." \
           --hidden-import=toml --hidden-import=darkdetect --hidden-import=send2trash --hidden-import=psutil --hidden-import=dulwich --hidden-import=qrcode --paths=. Bloret-Launcher.py
@@ -269,9 +269,9 @@ jobs:
           "dist/Bloret Launcher.app/"
       shell: bash
 
-    - name: 收集产物
+    - name: Collect artifacts
       run: |
-        # Windows runner 通常无 zip 命令，用 Python 做跨平台归档
+        # Windows runners usually lack the zip command, so use Python for cross-platform archiving
         make_zip() {
           local src_dir="$1"
           local zip_path="$2"
@@ -308,7 +308,7 @@ jobs:
           test -d dist/Bloret-Launcher
           test -x dist/Bloret-Launcher/Bloret-Launcher || test -f dist/Bloret-Launcher/Bloret-Launcher
           mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/lib/bloret-launcher
-          # 将 onedir 运行时整体放入 lib，入口脚本调用其中可执行文件
+          # Place the entire onedir runtime in lib; the entry script invokes its executable
           cp -a dist/Bloret-Launcher/. AppDir/usr/lib/bloret-launcher/
           cat > AppDir/usr/bin/bloret-launcher << 'EOF'
         #!/bin/sh
@@ -326,7 +326,7 @@ jobs:
         EOF
           chmod +x AppDir/AppRun
           test -x AppDir/AppRun
-          # 仍附带源树资源作为兜底（onedir 内已含打包数据）
+          # Still include source-tree resources as a fallback (onedir already contains packaged data)
           cp -r RinUI qml ui icon lang config.json LICENSE bloret.ico Bloret.png Bloret-Fluent.png JavaWrapper.jar AppDir/usr/share/ 2>/dev/null || true
           mkdir -p AppDir/usr/share/bloret-launcher
           cp -r RinUI qml ui icon lang config.json LICENSE bloret.ico Bloret.png Bloret-Fluent.png JavaWrapper.jar AppDir/usr/share/bloret-launcher/ 2>/dev/null || true
@@ -369,7 +369,7 @@ jobs:
         fi
       shell: bash
 
-    - name: 上传构建产物
+    - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact }}
@@ -384,12 +384,12 @@ jobs:
       EASYTIER_VERSION: v2.6.4
       OUTPUT_DIR: output
     steps:
-    - name: 检出最新版本
+    - name: Check out latest version
       uses: actions/checkout@v4
       with:
         submodules: true
 
-    - name: 下载 EasyTier FreeBSD 二进制
+    - name: Download EasyTier FreeBSD binaries
       run: |
         EASYTIER_ZIP="easytier-freebsd-13.2-x86_64-${EASYTIER_VERSION}.zip"
         rm -rf easytier
@@ -411,7 +411,7 @@ jobs:
         ls -la easytier/
       shell: bash
 
-    - name: FreeBSD smoke + 打包 zip
+    - name: FreeBSD smoke test + package zip
       uses: vmactions/freebsd-vm@v1
       with:
         release: "14.3"
@@ -465,7 +465,7 @@ jobs:
           fi
           ls -la output/
 
-    - name: 上传 FreeBSD 产物
+    - name: Upload FreeBSD artifact
       uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher-FreeBSD-amd64
@@ -476,21 +476,21 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: 检出最新版本
+    - name: Check out latest version
       uses: actions/checkout@v4
       with:
         submodules: true
 
-    - name: 创建输出目录并清理
+    - name: Create output directory and clean
       run: |
         # 强制创建目录并清理旧内容
         New-Item -ItemType Directory -Force -Path "output"
         Remove-Item -Path "output/*" -Recurse -ErrorAction Ignore
       shell: pwsh
 
-    - name: 复制所有文件（排除 .git 和 output）
+    - name: Copy all files (excluding .git and output)
       run: |
-        # 递归复制所有文件到 output 目录，排除 .git 和 output 目录
+        # Recursively copy all files to output, excluding .git and output
         Copy-Item -Path "*" -Destination "output" -Recurse -Exclude @(".git", "output")
         # 确保 LICENSE 文件被复制
         if (Test-Path "LICENSE") {
@@ -501,13 +501,13 @@ jobs:
         }
       shell: pwsh
 
-    - name: 创建压缩包
+    - name: Create archive
       run: |
         # 直接压缩 output 目录内容为 Code-Package.zip
         Compress-Archive -Path "output/*" -DestinationPath "output/Code-Package.zip" -Force
       shell: pwsh
 
-    - name: 上传压缩包
+    - name: Upload archive
       uses: actions/upload-artifact@v4
       with:
         name: Code-Package
@@ -517,20 +517,20 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: 检出最新版本
+    - name: Check out latest version
       uses: actions/checkout@v4
       with:
         submodules: true
-        # 使用触发分支上的 Setup.iss（onedir），不要写死 Windows 旧脚本
+        # Use Setup.iss from the triggering branch (onedir); do not hard-code the old Windows script
         ref: ${{ github.ref }}
 
-    - name: 下载构建产物
+    - name: Download build artifacts
       uses: actions/download-artifact@v4
       with:
         name: Bloret-Launcher-Windows
         path: output
 
-    - name: 准备 onedir 安装资源
+    - name: Prepare onedir installer resources
       run: |
         $ErrorActionPreference = "Stop"
         Write-Host "=== output tree (depth 2) ==="
@@ -578,24 +578,24 @@ jobs:
         }
       shell: pwsh
 
-    - name: 展示完整文件夹目录
+    - name: Show full folder contents
       run: |
         Write-Host "当前文件夹目录结构如下："
         Get-ChildItem -Path "output" -Recurse -Depth 2 | Format-Table -AutoSize
       shell: pwsh
 
-    - name: 设置系统语言为简体中文
+    - name: Set system language to Simplified Chinese
       run: |
         Set-WinSystemLocale -SystemLocale zh-CN
-        Write-Host "系统语言已设置为简体中文"
+        Write-Host "System language set to Simplified Chinese"
       shell: pwsh
 
-    - name: 安装 Inno Setup
+    - name: Install Inno Setup
       run: |
         choco install innosetup --yes
       shell: pwsh
 
-    - name: 代码签名 (安装目录内 exe)
+    - name: Code sign (executables in install directory)
       env:
         WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
         WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
@@ -612,12 +612,12 @@ jobs:
 
       shell: pwsh
 
-    - name: 运行 Inno Setup 构建安装程序
+    - name: Run Inno Setup to build installer
       run: |
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Bloret-Launcher-Setup.iss"
       shell: pwsh
 
-    - name: 代码签名 (安装程序)
+    - name: Code sign (installer)
       env:
         WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
         WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
@@ -634,7 +634,7 @@ jobs:
 
       shell: pwsh
 
-    - name: 上传安装程序
+    - name: Upload installer
       uses: actions/upload-artifact@v4
       with:
         name: Bloret-Launcher-Setup

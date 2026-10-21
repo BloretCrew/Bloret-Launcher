@@ -1,94 +1,94 @@
-name: Bug 反馈
-description: 在使用 Bloret 启动器 的过程中遇到了 Bug。
+name: Bug Report
+description: Report a bug encountered while using Bloret Launcher.
 labels: ["Bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        感谢您进行 Bug 反馈。请起一个能够清晰描述您的问题的标题，便于开发者解决您的问题。
-        
-        ### 检查清单
+        Thank you for reporting a bug. Please use a title that clearly describes the problem so developers can resolve it.
 
-        在反馈此问题之前，请先确认一下事项是否满足：
+        ### Checklist
 
-        1. 我已更新到最新版 ![GitHub Release](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?include_prereleases)，并看过[最新提交](https://github.com/BloretCrew/Bloret-Launcher/commits)。
-        2. 我已在 [Issues](https://github.com/BloretCrew/Bloret-Launcher/issues?q=label%3ABug) 中检索，确认这一 Bug 未被提交过。
-        3. 我已知晓并同意，此处仅用于汇报程序中存在的问题（关于其他非程序本身的问题应当在 Discussion 板块提出）。
+        Before reporting this issue, please confirm the following:
+
+        1. I have updated to the latest version ![GitHub Release](https://img.shields.io/github/v/release/BloretCrew/Bloret-Launcher?include_prereleases) and reviewed the [latest commits](https://github.com/BloretCrew/Bloret-Launcher/commits).
+        2. I have searched [Issues](https://github.com/BloretCrew/Bloret-Launcher/issues?q=label%3ABug) and confirmed this bug has not been reported.
+        3. I understand and agree that this tracker is only for problems in the program itself (topics not related to the program should be raised in Discussions).
 
   - type: markdown
-    attributes: 
+    attributes:
       value: |
-        ## Bug 信息
+        ## Bug Information
 
-        描述您遇到的 Bug。您可以附上截图、录屏、堆栈跟踪、日志等材料，便于开发者追踪问题。
-        
+        Describe the bug. You may attach screenshots, screen recordings, stack traces, logs, and other materials to help developers track down the problem.
+
         > [!WARNING]
-        > 若您要上传材料，请等待材料文件上传完成后再发布 Issue。
+        > If you upload materials, wait for the upload to finish before publishing the issue.
         >
-        > 若显示为 `![Uploading 文件名]()` 即为上传中，请等待链接变动后再提交。
+        > If you see `![Uploading filename]()`, the upload is still in progress. Wait for the link to update before submitting.
 
   - type: dropdown
     id: where-happened
     attributes:
-      label: 问题发生的位置
+      label: Where did the problem occur?
       options:
-        - 启动
-        - 主页
-        - 加载界面
-        - 下载
-        - 下载→核心
-        - 下载→选择版本文件夹
-        - 下载→选择版本
-        - 下载→选择镜像源
-        - 下载→下载完成后通知
-        - 下载→下载并安装
-        - 小工具
-        - 小工具→玩家UUID查询
-        - 小工具→玩家名字查询
-        - 小工具→玩家皮肤获取
-        - 小工具→玩家披风获取
-        - 通行证
-        - 通行证→账户名设定
-        - 设置
-        - 设置→检查版本更新
-        - 设置→主题切换
-        - 设置→加载图标切换
-        - 设置→日志存储
-        - 设置→清空日志
-        - 关于
-        - 其他
-      description: 选择问题发生的位置，以便于我们更好发现问题。
+        - Startup
+        - Home
+        - Loading screen
+        - Download
+        - Download -> Core
+        - Download -> Select version folder
+        - Download -> Select version
+        - Download -> Select mirror
+        - Download -> Notification after download
+        - Download -> Download and install
+        - Tools
+        - Tools -> Player UUID lookup
+        - Tools -> Player name lookup
+        - Tools -> Player skin lookup
+        - Tools -> Player cape lookup
+        - PassPort
+        - PassPort -> Account name setup
+        - Settings
+        - Settings -> Check for updates
+        - Settings -> Theme switch
+        - Settings -> Loading icon switch
+        - Settings -> Log storage
+        - Settings -> Clear logs
+        - About
+        - Other
+      description: Select where the problem occurred so we can locate it more easily.
     validations:
       required: true
 
   - type: textarea
     id: excepted
     attributes:
-      label: 请描述 Bug 内容
-      description: 详细的描述你期望发生的行为，突出与目前（可能不正确的）行为的不同。实际发生的行为，尽量包含如截图、录屏、文本描述等信息，便于开发者追踪问题。详细描述需要怎么操作才能再次触发这个 Bug，可包含如截图、录屏等附件。
+      label: Describe the bug
+      description: Describe in detail the behavior you expected and how it differs from the current (possibly incorrect) behavior. For the actual behavior, include screenshots, recordings, or text descriptions where possible. Describe the steps needed to reproduce the bug, including attachments such as screenshots or recordings.
     validations:
       required: false
 
   - type: textarea
     id: stacktrace
     attributes:
-      label: 堆栈跟踪
-      description: 请将 log 文件夹下发生问题的那次 日志的内容复制到这里，便于开发者定位 Bug。(日志文件位于 `%appdata%\Bloret-Launcher\log` ,即 `C:\Users\{用户名}\AppData\Roaming\Bloret-Launcher\log` 下)
+      label: Stack trace
+      description: Copy the contents of the log file for the session in which the problem occurred from the log folder. (The log folder is located at `%appdata%\Bloret-Launcher\log`, i.e. `C:\Users\{username}\AppData\Roaming\Bloret-Launcher\log`.)
       render: shell
 
   - type: input
     id: app_version
     attributes:
-      label: 应用版本
-      description: 您当前使用的 Bloret 启动器 版本号，可以在【设置】中查看，若使用的是最新构建，请留空。
-      placeholder: 如：6.2
+      label: App version
+      description: The version of Bloret Launcher you are using. You can find it in Settings. Leave blank if you are using the latest build.
+      placeholder: "e.g. 6.2"
     validations:
       required: false
 
   - type: input
     id: os_version
     attributes:
-      label: 操作系统版本
+      label: Operating system version
       description: |
-        若您当前使用的操作系统为 Windows，可以运行 `winver.exe` 查看；其他系统的查询方式可上网查阅。
-      placeholder: 如：Windows 11
+        If you are using Windows, run `winver.exe` to check. For other systems, search online for instructions.
+      placeholder: "e.g. Windows 11"

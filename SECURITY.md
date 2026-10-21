@@ -1,22 +1,22 @@
-# Bloret 开源项目安全条例
+# Bloret Open Source Project Security Policy
 
-请勿编写带有破坏用户计算机及 Github 的代码及任何命令。
+Do not write code or commands that damage users' computers or GitHub.
 
-## 数据保护
+## Data Protection
 
-为了确保用户的隐私和数据安全，所有开发者必须遵守以下规则：
+To ensure user privacy and data security, all developers must follow these rules:
 
-- 不得在未经用户许可的情况下收集或传输用户的个人信息。
-- 所有敏感数据（如密码、令牌等）应进行加密存储，并遵循最小权限原则。
-- 如果发现与数据泄露相关的漏洞，请立即按照本文件中提到的漏洞报告流程进行处理。
+- Do not collect or transmit users' personal information without their permission.
+- Store all sensitive data (such as passwords and tokens) encrypted, and follow the principle of least privilege.
+- If you discover a vulnerability related to a data breach, follow the vulnerability reporting process described in this document immediately.
 
-## 漏洞报告
+## Vulnerability Reporting
 
-请积极提交 **[GitHub Issue](https://github.com/Bloret/Bloret-Launcher/issues)**  
+Please actively submit a **[GitHub Issue](https://github.com/BloretCrew/Bloret-Launcher/issues)**.
 
-## 安全处理流程
+## Security Process
 
-尽快修复。
+Fix issues as soon as possible.
 
 > [!NOTE]
-> 我们将以标签的形式为你发布的 issue 进行进度标记。
+> We will mark the progress of your issue with labels.

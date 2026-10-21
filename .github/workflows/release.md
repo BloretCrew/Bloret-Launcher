@@ -1,12 +1,12 @@
-## Github Actions 自动发布版本
+## Publishing Releases with GitHub Actions
 
-Github Actions 在每次运行时将发布一个预发布版本来供大家便捷下载预发布版本。
+On each run, GitHub Actions publishes a pre-release so everyone can download pre-release builds easily.
 
 > [!WARNING]
-> Github Actions 构建的版本可能与正式版本文件结构不同
-> 但实际可以正常使用。
-> (可能有两层压缩包)
+> Builds produced by GitHub Actions may have a different file structure from stable releases,
+> but they can still be used normally.
+> (There may be two layers of archives.)
 
 ***
 
-目前仅支持 Windows 版本
+Currently, only Windows builds are supported.

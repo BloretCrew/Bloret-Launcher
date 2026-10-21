@@ -1,30 +1,29 @@
-# FreeBSD 支持说明
+# FreeBSD Support
 
-Bloret Launcher 支持在 **原生 FreeBSD amd64** 上从源码运行，并通过系统包
-`games/lwjgl3` 启动现代版本的 Minecraft（LWJGL3 时代，优先 1.20+）。
+Bloret Launcher supports running from source on **native FreeBSD amd64** and launching modern Minecraft versions (the LWJGL3 era, preferably 1.20+) through the system package `games/lwjgl3`.
 
-不使用 Linuxulator。官方 Mojang 不提供 FreeBSD natives；启动器会：
+Linuxulator is not used. Mojang does not provide FreeBSD natives, so the launcher:
 
-1. 将 Mojang 库规则中的 OS 映射为 `linux`（以选中正确的 jar）
-2. **不**下载 `natives-linux`
-3. 使用 `/usr/local/lib/lwjgl3` 与 `/usr/local/share/java/classes/lwjgl3` 注入系统 LWJGL
+1. Maps the OS in Mojang library rules to `linux` (to select the correct jars).
+2. Does **not** download `natives-linux`.
+3. Injects the system LWJGL from `/usr/local/lib/lwjgl3` and `/usr/local/share/java/classes/lwjgl3`.
 
-参考实现：FreeBSD ports 中的 `games/prismlauncher` + `games/lwjgl3`。
+Reference implementation: `games/prismlauncher` + `games/lwjgl3` in the FreeBSD ports tree.
 
-## 系统要求
+## System Requirements
 
-| 组件 | 说明 |
+| Component | Notes |
 |------|------|
-| FreeBSD | 13.2+ / 14.x / 15.x，**amd64** |
-| Python 3.10+ | 与 ports 中 PySide6 版本匹配 |
-| PySide6 + Qt6 | **必须使用 pkg/ports**，不要 pip 安装 PySide6 |
-| OpenJDK | 按游戏版本安装 openjdk17 / openjdk21 等 |
+| FreeBSD | 13.2+ / 14.x / 15.x, **amd64** |
+| Python 3.10+ | Match the PySide6 version in ports |
+| PySide6 + Qt6 | **Use pkg/ports only**; do not install PySide6 with pip |
+| OpenJDK | Install openjdk17 / openjdk21 or another version matching the game |
 | lwjgl3 | `pkg install lwjgl3` |
-| 可选 | `libnotify`、`xdg-utils`、图形栈（Xorg/Wayland） |
+| Optional | `libnotify`, `xdg-utils`, and a graphical stack (Xorg/Wayland) |
 
-## 安装依赖
+## Installing Dependencies
 
-包名随 Python 默认版本变化，请用 `pkg search pyside6` 确认。示例（Python 3.11）：
+Package names follow the default Python version. Use `pkg search pyside6` to confirm them. Example for Python 3.11:
 
 ```sh
 sudo pkg install -y \
@@ -43,27 +42,27 @@ sudo pkg install -y \
   git
 ```
 
-纯 Python 依赖可用用户级 pip（**不要**再装 PySide6）：
+Pure Python dependencies can be installed with a user-level pip (**do not** install PySide6 again):
 
 ```sh
 python3 -m pip install --user Send2Trash toml dulwich "qrcode[pil]"
 ```
 
-## 获取启动器
+## Getting the Launcher
 
-### A. CI / Release 压缩包
+### A. CI / Release Archive
 
-GitHub Actions 产物：`Bloret-Launcher-FreeBSD-amd64`  
-（内含源码布局、`easytier/` FreeBSD 二进制、`bloret-launcher` 包装脚本）
+GitHub Actions artifact: `Bloret-Launcher-FreeBSD-amd64`
+(Contains the source layout, the FreeBSD EasyTier binary in `easytier/`, and the `bloret-launcher` wrapper script.)
 
 ```sh
 tar -xzf Bloret-Launcher-FreeBSD-amd64.tar.gz
 cd Bloret-Launcher-FreeBSD-amd64
 ./bloret-launcher
-# 或: python3 Bloret-Launcher.py
+# or: python3 Bloret-Launcher.py
 ```
 
-### B. 源码克隆
+### B. Clone from Source
 
 ```sh
 git clone --recursive https://github.com/BloretCrew/Bloret-Launcher.git
@@ -71,115 +70,114 @@ cd Bloret-Launcher
 python3 Bloret-Launcher.py
 ```
 
-## 数据目录
+## Data Directory
 
-默认：
+Default:
 
 ```text
 ~/.local/share/Bloret-Launcher
 ```
 
-若设置了 `XDG_DATA_HOME`，则为 `$XDG_DATA_HOME/Bloret-Launcher`。
+If `XDG_DATA_HOME` is set, the path is `$XDG_DATA_HOME/Bloret-Launcher`.
 
-## Minecraft 与 LWJGL
+## Minecraft and LWJGL
 
-启动前请确认：
+Before launching, confirm:
 
 ```sh
 ls /usr/local/lib/lwjgl3/liblwjgl.so
 ls /usr/local/share/java/classes/lwjgl3/*.jar
 ```
 
-自定义路径可用环境变量：
+You can override the paths with environment variables:
 
 ```sh
 export BLORET_LWJGL_LIB=/path/to/lib
 export BLORET_LWJGL_JARS=/path/to/jars
 ```
 
-说明：
+Notes:
 
-- ports 中的 LWJGL 版本可能与 Mojang 锁定版本不完全一致；多数 1.20+ 可玩。
-- 极老版本（LWJGL2）未作为首版目标。
-- **不要**在 FreeBSD 本机 OpenJDK 上强行使用 Linux ELF natives。
+- The LWJGL version in ports may not exactly match the version pinned by Mojang. Most 1.20+ versions are playable.
+- Very old versions (LWJGL2) are not a target for the first release.
+- **Do not** force Linux ELF natives on FreeBSD's native OpenJDK.
 
 ## Java
 
-启动器会扫描 `JAVA_HOME`、`PATH`、`/usr/local/openjdk*` 等。
+The launcher scans `JAVA_HOME`, `PATH`, `/usr/local/openjdk*`, and similar locations.
 
-自动安装 Java **仅支持 Windows**。FreeBSD 请使用：
+Automatic Java installation is **supported on Windows only**. On FreeBSD, use:
 
 ```sh
 sudo pkg install openjdk17
-# 或
+# or
 sudo pkg install openjdk21
 ```
 
-然后在设置中选择 `/usr/local/openjdk17/bin/java`（路径以实际包为准）。
+Then select `/usr/local/openjdk17/bin/java` in Settings (use the actual path from the installed package).
 
-## EasyTier 联机
+## EasyTier Multiplayer
 
-官方发布包含 FreeBSD 资产，例如：
+Official releases include FreeBSD assets such as:
 
 ```text
 easytier-freebsd-13.2-x86_64-v2.6.4.zip
 ```
 
-来源：<https://github.com/EasyTier/EasyTier/releases>
+Source: <https://github.com/EasyTier/EasyTier/releases>
 
-将 `easytier-core` / `easytier-cli` 放到启动器目录下的 `easytier/` 中。  
-CI 的 FreeBSD 压缩包通常已打好。
+Place `easytier-core` / `easytier-cli` in the `easytier/` directory next to the launcher.
+CI FreeBSD archives usually include them already.
 
-若需要 TUN 模式，可能涉及权限；Live 联机也可走启动器的免提权代理路径（与 Windows 一致）。
+TUN mode may require additional privileges. Live multiplayer can also use the launcher's privilege-free proxy path, as on Windows.
 
-## 自动更新
+## Auto-Update
 
-FreeBSD **不会**下载 Windows `.exe` 安装包。
+FreeBSD does **not** download the Windows `.exe` installer.
 
-当更新 API 提供 `downloads.stable.freebsd`（或等价平台键）且为 zip 时，
-启动器会下载并解压到应用目录后重启。
+When the update API provides `downloads.stable.freebsd` (or an equivalent platform key) as a zip, the launcher downloads and extracts it into the application directory, then restarts.
 
-若 API 尚未提供 FreeBSD 资产，界面会提示从 GitHub Releases 手动更新。
+If the API does not yet provide a FreeBSD asset, the UI will prompt you to update manually from GitHub Releases.
 
-## 功能降级（有意）
+## Feature Limitations (Intentional)
 
-| 功能 | FreeBSD 行为 |
+| Feature | FreeBSD behavior |
 |------|----------------|
-| 全局热键 | 未实现（Windows） |
-| 游戏内浮动工具栏 | 未实现（Windows） |
-| Java 自动下载安装 | 提示使用 pkg |
-| 输入法特殊补丁 | 不启用 Linux fcitx 路径；依赖系统 Qt/IME |
-| 系统通知 | `notify-send`（需 libnotify） |
+| Global hotkey | Not implemented (Windows only) |
+| In-game floating toolbar | Not implemented (Windows only) |
+| Automatic Java download/install | Prompts you to use pkg |
+| Input-method patches | Linux fcitx path is disabled; relies on system Qt/IME |
+| System notifications | `notify-send` (requires libnotify) |
 
-## 故障排查
+## Troubleshooting
 
-**启动游戏提示未找到系统 LWJGL**
+**The game reports that system LWJGL was not found**
 
 ```sh
 sudo pkg install lwjgl3
 ```
 
-**界面无法启动 / 找不到 Qt**
+**The UI does not start / Qt cannot be found**
 
-- 确认使用 ports 的 `py*-pyside6`，卸载 pip 版 PySide6
-- 安装 `qt6-declarative` 等 QML 相关包
+- Confirm that you are using the ports `py*-pyside6` package and uninstall the pip version of PySide6.
+- Install QML-related packages such as `qt6-declarative`.
 
-**classpath / native 版本不匹配崩溃**
+**Crash due to classpath / native version mismatch**
 
-- 更新 `lwjgl3` port
-- 或自建 LWJGL 并用 `BLORET_LWJGL_*` 指向构建产物
+- Update the `lwjgl3` port.
+- Or build LWJGL yourself and point `BLORET_LWJGL_*` at the build output.
 
-## 给打包者
+## For Packagers
 
-可选依赖摘要：
+Optional dependency summary:
 
-- 运行：`python3`, PySide6/Qt6, requests, psutil, Send2Trash, toml, dulwich
-- 游戏：`lwjgl3`, `openjdk17`/`openjdk21`
-- 联机：`easytier-core`（上游 FreeBSD release）
+- Runtime: `python3`, PySide6/Qt6, requests, psutil, Send2Trash, toml, dulwich
+- Game: `lwjgl3`, `openjdk17` / `openjdk21`
+- Multiplayer: `easytier-core` (upstream FreeBSD release)
 
-安装布局建议（类 Arch `PKGBUILD`）：
+Suggested install layout (similar to an Arch `PKGBUILD`):
 
 ```text
-/usr/local/share/bloret-launcher/   # 源码与资源
-/usr/local/bin/bloret-launcher      # 包装脚本 exec python3 ...
+/usr/local/share/bloret-launcher/   # source and resources
+/usr/local/bin/bloret-launcher      # wrapper script: exec python3 ...
 ```
