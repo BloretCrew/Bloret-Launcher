@@ -151,15 +151,18 @@ def sync_bloret_passport_account_to_mc(parent_window=None):
             return False
 
         # 2. Passport account synchronization uses the OAuth bearer token.
-        verify_url = coordinator.userinfo_endpoint
-        log("正在请求 Passport OAuth userinfo")
+        verify_url = "https://passport.bloret.net/oauth/minecraft/accounts"
+        log("正在请求 Passport OAuth Minecraft accounts")
         response = requests.get(verify_url, headers={"Authorization": "Bearer " + access_token}, timeout=30)
         if response.status_code == 401:
             log("Passport access token 无效或已过期")
             return False
+        if response.status_code == 403:
+            log("请重新登录 Bloret PassPort 并授权读取 Minecraft 档案")
+            return False
         response.raise_for_status()
         api_result = response.json()
-        log("Passport userinfo 请求成功")
+        log("Passport Minecraft accounts 请求成功")
 
         # 3. Preserve existing account selection while applying returned accounts.
         accounts = normalize_minecraft_accounts(api_result)

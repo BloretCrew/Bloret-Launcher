@@ -64,10 +64,13 @@ def Bloret_PassPort_Account_login(backend=None):
             backend.passportLoginStatusChanged.emit(category, detail)
 
     def complete(result, userinfo):
+        username = str(userinfo.get("username") or userinfo.get("name") or "").strip()
+        if not username:
+            raise PermissionError("PassPort userinfo did not identify an account")
         config = cfg.read()
         config.update({
             "Bloret_PassPort_Login": True,
-            "Bloret_PassPort_UserName": str(userinfo.get("username") or userinfo.get("name") or ""),
+            "Bloret_PassPort_UserName": username,
             "Bloret_PassPort_NickName": str(userinfo.get("nickname") or userinfo.get("name") or ""),
             "Bloret_PassPort_OAuth": {
                 "access_token": result["access_token"], "refresh_token": result.get("refresh_token", ""),
@@ -78,14 +81,12 @@ def Bloret_PassPort_Account_login(backend=None):
         })
         if not cfg.write(config):
             raise OSError("Unable to persist Passport OAuth configuration")
-        if backend is not None:
-            backend.passportLoginStatusChanged.emit("success", "Passport login succeeded")
 
     coordinator = PassportOAuthCoordinator(on_complete=complete, on_status=status)
-    if backend is not None:
-        backend._passport_oauth = coordinator
     try:
         coordinator.begin()
+        if backend is not None:
+            backend._passport_oauth = coordinator
         log(i18nText("打开 Bloret PassPort 登录页面"))
         return coordinator
     except Exception as error:

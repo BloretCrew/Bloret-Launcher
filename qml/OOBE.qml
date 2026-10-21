@@ -513,7 +513,7 @@ FluentWindow {
                                 ColumnLayout {
                                     Layout.alignment: Qt.AlignHCenter
                                     spacing: 8
-                                    visible: !oobeWindow.isSyncingAccounts && oobeWindow.minecraftAccounts.length === 0
+                                    visible: !oobeWindow.isSyncingAccounts && oobeWindow.minecraftAccounts.length === 0 && oobeWindow.syncError.length === 0
 
                                     Text {
                                         text: Backend ? Backend.tr("❌ 未找到 Minecraft 账户") : "❌ No Minecraft accounts found"
@@ -542,6 +542,16 @@ FluentWindow {
                                         }
                                     }
                                 }
+                            }
+
+                            Text {
+                                visible: oobeWindow.syncError.length > 0
+                                text: oobeWindow.syncError
+                                Layout.alignment: Qt.AlignHCenter
+                                Layout.preferredWidth: 450
+                                wrapMode: Text.Wrap
+                                horizontalAlignment: Text.AlignHCenter
+                                color: "#E74C3C"
                             }
 
                             // 同步按钮

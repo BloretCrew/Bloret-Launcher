@@ -6,7 +6,7 @@ from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from modules.passport_oauth import PassportOAuthCoordinator, build_code_challenge, generate_code_verifier
+from modules.passport_oauth import PassportOAuthCoordinator, build_code_challenge, generate_code_verifier, is_passport_session_authenticated
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -57,7 +57,7 @@ class PassportOAuthTests(unittest.TestCase):
         self.assertEqual(build_code_challenge(verifier), expected)
 
     def test_callback_requires_loopback_exact_path_and_state_is_one_time(self):
-        coordinator = PassportOAuthCoordinator(
+        coordinator = PassportOAuthCoordinator(callback_mode="loopback",
             authorize_endpoint="https://passport.example/oauth/authorize",
             token_endpoint="https://passport.example/oauth/token",
             userinfo_endpoint="https://passport.example/oauth/userinfo",
@@ -75,13 +75,13 @@ class PassportOAuthTests(unittest.TestCase):
             coordinator.validate_callback("http://127.0.0.1:1234/evil?code=c&state=x")
 
     def test_callback_requires_unique_state_and_concurrent_replay_is_rejected(self):
-        coordinator = PassportOAuthCoordinator(authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _url: True)
+        coordinator = PassportOAuthCoordinator(callback_mode="loopback", authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _url: True)
         tx = coordinator.begin()
         coordinator.exchange_code = lambda code, transaction: {"access_token": "a"}
         coordinator.fetch_userinfo = lambda token: {"username": "u"}
         callback = tx.redirect_uri + "?code=c&state=" + tx.state + "&state=other"
         self.assertFalse(coordinator.handle_callback(callback))
-        coordinator = PassportOAuthCoordinator(authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _url: True)
+        coordinator = PassportOAuthCoordinator(callback_mode="loopback", authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _url: True)
         tx = coordinator.begin()
         coordinator.exchange_code = lambda code, transaction: {"access_token": "a"}
         coordinator.fetch_userinfo = lambda token: {"username": "u"}
@@ -93,18 +93,31 @@ class PassportOAuthTests(unittest.TestCase):
         self.assertEqual(results.count(True), 1)
 
     def test_browser_failure_and_timeout_clean_up(self):
-        coordinator = PassportOAuthCoordinator(authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _url: False, timeout=0.01)
+        coordinator = PassportOAuthCoordinator(callback_mode="loopback", authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _url: False, timeout=0.01)
         with self.assertRaises(OSError): coordinator.begin()
         self.assertIsNone(coordinator._pending)
-        coordinator = PassportOAuthCoordinator(authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _url: True, timeout=0.01)
+        coordinator = PassportOAuthCoordinator(callback_mode="loopback", authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _url: True, timeout=0.01)
         coordinator.begin()
         with self.assertRaises(TimeoutError): coordinator.wait_for_result()
         self.assertIsNone(coordinator._pending)
 
     def test_expiry_and_refresh_use_refresh_grant(self):
-        coordinator = PassportOAuthCoordinator(authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="http://127.0.0.1:1/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _url: True)
+        coordinator = PassportOAuthCoordinator(callback_mode="loopback", authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="http://127.0.0.1:1/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _url: True)
         self.assertEqual(coordinator.access_token_status({"access_token":"a", "expires_in":10, "obtained_at":100}, now=200), "expired")
         self.assertEqual(coordinator.access_token_status({}, now=200), "reauthorization_required")
+
+    def test_legacy_login_flag_without_username_is_not_authenticated(self):
+        config = {"Bloret_PassPort_Login": True, "Bloret_PassPort_UserName": "",
+                  "Bloret_PassPort_OAuth": {"access_token": "stale", "expires_in": 3600, "obtained_at": 100}}
+        self.assertFalse(is_passport_session_authenticated(config, now=200))
+        config["Bloret_PassPort_UserName"] = "tester"
+        self.assertTrue(is_passport_session_authenticated(config, now=200))
+        self.assertFalse(is_passport_session_authenticated(config, now=5000))
+
+    def test_login_flag_with_fresh_but_incomplete_legacy_oauth_is_not_authenticated(self):
+        config = {"Bloret_PassPort_Login": True, "Bloret_PassPort_UserName": "",
+                  "Bloret_PassPort_OAuth": {"access_token": "legacy", "expires_in": 3600, "obtained_at": 200}}
+        self.assertFalse(is_passport_session_authenticated(config, now=201))
 
     def test_complete_callback_posts_verifier_and_fetches_bearer_userinfo(self):
         _Handler.seen = {}
@@ -114,7 +127,7 @@ class PassportOAuthTests(unittest.TestCase):
         thread.start()
         try:
             endpoint = "http://127.0.0.1:%d/oauth/token" % server.server_port
-            coordinator = PassportOAuthCoordinator(
+            coordinator = PassportOAuthCoordinator(callback_mode="loopback",
                 authorize_endpoint="https://passport.example/oauth/authorize",
                 token_endpoint=endpoint,
                 userinfo_endpoint=endpoint.replace("/oauth/token", "/oauth/userinfo"),

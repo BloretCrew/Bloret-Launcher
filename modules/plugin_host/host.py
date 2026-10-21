@@ -426,7 +426,8 @@ class PluginHost(QObject):
             from modules.protocol_handler import drain_deep_link_file
 
             for url in drain_deep_link_file():
-                self.handleDeepLink(url)
+                from modules.protocol_handler import _dispatch_url
+                _dispatch_url(url)
         except Exception as e:
             log(f"[PluginStore] 冲刷文件队列失败: {e}")
         # 已入队但未弹窗的 pending 请求

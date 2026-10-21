@@ -17,6 +17,7 @@ import threading
 import time
 from pathlib import Path
 from typing import Callable, List, Optional
+from urllib.parse import urlsplit
 
 from modules.log import log
 
@@ -29,6 +30,14 @@ IPC_HOST = "127.0.0.1"
 _on_deep_link: Optional[Callable[[str], None]] = None
 _ipc_server_thread: Optional[threading.Thread] = None
 _ipc_stop = threading.Event()
+
+
+def _url_for_log(url: str) -> str:
+    try:
+        parsed = urlsplit(url)
+        return f"{parsed.scheme}://{parsed.hostname or ''}{parsed.path}"
+    except ValueError:
+        return "<invalid URL>"
 
 
 def extract_bloret_urls(argv: Optional[List[str]] = None) -> List[str]:
@@ -83,7 +92,7 @@ def enqueue_deep_link_file(url: str) -> bool:
     try:
         with open(path, "a", encoding="utf-8") as f:
             f.write(json.dumps({"url": url, "ts": time.time()}, ensure_ascii=False) + "\n")
-        log(f"[Protocol] deep link 已写入队列文件: {url[:80]}…")
+        log(f"[Protocol] deep link 已写入队列文件: {_url_for_log(url)}")
         return True
     except Exception as e:
         log(f"[Protocol] 写入 deep link 队列失败: {e}")
@@ -133,12 +142,12 @@ def send_deep_link_to_running(url: str, timeout: float = 2.0) -> bool:
                 resp = sock.recv(256)
                 if resp:
                     log(f"[Protocol] IPC 发送成功 port={port} resp={resp[:40]!r}")
-                    return True
+                    return b'"ok":true' in resp
             except socket.timeout:
-                # 无响应也认为已送达
-                log(f"[Protocol] IPC 已发送（无响应）port={port}")
-                return True
-        return True
+                # 未收到明确确认时视为失败，避免二次启动被静默吞掉
+                log(f"[Protocol] IPC 确认超时 port={port}")
+                return False
+        return False
     except Exception as e:
         log(f"[Protocol] IPC 发送失败 port={port}: {e}")
         # fallback 文件队列
@@ -152,7 +161,15 @@ def set_deep_link_handler(callback: Callable[[str], None]) -> None:
 
 
 def _dispatch_url(url: str) -> None:
-    log(f"[Protocol] 分发 deep link: {url[:120]}…")
+    log(f"[Protocol] 分发 deep link: {_url_for_log(url)}")
+    parsed = urlsplit(url)
+    if (parsed.scheme, parsed.netloc, parsed.path) == ("bloret", "oauth", "/passport"):
+        if _on_deep_link:
+            _on_deep_link(url)
+        else:
+            from modules.passport_oauth import dispatch_passport_callback
+            dispatch_passport_callback(url)
+        return
     # 插件 protocol 贡献：匹配 path 前缀后优先处理
     try:
         from modules.plugin_host.registry import get_registry
@@ -382,7 +399,7 @@ def handle_second_instance_argv(argv: Optional[List[str]] = None) -> bool:
         return False
     ok_any = False
     for url in urls:
-        log(f"[Protocol] 二次实例转发: {url[:100]}…")
+        log(f"[Protocol] 二次实例转发: {_url_for_log(url)}")
         if send_deep_link_to_running(url):
             ok_any = True
     return ok_any

@@ -606,7 +606,7 @@ Rectangle {
                             ColumnLayout {
                                 Layout.alignment: Qt.AlignHCenter
                                 spacing: 8
-                                visible: !oobeOverlay.isSyncingAccounts && oobeOverlay.minecraftAccounts.length === 0
+                                visible: !oobeOverlay.isSyncingAccounts && oobeOverlay.minecraftAccounts.length === 0 && oobeOverlay.syncError.length === 0
 
                                 Text {
                                     text: Backend ? Backend.tr("❌ 未找到 Minecraft 账户") : "❌ No Minecraft accounts found"
@@ -635,6 +635,16 @@ Rectangle {
                                     }
                                 }
                             }
+                        }
+
+                        Text {
+                            visible: oobeOverlay.syncError.length > 0
+                            text: oobeOverlay.syncError
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.preferredWidth: 450
+                            wrapMode: Text.Wrap
+                            horizontalAlignment: Text.AlignHCenter
+                            color: "#E74C3C"
                         }
 
                         // 同步按钮

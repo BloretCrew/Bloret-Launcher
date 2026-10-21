@@ -4153,19 +4153,22 @@ class Backend(QObject):
     @Slot(result=str)
     def getBloretPassPortUserName(self):
         config_data = cfg.read()
-        if config_data.get('Bloret_PassPort_Login'):
+        if self.getBloretPassPortLoginStatus():
             return config_data.get('Bloret_PassPort_UserName', 'Unknown')
         return i18nText("未登录")
 
     @Slot(result=bool)
     def getBloretPassPortLoginStatus(self):
         config_data = cfg.read()
-        return config_data.get('Bloret_PassPort_Login', False)
+        if not config_data.get('Bloret_PassPort_Login', False):
+            return False
+        from modules.passport_oauth import is_passport_session_authenticated
+        return is_passport_session_authenticated(config_data)
 
     @Slot(result=str)
     def getPassPortName(self):
         config_data = cfg.read()
-        if config_data.get('Bloret_PassPort_Login'):
+        if self.getBloretPassPortLoginStatus():
             return config_data.get('Bloret_PassPort_NickName') or config_data.get('Bloret_PassPort_UserName', 'Unknown')
         return i18nText("未登录")
 
@@ -4309,8 +4312,8 @@ class Backend(QObject):
 
     @Slot()
     def refreshMinecraftAccounts(self):
-        # 发出信号以刷新 UI
-        self.minecraftAccountsChanged.emit([])
+        # Fetch the current cloud accounts before updating the UI.
+        self.syncMinecraftAccount()
 
     @Slot(result=list)
     def getMinecraftAccounts(self):
@@ -5511,7 +5514,19 @@ class Backend(QObject):
                     print(f"Preserved language: {existing_language}")
                 
                 # 保留 Bloret PassPort 登录状态
-                if existing_passport_login:
+                passport_oauth_valid = (
+                    isinstance(existing_passport_oauth, dict)
+                    and bool(existing_passport_oauth.get('access_token'))
+                )
+                if passport_oauth_valid:
+                    try:
+                        from modules.passport_oauth import PassportOAuthCoordinator
+                        passport_oauth_valid = (
+                            PassportOAuthCoordinator().access_token_status(existing_passport_oauth) == 'valid'
+                        )
+                    except Exception:
+                        passport_oauth_valid = False
+                if existing_passport_login and existing_passport_username and passport_oauth_valid:
                     config_data["Bloret_PassPort_Login"] = existing_passport_login
                     config_data["Bloret_PassPort_UserName"] = existing_passport_username
                     config_data["Bloret_PassPort_NickName"] = existing_passport_nickname
@@ -5520,12 +5535,14 @@ class Backend(QObject):
                         config_data["Bloret_PassPort_Avatar"] = existing_passport_avatar
                     if existing_passport_password:
                         config_data["Bloret_PassPort_PassWord"] = existing_passport_password
-                    if isinstance(existing_passport_oauth, dict) and existing_passport_oauth.get("access_token"):
-                        config_data["Bloret_PassPort_OAuth"] = existing_passport_oauth
-                    else:
-                        config_data["Bloret_PassPort_Login"] = False
-                        config_data.pop("Bloret_PassPort_OAuth", None)
+                    config_data["Bloret_PassPort_OAuth"] = existing_passport_oauth
                     print(f"Preserved PassPort login: {existing_passport_username}")
+                elif existing_passport_login:
+                    config_data["Bloret_PassPort_Login"] = False
+                    config_data["Bloret_PassPort_UserName"] = ""
+                    config_data["Bloret_PassPort_NickName"] = ""
+                    config_data.pop("Bloret_PassPort_OAuth", None)
+                    config_data["Bloret_PassPort_PassWord"] = ""
                 
                 # 标记首次运行完成
                 config_data["first-run"] = False
@@ -5535,6 +5552,13 @@ class Backend(QObject):
                 print("OOBE completed: User data preserved")
             else:
                 # 如果没有源配置文件，创建一个基本的，并保留用户数据
+                passport_oauth_valid = False
+                if isinstance(existing_passport_oauth, dict) and existing_passport_oauth.get('access_token'):
+                    try:
+                        from modules.passport_oauth import PassportOAuthCoordinator
+                        passport_oauth_valid = PassportOAuthCoordinator().access_token_status(existing_passport_oauth) == 'valid'
+                    except Exception:
+                        passport_oauth_valid = False
                 config_data = {
                     "minecraft-part": ".minecraft",
                     "first-run": False,
@@ -5543,7 +5567,7 @@ class Backend(QObject):
                     "Java_Path": existing_java_path,
                     "language": existing_language,
                     "MinecraftAccount": existing_mc_account,
-                    "Bloret_PassPort_Login": existing_passport_login,
+                    "Bloret_PassPort_Login": bool(existing_passport_login and existing_passport_username and passport_oauth_valid),
                     "Bloret_PassPort_UserName": existing_passport_username,
                     "Bloret_PassPort_NickName": existing_passport_nickname,
                     "Bloret_PassPort_Admin": existing_passport_admin,
@@ -6166,10 +6190,15 @@ class LauncherV2(RinUIWindow):
                 set_deep_link_handler,
                 extract_bloret_urls,
                 ensure_protocol_registered,
+                _dispatch_url,
             )
 
             def _on_deep_link(url: str) -> None:
-                print(f"[Protocol] 收到 deep link: {str(url)[:160]}")
+                from modules.passport_oauth import dispatch_passport_callback
+                if dispatch_passport_callback(url):
+                    self.show_main_window()
+                    return
+                print("[Protocol] 收到 deep link")
                 host = getattr(self, "plugin_host", None)
                 if host is not None and hasattr(host, "handleDeepLink"):
                     try:
@@ -6195,9 +6224,7 @@ class LauncherV2(RinUIWindow):
             # 幂等注册 bloret://（失败不阻断）
             ensure_protocol_registered()
             for _url in extract_bloret_urls():
-                print(f"[Protocol] 冷启动 argv deep link: {_url[:120]}")
-                if self.plugin_host is not None:
-                    self.plugin_host.handleDeepLink(_url)
+                _dispatch_url(_url)
         except Exception as e:
             print(f"[Protocol] 初始化失败: {e}")
         
@@ -6508,7 +6535,7 @@ def release_single_instance_lock():
         try:
             import fcntl
             try:
-                fcntl.lockf(_single_instance_lock_file, fcntl.LOCK_UN)
+                fcntl.flock(_single_instance_lock_file.fileno(), fcntl.LOCK_UN)
             except Exception:
                 pass
             try:
@@ -6549,7 +6576,7 @@ def _acquire_single_instance_lock():
         lock_path = os.path.join(tempfile.gettempdir(), "bloret.lock")
         _single_instance_lock_file = open(lock_path, "w")
     try:
-        fcntl.lockf(_single_instance_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fcntl.flock(_single_instance_lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         return False
     except OSError:
         return True

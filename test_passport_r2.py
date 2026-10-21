@@ -53,6 +53,13 @@ class PassportR2Tests(unittest.TestCase):
         self.assertIn("os.chmod(path, 0o600)", source)
         self.assertIn("os.chmod(config_path + \".back\", 0o600)", source)
 
+    def test_single_instance_lock_uses_flock_and_file_presence_is_not_lock_state(self):
+        source = Path("Bloret-Launcher.py").read_text(encoding="utf-8")
+        lock_impl = source.split("def release_single_instance_lock():", 1)[1].split("def _wait_for_single_instance_after_restart", 1)[0]
+        self.assertIn("fcntl.flock(_single_instance_lock_file.fileno(), fcntl.LOCK_UN)", lock_impl)
+        self.assertIn("fcntl.flock(_single_instance_lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)", lock_impl)
+        self.assertNotIn("lockf(", lock_impl)
+
     def test_resourcepack_ai_uses_oauth_and_no_static_app_secret(self):
         source = Path("modules/resourcepack_editor/agent_backend.py").read_text(encoding="utf-8")
         self.assertIn("Bloret_PassPort_OAuth", source)
@@ -85,7 +92,7 @@ class PassportR2Tests(unittest.TestCase):
         self.assertNotIn("Bloret-Launcher-Old.py", spec + iss)
 
     def test_callback_failure_consumes_transaction(self):
-        coordinator = PassportOAuthCoordinator(authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _: True)
+        coordinator = PassportOAuthCoordinator(callback_mode="loopback", authorize_endpoint="https://passport.example/oauth/authorize", token_endpoint="https://passport.example/oauth/token", userinfo_endpoint="https://passport.example/oauth/userinfo", browser_opener=lambda _: True)
         tx = coordinator.begin()
         coordinator.exchange_code = lambda *_: (_ for _ in ()).throw(ValueError("bad token"))
         self.assertFalse(coordinator.handle_callback(tx.redirect_uri + "?code=x&state=" + tx.state))
