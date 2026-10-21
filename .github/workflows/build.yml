@@ -419,7 +419,7 @@ jobs:
         prepare: |
           # This job tests platform logic and creates a source-layout archive;
           # it intentionally does not import or install the GUI stack.
-          pkg install -y python3 git curl unzip
+          pkg install -y python3 git curl unzip zip
           python3 --version
         run: |
           set -e
@@ -462,6 +462,14 @@ jobs:
           tar -czf "output/Bloret-Launcher-FreeBSD-amd64.tar.gz" "$STAGE"
           if command -v zip >/dev/null 2>&1; then
             zip -r "output/Bloret-Launcher-FreeBSD-amd64.zip" "$STAGE"
+          else
+            python3 - <<'PY'
+          import shutil
+          shutil.make_archive(
+              "output/Bloret-Launcher-FreeBSD-amd64", "zip",
+              root_dir=".", base_dir="Bloret-Launcher-FreeBSD-amd64",
+          )
+          PY
           fi
           ls -la output/
 
