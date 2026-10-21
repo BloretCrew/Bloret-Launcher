@@ -106,6 +106,17 @@ def normalize_listing(item: dict, api_base: str = "") -> dict:
     }
 
 
+def normalize_listings(payload: Any, api_base: str = "") -> List[dict]:
+    """Normalize every usable listing and skip entries that fail validation."""
+    normalized = []
+    for item in _as_list(payload):
+        try:
+            normalized.append(normalize_listing(item, api_base))
+        except ValueError as error:
+            log(f"[PluginStore] 忽略无效插件条目: {error}")
+    return normalized
+
+
 def merge_install_state(items: List[dict], installed: List[dict]) -> List[dict]:
     by_id = {str(x.get("id")): x for x in installed if isinstance(x, dict)}
     result = []
@@ -187,7 +198,7 @@ class PluginStore(QObject):
                 response = session.get(api_base, timeout=_DEFAULT_TIMEOUT, headers={"Accept": "application/json"})
                 response.raise_for_status()
                 payload = response.json()
-                parsed = [normalize_listing(item, api_base) for item in _as_list(payload)]
+                parsed = normalize_listings(payload, api_base)
                 merged = merge_install_state(parsed, self._installed())
                 with self._lock:
                     if generation == self._generation:

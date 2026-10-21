@@ -7,6 +7,7 @@ from modules.plugin_store import (
     _as_list,
     merge_install_state,
     normalize_listing,
+    normalize_listings,
 )
 
 
@@ -66,6 +67,12 @@ def test_invalid_listing_rejected():
         pass
     else:
         raise AssertionError("http download accepted")
+
+
+def test_invalid_store_entries_are_skipped_individually():
+    broken = {"id": "net.minecraft.news", "name": "Broken entry"}
+    result = normalize_listings([broken, VALID])
+    assert [item["id"] for item in result] == [VALID["id"]]
 
 
 def test_merge_install_state_and_updates():
