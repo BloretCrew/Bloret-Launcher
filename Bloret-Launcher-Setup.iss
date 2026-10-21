@@ -1,7 +1,7 @@
 ; MyAppVersion 的值会由 Github Actions 自动修改
 ; 安装完整 onedir/standalone 目录（非单 exe）
 #define MyAppName "Bloret-Launcher"
-#define MyAppVersion "27.2-Beta"
+#define MyAppVersion "27.2.1-Beta"
 #define MyAppPublisher "Bloret"
 #define MyAppURL "https://launcher.bloret.net/"
 #define MyAppExeName "Bloret-Launcher.exe"
