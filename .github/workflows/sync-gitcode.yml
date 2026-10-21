@@ -1,0 +1,89 @@
+name: Sync GitCode
+
+permissions:
+  contents: write
+
+on:
+  # Only published releases and pre-releases are mirrored.
+  # Draft releases and ordinary pushes never trigger this workflow.
+  release:
+    types: [published, prereleased]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to sync, for example 27.2.2. Leave empty to use the latest release.'
+        required: false
+        type: string
+
+concurrency:
+  group: sync-gitcode-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  Sync-GitCode:
+    name: Sync release to GitCode
+    runs-on: ubuntu-latest
+    env:
+      GITCODE_REPO: Bloret/Bloret-Launcher
+      GITCODE_BRANCH: Windows
+      GITCODE_API: https://gitcode.com/api/v5
+    steps:
+      - name: Resolve tag
+        id: tag
+        env:
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          TAG="${EVENT_TAG:-${INPUT_TAG:-}}"
+          if [ -z "$TAG" ]; then
+            TAG="$(gh release view --json tagName --jq .tagName)"
+          fi
+          echo "Syncing $TAG to GitCode"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Check the GitCode token
+        env:
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GITCODE_TOKEN:-}" ]; then
+            echo "::error::The GITCODE_TOKEN secret is not configured. Add a GitCode access token with write access to ${GITCODE_REPO}."
+            exit 1
+          fi
+
+      - name: Push the branch and the tag to GitCode
+        continue-on-error: true
+        env:
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/gitcode-askpass.sh" <<'EOF'
+          #!/bin/sh
+          case "$1" in
+            Username*) echo "oauth2" ;;
+            Password*) echo "$GITCODE_TOKEN" ;;
+          esac
+          EOF
+          chmod +x "$RUNNER_TEMP/gitcode-askpass.sh"
+          git remote remove gitcode 2>/dev/null || true
+          git remote add gitcode "https://gitcode.com/${GITCODE_REPO}.git"
+          export GIT_ASKPASS="$RUNNER_TEMP/gitcode-askpass.sh"
+          export GIT_TERMINAL_PROMPT=0
+          if ! git push gitcode "HEAD:refs/heads/${GITCODE_BRANCH}" "refs/tags/${TAG}:refs/tags/${TAG}"; then
+            echo "::warning::Could not push to GitCode. The repository may still be a mirror, or the token may lack write access. The release sync continues."
+          fi
+
+      - name: Sync the release and its assets
+        env:
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: python3 .github/workflows/sync-gitcode.py --tag "$TAG"
