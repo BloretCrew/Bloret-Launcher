@@ -7,7 +7,7 @@ on:
   # Only published releases and pre-releases are mirrored.
   # Draft releases and ordinary pushes never trigger this workflow.
   release:
-    types: [published, prereleased]
+    types: [published, prereleased, released]
   workflow_dispatch:
     inputs:
       tag:

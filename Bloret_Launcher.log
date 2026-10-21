@@ -251,3 +251,358 @@
 2026-07-06 15:09:52,864 [INFO] [config.py:133 - <module>()] 下载源: gitcode
 2026-07-06 15:09:52,864 [INFO] [config.py:136 - <module>()] 代理: http://127.0.0.1:7897
 2026-07-06 15:09:52,864 [INFO] [config.py:141 - <module>()] Minecraft目录存在: /home/detrital/.local/share/Bloret-Launcher/.minecraft
+2026-10-20 10:39:52,240 [INFO] [config.py:43 - <module>()] 正在检查配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:39:52,242 [INFO] [config.py:44 - <module>()] 源配置文件路径: /home/Detrital/work/Bloret-Launcher/config.json
+2026-10-20 10:39:52,242 [INFO] [config.py:45 - <module>()] 默认配置文件是否存在: True
+2026-10-20 10:39:52,242 [INFO] [config.py:62 - <module>()] 目标配置文件已存在: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:39:52,242 [INFO] [config.py:65 - <module>()] 正在读取配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:39:52,243 [INFO] [config.py:69 - <module>()] 成功读取配置文件，正在检查版本字段...
+2026-10-20 10:39:52,243 [INFO] [config.py:79 - <module>()] 当前配置文件版本: None
+2026-10-20 10:39:52,243 [INFO] [config.py:80 - <module>()] 默认配置文件版本: 27.1
+2026-10-20 10:39:52,243 [INFO] [config.py:83 - <module>()] 配置文件版本不匹配（当前: None, 目标: 27.1），正在执行增量更新...
+2026-10-20 10:39:52,244 [INFO] [config.py:115 - <module>()] 读取配置文件时发生未知错误: [Errno 30] Read-only file system: '/home/Detrital/.local/share/Bloret-Launcher/config.json.back'
+2026-10-20 10:39:52,244 [INFO] [config.py:118 - <module>()] 配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:39:52,244 [INFO] [config.py:235 - <module>()] 正在读取最终配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:39:52,244 [INFO] [config.py:237 - <module>()] 成功读取配置文件内容摘要: {'Java_Path': '/usr/bin/java'}
+2026-10-20 10:39:52,244 [INFO] [config.py:240 - <module>()] Minecraft目录已设置为: ''
+2026-10-20 10:39:52,244 [INFO] [config.py:243 - <module>()] 下载源: gitcode
+2026-10-20 10:39:52,244 [INFO] [config.py:246 - <module>()] 代理: (无)
+2026-10-20 10:39:52,244 [INFO] [config.py:255 - <module>()] 警告：Minecraft目录未设置（为空字符串）
+2026-10-20 10:39:52,541 [CRITICAL] [safe.py:83 - handle_exception()] 未捕获的异常:
+2026-10-20 10:39:52,541 [CRITICAL] [safe.py:84 - handle_exception()] 类型: <class 'ModuleNotFoundError'>
+2026-10-20 10:39:52,541 [CRITICAL] [safe.py:85 - handle_exception()] 信息: No module named 'send2trash'
+2026-10-20 10:39:52,544 [CRITICAL] [safe.py:86 - handle_exception()] 回溯: ['  File "/home/Detrital/work/Bloret-Launcher/Bloret-Launcher.py", line 136, in <module>\n    import send2trash\n']
+2026-10-20 10:41:06,595 [INFO] [config.py:43 - <module>()] 正在检查配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:41:06,596 [INFO] [config.py:44 - <module>()] 源配置文件路径: /home/Detrital/work/Bloret-Launcher/config.json
+2026-10-20 10:41:06,596 [INFO] [config.py:45 - <module>()] 默认配置文件是否存在: True
+2026-10-20 10:41:06,596 [INFO] [config.py:62 - <module>()] 目标配置文件已存在: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:41:06,596 [INFO] [config.py:65 - <module>()] 正在读取配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:41:06,596 [INFO] [config.py:69 - <module>()] 成功读取配置文件，正在检查版本字段...
+2026-10-20 10:41:06,596 [INFO] [config.py:79 - <module>()] 当前配置文件版本: None
+2026-10-20 10:41:06,596 [INFO] [config.py:80 - <module>()] 默认配置文件版本: 27.1
+2026-10-20 10:41:06,596 [INFO] [config.py:83 - <module>()] 配置文件版本不匹配（当前: None, 目标: 27.1），正在执行增量更新...
+2026-10-20 10:41:06,596 [INFO] [config.py:115 - <module>()] 读取配置文件时发生未知错误: [Errno 30] Read-only file system: '/home/Detrital/.local/share/Bloret-Launcher/config.json.back'
+2026-10-20 10:41:06,596 [INFO] [config.py:118 - <module>()] 配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:41:06,596 [INFO] [config.py:235 - <module>()] 正在读取最终配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:41:06,596 [INFO] [config.py:237 - <module>()] 成功读取配置文件内容摘要: {'Java_Path': '/usr/bin/java'}
+2026-10-20 10:41:06,596 [INFO] [config.py:240 - <module>()] Minecraft目录已设置为: ''
+2026-10-20 10:41:06,596 [INFO] [config.py:243 - <module>()] 下载源: gitcode
+2026-10-20 10:41:06,596 [INFO] [config.py:246 - <module>()] 代理: (无)
+2026-10-20 10:41:06,596 [INFO] [config.py:255 - <module>()] 警告：Minecraft目录未设置（为空字符串）
+2026-10-20 10:41:07,066 [ERROR] [web.py:1783 - start_server()] Web server bind failed on 127.0.0.1:25252: [Errno 1] Operation not permitted
+2026-10-20 10:41:07,561 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wechat (个人微信)
+2026-10-20 10:41:07,565 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: telegram (Telegram)
+2026-10-20 10:41:07,570 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: qq (QQ Bot)
+2026-10-20 10:41:07,574 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wecom (企业微信)
+2026-10-20 10:41:07,577 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: dingtalk (钉钉)
+2026-10-20 10:41:07,581 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: feishu (飞书)
+2026-10-20 10:41:07,590 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: discord (Discord)
+2026-10-20 10:41:07,595 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: slack (Slack)
+2026-10-20 10:41:07,598 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: matrix (Matrix)
+2026-10-20 10:41:07,606 [INFO] [backend.py:507 - __init__()] [Bloriko] 全局 AI 设置: provider=bloret_passport, model=default
+2026-10-20 10:41:07,607 [INFO] [memory.py:72 - load_on_init()] [Memory] 加载完成: MEMORY.md=0条, USER.md=0条
+2026-10-20 10:41:07,675 [INFO] [host.py:54 - __init__()] [PluginHost] 实例已创建
+2026-10-20 10:41:07,675 [INFO] [host.py:62 - bootstrap()] [PluginHost] bootstrap 开始
+2026-10-20 10:41:07,675 [INFO] [host.py:107 - scan_and_load()] [PluginHost] 扫描插件目录: /home/Detrital/.local/share/Bloret-Launcher/Plugin
+2026-10-20 10:41:07,675 [INFO] [host.py:172 - scan_and_load()] [PluginHost] 扫描完成 count=0 ids=[]
+2026-10-20 10:41:07,677 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook app.ready args=0 kwargs=[]
+2026-10-20 10:41:07,679 [INFO] [host.py:79 - bootstrap()] [PluginHost] bootstrap 完成，已加载 0 个插件
+2026-10-20 10:41:07,698 [INFO] [protocol_handler.py:160 - set_deep_link_handler()] [Protocol] deep link 处理器已注册
+2026-10-20 10:41:08,705 [INFO] [protocol_handler.py:377 - register_protocol_linux()] [Protocol] Linux 注册失败: [Errno 30] Read-only file system: '/home/Detrital/.local/share/applications/bloret-launcher-protocol.desktop'
+2026-10-20 10:41:09,147 [CRITICAL] [safe.py:83 - handle_exception()] 未捕获的异常:
+2026-10-20 10:41:09,148 [CRITICAL] [safe.py:84 - handle_exception()] 类型: <class 'RuntimeError'>
+2026-10-20 10:41:09,148 [CRITICAL] [safe.py:85 - handle_exception()] 信息: Error loading QML file: /home/Detrital/work/Bloret-Launcher/qml/main.qml
+2026-10-20 10:41:09,153 [CRITICAL] [safe.py:86 - handle_exception()] 回溯: ['  File "/home/Detrital/work/Bloret-Launcher/Bloret-Launcher.py", line 6598, in <module>\n    launcher = LauncherV2()\n', '  File "/home/Detrital/work/Bloret-Launcher/Bloret-Launcher.py", line 6207, in __init__\n    self.load(str(qml_file))\n    ~~~~~~~~~^^^^^^^^^^^^^^^\n', '  File "/home/Detrital/work/Bloret-Launcher/RinUI/RinUI/core/launcher.py", line 110, in load\n    raise RuntimeError(msg)\n']
+2026-10-20 10:42:33,490 [INFO] [config.py:43 - <module>()] 正在检查配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:42:33,490 [INFO] [config.py:44 - <module>()] 源配置文件路径: /home/Detrital/work/Bloret-Launcher/config.json
+2026-10-20 10:42:33,490 [INFO] [config.py:45 - <module>()] 默认配置文件是否存在: True
+2026-10-20 10:42:33,490 [INFO] [config.py:62 - <module>()] 目标配置文件已存在: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:42:33,490 [INFO] [config.py:65 - <module>()] 正在读取配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:42:33,490 [INFO] [config.py:69 - <module>()] 成功读取配置文件，正在检查版本字段...
+2026-10-20 10:42:33,490 [INFO] [config.py:79 - <module>()] 当前配置文件版本: None
+2026-10-20 10:42:33,490 [INFO] [config.py:80 - <module>()] 默认配置文件版本: 27.1
+2026-10-20 10:42:33,490 [INFO] [config.py:83 - <module>()] 配置文件版本不匹配（当前: None, 目标: 27.1），正在执行增量更新...
+2026-10-20 10:42:33,490 [INFO] [config.py:115 - <module>()] 读取配置文件时发生未知错误: [Errno 30] Read-only file system: '/home/Detrital/.local/share/Bloret-Launcher/config.json.back'
+2026-10-20 10:42:33,491 [INFO] [config.py:118 - <module>()] 配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:42:33,491 [INFO] [config.py:235 - <module>()] 正在读取最终配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:42:33,491 [INFO] [config.py:237 - <module>()] 成功读取配置文件内容摘要: {'Java_Path': '/usr/bin/java'}
+2026-10-20 10:42:33,491 [INFO] [config.py:240 - <module>()] Minecraft目录已设置为: ''
+2026-10-20 10:42:33,491 [INFO] [config.py:243 - <module>()] 下载源: gitcode
+2026-10-20 10:42:33,491 [INFO] [config.py:246 - <module>()] 代理: (无)
+2026-10-20 10:42:33,491 [INFO] [config.py:255 - <module>()] 警告：Minecraft目录未设置（为空字符串）
+2026-10-20 10:42:33,621 [ERROR] [web.py:1783 - start_server()] Web server bind failed on 127.0.0.1:25252: [Errno 1] Operation not permitted
+2026-10-20 10:42:33,750 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wechat (个人微信)
+2026-10-20 10:42:33,751 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: telegram (Telegram)
+2026-10-20 10:42:33,751 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: qq (QQ Bot)
+2026-10-20 10:42:33,753 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wecom (企业微信)
+2026-10-20 10:42:33,753 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: dingtalk (钉钉)
+2026-10-20 10:42:33,754 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: feishu (飞书)
+2026-10-20 10:42:33,755 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: discord (Discord)
+2026-10-20 10:42:33,755 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: slack (Slack)
+2026-10-20 10:42:33,756 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: matrix (Matrix)
+2026-10-20 10:42:33,761 [INFO] [backend.py:507 - __init__()] [Bloriko] 全局 AI 设置: provider=bloret_passport, model=default
+2026-10-20 10:42:33,762 [INFO] [memory.py:72 - load_on_init()] [Memory] 加载完成: MEMORY.md=0条, USER.md=0条
+2026-10-20 10:42:33,772 [INFO] [host.py:54 - __init__()] [PluginHost] 实例已创建
+2026-10-20 10:42:33,772 [INFO] [host.py:62 - bootstrap()] [PluginHost] bootstrap 开始
+2026-10-20 10:42:33,772 [INFO] [host.py:107 - scan_and_load()] [PluginHost] 扫描插件目录: /home/Detrital/.local/share/Bloret-Launcher/Plugin
+2026-10-20 10:42:33,772 [INFO] [host.py:172 - scan_and_load()] [PluginHost] 扫描完成 count=0 ids=[]
+2026-10-20 10:42:33,774 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook app.ready args=0 kwargs=[]
+2026-10-20 10:42:33,776 [INFO] [host.py:79 - bootstrap()] [PluginHost] bootstrap 完成，已加载 0 个插件
+2026-10-20 10:42:33,779 [INFO] [protocol_handler.py:160 - set_deep_link_handler()] [Protocol] deep link 处理器已注册
+2026-10-20 10:42:34,788 [INFO] [protocol_handler.py:377 - register_protocol_linux()] [Protocol] Linux 注册失败: [Errno 30] Read-only file system: '/home/Detrital/.local/share/applications/bloret-launcher-protocol.desktop'
+2026-10-20 10:42:34,964 [CRITICAL] [safe.py:83 - handle_exception()] 未捕获的异常:
+2026-10-20 10:42:34,964 [CRITICAL] [safe.py:84 - handle_exception()] 类型: <class 'RuntimeError'>
+2026-10-20 10:42:34,964 [CRITICAL] [safe.py:85 - handle_exception()] 信息: Error loading QML file: /home/Detrital/work/Bloret-Launcher/qml/main.qml
+2026-10-20 10:42:34,967 [CRITICAL] [safe.py:86 - handle_exception()] 回溯: ['  File "/home/Detrital/work/Bloret-Launcher/Bloret-Launcher.py", line 6598, in <module>\n    launcher = LauncherV2()\n', '  File "/home/Detrital/work/Bloret-Launcher/Bloret-Launcher.py", line 6207, in __init__\n    self.load(str(qml_file))\n    ~~~~~~~~~^^^^^^^^^^^^^^^\n', '  File "/home/Detrital/work/Bloret-Launcher/RinUI/RinUI/core/launcher.py", line 110, in load\n    raise RuntimeError(msg)\n']
+2026-10-20 10:46:47,193 [INFO] [config.py:43 - <module>()] 正在检查配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:46:47,193 [INFO] [config.py:44 - <module>()] 源配置文件路径: /home/Detrital/work/Bloret-Launcher/config.json
+2026-10-20 10:46:47,193 [INFO] [config.py:45 - <module>()] 默认配置文件是否存在: True
+2026-10-20 10:46:47,193 [INFO] [config.py:62 - <module>()] 目标配置文件已存在: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:46:47,193 [INFO] [config.py:65 - <module>()] 正在读取配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:46:47,194 [INFO] [config.py:69 - <module>()] 成功读取配置文件，正在检查版本字段...
+2026-10-20 10:46:47,194 [INFO] [config.py:79 - <module>()] 当前配置文件版本: None
+2026-10-20 10:46:47,194 [INFO] [config.py:80 - <module>()] 默认配置文件版本: 27.1
+2026-10-20 10:46:47,194 [INFO] [config.py:83 - <module>()] 配置文件版本不匹配（当前: None, 目标: 27.1），正在执行增量更新...
+2026-10-20 10:46:47,194 [INFO] [config.py:115 - <module>()] 读取配置文件时发生未知错误: [Errno 30] Read-only file system: '/home/Detrital/.local/share/Bloret-Launcher/config.json.back'
+2026-10-20 10:46:47,194 [INFO] [config.py:118 - <module>()] 配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:46:47,194 [INFO] [config.py:235 - <module>()] 正在读取最终配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:46:47,194 [INFO] [config.py:237 - <module>()] 成功读取配置文件内容摘要: {'Java_Path': '/usr/bin/java'}
+2026-10-20 10:46:47,194 [INFO] [config.py:240 - <module>()] Minecraft目录已设置为: ''
+2026-10-20 10:46:47,194 [INFO] [config.py:243 - <module>()] 下载源: gitcode
+2026-10-20 10:46:47,194 [INFO] [config.py:246 - <module>()] 代理: (无)
+2026-10-20 10:46:47,194 [INFO] [config.py:255 - <module>()] 警告：Minecraft目录未设置（为空字符串）
+2026-10-20 10:46:47,309 [ERROR] [web.py:1783 - start_server()] Web server bind failed on 127.0.0.1:25252: [Errno 1] Operation not permitted
+2026-10-20 10:46:47,430 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wechat (个人微信)
+2026-10-20 10:46:47,431 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: telegram (Telegram)
+2026-10-20 10:46:47,431 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: qq (QQ Bot)
+2026-10-20 10:46:47,432 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wecom (企业微信)
+2026-10-20 10:46:47,432 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: dingtalk (钉钉)
+2026-10-20 10:46:47,433 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: feishu (飞书)
+2026-10-20 10:46:47,433 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: discord (Discord)
+2026-10-20 10:46:47,434 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: slack (Slack)
+2026-10-20 10:46:47,434 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: matrix (Matrix)
+2026-10-20 10:46:47,441 [INFO] [backend.py:507 - __init__()] [Bloriko] 全局 AI 设置: provider=bloret_passport, model=default
+2026-10-20 10:46:47,441 [INFO] [memory.py:72 - load_on_init()] [Memory] 加载完成: MEMORY.md=0条, USER.md=0条
+2026-10-20 10:46:47,450 [INFO] [host.py:54 - __init__()] [PluginHost] 实例已创建
+2026-10-20 10:46:47,450 [INFO] [host.py:62 - bootstrap()] [PluginHost] bootstrap 开始
+2026-10-20 10:46:47,450 [INFO] [host.py:107 - scan_and_load()] [PluginHost] 扫描插件目录: /home/Detrital/.local/share/Bloret-Launcher/Plugin
+2026-10-20 10:46:47,451 [INFO] [host.py:172 - scan_and_load()] [PluginHost] 扫描完成 count=0 ids=[]
+2026-10-20 10:46:47,453 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook app.ready args=0 kwargs=[]
+2026-10-20 10:46:47,454 [INFO] [host.py:79 - bootstrap()] [PluginHost] bootstrap 完成，已加载 0 个插件
+2026-10-20 10:46:47,459 [INFO] [protocol_handler.py:160 - set_deep_link_handler()] [Protocol] deep link 处理器已注册
+2026-10-20 10:46:48,465 [INFO] [protocol_handler.py:377 - register_protocol_linux()] [Protocol] Linux 注册失败: [Errno 30] Read-only file system: '/home/Detrital/.local/share/applications/bloret-launcher-protocol.desktop'
+2026-10-20 10:46:50,296 [INFO] [host.py:821 - getPanelContributionsJson()] [PluginHost] getPanelContributionsJson area=cores count=0
+2026-10-20 10:46:50,366 [INFO] [host.py:842 - notifyPageOpen()] [PluginHost] ui.page.open {'page_id': 'file:///home/Detrital/work/Bloret-Launcher/qml/pages/Home.qml', 'title': '主页', 'plugin_id': ''}
+2026-10-20 10:46:50,366 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook ui.page.open args=1 kwargs=[]
+2026-10-20 10:46:50,798 [INFO] [setup_ui.py:624 - get_all_launch_items()] get_all_launch_items 返回 items: []
+2026-10-20 10:46:50,799 [WARNING] [backend.py:273 - _build_bloret_passport_auth()] [BloretPassPort] 未登录且未配置 AI API Key，无法认证
+2026-10-20 10:46:51,022 [INFO] [host.py:419 - mark_ui_ready()] [PluginStore] UI 就绪，待处理 deep link=0
+2026-10-20 10:46:51,623 [WARNING] [Bloret-Launcher.py:6288 - _init_system_tray()] System tray is not available on this platform
+2026-10-20 10:46:51,624 [INFO] [config.py:212 - write()] write() 写入配置失败: [Errno 30] Read-only file system: '/home/Detrital/.local/share/Bloret-Launcher/.config-i8o7qj34.tmp'
+2026-10-20 10:46:51,627 [INFO] [IP.py:19 - refresh_server_ip()] 正在获取服务器 IP...
+2026-10-20 10:46:51,629 [INFO] [IP.py:32 - refresh_server_ip()] 获取服务器 IP 时发生异常: HTTPSConnectionPool(host='raw.gitcode.com', port=443): Max retries exceeded with url: /Bloret/Bloret-Launcher/raw/Windows/IP.json (Caused by NameResolutionError("HTTPSConnection(host='raw.gitcode.com', port=443): Failed to resolve 'raw.gitcode.com' ([Errno -2] Name or service not known)"))
+2026-10-20 10:46:51,627 [INFO] [live_i18n.py:28 - log()] [live-i18n] manifest 获取失败，继续尝试译文: HTTPSConnectionPool(host='tr.bloret.net', port=443): Max retries exceeded with url: /api/v1/orgs/bloret/projects/bloret-launcher/manifest (Caused by NameResolutionError("HTTPSConnection(host='tr.bloret.net', port=443): Failed to resolve 'tr.bloret.net' ([Errno -2] Name or service not known)"))
+2026-10-20 10:46:51,636 [ERROR] [BLServer.py:148 - get_latest_version()] 查询最新版本时发生错误: HTTPConnectionPool(host='123.129.241.101', port=3001): Max retries exceeded with url: /api/info (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=3001): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:46:51,655 [INFO] [host.py:783 - getHomeContributionsJson()] [PluginHost] getHomeContributionsJson count=0
+2026-10-20 10:46:51,657 [ERROR] [BLServer.py:148 - get_latest_version()] 查询最新版本时发生错误: HTTPConnectionPool(host='123.129.241.101', port=3001): Max retries exceeded with url: /api/info (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=3001): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:46:51,658 [INFO] [chafuwang.py:65 - getServerData()] 创建线程以获取服务器数据: Bloret
+2026-10-20 10:46:51,658 [INFO] [chafuwang.py:22 - _fetch_data()] 开始获取服务器数据: Bloret
+2026-10-20 10:46:51,659 [INFO] [chafuwang.py:26 - _fetch_data()] 正在发送HTTP GET请求到服务器: Bloret
+2026-10-20 10:46:51,659 [INFO] [chafuwang.py:71 - getServerData()] 线程已启动，用于获取服务器数据: Bloret (线程ID: 140689958491840)
+2026-10-20 10:46:51,660 [ERROR] [chafuwang.py:42 - _fetch_data()] 网络请求错误 - 服务器: Bloret, 错误: HTTPConnectionPool(host='123.129.241.101', port=20901): Max retries exceeded with url: /api/getserver?name=Bloret (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=20901): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:46:51,668 [INFO] [i18n.py:205 - reload_language()] Language reloaded: zh-cn
+2026-10-20 10:46:52,449 [WARNING] [backend.py:273 - _build_bloret_passport_auth()] [BloretPassPort] 未登录且未配置 AI API Key，无法认证
+2026-10-20 10:46:52,459 [INFO] [host.py:783 - getHomeContributionsJson()] [PluginHost] getHomeContributionsJson count=0
+2026-10-20 10:46:52,460 [INFO] [chafuwang.py:65 - getServerData()] 创建线程以获取服务器数据: Bloret
+2026-10-20 10:46:52,461 [INFO] [chafuwang.py:22 - _fetch_data()] 开始获取服务器数据: Bloret
+2026-10-20 10:46:52,461 [INFO] [chafuwang.py:26 - _fetch_data()] 正在发送HTTP GET请求到服务器: Bloret
+2026-10-20 10:46:52,463 [ERROR] [chafuwang.py:42 - _fetch_data()] 网络请求错误 - 服务器: Bloret, 错误: HTTPConnectionPool(host='123.129.241.101', port=20901): Max retries exceeded with url: /api/getserver?name=Bloret (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=20901): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:46:52,463 [INFO] [chafuwang.py:71 - getServerData()] 线程已启动，用于获取服务器数据: Bloret (线程ID: 140689950099136)
+2026-10-20 10:48:32,069 [INFO] [config.py:43 - <module>()] 正在检查配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:48:32,069 [INFO] [config.py:44 - <module>()] 源配置文件路径: /home/Detrital/work/Bloret-Launcher/config.json
+2026-10-20 10:48:32,069 [INFO] [config.py:45 - <module>()] 默认配置文件是否存在: True
+2026-10-20 10:48:32,069 [INFO] [config.py:62 - <module>()] 目标配置文件已存在: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:48:32,069 [INFO] [config.py:65 - <module>()] 正在读取配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:48:32,069 [INFO] [config.py:69 - <module>()] 成功读取配置文件，正在检查版本字段...
+2026-10-20 10:48:32,069 [INFO] [config.py:79 - <module>()] 当前配置文件版本: None
+2026-10-20 10:48:32,070 [INFO] [config.py:80 - <module>()] 默认配置文件版本: 27.1
+2026-10-20 10:48:32,070 [INFO] [config.py:83 - <module>()] 配置文件版本不匹配（当前: None, 目标: 27.1），正在执行增量更新...
+2026-10-20 10:48:32,070 [INFO] [config.py:115 - <module>()] 读取配置文件时发生未知错误: [Errno 30] Read-only file system: '/home/Detrital/.local/share/Bloret-Launcher/config.json.back'
+2026-10-20 10:48:32,070 [INFO] [config.py:118 - <module>()] 配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:48:32,070 [INFO] [config.py:235 - <module>()] 正在读取最终配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:48:32,070 [INFO] [config.py:237 - <module>()] 成功读取配置文件内容摘要: {'Java_Path': '/usr/bin/java'}
+2026-10-20 10:48:32,070 [INFO] [config.py:240 - <module>()] Minecraft目录已设置为: ''
+2026-10-20 10:48:32,070 [INFO] [config.py:243 - <module>()] 下载源: gitcode
+2026-10-20 10:48:32,070 [INFO] [config.py:246 - <module>()] 代理: (无)
+2026-10-20 10:48:32,070 [INFO] [config.py:255 - <module>()] 警告：Minecraft目录未设置（为空字符串）
+2026-10-20 10:48:32,187 [ERROR] [web.py:1783 - start_server()] Web server bind failed on 127.0.0.1:25252: [Errno 1] Operation not permitted
+2026-10-20 10:48:32,313 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wechat (个人微信)
+2026-10-20 10:48:32,314 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: telegram (Telegram)
+2026-10-20 10:48:32,315 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: qq (QQ Bot)
+2026-10-20 10:48:32,316 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wecom (企业微信)
+2026-10-20 10:48:32,316 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: dingtalk (钉钉)
+2026-10-20 10:48:32,317 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: feishu (飞书)
+2026-10-20 10:48:32,318 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: discord (Discord)
+2026-10-20 10:48:32,318 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: slack (Slack)
+2026-10-20 10:48:32,319 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: matrix (Matrix)
+2026-10-20 10:48:32,322 [INFO] [backend.py:507 - __init__()] [Bloriko] 全局 AI 设置: provider=bloret_passport, model=default
+2026-10-20 10:48:32,323 [INFO] [memory.py:72 - load_on_init()] [Memory] 加载完成: MEMORY.md=0条, USER.md=0条
+2026-10-20 10:48:32,331 [INFO] [host.py:54 - __init__()] [PluginHost] 实例已创建
+2026-10-20 10:48:32,331 [INFO] [host.py:62 - bootstrap()] [PluginHost] bootstrap 开始
+2026-10-20 10:48:32,331 [INFO] [host.py:107 - scan_and_load()] [PluginHost] 扫描插件目录: /home/Detrital/.local/share/Bloret-Launcher/Plugin
+2026-10-20 10:48:32,332 [INFO] [host.py:172 - scan_and_load()] [PluginHost] 扫描完成 count=0 ids=[]
+2026-10-20 10:48:32,333 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook app.ready args=0 kwargs=[]
+2026-10-20 10:48:32,334 [INFO] [host.py:79 - bootstrap()] [PluginHost] bootstrap 完成，已加载 0 个插件
+2026-10-20 10:48:32,337 [INFO] [protocol_handler.py:160 - set_deep_link_handler()] [Protocol] deep link 处理器已注册
+2026-10-20 10:48:33,342 [INFO] [protocol_handler.py:377 - register_protocol_linux()] [Protocol] Linux 注册失败: [Errno 30] Read-only file system: '/home/Detrital/.local/share/applications/bloret-launcher-protocol.desktop'
+2026-10-20 10:48:34,222 [INFO] [host.py:821 - getPanelContributionsJson()] [PluginHost] getPanelContributionsJson area=cores count=0
+2026-10-20 10:48:34,274 [INFO] [host.py:842 - notifyPageOpen()] [PluginHost] ui.page.open {'page_id': 'file:///home/Detrital/work/Bloret-Launcher/qml/pages/Home.qml', 'title': '主页', 'plugin_id': ''}
+2026-10-20 10:48:34,274 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook ui.page.open args=1 kwargs=[]
+2026-10-20 10:48:34,682 [INFO] [setup_ui.py:624 - get_all_launch_items()] get_all_launch_items 返回 items: []
+2026-10-20 10:48:34,684 [WARNING] [backend.py:273 - _build_bloret_passport_auth()] [BloretPassPort] 未登录且未配置 AI API Key，无法认证
+2026-10-20 10:48:34,945 [INFO] [host.py:419 - mark_ui_ready()] [PluginStore] UI 就绪，待处理 deep link=0
+2026-10-20 10:48:35,570 [INFO] [config.py:212 - write()] write() 写入配置失败: [Errno 30] Read-only file system: '/home/Detrital/.local/share/Bloret-Launcher/.config-jqw1vf6f.tmp'
+2026-10-20 10:48:35,574 [WARNING] [Bloret-Launcher.py:6288 - _init_system_tray()] System tray is not available on this platform
+2026-10-20 10:48:35,578 [INFO] [IP.py:19 - refresh_server_ip()] 正在获取服务器 IP...
+2026-10-20 10:48:35,578 [INFO] [live_i18n.py:28 - log()] [live-i18n] manifest 获取失败，继续尝试译文: HTTPSConnectionPool(host='tr.bloret.net', port=443): Max retries exceeded with url: /api/v1/orgs/bloret/projects/bloret-launcher/manifest (Caused by NameResolutionError("HTTPSConnection(host='tr.bloret.net', port=443): Failed to resolve 'tr.bloret.net' ([Errno -2] Name or service not known)"))
+2026-10-20 10:48:35,581 [INFO] [IP.py:32 - refresh_server_ip()] 获取服务器 IP 时发生异常: HTTPSConnectionPool(host='raw.gitcode.com', port=443): Max retries exceeded with url: /Bloret/Bloret-Launcher/raw/Windows/IP.json (Caused by NameResolutionError("HTTPSConnection(host='raw.gitcode.com', port=443): Failed to resolve 'raw.gitcode.com' ([Errno -2] Name or service not known)"))
+2026-10-20 10:48:35,586 [ERROR] [BLServer.py:148 - get_latest_version()] 查询最新版本时发生错误: HTTPConnectionPool(host='123.129.241.101', port=3001): Max retries exceeded with url: /api/info (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=3001): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:48:35,607 [INFO] [host.py:783 - getHomeContributionsJson()] [PluginHost] getHomeContributionsJson count=0
+2026-10-20 10:48:35,610 [ERROR] [BLServer.py:148 - get_latest_version()] 查询最新版本时发生错误: HTTPConnectionPool(host='123.129.241.101', port=3001): Max retries exceeded with url: /api/info (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=3001): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:48:35,611 [INFO] [chafuwang.py:65 - getServerData()] 创建线程以获取服务器数据: Bloret
+2026-10-20 10:48:35,611 [INFO] [chafuwang.py:22 - _fetch_data()] 开始获取服务器数据: Bloret
+2026-10-20 10:48:35,612 [INFO] [chafuwang.py:26 - _fetch_data()] 正在发送HTTP GET请求到服务器: Bloret
+2026-10-20 10:48:35,611 [INFO] [chafuwang.py:71 - getServerData()] 线程已启动，用于获取服务器数据: Bloret (线程ID: 140131170232000)
+2026-10-20 10:48:35,614 [ERROR] [chafuwang.py:42 - _fetch_data()] 网络请求错误 - 服务器: Bloret, 错误: HTTPConnectionPool(host='123.129.241.101', port=20901): Max retries exceeded with url: /api/getserver?name=Bloret (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=20901): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:48:35,622 [INFO] [i18n.py:205 - reload_language()] Language reloaded: zh-cn
+2026-10-20 10:48:36,313 [WARNING] [backend.py:273 - _build_bloret_passport_auth()] [BloretPassPort] 未登录且未配置 AI API Key，无法认证
+2026-10-20 10:48:36,330 [INFO] [host.py:783 - getHomeContributionsJson()] [PluginHost] getHomeContributionsJson count=0
+2026-10-20 10:48:36,330 [INFO] [chafuwang.py:65 - getServerData()] 创建线程以获取服务器数据: Bloret
+2026-10-20 10:48:36,331 [INFO] [chafuwang.py:22 - _fetch_data()] 开始获取服务器数据: Bloret
+2026-10-20 10:48:36,331 [INFO] [chafuwang.py:26 - _fetch_data()] 正在发送HTTP GET请求到服务器: Bloret
+2026-10-20 10:48:36,332 [ERROR] [chafuwang.py:42 - _fetch_data()] 网络请求错误 - 服务器: Bloret, 错误: HTTPConnectionPool(host='123.129.241.101', port=20901): Max retries exceeded with url: /api/getserver?name=Bloret (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=20901): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:48:36,332 [INFO] [chafuwang.py:71 - getServerData()] 线程已启动，用于获取服务器数据: Bloret (线程ID: 140130790614720)
+2026-10-20 10:59:42,898 [INFO] [config.py:43 - <module>()] 正在检查配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:59:42,898 [INFO] [config.py:44 - <module>()] 源配置文件路径: /home/Detrital/work/Bloret-Launcher/config.json
+2026-10-20 10:59:42,898 [INFO] [config.py:45 - <module>()] 默认配置文件是否存在: True
+2026-10-20 10:59:42,898 [INFO] [config.py:62 - <module>()] 目标配置文件已存在: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:59:42,898 [INFO] [config.py:65 - <module>()] 正在读取配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:59:42,898 [INFO] [config.py:69 - <module>()] 成功读取配置文件，正在检查版本字段...
+2026-10-20 10:59:42,899 [INFO] [config.py:79 - <module>()] 当前配置文件版本: 27.1
+2026-10-20 10:59:42,899 [INFO] [config.py:80 - <module>()] 默认配置文件版本: 27.1
+2026-10-20 10:59:42,899 [INFO] [config.py:101 - <module>()] 配置文件版本匹配，无需更新
+2026-10-20 10:59:42,899 [INFO] [config.py:118 - <module>()] 配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:59:42,899 [INFO] [config.py:235 - <module>()] 正在读取最终配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 10:59:42,899 [INFO] [config.py:237 - <module>()] 成功读取配置文件内容摘要: {'minecraft-part': '.minecraft', 'first-run': True, 'ver': '27.1', '123': '123', 'size': 85, 'themelight': False, 'repeat_run': False, 'show_runtime_do': False, 'Customize': '<list:0 items>', 'Bloret_PassPort_Login': '***', 'Bloret_PassPort_UserName': '***', 'Bloret_PassPort_PassWord': '***', 'Bloret_PassPort_Admin': '***', 'bbbs_session': '***', 'whenCWopen_BLopen': True, 'localmod': False, 'home_show_login_mod': True, 'self-starting': False, 'MaxThread': 64, 'StrictHashVerify': False, 'SkipFileCompletion': False, 'Minecraft_Versions': '<list:2 items>', 'minecraft_dir': '', 'Java_Path': '/usr/bin/java', 'language': 'zh-cn', 'translationApi': '<dict:5 keys>', 'plugin_store_api': '', 'plugin_store_trusted_hosts': '<list:0 items>', 'plugin_store_cache_seconds': 300, 'screen_cut_shortcut': 'Ctrl+Alt+A', 'MinecraftAccount': '<dict:3 keys>', 'mwtool_switch_open': True, 'show_account_on_home': 'compact', 'minimize_to_tray_on_close': True, 'gamepad_move_sensitivity': 50, 'gamepad_view_sensitivity': 50, 'gamepad_button_layout': 'default', 'notifications': '<dict:18 keys>', 'ai_provider': 'bloret_passport', 'ai_model': 'default', 'backdrop_effect': 'none', 'plugins': '<dict:4 keys>'}
+2026-10-20 10:59:42,899 [INFO] [config.py:240 - <module>()] Minecraft目录已设置为: ''
+2026-10-20 10:59:42,899 [INFO] [config.py:243 - <module>()] 下载源: gitcode
+2026-10-20 10:59:42,899 [INFO] [config.py:246 - <module>()] 代理: (无)
+2026-10-20 10:59:42,899 [INFO] [config.py:255 - <module>()] 警告：Minecraft目录未设置（为空字符串）
+2026-10-20 10:59:43,112 [ERROR] [web.py:1783 - start_server()] Web server bind failed on 127.0.0.1:25252: [Errno 1] Operation not permitted
+2026-10-20 10:59:43,261 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wechat (个人微信)
+2026-10-20 10:59:43,262 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: telegram (Telegram)
+2026-10-20 10:59:43,262 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: qq (QQ Bot)
+2026-10-20 10:59:43,263 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wecom (企业微信)
+2026-10-20 10:59:43,265 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: dingtalk (钉钉)
+2026-10-20 10:59:43,266 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: feishu (飞书)
+2026-10-20 10:59:43,267 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: discord (Discord)
+2026-10-20 10:59:43,268 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: slack (Slack)
+2026-10-20 10:59:43,269 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: matrix (Matrix)
+2026-10-20 10:59:43,276 [INFO] [backend.py:507 - __init__()] [Bloriko] 全局 AI 设置: provider=bloret_passport, model=default
+2026-10-20 10:59:43,276 [INFO] [memory.py:72 - load_on_init()] [Memory] 加载完成: MEMORY.md=0条, USER.md=0条
+2026-10-20 10:59:43,286 [INFO] [host.py:54 - __init__()] [PluginHost] 实例已创建
+2026-10-20 10:59:43,286 [INFO] [host.py:62 - bootstrap()] [PluginHost] bootstrap 开始
+2026-10-20 10:59:43,286 [INFO] [host.py:107 - scan_and_load()] [PluginHost] 扫描插件目录: /home/Detrital/.local/share/Bloret-Launcher/Plugin
+2026-10-20 10:59:43,286 [INFO] [host.py:172 - scan_and_load()] [PluginHost] 扫描完成 count=0 ids=[]
+2026-10-20 10:59:43,291 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook app.ready args=0 kwargs=[]
+2026-10-20 10:59:43,294 [INFO] [host.py:79 - bootstrap()] [PluginHost] bootstrap 完成，已加载 0 个插件
+2026-10-20 10:59:43,300 [INFO] [protocol_handler.py:160 - set_deep_link_handler()] [Protocol] deep link 处理器已注册
+2026-10-20 10:59:44,305 [INFO] [protocol_handler.py:377 - register_protocol_linux()] [Protocol] Linux 注册失败: [Errno 30] Read-only file system: '/home/Detrital/.local/share/applications/bloret-launcher-protocol.desktop'
+2026-10-20 10:59:45,192 [INFO] [host.py:821 - getPanelContributionsJson()] [PluginHost] getPanelContributionsJson area=cores count=0
+2026-10-20 10:59:45,265 [INFO] [host.py:842 - notifyPageOpen()] [PluginHost] ui.page.open {'page_id': 'file:///home/Detrital/work/Bloret-Launcher/qml/pages/Home.qml', 'title': '主页', 'plugin_id': ''}
+2026-10-20 10:59:45,265 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook ui.page.open args=1 kwargs=[]
+2026-10-20 10:59:45,617 [INFO] [setup_ui.py:624 - get_all_launch_items()] get_all_launch_items 返回 items: []
+2026-10-20 10:59:45,618 [WARNING] [backend.py:273 - _build_bloret_passport_auth()] [BloretPassPort] 未登录且未配置 AI API Key，无法认证
+2026-10-20 10:59:45,871 [INFO] [host.py:419 - mark_ui_ready()] [PluginStore] UI 就绪，待处理 deep link=0
+2026-10-20 10:59:46,465 [INFO] [config.py:212 - write()] write() 写入配置失败: [Errno 30] Read-only file system: '/home/Detrital/.local/share/Bloret-Launcher/.config-ibpm8tz8.tmp'
+2026-10-20 10:59:46,469 [WARNING] [Bloret-Launcher.py:6288 - _init_system_tray()] System tray is not available on this platform
+2026-10-20 10:59:46,472 [INFO] [IP.py:19 - refresh_server_ip()] 正在获取服务器 IP...
+2026-10-20 10:59:46,472 [INFO] [live_i18n.py:28 - log()] [live-i18n] manifest 获取失败，继续尝试译文: HTTPSConnectionPool(host='tr.bloret.net', port=443): Max retries exceeded with url: /api/v1/orgs/bloret/projects/bloret-launcher/manifest (Caused by NameResolutionError("HTTPSConnection(host='tr.bloret.net', port=443): Failed to resolve 'tr.bloret.net' ([Errno -2] Name or service not known)"))
+2026-10-20 10:59:46,474 [INFO] [IP.py:32 - refresh_server_ip()] 获取服务器 IP 时发生异常: HTTPSConnectionPool(host='raw.gitcode.com', port=443): Max retries exceeded with url: /Bloret/Bloret-Launcher/raw/Windows/IP.json (Caused by NameResolutionError("HTTPSConnection(host='raw.gitcode.com', port=443): Failed to resolve 'raw.gitcode.com' ([Errno -2] Name or service not known)"))
+2026-10-20 10:59:46,478 [ERROR] [BLServer.py:148 - get_latest_version()] 查询最新版本时发生错误: HTTPConnectionPool(host='123.129.241.101', port=3001): Max retries exceeded with url: /api/info (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=3001): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:59:46,484 [INFO] [host.py:783 - getHomeContributionsJson()] [PluginHost] getHomeContributionsJson count=0
+2026-10-20 10:59:46,486 [ERROR] [BLServer.py:148 - get_latest_version()] 查询最新版本时发生错误: HTTPConnectionPool(host='123.129.241.101', port=3001): Max retries exceeded with url: /api/info (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=3001): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:59:46,487 [INFO] [chafuwang.py:65 - getServerData()] 创建线程以获取服务器数据: Bloret
+2026-10-20 10:59:46,487 [INFO] [chafuwang.py:22 - _fetch_data()] 开始获取服务器数据: Bloret
+2026-10-20 10:59:46,487 [INFO] [chafuwang.py:26 - _fetch_data()] 正在发送HTTP GET请求到服务器: Bloret
+2026-10-20 10:59:46,489 [ERROR] [chafuwang.py:42 - _fetch_data()] 网络请求错误 - 服务器: Bloret, 错误: HTTPConnectionPool(host='123.129.241.101', port=20901): Max retries exceeded with url: /api/getserver?name=Bloret (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=20901): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:59:46,489 [INFO] [chafuwang.py:71 - getServerData()] 线程已启动，用于获取服务器数据: Bloret (线程ID: 140389163235008)
+2026-10-20 10:59:46,498 [INFO] [i18n.py:205 - reload_language()] Language reloaded: zh-cn
+2026-10-20 10:59:47,358 [WARNING] [backend.py:273 - _build_bloret_passport_auth()] [BloretPassPort] 未登录且未配置 AI API Key，无法认证
+2026-10-20 10:59:47,386 [INFO] [host.py:783 - getHomeContributionsJson()] [PluginHost] getHomeContributionsJson count=0
+2026-10-20 10:59:47,388 [INFO] [chafuwang.py:65 - getServerData()] 创建线程以获取服务器数据: Bloret
+2026-10-20 10:59:47,389 [INFO] [chafuwang.py:22 - _fetch_data()] 开始获取服务器数据: Bloret
+2026-10-20 10:59:47,390 [INFO] [chafuwang.py:26 - _fetch_data()] 正在发送HTTP GET请求到服务器: Bloret
+2026-10-20 10:59:47,393 [ERROR] [chafuwang.py:42 - _fetch_data()] 网络请求错误 - 服务器: Bloret, 错误: HTTPConnectionPool(host='123.129.241.101', port=20901): Max retries exceeded with url: /api/getserver?name=Bloret (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=20901): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 10:59:47,390 [INFO] [chafuwang.py:71 - getServerData()] 线程已启动，用于获取服务器数据: Bloret (线程ID: 140389146359488)
+2026-10-20 18:37:33,450 [INFO] [config.py:43 - <module>()] 正在检查配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 18:37:33,450 [INFO] [config.py:44 - <module>()] 源配置文件路径: /home/Detrital/work/Bloret-Launcher/config.json
+2026-10-20 18:37:33,450 [INFO] [config.py:45 - <module>()] 默认配置文件是否存在: True
+2026-10-20 18:37:33,450 [INFO] [config.py:62 - <module>()] 目标配置文件已存在: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 18:37:33,451 [INFO] [config.py:65 - <module>()] 正在读取配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 18:37:33,451 [INFO] [config.py:69 - <module>()] 成功读取配置文件，正在检查版本字段...
+2026-10-20 18:37:33,451 [INFO] [config.py:79 - <module>()] 当前配置文件版本: 27.1
+2026-10-20 18:37:33,452 [INFO] [config.py:80 - <module>()] 默认配置文件版本: 27.1
+2026-10-20 18:37:33,452 [INFO] [config.py:101 - <module>()] 配置文件版本匹配，无需更新
+2026-10-20 18:37:33,452 [INFO] [config.py:118 - <module>()] 配置文件路径: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 18:37:33,452 [INFO] [config.py:235 - <module>()] 正在读取最终配置文件: /home/Detrital/.local/share/Bloret-Launcher/config.json
+2026-10-20 18:37:33,452 [INFO] [config.py:237 - <module>()] 成功读取配置文件内容摘要: {'minecraft-part': '.minecraft', 'first-run': True, 'ver': '27.1', '123': '123', 'size': 85, 'themelight': False, 'repeat_run': False, 'show_runtime_do': False, 'Customize': '<list:0 items>', 'Bloret_PassPort_Login': '***', 'Bloret_PassPort_UserName': '***', 'Bloret_PassPort_PassWord': '***', 'Bloret_PassPort_Admin': '***', 'bbbs_session': '***', 'whenCWopen_BLopen': True, 'localmod': False, 'home_show_login_mod': True, 'self-starting': False, 'MaxThread': 64, 'StrictHashVerify': False, 'SkipFileCompletion': False, 'Minecraft_Versions': '<list:2 items>', 'minecraft_dir': '', 'Java_Path': '/usr/bin/java', 'language': 'zh-cn', 'translationApi': '<dict:5 keys>', 'plugin_store_api': '', 'plugin_store_trusted_hosts': '<list:0 items>', 'plugin_store_cache_seconds': 300, 'screen_cut_shortcut': 'Ctrl+Alt+A', 'MinecraftAccount': '<dict:3 keys>', 'mwtool_switch_open': True, 'show_account_on_home': 'compact', 'minimize_to_tray_on_close': True, 'gamepad_move_sensitivity': 50, 'gamepad_view_sensitivity': 50, 'gamepad_button_layout': 'default', 'notifications': '<dict:18 keys>', 'ai_provider': 'bloret_passport', 'ai_model': 'default', 'backdrop_effect': 'none', 'plugins': '<dict:4 keys>', 'Bloret_PassPort_NickName': '***', 'Bloret_PassPort_OAuth': '***'}
+2026-10-20 18:37:33,453 [INFO] [config.py:240 - <module>()] Minecraft目录已设置为: ''
+2026-10-20 18:37:33,453 [INFO] [config.py:243 - <module>()] 下载源: gitcode
+2026-10-20 18:37:33,453 [INFO] [config.py:246 - <module>()] 代理: (无)
+2026-10-20 18:37:33,453 [INFO] [config.py:255 - <module>()] 警告：Minecraft目录未设置（为空字符串）
+2026-10-20 18:37:33,859 [ERROR] [web.py:1783 - start_server()] Web server bind failed on 127.0.0.1:25252: [Errno 1] Operation not permitted
+2026-10-20 18:37:34,253 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wechat (个人微信)
+2026-10-20 18:37:34,255 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: telegram (Telegram)
+2026-10-20 18:37:34,256 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: qq (QQ Bot)
+2026-10-20 18:37:34,258 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: wecom (企业微信)
+2026-10-20 18:37:34,259 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: dingtalk (钉钉)
+2026-10-20 18:37:34,260 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: feishu (飞书)
+2026-10-20 18:37:34,263 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: discord (Discord)
+2026-10-20 18:37:34,265 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: slack (Slack)
+2026-10-20 18:37:34,268 [INFO] [__init__.py:29 - register_connector()] 已注册连接器: matrix (Matrix)
+2026-10-20 18:37:34,280 [INFO] [backend.py:507 - __init__()] [Bloriko] 全局 AI 设置: provider=bloret_passport, model=default
+2026-10-20 18:37:34,282 [INFO] [memory.py:72 - load_on_init()] [Memory] 加载完成: MEMORY.md=0条, USER.md=0条
+2026-10-20 18:37:34,312 [INFO] [host.py:54 - __init__()] [PluginHost] 实例已创建
+2026-10-20 18:37:34,312 [INFO] [host.py:62 - bootstrap()] [PluginHost] bootstrap 开始
+2026-10-20 18:37:34,312 [INFO] [host.py:107 - scan_and_load()] [PluginHost] 扫描插件目录: /home/Detrital/.local/share/Bloret-Launcher/Plugin
+2026-10-20 18:37:34,312 [INFO] [host.py:172 - scan_and_load()] [PluginHost] 扫描完成 count=0 ids=[]
+2026-10-20 18:37:34,315 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook app.ready args=0 kwargs=[]
+2026-10-20 18:37:34,316 [INFO] [host.py:79 - bootstrap()] [PluginHost] bootstrap 完成，已加载 0 个插件
+2026-10-20 18:37:34,323 [INFO] [protocol_handler.py:160 - set_deep_link_handler()] [Protocol] deep link 处理器已注册
+2026-10-20 18:37:35,328 [INFO] [protocol_handler.py:377 - register_protocol_linux()] [Protocol] Linux 注册失败: [Errno 30] Read-only file system: '/home/Detrital/.local/share/applications/bloret-launcher-protocol.desktop'
+2026-10-20 18:37:36,985 [INFO] [host.py:821 - getPanelContributionsJson()] [PluginHost] getPanelContributionsJson area=cores count=0
+2026-10-20 18:37:37,042 [INFO] [host.py:842 - notifyPageOpen()] [PluginHost] ui.page.open {'page_id': 'file:///home/Detrital/work/Bloret-Launcher/qml/pages/Home.qml', 'title': '主页', 'plugin_id': ''}
+2026-10-20 18:37:37,042 [INFO] [dispatch.py:23 - invoke_hook()] [PluginHost] invoke_hook ui.page.open args=1 kwargs=[]
+2026-10-20 18:37:37,527 [INFO] [setup_ui.py:624 - get_all_launch_items()] get_all_launch_items 返回 items: []
+2026-10-20 18:37:37,823 [INFO] [host.py:419 - mark_ui_ready()] [PluginStore] UI 就绪，待处理 deep link=0
+2026-10-20 18:37:38,475 [WARNING] [Bloret-Launcher.py:6312 - _init_system_tray()] System tray is not available on this platform
+2026-10-20 18:37:38,477 [INFO] [config.py:212 - write()] write() 写入配置失败: [Errno 30] Read-only file system: '/home/Detrital/.local/share/Bloret-Launcher/.config-88ott4ie.tmp'
+2026-10-20 18:37:38,478 [INFO] [IP.py:19 - refresh_server_ip()] 正在获取服务器 IP...
+2026-10-20 18:37:38,482 [INFO] [live_i18n.py:28 - log()] [live-i18n] manifest 获取失败，继续尝试译文: HTTPSConnectionPool(host='tr.bloret.net', port=443): Max retries exceeded with url: /api/v1/orgs/bloret/projects/bloret-launcher/manifest (Caused by NameResolutionError("HTTPSConnection(host='tr.bloret.net', port=443): Failed to resolve 'tr.bloret.net' ([Errno -2] Name or service not known)"))
+2026-10-20 18:37:38,482 [INFO] [IP.py:32 - refresh_server_ip()] 获取服务器 IP 时发生异常: HTTPSConnectionPool(host='raw.gitcode.com', port=443): Max retries exceeded with url: /Bloret/Bloret-Launcher/raw/Windows/IP.json (Caused by NameResolutionError("HTTPSConnection(host='raw.gitcode.com', port=443): Failed to resolve 'raw.gitcode.com' ([Errno -2] Name or service not known)"))
+2026-10-20 18:37:38,487 [ERROR] [BLServer.py:148 - get_latest_version()] 查询最新版本时发生错误: HTTPConnectionPool(host='123.129.241.101', port=3001): Max retries exceeded with url: /api/info (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=3001): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 18:37:38,504 [INFO] [host.py:783 - getHomeContributionsJson()] [PluginHost] getHomeContributionsJson count=0
+2026-10-20 18:37:38,507 [ERROR] [BLServer.py:148 - get_latest_version()] 查询最新版本时发生错误: HTTPConnectionPool(host='123.129.241.101', port=3001): Max retries exceeded with url: /api/info (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=3001): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 18:37:38,507 [INFO] [chafuwang.py:65 - getServerData()] 创建线程以获取服务器数据: Bloret
+2026-10-20 18:37:38,508 [INFO] [chafuwang.py:22 - _fetch_data()] 开始获取服务器数据: Bloret
+2026-10-20 18:37:38,508 [INFO] [chafuwang.py:71 - getServerData()] 线程已启动，用于获取服务器数据: Bloret (线程ID: 140599646746304)
+2026-10-20 18:37:38,508 [INFO] [chafuwang.py:26 - _fetch_data()] 正在发送HTTP GET请求到服务器: Bloret
+2026-10-20 18:37:38,510 [ERROR] [chafuwang.py:42 - _fetch_data()] 网络请求错误 - 服务器: Bloret, 错误: HTTPConnectionPool(host='123.129.241.101', port=20901): Max retries exceeded with url: /api/getserver?name=Bloret (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=20901): Failed to establish a new connection: [Errno 1] Operation not permitted"))
+2026-10-20 18:37:38,650 [INFO] [i18n.py:205 - reload_language()] Language reloaded: zh-cn
+2026-10-20 18:37:39,357 [INFO] [host.py:783 - getHomeContributionsJson()] [PluginHost] getHomeContributionsJson count=0
+2026-10-20 18:37:39,357 [INFO] [chafuwang.py:65 - getServerData()] 创建线程以获取服务器数据: Bloret
+2026-10-20 18:37:39,358 [INFO] [chafuwang.py:22 - _fetch_data()] 开始获取服务器数据: Bloret
+2026-10-20 18:37:39,358 [INFO] [chafuwang.py:71 - getServerData()] 线程已启动，用于获取服务器数据: Bloret (线程ID: 140599638353600)
+2026-10-20 18:37:39,359 [INFO] [chafuwang.py:26 - _fetch_data()] 正在发送HTTP GET请求到服务器: Bloret
+2026-10-20 18:37:39,360 [ERROR] [chafuwang.py:42 - _fetch_data()] 网络请求错误 - 服务器: Bloret, 错误: HTTPConnectionPool(host='123.129.241.101', port=20901): Max retries exceeded with url: /api/getserver?name=Bloret (Caused by NewConnectionError("HTTPConnection(host='123.129.241.101', port=20901): Failed to establish a new connection: [Errno 1] Operation not permitted"))
