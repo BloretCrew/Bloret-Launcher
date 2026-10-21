@@ -42,11 +42,16 @@ jobs:
           echo "Syncing $TAG to GitCode"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Check out the release tag
+      - name: Check out the repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.tag.outputs.tag }}
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
+
+      - name: Fetch the release tag
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
 
       - name: Check the GitCode token
         env:
@@ -73,11 +78,12 @@ jobs:
           esac
           EOF
           chmod +x "$RUNNER_TEMP/gitcode-askpass.sh"
+          SHA="$(git rev-list -n 1 "$TAG")"
           git remote remove gitcode 2>/dev/null || true
           git remote add gitcode "https://gitcode.com/${GITCODE_REPO}.git"
           export GIT_ASKPASS="$RUNNER_TEMP/gitcode-askpass.sh"
           export GIT_TERMINAL_PROMPT=0
-          if ! git push gitcode "HEAD:refs/heads/${GITCODE_BRANCH}" "refs/tags/${TAG}:refs/tags/${TAG}"; then
+          if ! git push gitcode "${SHA}:refs/heads/${GITCODE_BRANCH}" "refs/tags/${TAG}:refs/tags/${TAG}"; then
             echo "::warning::Could not push to GitCode. The repository may still be a mirror, or the token may lack write access. The release sync continues."
           fi
 
