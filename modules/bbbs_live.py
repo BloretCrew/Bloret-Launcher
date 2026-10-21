@@ -99,7 +99,9 @@ def _request_json(method, path, timeout=10, body=None):
     cookies = _get_session_cookie()
     _log_request(method, url, cookies, body)
     try:
-        headers = {"Content-Type": "application/json"} if body is not None else None
+        headers = {"Content-Type": "application/json"} if body is not None else {}
+        if method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+            headers.update(_csrf_headers())
         response = requests.request(
             method,
             url,
@@ -122,7 +124,7 @@ def _request_json(method, path, timeout=10, body=None):
 
 
 def _get_session_cookie():
-    """从 config.json 读取 bbbs_session 和 bbbs_session_sig，返回 cookies dict"""
+    """从 config.json 读取 BBBS 会话和 CSRF cookies"""
     config_data = _read_config()
     cookies = {}
     session = config_data.get('bbbs_session', '')
@@ -131,7 +133,17 @@ def _get_session_cookie():
     session_sig = config_data.get('bbbs_session_sig', '')
     if session_sig:
         cookies['session.sig'] = session_sig
+    csrf_token = str(config_data.get('bbbs_csrf_token') or '').strip()
+    if csrf_token:
+        cookies['csrf-token'] = csrf_token
     return cookies
+
+
+def _csrf_headers():
+    token = str(_read_config().get('bbbs_csrf_token') or '').strip()
+    if not token:
+        return {}
+    return {'x-csrf-token': token, 'Origin': _get_base_url()}
 
 
 # ==================== Space Management ====================
@@ -169,8 +181,9 @@ def send_signal(space_id, signal_data):
     cookies = _get_session_cookie()
     _log_request("POST", url, cookies, signal_data)
     try:
-        # 确保 Content-Type 为 application/json
+        # 确保 Content-Type 为 application/json，并携带 CSRF 令牌
         headers = {"Content-Type": "application/json"}
+        headers.update(_csrf_headers())
         response = requests.post(url, json=signal_data, cookies=cookies, headers=headers, timeout=10)
         _log_response(response)
         if response.status_code == 200:

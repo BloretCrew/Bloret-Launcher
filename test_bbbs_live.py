@@ -136,6 +136,46 @@ class BBBSLiveTests(unittest.TestCase):
             ):
                 self.assertEqual(bbbs.fetch_leaderboard_posts(), [])
 
+    def test_bbbs_csrf_cookie_and_headers_are_used_for_writes(self):
+        config = {
+            "bbbs_session": "session-value",
+            "bbbs_session_sig": "signature-value",
+            "bbbs_csrf_token": "csrf-value",
+        }
+        captured = {}
+
+        def fake_request(method, url, **kwargs):
+            captured.update(kwargs)
+            return FakeResponse(payload={"ok": True})
+
+        with mock.patch.object(bbbs, "_read_config", return_value=config), \
+             mock.patch.object(bbbs.requests, "request", side_effect=fake_request):
+            bbbs._request("POST", "/api/chat/rooms/room/messages", body={"content": "hi"})
+
+        self.assertEqual(captured["cookies"]["csrf-token"], "csrf-value")
+        self.assertEqual(captured["headers"]["x-csrf-token"], "csrf-value")
+        self.assertTrue(captured["headers"]["Origin"].startswith("http://"))
+
+    def test_live_signal_sends_csrf_cookie_and_header(self):
+        config = {
+            "bbbs_session": "session-value",
+            "bbbs_session_sig": "signature-value",
+            "bbbs_csrf_token": "csrf-value",
+        }
+        captured = {}
+
+        def fake_post(url, **kwargs):
+            captured.update(kwargs)
+            return FakeResponse(payload={"ok": True})
+
+        with mock.patch.object(bbbs_live, "_read_config", return_value=config), \
+             mock.patch.object(bbbs_live.requests, "post", side_effect=fake_post):
+            bbbs_live.send_signal("space-1", {"type": "chat", "payload": {"msg": "hi"}})
+
+        self.assertEqual(captured["cookies"]["csrf-token"], "csrf-value")
+        self.assertEqual(captured["headers"]["x-csrf-token"], "csrf-value")
+        self.assertTrue(captured["headers"]["Origin"].startswith("http://"))
+
     def test_bbbs_rejects_unexpected_json_shapes(self):
         with mock.patch.object(bbbs, "_get_session_cookie", return_value={}), mock.patch.object(
             bbbs.requests,

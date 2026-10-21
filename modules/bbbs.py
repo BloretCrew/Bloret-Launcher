@@ -43,16 +43,26 @@ def _get_base_url():
 
 
 def _get_session_cookie():
-    """Read both BBBS session cookies without exposing them in logs."""
+    """Read BBBS session and CSRF cookies without exposing them in logs."""
     config_data = _read_config()
     cookies = {}
     session = config_data.get("bbbs_session", "")
     session_sig = config_data.get("bbbs_session_sig", "")
+    csrf_token = str(config_data.get("bbbs_csrf_token") or "").strip()
     if session:
         cookies["session"] = session
     if session_sig:
         cookies["session.sig"] = session_sig
+    if csrf_token:
+        cookies["csrf-token"] = csrf_token
     return cookies
+
+
+def _csrf_headers():
+    token = str(_read_config().get("bbbs_csrf_token") or "").strip()
+    if not token:
+        return {}
+    return {"x-csrf-token": token, "Origin": _get_base_url()}
 
 
 def _get_json(url, failure_message, default, expected_type):
@@ -97,6 +107,8 @@ def _request(method, path, *, params=None, body=None, files=None,
     headers = {"Accept": "application/json"}
     if body is not None and files is None:
         headers["Content-Type"] = "application/json"
+    if method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+        headers.update(_csrf_headers())
     try:
         log(f"[BBBS] request {method.upper()} {path} params={params or {}} auth={bool(cookies)}")
         response = requests.request(
